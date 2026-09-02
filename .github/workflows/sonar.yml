@@ -29,53 +29,65 @@ jobs:
   sonar:
     name: SonarQube Scan
     runs-on: ubuntu-22.04
-    if: ${{ secrets.SONAR_TOKEN != '' && secrets.SONAR_HOST_URL != '' }}
+    # Le contexte `secrets` n'est PAS disponible dans un `if` de job : la garde
+    # d'origine rendait le workflow invalide (echec immediat). On expose le
+    # booleen via `env` (autorise au niveau job) et on garde chaque step.
+    env:
+      SONAR_CONFIGURED: ${{ secrets.SONAR_TOKEN != '' && secrets.SONAR_HOST_URL != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - if: env.SONAR_CONFIGURED == 'true'
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0  # full clone pour blame Sonar
 
-      - uses: actions/setup-java@v4
+      - if: env.SONAR_CONFIGURED == 'true'
+        uses: actions/setup-java@v4
         with:
           java-version: 21
           distribution: temurin
           cache: maven
 
-      - uses: actions/setup-node@v4
+      - if: env.SONAR_CONFIGURED == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: projet/frontend-react/package-lock.json
+          cache-dependency-path: frontend-react/package-lock.json
 
-      - name: Cache Sonar packages
+      - if: env.SONAR_CONFIGURED == 'true'
+        name: Cache Sonar packages
         uses: actions/cache@v4
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
 
-      - name: Maven verify + JaCoCo
-        working-directory: projet/backend-java
+      - if: env.SONAR_CONFIGURED == 'true'
+        name: Maven verify + JaCoCo
+        working-directory: backend-java
         run: mvn -B -DskipITs verify
 
-      - name: Frontend coverage
-        working-directory: projet/frontend-react
+      - if: env.SONAR_CONFIGURED == 'true'
+        name: Frontend coverage
+        working-directory: frontend-react
         run: |
           npm ci --legacy-peer-deps
           npm run test:coverage
 
-      - name: SonarQube Scan
+      - if: env.SONAR_CONFIGURED == 'true'
+        name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@v2.3.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
-          projectBaseDir: projet
+          projectBaseDir: .
 
-      - name: Quality Gate Check
+      - if: env.SONAR_CONFIGURED == 'true'
+        name: Quality Gate Check
         uses: sonarsource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          scanMetadataReportFile: projet/.scannerwork/report-task.txt
+          scanMetadataReportFile: .scannerwork/report-task.txt
