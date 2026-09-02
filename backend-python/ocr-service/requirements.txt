@@ -1,0 +1,19 @@
+# JURIKA — ocr-service requirements (CPU host, CNDP-compliant : aucun appel cloud).
+# Python 3.10 - 3.12 supportés. Tag torch CPU pour réduire le téléchargement.
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+pydantic==2.10.5
+
+# OCR moteur principal : docTR (Mindee) sur torch CPU.
+# https://github.com/mindee/doctr — install simple, modèles auto-DL au 1er run.
+python-doctr[torch]==0.10.0
+
+# Backend image -> tensor + redim
+Pillow==11.1.0
+opencv-python-headless==4.10.0.84
+numpy==2.2.1
+
+# Lecture PDF (rasterisation 1ère page si on reçoit un PDF)
+pypdfium2==4.30.0

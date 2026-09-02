@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "framer-motion": "^12.38.0",
+    "gsap": "^3.15.0"
+  },
+  "devDependencies": {
+    "pg": "^8.21.0"
+  }
+}

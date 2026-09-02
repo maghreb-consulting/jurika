@@ -1,0 +1,216 @@
+server:
+  port: ${AUTH_SERVICE_PORT:8081}
+  shutdown: graceful
+
+spring:
+  application:
+    name: auth-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  # Papier a en-tete V31 — televersement du logo cabinet (~1 Mo max applique en
+  # service). Marge a 2 Mo pour que la validation metier renvoie un 400 explicite
+  # plutot qu'un rejet multipart de Spring.
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:jurika_db}
+    username: ${POSTGRES_USER:jurika_user}
+    password: ${POSTGRES_PASSWORD:JurikaDevPass2026}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    table: flyway_history_auth
+    validate-on-migrate: false
+    ignore-migration-patterns: "*:missing,*:future"
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:jurika}
+    password: ${RABBITMQ_PASSWORD:JurikaRabbit2026}
+    virtual-host: ${RABBITMQ_VHOST:jurika}
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+    default-encoding: UTF-8
+  thymeleaf:
+    enabled: true
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    encoding: UTF-8
+    cache: false
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+
+jurika:
+  jwt:
+    # RS256 (prod) ou HS256 (legacy dev). Voir docs/v2/PLAN_SPRINT_1_SECURITE_PROD.md TASK 2.
+    algorithm: ${JWT_ALGORITHM:RS256}
+    public-key-path: ${JWT_PUBLIC_KEY_PATH:/run/secrets/jwt/jwt-public.pem}
+    # private-key-path n'est lu que par auth-service (signature).
+    private-key-path: ${JWT_PRIVATE_KEY_PATH:/run/secrets/jwt/jwt-private-pkcs8.pem}
+    # Fallback HS256 (dev legacy) — laisser vide en production.
+    hmac-secret: ${JWT_SECRET:dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345}
+    access-ttl-ms: ${JWT_ACCESS_TTL_MS:${JWT_ACCESS_EXPIRATION:900000}}
+    refresh-ttl-ms: ${JWT_REFRESH_TTL_MS:${JWT_REFRESH_EXPIRATION:604800000}}
+    issuer: ${JWT_ISSUER:jurika.ma}
+  encryption:
+    # En production, AES_SECRET_KEY DOIT etre defini dans .env (min 32 caracteres).
+    aes-secret: ${AES_SECRET_KEY:dev-only-aes-secret-min-32-chars-not-for-prod-CHANGE-ME}
+  auth:
+    bcrypt-strength: 12
+    max-failed-attempts: 5
+    lock-duration-minutes: 15
+    reset-token-ttl-minutes: 30
+    # Securite sessions (durcissement 2026-07) — PARAMETRABLE :
+    # single-session=true : une seule session active par utilisateur ("dernier login gagne").
+    #   Un nouveau login revoque toutes les sessions precedentes ; l'ancienne tombe en 401
+    #   (SESSION_REVOKED) a son prochain refresh. Mettre a false pour revenir au cap multi-sessions.
+    single-session: ${JURIKA_AUTH_SINGLE_SESSION:true}
+    # Cap de sessions actives quand single-session=false (RG-SAAS-12 historique).
+    max-active-sessions: ${JURIKA_AUTH_MAX_ACTIVE_SESSIONS:5}
+    # Fenetre glissante d'inactivite : si aucun refresh n'intervient pendant cette duree,
+    # le refresh token n'est plus accepte (401 SESSION_INACTIVITY). INVARIANT IMPOSE :
+    # inactivity-window >= access-ttl + 5m (marge), sinon SessionTimingGuard refuse le
+    # demarrage. Raison : la fenetre est reamorcee a chaque rotation, et une rotation
+    # n'a lieu (au plus tot) qu'a l'expiration de l'access ; si la fenetre est plus
+    # courte que l'access, elle est deja depassee au 1er refresh => un utilisateur ACTIF
+    # est deconnecte a tort. Le plafond ABSOLU de session, lui, = refresh-ttl (preserve
+    # a chaque rotation dans RefreshTokenUseCase). Format duree Spring : 30m, 45m, 1h...
+    inactivity-window: ${JURIKA_AUTH_INACTIVITY_WINDOW:30m}
+    totp-issuer: JURIKA
+    email-verification-ttl-hours: 24
+    sms-otp-ttl-minutes: 5
+    sms-otp-max-attempts: 5
+    temp-password-length: 12
+  email:
+    # smtp (defaut) : envoie via spring.mail (MailHog en dev, vrai MTA en prod).
+    # log : LogEmailSender — imprime workspaceCode + tempPassword + verifUrl
+    # dans les logs auth-service (DEV UNIQUEMENT, ne pas activer en prod).
+    provider: ${JURIKA_EMAIL_PROVIDER:smtp}
+    from: ${SMTP_FROM:noreply@jurika.ma}
+    from-name: ${SMTP_FROM_NAME:JURIKA}
+    verification-base-url: ${FRONTEND_URL:http://localhost:5173}/auth/verify-email
+  signup:
+    # Fix 2026-06-07 : par defaut TRUE = comportement billing (mail welcome
+    # differe jusqu'a la validation du paiement, via IssueCredentialsUseCase).
+    # En dev, mettre JURIKA_SIGNUP_DEFER_CREDENTIALS_ALLOWED=false dans
+    # .env.local pour que le mail parte AU SIGNUP -- ca permet de tester
+    # immediatement Brevo / le rendu de welcome.html sans avoir a aller jusqu'a
+    # la Step Paiement du wizard. Ne JAMAIS activer en prod.
+    defer-credentials-allowed: ${JURIKA_SIGNUP_DEFER_CREDENTIALS_ALLOWED:true}
+    # Fix 2026-06-07 : si TRUE, l'email du user cree via le wizard
+    # /public/signup/cabinet est marque verifie immediatement (sans click
+    # sur le lien d'activation). Permet de passer directement au /setup-2fa
+    # sans EMAIL_VERIFICATION_REQUIRED 400. Recommande en dev/preprod ;
+    # NE PAS activer en prod (RG-AU26 exige le click pour eviter qu'un attaquant
+    # cree un compte avec un email squatte).
+    auto-verify-email: ${JURIKA_SIGNUP_AUTO_VERIFY_EMAIL:false}
+  # Sprint 3 / TASK 1 — Provider SMS (logger en dev, twilio en prod, inwi possible plus tard).
+  # Sprint 12 finition (2026-06-04) — httpgateway pour passerelles gratuites
+  # (TextBee, SMSGateway-for-Android, etc. — voir HttpGatewaySmsSender).
+  sms:
+    provider: ${SMS_PROVIDER:logger}
+    twilio:
+      account-sid: ${TWILIO_ACCOUNT_SID:}
+      auth-token: ${TWILIO_AUTH_TOKEN:}
+      from-number: ${TWILIO_FROM_NUMBER:}
+    httpgateway:
+      url:           ${SMS_GATEWAY_URL:}
+      auth-header:   ${SMS_GATEWAY_AUTH_HEADER:}
+      auth-value:    ${SMS_GATEWAY_AUTH_VALUE:}
+      body-template: ${SMS_GATEWAY_BODY_TEMPLATE:{"recipients":["{recipient}"],"message":"{message}"}}
+      timeout-ms:    ${SMS_GATEWAY_TIMEOUT_MS:5000}
+  env: ${JURIKA_ENV:dev}
+  release: ${JURIKA_RELEASE:dev}
+  observability:
+    prometheus:
+      # Sprint 2 / TASK 2 — basic auth ops sur /actuator/** (cf. OpsActuatorSecurityAutoConfiguration).
+      # Mettre une vraie valeur en prod via Doppler/AWS SM (vide = endpoints actuator publics, dev only).
+      password: ${PROMETHEUS_OPS_PASSWORD:}
+
+# Sprint 2 / TASK 5 — Sentry (RGPD by design : pas d'email/IP, just userId + workspace tag).
+sentry:
+  dsn: ${SENTRY_DSN_JAVA:}
+  enabled: ${SENTRY_ENABLED:false}
+  environment: ${jurika.env:dev}
+  release: ${jurika.release:dev}
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.1}
+  send-default-pii: false
+  exception-resolver-order: -2147483647
+  in-app-includes:
+    - ma.jurika
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,loggers,env
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState,ping
+        readiness:
+          include: readinessState,db,redis,rabbit
+  health:
+    # Le HealthIndicator mail rend /actuator/health 503 si le SMTP externe (Brevo) tombe :
+    # en hote local dev on accepte un SMTP HS sans casser la stack. Le statut SMTP reel
+    # reste observable via les metriques jurika_auth_smtp_* (Sprint 3).
+    mail:
+      enabled: false
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      env: ${jurika.env:dev}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    ma.jurika: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN

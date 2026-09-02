@@ -1,0 +1,1081 @@
+### =====================================================================
+### JURIKA -- Smoke tests Phase 1 + 2
+###
+### USAGE :
+###   1. Installe l extension "REST Client" dans VS Code
+###   2. Ouvre ce fichier
+###   3. Clique "Send Request" au-dessus de chaque "###"
+###   4. Execute DANS L ORDRE (etape 0 -> 11). Si une etape echoue, stoppe.
+###
+### COMPTE DEMO UTILISE :
+###   Workspace : JUR-DEMO1
+###   Email     : karim@jurika.ma
+###   Password  : Admin@2026
+###   Role      : EMPLOYE (peut creer tickets, lancer workflows, ajouter debours)
+###
+### IMPORTANT - JWT EXPIRY :
+###   Le token JWT a une duree de vie (JWT_ACCESS_EXPIRATION dans .env, defaut 8h en dev).
+###   Si tu recois "INVALID_TOKEN" sur une etape, RE-EXECUTE l etape 2 (login)
+###   puis reprends la ou tu en etais. Le @token sera rafraichi automatiquement.
+###
+### Les @ ci-dessous sont remplies AU FUR ET A MESURE des reponses
+### REST Client capture les valeurs avec {{nom.response.body.field}}
+### =====================================================================
+
+@baseUrl = http://localhost:8080
+@authUrl = http://localhost:8081
+@discoveryUrl = http://localhost:8761
+
+### -------------------------------------------------------------------
+### ETAPE 0 -- Sante de la stack (3 health checks)
+### -------------------------------------------------------------------
+
+### 0.1 Discovery (Eureka) -- ATTENDU 200 {"status":"UP"}
+GET {{discoveryUrl}}/actuator/health
+
+### 0.2 Gateway -- ATTENDU 200 {"status":"UP"}
+GET {{baseUrl}}/actuator/health
+
+### 0.3 Auth service (direct) -- ATTENDU 200 {"status":"UP"}
+GET {{authUrl}}/actuator/health
+
+
+### -------------------------------------------------------------------
+### ETAPE 1 -- Verifier le workspace DEMO seede en V2
+### -------------------------------------------------------------------
+
+# @name workspaceCheck
+POST {{baseUrl}}/api/v1/auth/workspace-check
+Content-Type: application/json
+
+{
+  "workspaceCode": "JUR-DEMO1"
+}
+
+### ATTENDU : 200 OK
+### { "workspaceId": "11111111-1111-1111-1111-111111111111",
+###   "name": "Maghreb Consulting (DEMO)" }
+
+
+### -------------------------------------------------------------------
+### ETAPE 2 -- Login comme EMPLOYE seede dans JUR-DEMO1 (V3 migration)
+### Cet user a le role EMPLOYE -> peut creer tickets / workflows / debours
+### -------------------------------------------------------------------
+
+# @name login
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "workspaceCode": "JUR-DEMO1",
+  "email": "karim@jurika.ma",
+  "password": "Admin@2026"
+}
+
+### ATTENDU : 200 OK
+### { "requires2fa": false, "accessToken": "eyJ...", "refreshToken": "...", ... }
+
+@token = {{login.response.body.accessToken}}
+@karimUserId = 33333333-3333-3333-3333-333333333333
+
+
+### -------------------------------------------------------------------
+### ETAPE 3 -- Verifier l identite avec le JWT
+### -------------------------------------------------------------------
+
+GET {{baseUrl}}/api/v1/auth/me
+Authorization: Bearer {{token}}
+
+### ATTENDU : 200 OK
+### { "userId": "33333333-3333-3333-3333-333333333333",
+###   "workspaceId": "11111111-1111-1111-1111-111111111111",
+###   "email": "karim@jurika.ma",
+###   "role": "EMPLOYE" }
+
+
+### -------------------------------------------------------------------
+### ETAPE 4 -- Creer un ticket de creation SARL
+### -------------------------------------------------------------------
+
+# @name newTicket
+POST {{baseUrl}}/api/v1/tickets
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "titre": "Creation SARL Atlas Trading",
+  "type": "CREATION",
+  "priorite": "HAUTE",
+  "description": "Dossier de test smoke"
+}
+
+### ATTENDU : 201 Created
+### { "id": "<uuid>", "reference": "T-2026-00001",
+###   "statut": "NOUVEAU", "type": "CREATION", "priorite": "HAUTE", ... }
+
+@ticketId = {{newTicket.response.body.id}}
+
+
+### -------------------------------------------------------------------
+### ETAPE 5 -- Assigner le ticket puis transition NOUVEAU -> EN_COURS
+### Regle : un ticket NOUVEAU non assigne ne peut pas passer EN_COURS
+### -------------------------------------------------------------------
+
+### 5.1 Assigner le ticket a karim (lui-meme pour le test)
+PATCH {{baseUrl}}/api/v1/tickets/{{ticketId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "assigneId": "{{karimUserId}}"
+}
+
+### ATTENDU : 200 OK avec assigneId = 33333333-...
+
+### 5.2 Transition NOUVEAU -> EN_COURS (autorise car maintenant assigne)
+POST {{baseUrl}}/api/v1/tickets/{{ticketId}}/transition
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "target": "EN_COURS"
+}
+
+### ATTENDU : 200 OK { ..., "statut": "EN_COURS" }
+
+
+### -------------------------------------------------------------------
+### ETAPE 6 -- Demarrer le workflow CREATION (9 etapes)
+### -------------------------------------------------------------------
+
+POST {{baseUrl}}/api/v1/workflows/{{ticketId}}/start
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "type": "CREATION"
+}
+
+### ATTENDU : 201 Created
+### { "ticketId": "...", "type": "CREATION", "currentStep": 1, "totalSteps": 9, ... }
+
+
+### -------------------------------------------------------------------
+### ETAPE 7 -- Executer les 2 premieres etapes (denomination + siege)
+### -------------------------------------------------------------------
+
+### 7.1 Step 1 -- denomination (extraite du certificat negatif)
+POST {{baseUrl}}/api/v1/workflows/{{ticketId}}/execute-step
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "step": 1,
+  "payload": {
+    "denomination": "Atlas Trading SARL",
+    "icenumero": "001234567000087",
+    "cnNumero": "CN-2026-12345",
+    "cnDate": "2026-04-01",
+    "activiteCn": "Conseil en gestion",
+    "beneficiaire": "Karim Benali"
+  }
+}
+
+### ATTENDU : 200 OK { "advanced": true, "progress": { "currentStep": 2, ... }, ... }
+
+### 7.2 Step 2 -- siege social
+POST {{baseUrl}}/api/v1/workflows/{{ticketId}}/execute-step
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "step": 2,
+  "payload": {
+    "adresse": "12 Bd Mohammed V",
+    "province": "Casablanca",
+    "commune": "Casa-Anfa",
+    "codePostal": "20000",
+    "justificatifType": "BAIL"
+  }
+}
+
+### ATTENDU : 200 OK { "advanced": true, "progress": { "currentStep": 3, ... }, ... }
+
+
+### -------------------------------------------------------------------
+### ETAPE 8 -- Tester la regle 25% bloquante sur le capital social
+### -------------------------------------------------------------------
+
+### 8.1 Step 3 -- capital INSUFFISANT (libere 20% < 25%) -> DOIT ECHOUER
+POST {{baseUrl}}/api/v1/workflows/{{ticketId}}/execute-step
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "step": 3,
+  "payload": {
+    "apportNumeraire": 100000,
+    "apportNature": 0,
+    "apportIndustrie": 0,
+    "capitalLibere": 20000,
+    "nombreParts": 1000
+  }
+}
+
+### ATTENDU : 400 Bad Request
+### { "code": "VALIDATION_ERROR",
+###   "message": "Liberation insuffisante -- Le minimum legal de 25% du capital social doit etre libere ..." }
+
+### 8.2 Step 3 -- capital VALIDE (libere = 25%) -> DOIT PASSER
+POST {{baseUrl}}/api/v1/workflows/{{ticketId}}/execute-step
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "step": 3,
+  "payload": {
+    "apportNumeraire": 100000,
+    "apportNature": 0,
+    "apportIndustrie": 0,
+    "capitalLibere": 25000,
+    "nombreParts": 1000
+  }
+}
+
+### ATTENDU : 200 OK
+### { "advanced": true, "progress": { "currentStep": 4, ... },
+###   "stepData": { "capital": { "capitalSocialMad": 100000, "valeurNominaleMad": 100, "pourcentageLibere": 25.0, ... } } }
+
+
+### -------------------------------------------------------------------
+### ETAPE 9 -- Ajouter un debours puis lister
+### -------------------------------------------------------------------
+
+### 9.1 Creer un debours
+POST {{baseUrl}}/api/v1/tickets/{{ticketId}}/debours
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "libelle": "Frais tribunal Casablanca",
+  "categorie": "FRAIS_TRIBUNAL",
+  "montant": 1200.00,
+  "dateEngagement": "2026-05-12",
+  "notes": "Depot RC"
+}
+
+### ATTENDU : 201 Created avec l objet debours complet
+
+### 9.2 Lister les debours du ticket
+GET {{baseUrl}}/api/v1/tickets/{{ticketId}}/debours
+Authorization: Bearer {{token}}
+
+### ATTENDU : 200 OK
+### { "items": [{ "libelle": "Frais tribunal Casablanca", "montant": 1200.00, ... }],
+###   "total": 1200.00 }
+
+
+### -------------------------------------------------------------------
+### ETAPE 10 -- Tester l annulation (commentaire min 10 caracteres obligatoire)
+### -------------------------------------------------------------------
+
+### 10.1 Annulation SANS commentaire valide (5 chars) -> DOIT ECHOUER
+POST {{baseUrl}}/api/v1/tickets/{{ticketId}}/transition
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "target": "ANNULE",
+  "comment": "court"
+}
+
+### ATTENDU : 400 Bad Request
+### { "code": "VALIDATION_ERROR",
+###   "message": "Commentaire d annulation obligatoire (min 10 caracteres)" }
+
+### 10.2 Annulation AVEC commentaire valide (>= 10 chars) -> DOIT PASSER
+POST {{baseUrl}}/api/v1/tickets/{{ticketId}}/transition
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "target": "ANNULE",
+  "comment": "Test annulation -- client a abandonne la procedure"
+}
+
+### ATTENDU : 200 OK { ..., "statut": "ANNULE", "annulationMotif": "...", "annuleAt": "..." }
+
+
+### -------------------------------------------------------------------
+### ETAPE 11 -- Verifications finales
+### -------------------------------------------------------------------
+
+### 11.1 Recuperer le ticket : confirme statut ANNULE
+GET {{baseUrl}}/api/v1/tickets/{{ticketId}}
+Authorization: Bearer {{token}}
+
+### ATTENDU : 200 OK { ..., "statut": "ANNULE" }
+
+### 11.2 Lister tous les tickets du workspace -> au moins celui qu on vient d annuler
+GET {{baseUrl}}/api/v1/tickets?limit=10
+Authorization: Bearer {{token}}
+
+### ATTENDU : 200 OK { "items": [...], "total": >= 1, "limit": 10, "offset": 0 }
+
+### 11.3 Re-tenter une annulation -> DOIT ECHOUER (deja ANNULE, conflit)
+POST {{baseUrl}}/api/v1/tickets/{{ticketId}}/transition
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "target": "ANNULE",
+  "comment": "Ne devrait pas etre accepte"
+}
+
+### ATTENDU : 409 Conflict
+### { "code": "CONFLICT", "message": "Ticket deja annule" }
+
+
+### =====================================================================
+### ANNEXE 1 -- Auth Hardening V2 (Phase 1.5 du 13 mai 2026)
+### Endpoints ajoutes : register sans MDP, verify-email, change-password,
+###                     2FA choose-method, SMS send/verify, TOTP QR, recovery codes
+### =====================================================================
+
+### A1.1 Register V2 (PAS de password -- genere et envoye par email)
+###      Note : SMTP doit tourner (MailHog ou Maildev sur localhost:1025 en dev)
+# @name registerV2
+POST {{baseUrl}}/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "workspaceName": "Cabinet Test V2",
+  "contactEmail": "contact@cabinet-v2.ma",
+  "subscriptionId": "00000000-0000-0000-0000-000000000002",
+  "firstName": "Sofia",
+  "lastName": "El Idrissi",
+  "phone": "+212600000000",
+  "email": "sofia@cabinet-v2.ma"
+}
+
+### ATTENDU : 201 Created
+### { "workspaceId": "<uuid>", "workspaceCode": "JUR-XXXXX", "userId": "<uuid>" }
+### Le user recoit un email avec : code workspace + MDP temp + lien de verification
+### Status workspace : PENDING_VERIFICATION
+### Le user ne peut PAS se logger avant d activer l email.
+
+# Capture le code workspace genere par A1.1 pour le reutiliser dans A1.3
+@v2WorkspaceCode = {{registerV2.response.body.workspaceCode}}
+@v2Email = sofia@cabinet-v2.ma
+
+### A1.2 Verifier l email avec le token recu
+###      Recuperer le token depuis MailHog (http://localhost:8025) ou via :
+###      curl -s http://localhost:8025/api/v2/messages?limit=1 | grep -oE 'token=[a-f0-9-]{36}'
+# @name verifyEmail
+POST {{baseUrl}}/api/v1/auth/verify-email
+Content-Type: application/json
+
+{
+  "token": "c02f41d0-3861-49d5-a56e-7fd95958db98"
+}
+
+### ATTENDU : 200 OK
+### { "workspaceId": "...", "userId": "...", "email": "...", "message": "..." }
+### Effet : workspace passe ACTIVE, email_verified_at = NOW
+
+
+### A1.3 Redemander un lien de verification (si expire ou perdu)
+###      Utilise le code capture en A1.1 ({{v2WorkspaceCode}}) -- ou edite a la main.
+###      Pre-requis : le workspace doit etre encore en PENDING_VERIFICATION
+###      (si A1.2 a deja active, le retour sera 409 CONFLICT "deja verifie")
+POST {{baseUrl}}/api/v1/auth/resend-verification
+Content-Type: application/json
+
+{
+  "workspaceCode": "{{v2WorkspaceCode}}",
+  "email": "{{v2Email}}"
+}
+
+### ATTENDU : 202 Accepted (pas de body)
+### Effet : nouveau token cree + nouvel email envoye dans MailHog
+### Si workspace deja ACTIVE -> 409 CONFLICT
+### Si email/workspace inconnus -> 404 NOT_FOUND (verifier les valeurs)
+
+
+### A1.4 Test du middleware ChangePasswordEnforcer
+###      Login avec le compte fresh (must_change_password=TRUE)
+###      Puis tenter un endpoint protege -> 403 PASSWORD_CHANGE_REQUIRED
+### (Cette etape demande un compte avec must_change_password=TRUE)
+### Pour le tester rapidement :
+###   docker exec jurika-postgres psql -U jurika_user -d jurika_db -c \
+###     "UPDATE users SET must_change_password=TRUE WHERE email='karim@jurika.ma';"
+###   Puis re-login (etape 2) et tester :
+
+# @name testEnforcer
+GET {{baseUrl}}/api/v1/tickets
+Authorization: Bearer {{token}}
+
+### ATTENDU (si must_change_password=TRUE) : 403 Forbidden
+### { "code": "PASSWORD_CHANGE_REQUIRED", "message": "...",
+###   "redirectTo": "/auth/change-password" }
+
+
+### A1.5 Changer le mot de passe (debloque le compte)
+POST {{baseUrl}}/api/v1/auth/change-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "oldPassword": "Admin@2026",
+  "newPassword": "NewStrong@2026!",
+  "confirmPassword": "NewStrong@2026!"
+}
+
+### ATTENDU : 204 No Content
+### Effet : password_hash mis a jour, must_change_password=FALSE
+### Apres cet appel, le user doit re-login car les tokens contiennent l ancien mcp=true
+
+
+### A1.6 Tests negatifs change-password
+POST {{baseUrl}}/api/v1/auth/change-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "oldPassword": "Admin@2026",
+  "newPassword": "weak",
+  "confirmPassword": "weak"
+}
+
+### ATTENDU : 400 Bad Request (MDP trop court / pas de complexite)
+
+
+### A1.7 Choisir methode 2FA (apres login)
+POST {{baseUrl}}/api/v1/auth/2fa/choose-method
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "method": "SMS"
+}
+
+### ATTENDU : 204 No Content
+### Effet : users.twofa_method = 'SMS'
+
+
+### A1.8 Envoyer un code OTP SMS
+###      Le code est genere et "envoye" (logge en console en dev car LoggerSmsSender)
+POST {{baseUrl}}/api/v1/auth/2fa/sms/send
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "purpose": "PHONE_VERIFICATION"
+}
+
+### ATTENDU : 200 OK
+### { "otpId": "...", "maskedPhone": "+212********78", "expiresAt": "..." }
+### Regarder les logs auth-service : [SMS-DEV-STUB] -> +212... : JURIKA : votre code est XXXXXX
+
+
+### A1.9 Verifier le code SMS recu (a copier des logs en dev)
+POST {{baseUrl}}/api/v1/auth/2fa/sms/verify
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "purpose": "PHONE_VERIFICATION",
+  "code": "649319"
+}
+
+### ATTENDU : 204 No Content
+### Effet (purpose=PHONE_VERIFICATION) : phone_verified_at = NOW, twofa_method = 'SMS'
+
+
+### A1.10 Recuperer le QR code TOTP (PNG binaire pour <img src="...">)
+GET {{baseUrl}}/api/v1/auth/2fa/totp/qr-code
+Authorization: Bearer {{token}}
+Accept: image/png
+
+### ATTENDU : 200 OK avec Content-Type: image/png
+### Sauvegarder la reponse en .png et la scanner avec Google Authenticator
+
+
+### A1.11 Generer 10 codes de recuperation 2FA (one-shot)
+POST {{baseUrl}}/api/v1/auth/2fa/recovery-codes/generate
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}
+
+### ATTENDU : 200 OK
+### { "codes": ["A7K2-9XQM-3FBL-7TPN", "...", "..." x 10], "warning": "Conservez ..." }
+### Ces codes ne seront PLUS JAMAIS affiches : les sauvegarder maintenant.
+
+
+### =====================================================================
+### ANNEXE 2 (informative) -- Register V1 (legacy, ne plus utiliser)
+### =====================================================================
+
+# @name register
+POST {{baseUrl}}/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "workspaceName": "Cabinet Test",
+  "contactEmail": "contact@cabinet-test.ma",
+  "subscriptionId": "00000000-0000-0000-0000-000000000002",
+  "firstName": "Sofia",
+  "lastName": "El Idrissi",
+  "phone": "+212600000000",
+  "email": "sofia@cabinet-test.ma"
+}
+
+### NOTE : V2 -- pas de password dans le body, il est genere et envoye par email.
+
+
+### =====================================================================
+### ANNEXE 3 -- Data Room V2 + Dossier Comptable (Phase 4 V2)
+###
+### Prerequis :
+###   - dataroom-service tourne sur le port 8084 (route via gateway 8080)
+###   - karim est logge (etape 2) -> @token a jour
+###   - Un dossier d'entreprise existe (le premier dossier seede par DemoDataSeeder)
+### =====================================================================
+
+### A3.1 Lister mes dossiers (tous roles autorises)
+# @name listDossiers
+GET {{baseUrl}}/api/v1/dataroom/dossiers
+Authorization: Bearer {{token}}
+
+### ATTENDU : 200 OK
+### [ { "id": "<uuid>", "raisonSociale": "...", "formeJuridique": "SARL", ... } ]
+### Capture le premier dossier pour les tests suivants
+
+@dossierId = {{listDossiers.response.body.0.id}}
+
+
+### A3.2 Vue Dossier Juridique V2 (onglet 1 : en vigueur + historique tickets)
+GET {{baseUrl}}/api/v1/dataroom/dossiers/{{dossierId}}/juridique
+Authorization: Bearer {{token}}
+
+### ATTENDU : 200 OK
+### { "dossierId": "...", "documentsEnVigueur": [...], "historiqueOperations": [...] }
+
+
+### A3.3 Vue Dossier Comptable (onglet 2 : annees x 6 categories)
+GET {{baseUrl}}/api/v1/dataroom/dossiers/{{dossierId}}/comptable
+Authorization: Bearer {{token}}
+
+### ATTENDU : 200 OK
+### { "dossierId": "...", "annees": [2026], "countsByCategorie": [...] }
+
+
+### A3.4 Upload document juridique (multipart : utiliser curl en alternative)
+###  curl -X POST "{{baseUrl}}/api/v1/dataroom/dossiers/{{dossierId}}/juridique/upload" \
+###      -H "Authorization: Bearer {{token}}" \
+###      -F "file=@/path/to/statuts.pdf" \
+###      -F "documentType=STATUTS" \
+###      -F "title=Statuts initiaux Atlas Trading SARL"
+###
+### ATTENDU : 200 OK avec DocumentSummary (id, title, version, isCurrent=true)
+
+
+### A3.5 Lister les documents comptables d'une annee + categorie
+GET {{baseUrl}}/api/v1/dataroom/dossiers/{{dossierId}}/comptable/documents?annee=2026&categorie=ACHATS
+Authorization: Bearer {{token}}
+
+### ATTENDU : 200 OK : tableau (vide si aucun upload encore)
+
+
+### A3.6 Upload document comptable (multipart - utiliser curl)
+###  curl -X POST "{{baseUrl}}/api/v1/dataroom/dossiers/{{dossierId}}/comptable/upload" \
+###      -H "Authorization: Bearer {{token}}" \
+###      -F "file=@/path/to/facture-2026-001.pdf" \
+###      -F "annee=2026" \
+###      -F "categorie=ACHATS" \
+###      -F "title=Facture fournisseur 001"
+### Note : categorie IN (ACHATS, VENTES, BANQUE, CAISSE, NDF, PAIE)
+
+
+### A3.7 Settings dossier : permissions client (RG-DR07 download / print)
+GET {{baseUrl}}/api/v1/dataroom/dossiers/{{dossierId}}/settings
+Authorization: Bearer {{token}}
+
+### ATTENDU : 200 OK
+### { "dossierId": "...", "accessStatus": "ACTIVE", "permDownload": true, "permPrint": false, ... }
+
+
+### A3.8 Toggle permission download (employe seul)
+PATCH {{baseUrl}}/api/v1/dataroom/dossiers/{{dossierId}}/settings/permissions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "permDownload": true,
+  "permPrint": true
+}
+
+### ATTENDU : 200 OK avec settings mis a jour
+
+
+### A3.9 Creer une demande client
+POST {{baseUrl}}/api/v1/dataroom/demandes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "dossierId": "{{dossierId}}",
+  "sujet": "Mise a jour des statuts",
+  "description": "Bonjour, pourriez-vous mettre a jour les statuts pour ajouter un nouvel associe ?"
+}
+
+### ATTENDU : 201 Created
+### { "id": "...", "statut": "NON_TRAITEE", "sujet": "...", ... }
+### Capture l'id pour PATCH
+# @name newDemande
+# (re-execute si necessaire pour capture)
+
+
+### A3.10 Lister toutes les demandes du workspace (employe + superviseur)
+GET {{baseUrl}}/api/v1/dataroom/demandes?statut=NON_TRAITEE
+Authorization: Bearer {{token}}
+
+### ATTENDU : 200 OK avec au moins la demande creee a l'etape A3.9
+
+
+### A3.11 Invite client mode A (RG-CA01-12) : cree un compte CLIENT pour ce dossier
+POST {{baseUrl}}/api/v1/auth/invite-client
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "dossierId": "{{dossierId}}",
+  "email": "client-test@example.ma",
+  "firstName": "Client",
+  "lastName": "Test",
+  "phone": "+212600099999"
+}
+
+### ATTENDU : 201 Created
+### { "userId": "...", "userCreated": true, "tempPassword": "<12 chars>",
+###   "message": "Compte client cree. Un email a ete envoye avec les identifiants." }
+### En dev : tempPassword est en clair dans la reponse + email envoye via MailHog (http://localhost:8025)
+
+
+### =====================================================================
+### ANNEXE 4 -- Auto-computed Deadlines (Killer Feature §4.2)
+###
+### Prerequis :
+###   - Migration V4__deadlines_schema.sql appliquee (cree la table deadlines + RLS)
+###   - ticket-service redemarre apres migration
+###   - karim est logge (etape 2) -> @token a jour
+### =====================================================================
+
+### A4.1 Compter les deadlines ouvertes (widget topbar)
+GET {{baseUrl}}/api/v1/deadlines/count-open
+Authorization: Bearer {{token}}
+
+### ATTENDU : 200 OK { "count": 0 } (au depart, avant tout calcul auto)
+
+
+### A4.2 Creer une deadline manuelle
+# @name createDeadline
+POST {{baseUrl}}/api/v1/deadlines
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ticketId": "{{ticketId}}",
+  "title": "Relancer le client pour la signature",
+  "description": "Le client n'a pas retourne les statuts signes depuis 5 jours",
+  "dueAt": "2026-06-01T17:00:00Z",
+  "severity": "WARNING"
+}
+
+### ATTENDU : 201 Created
+### { "id": "...", "title": "...", "severity": "WARNING", "source": "MANUAL",
+###   "statut": "OUVERTE", "ruleKey": null, ... }
+
+@deadlineId = {{createDeadline.response.body.id}}
+
+
+### A4.3 Lister les deadlines ouvertes (defaut)
+GET {{baseUrl}}/api/v1/deadlines?statut=OUVERTE&limit=20
+Authorization: Bearer {{token}}
+
+### ATTENDU : 200 OK { "items": [...], "total": N }
+### Inclut la deadline creee en A4.2
+
+
+### A4.4 Lister les deadlines en retard
+GET {{baseUrl}}/api/v1/deadlines/overdue?limit=20
+Authorization: Bearer {{token}}
+
+### ATTENDU : 200 OK (vide si dueAt est dans le futur)
+
+
+### A4.5 Verifier le hook auto sur transition LIQUIDATION -> EN_COURS
+###       (Cree d'abord un ticket LIQUIDATION, puis transition)
+# @name liqTicket
+POST {{baseUrl}}/api/v1/tickets
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "titre": "Liquidation SARL test deadlines",
+  "type": "LIQUIDATION",
+  "priorite": "HAUTE",
+  "description": "Test du hook auto-deadlines LIQUIDATION_PUBLI_16J"
+}
+
+@liqTicketId = {{liqTicket.response.body.id}}
+
+### A4.5b Assigner puis transition EN_COURS
+PATCH {{baseUrl}}/api/v1/tickets/{{liqTicketId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "assigneId": "{{karimUserId}}"
+}
+
+POST {{baseUrl}}/api/v1/tickets/{{liqTicketId}}/transition
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "target": "EN_COURS"
+}
+
+### ATTENDU : 200 OK
+### Effet secondaire : 1 deadline AUTO creee avec ruleKey=LIQUIDATION_PUBLI_16J
+### A verifier en A4.6
+
+
+### A4.6 Verifier que la deadline AUTO a ete creee
+GET {{baseUrl}}/api/v1/deadlines?statut=OUVERTE
+Authorization: Bearer {{token}}
+
+### ATTENDU : 200 OK avec au moins une deadline ou source=AUTO et ruleKey=LIQUIDATION_PUBLI_16J
+
+
+### A4.7 Marquer la deadline manuelle TERMINEE
+PATCH {{baseUrl}}/api/v1/deadlines/{{deadlineId}}/complete
+Authorization: Bearer {{token}}
+
+### ATTENDU : 200 OK avec statut=TERMINEE et termineeAt rempli
+
+
+### A4.8 Re-marquer TERMINEE -> doit echouer (409)
+PATCH {{baseUrl}}/api/v1/deadlines/{{deadlineId}}/complete
+Authorization: Bearer {{token}}
+
+### ATTENDU : 409 Conflict { "code": "CONFLICT", "message": "Deadline deja terminee" }
+
+
+### =====================================================================
+### ANNEXE 5 -- Phase 3 : Modification + Dissolution + Liquidation
+###
+### Prerequis :
+###   - Etapes 0-3 OK (token frais)
+###   - ticket-service + workflow-service + dataroom-service redemarres
+###     (migrations V5/V11/V12/V4 deadlines appliquees)
+###   - Un dossier d'entreprise existe (le 1er seede : Atlas Trading SARL)
+###
+### Capture le dossierId via A3.1 si pas encore fait :
+###   GET {{baseUrl}}/api/v1/dataroom/dossiers
+###   @dossierId = {{listDossiers.response.body.0.id}}
+### =====================================================================
+
+
+### -------------------------------------------------------------------
+### A5.1 MODIFICATION : Transfert siege + Augmentation capital
+### -------------------------------------------------------------------
+
+### A5.1.1 Creer un ticket MODIFICATION (lie a un dossier existant -- pas de companyInfo)
+# @name modifTicket
+POST {{baseUrl}}/api/v1/tickets
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "titre": "Transfert siege Atlas Trading + augmentation capital",
+  "type": "MODIFICATION",
+  "priorite": "NORMALE",
+  "dossierId": "{{dossierId}}",
+  "description": "Smoke test Phase 3"
+}
+
+@modifTicketId = {{modifTicket.response.body.id}}
+
+### A5.1.2 Assigner + transition EN_COURS
+PATCH {{baseUrl}}/api/v1/tickets/{{modifTicketId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "assigneId": "{{karimUserId}}" }
+
+POST {{baseUrl}}/api/v1/tickets/{{modifTicketId}}/transition
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "target": "EN_COURS" }
+
+### A5.1.3 Demarrer le workflow MODIFICATION (4 etapes)
+POST {{baseUrl}}/api/v1/workflows/{{modifTicketId}}/start
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "type": "MODIFICATION" }
+
+### ATTENDU : 201 Created { "currentStep": 1, "totalSteps": 4, ... }
+
+### A5.1.4 Step 1 -- selection des modifications (transfert siege + augmentation capital)
+POST {{baseUrl}}/api/v1/workflows/{{modifTicketId}}/execute-step
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "step": 1,
+  "payload": {
+    "selectedTypes": ["TRANSFERT_SIEGE", "AUGMENTATION_CAPITAL"],
+    "datePV": "2026-06-01",
+    "decisionType": "AGE"
+  }
+}
+
+### ATTENDU : 200 OK
+### { "stepData": { "articlesImpactes": [{ "type": "TRANSFERT_SIEGE", "articles": ["Article 4"] }, ...] } }
+
+### A5.1.5 Step 2 -- saisie des nouvelles valeurs
+POST {{baseUrl}}/api/v1/workflows/{{modifTicketId}}/execute-step
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "step": 2,
+  "payload": {
+    "valeurs": {
+      "TRANSFERT_SIEGE": {
+        "nouvelleAdresse": "45 Boulevard Mohammed V",
+        "nouvelleVille": "Rabat",
+        "dateEffet": "2026-06-15"
+      },
+      "AUGMENTATION_CAPITAL": {
+        "nouveauCapital": 500000,
+        "nouvellesParts": 4000,
+        "dateVersement": "2026-06-10"
+      }
+    }
+  }
+}
+
+### ATTENDU : 200 OK { "advanced": true, "progress": { "currentStep": 3 } }
+
+### A5.1.6 Step 3 -- generation documents (PV + statuts V+1 + JAL)
+POST {{baseUrl}}/api/v1/workflows/{{modifTicketId}}/execute-step
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "step": 3,
+  "payload": {
+    "pvId": "PV-MOD-001",
+    "statutsNouveauId": "STAT-V2-001",
+    "annonceJalId": "JAL-MOD-001"
+  }
+}
+
+### A5.1.7 Step 4 -- validation finale (doit declencher post-completion)
+POST {{baseUrl}}/api/v1/workflows/{{modifTicketId}}/execute-step
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "step": 4,
+  "payload": {
+    "pvValide": true,
+    "statutsValides": true
+  }
+}
+
+### ATTENDU : 200 OK { "progress": { "statut": "TERMINE" } }
+### Effet post-completion :
+###   - entreprise_dossiers.adresse_siege = '45 Boulevard Mohammed V'
+###   - entreprise_dossiers.ville = 'Rabat'
+###   - entreprise_dossiers.capital_social_mad = 500000
+### Verifier en DB :
+###   SELECT raison_sociale, adresse_siege, ville, capital_social_mad FROM entreprise_dossiers WHERE id = '{{dossierId}}';
+
+
+### -------------------------------------------------------------------
+### A5.2 DISSOLUTION : 3 etapes -> dossier passe DISSOUTE
+### -------------------------------------------------------------------
+
+# @name dissTicket
+POST {{baseUrl}}/api/v1/tickets
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "titre": "Dissolution Atlas Trading",
+  "type": "DISSOLUTION",
+  "priorite": "HAUTE",
+  "dossierId": "{{dossierId}}",
+  "description": "Smoke test dissolution"
+}
+
+@dissTicketId = {{dissTicket.response.body.id}}
+
+### Assigner + EN_COURS
+PATCH {{baseUrl}}/api/v1/tickets/{{dissTicketId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "assigneId": "{{karimUserId}}" }
+
+POST {{baseUrl}}/api/v1/tickets/{{dissTicketId}}/transition
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "target": "EN_COURS" }
+
+### Start workflow
+POST {{baseUrl}}/api/v1/workflows/{{dissTicketId}}/start
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "type": "DISSOLUTION" }
+
+### Step 1 -- selection societe + motif + date AGE
+POST {{baseUrl}}/api/v1/workflows/{{dissTicketId}}/execute-step
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "step": 1,
+  "payload": {
+    "dossierId": "{{dossierId}}",
+    "motifDissolution": "Cessation volontaire d'activite",
+    "dateAGE": "2026-07-01",
+    "pvAgeId": "PV-DISS-001"
+  }
+}
+
+### Step 2 -- validation PV
+POST {{baseUrl}}/api/v1/workflows/{{dissTicketId}}/execute-step
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "step": 2, "payload": { "pvValide": true } }
+
+### Step 3 -- synthese (declenche post-completion : dossier.statut = DISSOUTE)
+POST {{baseUrl}}/api/v1/workflows/{{dissTicketId}}/execute-step
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "step": 3, "payload": {} }
+
+### ATTENDU : 200 OK { "stepData": { "societeStatut": "DISSOUTE", "finalise": true } }
+### Verifier en DB : SELECT statut FROM entreprise_dossiers WHERE id = '{{dossierId}}' -> 'DISSOUTE'
+
+
+### -------------------------------------------------------------------
+### A5.3 LIQUIDATION : delai 16j non bloquant + statut LIQUIDEE
+### -------------------------------------------------------------------
+
+# @name liqWF
+POST {{baseUrl}}/api/v1/tickets
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "titre": "Liquidation Atlas Trading",
+  "type": "LIQUIDATION",
+  "priorite": "HAUTE",
+  "dossierId": "{{dossierId}}",
+  "description": "Smoke test liquidation"
+}
+
+@liqWfTicketId = {{liqWF.response.body.id}}
+
+PATCH {{baseUrl}}/api/v1/tickets/{{liqWfTicketId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "assigneId": "{{karimUserId}}" }
+
+POST {{baseUrl}}/api/v1/tickets/{{liqWfTicketId}}/transition
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "target": "EN_COURS" }
+
+### Cette transition EN_COURS pour LIQUIDATION declenche aussi la deadline auto LIQUIDATION_PUBLI_16J (Phase 4 V2)
+
+POST {{baseUrl}}/api/v1/workflows/{{liqWfTicketId}}/start
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "type": "LIQUIDATION" }
+
+### Step 1 -- selection societe + verif delai 16j (non bloquant, warning si < 16j)
+POST {{baseUrl}}/api/v1/workflows/{{liqWfTicketId}}/execute-step
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "step": 1,
+  "payload": {
+    "dossierId": "{{dossierId}}",
+    "dateDissolution": "2026-07-01T10:00:00Z",
+    "societeStatut": "DISSOUTE"
+  }
+}
+
+### ATTENDU : 200 OK
+### Si moins de 16 jours depuis la dissolution : { "stepData": { "avertissement": "Delai legal de 16 jours non encore ecoule..." } }
+
+### Step 2 -- generation PV liquidation + rapport
+POST {{baseUrl}}/api/v1/workflows/{{liqWfTicketId}}/execute-step
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "step": 2,
+  "payload": {
+    "pvAgeLiquidationId": "PV-LIQ-001",
+    "rapportLiquidationId": "RAP-LIQ-001",
+    "liquidateur": "Karim Benali"
+  }
+}
+
+### Step 3 -- validation finale (declenche post-completion : statut LIQUIDEE)
+POST {{baseUrl}}/api/v1/workflows/{{liqWfTicketId}}/execute-step
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "step": 3,
+  "payload": {
+    "pvLiquidationValide": true,
+    "rapportValide": true
+  }
+}
+
+### ATTENDU : 200 OK { "stepData": { "societeStatut": "LIQUIDEE", "finalise": true } }
+### Verifier en DB : SELECT statut FROM entreprise_dossiers WHERE id = '{{dossierId}}' -> 'LIQUIDEE'
+
+
+### -------------------------------------------------------------------
+### A5.4 Audit log : verifier que les actions WORKFLOW_STARTED + WORKFLOW_STEP_EXECUTED sont tracees
+### -------------------------------------------------------------------
+
+### (En attendant l'endpoint /api/v1/activity, verifier directement en DB)
+### docker exec jurika-postgres psql -U jurika_user -d jurika_db \
+###   -c "SELECT action, entity_type, entity_id, created_at FROM audit_log ORDER BY created_at DESC LIMIT 10;"
+###
+### ATTENDU : voir lignes WORKFLOW_STARTED + WORKFLOW_STEP_EXECUTED pour chaque ticket cree
+
+

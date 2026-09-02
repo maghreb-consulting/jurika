@@ -1,0 +1,9 @@
+ma.jurika.common.audit.AuditAutoConfiguration
+ma.jurika.common.notification.NotificationAutoConfiguration
+ma.jurika.common.observability.ObservabilityAutoConfiguration
+ma.jurika.common.observability.OpsActuatorSecurityAutoConfiguration
+ma.jurika.common.observability.OpsActuatorReactiveSecurityAutoConfiguration
+ma.jurika.common.security.JwtAutoConfiguration
+ma.jurika.common.security.RoleHierarchyAutoConfiguration
+ma.jurika.common.trial.TrialRemoteAutoConfiguration
+ma.jurika.common.events.BusinessEventsAutoConfiguration

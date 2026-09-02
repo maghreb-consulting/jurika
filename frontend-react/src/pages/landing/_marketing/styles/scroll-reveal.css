@@ -1,0 +1,94 @@
+/**
+ * v2 Flagship — TASK 7 reveal scroll-driven + AI sticky + modules constellation.
+ *
+ * `[data-reveal]` : fade-up 16px + opacity 0->1 quand `is-in` (IntersectionObserver)
+ * AI visual sticky : position sticky top 100px (desktop)
+ * Modules grid : rotateX transitions smooth + 1400px perspective (déjà v2.css)
+ */
+
+/* ---- [data-reveal] base ---- */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+[data-reveal].is-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---- AI sticky right column (desktop only) ---- */
+@media (min-width: 1024px) {
+  .ai-visual-sticky {
+    position: sticky;
+    top: 100px;
+    align-self: start;
+  }
+}
+
+/* ---- Modules constellation : perspective + transform ---- */
+.modules-grid.constellation {
+  perspective: 1400px;
+  transform-style: preserve-3d;
+  transition: transform 0.2s linear;
+  transform-origin: center center;
+}
+
+/* ---- Module link : underline animée at hover ---- */
+.module-link {
+  position: relative;
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  color: var(--gold-500);
+  margin-top: 8px;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+.module-link:hover {
+  color: var(--gold-300);
+  transform: translateX(4px);
+}
+
+/* ---- AI list item check : icône or animée au reveal ---- */
+.ai-list__item {
+  transform-origin: left center;
+}
+.ai-list__item .check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(200, 164, 92, 0.15);
+  color: var(--gold-400);
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 1px solid rgba(200, 164, 92, 0.35);
+  flex-shrink: 0;
+}
+
+/* ---- AI stats : pop animation au reveal ---- */
+.ai-stat[data-reveal].is-in {
+  animation: aiStatPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes aiStatPop {
+  0% { transform: translateY(16px) scale(0.92); opacity: 0; }
+  60% { transform: translateY(0) scale(1.05); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* ---- reduced-motion : tout statique ---- */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .modules-grid.constellation {
+    transform: none !important;
+  }
+  .ai-stat[data-reveal].is-in { animation: none; }
+}

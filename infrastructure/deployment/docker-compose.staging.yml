@@ -1,0 +1,293 @@
+# JURIKA — docker-compose.staging.yml (Sprint 14 ter F4).
+#
+# Cible : VM Hetzner CX11 (Ubuntu 22.04, 4 GB RAM) ou equivalent.
+# Pre-requis sur la VM :
+#   - docker + docker compose v2 installes
+#   - /opt/jurika/.env present avec : POSTGRES_PASSWORD, REDIS_PASSWORD, RABBIT_PASSWORD,
+#     MINIO_ROOT_PASSWORD, JWT_SECRET, MAIL_PASSWORD, SENTRY_DSN, etc.
+#   - DNS staging.jurika.ma A record vers IP VM
+#   - Reseau external "traefik-public" cree : docker network create traefik-public
+#
+# Deploiement :
+#   ssh staging "cd /opt/jurika && docker compose -f docker-compose.staging.yml pull \
+#                                 && docker compose -f docker-compose.staging.yml up -d \
+#                                 && docker compose ps"
+#
+# Le workflow .github/workflows/deploy-staging.yml automatise tout ce qui precede.
+
+x-restart: &restart unless-stopped
+
+x-otel-env: &otel-env
+  OTEL_TRACES_EXPORTER: none
+  OTEL_METRICS_EXPORTER: none
+  OTEL_LOGS_EXPORTER: none
+  OTEL_RESOURCE_ATTRIBUTES: deployment.environment=staging
+
+x-spring-env: &spring-env
+  SPRING_PROFILES_ACTIVE: staging
+  JURIKA_ENV: staging
+  EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery:8761/eureka/
+  SPRING_REDIS_HOST: redis
+  SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD}
+  SPRING_RABBITMQ_HOST: rabbitmq
+  SPRING_RABBITMQ_PASSWORD: ${RABBIT_PASSWORD}
+  SPRING_DATASOURCE_USERNAME: jurika
+  SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+
+networks:
+  jurika-staging:
+    driver: bridge
+  traefik-public:
+    external: true
+
+volumes:
+  postgres-data:
+  redis-data:
+  rabbitmq-data:
+  minio-data:
+  traefik-letsencrypt:
+
+services:
+  # ────────── REVERSE PROXY + TLS ──────────
+  traefik:
+    image: traefik:v3.2
+    restart: *restart
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=traefik-public"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.le.acme.tlschallenge=true"
+      - "--certificatesresolvers.le.acme.email=${LETSENCRYPT_EMAIL:-admin@jurika.ma}"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+      - "--accesslog=true"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-letsencrypt:/letsencrypt
+    networks: [traefik-public]
+
+  # ────────── INFRA ──────────
+  postgres:
+    image: postgres:16-alpine
+    restart: *restart
+    environment:
+      POSTGRES_USER: jurika
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: jurika_staging
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jurika -d jurika_staging"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks: [jurika-staging]
+
+  redis:
+    image: redis:7-alpine
+    restart: *restart
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+    networks: [jurika-staging]
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    restart: *restart
+    environment:
+      RABBITMQ_DEFAULT_USER: jurika
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD}
+    volumes: [rabbitmq-data:/var/lib/rabbitmq]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks: [jurika-staging]
+
+  minio:
+    image: minio/minio:RELEASE.2025-01-20T14-49-07Z
+    restart: *restart
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: jurika
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes: [minio-data:/data]
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks: [jurika-staging]
+
+  # ────────── BACKEND ──────────
+  discovery:
+    image: ghcr.io/ou55am1/jurika-discovery:${IMAGE_TAG:-staging}
+    restart: *restart
+    environment:
+      <<: [*spring-env, *otel-env]
+      OTEL_SERVICE_NAME: discovery-service
+    networks: [jurika-staging]
+
+  auth:
+    image: ghcr.io/ou55am1/jurika-auth:${IMAGE_TAG:-staging}
+    restart: *restart
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      discovery: { condition: service_started }
+    environment:
+      <<: [*spring-env, *otel-env]
+      OTEL_SERVICE_NAME: auth-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jurika_staging
+      JWT_SECRET: ${JWT_SECRET}
+      SPRING_MAIL_HOST: ${MAIL_HOST}
+      SPRING_MAIL_USERNAME: ${MAIL_USERNAME}
+      SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD}
+    networks: [jurika-staging]
+
+  ticket:
+    image: ghcr.io/ou55am1/jurika-ticket:${IMAGE_TAG:-staging}
+    restart: *restart
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      discovery: { condition: service_started }
+    environment:
+      <<: [*spring-env, *otel-env]
+      OTEL_SERVICE_NAME: ticket-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jurika_staging
+    networks: [jurika-staging]
+
+  workflow:
+    image: ghcr.io/ou55am1/jurika-workflow:${IMAGE_TAG:-staging}
+    restart: *restart
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      discovery: { condition: service_started }
+    environment:
+      <<: [*spring-env, *otel-env]
+      OTEL_SERVICE_NAME: workflow-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jurika_staging
+    networks: [jurika-staging]
+
+  dataroom:
+    image: ghcr.io/ou55am1/jurika-dataroom:${IMAGE_TAG:-staging}
+    restart: *restart
+    depends_on:
+      postgres: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      discovery: { condition: service_started }
+    environment:
+      <<: [*spring-env, *otel-env]
+      OTEL_SERVICE_NAME: dataroom-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jurika_staging
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: jurika
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+    networks: [jurika-staging]
+
+  dashboard:
+    image: ghcr.io/ou55am1/jurika-dashboard:${IMAGE_TAG:-staging}
+    restart: *restart
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      discovery: { condition: service_started }
+    environment:
+      <<: [*spring-env, *otel-env]
+      OTEL_SERVICE_NAME: dashboard-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jurika_staging
+    networks: [jurika-staging]
+
+  supervision:
+    image: ghcr.io/ou55am1/jurika-supervision:${IMAGE_TAG:-staging}
+    restart: *restart
+    depends_on:
+      postgres: { condition: service_healthy }
+      discovery: { condition: service_started }
+    environment:
+      <<: [*spring-env, *otel-env]
+      OTEL_SERVICE_NAME: supervision-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jurika_staging
+    networks: [jurika-staging]
+
+  ai:
+    image: ghcr.io/ou55am1/jurika-ai:${IMAGE_TAG:-staging}
+    restart: *restart
+    depends_on:
+      postgres: { condition: service_healthy }
+      discovery: { condition: service_started }
+    environment:
+      <<: [*spring-env, *otel-env]
+      OTEL_SERVICE_NAME: ai-service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jurika_staging
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    networks: [jurika-staging]
+
+  gateway:
+    image: ghcr.io/ou55am1/jurika-gateway:${IMAGE_TAG:-staging}
+    restart: *restart
+    depends_on:
+      auth: { condition: service_started }
+      ticket: { condition: service_started }
+      workflow: { condition: service_started }
+      dataroom: { condition: service_started }
+      dashboard: { condition: service_started }
+      supervision: { condition: service_started }
+      ai: { condition: service_started }
+    environment:
+      <<: [*spring-env, *otel-env]
+      OTEL_SERVICE_NAME: gateway-service
+    networks: [jurika-staging, traefik-public]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gateway.rule=Host(`staging.jurika.ma`) && PathPrefix(`/api`,`/actuator`)"
+      - "traefik.http.routers.gateway.entrypoints=websecure"
+      - "traefik.http.routers.gateway.tls.certresolver=le"
+      - "traefik.http.services.gateway.loadbalancer.server.port=8080"
+
+  # ────────── FRONTEND ──────────
+  frontend:
+    image: ghcr.io/ou55am1/jurika-frontend:${IMAGE_TAG:-staging}
+    restart: *restart
+    depends_on:
+      gateway: { condition: service_started }
+    networks: [jurika-staging, traefik-public]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`staging.jurika.ma`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=le"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      - "traefik.http.routers.frontend.priority=1"
+
+  # Sprint 11 TASK 8 — Marketing site (landing standalone jurika-staging.ma)
+  # Nginx alpine sert /opt/jurika/marketing/dist (deploye par
+  # .github/workflows/deploy-marketing.yml via rsync).
+  marketing:
+    image: nginx:1.27-alpine
+    restart: *restart
+    volumes:
+      - ${DEPLOY_PATH:-/opt/jurika}/marketing/dist:/usr/share/nginx/html:ro
+    networks: [traefik-public]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.marketing.rule=Host(`jurika-staging.ma`)"
+      - "traefik.http.routers.marketing.entrypoints=websecure"
+      - "traefik.http.routers.marketing.tls.certresolver=le"
+      - "traefik.http.services.marketing.loadbalancer.server.port=80"
+      - "traefik.http.routers.marketing.priority=2"

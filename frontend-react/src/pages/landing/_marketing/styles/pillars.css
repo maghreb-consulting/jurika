@@ -1,0 +1,124 @@
+/* ============================================================
+   Landing « effet wow » — section 4 piliers + section Pilotage live.
+   ============================================================ */
+
+/* ---------- Section piliers ---------- */
+.section-pillars {
+  background: linear-gradient(180deg, var(--white) 0%, var(--ink-50) 100%);
+}
+.pillars {
+  display: flex;
+  flex-direction: column;
+  gap: 120px;
+}
+.pillar {
+  display: grid;
+  grid-template-columns: 1fr 1.08fr;
+  align-items: center;
+  gap: 64px;
+}
+.pillar--reverse .pillar__text { order: 2; }
+.pillar--reverse .pillar__visual { order: 1; }
+/* min-width:0 : autorise les colonnes de la grille à passer sous la largeur
+   min-content de leur contenu (le stepper), donc pas de débordement mobile. */
+.pillar__text,
+.pillar__visual { min-width: 0; }
+
+.pillar__text { max-width: 480px; }
+.pillar--reverse .pillar__text { margin-left: auto; }
+.pillar__title {
+  font-family: var(--heading);
+  font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+  line-height: var(--lh-snug);
+  color: var(--navy-900);
+  letter-spacing: var(--ls-tight);
+  margin: 16px 0 14px;
+}
+.pillar__lead {
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--ink-500);
+  margin: 0 0 22px;
+}
+.pillar__points { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.pillar__points li { display: flex; gap: 12px; align-items: flex-start; font-size: 14.5px; line-height: 1.55; color: var(--ink-700); }
+.pillar__check {
+  flex-shrink: 0;
+  width: 22px; height: 22px; margin-top: 1px;
+  border-radius: 50%;
+  background: rgba(200, 164, 92, 0.15);
+  color: var(--gold-500);
+  border: 1px solid rgba(200, 164, 92, 0.35);
+  display: flex; align-items: center; justify-content: center;
+}
+
+.pillar__visual { position: relative; perspective: 1400px; }
+/* halo or diffus derrière chaque mockup */
+.pillar__visual::before {
+  content: '';
+  position: absolute;
+  inset: 12% 6% -8%;
+  background: radial-gradient(ellipse at center, rgba(200, 164, 92, 0.18), transparent 70%);
+  filter: blur(38px);
+  z-index: -1;
+}
+
+/* ---------- Section Pilotage live (navy immersif) ---------- */
+.section-pilotage {
+  background: radial-gradient(ellipse at top, var(--navy-700), var(--navy-900));
+  color: var(--ink-300);
+  overflow: hidden;
+}
+.pilotage-board { max-width: 940px; margin: 0 auto; }
+.pilotage-board .dvc { border-color: rgba(200, 164, 92, 0.2); box-shadow: var(--shadow-halo); }
+.pilotage-kanban { padding: 20px; background: var(--ink-50); }
+/* le Kanban vivant (réutilisé du Hero) n'a pas de layout propre : on le pose ici */
+.pilotage-kanban .kanban-live {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.pilotage-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  max-width: 820px;
+  margin: 48px auto 0;
+}
+.pilotage-kpi { text-align: center; }
+.pilotage-kpi .odometer {
+  font-family: var(--heading);
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  color: var(--white);
+  line-height: 1;
+}
+.pilotage-kpi span {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--gold-400);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .pillars { gap: 72px; }
+  .pillar {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  /* le visuel passe toujours SOUS le texte, quel que soit l'ordre desktop */
+  .pillar__text,
+  .pillar--reverse .pillar__text { order: 1; margin: 0; max-width: none; }
+  .pillar__visual,
+  .pillar--reverse .pillar__visual { order: 2; }
+  .pilotage-kpis { grid-template-columns: repeat(2, 1fr); gap: 28px; }
+}
+
+@media (max-width: 560px) {
+  .pilotage-kanban .kanban-live { grid-template-columns: 1fr; }
+  .pilotage-kanban { padding: 14px; }
+}

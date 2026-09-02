@@ -1,0 +1,28 @@
+# JURIKA — Template Dockerfile partage pour services Java avec OTel agent (Sprint 2 / TASK 3).
+# A copier-adapter dans chaque {service}/Dockerfile (build Sprint 15 / CI-CD).
+
+FROM eclipse-temurin:21-jre-alpine
+
+ARG SERVICE_JAR
+ARG SERVICE_PORT
+
+# OpenTelemetry Java agent (auto-instrumentation Spring Boot, JDBC, HTTP, RabbitMQ, ...).
+# Le jar doit etre present dans le build context. Telechargement initial :
+#   ./infrastructure/monitoring/opentelemetry/download-otel-agent.sh
+COPY infrastructure/monitoring/opentelemetry/opentelemetry-javaagent.jar /app/otel.jar
+
+COPY ${SERVICE_JAR} /app/app.jar
+
+EXPOSE ${SERVICE_PORT}
+
+# OTel ENV vars overrided par docker-compose / K8s ConfigMap.
+# Sampling : dev=1.0, staging=0.5, prod=0.1 (via OTEL_TRACES_SAMPLER_ARG).
+ENV JAVA_TOOL_OPTIONS="-javaagent:/app/otel.jar" \
+    OTEL_TRACES_EXPORTER="otlp" \
+    OTEL_METRICS_EXPORTER="none" \
+    OTEL_LOGS_EXPORTER="none" \
+    OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf" \
+    OTEL_TRACES_SAMPLER="parentbased_traceidratio" \
+    OTEL_PROPAGATORS="tracecontext,baggage,b3"
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

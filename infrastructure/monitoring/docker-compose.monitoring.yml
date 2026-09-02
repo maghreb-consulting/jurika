@@ -1,0 +1,134 @@
+# JURIKA — Stack monitoring complete Sprint 2 (Prometheus + Grafana + Loki + Promtail + Tempo).
+#
+# Usage :
+#   docker compose -f infrastructure/docker-compose.yml \
+#                  -f infrastructure/monitoring/docker-compose.monitoring.yml up -d
+#
+# ATTENTION : Grafana NE DOIT JAMAIS etre expose publiquement en prod.
+# En prod : tunnel SSH (ssh -L 3001:localhost:3001 prod) ou WireGuard.
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.54.0
+    container_name: jurika-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-30d}"
+      - "--web.enable-lifecycle"
+    environment:
+      PROMETHEUS_OPS_PASSWORD: ${PROMETHEUS_OPS_PASSWORD:-changeme-only-for-dev}
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - jurika-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  loki:
+    image: grafana/loki:3.2.0
+    container_name: jurika-loki
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3100:3100"
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    volumes:
+      - ./loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - jurika-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3100/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  tempo:
+    image: grafana/tempo:2.5.0
+    container_name: jurika-tempo
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3200:3200"   # UI / API HTTP
+      - "127.0.0.1:4318:4318"   # OTLP HTTP receiver (agent OTel des services Java)
+      - "127.0.0.1:4317:4317"   # OTLP gRPC receiver
+    command: ["-config.file=/etc/tempo.yml"]
+    volumes:
+      - ./tempo.yml:/etc/tempo.yml:ro
+      - tempo_data:/var/tempo
+    networks:
+      - jurika-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3200/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  promtail:
+    image: grafana/promtail:3.2.0
+    container_name: jurika-promtail
+    restart: unless-stopped
+    command: ["-config.file=/etc/promtail/config.yml"]
+    volumes:
+      - ./promtail.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail_data:/tmp
+    depends_on:
+      loki:
+        condition: service_healthy
+    networks:
+      - jurika-network
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: jurika-grafana
+    restart: unless-stopped
+    # Port 3001 (3000 deja utilise par realtime-service Node). Acces local uniquement.
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-changeme-only-for-dev}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3001/}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+    networks:
+      - jurika-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  loki_data:
+    driver: local
+  promtail_data:
+    driver: local
+  tempo_data:
+    driver: local
+
+networks:
+  jurika-network:
+    external: true
+    name: jurika-network

@@ -1,0 +1,26 @@
+name: security
+
+# Sprint 14 F2 -- scans securite minimaux. Trivy + OWASP DC en Sprint 14 bis.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Re-scan hebdo meme sans push (dimanche 3h UTC)
+    - cron: '0 3 * * 0'
+
+jobs:
+  gitleaks:
+    name: Scan secrets (gitleaks)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

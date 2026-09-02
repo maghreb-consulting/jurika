@@ -1,0 +1,23 @@
+[
+  "AVIS D'OUVERTURE DE SUCCURSALE",
+  "",
+  "$DENOMINATION SARL AU au capital de $CAPITAL_CHIFFRES DH — Siège social : $SIEGE_SOCIAL — RC N° $RC_NUMERO.",
+  "",
+  "Aux termes de la décision de l'associé unique en date du $ASSEMBLEE_DATE, l'associé unique de la société $DENOMINATION SARL AU au capital de $CAPITAL_CHIFFRES DH, a décidé :",
+  "",
+  "L'ouverture d'une succursale exploitée sous l'enseigne « $SUCCURSALE_ENSEIGNE », sise à $SUCCURSALE_ADRESSE, $SUCCURSALE_VILLE, ayant pour activité $SUCCURSALE_ACTIVITE, à compter du $SUCCURSALE_DATE_OUVERTURE ;",
+  "",
+  "◇ SI : $SUCCURSALE_DOTATION_PRESENTE = « oui »",
+  "L'affectation à la succursale d'une dotation de $SUCCURSALE_DOTATION_CHIFFRES DH ($SUCCURSALE_DOTATION_LETTRES) ;",
+  "◆ FIN SI",
+  "",
+  "◇ SI : $SUCCURSALE_RESPONSABLE_PRESENT = « oui »",
+  "La désignation de $SUCCURSALE_RESPONSABLE_CIVILITE $SUCCURSALE_RESPONSABLE_PRENOM $SUCCURSALE_RESPONSABLE_NOM en qualité de responsable de la succursale, avec les pouvoirs suivants : $SUCCURSALE_RESPONSABLE_POUVOIRS ;",
+  "◆ FIN SI",
+  "",
+  "Pouvoir à conférer en vue de l'accomplissement des formalités prévues par la loi.",
+  "",
+  "La succursale sera immatriculée au registre du commerce du tribunal de Commerce de $SUCCURSALE_VILLE_GREFFE.",
+  "",
+  "Le dépôt légal a été effectué au Greffier du tribunal de Commerce de $VILLE_GREFFE, le $DATE_DEPOT_LEGAL sous le numéro $DEPOT_LEGAL_NUMERO RC N° $RC_NUMERO."
+]

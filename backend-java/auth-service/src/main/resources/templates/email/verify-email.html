@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Verification de votre email - JURIKA</title>
+</head>
+<body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#0F172A;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf6ec;padding:32px 16px;">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+                   style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+
+                <th:block th:replace="~{email/_base :: header(title='Nouveau lien de verification')}"/>
+
+                <tr>
+                    <td style="padding:32px;">
+                        <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
+                            Bonjour <strong th:text="${firstName}">Karim</strong>,
+                        </p>
+
+                        <p style="margin:0 0 24px;font-size:15px;line-height:1.55;">
+                            Vous avez demande un nouveau lien de verification pour activer votre
+                            compte JURIKA chez <strong>Maghreb Consulting</strong>.
+                        </p>
+
+                        <div style="text-align:center;margin:32px 0;">
+                            <a th:href="${verificationUrl}"
+                               style="display:inline-block;background:#0c1d3f;color:#c8a45c;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px;">
+                                Activer mon compte
+                            </a>
+                        </div>
+
+                        <p style="margin:0 0 16px;font-size:13px;color:#64748B;line-height:1.55;">
+                            Ce lien expire dans <strong>24 heures</strong>. Vous pourrez en redemander un autre
+                            si necessaire depuis la page de connexion.
+                        </p>
+
+                        <th:block th:replace="~{email/_base :: phishingBox}"/>
+
+                        <div style="border-top:1px solid #E2E8F0;margin:24px 0 0;padding-top:24px;">
+                            <p style="margin:0;font-size:12px;color:#94A3B8;line-height:1.55;">
+                                Si vous n'avez pas demande ce lien, ignorez simplement cet email.
+                            </p>
+                        </div>
+                    </td>
+                </tr>
+
+                <th:block th:replace="~{email/_base :: identityFooter(loginEmail=${loginEmail}, contactEmail=${contactEmail})}"/>
+                <th:block th:replace="~{email/_base :: footer(unsubscribeUrl=${unsubscribeUrl})}"/>
+            </table>
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

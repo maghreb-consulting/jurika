@@ -1,0 +1,17 @@
+[
+  "AVIS DE DISSOLUTION ANTICIPÉE",
+  "",
+  "$DENOMINATION SARL au capital de $CAPITAL_CHIFFRES DH — Siège social : $SIEGE_SOCIAL — RC N° $RC_NUMERO.",
+  "",
+  "Aux termes de l'assemblée générale extraordinaire en date du $DATE_DISSOLUTION, les associés de la société $DENOMINATION SARL au capital de $CAPITAL_CHIFFRES DH, ont décidé :",
+  "",
+  "La dissolution anticipée de la société et sa mise en liquidation amiable à compter du $DATE_DISSOLUTION ;",
+  "",
+  "La nomination de $LIQUIDATEUR_CIVILITE $LIQUIDATEUR_PRENOM $LIQUIDATEUR_NOM, demeurant à $LIQUIDATEUR_ADRESSE, en qualité de liquidateur, avec les pouvoirs les plus étendus pour réaliser l'actif, apurer le passif et représenter la société pendant toute la durée de la liquidation ;",
+  "",
+  "La fixation du siège de la liquidation à $SIEGE_LIQUIDATION, adresse à laquelle doit être adressée toute correspondance et notifiés tous actes et documents relatifs à la liquidation ;",
+  "",
+  "Pouvoirs à conférer en vue de l'accomplissement des formalités prévues par la loi.",
+  "",
+  "Le dépôt légal a été effectué au Greffier du tribunal de Commerce de $VILLE_GREFFE, le $DATE_DEPOT_LEGAL sous le numéro $DEPOT_LEGAL_NUMERO RC N° $RC_NUMERO."
+]

@@ -1,0 +1,88 @@
+/**
+ * v2 Flagship — TASK 4 hero signature moment styles complémentaires.
+ *
+ * Layered scroll motion (5 layers via useParallax) :
+ *  - L0 grain (déjà dans polish.css)
+ *  - L1 backdrop navy + orbs (parallax -0.5x via data-parallax)
+ *  - L2 particules or canvas (parallax -0.3x via wrapper)
+ *  - L3 contenu éditorial (1x natif)
+ *  - L4 mockup hero (+0.15x sort vers nous)
+ */
+
+/* L2 particules layer wrapper */
+.hero-particles-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.gold-particles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Le hero a maintenant un z-index stratifié strict */
+.hero {
+  position: relative;
+  isolation: isolate;
+}
+.hero-bg { z-index: 0; }
+.hero-inner { z-index: 2; position: relative; }
+.hero-mock { z-index: 1; position: relative; will-change: transform; }
+
+/* Mockup hero subtle lift au scroll (par-dessus le translate parallax JS) */
+.hero-mock {
+  transition: filter 0.4s ease;
+}
+@media (hover: hover) {
+  .hero:hover .hero-mock {
+    filter: drop-shadow(0 30px 60px rgba(5, 13, 31, 0.35));
+  }
+}
+
+/* Orbes : lueur pulsée additive (subtle) */
+.orb {
+  will-change: transform, opacity;
+}
+.orb-1 {
+  animation: orbPulse 8s ease-in-out infinite;
+}
+.orb-2 {
+  animation: orbPulse 11s ease-in-out infinite reverse;
+}
+@keyframes orbPulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+/* Hero accent gradient : intensifier la lumière du gradient en hover de la ligne 2 */
+.hero-line-2 {
+  transition: text-shadow 0.4s ease;
+}
+.hero-line-2.is-revealed:hover {
+  text-shadow: 0 0 24px rgba(200, 164, 92, 0.25);
+}
+
+/* Trust bar : separator gold subtle */
+.hero-trust .trust-divider {
+  background: linear-gradient(180deg, transparent, var(--gold-500) 40% 60%, transparent);
+  width: 1px;
+  height: 32px;
+  opacity: 0.4;
+}
+
+/* OdometerNumber : couleur or sur le hero */
+.hero-trust .odometer {
+  color: var(--gold-500);
+  font-family: var(--mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* prefers-reduced-motion : statique full */
+@media (prefers-reduced-motion: reduce) {
+  .orb-1, .orb-2 { animation: none; }
+  .hero-particles-layer { display: none; }
+}

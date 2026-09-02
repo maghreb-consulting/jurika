@@ -1,0 +1,90 @@
+server:
+  port: ${WORKFLOW_SERVICE_PORT:8083}
+  shutdown: graceful
+
+spring:
+  application:
+    name: workflow-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:jurika_db}
+    username: ${POSTGRES_USER:jurika_user}
+    password: ${POSTGRES_PASSWORD:JurikaDevPass2026}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    out-of-order: true
+    locations: classpath:db/migration
+    table: flyway_history_workflow
+    validate-on-migrate: false
+    ignore-migration-patterns: "*:missing,*:future"
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:jurika}
+    password: ${RABBITMQ_PASSWORD:JurikaRabbit2026}
+    virtual-host: ${RABBITMQ_VHOST:jurika}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+
+jurika:
+  jwt:
+    algorithm: ${JWT_ALGORITHM:RS256}
+    public-key-path: ${JWT_PUBLIC_KEY_PATH:/run/secrets/jwt/jwt-public.pem}
+    hmac-secret: ${JWT_SECRET:dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345}
+    issuer: ${JWT_ISSUER:jurika.ma}
+  env: ${JURIKA_ENV:dev}
+  release: ${JURIKA_RELEASE:dev}
+  observability:
+    prometheus:
+      password: ${PROMETHEUS_OPS_PASSWORD:}
+
+sentry:
+  dsn: ${SENTRY_DSN_JAVA:}
+  enabled: ${SENTRY_ENABLED:false}
+  environment: ${jurika.env:dev}
+  release: ${jurika.release:dev}
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.1}
+  send-default-pii: false
+  exception-resolver-order: -2147483647
+  in-app-includes:
+    - ma.jurika
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,loggers,env
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState,ping
+        readiness:
+          include: readinessState,db,rabbit
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      env: ${jurika.env:dev}
+  prometheus:
+    metrics:
+      export:
+        enabled: true

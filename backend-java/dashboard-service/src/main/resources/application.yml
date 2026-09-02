@@ -1,0 +1,83 @@
+server:
+  port: ${DASHBOARD_SERVICE_PORT:8087}
+  shutdown: graceful
+spring:
+  application:
+    name: dashboard-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:jurika_db}
+    username: ${POSTGRES_USER:jurika_user}
+    password: ${POSTGRES_PASSWORD:JurikaDevPass2026}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    out-of-order: true
+    table: flyway_history_dashboard
+    validate-on-migrate: false
+    ignore-migration-patterns: "*:missing,*:future"
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:jurika}
+    password: ${RABBITMQ_PASSWORD:JurikaRabbit2026}
+    virtual-host: ${RABBITMQ_VHOST:jurika}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+  cache:
+    type: redis
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+
+# Sprint 1 -- JWT RS256 (verification via cle publique partagee)
+jurika:
+  jwt:
+    algorithm: ${JWT_ALGORITHM:RS256}
+    public-key-path: ${JWT_PUBLIC_KEY_PATH:classpath:keys/jwt-public.pem}
+    hmac-secret: ${JWT_SECRET:dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345}
+  dashboard:
+    cache-ttl-seconds: ${DASHBOARD_CACHE_TTL:60}
+    rebuild-lock-seconds: ${DASHBOARD_REBUILD_LOCK:10}
+  # Lot IA-1 -- raisonnement LLM de l'agent copilote (ai-service /internal/llm/reason)
+  ai:
+    base-url: ${AI_BASE_URL:http://ai-service:8085}
+    timeout: ${AI_TIMEOUT:30s}
+  realtime:
+    base-url: ${REALTIME_BASE_URL:http://localhost:3000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html

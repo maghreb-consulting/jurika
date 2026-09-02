@@ -1,0 +1,149 @@
+version: '3.9'
+
+# JURIKA -- Stack production complete
+# Usage:
+#   cp .env.prod.example .env.prod
+#   docker compose -f docker-compose.prod.yml --env-file ../.env.prod up -d
+#
+# Prerequis : avoir les images Java buildees via `mvn package` puis Dockerfiles
+# locaux dans backend-java/<service>/Dockerfile.
+
+networks:
+  jurika-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  minio_data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: jurika-pg-prod
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [jurika-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      retries: 5
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: jurika-redis-prod
+    restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks: [jurika-net]
+
+  rabbitmq:
+    image: rabbitmq:4.0-management-alpine
+    container_name: jurika-rabbit-prod
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-jurika}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks: [jurika-net]
+
+  minio:
+    image: minio/minio:latest
+    container_name: jurika-minio-prod
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    networks: [jurika-net]
+
+  discovery:
+    image: jurika/discovery-service:latest
+    container_name: jurika-discovery-prod
+    restart: always
+    networks: [jurika-net]
+    environment:
+      EUREKA_SERVER_URL: http://discovery:8761/eureka
+
+  gateway:
+    image: jurika/gateway-service:latest
+    container_name: jurika-gateway-prod
+    restart: always
+    depends_on: [discovery]
+    ports: ["80:8080"]
+    networks: [jurika-net]
+    environment:
+      EUREKA_SERVER_URL: http://discovery:8761/eureka
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ALLOWED_ORIGINS: ${FRONTEND_URL}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  auth:
+    image: jurika/auth-service:latest
+    restart: always
+    depends_on: [postgres, redis, rabbitmq, discovery]
+    networks: [jurika-net]
+    env_file: ../../.env.prod
+
+  ticket:
+    image: jurika/ticket-service:latest
+    restart: always
+    depends_on: [postgres, rabbitmq, discovery]
+    networks: [jurika-net]
+    env_file: ../../.env.prod
+
+  workflow:
+    image: jurika/workflow-service:latest
+    restart: always
+    depends_on: [postgres, rabbitmq, discovery, ai]
+    networks: [jurika-net]
+    env_file: ../../.env.prod
+
+  dataroom:
+    image: jurika/dataroom-service:latest
+    restart: always
+    depends_on: [postgres, minio, rabbitmq, discovery]
+    networks: [jurika-net]
+    env_file: ../../.env.prod
+
+  supervision:
+    image: jurika/supervision-service:latest
+    restart: always
+    depends_on: [postgres, redis, discovery]
+    networks: [jurika-net]
+    env_file: ../../.env.prod
+
+  ai:
+    image: jurika/ai-service:latest
+    restart: always
+    depends_on: [discovery]
+    networks: [jurika-net]
+    env_file: ../../.env.prod
+
+  realtime:
+    image: jurika/realtime-service:latest
+    restart: always
+    depends_on: [postgres, redis]
+    networks: [jurika-net]
+    env_file: ../../.env.prod
+
+  frontend:
+    image: jurika/frontend:latest
+    restart: always
+    ports: ["443:443"]
+    networks: [jurika-net]
+    environment:
+      VITE_API_URL: ${API_BASE_URL}
+      VITE_REALTIME_URL: ${REALTIME_URL}

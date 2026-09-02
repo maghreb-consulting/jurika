@@ -1,0 +1,77 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: gje-postgres
+    environment:
+      POSTGRES_DB: gje_db
+      POSTGRES_USER: gje_user
+      POSTGRES_PASSWORD: Gje2026Secure!
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - gje-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gje_user -d gje_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: gje-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - gje-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: gje-chromadb
+    ports:
+      - "8000:8000"
+    volumes:
+      - chromadb_data:/chroma/chroma
+    networks:
+      - gje-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/heartbeat || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: gje-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: admin
+      N8N_BASIC_AUTH_PASSWORD: Gje2026Admin!
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - gje-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  chromadb_data:
+  n8n_data:
+
+networks:
+  gje-network:
+    driver: bridge

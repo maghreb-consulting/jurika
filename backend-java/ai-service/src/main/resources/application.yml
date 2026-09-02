@@ -1,0 +1,174 @@
+server:
+  port: ${AI_SERVICE_PORT:8085}
+  shutdown: graceful
+
+spring:
+  application:
+    name: ai-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:jurika_db}
+    username: ${POSTGRES_USER:jurika_user}
+    password: ${POSTGRES_PASSWORD:JurikaDevPass2026}
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    out-of-order: true
+    table: flyway_history_ai
+    validate-on-migrate: false
+    ignore-migration-patterns: "*:missing,*:future"
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+
+jurika:
+  # BLOC C 2026-06-21 — PDF fidele via LibreOffice headless re-active.
+  # Active par defaut : DocxToPdfConverter detecte soffice au demarrage et,
+  # si absent, isAvailable() retourne false -> DocumentRenderController renvoie
+  # 503 et le front bascule sur le telechargement du .docx (fallback propre).
+  # Sur prod : installer LibreOffice (>= 7.x). Override via SOFFICE_PATH si
+  # binaire dans un emplacement non standard.
+  docx-to-pdf:
+    # 2026-06-22 — Désactivé par défaut : LibreOffice désinstallé, l'export PDF
+    # fidèle a été retiré (téléchargement uniquement en .docx). Reste activable
+    # via JURIKA_DOCX_TO_PDF_ENABLED=true si LibreOffice est réinstallé un jour.
+    enabled: ${JURIKA_DOCX_TO_PDF_ENABLED:false}
+    soffice-path: ${SOFFICE_PATH:}
+    timeout-seconds: ${JURIKA_DOCX_TO_PDF_TIMEOUT_SECONDS:90}
+  jwt:
+    algorithm: ${JWT_ALGORITHM:RS256}
+    public-key-path: ${JWT_PUBLIC_KEY_PATH:/run/secrets/jwt/jwt-public.pem}
+    hmac-secret: ${JWT_SECRET:dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345}
+    issuer: ${JWT_ISSUER:jurika.ma}
+  rag:
+    enabled: ${RAG_ENABLED:false}
+    top-k: ${RAG_TOP_K:5}
+    # Voie vectorielle (2026-07-01) — embeddings par chunk + recherche cosine pgvector.
+    # Desactivee par defaut : sans RAG_ENABLED=true ET une cle RAG_EMBED_API_KEY, aucun
+    # appel reseau n'est emis et le RAG reste en Full-Text Search (comportement historique).
+    # Provider par defaut : Gemini text-embedding-004 (768 dimensions, aligne sur la colonne
+    # SQL depuis la migration V15). NE PAS committer de cle (defaut vide).
+    embed:
+      provider: ${RAG_EMBED_PROVIDER:gemini}
+      base-url: ${RAG_EMBED_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai}
+      api-key: ${RAG_EMBED_API_KEY:}
+      model: ${RAG_EMBED_MODEL:text-embedding-004}
+      dimensions: ${RAG_EMBED_DIMENSIONS:768}
+      timeout-seconds: ${RAG_EMBED_TIMEOUT:30}
+    # Generation de reponse (chat) ancree sur les passages recuperes.
+    # Desactivee par defaut : sans RAG_ENABLED=true ET RAG_CHAT_API_KEY, aucun appel
+    # reseau -> le chatbot reste en KB+FTS (comportement historique). Provider par
+    # defaut : Gemini gemini-1.5-flash (gratuit). NE PAS committer de cle (defaut vide).
+    chat:
+      provider: ${RAG_CHAT_PROVIDER:gemini}
+      base-url: ${RAG_CHAT_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai}
+      api-key: ${RAG_CHAT_API_KEY:}
+      model: ${RAG_CHAT_MODEL:gemini-1.5-flash}
+      temperature: ${RAG_CHAT_TEMPERATURE:0.2}
+      timeout-seconds: ${RAG_CHAT_TIMEOUT:30}
+  ocr:
+    # L5 — Stratégie 'tesseract + fallback' avec activation conditionnelle stricte.
+    # Par défaut (provider absent) : ManualEntryFallbackOcrService renvoie requiresManualEntry=true.
+    # Pour activer Tesseract : positionner provider=tesseract et TESSDATA_PREFIX env var.
+    provider: ${OCR_PROVIDER:}
+    tesseract:
+      datapath: ${TESSDATA_PREFIX:}
+      languages: ${OCR_LANGUAGES:fra+ara+eng}
+    # ─────────────────────────────────────────────────────────────────────────
+    # FAST OCR (2026-06-09 — branche feat/ocr-paddle-cpu) — voie CPU rapide
+    # via le microservice Python `ocr-service` (PaddleOCR / docTR).
+    # Quand activée, prend la priorité sur la voie vision pour images / scans :
+    #   image → OCR (1-3s CPU) → LLM texte (qwen2.5) → champs structurés.
+    # Le pipeline retombe sur la chaîne vision/Tesseract historique si :
+    #   - le microservice est down (health check cache)
+    #   - l'OCR renvoie un texte vide / trop court
+    #   - le LLM texte est dégradé après OCR
+    # Détails : backend-python/ocr-service/README.md
+    # ─────────────────────────────────────────────────────────────────────────
+    fast:
+      enabled: ${OCR_FAST_ENABLED:false}
+      service-url: ${OCR_SERVICE_URL:http://localhost:8089}
+      timeout-seconds: ${OCR_FAST_TIMEOUT:30}
+      lang: ${OCR_FAST_LANG:latin}
+      health-cache-seconds: ${OCR_FAST_HEALTH_CACHE_SECONDS:30}
+  llm:
+    # P4 — Pipeline LLM générique d'extraction documentaire (étage 2 du flow OCR + LLM).
+    # Par défaut (enabled=false) : NoopLlmProvider actif, payload dégradé renvoyé avec
+    # warning "LLM_API_KEY non configurée". Activer en positionnant LLM_ENABLED=true
+    # + LLM_API_KEY pour Groq/OpenAI, ou LLM_BASE_URL=http://localhost:11434/v1 pour Ollama (CNDP-compliant).
+    enabled: ${LLM_ENABLED:false}
+    provider: ${LLM_PROVIDER:groq}
+    base-url: ${LLM_BASE_URL:https://api.groq.com/openai/v1}
+    api-key: ${LLM_API_KEY:}
+    model: ${LLM_MODEL:llama-3.1-70b-versatile}
+    timeout-seconds: ${LLM_TIMEOUT:30}
+    temperature: 0.0
+    # VISION (2026-06-05) — modèle multimodal pour PDF scannés / images.
+    # Si renseigné ET enabled=true ET base-url multimodal (Ollama), les images / PDF scannés
+    # sont envoyés directement au modèle vision (qwen3-vl) plutôt que de passer par Tesseract.
+    # Précision largement supérieure sur CIN / Certificats Négatifs / scans dégradés.
+    # Reste 100% local (CNDP loi 09-08). Laisser vide pour désactiver -> fallback Tesseract+LLM.
+    vision-model: ${LLM_VISION_MODEL:}
+    vision-timeout-seconds: ${LLM_VISION_TIMEOUT:120}
+    # DPI pour rasteriser les pages PDF avant envoi vision.
+    # EX1 2026-06-09 : default 220 -> 150. Une CIN n'a pas besoin de plus,
+    # la latence vision diminue de 30-40%. Repasse a 220+ si tu vois des
+    # erreurs OCR sur des CIN abimees.
+    pdf-render-dpi: ${LLM_PDF_RENDER_DPI:150}
+    # Seuil minimum de chars dans la couche texte d'un PDF pour le considérer "numérique".
+    min-pdf-text-layer-chars: ${LLM_MIN_PDF_TEXT_CHARS:60}
+    # EX1 2026-06-09 — largeur max de l'image envoyee au modele vision (px).
+    # 0 = pas de downscale. 1600 = sweet spot pour CIN/CN (qwen3-vl ne tire
+    # aucun benefice supplementaire au-dessus). Reduit la taille base64 et la latence.
+    vision-max-image-width: ${LLM_VISION_MAX_IMAGE_WIDTH:1600}
+  env: ${JURIKA_ENV:dev}
+  release: ${JURIKA_RELEASE:dev}
+  observability:
+    prometheus:
+      password: ${PROMETHEUS_OPS_PASSWORD:}
+
+sentry:
+  dsn: ${SENTRY_DSN_JAVA:}
+  enabled: ${SENTRY_ENABLED:false}
+  environment: ${jurika.env:dev}
+  release: ${jurika.release:dev}
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.1}
+  send-default-pii: false
+  exception-resolver-order: -2147483647
+  in-app-includes:
+    - ma.jurika
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,loggers,env
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState,ping
+        readiness:
+          include: readinessState,db
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      env: ${jurika.env:dev}
+  prometheus:
+    metrics:
+      export:
+        enabled: true

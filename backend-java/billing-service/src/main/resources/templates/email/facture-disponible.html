@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head><meta charset="UTF-8"/><title>Facture disponible</title></head>
+<body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#0F172A;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:12px;overflow:hidden;">
+            <tr th:replace="~{email/_billing-base :: header(title=${'Facture ' + invoiceNumber + ' disponible'})}"></tr>
+            <tr><td style="padding:32px;">
+                <p style="margin:0 0 16px;">Bonjour <span th:text="${contactName}">cabinet</span>,</p>
+                <p style="margin:0 0 16px;">Votre facture <strong th:text="${invoiceNumber}">JURIKA-0001</strong>
+                    pour la periode du <strong th:text="${periodStart}">01/03/2026</strong> au
+                    <strong th:text="${periodEnd}">31/03/2026</strong> est disponible.</p>
+                <table cellpadding="6" cellspacing="0" style="border-collapse:collapse;margin:16px 0;">
+                    <tr><td>Montant HT</td><td><strong th:text="${amountHt}">1 081,67 MAD</strong></td></tr>
+                    <tr><td>TVA 20% (Maroc)</td><td th:text="${amountTva}">216,33 MAD</td></tr>
+                    <tr style="border-top:2px solid #E2E8F0;"><td><strong>Total TTC</strong></td><td><strong th:text="${amountTtc}">1 299,00 MAD</strong></td></tr>
+                </table>
+                <p style="margin:24px 0;">
+                    <a th:href="${invoicePdfUrl}" style="display:inline-block;background:#0c1d3f;color:#c8a45c;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Telecharger le PDF</a>
+                </p>
+                <p style="margin:0;font-size:13px;color:#64748B;">Cette facture est egalement disponible dans votre espace
+                    <a th:href="${billingUrl}" style="color:#8a6d1f;">Abonnement &amp; facturation</a>.</p>
+            </td></tr>
+            <tr th:replace="~{email/_billing-base :: footer}"></tr>
+        </table>
+    </td></tr>
+</table>
+</body>
+</html>

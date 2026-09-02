@@ -1,0 +1,81 @@
+# JURIKA — SonarQube Quality Gate (Sprint 14 ter F3).
+#
+# Trigger : PR + push main.
+# Quality Gate "JURIKA Strict" cote serveur Sonar :
+#   - Coverage on New Code >= 80 %
+#   - Duplicated Lines on New Code < 3 %
+#   - Maintainability/Reliability/Security ratings <= A
+#   - Security Hotspots reviewed = 100 %
+#
+# Secrets requis :
+#   - SONAR_TOKEN     : token utilisateur Sonar (Repository Settings -> Secrets)
+#   - SONAR_HOST_URL  : URL serveur Sonar (https://sonar.jurika.ma:9000 ou similaire)
+#
+# Status check obligatoire sur PR via GitHub branch protection (a configurer cote repo).
+
+name: sonar
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  sonar:
+    name: SonarQube Scan
+    runs-on: ubuntu-22.04
+    if: ${{ secrets.SONAR_TOKEN != '' && secrets.SONAR_HOST_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full clone pour blame Sonar
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: temurin
+          cache: maven
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: projet/frontend-react/package-lock.json
+
+      - name: Cache Sonar packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Maven verify + JaCoCo
+        working-directory: projet/backend-java
+        run: mvn -B -DskipITs verify
+
+      - name: Frontend coverage
+        working-directory: projet/frontend-react
+        run: |
+          npm ci --legacy-peer-deps
+          npm run test:coverage
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@v2.3.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          projectBaseDir: projet
+
+      - name: Quality Gate Check
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          scanMetadataReportFile: projet/.scannerwork/report-task.txt

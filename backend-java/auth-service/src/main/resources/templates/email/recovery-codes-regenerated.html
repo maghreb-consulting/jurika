@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Codes de recuperation regeneres - JURIKA</title>
+</head>
+<body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#0F172A;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf6ec;padding:32px 16px;">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+                   style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+
+                <th:block th:replace="~{email/_base :: header(title='Codes de recuperation regeneres')}"/>
+
+                <tr>
+                    <td style="padding:32px;">
+                        <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
+                            Bonjour <strong th:text="${firstName}">Karim</strong>,
+                        </p>
+
+                        <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
+                            Vos <strong>codes de recuperation 2FA</strong> viennent d'etre regeneres.
+                            Vos <strong>anciens codes ne sont plus valides</strong>.
+                        </p>
+
+                        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:16px;margin:24px 0;">
+                            <p style="margin:0 0 8px;font-size:13px;color:#64748B;">
+                                <strong style="color:#0F172A;">Date :</strong>
+                                <span th:text="${regeneratedAt}">22/05/2026 14:32 (Africa/Casablanca)</span>
+                            </p>
+                            <p style="margin:0 0 8px;font-size:13px;color:#64748B;">
+                                <strong style="color:#0F172A;">Nombre de codes :</strong>
+                                <span th:text="${count}">10</span>
+                            </p>
+                            <p style="margin:0;font-size:13px;color:#64748B;">
+                                <strong style="color:#0F172A;">Adresse IP :</strong>
+                                <span th:text="${ipAddress}">196.xx.xx.xx</span>
+                            </p>
+                        </div>
+
+                        <p style="margin:0 0 12px;font-size:14px;color:#0F172A;font-weight:600;">
+                            Rappel important :
+                        </p>
+                        <ul style="margin:0 0 24px;padding-left:18px;font-size:13px;color:#475569;line-height:1.6;">
+                            <li>Chaque code ne peut etre utilise qu'<strong>une seule fois</strong>.</li>
+                            <li>Conservez ces codes en lieu sur (impression, coffre-fort, gestionnaire de mots de passe).</li>
+                            <li>JURIKA ne peut pas vous communiquer vos codes apres leur affichage initial.</li>
+                        </ul>
+
+                        <div style="background:#FEF2F2;border:1px solid #FCA5A5;border-radius:8px;padding:16px;margin:24px 0;">
+                            <p style="margin:0 0 8px;font-size:13px;color:#991B1B;font-weight:600;">
+                                Vous n'etes pas a l'origine de cette regeneration ?
+                            </p>
+                            <p style="margin:0;font-size:12px;color:#7F1D1D;line-height:1.55;">
+                                Votre compte est peut-etre compromis. Changez votre mot de passe et
+                                contactez <a href="mailto:support@jurika.ma" style="color:#7F1D1D;">support@jurika.ma</a>
+                                sans delai.
+                            </p>
+                        </div>
+
+                        <th:block th:replace="~{email/_base :: phishingBox}"/>
+                    </td>
+                </tr>
+
+                <th:block th:replace="~{email/_base :: identityFooter(loginEmail=${loginEmail}, contactEmail=${contactEmail})}"/>
+                <th:block th:replace="~{email/_base :: footer(unsubscribeUrl=${unsubscribeUrl})}"/>
+            </table>
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

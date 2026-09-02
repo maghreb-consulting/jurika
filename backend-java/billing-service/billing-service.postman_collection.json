@@ -1,0 +1,105 @@
+{
+  "info": {
+    "name": "JURIKA — billing-service (Sprint 12)",
+    "description": "Collection Postman des 7 endpoints du module billing-service (port 8090). Sprint 12 — Stripe TEST mode uniquement. Voir backend-java/billing-service/README.md pour la setup.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "gateway", "value": "http://localhost:8080", "description": "URL gateway (prod: https://api.jurika.ai)" },
+    { "key": "billing", "value": "http://localhost:8090", "description": "URL directe billing-service (bypass gateway, debug)" },
+    { "key": "accessToken", "value": "", "description": "JWT RS256 du admin cabinet (POST /api/v1/auth/login)" },
+    { "key": "stripeSignature", "value": "", "description": "Header Stripe-Signature pour /webhook/stripe (fourni par Stripe CLI)" },
+    { "key": "invoiceId", "value": "1" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}" }]
+  },
+  "item": [
+    {
+      "name": "1. POST /checkout-session — Cree une Stripe Checkout Session",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": { "raw": "{{gateway}}/api/v1/billing/checkout-session", "host": ["{{gateway}}"], "path": ["api", "v1", "billing", "checkout-session"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"planCode\": \"essentiel\",\n  \"contactEmail\": \"admin@cabinet-test.ma\",\n  \"workspaceName\": \"Cabinet TEST\"\n}"
+        },
+        "description": "Cree une session Stripe Checkout (mode SUBSCRIPTION, locale fr). Le frontend redirige window.location vers checkoutUrl. planCode accepte essentiel|professionnel (entreprise rejete RG-BL10). Idempotency-Key automatique cote backend (RG-BL18). Requiert ROLE_ADMIN_CABINET."
+      }
+    },
+    {
+      "name": "2. GET /subscription — Souscription courante",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{gateway}}/api/v1/billing/subscription", "host": ["{{gateway}}"], "path": ["api", "v1", "billing", "subscription"] },
+        "description": "Retourne SubscriptionDto (planCode canonique, status, current_period_*, cancelAtPeriodEnd, paymentMethod brand+last4 masque). 404 si pas encore souscrit (workspace en trial). RG-BL08."
+      }
+    },
+    {
+      "name": "3. GET /invoices?page&size — Liste paginee",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{gateway}}/api/v1/billing/invoices?page=0&size=20",
+          "host": ["{{gateway}}"],
+          "path": ["api", "v1", "billing", "invoices"],
+          "query": [
+            { "key": "page", "value": "0" },
+            { "key": "size", "value": "20", "description": "Maximum 100 (capped server-side)" }
+          ]
+        },
+        "description": "InvoicesPageDto { items, total, page, size }. Trie par issued_at DESC. Montant en centimes MAD (amountTtc/Ht/Tva). RG-BL08."
+      }
+    },
+    {
+      "name": "4. GET /invoices/{id}/download — PDF redirect",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{gateway}}/api/v1/billing/invoices/{{invoiceId}}/download", "host": ["{{gateway}}"], "path": ["api", "v1", "billing", "invoices", "{{invoiceId}}", "download"] },
+        "description": "302 Found vers PDF hoste cote Stripe (Location: https://...stripe.com/...pdf). Aucun proxy binary cote serveur. Verif ownership workspace cote backend."
+      }
+    },
+    {
+      "name": "5. POST /customer-portal — URL Stripe Customer Portal",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": { "raw": "{{gateway}}/api/v1/billing/customer-portal", "host": ["{{gateway}}"], "path": ["api", "v1", "billing", "customer-portal"] },
+        "body": { "mode": "raw", "raw": "{}" },
+        "description": "CustomerPortalDto { url }. Stripe-hosted page pour update card / cancel / resume / change plan (RG-BL09 / decision archi #3). Locale fr. Requiert qu'au moins une tentative de souscription existe (sinon 404)."
+      }
+    },
+    {
+      "name": "6. POST /contact-sales — Lead Enterprise",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": { "raw": "{{gateway}}/api/v1/billing/contact-sales", "host": ["{{gateway}}"], "path": ["api", "v1", "billing", "contact-sales"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"workspaceName\": \"Cabinet Multi-Sites SARL\",\n  \"contactEmail\": \"directeur@cabinet.ma\",\n  \"contactName\": \"Mme Bennani\",\n  \"phone\": \"+212 661 12 34 56\",\n  \"message\": \"Interesses par Enterprise pour 3 sites, ~25 utilisateurs, SSO Azure AD requis.\"\n}"
+        },
+        "description": "Envoie un mail a billing.sales-email (BILLING_SALES_EMAIL env). Best-effort : retourne accepted=false si SMTP KO (UI fallback mailto). RG-BL10."
+      }
+    },
+    {
+      "name": "7. POST /webhook/stripe — Webhook (signature HMAC)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Stripe-Signature", "value": "{{stripeSignature}}", "description": "Fourni par Stripe CLI ou Stripe webhook delivery. Obligatoire — 401 si absent ou invalide (RG-BL18)." }
+        ],
+        "auth": { "type": "noauth" },
+        "url": { "raw": "{{billing}}/api/v1/billing/webhook/stripe", "host": ["{{billing}}"], "path": ["api", "v1", "billing", "webhook", "stripe"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": \"evt_test_xxx\",\n  \"type\": \"checkout.session.completed\",\n  \"data\": { \"object\": { \"id\": \"cs_test_xxx\", \"customer\": \"cus_test_xxx\", \"subscription\": \"sub_test_xxx\", \"metadata\": { \"workspace_id\": \"00000000-0000-0000-0000-000000000001\", \"plan_code\": \"essentiel\" } } }\n}"
+        },
+        "description": "5 event types dispatched : checkout.session.completed (RG-BL04), invoice.payment_succeeded (RG-BL05), invoice.payment_failed (RG-BL06), customer.subscription.updated, customer.subscription.deleted (RG-BL07). Idempotent : 10x meme event = 1 invoice (decision archi #6 store-and-forward).\n\nEn dev local, le payload + signature sont generes par Stripe CLI :\n  stripe listen --forward-to localhost:8090/api/v1/billing/webhook/stripe\n  stripe trigger checkout.session.completed\nLe header Stripe-Signature est injecte automatiquement.\n\nPour TESTER le rejet 401 depuis Postman : envoyer sans Stripe-Signature -> 401 + body { error: 'Missing Stripe-Signature header' }."
+      }
+    }
+  ]
+}

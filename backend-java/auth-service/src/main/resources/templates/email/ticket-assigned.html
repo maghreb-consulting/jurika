@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Nouveau ticket assigne - JURIKA</title>
+</head>
+<body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#0F172A;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf6ec;padding:32px 16px;">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+                   style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+
+                <th:block th:replace="~{email/_base :: header(title='Un ticket vous a ete assigne')}"/>
+
+                <tr>
+                    <td style="padding:32px;">
+                        <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
+                            Bonjour <strong th:text="${firstName}">Karim</strong>,
+                        </p>
+
+                        <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
+                            Un nouveau ticket vient de vous etre assigne sur la plateforme JURIKA.
+                        </p>
+
+                        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:20px;margin:24px 0;">
+                            <p style="margin:0 0 12px;font-size:12px;color:#64748B;text-transform:uppercase;letter-spacing:0.06em;">
+                                Reference ticket
+                            </p>
+                            <p style="margin:0 0 16px;font-family:'JetBrains Mono',Consolas,monospace;font-size:16px;color:#0F172A;font-weight:600;">
+                                <span th:text="${ticketReference}">TCK-2026-00042</span>
+                            </p>
+
+                            <p style="margin:0 0 4px;font-size:12px;color:#64748B;text-transform:uppercase;letter-spacing:0.06em;">
+                                Titre
+                            </p>
+                            <p style="margin:0 0 16px;font-size:15px;color:#0F172A;font-weight:500;line-height:1.45;">
+                                <span th:text="${ticketTitle}">Modification statuts SARL XYZ</span>
+                            </p>
+
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="padding:4px 0;font-size:13px;color:#64748B;width:140px;">Type d'operation</td>
+                                    <td style="padding:4px 0;font-size:13px;color:#0F172A;" th:text="${ticketType}">MODIFICATION</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:4px 0;font-size:13px;color:#64748B;">Priorite</td>
+                                    <td style="padding:4px 0;font-size:13px;color:#0F172A;" th:text="${priority}">NORMALE</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:4px 0;font-size:13px;color:#64748B;">Client</td>
+                                    <td style="padding:4px 0;font-size:13px;color:#0F172A;" th:text="${clientName}">SARL Exemple</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:4px 0;font-size:13px;color:#64748B;">Assigne par</td>
+                                    <td style="padding:4px 0;font-size:13px;color:#0F172A;" th:text="${assignedBy}">Superviseur Adil</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:4px 0;font-size:13px;color:#64748B;">Echeance</td>
+                                    <td style="padding:4px 0;font-size:13px;color:#0F172A;" th:text="${dueDate}">30/05/2026</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <div style="text-align:center;margin:32px 0;">
+                            <a th:href="${ticketUrl}"
+                               style="display:inline-block;background:#0c1d3f;color:#c8a45c;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px;">
+                                Ouvrir le ticket
+                            </a>
+                        </div>
+
+                        <p style="margin:0;font-size:12px;color:#94A3B8;line-height:1.55;">
+                            Vous recevez cet email parce que vous etes assigne(e) sur ce ticket.
+                            Vous pouvez desactiver ces notifications dans vos preferences JURIKA.
+                        </p>
+                    </td>
+                </tr>
+
+                <th:block th:replace="~{email/_base :: identityFooter(loginEmail=${loginEmail}, contactEmail=${contactEmail})}"/>
+                <th:block th:replace="~{email/_base :: footer(unsubscribeUrl=${unsubscribeUrl})}"/>
+            </table>
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

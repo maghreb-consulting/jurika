@@ -1,0 +1,172 @@
+name: build-test
+
+# Sprint 14 F1 -- pipeline CI principal : backend Maven + frontend npm + coverage.
+# Note V1 : pas de Playwright e2e (Sprint 14 ter) ; smoke seulement.
+
+on:
+  push:
+    branches: [main, develop, 'feat/**', 'fix/**', 'release/**']
+  pull_request:
+    branches: [main, develop]
+  # Permet de forcer les tests d'integration a la demande (avant une livraison,
+  # ou pour rejouer un echec sur une branche de travail).
+  workflow_dispatch:
+    inputs:
+      run_integration_tests:
+        description: "Lancer aussi les tests d'integration (TestContainers)"
+        type: boolean
+        default: true
+
+env:
+  JAVA_VERSION: '21'
+  NODE_VERSION: '20'
+  # ------------------------------------------------------------------
+  # Quand lance-t-on les ~90 tests d'integration TestContainers ?
+  # ------------------------------------------------------------------
+  # Ils prennent plusieurs minutes. Les imposer a CHAQUE push de branche cree une
+  # friction qui finit toujours de la meme facon : quelqu'un desactive le profil,
+  # et les garde-fous de D2 / DR1 retombent en sommeil. On les reserve donc aux
+  # moments ou ils protegent vraiment quelque chose :
+  #   * PR vers `main`  -> avant que le code n'atteigne la branche de livraison ;
+  #   * push sur `main` -> apres un merge ;
+  #   * declenchement manuel, ou label `run-it` pose sur une PR.
+  # Un push de branche de travail se contente des tests unitaires.
+  RUN_IT: >-
+    ${{ (github.event_name == 'workflow_dispatch' && inputs.run_integration_tests)
+     || (github.event_name == 'pull_request' && github.base_ref == 'main')
+     || (github.event_name == 'pull_request'
+         && contains(github.event.pull_request.labels.*.name, 'run-it'))
+     || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+
+jobs:
+  backend:
+    name: Backend (Maven + JaCoCo)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: jurika_ci
+          POSTGRES_PASSWORD: ci_pwd
+          POSTGRES_DB: jurika_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U jurika_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      rabbitmq:
+        image: rabbitmq:4-alpine
+        ports: ['5672:5672']
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 15s
+          --health-timeout 10s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      # Le profil `it` active maven-failsafe : sans lui, les classes `*IT` ne
+      # s'exécutent PAS (surefire ne prend que `*Test`). Elles portent les
+      # garde-fous de D2 (post-completion sauté) et DR1 (deux documents « en
+      # vigueur » sur le même slot) — deux défauts qu'aucun test de contenu ne
+      # peut voir. Le runner GitHub fournit Docker, requis par TestContainers.
+      # Quand il s'active : cf. `RUN_IT` en tête de fichier.
+      - name: Build + tests (+ tests d'integration si RUN_IT) + JaCoCo
+        working-directory: backend-java
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: jurika_ci
+          POSTGRES_PASSWORD: ci_pwd
+          POSTGRES_DB: jurika_ci
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          RABBITMQ_HOST: localhost
+          RABBITMQ_PORT: 5672
+        run: |
+          if [ "$RUN_IT" = "true" ]; then
+            echo "Tests unitaires + tests d'integration (TestContainers)."
+            mvn -B verify -Pit
+          else
+            echo "Tests unitaires seuls. Les tests d'integration se lancent sur une PR"
+            echo "vers main, un push sur main, le label 'run-it', ou workflow_dispatch."
+            mvn -B verify
+          fi
+
+      - name: Upload JaCoCo reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-reports
+          path: backend-java/**/target/site/jacoco
+          retention-days: 7
+
+      - name: Upload surefire test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: backend-java/**/target/surefire-reports
+          retention-days: 7
+
+  frontend:
+    name: Frontend (Vitest + tsc + build)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend-react/package-lock.json
+
+      - name: Install deps
+        working-directory: frontend-react
+        run: npm ci
+
+      - name: Lint
+        working-directory: frontend-react
+        run: npm run lint
+        continue-on-error: true # Sprint 14 warn-only, strict en Sprint 14 bis
+
+      - name: Typecheck
+        working-directory: frontend-react
+        run: npm run typecheck
+
+      - name: Tests Vitest + coverage
+        working-directory: frontend-react
+        run: npm run test:coverage
+
+      - name: Build production
+        working-directory: frontend-react
+        run: npm run build
+
+      - name: Upload coverage frontend
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-coverage
+          path: frontend-react/coverage
+          retention-days: 7

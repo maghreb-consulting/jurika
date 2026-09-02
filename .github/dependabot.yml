@@ -1,0 +1,68 @@
+# Sprint 14 F7 -- Dependabot security alerts + version updates.
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+
+version: 2
+updates:
+  # Backend Maven (parent + modules)
+  - package-ecosystem: maven
+    directory: /backend-java
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: 'Africa/Casablanca'
+    open-pull-requests-limit: 5
+    labels: ['deps', 'backend', 'maven']
+    groups:
+      spring-ecosystem:
+        patterns:
+          - 'org.springframework*'
+          - 'org.springdoc*'
+      testing:
+        patterns:
+          - 'org.testcontainers*'
+          - 'org.junit*'
+          - 'org.assertj*'
+          - 'org.mockito*'
+
+  # Frontend npm
+  - package-ecosystem: npm
+    directory: /frontend-react
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: 'Africa/Casablanca'
+    open-pull-requests-limit: 10
+    labels: ['deps', 'frontend', 'npm']
+    groups:
+      react-ecosystem:
+        patterns:
+          - 'react'
+          - 'react-dom'
+          - 'react-router-dom'
+          - '@radix-ui/*'
+      testing:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
+          - '@testing-library/*'
+          - 'jsdom'
+      types:
+        patterns:
+          - '@types/*'
+
+  # Mobile (stub - active Sprint 16+)
+  - package-ecosystem: npm
+    directory: /frontend-mobile
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    labels: ['deps', 'mobile']
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels: ['deps', 'ci']

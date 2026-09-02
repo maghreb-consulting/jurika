@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.4.0</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>ma.jurika</groupId>
+    <artifactId>jurika-platform</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>JURIKA Platform</name>
+    <description>SaaS B2B multi-tenant gestion juridique des entreprises au Maroc</description>
+
+    <modules>
+        <module>jurika-common</module>
+        <module>discovery-service</module>
+        <module>gateway-service</module>
+        <module>auth-service</module>
+        <module>ticket-service</module>
+        <module>workflow-service</module>
+        <module>dataroom-service</module>
+        <module>supervision-service</module>
+        <module>ai-service</module>
+        <module>dashboard-service</module>
+        <module>billing-service</module>
+    </modules>
+
+    <properties>
+        <java.version>21</java.version>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <spring-cloud.version>2024.0.0</spring-cloud.version>
+        <jjwt.version>0.12.6</jjwt.version>
+        <googleauth.version>1.5.0</googleauth.version>
+        <zxing.version>3.5.3</zxing.version>
+        <springdoc.version>2.7.0</springdoc.version>
+        <testcontainers.version>1.20.4</testcontainers.version>
+        <logstash-encoder.version>7.4</logstash-encoder.version>
+        <sentry.version>7.14.0</sentry.version>
+        <twilio.version>10.6.0</twilio.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>ma.jurika</groupId>
+                <artifactId>jurika-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.warrenstrange</groupId>
+                <artifactId>googleauth</artifactId>
+                <version>${googleauth.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.google.zxing</groupId>
+                <artifactId>core</artifactId>
+                <version>${zxing.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.zxing</groupId>
+                <artifactId>javase</artifactId>
+                <version>${zxing.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>net.logstash.logback</groupId>
+                <artifactId>logstash-logback-encoder</artifactId>
+                <version>${logstash-encoder.version}</version>
+            </dependency>
+
+            <!-- Sprint 2 / TASK 5 — Sentry agent + logback appender pour les erreurs runtime. -->
+            <dependency>
+                <groupId>io.sentry</groupId>
+                <artifactId>sentry-spring-boot-starter-jakarta</artifactId>
+                <version>${sentry.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.sentry</groupId>
+                <artifactId>sentry-logback</artifactId>
+                <version>${sentry.version}</version>
+            </dependency>
+
+            <!-- Sprint 3 / TASK 1 — Twilio SMS provider (auth-service uniquement). -->
+            <dependency>
+                <groupId>com.twilio.sdk</groupId>
+                <artifactId>twilio</artifactId>
+                <version>${twilio.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+    <!-- Note Sprint 2 : micrometer-registry-prometheus est version-gere par
+         spring-boot-dependencies (parent BOM), donc declare directement
+         sans version dans chaque pom de service via jurika-common. -->
+
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <release>21</release>
+                        <parameters>true</parameters>
+                    </configuration>
+                </plugin>
+                <!--
+                  Piege d'execution Windows (lot DIVERS, 2026-08-13) : le Controlled Folder
+                  Access de Windows Defender bloque la creation de sockets et de fichiers
+                  temporaires dans %TEMP% (C:\Users\...\AppData\Local\Temp). Les JVM forkees
+                  par surefire echouent alors des le demarrage, avec une erreur NIO sans
+                  rapport apparent avec les tests.
+
+                  Le contournement — rediriger TEMP/TMP vers `projet/.tmp/` — vit dans
+                  l'ENVIRONNEMENT (scripts/restart-*.ps1, scripts/mvn-jurika.ps1) et NON
+                  ici. Tentative faite puis annulee : rediriger `java.io.tmpdir` (ou TEMP /
+                  TMP) vers `${project.build.directory}` casse `mvn clean`. Mockito
+                  s'auto-attache en deposant un `mockitoboot*.jar` dans le repertoire
+                  temporaire ; sous Windows le fichier reste verrouille apres la sortie de
+                  la JVM forkee, et le clean suivant echoue sur
+                  « Failed to delete target/mockitoboot*.jar ». Tout repertoire sous
+                  `target/` a ce defaut ; un repertoire hors `target/` ne peut pas etre
+                  garanti existant sur un poste vierge, et un `java.io.tmpdir` inexistant
+                  fait echouer TOUS les tests. D'ou : rien de plus que `tempDir` ici.
+
+                  `tempDir` reste sur : il est CREE et gere par surefire lui-meme, et ne
+                  concerne que ses propres fichiers de travail. `argLine` n'est pas touche :
+                  il porte l'agent JaCoCo.
+                -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <configuration>
+                        <tempDir>surefire-tmp</tempDir>
+                    </configuration>
+                </plugin>
+                <!-- Sprint 14 / C5 : JaCoCo coverage (warn-only V1, gate strict en Sprint 15). -->
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>0.8.12</version>
+                    <executions>
+                        <execution>
+                            <id>prepare-agent</id>
+                            <goals><goal>prepare-agent</goal></goals>
+                        </execution>
+                        <execution>
+                            <id>report</id>
+                            <phase>verify</phase>
+                            <goals><goal>report</goal></goals>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <!-- Activation JaCoCo sur tous les modules enfants -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!--
+      ===================================================================
+      Profil `it` — TESTS D'INTEGRATION TestContainers (2026-08-17)
+      ===================================================================
+
+      LE PROBLEME QU'IL CORRIGE
+      —————————————————————————
+      surefire ne prend que `*Test.java` : les classes suffixees `*IT` ne
+      s'executaient donc JAMAIS, ni en local via `mvn test`, ni en CI via
+      `mvn verify` (aucun failsafe n'etait configure). Or ces classes portent
+      les garde-fous des deux defauts les plus couteux de la simulation :
+
+        * `PostCompletionSansDossierLieIT`  (workflow-service)  -> defaut D2 :
+          une NPE avalee faisait sauter TOUT le post-completion. Les documents
+          sortaient parfaits, mais ni le statut DISSOUTE, ni les modifications,
+          ni le liquidateur n'etaient persistes. Aucun test de contenu ne peut
+          voir ce defaut.
+        * `DataroomUniciteCourantIT`        (dataroom-service)  -> defaut DR1 :
+          deux documents du meme type « en vigueur » en parallele.
+
+      Un garde-fou qui ne s'execute pas ne garde rien.
+
+      POURQUOI UN PROFIL ET PAS UNE ACTIVATION PERMANENTE
+      ———————————————————————————————————————————————————
+      Ces IT exigent un daemon Docker (TestContainers). Les activer sur tous
+      les `mvn verify` casserait le build de tout poste sans Docker — y compris
+      pour quelqu'un qui ne touche pas a ces modules. Le profil rend l'intention
+      explicite : la CI le demande, le developpeur aussi quand il veut les jouer.
+
+      USAGE
+      —————
+        mvn -B verify -Pit                (CI : cf. .github/workflows/build-test.yml)
+        .\scripts\mvn-jurika.ps1 -o verify -Pit -pl workflow-service,dataroom-service
+      Sous Windows, passer par `mvn-jurika.ps1` : il redirige TEMP hors du
+      perimetre du Controlled Folder Access, sans quoi les JVM forkees echouent.
+    -->
+    <profiles>
+        <profile>
+            <id>it</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/*IT.java</include>
+                            </includes>
+                            <!-- Meme contournement TEMP que surefire (cf. pluginManagement). -->
+                            <tempDir>failsafe-tmp</tempDir>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <!-- `verify` fait ECHOUER le build si un IT est rouge :
+                                         sans lui, integration-test se contente d'ecrire un
+                                         rapport et la CI resterait verte. -->
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+</project>

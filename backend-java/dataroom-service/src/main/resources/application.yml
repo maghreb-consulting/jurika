@@ -1,0 +1,117 @@
+server:
+  port: ${DATAROOM_SERVICE_PORT:8084}
+  shutdown: graceful
+  tomcat:
+    max-swallow-size: 50MB
+spring:
+  application:
+    name: dataroom-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 25MB
+      max-request-size: 250MB
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:jurika_db}
+    username: ${POSTGRES_USER:jurika_user}
+    password: ${POSTGRES_PASSWORD:JurikaDevPass2026}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    out-of-order: true
+    table: flyway_history_dataroom
+    validate-on-migrate: false
+    ignore-migration-patterns: "*:missing,*:future"
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:jurika}
+    password: ${RABBITMQ_PASSWORD:JurikaRabbit2026}
+    virtual-host: ${RABBITMQ_VHOST:jurika}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+
+jurika:
+  jwt:
+    algorithm: ${JWT_ALGORITHM:RS256}
+    public-key-path: ${JWT_PUBLIC_KEY_PATH:/run/secrets/jwt/jwt-public.pem}
+    hmac-secret: ${JWT_SECRET:dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345}
+    issuer: ${JWT_ISSUER:jurika.ma}
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY:${MINIO_ROOT_USER:jurika-admin}}
+    secret-key: ${MINIO_SECRET_KEY:${MINIO_ROOT_PASSWORD:JurikaMinIO2026}}
+    bucket: ${MINIO_BUCKET:jurika-dataroom}
+  # Sprint 7 / TASK 3.2 -- watermark PDF feature flag.
+  # OFF par defaut. Bascule a true ajoute un overlay JURIKA + raison sociale +
+  # email client + timestamp sur les previews PDF des CLIENT (PDFBox a installer).
+  dataroom:
+    watermark:
+      enabled: ${DATAROOM_WATERMARK_ENABLED:false}
+  # Microservice kie-service (Donut KIE pour CIN / CN marocaines).
+  # En docker, le service DNS interne ecoute sur 8088.
+  kie:
+    base-url: ${KIE_BASE_URL:http://kie-service:8088}
+    timeout: ${KIE_TIMEOUT:30s}
+  env: ${JURIKA_ENV:dev}
+  release: ${JURIKA_RELEASE:dev}
+  observability:
+    prometheus:
+      password: ${PROMETHEUS_OPS_PASSWORD:}
+
+sentry:
+  dsn: ${SENTRY_DSN_JAVA:}
+  enabled: ${SENTRY_ENABLED:false}
+  environment: ${jurika.env:dev}
+  release: ${jurika.release:dev}
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.1}
+  send-default-pii: false
+  exception-resolver-order: -2147483647
+  in-app-includes:
+    - ma.jurika
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,loggers,env
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState,ping
+        readiness:
+          include: readinessState,db,rabbit,minio
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      env: ${jurika.env:dev}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+logging:
+  level:
+    ma.jurika: INFO

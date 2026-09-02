@@ -1,0 +1,2348 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-06-03",
+  "templates": [
+    {
+      "code": "RAPPORT_GESTION",
+      "file": "RAPPORT_GESTION.docx",
+      "origin": "directeur",
+      "document_kind": "Rapport de gestion annuel du gérant",
+      "workflow": "PV_AGO",
+      "placeholder_style": "uppercase_dollar",
+      "variables": [
+        "ACTIVITE_SOCIETE",
+        "ADRESSE_SIEGE",
+        "CAPITAL_CHIFFRES",
+        "CHIFFRE_AFFAIRES",
+        "COMMENTAIRE_ACTIVITE",
+        "DATE_CLOTURE",
+        "DENOMINATION",
+        "DIVIDENDES",
+        "EVENEMENTS_PERSPECTIVES",
+        "FORME_JURIDIQUE",
+        "GERANT_NOM",
+        "ICE_NUMERO",
+        "IF_NUMERO",
+        "LIEU_DATE_EMISSION",
+        "RC_NUMERO",
+        "RC_VILLE",
+        "REPORT_A_NOUVEAU",
+        "RESERVE_LEGALE",
+        "RESULTAT_MONTANT"
+      ],
+      "blocks": []
+    },
+    {
+      "code": "STATUTS_REFONDUS_SARL",
+      "file": "STATUTS_SARL_modele_deterministe.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Statuts refondus (coordonnés) SARL — voie directeur",
+      "workflow": "MODIFICATION",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "BANQUE_DEPOSITAIRE",
+        "CAPITAL_CHIFFRES",
+        "CAPITAL_LETTRES",
+        "COMMISSAIRE_APPORTS_NOM",
+        "COMMISSAIRE_COMPTES_NOM",
+        "COMPTE_BANCAIRE_NUMERO",
+        "DATE_SIGNATURE",
+        "DENOMINATION",
+        "DEPOT_FONDS_BLOQUE",
+        "DUREE_GERANCE",
+        "DUREE_MANDAT_CAC",
+        "DUREE_SOCIETE",
+        "ENGAGEMENTS_MANDAT",
+        "EXERCICE_DEBUT",
+        "EXERCICE_FIN",
+        "GERANT_ACCORD",
+        "GERANT_MODE_DESIGNATION",
+        "LIEU_SIGNATURE",
+        "LIMITATION_POUVOIRS",
+        "MANDATAIRE_ACTE_DELEGATION",
+        "MANDATAIRE_NOM",
+        "MODE_LIBERATION",
+        "MODE_SIGNATURE",
+        "MODE_SIGNATURE_ADMIN",
+        "NOMBRE_ORIGINAUX",
+        "NOMBRE_PARTS",
+        "OBJET_SOCIAL",
+        "PREMIER_EXERCICE_CLOTURE",
+        "SIEGE_SOCIAL",
+        "SIGNATAIRE_ACCORD",
+        "SIGNATURE_MANDATAIRE",
+        "SIGNATURE_PLAFOND_CHIFFRES",
+        "SIGNATURE_PLAFOND_LETTRES",
+        "VALEUR_NOMINALE_PART",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "APPORTS_PAR_ASSOCIE",
+          "variables": [
+            "APPORT_ASSOCIE_LIBELLE",
+            "APPORT_INDUSTRIE_DESCRIPTION",
+            "APPORT_NATURE_DESCRIPTION",
+            "APPORT_NATURE_VALEUR_CHIFFRES",
+            "APPORT_NATURE_VALEUR_LETTRES",
+            "APPORT_NUMERAIRE_CHIFFRES",
+            "APPORT_NUMERAIRE_LETTRES",
+            "APPORT_TYPE"
+          ]
+        },
+        {
+          "name": "ASSOCIES",
+          "variables": [
+            "ASSOCIE_ADRESSE",
+            "ASSOCIE_CAPITAL",
+            "ASSOCIE_CIVILITE",
+            "ASSOCIE_DATE_NAISSANCE",
+            "ASSOCIE_DENOMINATION",
+            "ASSOCIE_EST_GERANT",
+            "ASSOCIE_FORME",
+            "ASSOCIE_GENRE",
+            "ASSOCIE_LIEU_NAISSANCE",
+            "ASSOCIE_NATIONALITE",
+            "ASSOCIE_NOM",
+            "ASSOCIE_NOMBRE_PARTS",
+            "ASSOCIE_PARTS_A",
+            "ASSOCIE_PARTS_DE",
+            "ASSOCIE_PIECE_NUMERO",
+            "ASSOCIE_PIECE_TYPE",
+            "ASSOCIE_PRENOM",
+            "ASSOCIE_RC_NUMERO",
+            "ASSOCIE_RC_VILLE",
+            "ASSOCIE_REPRESENTANT_NOM",
+            "ASSOCIE_REPRESENTANT_QUALITE",
+            "ASSOCIE_SIEGE",
+            "ASSOCIE_TYPE"
+          ]
+        },
+        {
+          "name": "GERANTS",
+          "variables": [
+            "GERANT_ADRESSE",
+            "GERANT_CIVILITE",
+            "GERANT_NATIONALITE",
+            "GERANT_NOM",
+            "GERANT_PIECE_NUMERO",
+            "GERANT_PIECE_TYPE",
+            "GERANT_PRENOM"
+          ]
+        },
+        {
+          "name": "SIGNATAIRES",
+          "variables": [
+            "SIGNATAIRE_NOM",
+            "SIGNATAIRE_QUALITE"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "STATUTS_REFONDUS_SARL_AU",
+      "file": "STATUTS_SARL_AU_modele_deterministe.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Statuts refondus (coordonnés) SARL AU — voie directeur",
+      "workflow": "MODIFICATION",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "APPORT_INDUSTRIE_DESCRIPTION",
+        "APPORT_NATURE_DESCRIPTION",
+        "APPORT_NATURE_VALEUR_CHIFFRES",
+        "APPORT_NATURE_VALEUR_LETTRES",
+        "APPORT_NUMERAIRE_CHIFFRES",
+        "APPORT_NUMERAIRE_LETTRES",
+        "APPORT_TYPE",
+        "ASSOCIE_ADRESSE",
+        "ASSOCIE_CAPITAL",
+        "ASSOCIE_CIVILITE",
+        "ASSOCIE_DATE_NAISSANCE",
+        "ASSOCIE_DENOMINATION",
+        "ASSOCIE_EST_GERANT",
+        "ASSOCIE_FORME",
+        "ASSOCIE_GENRE",
+        "ASSOCIE_LIEU_NAISSANCE",
+        "ASSOCIE_NATIONALITE",
+        "ASSOCIE_NOM",
+        "ASSOCIE_PIECE_NUMERO",
+        "ASSOCIE_PIECE_TYPE",
+        "ASSOCIE_PRENOM",
+        "ASSOCIE_RC_NUMERO",
+        "ASSOCIE_RC_VILLE",
+        "ASSOCIE_REPRESENTANT_NOM",
+        "ASSOCIE_REPRESENTANT_QUALITE",
+        "ASSOCIE_SIEGE",
+        "ASSOCIE_TYPE",
+        "BANQUE_DEPOSITAIRE",
+        "CAPITAL_CHIFFRES",
+        "CAPITAL_LETTRES",
+        "COMMISSAIRE_APPORTS_NOM",
+        "COMMISSAIRE_COMPTES_NOM",
+        "COMPTE_BANCAIRE_NUMERO",
+        "DATE_SIGNATURE",
+        "DENOMINATION",
+        "DEPOT_FONDS_BLOQUE",
+        "DUREE_GERANCE",
+        "DUREE_MANDAT_CAC",
+        "DUREE_SOCIETE",
+        "ENGAGEMENTS_MANDAT",
+        "EXERCICE_DEBUT",
+        "EXERCICE_FIN",
+        "GERANT_ACCORD",
+        "GERANT_MODE_DESIGNATION",
+        "LIEU_SIGNATURE",
+        "LIMITATION_POUVOIRS",
+        "MANDATAIRE_ACTE_DELEGATION",
+        "MANDATAIRE_NOM",
+        "MODE_LIBERATION",
+        "MODE_SIGNATURE",
+        "MODE_SIGNATURE_ADMIN",
+        "NOMBRE_ORIGINAUX",
+        "NOMBRE_PARTS",
+        "OBJET_SOCIAL",
+        "PREMIER_EXERCICE_CLOTURE",
+        "SIEGE_SOCIAL",
+        "SIGNATAIRE_ACCORD",
+        "SIGNATURE_MANDATAIRE",
+        "SIGNATURE_PLAFOND_CHIFFRES",
+        "SIGNATURE_PLAFOND_LETTRES",
+        "VALEUR_NOMINALE_PART",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "GERANTS",
+          "variables": [
+            "GERANT_ADRESSE",
+            "GERANT_CIVILITE",
+            "GERANT_NATIONALITE",
+            "GERANT_NOM",
+            "GERANT_PIECE_NUMERO",
+            "GERANT_PIECE_TYPE",
+            "GERANT_PRENOM"
+          ]
+        },
+        {
+          "name": "SIGNATAIRES",
+          "variables": [
+            "SIGNATAIRE_NOM",
+            "SIGNATAIRE_QUALITE"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "STATUTS_SARL_DIRECTEUR",
+      "file": "STATUTS_SARL_modele_deterministe.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Statuts",
+      "workflow": "CREATION_SARL",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "BANQUE_DEPOSITAIRE",
+        "CAPITAL_CHIFFRES",
+        "CAPITAL_LETTRES",
+        "COMMISSAIRE_APPORTS_NOM",
+        "COMMISSAIRE_COMPTES_NOM",
+        "COMPTE_BANCAIRE_NUMERO",
+        "DATE_SIGNATURE",
+        "DENOMINATION",
+        "DEPOT_FONDS_BLOQUE",
+        "DUREE_GERANCE",
+        "DUREE_MANDAT_CAC",
+        "DUREE_SOCIETE",
+        "ENGAGEMENTS_MANDAT",
+        "EXERCICE_DEBUT",
+        "EXERCICE_FIN",
+        "GERANT_ACCORD",
+        "GERANT_MODE_DESIGNATION",
+        "LIEU_SIGNATURE",
+        "LIMITATION_POUVOIRS",
+        "MANDATAIRE_ACTE_DELEGATION",
+        "MANDATAIRE_NOM",
+        "MODE_LIBERATION",
+        "MODE_SIGNATURE",
+        "MODE_SIGNATURE_ADMIN",
+        "NOMBRE_ORIGINAUX",
+        "NOMBRE_PARTS",
+        "OBJET_SOCIAL",
+        "PREMIER_EXERCICE_CLOTURE",
+        "SIEGE_SOCIAL",
+        "SIGNATAIRE_ACCORD",
+        "SIGNATURE_MANDATAIRE",
+        "SIGNATURE_PLAFOND_CHIFFRES",
+        "SIGNATURE_PLAFOND_LETTRES",
+        "VALEUR_NOMINALE_PART",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "APPORTS_PAR_ASSOCIE",
+          "variables": [
+            "APPORT_ASSOCIE_LIBELLE",
+            "APPORT_INDUSTRIE_DESCRIPTION",
+            "APPORT_NATURE_DESCRIPTION",
+            "APPORT_NATURE_VALEUR_CHIFFRES",
+            "APPORT_NATURE_VALEUR_LETTRES",
+            "APPORT_NUMERAIRE_CHIFFRES",
+            "APPORT_NUMERAIRE_LETTRES",
+            "APPORT_TYPE"
+          ]
+        },
+        {
+          "name": "ASSOCIES",
+          "variables": [
+            "ASSOCIE_ADRESSE",
+            "ASSOCIE_CAPITAL",
+            "ASSOCIE_CIVILITE",
+            "ASSOCIE_DATE_NAISSANCE",
+            "ASSOCIE_DENOMINATION",
+            "ASSOCIE_EST_GERANT",
+            "ASSOCIE_FORME",
+            "ASSOCIE_GENRE",
+            "ASSOCIE_LIEU_NAISSANCE",
+            "ASSOCIE_NATIONALITE",
+            "ASSOCIE_NOM",
+            "ASSOCIE_NOMBRE_PARTS",
+            "ASSOCIE_PARTS_A",
+            "ASSOCIE_PARTS_DE",
+            "ASSOCIE_PIECE_NUMERO",
+            "ASSOCIE_PIECE_TYPE",
+            "ASSOCIE_PRENOM",
+            "ASSOCIE_RC_NUMERO",
+            "ASSOCIE_RC_VILLE",
+            "ASSOCIE_REPRESENTANT_NOM",
+            "ASSOCIE_REPRESENTANT_QUALITE",
+            "ASSOCIE_SIEGE",
+            "ASSOCIE_TYPE"
+          ]
+        },
+        {
+          "name": "GERANTS",
+          "variables": [
+            "GERANT_ADRESSE",
+            "GERANT_CIVILITE",
+            "GERANT_NATIONALITE",
+            "GERANT_NOM",
+            "GERANT_PIECE_NUMERO",
+            "GERANT_PIECE_TYPE",
+            "GERANT_PRENOM"
+          ]
+        },
+        {
+          "name": "SIGNATAIRES",
+          "variables": [
+            "SIGNATAIRE_NOM",
+            "SIGNATAIRE_QUALITE"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "STATUTS_SARL_AU_DIRECTEUR",
+      "file": "STATUTS_SARL_AU_modele_deterministe.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Statuts",
+      "workflow": "CREATION_SARL",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "APPORT_INDUSTRIE_DESCRIPTION",
+        "APPORT_NATURE_DESCRIPTION",
+        "APPORT_NATURE_VALEUR_CHIFFRES",
+        "APPORT_NATURE_VALEUR_LETTRES",
+        "APPORT_NUMERAIRE_CHIFFRES",
+        "APPORT_NUMERAIRE_LETTRES",
+        "APPORT_TYPE",
+        "ASSOCIE_ADRESSE",
+        "ASSOCIE_CAPITAL",
+        "ASSOCIE_CIVILITE",
+        "ASSOCIE_DATE_NAISSANCE",
+        "ASSOCIE_DENOMINATION",
+        "ASSOCIE_EST_GERANT",
+        "ASSOCIE_FORME",
+        "ASSOCIE_GENRE",
+        "ASSOCIE_LIEU_NAISSANCE",
+        "ASSOCIE_NATIONALITE",
+        "ASSOCIE_NOM",
+        "ASSOCIE_PIECE_NUMERO",
+        "ASSOCIE_PIECE_TYPE",
+        "ASSOCIE_PRENOM",
+        "ASSOCIE_RC_NUMERO",
+        "ASSOCIE_RC_VILLE",
+        "ASSOCIE_REPRESENTANT_NOM",
+        "ASSOCIE_REPRESENTANT_QUALITE",
+        "ASSOCIE_SIEGE",
+        "ASSOCIE_TYPE",
+        "BANQUE_DEPOSITAIRE",
+        "CAPITAL_CHIFFRES",
+        "CAPITAL_LETTRES",
+        "COMMISSAIRE_APPORTS_NOM",
+        "COMMISSAIRE_COMPTES_NOM",
+        "COMPTE_BANCAIRE_NUMERO",
+        "DATE_SIGNATURE",
+        "DENOMINATION",
+        "DEPOT_FONDS_BLOQUE",
+        "DUREE_GERANCE",
+        "DUREE_MANDAT_CAC",
+        "DUREE_SOCIETE",
+        "ENGAGEMENTS_MANDAT",
+        "EXERCICE_DEBUT",
+        "EXERCICE_FIN",
+        "GERANT_ACCORD",
+        "GERANT_MODE_DESIGNATION",
+        "LIEU_SIGNATURE",
+        "LIMITATION_POUVOIRS",
+        "MANDATAIRE_ACTE_DELEGATION",
+        "MANDATAIRE_NOM",
+        "MODE_LIBERATION",
+        "MODE_SIGNATURE",
+        "MODE_SIGNATURE_ADMIN",
+        "NOMBRE_ORIGINAUX",
+        "NOMBRE_PARTS",
+        "OBJET_SOCIAL",
+        "PREMIER_EXERCICE_CLOTURE",
+        "SIEGE_SOCIAL",
+        "SIGNATAIRE_ACCORD",
+        "SIGNATURE_MANDATAIRE",
+        "SIGNATURE_PLAFOND_CHIFFRES",
+        "SIGNATURE_PLAFOND_LETTRES",
+        "VALEUR_NOMINALE_PART",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "GERANTS",
+          "variables": [
+            "GERANT_ADRESSE",
+            "GERANT_CIVILITE",
+            "GERANT_NATIONALITE",
+            "GERANT_NOM",
+            "GERANT_PIECE_NUMERO",
+            "GERANT_PIECE_TYPE",
+            "GERANT_PRENOM"
+          ]
+        },
+        {
+          "name": "SIGNATAIRES",
+          "variables": [
+            "SIGNATAIRE_NOM",
+            "SIGNATAIRE_QUALITE"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "ACTE_NOMINATION_GERANT_DIRECTEUR",
+      "file": "ACTE_NOMINATION_GERANT_modele_deterministe.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Acte de nomination du gérant",
+      "workflow": "CREATION_SARL",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ARTICLE_DESIGNATION_STATUTS",
+        "ASSOCIE_ADRESSE",
+        "ASSOCIE_CAPITAL",
+        "ASSOCIE_CIVILITE",
+        "ASSOCIE_DENOMINATION",
+        "ASSOCIE_FORME",
+        "ASSOCIE_NATIONALITE",
+        "ASSOCIE_NOM",
+        "ASSOCIE_PIECE_NUMERO",
+        "ASSOCIE_PIECE_TYPE",
+        "ASSOCIE_PRENOM",
+        "ASSOCIE_RC_NUMERO",
+        "ASSOCIE_RC_VILLE",
+        "ASSOCIE_REPRESENTANT_NOM",
+        "ASSOCIE_SIEGE",
+        "ASSOCIE_TYPE",
+        "ASSOCIE_UNIQUE",
+        "CAPITAL_CHIFFRES",
+        "DATE_SIGNATURE",
+        "DENOMINATION",
+        "DUREE_GERANCE",
+        "HEURE_ACTE",
+        "LIEU_SIGNATURE",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "ASSOCIES",
+          "variables": [
+            "ASSOCIE_ADRESSE",
+            "ASSOCIE_CAPITAL",
+            "ASSOCIE_CIVILITE",
+            "ASSOCIE_DENOMINATION",
+            "ASSOCIE_FORME",
+            "ASSOCIE_NATIONALITE",
+            "ASSOCIE_NOM",
+            "ASSOCIE_PIECE_NUMERO",
+            "ASSOCIE_PIECE_TYPE",
+            "ASSOCIE_PRENOM",
+            "ASSOCIE_RC_NUMERO",
+            "ASSOCIE_RC_VILLE",
+            "ASSOCIE_REPRESENTANT_NOM",
+            "ASSOCIE_SIEGE",
+            "ASSOCIE_TYPE"
+          ]
+        },
+        {
+          "name": "GERANTS",
+          "variables": [
+            "GERANT_ADRESSE",
+            "GERANT_CIVILITE",
+            "GERANT_DATE_NAISSANCE",
+            "GERANT_NATIONALITE",
+            "GERANT_NOM",
+            "GERANT_PIECE_NUMERO",
+            "GERANT_PIECE_TYPE",
+            "GERANT_PRENOM"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "ANNONCE_LEGALE_DIRECTEUR",
+      "file": "ANNONCE_LEGALE_modele_deterministe.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Annonce légale",
+      "workflow": "CREATION_SARL",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSOCIE_UNIQUE",
+        "CAPITAL_CHIFFRES",
+        "DATE_ACTE",
+        "DATE_DEPOT_LEGAL",
+        "DENOMINATION",
+        "DUREE_SOCIETE",
+        "OBJET_SOCIAL",
+        "RC_NUMERO",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "ASSOCIES",
+          "variables": [
+            "ASSOCIE_NOM",
+            "ASSOCIE_NOMBRE_PARTS",
+            "VALEUR_NOMINALE_PART"
+          ]
+        },
+        {
+          "name": "GERANTS",
+          "variables": [
+            "GERANT_CIVILITE",
+            "GERANT_NOM",
+            "GERANT_PRENOM"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "ANNONCE_LEGALE_MODIFICATION_SARL",
+      "file": "ANNONCE_LEGALE_MODIFICATION_SARL.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Annonce légale (modification)",
+      "workflow": "MODIFICATION",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "DENOMINATION",
+        "CAPITAL_CHIFFRES",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE",
+        "RC_NUMERO",
+        "ASSEMBLEE_DATE",
+        "DATE_DEPOT_LEGAL",
+        "DEPOT_LEGAL_NUMERO"
+      ],
+      "blocks": [
+        {
+          "name": "DECISIONS",
+          "variables": [
+            "DECISION_TYPE",
+            "DENOMINATION_NOUVELLE",
+            "OBJET_MODIFICATION_SENS",
+            "OBJET_MODIFICATION_TEXTE",
+            "SIEGE_SOCIAL_NOUVEAU",
+            "SIEGE_SOCIAL",
+            "VILLE_GREFFE_DEPART",
+            "VILLE_GREFFE_ARRIVEE",
+            "DUREE_SOCIETE_NOUVELLE",
+            "DUREE_POINT_DEPART",
+            "NOUVEL_ASSOCIE_NOM",
+            "CESSION_CEDANT_NOM",
+            "CESSION_CESSIONNAIRE_NOM",
+            "CESSION_NOMBRE_PARTS",
+            "CESSION_NOMBRE_PARTS_LETTRES",
+            "CESSION_PRIX_PART",
+            "CESSION_PRIX_PART_LETTRES",
+            "CAPITAL_AUGMENTATION_CHIFFRES",
+            "CAPITAL_ANCIEN_CHIFFRES",
+            "CAPITAL_NOUVEAU_CHIFFRES",
+            "AUGMENTATION_MODE",
+            "PRIME_EMISSION_PRESENTE",
+            "PRIME_EMISSION_CHIFFRES",
+            "DPS_SUPPRIME",
+            "DPS_BENEFICIAIRE_NOM",
+            "CAPITAL_REDUCTION_CHIFFRES",
+            "REDUCTION_MOTIF",
+            "GERANT_CIVILITE",
+            "GERANT_PRENOM",
+            "GERANT_NOM",
+            "GERANT_QUALITE_ACCORD",
+            "GERANT_SORTANT_NOM",
+            "CESSATION_MOTIF",
+            "FORME_NOUVELLE",
+            "DECISION_TEXTE_LIBRE"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "ANNONCE_LEGALE_MODIFICATION_SARL_AU",
+      "file": "ANNONCE_LEGALE_MODIFICATION_SARL_AU.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Annonce légale (modification)",
+      "workflow": "MODIFICATION",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "DENOMINATION",
+        "CAPITAL_CHIFFRES",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE",
+        "RC_NUMERO",
+        "ASSEMBLEE_DATE",
+        "DATE_DEPOT_LEGAL",
+        "DEPOT_LEGAL_NUMERO"
+      ],
+      "blocks": [
+        {
+          "name": "DECISIONS",
+          "variables": [
+            "DECISION_TYPE",
+            "DENOMINATION_NOUVELLE",
+            "OBJET_MODIFICATION_SENS",
+            "OBJET_MODIFICATION_TEXTE",
+            "SIEGE_SOCIAL_NOUVEAU",
+            "SIEGE_SOCIAL",
+            "VILLE_GREFFE_DEPART",
+            "VILLE_GREFFE_ARRIVEE",
+            "DUREE_SOCIETE_NOUVELLE",
+            "DUREE_POINT_DEPART",
+            "NOUVEL_ASSOCIE_NOM",
+            "CESSION_CEDANT_NOM",
+            "CESSION_CESSIONNAIRE_NOM",
+            "CESSION_NOMBRE_PARTS",
+            "CESSION_NOMBRE_PARTS_LETTRES",
+            "CESSION_PRIX_PART",
+            "CESSION_PRIX_PART_LETTRES",
+            "CAPITAL_AUGMENTATION_CHIFFRES",
+            "CAPITAL_ANCIEN_CHIFFRES",
+            "CAPITAL_NOUVEAU_CHIFFRES",
+            "AUGMENTATION_MODE",
+            "PRIME_EMISSION_PRESENTE",
+            "PRIME_EMISSION_CHIFFRES",
+            "GERANT_CIVILITE",
+            "GERANT_PRENOM",
+            "GERANT_NOM",
+            "GERANT_QUALITE_ACCORD",
+            "GERANT_SORTANT_NOM",
+            "CESSATION_MOTIF",
+            "FORME_NOUVELLE",
+            "NOUVEL_ASSOCIE_NOM",
+            "DECISION_TEXTE_LIBRE"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "ANNONCE_LEGALE_DISSOLUTION_SARL",
+      "file": "ANNONCE_LEGALE_DISSOLUTION_SARL.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Annonce légale (dissolution)",
+      "workflow": "DISSOLUTION",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "DENOMINATION",
+        "CAPITAL_CHIFFRES",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE",
+        "RC_NUMERO",
+        "DATE_DISSOLUTION",
+        "LIQUIDATEUR_CIVILITE",
+        "LIQUIDATEUR_PRENOM",
+        "LIQUIDATEUR_NOM",
+        "LIQUIDATEUR_ADRESSE",
+        "SIEGE_LIQUIDATION",
+        "DATE_DEPOT_LEGAL",
+        "DEPOT_LEGAL_NUMERO"
+      ],
+      "blocks": []
+    },
+    {
+      "code": "ANNONCE_LEGALE_DISSOLUTION_SARL_AU",
+      "file": "ANNONCE_LEGALE_DISSOLUTION_SARL_AU.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Annonce légale (dissolution)",
+      "workflow": "DISSOLUTION",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "DENOMINATION",
+        "CAPITAL_CHIFFRES",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE",
+        "RC_NUMERO",
+        "DATE_DISSOLUTION",
+        "LIQUIDATEUR_CIVILITE",
+        "LIQUIDATEUR_PRENOM",
+        "LIQUIDATEUR_NOM",
+        "LIQUIDATEUR_ADRESSE",
+        "SIEGE_LIQUIDATION",
+        "DATE_DEPOT_LEGAL",
+        "DEPOT_LEGAL_NUMERO"
+      ],
+      "blocks": []
+    },
+    {
+      "code": "ANNONCE_LEGALE_LIQUIDATION_SARL",
+      "file": "ANNONCE_LEGALE_LIQUIDATION_SARL.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Annonce légale (clôture de liquidation)",
+      "workflow": "LIQUIDATION",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "DENOMINATION",
+        "CAPITAL_CHIFFRES",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE",
+        "RC_NUMERO",
+        "DATE_CLOTURE_LIQUIDATION",
+        "RESULTAT_LIQUIDATION_TYPE",
+        "BONI_LIQUIDATION_CHIFFRES",
+        "MALI_LIQUIDATION_CHIFFRES",
+        "LIQUIDATEUR_CIVILITE",
+        "LIQUIDATEUR_PRENOM",
+        "LIQUIDATEUR_NOM",
+        "DATE_DEPOT_LEGAL",
+        "DEPOT_LEGAL_NUMERO"
+      ],
+      "blocks": []
+    },
+    {
+      "code": "ANNONCE_LEGALE_LIQUIDATION_SARL_AU",
+      "file": "ANNONCE_LEGALE_LIQUIDATION_SARL_AU.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Annonce légale (clôture de liquidation)",
+      "workflow": "LIQUIDATION",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "DENOMINATION",
+        "CAPITAL_CHIFFRES",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE",
+        "RC_NUMERO",
+        "DATE_CLOTURE_LIQUIDATION",
+        "RESULTAT_LIQUIDATION_TYPE",
+        "BONI_LIQUIDATION_CHIFFRES",
+        "MALI_LIQUIDATION_CHIFFRES",
+        "LIQUIDATEUR_CIVILITE",
+        "LIQUIDATEUR_PRENOM",
+        "LIQUIDATEUR_NOM",
+        "DATE_DEPOT_LEGAL",
+        "DEPOT_LEGAL_NUMERO"
+      ],
+      "blocks": []
+    },
+    {
+      "code": "PV_DEFAUT_QUORUM_SARL",
+      "file": "PV_DEFAUT_QUORUM_SARL.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "PV — Défaut de quorum",
+      "workflow": "INCIDENT_SEANCE",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSEMBLEE_DATE",
+        "ASSEMBLEE_HEURE",
+        "ASSEMBLEE_LIEU",
+        "ASSEMBLEE_TYPE",
+        "CAPITAL_CHIFFRES",
+        "CAPITAL_LETTRES",
+        "CONVOCATION_AUTEUR",
+        "CONVOCATION_DATE",
+        "CONVOCATION_MODE",
+        "DENOMINATION",
+        "DEUXIEME_ASSEMBLEE_DATE",
+        "DEUXIEME_ASSEMBLEE_HEURE",
+        "DEUXIEME_ASSEMBLEE_LIEU",
+        "HEURE_CLOTURE",
+        "NOMBRE_PARTS",
+        "PARTS_PRESENTES_CHIFFRES",
+        "PARTS_PRESENTES_LETTRES",
+        "PRESIDENT_SEANCE_NOM",
+        "PRESIDENT_SEANCE_QUALITE",
+        "RC_NUMERO",
+        "SECRETAIRE_PRESENT",
+        "SECRETAIRE_SEANCE_NOM",
+        "SIEGE_SOCIAL",
+        "SUITE_ASSEMBLEE",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "ASSOCIES",
+          "variables": [
+            "ASSOCIE_MANDATAIRE_NOM",
+            "ASSOCIE_NOM",
+            "ASSOCIE_NOMBRE_PARTS",
+            "ASSOCIE_PRESENCE"
+          ]
+        },
+        {
+          "name": "ORDRE_DU_JOUR",
+          "variables": [
+            "POINT_ORDRE_DU_JOUR"
+          ]
+        },
+        {
+          "name": "RESOLUTIONS",
+          "variables": [
+            "RESOLUTION_ABSTENTIONS",
+            "RESOLUTION_INTITULE",
+            "RESOLUTION_NUMERO",
+            "RESOLUTION_RESULTAT",
+            "RESOLUTION_TEXTE",
+            "RESOLUTION_VOIX_CONTRE",
+            "RESOLUTION_VOIX_POUR"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "PV_DEFAUT_QUORUM_SARL_AU",
+      "file": "PV_DEFAUT_QUORUM_SARL_AU.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "PV — Défaut de quorum",
+      "workflow": "INCIDENT_SEANCE",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSEMBLEE_DATE",
+        "ASSEMBLEE_HEURE",
+        "ASSEMBLEE_LIEU",
+        "ASSEMBLEE_TYPE",
+        "ASSOCIE_ADRESSE",
+        "ASSOCIE_CAPITAL",
+        "ASSOCIE_CIVILITE",
+        "ASSOCIE_DENOMINATION",
+        "ASSOCIE_FORME",
+        "ASSOCIE_NATIONALITE",
+        "ASSOCIE_NOM",
+        "ASSOCIE_PIECE_NUMERO",
+        "ASSOCIE_PIECE_TYPE",
+        "ASSOCIE_PRENOM",
+        "ASSOCIE_RC_NUMERO",
+        "ASSOCIE_RC_VILLE",
+        "ASSOCIE_REPRESENTANT_NOM",
+        "ASSOCIE_REPRESENTANT_QUALITE",
+        "ASSOCIE_SIEGE",
+        "ASSOCIE_TYPE",
+        "CAPITAL_CHIFFRES",
+        "CAPITAL_LETTRES",
+        "CONVOCATION_AUTEUR",
+        "CONVOCATION_DATE",
+        "CONVOCATION_MODE",
+        "DENOMINATION",
+        "DEUXIEME_ASSEMBLEE_DATE",
+        "DEUXIEME_ASSEMBLEE_HEURE",
+        "DEUXIEME_ASSEMBLEE_LIEU",
+        "HEURE_CLOTURE",
+        "NOMBRE_PARTS",
+        "RC_NUMERO",
+        "SIEGE_SOCIAL",
+        "SUITE_ASSEMBLEE",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "GERANTS",
+          "variables": [
+            "GERANT_CIVILITE",
+            "GERANT_NOM",
+            "GERANT_PRENOM"
+          ]
+        },
+        {
+          "name": "ORDRE_DU_JOUR",
+          "variables": [
+            "POINT_ORDRE_DU_JOUR"
+          ]
+        },
+        {
+          "name": "RESOLUTIONS",
+          "variables": [
+            "RESOLUTION_INTITULE",
+            "RESOLUTION_NUMERO",
+            "RESOLUTION_RESULTAT",
+            "RESOLUTION_TEXTE"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "PV_IRREGULARITE_CONVOCATION_SARL",
+      "file": "PV_IRREGULARITE_CONVOCATION_SARL.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "PV — Irrégularité de convocation",
+      "workflow": "INCIDENT_SEANCE",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSEMBLEE_DATE",
+        "ASSEMBLEE_HEURE",
+        "ASSEMBLEE_LIEU",
+        "ASSEMBLEE_TYPE",
+        "CAPITAL_CHIFFRES",
+        "CAPITAL_LETTRES",
+        "CONVOCATION_AUTEUR",
+        "CONVOCATION_DATE",
+        "CONVOCATION_MODE",
+        "DENOMINATION",
+        "DEUXIEME_ASSEMBLEE_DATE",
+        "DEUXIEME_ASSEMBLEE_HEURE",
+        "DEUXIEME_ASSEMBLEE_LIEU",
+        "HEURE_CLOTURE",
+        "IRREGULARITE_NATURE",
+        "NOMBRE_PARTS",
+        "PARTS_PRESENTES_CHIFFRES",
+        "PARTS_PRESENTES_LETTRES",
+        "PRESIDENT_SEANCE_NOM",
+        "PRESIDENT_SEANCE_QUALITE",
+        "RC_NUMERO",
+        "SECRETAIRE_PRESENT",
+        "SECRETAIRE_SEANCE_NOM",
+        "SIEGE_SOCIAL",
+        "SUITE_ASSEMBLEE",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "ASSOCIES",
+          "variables": [
+            "ASSOCIE_MANDATAIRE_NOM",
+            "ASSOCIE_NOM",
+            "ASSOCIE_NOMBRE_PARTS",
+            "ASSOCIE_PRESENCE"
+          ]
+        },
+        {
+          "name": "ORDRE_DU_JOUR",
+          "variables": [
+            "POINT_ORDRE_DU_JOUR"
+          ]
+        },
+        {
+          "name": "RESOLUTIONS",
+          "variables": [
+            "RESOLUTION_ABSTENTIONS",
+            "RESOLUTION_INTITULE",
+            "RESOLUTION_NUMERO",
+            "RESOLUTION_RESULTAT",
+            "RESOLUTION_TEXTE",
+            "RESOLUTION_VOIX_CONTRE",
+            "RESOLUTION_VOIX_POUR"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "PV_IRREGULARITE_CONVOCATION_SARL_AU",
+      "file": "PV_IRREGULARITE_CONVOCATION_SARL_AU.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "PV — Irrégularité de convocation",
+      "workflow": "INCIDENT_SEANCE",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSEMBLEE_DATE",
+        "ASSEMBLEE_HEURE",
+        "ASSEMBLEE_LIEU",
+        "ASSOCIE_ADRESSE",
+        "ASSOCIE_CAPITAL",
+        "ASSOCIE_CIVILITE",
+        "ASSOCIE_DENOMINATION",
+        "ASSOCIE_FORME",
+        "ASSOCIE_NATIONALITE",
+        "ASSOCIE_NOM",
+        "ASSOCIE_PIECE_NUMERO",
+        "ASSOCIE_PIECE_TYPE",
+        "ASSOCIE_PRENOM",
+        "ASSOCIE_RC_NUMERO",
+        "ASSOCIE_RC_VILLE",
+        "ASSOCIE_REPRESENTANT_NOM",
+        "ASSOCIE_REPRESENTANT_QUALITE",
+        "ASSOCIE_SIEGE",
+        "ASSOCIE_TYPE",
+        "CAPITAL_CHIFFRES",
+        "CAPITAL_LETTRES",
+        "CONVOCATION_AUTEUR",
+        "CONVOCATION_DATE",
+        "CONVOCATION_MODE",
+        "DENOMINATION",
+        "DEUXIEME_ASSEMBLEE_DATE",
+        "DEUXIEME_ASSEMBLEE_HEURE",
+        "DEUXIEME_ASSEMBLEE_LIEU",
+        "HEURE_CLOTURE",
+        "IRREGULARITE_NATURE",
+        "NOMBRE_PARTS",
+        "RC_NUMERO",
+        "SIEGE_SOCIAL",
+        "SUITE_ASSEMBLEE",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "GERANTS",
+          "variables": [
+            "GERANT_CIVILITE",
+            "GERANT_NOM",
+            "GERANT_PRENOM"
+          ]
+        },
+        {
+          "name": "ORDRE_DU_JOUR",
+          "variables": [
+            "POINT_ORDRE_DU_JOUR"
+          ]
+        },
+        {
+          "name": "RESOLUTIONS",
+          "variables": [
+            "RESOLUTION_INTITULE",
+            "RESOLUTION_NUMERO",
+            "RESOLUTION_RESULTAT",
+            "RESOLUTION_TEXTE"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "CONVOCATION_AG",
+      "file": "CONVOCATION_AG.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Convocation à l'assemblée générale",
+      "workflow": "SEANCE_AG",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSOCIE_UNIQUE",
+        "CAPITAL_CHIFFRES",
+        "DENOMINATION",
+        "RC_NUMERO",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "ASSOCIES",
+          "variables": [
+            "AG_TYPE",
+            "ASSOCIE_ADRESSE",
+            "ASSOCIE_NOM",
+            "ASSOCIE_UNIQUE",
+            "CONVOCATION_RANG",
+            "DATE_AG",
+            "DATE_AG_PREMIERE",
+            "DATE_CONVOCATION",
+            "DENOMINATION",
+            "GERANT_NOM",
+            "HEURE_AG",
+            "LIEU_AG",
+            "LIEU_SIGNATURE"
+          ]
+        },
+        {
+          "name": "POINTS_ODJ",
+          "variables": [
+            "POINT_ODJ_LIBELLE"
+          ]
+        },
+        {
+          "name": "DOCUMENTS_JOINTS",
+          "variables": [
+            "DOCUMENT_JOINT_LIBELLE"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "FEUILLE_PRESENCE_AG",
+      "file": "FEUILLE_PRESENCE_AG.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Feuille de présence à l'assemblée générale",
+      "workflow": "SEANCE_AG",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "AG_TYPE",
+        "ASSOCIE_UNIQUE",
+        "CAPITAL_CHIFFRES",
+        "CONVOCATION_RANG",
+        "DATE_AG",
+        "DATE_AG_PREMIERE",
+        "DENOMINATION",
+        "GERANT_NOM",
+        "NB_ASSOCIES_PRESENTS",
+        "NOMBRE_PARTS",
+        "NOMBRE_PARTS_PRESENTES",
+        "NOMBRE_VOIX_PRESENTES",
+        "PRESIDENT_NOM",
+        "RC_NUMERO",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "ASSOCIES",
+          "variables": [
+            "ASSOCIE_ADRESSE",
+            "ASSOCIE_MANDATAIRE_NOM",
+            "ASSOCIE_NOM",
+            "ASSOCIE_NOMBRE_PARTS",
+            "ASSOCIE_NOMBRE_VOIX"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "PV_APPROBATION_COMPTES_SARL",
+      "file": "PV_APPROBATION_COMPTES_SARL.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "PV — Approbation des comptes (AGO annuelle) — SARL pluri",
+      "workflow": "PV_AGO",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSEMBLEE_DATE",
+        "ASSEMBLEE_HEURE",
+        "ASSEMBLEE_LIEU",
+        "CAPITAL_CHIFFRES",
+        "CAPITAL_LETTRES",
+        "COMMISSAIRE_COMPTES_NOM",
+        "COMMISSAIRE_COMPTES_PRESENT",
+        "CONVOCATION_AUTEUR",
+        "CONVOCATION_DATE",
+        "CONVOCATION_MODE",
+        "DENOMINATION",
+        "DIVIDENDE_DISTRIBUE",
+        "DIVIDENDE_MISE_EN_PAIEMENT_DATE",
+        "DIVIDENDE_PAR_PART_CHIFFRES",
+        "EXERCICE_CLOS_DATE",
+        "HEURE_CLOTURE",
+        "NOMBRE_PARTS",
+        "PARTS_PRESENTES_CHIFFRES",
+        "PARTS_PRESENTES_LETTRES",
+        "PRESIDENT_SEANCE_NOM",
+        "PRESIDENT_SEANCE_QUALITE",
+        "RC_NUMERO",
+        "RESULTAT_NET_CHIFFRES",
+        "RESULTAT_NET_LETTRES",
+        "RESULTAT_TYPE",
+        "SECRETAIRE_PRESENT",
+        "SECRETAIRE_SEANCE_NOM",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "ASSOCIES",
+          "variables": [
+            "ASSOCIE_MANDATAIRE_NOM",
+            "ASSOCIE_NOM",
+            "ASSOCIE_NOMBRE_PARTS",
+            "ASSOCIE_PRESENCE"
+          ]
+        },
+        {
+          "name": "ORDRE_DU_JOUR",
+          "variables": [
+            "POINT_ORDRE_DU_JOUR"
+          ]
+        },
+        {
+          "name": "AFFECTATION_RESULTAT",
+          "variables": [
+            "AFFECTATION_LIBELLE",
+            "AFFECTATION_MONTANT_CHIFFRES",
+            "AFFECTATION_MONTANT_LETTRES"
+          ]
+        },
+        {
+          "name": "RESOLUTIONS",
+          "variables": [
+            "RESOLUTION_ABSTENTIONS",
+            "RESOLUTION_INTITULE",
+            "RESOLUTION_NUMERO",
+            "RESOLUTION_RESULTAT",
+            "RESOLUTION_TEXTE",
+            "RESOLUTION_VOIX_CONTRE",
+            "RESOLUTION_VOIX_POUR"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "PV_APPROBATION_COMPTES_SARL_AU",
+      "file": "PV_APPROBATION_COMPTES_SARL_AU.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "PV — Approbation des comptes (décision associé unique) — SARL AU",
+      "workflow": "PV_AGO",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSEMBLEE_DATE",
+        "ASSEMBLEE_HEURE",
+        "ASSEMBLEE_LIEU",
+        "ASSOCIE_ADRESSE",
+        "ASSOCIE_CAPITAL",
+        "ASSOCIE_CIVILITE",
+        "ASSOCIE_DENOMINATION",
+        "ASSOCIE_FORME",
+        "ASSOCIE_NATIONALITE",
+        "ASSOCIE_NOM",
+        "ASSOCIE_PIECE_NUMERO",
+        "ASSOCIE_PIECE_TYPE",
+        "ASSOCIE_PRENOM",
+        "ASSOCIE_RC_NUMERO",
+        "ASSOCIE_RC_VILLE",
+        "ASSOCIE_REPRESENTANT_NOM",
+        "ASSOCIE_REPRESENTANT_QUALITE",
+        "ASSOCIE_SIEGE",
+        "ASSOCIE_TYPE",
+        "CAPITAL_CHIFFRES",
+        "CAPITAL_LETTRES",
+        "COMMISSAIRE_COMPTES_NOM",
+        "COMMISSAIRE_COMPTES_PRESENT",
+        "CONVOCATION_AUTEUR",
+        "CONVOCATION_DATE",
+        "DENOMINATION",
+        "DIVIDENDE_DISTRIBUE",
+        "DIVIDENDE_MISE_EN_PAIEMENT_DATE",
+        "DIVIDENDE_PAR_PART_CHIFFRES",
+        "EXERCICE_CLOS_DATE",
+        "HEURE_CLOTURE",
+        "NOMBRE_PARTS",
+        "RC_NUMERO",
+        "RESULTAT_NET_CHIFFRES",
+        "RESULTAT_NET_LETTRES",
+        "RESULTAT_TYPE",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "ORDRE_DU_JOUR",
+          "variables": [
+            "POINT_ORDRE_DU_JOUR"
+          ]
+        },
+        {
+          "name": "AFFECTATION_RESULTAT",
+          "variables": [
+            "AFFECTATION_LIBELLE",
+            "AFFECTATION_MONTANT_CHIFFRES",
+            "AFFECTATION_MONTANT_LETTRES"
+          ]
+        },
+        {
+          "name": "RESOLUTIONS",
+          "variables": [
+            "RESOLUTION_INTITULE",
+            "RESOLUTION_NUMERO",
+            "RESOLUTION_RESULTAT",
+            "RESOLUTION_TEXTE"
+          ]
+        },
+        {
+          "name": "GERANTS",
+          "variables": [
+            "GERANT_CIVILITE",
+            "GERANT_NOM",
+            "GERANT_PRENOM"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "PV_DISSOLUTION_LIQUIDATION_SARL",
+      "file": "PV_DISSOLUTION_LIQUIDATION_SARL.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "PV — Dissolution / Liquidation (modèle unifié, 3 étapes via PV_ETAPE) — SARL pluri",
+      "workflow": "DISSOLUTION",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ANNEE_LETTRES",
+        "ASSOCIE_UNIQUE",
+        "CAPITAL_CHIFFRES",
+        "CONVOCATION_MODE",
+        "DATE_AG",
+        "DATE_CONVOCATION",
+        "DENOMINATION",
+        "HEURE_AG",
+        "HEURE_CLOTURE",
+        "LIEU_AG",
+        "NOMBRE_PARTS",
+        "NOMBRE_PARTS_PRESENTES",
+        "PRESIDENT_NOM",
+        "PRESIDENT_QUALITE",
+        "PV_ETAPE",
+        "RC_NUMERO",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "ASSOCIES",
+          "variables": [
+            "ASSOCIE_NOM",
+            "ASSOCIE_NOMBRE_PARTS",
+            "ASSOCIE_PRESENCE"
+          ]
+        },
+        {
+          "name": "POINTS_ODJ",
+          "variables": [
+            "POINT_ODJ_LIBELLE"
+          ]
+        },
+        {
+          "name": "RESOLUTIONS",
+          "variables": [
+            "BONI_EXISTE",
+            "BONI_MONTANT",
+            "BONI_PAR_PART",
+            "CESSION_ACTIF_OBJET",
+            "DATE_EFFET",
+            "DISSOLUTION_MOTIF",
+            "EXERCICE_CLOS_DATE",
+            "LIQUIDATEUR_ADRESSE",
+            "LIQUIDATEUR_NOM",
+            "LIQUIDATEUR_REMUNERATION",
+            "LIQUIDATEUR_SORTANT_NOM",
+            "LIQUIDATION_SIEGE",
+            "LIQ_RESULTAT_MONTANT",
+            "LIQ_RESULTAT_SENS",
+            "RESOLUTION_OBJET",
+            "RESOLUTION_ORDINAL",
+            "RESOLUTION_RESULTAT",
+            "RESOLUTION_TYPE"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "PV_DISSOLUTION_LIQUIDATION_SARL_AU",
+      "file": "PV_DISSOLUTION_LIQUIDATION_SARL_AU.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "PV — Dissolution / Liquidation (modèle unifié, 3 étapes via PV_ETAPE) — SARL AU",
+      "workflow": "DISSOLUTION",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ANNEE_LETTRES",
+        "ASSOCIE_ADRESSE",
+        "ASSOCIE_CAPITAL",
+        "ASSOCIE_CIVILITE",
+        "ASSOCIE_DENOMINATION",
+        "ASSOCIE_FORME",
+        "ASSOCIE_NATIONALITE",
+        "ASSOCIE_NOM",
+        "ASSOCIE_PIECE_NUMERO",
+        "ASSOCIE_PIECE_TYPE",
+        "ASSOCIE_PRENOM",
+        "ASSOCIE_RC_NUMERO",
+        "ASSOCIE_RC_VILLE",
+        "ASSOCIE_REPRESENTANT_NOM",
+        "ASSOCIE_REPRESENTANT_QUALITE",
+        "ASSOCIE_SIEGE",
+        "ASSOCIE_TYPE",
+        "ASSOCIE_UNIQUE",
+        "CAPITAL_CHIFFRES",
+        "DATE_AG",
+        "DENOMINATION",
+        "HEURE_AG",
+        "LIEU_AG",
+        "LIEU_SIGNATURE",
+        "PV_ETAPE",
+        "RC_NUMERO",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "POINTS_ODJ",
+          "variables": [
+            "POINT_ODJ_LIBELLE"
+          ]
+        },
+        {
+          "name": "RESOLUTIONS",
+          "variables": [
+            "ASSOCIE_TYPE",
+            "BONI_EXISTE",
+            "BONI_MONTANT",
+            "DATE_EFFET",
+            "DISSOLUTION_MOTIF",
+            "EXERCICE_CLOS_DATE",
+            "LIQUIDATEUR_ADRESSE",
+            "LIQUIDATEUR_NOM",
+            "LIQUIDATEUR_REMUNERATION",
+            "LIQUIDATION_SIEGE",
+            "LIQ_RESULTAT_MONTANT",
+            "LIQ_RESULTAT_SENS",
+            "RESOLUTION_OBJET",
+            "RESOLUTION_ORDINAL",
+            "RESOLUTION_TYPE"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "RAPPORT_LIQUIDATION_DIRECTEUR",
+      "file": "RAPPORT_LIQUIDATION_DIRECTEUR.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Rapport de liquidation (rapport final du liquidateur) — SARL & SARL AU",
+      "workflow": "LIQUIDATION",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ACTIF_REALISE_CHIFFRES",
+        "ACTIF_REALISE_LETTRES",
+        "ASSOCIE_NOM",
+        "ASSOCIE_UNIQUE",
+        "BONI_LIQUIDATION_CHIFFRES",
+        "BONI_LIQUIDATION_LETTRES",
+        "CAPITAL_CHIFFRES",
+        "DATE_CLOTURE_LIQUIDATION",
+        "DATE_DISSOLUTION",
+        "DATE_SIGNATURE",
+        "DENOMINATION",
+        "LIEU_SIGNATURE",
+        "LIQUIDATEUR_ADRESSE",
+        "LIQUIDATEUR_CIVILITE",
+        "LIQUIDATEUR_GENRE",
+        "LIQUIDATEUR_NOM",
+        "LIQUIDATEUR_PIECE_NUMERO",
+        "LIQUIDATEUR_PIECE_TYPE",
+        "LIQUIDATEUR_PRENOM",
+        "MALI_LIQUIDATION_CHIFFRES",
+        "MALI_LIQUIDATION_LETTRES",
+        "NOMBRE_ORIGINAUX",
+        "PASSIF_REGLE_CHIFFRES",
+        "PASSIF_REGLE_LETTRES",
+        "RC_NUMERO",
+        "RESULTAT_LIQUIDATION_TYPE",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "ASSOCIES",
+          "variables": [
+            "ASSOCIE_BONI_CHIFFRES",
+            "ASSOCIE_NOM",
+            "ASSOCIE_NOMBRE_PARTS"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "PV_CREATION_SUCCURSALE_MAROC_SARL",
+      "file": "PV_CREATION_SUCCURSALE_MAROC_SARL.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "PV — Création de succursale (société marocaine) — SARL pluri",
+      "workflow": "SUCCURSALE_MA",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSEMBLEE_DATE",
+        "ASSEMBLEE_HEURE",
+        "ASSEMBLEE_LIEU",
+        "CAPITAL_CHIFFRES",
+        "CAPITAL_LETTRES",
+        "CONVOCATION_AUTEUR",
+        "CONVOCATION_DATE",
+        "CONVOCATION_MODE",
+        "DENOMINATION",
+        "HEURE_CLOTURE",
+        "NOMBRE_PARTS",
+        "PARTS_PRESENTES_CHIFFRES",
+        "PARTS_PRESENTES_LETTRES",
+        "PRESIDENT_SEANCE_NOM",
+        "PRESIDENT_SEANCE_QUALITE",
+        "RC_NUMERO",
+        "SECRETAIRE_PRESENT",
+        "SECRETAIRE_SEANCE_NOM",
+        "SIEGE_SOCIAL",
+        "SUCCURSALE_ACTIVITE",
+        "SUCCURSALE_ADRESSE",
+        "SUCCURSALE_DATE_OUVERTURE",
+        "SUCCURSALE_DOTATION_CHIFFRES",
+        "SUCCURSALE_DOTATION_LETTRES",
+        "SUCCURSALE_DOTATION_PRESENTE",
+        "SUCCURSALE_ENSEIGNE",
+        "SUCCURSALE_RESPONSABLE_PRESENT",
+        "SUCCURSALE_VILLE",
+        "SUCCURSALE_VILLE_GREFFE",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "ASSOCIES",
+          "variables": [
+            "ASSOCIE_MANDATAIRE_NOM",
+            "ASSOCIE_NOM",
+            "ASSOCIE_NOMBRE_PARTS",
+            "ASSOCIE_PRESENCE"
+          ]
+        },
+        {
+          "name": "ORDRE_DU_JOUR",
+          "variables": [
+            "POINT_ORDRE_DU_JOUR"
+          ]
+        },
+        {
+          "name": "RESOLUTIONS",
+          "variables": [
+            "RESOLUTION_ABSTENTIONS",
+            "RESOLUTION_INTITULE",
+            "RESOLUTION_NUMERO",
+            "RESOLUTION_RESULTAT",
+            "RESOLUTION_TEXTE",
+            "RESOLUTION_VOIX_CONTRE",
+            "RESOLUTION_VOIX_POUR"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "PV_CREATION_SUCCURSALE_MAROC_SARL_AU",
+      "file": "PV_CREATION_SUCCURSALE_MAROC_SARL_AU.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "PV — Création de succursale (société marocaine) — SARL AU",
+      "workflow": "SUCCURSALE_MA",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSEMBLEE_DATE",
+        "ASSEMBLEE_HEURE",
+        "ASSEMBLEE_LIEU",
+        "ASSOCIE_ADRESSE",
+        "ASSOCIE_CAPITAL",
+        "ASSOCIE_CIVILITE",
+        "ASSOCIE_DENOMINATION",
+        "ASSOCIE_FORME",
+        "ASSOCIE_NATIONALITE",
+        "ASSOCIE_NOM",
+        "ASSOCIE_PIECE_NUMERO",
+        "ASSOCIE_PIECE_TYPE",
+        "ASSOCIE_PRENOM",
+        "ASSOCIE_RC_NUMERO",
+        "ASSOCIE_RC_VILLE",
+        "ASSOCIE_REPRESENTANT_NOM",
+        "ASSOCIE_REPRESENTANT_QUALITE",
+        "ASSOCIE_SIEGE",
+        "ASSOCIE_TYPE",
+        "CAPITAL_CHIFFRES",
+        "CAPITAL_LETTRES",
+        "DENOMINATION",
+        "HEURE_CLOTURE",
+        "NOMBRE_PARTS",
+        "RC_NUMERO",
+        "SIEGE_SOCIAL",
+        "SUCCURSALE_ACTIVITE",
+        "SUCCURSALE_ADRESSE",
+        "SUCCURSALE_DATE_OUVERTURE",
+        "SUCCURSALE_DOTATION_CHIFFRES",
+        "SUCCURSALE_DOTATION_LETTRES",
+        "SUCCURSALE_DOTATION_PRESENTE",
+        "SUCCURSALE_ENSEIGNE",
+        "SUCCURSALE_VILLE",
+        "SUCCURSALE_VILLE_GREFFE",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "GERANTS",
+          "variables": [
+            "GERANT_CIVILITE",
+            "GERANT_NOM",
+            "GERANT_PRENOM"
+          ]
+        },
+        {
+          "name": "ORDRE_DU_JOUR",
+          "variables": [
+            "POINT_ORDRE_DU_JOUR"
+          ]
+        },
+        {
+          "name": "RESOLUTIONS",
+          "variables": [
+            "RESOLUTION_INTITULE",
+            "RESOLUTION_NUMERO",
+            "RESOLUTION_RESULTAT",
+            "RESOLUTION_TEXTE"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "PV_CREATION_SUCCURSALE_ETRANGERE_SARL",
+      "file": "PV_CREATION_SUCCURSALE_ETRANGERE_SARL.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "PV — Création succursale au Maroc (société étrangère, organe collégial) — SARL",
+      "workflow": "SUCCURSALE_ETR",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "HEURE_CLOTURE",
+        "ORGANE_COMPETENT",
+        "ORGANE_DECISION_DATE",
+        "ORGANE_DECISION_HEURE",
+        "ORGANE_DECISION_LIEU",
+        "PRESIDENT_SEANCE_NOM",
+        "PRESIDENT_SEANCE_QUALITE",
+        "SECRETAIRE_PRESENT",
+        "SECRETAIRE_SEANCE_NOM",
+        "SOCIETE_MERE_CAPITAL",
+        "SOCIETE_MERE_DENOMINATION",
+        "SOCIETE_MERE_FORME",
+        "SOCIETE_MERE_LOI_APPLICABLE",
+        "SOCIETE_MERE_PAYS",
+        "SOCIETE_MERE_REGISTRE",
+        "SOCIETE_MERE_REGISTRE_NUMERO",
+        "SOCIETE_MERE_SIEGE",
+        "SUCCURSALE_ACTIVITE",
+        "SUCCURSALE_ADRESSE",
+        "SUCCURSALE_DATE_OUVERTURE",
+        "SUCCURSALE_DOTATION_CHIFFRES",
+        "SUCCURSALE_DOTATION_LETTRES",
+        "SUCCURSALE_DOTATION_PRESENTE",
+        "SUCCURSALE_ENSEIGNE",
+        "SUCCURSALE_VILLE",
+        "SUCCURSALE_VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "ORDRE_DU_JOUR",
+          "variables": [
+            "POINT_ORDRE_DU_JOUR"
+          ]
+        },
+        {
+          "name": "RESOLUTIONS",
+          "variables": [
+            "RESOLUTION_ABSTENTIONS",
+            "RESOLUTION_INTITULE",
+            "RESOLUTION_NUMERO",
+            "RESOLUTION_RESULTAT",
+            "RESOLUTION_TEXTE",
+            "RESOLUTION_VOIX_CONTRE",
+            "RESOLUTION_VOIX_POUR"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU",
+      "file": "PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "PV — Création succursale au Maroc (société étrangère, organe / associé unique) — SARL AU",
+      "workflow": "SUCCURSALE_ETR",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ORGANE_COMPETENT",
+        "ORGANE_DECISION_DATE",
+        "ORGANE_DECISION_HEURE",
+        "ORGANE_DECISION_LIEU",
+        "PRESIDENT_SEANCE_NOM",
+        "SOCIETE_MERE_CAPITAL",
+        "SOCIETE_MERE_DENOMINATION",
+        "SOCIETE_MERE_FORME",
+        "SOCIETE_MERE_LOI_APPLICABLE",
+        "SOCIETE_MERE_PAYS",
+        "SOCIETE_MERE_REGISTRE",
+        "SOCIETE_MERE_REGISTRE_NUMERO",
+        "SOCIETE_MERE_SIEGE",
+        "SUCCURSALE_ACTIVITE",
+        "SUCCURSALE_ADRESSE",
+        "SUCCURSALE_DATE_OUVERTURE",
+        "SUCCURSALE_DOTATION_CHIFFRES",
+        "SUCCURSALE_DOTATION_LETTRES",
+        "SUCCURSALE_DOTATION_PRESENTE",
+        "SUCCURSALE_ENSEIGNE",
+        "SUCCURSALE_VILLE",
+        "SUCCURSALE_VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "ORDRE_DU_JOUR",
+          "variables": [
+            "POINT_ORDRE_DU_JOUR"
+          ]
+        },
+        {
+          "name": "RESOLUTIONS",
+          "variables": [
+            "RESOLUTION_INTITULE",
+            "RESOLUTION_NUMERO",
+            "RESOLUTION_RESULTAT",
+            "RESOLUTION_TEXTE"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL",
+      "file": "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL.docx",
+      "origin": "derive-jurika",
+      "document_kind": "Annonce légale (ouverture de succursale — société mère ÉTRANGÈRE) — SARL · DÉRIVÉ, à valider par le directeur",
+      "workflow": "SUCCURSALE_ETR",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSEMBLEE_DATE",
+        "DATE_DEPOT_LEGAL",
+        "DEPOT_LEGAL_NUMERO",
+        "ORGANE_COMPETENT",
+        "SOCIETE_MERE_CAPITAL",
+        "SOCIETE_MERE_DENOMINATION",
+        "SOCIETE_MERE_FORME",
+        "SOCIETE_MERE_LOI_APPLICABLE",
+        "SOCIETE_MERE_PAYS",
+        "SOCIETE_MERE_REGISTRE",
+        "SOCIETE_MERE_REGISTRE_NUMERO",
+        "SOCIETE_MERE_SIEGE",
+        "SUCCURSALE_ACTIVITE",
+        "SUCCURSALE_ADRESSE",
+        "SUCCURSALE_DATE_OUVERTURE",
+        "SUCCURSALE_DOTATION_CHIFFRES",
+        "SUCCURSALE_DOTATION_LETTRES",
+        "SUCCURSALE_DOTATION_PRESENTE",
+        "SUCCURSALE_ENSEIGNE",
+        "SUCCURSALE_RESPONSABLE_CIVILITE",
+        "SUCCURSALE_RESPONSABLE_NOM",
+        "SUCCURSALE_RESPONSABLE_POUVOIRS",
+        "SUCCURSALE_RESPONSABLE_PRENOM",
+        "SUCCURSALE_RESPONSABLE_PRESENT",
+        "SUCCURSALE_VILLE",
+        "SUCCURSALE_VILLE_GREFFE"
+      ],
+      "blocks": []
+    },
+    {
+      "code": "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL_AU",
+      "file": "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL_AU.docx",
+      "origin": "derive-jurika",
+      "document_kind": "Annonce légale (ouverture de succursale — société mère ÉTRANGÈRE) — SARL AU · DÉRIVÉ, à valider par le directeur",
+      "workflow": "SUCCURSALE_ETR",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSEMBLEE_DATE",
+        "DATE_DEPOT_LEGAL",
+        "DEPOT_LEGAL_NUMERO",
+        "ORGANE_COMPETENT",
+        "SOCIETE_MERE_CAPITAL",
+        "SOCIETE_MERE_DENOMINATION",
+        "SOCIETE_MERE_FORME",
+        "SOCIETE_MERE_LOI_APPLICABLE",
+        "SOCIETE_MERE_PAYS",
+        "SOCIETE_MERE_REGISTRE",
+        "SOCIETE_MERE_REGISTRE_NUMERO",
+        "SOCIETE_MERE_SIEGE",
+        "SUCCURSALE_ACTIVITE",
+        "SUCCURSALE_ADRESSE",
+        "SUCCURSALE_DATE_OUVERTURE",
+        "SUCCURSALE_DOTATION_CHIFFRES",
+        "SUCCURSALE_DOTATION_LETTRES",
+        "SUCCURSALE_DOTATION_PRESENTE",
+        "SUCCURSALE_ENSEIGNE",
+        "SUCCURSALE_RESPONSABLE_CIVILITE",
+        "SUCCURSALE_RESPONSABLE_NOM",
+        "SUCCURSALE_RESPONSABLE_POUVOIRS",
+        "SUCCURSALE_RESPONSABLE_PRENOM",
+        "SUCCURSALE_RESPONSABLE_PRESENT",
+        "SUCCURSALE_VILLE",
+        "SUCCURSALE_VILLE_GREFFE"
+      ],
+      "blocks": []
+    },
+    {
+      "code": "PV_FERMETURE_SUCCURSALE_SARL",
+      "file": "PV_FERMETURE_SUCCURSALE_SARL.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "PV — Fermeture de succursale — SARL pluri",
+      "workflow": "FERMETURE_SUCCURSALE",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSEMBLEE_DATE",
+        "ASSEMBLEE_HEURE",
+        "ASSEMBLEE_LIEU",
+        "CAPITAL_CHIFFRES",
+        "CAPITAL_LETTRES",
+        "CONVOCATION_AUTEUR",
+        "CONVOCATION_DATE",
+        "CONVOCATION_MODE",
+        "DENOMINATION",
+        "HEURE_CLOTURE",
+        "NOMBRE_PARTS",
+        "PARTS_PRESENTES_CHIFFRES",
+        "PARTS_PRESENTES_LETTRES",
+        "PRESIDENT_SEANCE_NOM",
+        "PRESIDENT_SEANCE_QUALITE",
+        "RC_NUMERO",
+        "SECRETAIRE_PRESENT",
+        "SECRETAIRE_SEANCE_NOM",
+        "SIEGE_SOCIAL",
+        "SUCCURSALE_ACTIVITE",
+        "SUCCURSALE_ADRESSE",
+        "SUCCURSALE_DATE_FERMETURE",
+        "SUCCURSALE_ENSEIGNE",
+        "SUCCURSALE_MOTIF",
+        "SUCCURSALE_RC_NUMERO",
+        "SUCCURSALE_RESPONSABLE_CIVILITE",
+        "SUCCURSALE_RESPONSABLE_NOM",
+        "SUCCURSALE_RESPONSABLE_PRENOM",
+        "SUCCURSALE_RESPONSABLE_PRESENT",
+        "SUCCURSALE_VILLE",
+        "SUCCURSALE_VILLE_GREFFE",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "ASSOCIES",
+          "variables": [
+            "ASSOCIE_MANDATAIRE_NOM",
+            "ASSOCIE_NOM",
+            "ASSOCIE_NOMBRE_PARTS",
+            "ASSOCIE_PRESENCE"
+          ]
+        },
+        {
+          "name": "ORDRE_DU_JOUR",
+          "variables": [
+            "POINT_ORDRE_DU_JOUR"
+          ]
+        },
+        {
+          "name": "RESOLUTIONS",
+          "variables": [
+            "RESOLUTION_ABSTENTIONS",
+            "RESOLUTION_INTITULE",
+            "RESOLUTION_NUMERO",
+            "RESOLUTION_RESULTAT",
+            "RESOLUTION_TEXTE",
+            "RESOLUTION_VOIX_CONTRE",
+            "RESOLUTION_VOIX_POUR"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "PV_FERMETURE_SUCCURSALE_SARL_AU",
+      "file": "PV_FERMETURE_SUCCURSALE_SARL_AU.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "PV — Fermeture de succursale — SARL AU",
+      "workflow": "FERMETURE_SUCCURSALE",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSEMBLEE_DATE",
+        "ASSEMBLEE_HEURE",
+        "ASSEMBLEE_LIEU",
+        "ASSOCIE_ADRESSE",
+        "ASSOCIE_CAPITAL",
+        "ASSOCIE_CIVILITE",
+        "ASSOCIE_DENOMINATION",
+        "ASSOCIE_FORME",
+        "ASSOCIE_NATIONALITE",
+        "ASSOCIE_NOM",
+        "ASSOCIE_PIECE_NUMERO",
+        "ASSOCIE_PIECE_TYPE",
+        "ASSOCIE_PRENOM",
+        "ASSOCIE_RC_NUMERO",
+        "ASSOCIE_RC_VILLE",
+        "ASSOCIE_REPRESENTANT_NOM",
+        "ASSOCIE_REPRESENTANT_QUALITE",
+        "ASSOCIE_SIEGE",
+        "ASSOCIE_TYPE",
+        "CAPITAL_CHIFFRES",
+        "CAPITAL_LETTRES",
+        "DENOMINATION",
+        "HEURE_CLOTURE",
+        "NOMBRE_PARTS",
+        "RC_NUMERO",
+        "SIEGE_SOCIAL",
+        "SUCCURSALE_ACTIVITE",
+        "SUCCURSALE_ADRESSE",
+        "SUCCURSALE_DATE_FERMETURE",
+        "SUCCURSALE_ENSEIGNE",
+        "SUCCURSALE_MOTIF",
+        "SUCCURSALE_RC_NUMERO",
+        "SUCCURSALE_RESPONSABLE_CIVILITE",
+        "SUCCURSALE_RESPONSABLE_NOM",
+        "SUCCURSALE_RESPONSABLE_PRENOM",
+        "SUCCURSALE_RESPONSABLE_PRESENT",
+        "SUCCURSALE_VILLE",
+        "SUCCURSALE_VILLE_GREFFE",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "GERANTS",
+          "variables": [
+            "GERANT_CIVILITE",
+            "GERANT_NOM",
+            "GERANT_PRENOM"
+          ]
+        },
+        {
+          "name": "ORDRE_DU_JOUR",
+          "variables": [
+            "POINT_ORDRE_DU_JOUR"
+          ]
+        },
+        {
+          "name": "RESOLUTIONS",
+          "variables": [
+            "RESOLUTION_INTITULE",
+            "RESOLUTION_NUMERO",
+            "RESOLUTION_RESULTAT",
+            "RESOLUTION_TEXTE"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL",
+      "file": "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Annonce légale (ouverture de succursale) — SARL pluri",
+      "workflow": "SUCCURSALE_MA",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSEMBLEE_DATE",
+        "CAPITAL_CHIFFRES",
+        "DATE_DEPOT_LEGAL",
+        "DENOMINATION",
+        "DEPOT_LEGAL_NUMERO",
+        "RC_NUMERO",
+        "SIEGE_SOCIAL",
+        "SUCCURSALE_ACTIVITE",
+        "SUCCURSALE_ADRESSE",
+        "SUCCURSALE_DATE_OUVERTURE",
+        "SUCCURSALE_DOTATION_CHIFFRES",
+        "SUCCURSALE_DOTATION_LETTRES",
+        "SUCCURSALE_DOTATION_PRESENTE",
+        "SUCCURSALE_ENSEIGNE",
+        "SUCCURSALE_RESPONSABLE_CIVILITE",
+        "SUCCURSALE_RESPONSABLE_NOM",
+        "SUCCURSALE_RESPONSABLE_POUVOIRS",
+        "SUCCURSALE_RESPONSABLE_PRENOM",
+        "SUCCURSALE_RESPONSABLE_PRESENT",
+        "SUCCURSALE_VILLE",
+        "SUCCURSALE_VILLE_GREFFE",
+        "VILLE_GREFFE"
+      ],
+      "blocks": []
+    },
+    {
+      "code": "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL_AU",
+      "file": "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL_AU.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Annonce légale (ouverture de succursale) — SARL AU",
+      "workflow": "SUCCURSALE_MA",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSEMBLEE_DATE",
+        "CAPITAL_CHIFFRES",
+        "DATE_DEPOT_LEGAL",
+        "DENOMINATION",
+        "DEPOT_LEGAL_NUMERO",
+        "RC_NUMERO",
+        "SIEGE_SOCIAL",
+        "SUCCURSALE_ACTIVITE",
+        "SUCCURSALE_ADRESSE",
+        "SUCCURSALE_DATE_OUVERTURE",
+        "SUCCURSALE_DOTATION_CHIFFRES",
+        "SUCCURSALE_DOTATION_LETTRES",
+        "SUCCURSALE_DOTATION_PRESENTE",
+        "SUCCURSALE_ENSEIGNE",
+        "SUCCURSALE_RESPONSABLE_CIVILITE",
+        "SUCCURSALE_RESPONSABLE_NOM",
+        "SUCCURSALE_RESPONSABLE_POUVOIRS",
+        "SUCCURSALE_RESPONSABLE_PRENOM",
+        "SUCCURSALE_RESPONSABLE_PRESENT",
+        "SUCCURSALE_VILLE",
+        "SUCCURSALE_VILLE_GREFFE",
+        "VILLE_GREFFE"
+      ],
+      "blocks": []
+    },
+    {
+      "code": "ANNONCE_LEGALE_FERMETURE_SUCCURSALE_SARL",
+      "file": "ANNONCE_LEGALE_FERMETURE_SUCCURSALE_SARL.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Annonce légale (fermeture de succursale) — SARL pluri",
+      "workflow": "FERMETURE_SUCCURSALE",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSEMBLEE_DATE",
+        "CAPITAL_CHIFFRES",
+        "DATE_DEPOT_LEGAL",
+        "DENOMINATION",
+        "DEPOT_LEGAL_NUMERO",
+        "RC_NUMERO",
+        "SIEGE_SOCIAL",
+        "SUCCURSALE_ADRESSE",
+        "SUCCURSALE_DATE_FERMETURE",
+        "SUCCURSALE_ENSEIGNE",
+        "SUCCURSALE_MOTIF",
+        "SUCCURSALE_RC_NUMERO",
+        "SUCCURSALE_VILLE",
+        "SUCCURSALE_VILLE_GREFFE",
+        "VILLE_GREFFE"
+      ],
+      "blocks": []
+    },
+    {
+      "code": "ANNONCE_LEGALE_FERMETURE_SUCCURSALE_SARL_AU",
+      "file": "ANNONCE_LEGALE_FERMETURE_SUCCURSALE_SARL_AU.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "Annonce légale (fermeture de succursale) — SARL AU",
+      "workflow": "FERMETURE_SUCCURSALE",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ASSEMBLEE_DATE",
+        "CAPITAL_CHIFFRES",
+        "DATE_DEPOT_LEGAL",
+        "DENOMINATION",
+        "DEPOT_LEGAL_NUMERO",
+        "RC_NUMERO",
+        "SIEGE_SOCIAL",
+        "SUCCURSALE_ADRESSE",
+        "SUCCURSALE_DATE_FERMETURE",
+        "SUCCURSALE_ENSEIGNE",
+        "SUCCURSALE_MOTIF",
+        "SUCCURSALE_RC_NUMERO",
+        "SUCCURSALE_VILLE",
+        "SUCCURSALE_VILLE_GREFFE",
+        "VILLE_GREFFE"
+      ],
+      "blocks": []
+    },
+    {
+      "code": "PV_MODIFICATION_SARL",
+      "file": "PV_MODIFICATION_SARL.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "PV — Modification (AGE) — résolutions typées (32 types via RESOLUTION_TYPE) — SARL pluri",
+      "workflow": "MODIFICATION",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "AG_TYPE",
+        "ANNEE_LETTRES",
+        "ASSOCIE_UNIQUE",
+        "CAC_PRESENT",
+        "CONVOCATION_MODE",
+        "CONVOCATION_RANG",
+        "DATE_AG",
+        "DATE_AG_PREMIERE",
+        "DATE_CONVOCATION",
+        "DENOMINATION",
+        "HEURE_AG",
+        "HEURE_CLOTURE",
+        "LIEU_AG",
+        "NOMBRE_PARTS_PRESENTES",
+        "PRESIDENT_NOM",
+        "PRESIDENT_QUALITE",
+        "QUORUM_ATTEINT",
+        "RC_NUMERO",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "ASSOCIES",
+          "variables": [
+            "ASSOCIE_NOM",
+            "ASSOCIE_NOMBRE_PARTS",
+            "ASSOCIE_PRESENCE"
+          ]
+        },
+        {
+          "name": "POINTS_ODJ",
+          "variables": [
+            "POINT_ODJ_LIBELLE"
+          ]
+        },
+        {
+          "name": "RESOLUTIONS",
+          "variables": [
+            "ACOMPTE_MONTANT",
+            "ACOMPTE_PAR_PART",
+            "APPORTEUR_NOM",
+            "APPORT_NATURE_DESCRIPTION",
+            "APPORT_NATURE_VALEUR_CHIFFRES",
+            "APPORT_NATURE_VALEUR_LETTRES",
+            "ARTICLES_MODIFIES",
+            "AUGCAP_LIBERATION_MODE",
+            "AUGCAP_MODE",
+            "AUGCAP_MONTANT_CHIFFRES",
+            "AUGCAP_MONTANT_LETTRES",
+            "AUGCAP_NB_PARTS_NOUVELLES",
+            "AUGCAP_NOUVEAU_CAPITAL",
+            "AUGCAP_PARTS_A",
+            "AUGCAP_PARTS_DE",
+            "AUTORISATION_OBJET",
+            "CAC_ACTION",
+            "CAC_EXISTE",
+            "CAC_FIN_MANDAT_DATE",
+            "CAPITAL_CHIFFRES",
+            "CEDANT_NOM",
+            "CESSIONNAIRE_NOM",
+            "CESSIONNAIRE_TIERS",
+            "CESSION_NB_PARTS",
+            "CESSION_PARTS_A",
+            "CESSION_PARTS_DE",
+            "CESSION_PRIX",
+            "COMMISSAIRE_APPORTS_NOM",
+            "COMMISSAIRE_COMPTES_NOM",
+            "COMMISSAIRE_TRANSFORMATION_EXISTE",
+            "COMMISSAIRE_TRANSFORMATION_NOM",
+            "DATE_EFFET",
+            "DATE_EXPIRATION_INITIALE",
+            "DATE_MISE_PAIEMENT",
+            "DIVIDENDE_PAR_PART",
+            "DIVIDENDE_TOTAL",
+            "DPS_SUPPRESSION",
+            "DUREE_GERANCE",
+            "DUREE_MANDAT_CAC",
+            "ENGAGEMENTS_MANDAT",
+            "EXERCICE_CLOS_DATE",
+            "EXERCICE_TRANSITOIRE_DEBUT",
+            "EXERCICE_TRANSITOIRE_DUREE",
+            "EXERCICE_TRANSITOIRE_FIN",
+            "FONDS_COMMERCE",
+            "GERANT_SORTANT",
+            "GERANT_SORTANT_DATE_EFFET",
+            "GERANT_SORTANT_MOTIF",
+            "GERANT_SORTANT_NOM",
+            "INCORPORATION_POSTE",
+            "NANTISSEMENT_CONSTITUANT_NOM",
+            "NANTISSEMENT_CREANCE_OBJET",
+            "NANTISSEMENT_CREANCIER_NOM",
+            "NANTISSEMENT_NB_PARTS",
+            "NOMBRE_PARTS",
+            "NOUVEAU_SIEGE",
+            "NOUVELLE_DATE_CLOTURE",
+            "NOUVELLE_DENOMINATION",
+            "NOUVELLE_DUREE_ECHEANCE",
+            "NOUVELLE_VALEUR_NOMINALE",
+            "OBJET_ACTION",
+            "OBJET_MODIFICATION",
+            "PRELEVEMENT_MONTANT",
+            "PRELEVEMENT_POSTE",
+            "PRIME_EMISSION",
+            "PRIME_EMISSION_MONTANT",
+            "PRIME_EMISSION_TOTAL",
+            "PROROGATION_DUREE",
+            "RACHAT_DATE_LIMITE",
+            "RACHAT_PRIX_PART",
+            "REDCAP_MODE",
+            "REDCAP_MONTANT",
+            "REDCAP_MOTIF",
+            "REDCAP_NB_PARTS_NOUVELLES",
+            "REDCAP_NOUVEAU_CAPITAL",
+            "REMUNERATION_DATE_EFFET",
+            "REMUNERATION_MONTANT",
+            "REMUNERATION_PERIODICITE",
+            "RESOLUTION_OBJET",
+            "RESOLUTION_ORDINAL",
+            "RESOLUTION_RESULTAT",
+            "RESOLUTION_TYPE",
+            "RESTRUCTURATION_MODALITES",
+            "RESTRUCTURATION_NATURE",
+            "RESULTAT_MONTANT",
+            "RESULTAT_SENS",
+            "SIEGE_MEME_PREFECTURE",
+            "STATUTS_NOUVEAU_LIBELLE",
+            "TRANSFORMATION_FORME",
+            "TRANSFORMATION_ORGANES",
+            "TRANSMISSION_ORIGINE",
+            "VALEUR_NOMINALE_PART"
+          ]
+        },
+        {
+          "name": "AFFECTATIONS",
+          "variables": [
+            "AFFECTATION_MONTANT",
+            "AFFECTATION_POSTE"
+          ]
+        },
+        {
+          "name": "GERANTS",
+          "variables": [
+            "GERANT_ADRESSE",
+            "GERANT_CIVILITE",
+            "GERANT_DATE_NAISSANCE",
+            "GERANT_NATIONALITE",
+            "GERANT_NOM",
+            "GERANT_PIECE_NUMERO",
+            "GERANT_PIECE_TYPE",
+            "GERANT_PRENOM"
+          ]
+        },
+        {
+          "name": "BENEFICIAIRES_DPS",
+          "variables": [
+            "BENEFICIAIRE_NB_PARTS",
+            "BENEFICIAIRE_NOM"
+          ]
+        }
+      ]
+    },
+    {
+      "code": "PV_MODIFICATION_SARL_AU",
+      "file": "PV_MODIFICATION_SARL_AU.docx",
+      "origin": "directeur-2026-08",
+      "document_kind": "PV — Décisions de l'associé unique (Modification) — résolutions typées (28 types via RESOLUTION_TYPE) — SARL AU",
+      "workflow": "MODIFICATION",
+      "placeholder_style": "dollar_nu_directeur",
+      "variables": [
+        "ANNEE_LETTRES",
+        "ASSOCIE_ADRESSE",
+        "ASSOCIE_CAPITAL",
+        "ASSOCIE_CIVILITE",
+        "ASSOCIE_DENOMINATION",
+        "ASSOCIE_FORME",
+        "ASSOCIE_NATIONALITE",
+        "ASSOCIE_PIECE_NUMERO",
+        "ASSOCIE_PIECE_TYPE",
+        "ASSOCIE_PRENOM",
+        "ASSOCIE_RC_NUMERO",
+        "ASSOCIE_RC_VILLE",
+        "ASSOCIE_REPRESENTANT_NOM",
+        "ASSOCIE_REPRESENTANT_QUALITE",
+        "ASSOCIE_SIEGE",
+        "ASSOCIE_TYPE",
+        "ASSOCIE_UNIQUE",
+        "CAC_EXISTE",
+        "DATE_AG",
+        "DENOMINATION",
+        "GERANT_EST_ASSOCIE",
+        "HEURE_AG",
+        "LIEU_AG",
+        "LIEU_SIGNATURE",
+        "RC_NUMERO",
+        "SIEGE_SOCIAL",
+        "VILLE_GREFFE"
+      ],
+      "blocks": [
+        {
+          "name": "ASSOCIES",
+          "variables": [
+            "ASSOCIE_NOM"
+          ]
+        },
+        {
+          "name": "POINTS_ODJ",
+          "variables": [
+            "POINT_ODJ_LIBELLE"
+          ]
+        },
+        {
+          "name": "RESOLUTIONS",
+          "variables": [
+            "ACOMPTE_MONTANT",
+            "APPORT_NATURE_DESCRIPTION",
+            "APPORT_NATURE_VALEUR_CHIFFRES",
+            "ARTICLES_MODIFIES",
+            "AUGCAP_LIBERATION_MODE",
+            "AUGCAP_MODE",
+            "AUGCAP_MONTANT_CHIFFRES",
+            "AUGCAP_MONTANT_LETTRES",
+            "AUGCAP_NB_PARTS_NOUVELLES",
+            "AUGCAP_NOUVEAU_CAPITAL",
+            "AUGCAP_PARTS_A",
+            "AUGCAP_PARTS_DE",
+            "AUTORISATION_OBJET",
+            "CAC_ACTION",
+            "CAC_FIN_MANDAT_DATE",
+            "CAPITAL_CHIFFRES",
+            "CESSIONNAIRE_NOM",
+            "CESSION_NB_PARTS",
+            "CESSION_PRIX",
+            "COMMISSAIRE_APPORTS_NOM",
+            "COMMISSAIRE_COMPTES_NOM",
+            "COMMISSAIRE_TRANSFORMATION_EXISTE",
+            "COMMISSAIRE_TRANSFORMATION_NOM",
+            "DATE_EFFET",
+            "DATE_EXPIRATION_INITIALE",
+            "DATE_MISE_PAIEMENT",
+            "DIVIDENDE_TOTAL",
+            "DUREE_GERANCE",
+            "DUREE_MANDAT_CAC",
+            "ENGAGEMENTS_MANDAT",
+            "EXERCICE_CLOS_DATE",
+            "EXERCICE_TRANSITOIRE_DEBUT",
+            "EXERCICE_TRANSITOIRE_DUREE",
+            "EXERCICE_TRANSITOIRE_FIN",
+            "FONDS_COMMERCE",
+            "GERANT_SORTANT",
+            "GERANT_SORTANT_DATE_EFFET",
+            "GERANT_SORTANT_MOTIF",
+            "GERANT_SORTANT_NOM",
+            "INCORPORATION_POSTE",
+            "NOMBRE_PARTS",
+            "NOUVEAU_SIEGE",
+            "NOUVELLE_DATE_CLOTURE",
+            "NOUVELLE_DENOMINATION",
+            "NOUVELLE_DUREE_ECHEANCE",
+            "NOUVELLE_VALEUR_NOMINALE",
+            "OBJET_ACTION",
+            "OBJET_MODIFICATION",
+            "PRELEVEMENT_MONTANT",
+            "PRELEVEMENT_POSTE",
+            "PRIME_EMISSION",
+            "PRIME_EMISSION_MONTANT",
+            "REDCAP_MODE",
+            "REDCAP_MONTANT",
+            "REDCAP_MOTIF",
+            "REDCAP_NOUVEAU_CAPITAL",
+            "REMUNERATION_DATE_EFFET",
+            "REMUNERATION_MONTANT",
+            "REMUNERATION_PERIODICITE",
+            "RESOLUTION_OBJET",
+            "RESOLUTION_ORDINAL",
+            "RESOLUTION_TYPE",
+            "RESULTAT_MONTANT",
+            "RESULTAT_SENS",
+            "STATUTS_NOUVEAU_LIBELLE",
+            "TRANSFORMATION_FORME",
+            "TRANSFORMATION_ORGANES",
+            "VALEUR_NOMINALE_PART"
+          ]
+        },
+        {
+          "name": "AFFECTATIONS",
+          "variables": [
+            "AFFECTATION_MONTANT",
+            "AFFECTATION_POSTE"
+          ]
+        },
+        {
+          "name": "GERANTS",
+          "variables": [
+            "GERANT_ADRESSE",
+            "GERANT_CIVILITE",
+            "GERANT_DATE_NAISSANCE",
+            "GERANT_NATIONALITE",
+            "GERANT_NOM",
+            "GERANT_PIECE_NUMERO",
+            "GERANT_PIECE_TYPE",
+            "GERANT_PRENOM"
+          ]
+        }
+      ]
+    }
+  ]
+}

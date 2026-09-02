@@ -1,0 +1,73 @@
+{
+  "PV_CREATION_SUCCURSALE_ETRANGERE_SARL": {
+    "societeMere": {
+      "denomination": "GLOBAL TRADING LTD",
+      "forme": "Limited",
+      "pays": "Royaume-Uni",
+      "capital": "500 000 GBP",
+      "siege": "10 Downing Street, Londres",
+      "registre": "Companies House",
+      "registreNumero": "GB-9988776",
+      "loiApplicable": "loi anglaise"
+    },
+    "organe": {
+      "competent": "le conseil d'administration",
+      "date": "2026-09-10", "heure": "14H00", "lieu": "Londres",
+      "voixPour": "5"
+    },
+    "seance": {
+      "presidentNom": "Mr. John SMITH", "presidentQualite": "Chairman",
+      "secretairePresent": "oui", "secretaireNom": "Ms. Jane DOE", "heureCloture": "15H30"
+    },
+    "ordreDuJour": ["Ouverture d'une succursale au Maroc", "Désignation du représentant résident",
+                    "Pouvoirs pour formalités"],
+    "succursale": {
+      "enseigne": "GLOBAL TRADING — Succursale Maroc",
+      "adresse": "30 Boulevard d'Anfa",
+      "ville": "Casablanca",
+      "villeGreffe": "CASABLANCA",
+      "activite": "Négoce international",
+      "dateOuverture": "2026-11-01",
+      "dotationPresente": "oui",
+      "dotationMontant": 200000
+    },
+    "representant": {
+      "civilite": "M.", "prenom": "Rachid", "nom": "EL FASSI", "nationalite": "marocaine",
+      "adresse": "15 Rue de la Liberté, Casablanca", "pieceType": "CIN", "pieceNumero": "BE778899",
+      "pouvoirs": "diriger la succursale et représenter la société auprès des tiers et des administrations marocaines"
+    },
+    "formalitesMandataireNom": "M. Rachid EL FASSI"
+  },
+  "PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU": {
+    "societeMere": {
+      "denomination": "MEDITERRANEA GMBH",
+      "forme": "GmbH",
+      "pays": "Allemagne",
+      "capital": "250 000 EUR",
+      "siege": "Hauptstrasse 5, Munich",
+      "registre": "Handelsregister München",
+      "registreNumero": "HRB-112233",
+      "loiApplicable": "loi allemande"
+    },
+    "organe": {
+      "competent": "le gérant unique",
+      "date": "2026-09-12", "heure": "09H00", "lieu": "Munich"
+    },
+    "seance": {"presidentNom": "Herr Klaus MÜLLER"},
+    "ordreDuJour": ["Ouverture d'une succursale au Maroc", "Désignation du représentant résident"],
+    "succursale": {
+      "enseigne": "MEDITERRANEA — Succursale Rabat",
+      "adresse": "22 Avenue Fal Ould Oumeir",
+      "ville": "Rabat",
+      "villeGreffe": "RABAT",
+      "activite": "Ingénierie",
+      "dateOuverture": "2026-11-15",
+      "dotationPresente": "non"
+    },
+    "representant": {
+      "civilite": "Mme", "prenom": "Amina", "nom": "BERRADA", "nationalite": "marocaine",
+      "adresse": "3 Rue Oukaimeden, Rabat", "pieceType": "CIN", "pieceNumero": "A123456"
+    },
+    "formalitesMandataireNom": "Mme Amina BERRADA"
+  }
+}

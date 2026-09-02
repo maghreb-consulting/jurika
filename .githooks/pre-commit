@@ -1,0 +1,27 @@
+#!/bin/sh
+# JURIKA — git pre-commit hook
+# Bloque tout commit contenant un secret detecte par gitleaks.
+# Activation : `git config core.hooksPath .githooks` (une seule fois).
+# Pre-requis : gitleaks installe (choco install gitleaks / brew install gitleaks).
+#
+# Voir infrastructure/secrets/SECRETS_INVENTORY.md.
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+    echo "WARN: gitleaks introuvable. Installer : choco install gitleaks (Windows) / brew install gitleaks (macOS)"
+    echo "      Le commit continue mais vous devriez verifier manuellement."
+    exit 0
+fi
+
+echo "→ gitleaks protect (staged files)..."
+gitleaks protect --staged --no-banner --redact
+status=$?
+
+if [ $status -ne 0 ]; then
+    echo ""
+    echo "❌ gitleaks a detecte un secret dans les fichiers stages. Commit ABORTE."
+    echo "   Verifier les fichiers ci-dessus, retirer le secret, puis re-stager."
+    echo "   Pour bypasser temporairement (DECONSEILLE) : git commit --no-verify"
+    exit 1
+fi
+
+exit 0

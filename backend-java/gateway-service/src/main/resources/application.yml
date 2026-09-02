@@ -1,0 +1,187 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+  shutdown: graceful
+
+spring:
+  application:
+    name: gateway-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+          lower-case-service-id: true
+      # Default rate limit : 500 req/min/user authentifie (token-based). Applique a
+      # toutes les routes hors auth sensibles (RG-SAAS-03). Stockage Redis.
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: ${RATE_LIMIT_USER_PER_MIN:500}
+            redis-rate-limiter.burstCapacity: ${RATE_LIMIT_USER_BURST:1000}
+            redis-rate-limiter.requestedTokens: 1
+            key-resolver: "#{@clientKeyResolver}"
+            deny-empty-key: false
+      routes:
+        # Auth sensibles : 10 req/min/IP (anti brute-force / RG-SAAS-03)
+        - id: auth-sensitive
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/v1/auth/login, /api/v1/auth/register, /api/v1/auth/workspace-check, /api/v1/auth/verify-2fa, /api/v1/auth/verify-recovery-code, /api/v1/auth/password-reset/**, /api/v1/auth/resend-verification
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: ${RATE_LIMIT_SENSITIVE_PER_MIN:10}
+                redis-rate-limiter.burstCapacity: ${RATE_LIMIT_SENSITIVE_BURST:20}
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@ipKeyResolver}"
+                deny-empty-key: false
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/v1/auth/**
+        # Sprint 11 TASK 6 -- business_events ingestion endpoint (public). MUST be
+        # declared BEFORE the auth-public wildcard /api/v1/public/** sinon le
+        # wildcard capture et route vers auth-service qui n'a pas /events => 404.
+        # Ordre = priorite de match en Spring Cloud Gateway.
+        - id: supervision-public-events
+          uri: lb://supervision-service
+          predicates:
+            - Path=/api/v1/public/events
+          filters:
+            - RewritePath=/api/v1/public/events, /internal/events
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: ${RATE_LIMIT_EVENTS_PER_MIN:100}
+                redis-rate-limiter.burstCapacity: ${RATE_LIMIT_EVENTS_BURST:200}
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@ipKeyResolver}"
+                deny-empty-key: false
+        # Sprint 11 TASK 1 -- endpoints publics marketing (landing jurika.ai)
+        # permitAll cote auth-service + rate-limit IP applicatif (RG-MK02).
+        - id: auth-public
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/v1/public/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: ${RATE_LIMIT_PUBLIC_PER_MIN:30}
+                redis-rate-limiter.burstCapacity: ${RATE_LIMIT_PUBLIC_BURST:60}
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@ipKeyResolver}"
+                deny-empty-key: false
+        - id: auth-admin
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/v1/admin/**
+        # Sprint Beta (pricing-deploy) TASK 3 -- usage badge + theme endpoint
+        # Sprint 12.5 TASK 5 -- POST /users/me/theme
+        - id: auth-workspace
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/v1/workspace/**, /api/v1/users/**
+        - id: ticket-service
+          uri: lb://ticket-service
+          predicates:
+            - Path=/api/v1/tickets/**, /api/v1/deadlines/**, /api/v1/dossiers/**, /api/v1/dossier-transfer-requests/**
+        - id: workflow-service
+          uri: lb://workflow-service
+          predicates:
+            - Path=/api/v1/workflows/**, /api/v1/workflow-progress/**
+        - id: dataroom-service
+          uri: lb://dataroom-service
+          predicates:
+            - Path=/api/v1/dataroom/**
+        - id: ai-service
+          uri: lb://ai-service
+          predicates:
+            - Path=/api/v1/ai/**, /api/v1/chatbot/**
+        - id: supervision-service
+          uri: lb://supervision-service
+          predicates:
+            - Path=/api/v1/supervision/**, /api/v1/dashboard/**, /api/v1/admin/funnel/**
+        # Sprint 11 TASK 6 -- business_events ingestion endpoint interne (cross-
+        # service via X-Internal-Token). La variante publique a ete deplacee
+        # AVANT auth-public plus haut dans le fichier pour priorite de match.
+        - id: supervision-internal-events
+          uri: lb://supervision-service
+          predicates:
+            - Path=/internal/events
+        # Sprint 10 -- dashboards multi-roles (in-app KPIs)
+        # Lot IA-1 -- agent copilote de l'employe (/api/v1/agent/**)
+        - id: dashboard-service
+          uri: lb://dashboard-service
+          predicates:
+            - Path=/api/v1/dashboards/**, /api/v1/tracabilite/**, /api/v1/agent/**
+        # Sprint 14 ter E2 -- endpoints de seed Playwright (actifs uniquement
+        # hors prod, double verrou cote dataroom-service via @Profile + property
+        # jurika.test.seed.enabled).
+        - id: test-seed
+          uri: lb://dataroom-service
+          predicates:
+            - Path=/api/v1/test/**
+        # Sprint 12 -- billing-service (port 8090). Routing /api/v1/billing/**
+        # vers le module billing-service. Note : /api/v1/billing/webhook/stripe
+        # est expose au gateway car Stripe doit pouvoir l'appeler — la securite
+        # est la signature HMAC verifiee dans le controller (RG-BL18).
+        - id: billing-service
+          uri: lb://billing-service
+          predicates:
+            - Path=/api/v1/billing/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+
+jurika:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  jwt:
+    algorithm: ${JWT_ALGORITHM:RS256}
+    public-key-path: ${JWT_PUBLIC_KEY_PATH:/run/secrets/jwt/jwt-public.pem}
+    hmac-secret: ${JWT_SECRET:}
+    issuer: ${JWT_ISSUER:jurika.ma}
+  env: ${JURIKA_ENV:dev}
+  observability:
+    prometheus:
+      password: ${PROMETHEUS_OPS_PASSWORD:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,metrics,prometheus,loggers,env
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState,ping
+        readiness:
+          include: readinessState,redis
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      env: ${jurika.env:dev}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    reactor.netty.http.client: INFO

@@ -1,0 +1,138 @@
+server:
+  port: ${BILLING_SERVICE_PORT:8090}
+  shutdown: graceful
+
+spring:
+  application:
+    name: billing-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  # Sprint 12 — base PG dediee jurika_billing (decision archi #4 : isolation
+  # financiere + audit + conformite PCI/PSD2). A creer dans Postgres :
+  #   CREATE DATABASE jurika_billing OWNER jurika_user;
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${BILLING_DB_NAME:jurika_billing}
+    username: ${POSTGRES_USER:jurika_user}
+    password: ${POSTGRES_PASSWORD:JurikaDevPass2026}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    table: flyway_history_billing
+    validate-on-migrate: false
+    ignore-migration-patterns: "*:missing,*:future"
+
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SMTP_AUTH:false}
+          starttls:
+            enable: ${SMTP_STARTTLS:false}
+
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    cache: false
+    enabled: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+
+# Sprint 1 — verification JWT RS256 via cle publique partagee
+jurika:
+  jwt:
+    algorithm: ${JWT_ALGORITHM:RS256}
+    public-key-path: ${JWT_PUBLIC_KEY_PATH:classpath:keys/jwt-public.pem}
+    hmac-secret: ${JWT_SECRET:dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345}
+
+  # BUG 14 (2026-06-09) fix — URL directe auth-service pour le Feign client
+  # WorkspaceStatusFeignClient. Sans cette property explicite le defaut etait
+  # "http://auth-service" qui ne resout QUE via Eureka — donc en local sans
+  # discovery, Feign throwait et issue-credentials retombait dans le vide.
+  # En docker compose / k8s : override avec http://auth-service:8081.
+  auth:
+    internal-url: ${JURIKA_AUTH_INTERNAL_URL:http://localhost:8081}
+
+  # Sprint 12 — configuration Stripe TEST mode (placeholders en dev,
+  # vraies valeurs via .env.local — JAMAIS commit). Voir PLAN §3.
+  stripe:
+    publishable-key: ${STRIPE_PUBLISHABLE_KEY:pk_test_PLACEHOLDER}
+    secret-key: ${STRIPE_SECRET_KEY:sk_test_PLACEHOLDER}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_PLACEHOLDER}
+    checkout-locale: ${STRIPE_CHECKOUT_LOCALE:fr}
+    # Sprint Beta (pricing-deploy) — 4 prix : chaque plan a une variante
+    # mensuelle ET annuelle. Lookup_keys cote Stripe (spec 2026-06-02) :
+    #   essentiel_monthly / essentiel_yearly / business_monthly / business_yearly
+    # Generation idempotente via scripts/stripe-setup-products.mjs.
+    prices:
+      essentiel:
+        monthly: ${STRIPE_PRICE_ESSENTIEL_MONTHLY:${STRIPE_PRICE_ESSENTIEL:price_PLACEHOLDER_essentiel_monthly}}
+        yearly:  ${STRIPE_PRICE_ESSENTIEL_YEARLY:price_PLACEHOLDER_essentiel_yearly}
+      business:
+        monthly: ${STRIPE_PRICE_BUSINESS_MONTHLY:${STRIPE_PRICE_BUSINESS:price_PLACEHOLDER_business_monthly}}
+        yearly:  ${STRIPE_PRICE_BUSINESS_YEARLY:price_PLACEHOLDER_business_yearly}
+
+  billing:
+    tva-rate-percent: ${BILLING_TVA_RATE_PERCENT:20.00}
+    sales-email: ${BILLING_SALES_EMAIL:contact@jurika.ai}
+    from-email: ${SMTP_FROM:noreply@jurika.ma}
+    # BUG 14 (2026-06-07) — autorise la methode TEST_BYPASS pour le wizard
+    # signup. EN PROD : forcer false. En local/staging : true pour tester
+    # le flow signup -> plan -> recap -> paiement -> activation sans Stripe.
+    test-bypass-enabled: ${BILLING_TEST_BYPASS_ENABLED:true}
+    checkout:
+      success-url: ${BILLING_CHECKOUT_SUCCESS_URL:http://localhost:5173/billing/success?session_id={CHECKOUT_SESSION_ID}}
+      cancel-url: ${BILLING_CHECKOUT_CANCEL_URL:http://localhost:5173/billing}
+    portal:
+      return-url: ${BILLING_PORTAL_RETURN_URL:http://localhost:5173/billing}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+  health:
+    # Le HealthIndicator mail rend /actuator/health 503 si le SMTP externe (Brevo) tombe :
+    # cf. auth-service application.yml pour la rationale (alignement cross-service).
+    mail:
+      enabled: false
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    com.stripe: INFO
+    ma.jurika.billing: INFO

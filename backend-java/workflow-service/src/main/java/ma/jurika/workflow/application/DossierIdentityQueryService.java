@@ -1,0 +1,141 @@
+package ma.jurika.workflow.application;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import ma.jurika.common.security.TenantContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * Fournit l'<b>identité société complète</b> d'un dossier immatriculé, à partir de
+ * la table {@code entreprise_dossiers} (colonnes) <b>et</b> de son {@code fiche_structuree}
+ * JSONB (nombre de parts, valeur nominale, associés, gérants).
+ *
+ * <p>Sert de <b>source de vérité BD</b> pour l'en-tête des PV / actes : ai-service (qui
+ * ne lit aucune base) enrichit son objet {@code societe} en appelant l'endpoint interne
+ * {@link ma.jurika.workflow.api.InternalDossierController} qui délègue ici. Les clés
+ * produites sont directement celles que lit {@code SeancePvVarsBuilder} côté ai-service
+ * (double nommage {@code villeGreffe}/{@code rcVille}, {@code capitalChiffres}/{@code capitalSocial},
+ * {@code siegeSocial}/{@code adresseSiege}) pour un merge trivial.
+ *
+ * <p>Best-effort : toute erreur SQL / de parse renvoie une map vide — la génération
+ * reste possible en mode dégradé (l'appelant retombe sur ce que porte déjà le payload).
+ * Filtre {@code workspace_id} explicite (défense en profondeur multi-tenant, RLS non
+ * fiable car {@code jurika_user} a BYPASSRLS).
+ */
+@Service
+public class DossierIdentityQueryService {
+
+    private static final Logger log = LoggerFactory.getLogger(DossierIdentityQueryService.class);
+    private static final ObjectMapper FICHE_MAPPER = new ObjectMapper();
+
+    @PersistenceContext
+    private EntityManager em;
+
+    /**
+     * Charge l'identité société d'un dossier, aplatie pour l'objet {@code societe}.
+     * Renvoie {@link Map#of()} si le dossier est introuvable dans le workspace ou en
+     * cas d'erreur (best-effort).
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> identity(UUID workspaceId, UUID dossierId) {
+        if (workspaceId == null || dossierId == null) return Map.of();
+        TenantContext.set(workspaceId);
+        try {
+            Object[] row = (Object[]) em.createNativeQuery("""
+                    SELECT raison_sociale, forme_juridique, ice, identifiant_fiscal,
+                           rc_numero, rc_tribunal, capital_social_mad, adresse_siege,
+                           ville, fiche_structuree, statut, date_dissolution
+                    FROM entreprise_dossiers
+                    WHERE id = ?1 AND workspace_id = ?2
+                    """)
+                    .setParameter(1, dossierId)
+                    .setParameter(2, workspaceId)
+                    .getResultStream()
+                    .findFirst()
+                    .orElse(null);
+            if (row == null) return Map.of();
+
+            Map<String, Object> s = new LinkedHashMap<>();
+            putIfPresent(s, "denomination", row[0]);
+            putIfPresent(s, "formeJuridique", row[1]);
+            putIfPresent(s, "ice", row[2]);
+            putIfPresent(s, "ifNumero", row[3]);
+            putIfPresent(s, "rcNumero", row[4]);
+            // rc_tribunal = ville du tribunal de commerce (greffe). Double nommage
+            // pour couvrir les deux clés lues par le builder.
+            putIfPresent(s, "villeGreffe", row[5]);
+            putIfPresent(s, "rcVille", row[5]);
+            if (row[6] != null) {
+                // capital_social_mad (BigDecimal) exposé sous les deux clés lues par le builder.
+                s.put("capitalChiffres", row[6]);
+                s.put("capitalSocial", row[6]);
+            }
+            putIfPresent(s, "siegeSocial", row[7]);
+            putIfPresent(s, "adresseSiege", row[7]);
+            putIfPresent(s, "ville", row[8]);
+            putIfPresent(s, "statut", row[10]);
+            // Lot Liquidation 4 etapes (2026-08-13) : la date de dissolution est en BASE
+            // (ecrite a la completion du workflow DISSOLUTION) — la liquidation la LIT,
+            // elle ne la re-saisit jamais.
+            if (row[11] != null) s.put("dateDissolution", String.valueOf(row[11]));
+
+            Map<String, Object> fiche = ficheFromJson(row[9]);
+            if (fiche != null) {
+                putIfPresent(s, "nombreParts", fiche.get("nombreParts"));
+                putIfPresent(s, "valeurNominalePart", fiche.get("valeurNominale"));
+                // Listes brutes — l'appelant ne s'en sert que pour amorcer la présence
+                // quand le formulaire de séance n'a rien saisi (jamais pour écraser).
+                Object associes = fiche.get("associes");
+                if (associes != null) s.put("associes", associes);
+                Object gerants = firstNonNull(fiche.get("gerants"), fiche.get("gerance"),
+                        fiche.get("dirigeants"));
+                if (gerants != null) s.put("gerants", gerants);
+                // Liquidateur NOMME A LA DISSOLUTION + siege de la liquidation : source
+                // unique de verite pour le workflow LIQUIDATION (zero re-saisie).
+                Object liquidateur = fiche.get("liquidateur");
+                if (liquidateur != null) s.put("liquidateur", liquidateur);
+                putIfPresent(s, "siegeLiquidation", fiche.get("siegeLiquidation"));
+            }
+            return s;
+        } catch (Exception ex) {
+            log.warn("dossierIdentity SQL/parse failed dossier={} : {}", dossierId, ex.getMessage());
+            try { em.clear(); } catch (Exception ignore) { /* defensive */ }
+            return Map.of();
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
+    private static void putIfPresent(Map<String, Object> m, String key, Object raw) {
+        if (raw == null) return;
+        if (raw instanceof String s && s.isBlank()) return;
+        m.put(key, raw);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> ficheFromJson(Object raw) {
+        if (raw == null) return null;
+        String s = raw.toString();
+        if (s.isBlank()) return null;
+        try {
+            return FICHE_MAPPER.readValue(s, Map.class);
+        } catch (Exception e) {
+            log.warn("fiche_structuree parse failed : {}", e.getMessage());
+            return null;
+        }
+    }
+
+    @SafeVarargs
+    private static <T> T firstNonNull(T... vals) {
+        for (T v : vals) if (v != null) return v;
+        return null;
+    }
+}

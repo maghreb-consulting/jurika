@@ -1,0 +1,58 @@
+{
+  "societe": {
+    "denomination": "TEST SARL",
+    "formeJuridique": "SARL",
+    "capitalChiffres": 100000,
+    "adresseSiege": "12 Rue Mohammed V, Casablanca 20000",
+    "activiteSociete": "Conseil juridique et fiscal",
+    "nombreParts": 1000,
+    "valeurPart": 100,
+    "dureeAnnees": 99,
+    "dateConstitution": "2026-06-03",
+    "iceNumero": "001234567000089"
+  },
+  "gerant": {
+    "nom": "Karim BENNANI",
+    "cin": "BK123456",
+    "naissance": "1985-04-12",
+    "nationalite": "Marocaine",
+    "adresse": "45 Boulevard Anfa, Casablanca",
+    "dureeMandat": "illimité"
+  },
+  "associes": [
+    {
+      "nom": "Oussama BENATIK",
+      "adresse": "12 Rue des Lilas, Rabat",
+      "cin": "AB789456",
+      "naissance": "1990-11-21",
+      "nationalite": "Marocaine",
+      "partsChiffres": 600,
+      "montantSouscrit": 60000,
+      "montantVerse": 60000,
+      "pourcentage": 60
+    },
+    {
+      "nom": "Salma ALAOUI",
+      "adresse": "8 Avenue Hassan II, Casablanca",
+      "cin": "BE321654",
+      "naissance": "1988-07-03",
+      "nationalite": "Marocaine",
+      "partsChiffres": 400,
+      "montantSouscrit": 40000,
+      "montantVerse": 40000,
+      "pourcentage": 40
+    }
+  ],
+  "associeUnique": {
+    "nom": "Oussama BENATIK",
+    "adresse": "12 Rue des Lilas, Rabat",
+    "cin": "AB789456",
+    "naissance": "1990-11-21",
+    "nationalite": "Marocaine"
+  },
+  "depot": {
+    "dateDepotFonds": "2026-05-28",
+    "depositaireFonds": "Attijariwafa Bank, Agence Anfa",
+    "capitalLibere": 100000
+  }
+}

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head><meta charset="UTF-8"/><title>Echec de paiement</title></head>
+<body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#0F172A;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:12px;overflow:hidden;">
+            <tr th:replace="~{email/_billing-base :: header(title='Action requise — paiement refuse')}"></tr>
+            <tr><td style="padding:32px;">
+                <p style="margin:0 0 16px;">Bonjour <span th:text="${contactName}">cabinet</span>,</p>
+                <p style="margin:0 0 16px;">Le prelevement pour votre abonnement JURIKA <strong th:text="${planCode}">Business</strong>
+                    n'a pas pu etre realise. Montant : <strong th:text="${amountTtc}">1 299,00 MAD</strong>.</p>
+                <p style="margin:0 0 16px;">Stripe va re-essayer automatiquement plusieurs fois durant les prochains jours.
+                    Pour eviter toute interruption, merci de mettre a jour votre moyen de paiement :</p>
+                <p style="margin:24px 0;">
+                    <a th:href="${customerPortalUrl}" style="display:inline-block;background:#DC2626;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Mettre a jour ma carte</a>
+                </p>
+                <p style="margin:0;font-size:13px;color:#64748B;">Si vous pensez qu'il s'agit d'une erreur, contactez-nous a
+                    <a href="mailto:facturation@maghreb-consulting.ma" style="color:#8a6d1f;">facturation@maghreb-consulting.ma</a>.</p>
+            </td></tr>
+            <tr th:replace="~{email/_billing-base :: footer}"></tr>
+        </table>
+    </td></tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "version": "test-cycle",
+  "generated_at": "2026-06-03",
+  "templates": [
+    {
+      "code": "A",
+      "aliasOf": "B",
+      "origin": "hérité",
+      "deprecated": true,
+      "note": "Test fixture : alias cyclique A → B."
+    },
+    {
+      "code": "B",
+      "aliasOf": "A",
+      "origin": "hérité",
+      "deprecated": true,
+      "note": "Test fixture : alias cyclique B → A."
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "schemaVersion": 39,
+  "tags": ["jurika", "overview"],
+  "title": "JURIKA Overview",
+  "uid": "jurika-overview",
+  "time": {"from": "now-1h", "to": "now"},
+  "refresh": "30s",
+  "timezone": "browser",
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "jurika-prometheus"},
+        "query": "label_values(http_server_requests_seconds_count, application)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {"text": "All", "value": "$__all"}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Throughput (req/min) — toutes routes",
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0},
+      "targets": [{
+        "refId": "A",
+        "datasource": {"type": "prometheus", "uid": "jurika-prometheus"},
+        "expr": "sum(rate(http_server_requests_seconds_count{application=~\"$service\"}[5m])) * 60"
+      }],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}}
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Error rate (5xx %)",
+      "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0},
+      "targets": [{
+        "refId": "A",
+        "datasource": {"type": "prometheus", "uid": "jurika-prometheus"},
+        "expr": "100 * sum(rate(http_server_requests_seconds_count{application=~\"$service\", status=~\"5..\"}[5m])) / sum(rate(http_server_requests_seconds_count{application=~\"$service\"}[5m]))"
+      }],
+      "fieldConfig": {"defaults": {"unit": "percent", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 5}]}}}
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Latence p95 par service (s)",
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 0},
+      "targets": [{
+        "refId": "A",
+        "datasource": {"type": "prometheus", "uid": "jurika-prometheus"},
+        "expr": "histogram_quantile(0.95, sum by (le, application) (rate(http_server_requests_seconds_bucket{application=~\"$service\"}[5m])))",
+        "legendFormat": "{{application}}"
+      }],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Latence p99 par service (s)",
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 10},
+      "targets": [{
+        "refId": "A",
+        "datasource": {"type": "prometheus", "uid": "jurika-prometheus"},
+        "expr": "histogram_quantile(0.99, sum by (le, application) (rate(http_server_requests_seconds_bucket{application=~\"$service\"}[5m])))",
+        "legendFormat": "{{application}}"
+      }],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Throughput par service (req/s)",
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 10},
+      "targets": [{
+        "refId": "A",
+        "datasource": {"type": "prometheus", "uid": "jurika-prometheus"},
+        "expr": "sum by (application) (rate(http_server_requests_seconds_count{application=~\"$service\"}[5m]))",
+        "legendFormat": "{{application}}"
+      }]
+    }
+  ]
+}

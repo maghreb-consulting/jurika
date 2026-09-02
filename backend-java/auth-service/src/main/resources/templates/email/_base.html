@@ -1,0 +1,100 @@
+<!--
+  Fragments Thymeleaf partages pour tous les emails JURIKA.
+  Charte JURIKA (navy #0c1d3f / or #c8a45c). 2026-07-27 :
+  - Le nom « JURIKA » est un WORDMARK TEXTE (rendu garanti meme si les images
+    sont bloquees par Gmail/Outlook). C'est l'element principal de l'en-tete.
+  - L'embleme est un PLUS decoratif embarque en CID (cid:jurika-logo). Le sender
+    (SmtpEmailSender) attache branding/jurika-email-logo.png ; jamais indispensable.
+  - Variable optionnelle `logoUrl` : si un jour l'asset est heberge (CDN), on
+    bascule sur l'URL ; sinon CID par defaut. Plus d'URL externe non deployee.
+  Usage : <div th:replace="~{email/_base :: header(title=...)}"></div>
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<body>
+
+<!-- ========================= HEADER ========================= -->
+<th:block th:fragment="header(title)">
+    <tr>
+        <td bgcolor="#0c1d3f"
+            style="background-color:#0c1d3f;padding:34px 24px 26px;text-align:center;border-bottom:3px solid #c8a45c;">
+            <!-- Embleme JURIKA embarque en CID (complement decoratif, non indispensable).
+                 alt="JURIKA" assure que la marque reste lisible si l'image est bloquee. -->
+            <img th:src="${logoUrl} ?: 'cid:jurika-logo'"
+                 width="52" height="52" alt="JURIKA"
+                 style="display:inline-block;border:0;border-radius:11px;margin:0 0 12px;" />
+            <!-- Wordmark texte : rendu GARANTI (independant de toute image). -->
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:32px;font-weight:700;letter-spacing:0.03em;line-height:1;">
+                <span style="color:#f5efe0;">JURI</span><span style="color:#c8a45c;">KA</span>
+            </div>
+            <div style="margin:9px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:#c8a45c;">
+                Gestion juridique augment&eacute;e
+            </div>
+            <div th:if="${title}"
+                 style="margin:20px 0 0;padding:16px 8px 0;border-top:1px solid rgba(200,164,92,0.35);font-family:Georgia,'Times New Roman',serif;font-size:19px;font-weight:600;line-height:1.35;color:#ffffff;"
+                 th:text="${title}">Titre de l'email</div>
+        </td>
+    </tr>
+</th:block>
+
+<!-- ========================= FOOTER ========================= -->
+<!-- Bloc legal commun : Maghreb Consulting + coordonnees + unsubscribe (CNDP). -->
+<th:block th:fragment="footer(unsubscribeUrl)">
+    <tr>
+        <td style="background:#f7f1e3;padding:24px 32px;border-top:2px solid #c8a45c;font-family:Arial,Helvetica,sans-serif;">
+            <p style="margin:0 0 8px;font-family:Georgia,'Times New Roman',serif;font-size:15px;font-weight:700;">
+                <span style="color:#0c1d3f;">JURI</span><span style="color:#c8a45c;">KA</span>
+                <span style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:400;color:#475569;">
+                    &mdash; plateforme SaaS de gestion juridique &eacute;dit&eacute;e par <strong style="color:#334155;">Maghreb Consulting</strong>.</span>
+            </p>
+            <p style="margin:0 0 12px;font-size:11px;color:#64748B;line-height:1.5;">
+                Maghreb Consulting &mdash; Casablanca, Maroc &mdash;
+                <a href="mailto:contact@maghreb-consulting.ma" style="color:#8a6d1f;text-decoration:none;">contact@maghreb-consulting.ma</a>
+                &mdash; Support technique :
+                <a href="mailto:support@jurika.ma" style="color:#8a6d1f;text-decoration:none;">support@jurika.ma</a>
+            </p>
+            <p style="margin:0;font-size:11px;color:#94A3B8;line-height:1.5;">
+                Vous recevez cet email parce que vous &ecirc;tes utilisateur de JURIKA. &nbsp;
+                <a th:if="${unsubscribeUrl}" th:href="${unsubscribeUrl}"
+                   style="color:#8a6d1f;text-decoration:underline;">G&eacute;rer mes notifications</a>
+                <span th:unless="${unsubscribeUrl}">Pour modifier vos pr&eacute;f&eacute;rences de notification, rendez-vous dans votre profil JURIKA.</span>
+                &nbsp;&middot;&nbsp; Conforme RGPD &amp; CNDP Maroc (loi 09-08).
+            </p>
+        </td>
+    </tr>
+</th:block>
+
+<!-- ========================= IDENTITY FOOTER (BUG 7) ========================= -->
+<!-- Mentionne discretement le login_email (identifiant) ET le contact_email
+     (destinataire). Affiche uniquement si les deux sont presents et distincts. -->
+<th:block th:fragment="identityFooter(loginEmail, contactEmail)">
+    <tr th:if="${loginEmail != null and contactEmail != null and loginEmail != contactEmail}">
+        <td style="background:#efe8d6;padding:12px 32px;border-top:1px solid #e0d4b4;">
+            <p style="margin:0;font-size:11px;color:#64748B;line-height:1.5;font-family:Arial,Helvetica,sans-serif;">
+                <strong style="color:#334155;">Identifiant de connexion :</strong>
+                <span th:text="${loginEmail}" style="font-family:'JetBrains Mono',Consolas,monospace;color:#0c1d3f;">karim.benali@jurika.ma</span>
+                &nbsp;&middot;&nbsp;
+                <span style="color:#94A3B8;">Email envoy&eacute; &agrave; votre adresse de notifications</span>
+                <span th:text="${contactEmail}" style="font-family:'JetBrains Mono',Consolas,monospace;color:#334155;">karim@cabinet.ma</span>
+            </p>
+        </td>
+    </tr>
+</th:block>
+
+<!-- ========================= PHISHING WARNING ========================= -->
+<!-- Avertissement de securite : le rouge est fonctionnel, conserve volontairement. -->
+<th:block th:fragment="phishingBox">
+    <div style="background:#FEF2F2;border:1px solid #FCA5A5;border-left:4px solid #DC2626;border-radius:8px;padding:16px;margin:24px 0;">
+        <p style="margin:0 0 8px;font-size:13px;color:#991B1B;font-weight:600;font-family:Arial,Helvetica,sans-serif;">
+            Avertissement anti-phishing
+        </p>
+        <p style="margin:0;font-size:12px;color:#7F1D1D;line-height:1.55;font-family:Arial,Helvetica,sans-serif;">
+            JURIKA ne vous demandera <strong>JAMAIS</strong> votre mot de passe ou vos codes 2FA
+            par email, SMS ou t&eacute;l&eacute;phone. En cas de message suspect, transmettez-le &agrave;
+            <a href="mailto:abuse@jurika.ma" style="color:#7F1D1D;">abuse@jurika.ma</a>.
+        </p>
+    </div>
+</th:block>
+
+</body>
+</html>

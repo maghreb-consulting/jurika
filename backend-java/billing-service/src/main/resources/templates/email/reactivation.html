@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head><meta charset="UTF-8"/><title>Abonnement reactive</title></head>
+<body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#0F172A;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:12px;overflow:hidden;">
+            <tr th:replace="~{email/_billing-base :: header(title='Votre abonnement est reactive')}"></tr>
+            <tr><td style="padding:32px;">
+                <p style="margin:0 0 16px;">Bonjour <span th:text="${contactName}">cabinet</span>,</p>
+                <p style="margin:0 0 16px;">Bon retour ! Votre abonnement <strong th:text="${planLabel}">Business</strong>
+                    a ete reactive avec succes.</p>
+                <p style="margin:0 0 16px;">Vous gardez votre meme code workspace
+                    (<strong th:text="${workspaceCode}">JUR-XXXXX</strong>) et toutes vos donnees ont ete preservees.</p>
+                <p style="margin:0 0 16px;">Prochain renouvellement le <strong th:text="${nextRenewal}">28/04/2026</strong>.</p>
+                <p style="margin:24px 0;">
+                    <a th:href="${dashboardUrl}" style="display:inline-block;background:#16A34A;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Acceder au dashboard</a>
+                </p>
+            </td></tr>
+            <tr th:replace="~{email/_billing-base :: footer}"></tr>
+        </table>
+    </td></tr>
+</table>
+</body>
+</html>

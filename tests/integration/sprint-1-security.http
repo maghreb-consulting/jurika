@@ -1,0 +1,161 @@
+### =====================================================================
+### JURIKA — Smoke tests Sprint 1 (Securite production)
+###
+### Pre-requis :
+###   - Stack demarree (RS256, refresh max 5 sessions, rate limit actif, HTTPS).
+###   - Cles JWT presentes dans infrastructure/secrets/jwt/.
+###
+### Compte demo :
+###   Workspace : JUR-DEMO1
+###   Email     : karim@jurika.ma
+###   Password  : Admin@2026
+### =====================================================================
+
+@gateway = http://localhost:8080
+@auth    = http://localhost:8081
+
+### -------------------------------------------------------------------
+### 1. Workspace check (sensitive route — rate limit 10/min)
+### -------------------------------------------------------------------
+# @name workspaceCheck
+POST {{gateway}}/api/v1/auth/workspace-check
+Content-Type: application/json
+
+{
+  "workspaceCode": "JUR-DEMO1"
+}
+
+### -------------------------------------------------------------------
+### 2. Login (genere access RS256 + refresh)
+### -------------------------------------------------------------------
+# @name login
+POST {{gateway}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "workspaceCode": "JUR-DEMO1",
+  "email": "karim@jurika.ma",
+  "password": "Admin@2026"
+}
+
+###
+@accessToken = {{login.response.body.tokens.accessToken}}
+@refreshToken = {{login.response.body.tokens.refreshToken}}
+
+### -------------------------------------------------------------------
+### 3. Verifier que le token est bien RS256
+###    (copier accessToken et le decoder sur jwt.io → header.alg == "RS256")
+### -------------------------------------------------------------------
+
+### -------------------------------------------------------------------
+### 4. Appel ressource protegee (verifie la cle PUBLIQUE par ticket-service)
+### -------------------------------------------------------------------
+GET {{gateway}}/api/v1/tickets
+Authorization: Bearer {{accessToken}}
+
+### -------------------------------------------------------------------
+### 5. Refresh token (rotation : ancien revoqued, nouveau emis)
+### -------------------------------------------------------------------
+# @name refresh
+POST {{gateway}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+###
+@newRefresh = {{refresh.response.body.refreshToken}}
+
+### -------------------------------------------------------------------
+### 6. Re-utilisation ancien refresh -> 401 (rotation OK)
+### -------------------------------------------------------------------
+POST {{gateway}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+### Attendu : 401 Unauthorized
+
+### -------------------------------------------------------------------
+### 7. Limite 5 sessions actives — simuler 6 logins (RG-SAAS-12)
+###    Repeter le login 6 fois ; le 1er refresh emis doit etre revoque automatiquement.
+### -------------------------------------------------------------------
+# Repeter 6x la requete (etape 2). Verifier en DB :
+#   SELECT COUNT(*) FROM refresh_tokens
+#   WHERE user_id = (SELECT id FROM users WHERE email='karim@jurika.ma')
+#     AND revoked_at IS NULL AND expires_at > NOW();
+# Attendu : 5
+
+### -------------------------------------------------------------------
+### 8. Rate limit auth sensible (10 req/min sur /login)
+###    Lancer 11 fois cette requete rapidement (script PowerShell ci-dessous).
+### -------------------------------------------------------------------
+POST {{gateway}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "workspaceCode": "JUR-DEMO1",
+  "email": "wrong@jurika.ma",
+  "password": "wrong"
+}
+### Attendu : a partir de la 11eme requete -> 429 Too Many Requests
+### Headers verifies : X-RateLimit-Remaining, X-RateLimit-Replenish-Rate
+
+### -------------------------------------------------------------------
+### 9. CORS — origine non whitelistee bloquee
+### -------------------------------------------------------------------
+OPTIONS {{gateway}}/api/v1/auth/login
+Origin: https://malicious-cabinet.com
+Access-Control-Request-Method: POST
+### Attendu : reponse SANS header Access-Control-Allow-Origin
+
+### -------------------------------------------------------------------
+### 10. HSTS / CSP / X-Frame-Options — headers presents
+### -------------------------------------------------------------------
+GET {{gateway}}/api/v1/auth/workspace-check
+### Verifier les headers de reponse :
+###   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+###   X-Content-Type-Options: nosniff
+###   X-Frame-Options: DENY
+###   Content-Security-Policy: default-src 'self'; ...
+###   Referrer-Policy: strict-origin-when-cross-origin
+###   Permissions-Policy: geolocation=(), microphone=(), camera=()
+
+### -------------------------------------------------------------------
+### 11. Logout (refresh revoque)
+### -------------------------------------------------------------------
+POST {{gateway}}/api/v1/auth/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{newRefresh}}"
+}
+### Attendu : 204 No Content
+
+### Puis verifier que le refresh est inutilisable
+POST {{gateway}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{newRefresh}}"
+}
+### Attendu : 401 Unauthorized
+
+### =====================================================================
+### Script PowerShell pour test rate limit (etape 8) :
+###
+###   1..15 | ForEach-Object {
+###     try {
+###       $r = Invoke-WebRequest -Uri "http://localhost:8080/api/v1/auth/login" `
+###         -Method POST -ContentType "application/json" `
+###         -Body '{"workspaceCode":"JUR-DEMO1","email":"x@x.ma","password":"x"}' `
+###         -SkipHttpErrorCheck
+###       Write-Host "$_ -> $($r.StatusCode)"
+###     } catch {
+###       Write-Host "$_ -> $($_.Exception.Message)"
+###     }
+###   }
+### =====================================================================

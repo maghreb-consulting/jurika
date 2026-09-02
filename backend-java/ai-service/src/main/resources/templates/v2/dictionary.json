@@ -1,0 +1,1766 @@
+{
+  "version": "1.7",
+  "generated_at": "2026-08-08",
+  "comment_fill_later": "Sprint Cowork 2026-06-21 (C3) — Politique stricte : aucun placeholder neutre. Les variables manquantes ressortent en ROUGE. Liste `fill_later` = variables POST-immatriculation (jamais saisies a la creation) -> rendu rouge '[à compléter]' (volontaire). Les autres variables manquantes -> rouge 'VALEUR MANQUANTE : NOM' (signal de bug, mapping a corriger).",
+  "fill_later": [
+    "RC_NUMERO",
+    "RC_VILLE",
+    "NUMERO_RC",
+    "DEPOT_NUMERO",
+    "NUMERO_DEPOT",
+    "NUMERO_DEPOT_AU_TC",
+    "DATE_DEPOT_AU_TC",
+    "DATE_DEPOT_FONDS",
+    "DEPOT_BANQUE_NOM",
+    "DEPOSITAIRE_FONDS",
+    "GERANT_PM_DENOMINATION",
+    "GERANT_PM_RC",
+    "GERANT_PM_REPRESENTANT",
+    "GERANT_PM_REPRESENTANT_PERMANENT",
+    "DATE_ACTE",
+    "DATE_DEPOT_LEGAL",
+    "DATE_DISSOLUTION",
+    "DATE_CLOTURE_LIQUIDATION",
+    "LIQUIDATEUR_CIVILITE",
+    "LIQUIDATEUR_PRENOM",
+    "LIQUIDATEUR_NOM",
+    "LIQUIDATEUR_ADRESSE",
+    "LIQUIDATEUR_PIECE_TYPE",
+    "LIQUIDATEUR_PIECE_NUMERO",
+    "LIQUIDATEUR_GENRE",
+    "ACTIF_REALISE_CHIFFRES",
+    "ACTIF_REALISE_LETTRES",
+    "PASSIF_REGLE_CHIFFRES",
+    "PASSIF_REGLE_LETTRES",
+    "RESULTAT_LIQUIDATION_TYPE",
+    "BONI_LIQUIDATION_CHIFFRES",
+    "BONI_LIQUIDATION_LETTRES",
+    "MALI_LIQUIDATION_CHIFFRES",
+    "MALI_LIQUIDATION_LETTRES",
+    "ASSOCIE_BONI_CHIFFRES"
+  ],
+  "_comment_gerant_pm": "GERANT_PM_* sont dans fill_later TEMPORAIREMENT en attendant que le wrap conditionnel ◇gerant_est_morale soit livre dans les .docx (chantier C2). Une fois C2 livre, ces variables seront supprimees du document quand le gerant est physique (cas le plus frequent) -> a retirer de fill_later.",
+  "variables": [
+    {
+      "name": "ACTIF_REALISE",
+      "meaning": "Montant de l'actif réalisé en clôture liquidation",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "ACTIF_REALISE_CHIFFRES",
+      "meaning": "Total de l'actif réalisé (chiffres)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ACTIF_REALISE_LETTRES",
+      "meaning": "Total de l'actif réalisé (lettres)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ACTIVITE_SOCIETE",
+      "meaning": "Description de l'activité de la société",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "ADRESSE_DE_SIEGE_SOCIAL",
+      "meaning": "Alias JAL — adresse siège social (placeholder normalisé)",
+      "format": "autre",
+      "source": "dict_directeur_2026_06_09"
+    },
+    {
+      "name": "ADRESSE_SIEGE",
+      "meaning": "Adresse postale siège",
+      "format": "autre",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "AG_TYPE",
+      "meaning": "Nature de l'assemblée : « ordinaire » / « extraordinaire ».",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ANNEE_LETTRES",
+      "meaning": "Année en lettres",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "APPORT_ASSOCIE_LIBELLE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "APPORT_INDUSTRIE_DESCRIPTION",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "APPORT_NATURE_DESCRIPTION",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "APPORT_NATURE_VALEUR_CHIFFRES",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "APPORT_NATURE_VALEUR_LETTRES",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "APPORT_NUMERAIRE_CHIFFRES",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "APPORT_NUMERAIRE_LETTRES",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "APPORT_TYPE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ARTICLE_DESIGNATION_STATUTS",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSEMBLEE_DATE",
+      "meaning": "Date de la séance d'assemblée",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSEMBLEE_HEURE",
+      "meaning": "Heure de la séance d'assemblée",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSEMBLEE_LIEU",
+      "meaning": "Lieu de la séance d'assemblée",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSEMBLEE_TYPE",
+      "meaning": "Type d'assemblée : « ordinaire »/« extraordinaire »/« mixte »",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_ADRESSE",
+      "meaning": "Adresse destinataire/associé",
+      "format": "autre",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "ASSOCIE_BONI_CHIFFRES",
+      "meaning": "Part du boni revenant à chaque associé (boucle ASSOCIES)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_CAPITAL",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_CIVILITE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_DATE_NAISSANCE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_DENOMINATION",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_EST_GERANT",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_FORME",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_GENRE",
+      "meaning": "Genre grammatical de l'associé (« masculin »/« féminin » ; PM -> féminin) — accords",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_LIEU_NAISSANCE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_MANDATAIRE_NOM",
+      "meaning": "Nom du mandataire de l'associé représenté",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_MONTANT_SOUSCRIT",
+      "meaning": "Montant souscrit par l'associé (MAD)",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "ASSOCIE_MONTANT_VERSE",
+      "meaning": "Montant effectivement versé par l'associé (MAD)",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "ASSOCIE_NATIONALITE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_NOM",
+      "meaning": "Nom associé (bloc)",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "ASSOCIE_NOMBRE_PARTS",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_NOMBRE_VOIX",
+      "meaning": "Nombre de voix attachées aux parts de l'associé (une part = une voix).",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_PARTS_A",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_PARTS_CHIFFRES",
+      "meaning": "Parts associé chiffres",
+      "format": "chiffres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "ASSOCIE_PARTS_DE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_PARTS_LETTRES",
+      "meaning": "Parts associé lettres",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "ASSOCIE_PIECE_NUMERO",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_PIECE_TYPE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_POURCENTAGE",
+      "meaning": "% capital détenu",
+      "format": "chiffres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "ASSOCIE_PRENOM",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_PRESENCE",
+      "meaning": "Présence de l'associé : « présent »/« représenté »/« absent »",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_RC_NUMERO",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_RC_VILLE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_REPRESENTANT_NOM",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_REPRESENTANT_QUALITE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_SIEGE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_TYPE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_UNIQUE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ASSOCIE_UNIQUE_ADRESSE",
+      "meaning": "Adresse associé unique",
+      "format": "autre",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "ASSOCIE_UNIQUE_CIN",
+      "meaning": "CIN/passeport associé unique",
+      "format": "autre",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "ASSOCIE_UNIQUE_NAISSANCE",
+      "meaning": "Date naissance associé unique",
+      "format": "date",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "ASSOCIE_UNIQUE_NATIONALITE",
+      "meaning": "Nationalité associé unique",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "ASSOCIE_UNIQUE_NOM",
+      "meaning": "Nom associé unique",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "BANQUE_DEPOSITAIRE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "BONI_EXISTE",
+      "meaning": "Existence d'un boni de liquidation : « oui » / « non »",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "BONI_LIQUIDATION",
+      "meaning": "Boni de liquidation à répartir entre associés",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "BONI_LIQUIDATION_CHIFFRES",
+      "meaning": "Montant du boni de liquidation (chiffres)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "BONI_LIQUIDATION_LETTRES",
+      "meaning": "Montant du boni de liquidation (lettres)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "BONI_MONTANT",
+      "meaning": "Montant du boni de liquidation réparti (chiffres)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "BONI_PAR_PART",
+      "meaning": "Somme nette attribuée par part sociale (chiffres)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "CAC_EXISTE",
+      "meaning": "La societe est-elle dotee d un commissaire aux comptes (oui/non)",
+      "format": "enum",
+      "source": "directeur_PV_modification"
+    },
+    {
+      "name": "CAC_PRESENT",
+      "meaning": "Presence du commissaire aux comptes a la seance (oui/non)",
+      "format": "enum",
+      "source": "directeur_PV_modification"
+    },
+    {
+      "name": "CAPITAL_CHIFFRES",
+      "meaning": "Montant capital chiffres",
+      "format": "chiffres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "CAPITAL_LETTRES",
+      "meaning": "Montant capital lettres",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "CAPITAL_LIBERE",
+      "meaning": "Quote-part du capital effectivement libérée",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "CESSION_ACTIF_OBJET",
+      "meaning": "Actif dont la cession est autorisée au liquidateur",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "CHIFFRE_AFFAIRES",
+      "meaning": "Chiffre d'affaires de l'exercice",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "COMMENTAIRE_ACTIVITE",
+      "meaning": "Commentaire libre sur l'activité de l'exercice",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "COMMISSAIRE_APPORTS_NOM",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "COMMISSAIRE_COMPTES_NOM",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "COMMISSAIRE_COMPTES_PRESENT",
+      "meaning": "Indique si un commissaire aux comptes présente un rapport (« oui »/« non »)",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "COMPTE_BANCAIRE_NUMERO",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "CONVOCATION_AUTEUR",
+      "meaning": "Auteur de la convocation",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "CONVOCATION_DATE",
+      "meaning": "Date de la convocation",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "CONVOCATION_MODE",
+      "meaning": "Mode de convocation",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "CONVOCATION_RANG",
+      "meaning": "Rang de la convocation : « première » / « deuxième ».",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "DATE_ACTE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "DATE_AG",
+      "meaning": "Date de tenue de l'assemblée.",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "DATE_AGE",
+      "meaning": "Date AGE jj/mm/aaaa",
+      "format": "date",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "DATE_AGE_LETTRES",
+      "meaning": "Date AGE en lettres",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "DATE_AG_PREMIERE",
+      "meaning": "Date de l'assemblée tenue sur première convocation (si rang = deuxième).",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "DATE_CLOTURE",
+      "meaning": "Date de clôture de l'exercice (jj/mm/aaaa)",
+      "format": "date",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "DATE_CLOTURE_LIQUIDATION",
+      "meaning": "Date de clôture des opérations de liquidation",
+      "format": "date",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "DATE_CONVOCATION",
+      "meaning": "Date d'envoi des convocations.",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "DATE_DEPOT",
+      "meaning": "Date de dépôt au greffe",
+      "format": "date",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "DATE_DEPOT_AU_TC",
+      "meaning": "Date du dépôt au Tribunal de Commerce (JAL)",
+      "format": "date",
+      "source": "dict_directeur_2026_06_09"
+    },
+    {
+      "name": "DATE_DEPOT_FONDS",
+      "meaning": "Date de dépôt des fonds chez le dépositaire",
+      "format": "date",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "DATE_DEPOT_LEGAL",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "DATE_DISSOLUTION",
+      "meaning": "Date d'effet de la dissolution",
+      "format": "date",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "DATE_D_EDITION_DES_STATUTS",
+      "meaning": "Date d'édition des statuts (JAL)",
+      "format": "date",
+      "source": "dict_directeur_2026_06_09"
+    },
+    {
+      "name": "DATE_EFFET",
+      "meaning": "Date d'effet de la décision",
+      "format": "date",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "DATE_SIGNATURE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "DENOMINATION",
+      "meaning": "Dénomination sociale",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "DEPOSITAIRE_FONDS",
+      "meaning": "Nom du dépositaire des fonds (banque)",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "DEPOT_FONDS_BLOQUE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "DEUXIEME_ASSEMBLEE_DATE",
+      "meaning": "Date de la seconde assemblée (sur seconde convocation)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "DEUXIEME_ASSEMBLEE_HEURE",
+      "meaning": "Heure de la seconde assemblée",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "DEUXIEME_ASSEMBLEE_LIEU",
+      "meaning": "Lieu de la seconde assemblée",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "DISSOLUTION_MOTIF",
+      "meaning": "Motif de dissolution : « volontaire » / « article 86 » / « arrivée du terme »",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "DIVIDENDES",
+      "meaning": "Montant des dividendes distribués",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "DIVIDENDE_DISTRIBUE",
+      "meaning": "Indique si un dividende est distribué (« oui »/« non »)",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "DIVIDENDE_MISE_EN_PAIEMENT_DATE",
+      "meaning": "Date de mise en paiement du dividende (jj/mm/aaaa)",
+      "format": "date",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "DIVIDENDE_PAR_PART_CHIFFRES",
+      "meaning": "Dividende attribué à chaque part sociale (chiffres)",
+      "format": "chiffres",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "DOCUMENT_JOINT_LIBELLE",
+      "meaning": "Libellé d'un document joint à la convocation (boucle DOCUMENTS_JOINTS).",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "DUREE_GERANCE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "DUREE_MANDAT",
+      "meaning": "Durée du mandat (gérant, etc.)",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "DUREE_MANDAT_CAC",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "DUREE_SOCIETE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ENGAGEMENTS_MANDAT",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "EVENEMENTS_PERSPECTIVES",
+      "meaning": "Événements importants et perspectives d'avenir",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "EXERCICE_CLOS_DATE",
+      "meaning": "Date de clôture de l'exercice soumis à approbation (jj/mm/aaaa)",
+      "format": "date",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "EXERCICE_DEBUT",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "EXERCICE_FIN",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "FORMALITES_MANDATAIRE_NOM",
+      "meaning": "Personne mandatée pour les formalités de publicité et d'immatriculation",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "FORME_JURIDIQUE",
+      "meaning": "SARL, SARL AU",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "FRAIS_LIQUIDATION",
+      "meaning": "Frais engagés pour la liquidation",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "GERANCE_UNIQUE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "GERANT_ACCORD",
+      "meaning": "Accord de la gérance : « un masculin »/« un féminin »/« plusieurs »",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "GERANT_ADRESSE",
+      "meaning": "Adresse personnelle du gérant",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "GERANT_CIN",
+      "meaning": "CIN/passeport du gérant",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "GERANT_CIVILITE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "GERANT_DATE_NAISSANCE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "GERANT_EST_ASSOCIE",
+      "meaning": "SARL AU : le gerant est-il l associe unique (oui/non) — art. 75",
+      "format": "enum",
+      "source": "directeur_PV_modification"
+    },
+    {
+      "name": "GERANT_MODE_DESIGNATION",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "GERANT_NAISSANCE",
+      "meaning": "Date de naissance du gérant",
+      "format": "date",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "GERANT_NATIONALITE",
+      "meaning": "Nationalité du gérant",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "GERANT_NOM",
+      "meaning": "Nom gérant signataire",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "GERANT_PIECE_NUMERO",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "GERANT_PIECE_TYPE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "GERANT_PRENOM",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "HAS_APPORT_NATURE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "HEURE",
+      "meaning": "Heure réunion",
+      "format": "autre",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "HEURE_ACTE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "HEURE_AG",
+      "meaning": "Heure d'ouverture de la séance.",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "HEURE_CLOTURE",
+      "meaning": "Heure de clôture de la séance",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ICE_NUMERO",
+      "meaning": "ICE (Identifiant Commun Entreprise)",
+      "format": "chiffres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "IF_NUMERO",
+      "meaning": "Identifiant Fiscal",
+      "format": "chiffres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "IRREGULARITE_NATURE",
+      "meaning": "Nature de l'irrégularité de convocation",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "LIEU_AG",
+      "meaning": "Lieu de réunion de l'assemblée.",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "LIEU_DATE_EMISSION",
+      "meaning": "Lieu/date émission courrier",
+      "format": "autre",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "LIEU_REUNION",
+      "meaning": "Lieu réunion",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "LIEU_SIGNATURE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "LIMITATION_POUVOIRS",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "LIQUIDATEUR_ADRESSE",
+      "meaning": "Adresse personnelle du liquidateur",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "LIQUIDATEUR_CIN",
+      "meaning": "CIN/passeport du liquidateur",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "LIQUIDATEUR_CIVILITE",
+      "meaning": "Civilité du liquidateur",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "LIQUIDATEUR_GENRE",
+      "meaning": "Genre du liquidateur (« masculin »/« féminin ») — accords",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "LIQUIDATEUR_NATIONALITE",
+      "meaning": "Nationalité du liquidateur",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "LIQUIDATEUR_NOM",
+      "meaning": "Nom du liquidateur désigné",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "LIQUIDATEUR_PIECE_NUMERO",
+      "meaning": "Numéro de pièce d'identité du liquidateur",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "LIQUIDATEUR_PIECE_TYPE",
+      "meaning": "Type de pièce d'identité du liquidateur",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "LIQUIDATEUR_PRENOM",
+      "meaning": "Prénom du liquidateur",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "LIQUIDATEUR_REMUNERATION",
+      "meaning": "Rémunération du liquidateur (ou « exercées à titre gratuit »)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "LIQUIDATEUR_SORTANT_NOM",
+      "meaning": "Liquidateur remplacé (en cas de remplacement)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "LIQUIDATION_SIEGE",
+      "meaning": "Siège de la liquidation",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "LIQ_RESULTAT_MONTANT",
+      "meaning": "Montant du résultat de liquidation (chiffres)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "LIQ_RESULTAT_SENS",
+      "meaning": "Sens du résultat de liquidation : « boni » / « mali »",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "MALI_LIQUIDATION_CHIFFRES",
+      "meaning": "Montant du mali de liquidation (chiffres)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "MALI_LIQUIDATION_LETTRES",
+      "meaning": "Montant du mali de liquidation (lettres)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "MANDATAIRE_ACTE_DELEGATION",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "MANDATAIRE_NOM",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "MODE_LIBERATION",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "MODE_SIGNATURE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "MODE_SIGNATURE_ADMIN",
+      "meaning": "Signature des documents administratifs : « identique »/« signature seule »",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "MONTANT_DU_CAPITAL_EN_CHIFFRES",
+      "meaning": "Alias JAL — montant capital en chiffres",
+      "format": "MAD",
+      "source": "dict_directeur_2026_06_09"
+    },
+    {
+      "name": "NATURE_ASSEMBLEE",
+      "meaning": "Extraordinaire/Ordinaire",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "NATURE_ASSOCIE_PERSONNE_PHYSIQUE_PERSONNE_MORALE",
+      "meaning": "Nature de l'associé (JAL SARL pluri)",
+      "format": "autre",
+      "source": "dict_directeur_2026_06_09"
+    },
+    {
+      "name": "NB_ASSOCIES_PRESENTS",
+      "meaning": "Nombre d'associés présents ou représentés.",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "NOMBRE_DE_PARTS_ASSOCIE_EN_CHIFFRES",
+      "meaning": "Nombre de parts par associé (JAL SARL — concat)",
+      "format": "autre",
+      "source": "dict_directeur_2026_06_09"
+    },
+    {
+      "name": "NOMBRE_DE_PARTS_SOCIALES_EN_CHIFFRES",
+      "meaning": "Nombre total de parts sociales (JAL)",
+      "format": "autre",
+      "source": "dict_directeur_2026_06_09"
+    },
+    {
+      "name": "NOMBRE_ORIGINAUX",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "NOMBRE_PARTS",
+      "meaning": "Nombre total parts sociales",
+      "format": "chiffres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "NOMBRE_PARTS_PRESENTES",
+      "meaning": "Total des parts présentes ou représentées.",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "NOMBRE_VOIX_PRESENTES",
+      "meaning": "Total des voix des associés présents ou représentés.",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "NOM_ET_PRENOM_ASSOCIE",
+      "meaning": "Nom et prénom de l'associé (JAL SARL — concat multi-associés)",
+      "format": "autre",
+      "source": "dict_directeur_2026_06_09"
+    },
+    {
+      "name": "NOM_ET_PRENOM_ASSOCIE_UNIQUE",
+      "meaning": "Nom et prénom de l'associé unique (JAL SARL_AU)",
+      "format": "autre",
+      "source": "dict_directeur_2026_06_09"
+    },
+    {
+      "name": "NOM_ET_PRENOM_GERANTS",
+      "meaning": "Nom et prénom des gérants (JAL — liste concat)",
+      "format": "autre",
+      "source": "dict_directeur_2026_06_09"
+    },
+    {
+      "name": "NUMERO_DEPOT",
+      "meaning": "Numéro de dépôt au greffe",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "NUMERO_DEPOT_AU_TC",
+      "meaning": "Numéro du dépôt au TC (JAL)",
+      "format": "autre",
+      "source": "dict_directeur_2026_06_09"
+    },
+    {
+      "name": "NUMERO_RC",
+      "meaning": "Numéro RC (JAL)",
+      "format": "autre",
+      "source": "dict_directeur_2026_06_09"
+    },
+    {
+      "name": "NUMERO_RC_SUCCURSALE",
+      "meaning": "Numéro RC propre à la succursale",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "OBJET_SOCIAL",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ORDRE_DU_JOUR_POINT",
+      "meaning": "Intitulé point ODJ",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "ORGANE_COMPETENT",
+      "meaning": "Organe compétent ayant pris la décision (société étrangère)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ORGANE_DECISION_DATE",
+      "meaning": "Date de la réunion / décision de l'organe compétent",
+      "format": "date",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ORGANE_DECISION_HEURE",
+      "meaning": "Heure de la réunion / décision de l'organe compétent",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "ORGANE_DECISION_LIEU",
+      "meaning": "Lieu de la réunion / décision de l'organe compétent",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "PARTS_PRESENTES_CHIFFRES",
+      "meaning": "Nombre de parts présentes/représentées (chiffres)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "PARTS_PRESENTES_LETTRES",
+      "meaning": "Nombre de parts présentes/représentées (lettres)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "PASSIF_APURE",
+      "meaning": "Montant du passif apuré en liquidation",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "PASSIF_REGLE_CHIFFRES",
+      "meaning": "Total du passif réglé (chiffres)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "PASSIF_REGLE_LETTRES",
+      "meaning": "Total du passif réglé (lettres)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "POINT_ODJ_LIBELLE",
+      "meaning": "Libellé d'un point de l'ordre du jour (boucle POINTS_ODJ).",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "POINT_ORDRE_DU_JOUR",
+      "meaning": "Point de l'ordre du jour (boucle ORDRE_DU_JOUR)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "PREMIER_EXERCICE_CLOTURE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "PRESIDENT_NOM",
+      "meaning": "Nom président séance",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "PRESIDENT_QUALITE",
+      "meaning": "Qualité du président de séance (gérant, etc.)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "PRESIDENT_SEANCE_NOM",
+      "meaning": "Nom du président de séance",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "PRESIDENT_SEANCE_QUALITE",
+      "meaning": "Qualité du président de séance",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "PV_ETAPE",
+      "meaning": "Étape du cycle couverte par le PV : « dissolution » / « cours de liquidation » / « clôture »",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "QUORUM_ATTEINT",
+      "meaning": "Le quorum de l assemblee est-il atteint (oui/non) — sinon PV de carence",
+      "format": "enum",
+      "source": "directeur_PV_modification"
+    },
+    {
+      "name": "QUORUM_POURCENTAGE",
+      "meaning": "% capital présent/représenté",
+      "format": "chiffres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "RC_NUMERO",
+      "meaning": "N° Registre Commerce",
+      "format": "chiffres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "RC_VILLE",
+      "meaning": "Ville RC",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "REPORT_A_NOUVEAU",
+      "meaning": "Report à nouveau (positif ou négatif)",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "REPRESENTANT_SUCCURSALE_ADRESSE",
+      "meaning": "Adresse au Maroc du représentant résident de la succursale",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "REPRESENTANT_SUCCURSALE_CIVILITE",
+      "meaning": "Civilité du représentant résident de la succursale au Maroc",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "REPRESENTANT_SUCCURSALE_NATIONALITE",
+      "meaning": "Nationalité du représentant résident de la succursale au Maroc",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "REPRESENTANT_SUCCURSALE_NOM",
+      "meaning": "Nom du représentant résident de la succursale au Maroc",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "REPRESENTANT_SUCCURSALE_PIECE_NUMERO",
+      "meaning": "Numéro de pièce d'identité du représentant résident",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "REPRESENTANT_SUCCURSALE_PIECE_TYPE",
+      "meaning": "Type de pièce d'identité du représentant résident",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "REPRESENTANT_SUCCURSALE_POUVOIRS",
+      "meaning": "Étendue des pouvoirs conférés au représentant résident",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "REPRESENTANT_SUCCURSALE_PRENOM",
+      "meaning": "Prénom du représentant résident de la succursale au Maroc",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "RESERVE_LEGALE",
+      "meaning": "Dotation à la réserve légale",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "RESOLUTION_ABSTENTIONS",
+      "meaning": "Abstentions",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "RESOLUTION_INTITULE",
+      "meaning": "Intitulé de la résolution",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "RESOLUTION_NUMERO",
+      "meaning": "Numéro de la résolution (boucle RESOLUTIONS)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "RESOLUTION_OBJET",
+      "meaning": "Objet de la résolution / décision",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "RESOLUTION_ORDINAL",
+      "meaning": "Ordinal de la résolution (PREMIÈRE, DEUXIÈME, …)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "RESOLUTION_RANG",
+      "meaning": "Rang lettres (PREMIÈRE…) — généré par l'app",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "RESOLUTION_RESULTAT",
+      "meaning": "Résultat du vote de la résolution",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "RESOLUTION_TEXTE",
+      "meaning": "Texte résolution",
+      "format": "lettres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "RESOLUTION_TYPE",
+      "meaning": "Type de résolution — sélecteur du bloc de décision",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "RESOLUTION_VOIX_CONTRE",
+      "meaning": "Voix contre",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "RESOLUTION_VOIX_POUR",
+      "meaning": "Voix pour",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "RESULTAT_LIQUIDATION_TYPE",
+      "meaning": "Résultat de liquidation : « boni »/« mali »",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "RESULTAT_MONTANT",
+      "meaning": "Résultat net de l'exercice",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "RESULTAT_NET_CHIFFRES",
+      "meaning": "Montant du résultat net de l'exercice (chiffres)",
+      "format": "chiffres",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "RESULTAT_NET_LETTRES",
+      "meaning": "Montant du résultat net de l'exercice (lettres)",
+      "format": "lettres",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "RESULTAT_TYPE",
+      "meaning": "Nature du résultat net de l'exercice (« bénéfice »/« perte »)",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "SECRETAIRE_PRESENT",
+      "meaning": "Un secrétaire est-il désigné (« oui »/« non »)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SECRETAIRE_SEANCE_NOM",
+      "meaning": "Nom du secrétaire de séance (si présent)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SIEGE_LIQUIDATION",
+      "meaning": "Siège social pendant la phase de liquidation",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "SIEGE_SOCIAL",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SIGNATAIRE_ACCORD",
+      "meaning": "Accord des signataires (art. 15) : « un masculin »/« un féminin »/« plusieurs »",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SIGNATAIRE_NOM",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SIGNATAIRE_QUALITE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SIGNATURE_MANDATAIRE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SIGNATURE_PLAFOND_CHIFFRES",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SIGNATURE_PLAFOND_LETTRES",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SOCIETE_MERE_CAPITAL",
+      "meaning": "Capital de la société mère étrangère (montant et devise)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SOCIETE_MERE_DENOMINATION",
+      "meaning": "Dénomination de la société mère étrangère décisionnaire",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SOCIETE_MERE_FORME",
+      "meaning": "Forme sociale de la société mère selon la loi étrangère",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SOCIETE_MERE_LOI_APPLICABLE",
+      "meaning": "Loi régissant la société mère étrangère et la compétence de son organe",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SOCIETE_MERE_PAYS",
+      "meaning": "Pays du siège de la société mère étrangère",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SOCIETE_MERE_REGISTRE",
+      "meaning": "Intitulé du registre d'immatriculation étranger de la société mère",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SOCIETE_MERE_REGISTRE_NUMERO",
+      "meaning": "Numéro d'immatriculation de la société mère au registre étranger",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SOCIETE_MERE_SIEGE",
+      "meaning": "Adresse du siège social de la société mère à l'étranger",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_ACTIVITE",
+      "meaning": "Activité de la succursale",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "SUCCURSALE_ADRESSE",
+      "meaning": "Adresse postale de la succursale",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "SUCCURSALE_DATE_FERMETURE",
+      "meaning": "Date d'effet de la fermeture de la succursale",
+      "format": "date",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_DATE_OUVERTURE",
+      "meaning": "Date d'ouverture de la succursale",
+      "format": "date",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_DOTATION_CHIFFRES",
+      "meaning": "Montant de la dotation de la succursale (chiffres)",
+      "format": "chiffres",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_DOTATION_LETTRES",
+      "meaning": "Montant de la dotation de la succursale (lettres)",
+      "format": "lettres",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_DOTATION_PRESENTE",
+      "meaning": "Condition « oui »/« non » : une dotation est-elle affectée à la succursale",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_ENSEIGNE",
+      "meaning": "Enseigne commerciale de la succursale",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "SUCCURSALE_MOTIF",
+      "meaning": "Motif de la fermeture de la succursale",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_RC_NUMERO",
+      "meaning": "Numéro d'immatriculation de la succursale au registre du commerce du lieu d'exploitation",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_RESPONSABLE",
+      "meaning": "Nom du responsable de la succursale",
+      "format": "autre",
+      "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "SUCCURSALE_RESPONSABLE_ADRESSE",
+      "meaning": "Adresse du responsable de la succursale",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_RESPONSABLE_CIVILITE",
+      "meaning": "Civilité du responsable de la succursale",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_RESPONSABLE_NATIONALITE",
+      "meaning": "Nationalité du responsable de la succursale",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_RESPONSABLE_NOM",
+      "meaning": "Nom du responsable de la succursale",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_RESPONSABLE_PIECE_NUMERO",
+      "meaning": "Numéro de pièce d'identité du responsable de la succursale",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_RESPONSABLE_PIECE_TYPE",
+      "meaning": "Type de pièce d'identité du responsable de la succursale",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_RESPONSABLE_POUVOIRS",
+      "meaning": "Étendue des pouvoirs conférés au responsable de la succursale",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_RESPONSABLE_PRENOM",
+      "meaning": "Prénom du responsable de la succursale",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_RESPONSABLE_PRESENT",
+      "meaning": "Condition « oui »/« non » : un responsable de succursale est-il désigné",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_VILLE",
+      "meaning": "Ville d'implantation de la succursale",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUCCURSALE_VILLE_GREFFE",
+      "meaning": "Ville du registre du commerce du lieu d'exploitation de la succursale",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "SUITE_ASSEMBLEE",
+      "meaning": "Suite donnée : « renvoi »/« régularisation »",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "VALEUR_NOMINALE_DE_PARTS_SOCIALES_EN_CHIFFRES",
+      "meaning": "Valeur nominale en chiffres (JAL)",
+      "format": "MAD",
+      "source": "dict_directeur_2026_06_09"
+    },
+    {
+      "name": "VALEUR_NOMINALE_PART",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    },
+    {
+      "name": "VALEUR_PART",
+      "meaning": "Valeur nominale d'une part",
+      "format": "chiffres",
+      "source": "dict_directeur"
+    },
+    {
+      "name": "VILLE_GREFFE",
+      "meaning": "Variable des modèles déterministes du directeur (2026-08)",
+      "format": "autre",
+      "source": "directeur-2026-08"
+    }
+  ],
+  "blocks": [
+    {
+      "name": "ASSOCIES",
+      "variables": [
+        "ASSOCIE_NOM",
+        "ASSOCIE_ADRESSE",
+        "ASSOCIE_PARTS_CHIFFRES",
+        "ASSOCIE_PARTS_LETTRES",
+        "ASSOCIE_POURCENTAGE",
+        "ASSOCIE_MONTANT_SOUSCRIT",
+        "ASSOCIE_MONTANT_VERSE"
+      ]
+    },
+    {
+      "name": "ORDRE_DU_JOUR",
+      "variables": [
+        "ORDRE_DU_JOUR_POINT"
+      ]
+    },
+    {
+      "name": "RESOLUTIONS",
+      "variables": [
+        "RESOLUTION_RANG",
+        "RESOLUTION_TEXTE"
+      ]
+    },
+    {
+      "name": "AFFECTATION_RESULTAT",
+      "variables": [
+        "AFFECTATION_LIBELLE",
+        "AFFECTATION_MONTANT_CHIFFRES",
+        "AFFECTATION_MONTANT_LETTRES"
+      ]
+    }
+  ]
+}

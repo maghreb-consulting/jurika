@@ -1,0 +1,91 @@
+/**
+ * v2 Flagship — TASK 6 bento tilt 3D + glare gold.
+ *
+ * Le hook useTilt3D applique rotateX/Y via JS. Ce CSS ajoute :
+ *  - transform-origin + transition (smooth easeout sur leave)
+ *  - pseudo-after radial gradient glare suivant --mx/--my
+ *  - data-viz live animation : barres qui pulsent (Vercel signature)
+ */
+
+.bento-grid { perspective: 1400px; }
+
+.bento-tile[data-tilt='true'] {
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.4s ease,
+              border-color 0.4s ease;
+}
+
+/* Glare radial qui suit le curseur (--mx/--my settés par useTilt3D) */
+.bento-tile[data-tilt='true']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at var(--mx, 50%) var(--my, 50%),
+    rgba(200, 164, 92, 0.12),
+    transparent 50%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: inherit;
+  z-index: 1;
+}
+.bento-tile[data-tilt='true']:hover::after {
+  opacity: 1;
+}
+
+/* Sur les tiles featured hero (sombre), glare or plus intense */
+.bento-hero[data-tilt='true']:hover {
+  border-color: rgba(200, 164, 92, 0.35);
+}
+
+/* Bento contenu doit rester au-dessus du glare */
+.bento-tile > * { position: relative; z-index: 2; }
+.bento-viz { z-index: 2; }
+
+/* Bento bento-viz live : barres qui pulsent comme un dashboard temps réel */
+.bento-viz__bar {
+  transition: height 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.bento-viz:hover .bento-viz__bar {
+  animation: bentoBarPulse 2.4s ease-in-out infinite;
+}
+.bento-viz:hover .bento-viz__col:nth-child(2) .bento-viz__bar { animation-delay: 0.2s; }
+.bento-viz:hover .bento-viz__col:nth-child(3) .bento-viz__bar { animation-delay: 0.4s; }
+.bento-viz:hover .bento-viz__col:nth-child(4) .bento-viz__bar { animation-delay: 0.6s; }
+@keyframes bentoBarPulse {
+  0%, 100% { filter: brightness(1); box-shadow: 0 -4px 12px rgba(200, 164, 92, 0.3); }
+  50% { filter: brightness(1.25); box-shadow: 0 -6px 20px rgba(200, 164, 92, 0.55); }
+}
+
+/* Edge highlight subtle sur tile dark */
+.bento-hero {
+  border-top-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: var(--shadow-inset-gold, inset 0 0 0 1px rgba(200, 164, 92, 0.15));
+}
+
+/* Petit ribbon "Cœur de la plateforme" sur le hero tile */
+.bento-hero::before {
+  content: 'Cœur de la plateforme';
+  position: absolute;
+  top: 24px; right: 24px;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(200, 164, 92, 0.16);
+  color: var(--gold-300);
+  border: 1px solid rgba(200, 164, 92, 0.3);
+  z-index: 3;
+}
+
+/* reduced-motion : pas de tilt, pas d'anim barres */
+@media (prefers-reduced-motion: reduce) {
+  .bento-tile[data-tilt='true'] {
+    transform: none !important;
+  }
+  .bento-viz:hover .bento-viz__bar { animation: none; }
+}

@@ -1,0 +1,262 @@
+{
+  "PV_AGE_SARL": {
+    "societe": {
+      "denomination": "TEST SARL",
+      "formeJuridique": "SARL",
+      "capitalChiffres": 100000,
+      "adresseSiege": "12 Rue des Hôpitaux, 20000 Casablanca",
+      "rcNumero": "123456",
+      "rcVille": "Casablanca",
+      "ifNumero": "40123456",
+      "iceNumero": "001234567000099",
+      "nombreParts": 1000,
+      "valeurPart": 100
+    },
+    "assemblee": {
+      "dateAge": "2026-07-10",
+      "heure": "10:00",
+      "lieuReunion": "Siège social, Casablanca",
+      "lieuDateEmission": "Casablanca, le 25 juin 2026",
+      "presidentNom": "Karim BENALI",
+      "quorumPourcentage": 100
+    },
+    "gerant": {
+      "nom": "Karim BENALI",
+      "adresse": "5 Boulevard Zerktouni, Casablanca"
+    },
+    "modifications": [
+      {
+        "typeId": "TRANSFERT_SIEGE",
+        "details": {
+          "nouvelleAdresse": "45 Avenue Hassan II",
+          "nouvelleVille": "Casablanca",
+          "dateEffet": "2026-08-01"
+        }
+      },
+      {
+        "typeId": "CHANGEMENT_DENOMINATION",
+        "details": {
+          "nouvelleDenomination": "TEST GROUP SARL"
+        }
+      }
+    ],
+    "associes": [
+      {
+        "nom": "Karim BENALI",
+        "adresse": "5 Boulevard Zerktouni, Casablanca",
+        "partsChiffres": 600,
+        "pourcentage": 60
+      },
+      {
+        "nom": "Sofia ALAOUI",
+        "adresse": "22 Avenue Hassan II, Rabat",
+        "partsChiffres": 400,
+        "pourcentage": 40
+      }
+    ]
+  },
+  "PV_AGE_SARL_AU": {
+    "societe": {
+      "denomination": "TEST SARL AU",
+      "formeJuridique": "SARL AU",
+      "capitalChiffres": 100000,
+      "adresseSiege": "12 Rue des Hôpitaux, 20000 Casablanca",
+      "rcNumero": "654321",
+      "rcVille": "Casablanca",
+      "ifNumero": "40987654",
+      "iceNumero": "009876543000011",
+      "nombreParts": 1000,
+      "valeurPart": 100
+    },
+    "assemblee": {
+      "dateAge": "2026-07-10",
+      "heure": "10:00",
+      "lieuReunion": "Siège social, Casablanca",
+      "presidentNom": "Karim BENALI",
+      "quorumPourcentage": 100
+    },
+    "modifications": [
+      {
+        "typeId": "AUGMENTATION_CAPITAL",
+        "details": {
+          "nouveauCapital": 250000,
+          "nouvellesParts": 1500,
+          "dateVersement": "2026-07-05"
+        }
+      }
+    ],
+    "associeUnique": {
+      "nom": "Karim BENALI",
+      "adresse": "5 Boulevard Zerktouni, Casablanca",
+      "cin": "BE123456",
+      "naissance": "1985-03-12",
+      "nationalite": "Marocaine"
+    }
+  },
+  "CONVOCATION_ASSOCIES": {
+    "societe": {
+      "denomination": "TEST SARL",
+      "formeJuridique": "SARL",
+      "capitalChiffres": 100000,
+      "adresseSiege": "12 Rue des Hôpitaux, 20000 Casablanca",
+      "rcNumero": "123456",
+      "rcVille": "Casablanca",
+      "ifNumero": "40123456",
+      "iceNumero": "001234567000099"
+    },
+    "assemblee": {
+      "dateAge": "2026-07-10",
+      "heure": "10:00",
+      "lieuReunion": "Siège social, Casablanca",
+      "lieuDateEmission": "Casablanca, le 25 juin 2026",
+      "presidentNom": "Karim BENALI"
+    },
+    "gerant": {
+      "nom": "Karim BENALI",
+      "adresse": "5 Boulevard Zerktouni, Casablanca"
+    },
+    "modifications": [
+      {
+        "typeId": "TRANSFERT_SIEGE",
+        "details": {
+          "nouvelleAdresse": "45 Avenue Hassan II",
+          "nouvelleVille": "Casablanca",
+          "dateEffet": "2026-08-01"
+        }
+      }
+    ],
+    "associes": [
+      {
+        "nom": "Karim BENALI",
+        "adresse": "5 Boulevard Zerktouni, Casablanca",
+        "partsChiffres": 600,
+        "pourcentage": 60
+      },
+      {
+        "nom": "Sofia ALAOUI",
+        "adresse": "22 Avenue Hassan II, Rabat",
+        "partsChiffres": 400,
+        "pourcentage": 40
+      }
+    ]
+  },
+  "FEUILLE_DE_PRESENCE": {
+    "societe": {
+      "denomination": "TEST SARL",
+      "formeJuridique": "SARL",
+      "capitalChiffres": 100000,
+      "adresseSiege": "12 Rue des Hôpitaux, 20000 Casablanca",
+      "rcNumero": "123456",
+      "rcVille": "Casablanca",
+      "ifNumero": "40123456",
+      "iceNumero": "001234567000099",
+      "nombreParts": 1000
+    },
+    "assemblee": {
+      "dateAge": "2026-07-10",
+      "heure": "10:00",
+      "lieuReunion": "Siège social, Casablanca",
+      "presidentNom": "Karim BENALI",
+      "quorumPourcentage": 100
+    },
+    "natureAssemblee": "Assemblée Générale Extraordinaire",
+    "associes": [
+      {
+        "nom": "Karim BENALI",
+        "adresse": "5 Boulevard Zerktouni, Casablanca",
+        "partsChiffres": 600,
+        "pourcentage": 60
+      },
+      {
+        "nom": "Sofia ALAOUI",
+        "adresse": "22 Avenue Hassan II, Rabat",
+        "partsChiffres": 400,
+        "pourcentage": 40
+      }
+    ]
+  },
+  "STATUTS_REFONDUS_SARL": {
+    "ficheStructuree": {
+      "denomination": "TEST GROUP SARL",
+      "formeJuridique": "SARL",
+      "adresseSiege": "45 Avenue Hassan II, Casablanca",
+      "ice": "001234567000089",
+      "objetSocial": "Conseil et services",
+      "capitalSocial": 250000,
+      "valeurNominale": 100,
+      "dureeAnnees": 99,
+      "dirigeants": [
+        {
+          "nom": "ALAMI",
+          "prenom": "Sara",
+          "cinNumero": "BK99887",
+          "nationalite": "marocaine",
+          "isStatutaire": true
+        }
+      ],
+      "associes": [
+        {
+          "typePersonne": "PHYSIQUE",
+          "nom": "ALAMI",
+          "prenom": "Sara",
+          "cin": "BK99887",
+          "nbParts": 1500
+        },
+        {
+          "typePersonne": "PHYSIQUE",
+          "nom": "BENNANI",
+          "prenom": "Omar",
+          "cin": "BE11223",
+          "nbParts": 1000
+        }
+      ]
+    },
+    "modifications": [
+      {
+        "typeId": "CHANGEMENT_DENOMINATION",
+        "details": {
+          "nouvelleDenomination": "NOUVEAU NOM SARL"
+        }
+      }
+    ]
+  },
+  "STATUTS_REFONDUS_SARL_AU": {
+    "ficheStructuree": {
+      "denomination": "TEST GROUP SARL AU",
+      "formeJuridique": "SARL_AU",
+      "adresseSiege": "45 Avenue Hassan II, Casablanca",
+      "ice": "001234567000089",
+      "objetSocial": "Conseil et services",
+      "capitalSocial": 250000,
+      "valeurNominale": 100,
+      "dureeAnnees": 99,
+      "dirigeants": [
+        {
+          "nom": "ALAMI",
+          "prenom": "Sara",
+          "cinNumero": "BK99887",
+          "nationalite": "marocaine",
+          "isStatutaire": true
+        }
+      ],
+      "associes": [
+        {
+          "typePersonne": "PHYSIQUE",
+          "nom": "ALAMI",
+          "prenom": "Sara",
+          "cin": "BK99887",
+          "nbParts": 2500
+        }
+      ]
+    },
+    "modifications": [
+      {
+        "typeId": "AUGMENTATION_CAPITAL",
+        "details": {
+          "nouveauCapital": 500000,
+          "nouvellesParts": 2500
+        }
+      }
+    ]
+  }
+}

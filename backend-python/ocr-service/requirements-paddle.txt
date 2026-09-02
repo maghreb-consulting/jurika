@@ -1,0 +1,11 @@
+# Optionnel — moteur PaddleOCR (PP-OCRv4 mobile CPU).
+# Ne PAS mélanger avec doctr dans le même venv : conflits torch/paddle possibles.
+# Installer dans un venv séparé si on veut benchmarker les deux.
+#
+# Sur Windows, si paddlepaddle refuse de s'installer via pypi.org :
+#   pip install paddlepaddle==2.6.2 -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+paddleocr==2.9.1
+paddlepaddle==2.6.2
+shapely==2.0.6
+pyclipper==1.3.0.post6

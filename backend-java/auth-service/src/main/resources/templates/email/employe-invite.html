@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Invitation a rejoindre JURIKA</title>
+</head>
+<body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#0F172A;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf6ec;padding:32px 16px;">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+                   style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+
+                <th:block th:replace="~{email/_base :: header(title='Bienvenue dans votre cabinet')}"/>
+
+                <tr>
+                    <td style="padding:32px;">
+                        <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
+                            Bonjour <strong th:text="${firstName}">Karim</strong>,
+                        </p>
+
+                        <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
+                            Vous avez ete invite a rejoindre le cabinet
+                            <strong th:text="${workspaceName}">Maghreb Consulting</strong>
+                            sur JURIKA en tant que
+                            <strong th:text="${roleLabel}">Employe</strong>.
+                        </p>
+
+                        <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
+                            Voici vos identifiants pour vous connecter :
+                        </p>
+
+                        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:20px;margin:24px 0;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="padding:8px 0;color:#64748B;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Code workspace</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:0 0 16px;font-family:'JetBrains Mono',Consolas,monospace;font-size:18px;color:#0F172A;font-weight:600;">
+                                        <span th:text="${workspaceCode}">JUR-A4F2K</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:8px 0;color:#64748B;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;border-top:1px solid #E2E8F0;">Identifiant de connexion</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:0 0 6px;font-family:'JetBrains Mono',Consolas,monospace;font-size:14px;color:#0F172A;font-weight:600;">
+                                        <span th:text="${loginEmail != null ? loginEmail : email}">karim.benali@jurika.ma</span>
+                                    </td>
+                                </tr>
+                                <tr th:if="${contactEmail != null and contactEmail != loginEmail}">
+                                    <td style="padding:0 0 16px;font-size:11px;color:#64748B;">
+                                        Notifications envoyees a <span th:text="${contactEmail}" style="color:#0F172A;">karim@cabinet.ma</span>.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:8px 0;color:#64748B;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;border-top:1px solid #E2E8F0;">Mot de passe temporaire</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:0;font-family:'JetBrains Mono',Consolas,monospace;font-size:18px;color:#0F172A;font-weight:600;">
+                                        <span th:text="${temporaryPassword}">Aa9$kL2p#Mq8</span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <div style="text-align:center;margin:32px 0;">
+                            <a th:href="${loginUrl}"
+                               style="display:inline-block;background:#0c1d3f;color:#c8a45c;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px;">
+                                Me connecter
+                            </a>
+                        </div>
+
+                        <p style="margin:0 0 16px;font-size:13px;color:#64748B;line-height:1.55;">
+                            Au premier login, il vous sera demande de changer votre mot de passe
+                            et de configurer votre authentification a deux facteurs (SMS ou
+                            Google Authenticator).
+                        </p>
+
+                        <th:block th:replace="~{email/_base :: phishingBox}"/>
+                    </td>
+                </tr>
+
+                <th:block th:replace="~{email/_base :: footer(unsubscribeUrl=${unsubscribeUrl})}"/>
+            </table>
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

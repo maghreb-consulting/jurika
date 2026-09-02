@@ -1,0 +1,23 @@
+{
+  "name": "gje-backend-node",
+  "version": "1.0.0",
+  "description": "GJE WebSocket + Notifications Server",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1",
+    "redis": "^4.6.7",
+    "jsonwebtoken": "^9.0.0",
+    "axios": "^1.4.0",
+    "pg": "^8.13.1",
+    "uuid": "^11.0.3",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

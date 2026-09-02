@@ -1,0 +1,91 @@
+/**
+ * v2 Flagship — TASK 8 testimonials + trust marquee dual line + FAQ refinement.
+ */
+
+/* ---- Testimonials : gold underline qui se trace au reveal ---- */
+.testimonial[data-reveal] .testimonial__underline {
+  position: absolute;
+  left: 32px; bottom: 24px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500));
+  width: 0;
+}
+.testimonial[data-reveal].is-in .testimonial__underline {
+  animation: testimonialTrace 1s cubic-bezier(0.22, 1, 0.36, 1) 0.4s forwards;
+}
+.testimonial[data-reveal]:hover .testimonial__underline {
+  width: 100px;
+  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes testimonialTrace {
+  from { width: 0; }
+  to { width: 80px; }
+}
+
+/* ---- Testimonial __mark : drop-shadow au hover ---- */
+.testimonial:hover .testimonial__mark {
+  opacity: 0.9;
+  filter: drop-shadow(0 0 12px rgba(200, 164, 92, 0.4));
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+/* ---- Trust marquee dual line ---- */
+.trust-marquee--dual {
+  padding: 48px 0 32px;
+}
+.trust-marquee--dual .marquee-track + .marquee-track {
+  margin-top: 8px;
+}
+.marquee-track--reverse .marquee-row {
+  animation: marqueeScrollReverse 36s linear infinite;
+  /* Décale légèrement la vitesse du rang 2 (36s vs 32s) → constellation */
+}
+@keyframes marqueeScrollReverse {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+/* Rang institution : style plus 'officiel' (couleur navy plus profonde) */
+.marquee-track--reverse .marquee-item {
+  color: var(--navy-700);
+  font-weight: 600;
+}
+/* Cabinet row : couleur ink-500 (déjà v2.css), italic Playfair pour edito */
+.trust-marquee .marquee-track:not(.marquee-track--reverse) .marquee-item {
+  font-family: var(--heading);
+  font-style: italic;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 1.05rem;
+  color: var(--ink-700);
+}
+
+/* ---- FAQ refinement (déjà partiellement v2.css) ---- */
+.section-faq .section-head {
+  text-align: center;
+  margin: 0 auto 48px;
+  max-width: 720px;
+}
+.faq-list { max-width: 720px; margin: 48px auto 0; }
+/* Le panel a une transition smooth grid-template-rows déjà v2.css */
+/* Ajout : gold accent border-left au is-open */
+.faq-item.is-open {
+  border-left: 3px solid var(--gold-500);
+}
+.faq-item:not(.is-open) {
+  border-left: 3px solid transparent;
+}
+.faq-item {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, border-left-color 0.3s ease;
+}
+
+/* reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .testimonial[data-reveal].is-in .testimonial__underline {
+    animation: none;
+    width: 80px;
+  }
+  .marquee-track--reverse .marquee-row {
+    animation: none;
+  }
+}

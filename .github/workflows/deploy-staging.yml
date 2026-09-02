@@ -1,0 +1,168 @@
+﻿# JURIKA â€” Deploy staging (Sprint 14 ter F4).
+#
+# Trigger : push sur main.
+# Pipeline : build matrix par service -> push ghcr.io -> SSH staging.jurika.ma
+#            -> docker compose pull + up -d -> smoke test Playwright
+#            -> failure -> rollback automatique (scripts/rollback-staging.sh).
+#
+# Secrets requis (Repository Settings -> Secrets) :
+#   - GHCR_TOKEN              : PAT avec scopes write:packages, read:packages
+#   - STAGING_SSH_KEY         : cle SSH privee de l'utilisateur deploy@staging.jurika.ma
+#   - STAGING_HOST            : staging.jurika.ma
+#   - STAGING_USER            : deploy
+#   - SMOKE_PASSWORD          : mot de passe du compte smoke-test@maghreb-consulting.ma
+
+name: deploy-staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: ou55am1
+
+jobs:
+  build-and-push:
+    name: build & push image
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: discovery
+            context: backend-java
+            dockerfile: backend-java/discovery-service/Dockerfile
+          - service: auth
+            context: backend-java
+            dockerfile: backend-java/auth-service/Dockerfile
+          - service: ticket
+            context: backend-java
+            dockerfile: backend-java/ticket-service/Dockerfile
+          - service: workflow
+            context: backend-java
+            dockerfile: backend-java/workflow-service/Dockerfile
+          - service: dataroom
+            context: backend-java
+            dockerfile: backend-java/dataroom-service/Dockerfile
+          - service: dashboard
+            context: backend-java
+            dockerfile: backend-java/dashboard-service/Dockerfile
+          - service: supervision
+            context: backend-java
+            dockerfile: backend-java/supervision-service/Dockerfile
+          - service: ai
+            context: backend-java
+            dockerfile: backend-java/ai-service/Dockerfile
+          - service: gateway
+            context: backend-java
+            dockerfile: backend-java/gateway-service/Dockerfile
+          - service: frontend
+            context: frontend-react
+            dockerfile: frontend-react/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: meta
+        id: meta
+        run: |
+          SHA_SHORT=${GITHUB_SHA::7}
+          echo "tag=sha-${SHA_SHORT}" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,scope=${{ matrix.service }},mode=max
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/jurika-${{ matrix.service }}:${{ steps.meta.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/jurika-${{ matrix.service }}:staging
+
+  deploy:
+    name: deploy to VM
+    needs: build-and-push
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: scp compose file
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          source: "infrastructure/deployment/docker-compose.staging.yml"
+          target: "/opt/jurika/"
+          strip_components: 3
+      - name: pull + up + wait healthy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/jurika
+            docker compose -f docker-compose.staging.yml pull
+            docker compose -f docker-compose.staging.yml up -d
+            for i in {1..30}; do
+              if curl -fs https://staging.jurika.ma/actuator/health > /dev/null; then
+                echo "Gateway healthy after ${i} attempts"
+                exit 0
+              fi
+              sleep 5
+            done
+            echo "Gateway not healthy after 150s"
+            exit 1
+
+  smoke:
+    name: smoke tests staging
+    needs: deploy
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: frontend-react
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend-react/package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - run: npx playwright install --with-deps chromium
+      - env:
+          E2E_BASE_URL: https://staging.jurika.ma
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+        run: npx playwright test e2e/smoke-staging.spec.ts --project=chromium
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-staging
+          path: frontend-react/playwright-report/
+
+  rollback-on-failure:
+    name: rollback on failure
+    needs: [deploy, smoke]
+    if: failure()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: ssh rollback
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/jurika
+            bash rollback-staging.sh || (echo "Rollback script missing or failed" && exit 1)

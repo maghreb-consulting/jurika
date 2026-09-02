@@ -1,0 +1,17 @@
+[
+  "AVIS DE FERMETURE DE SUCCURSALE",
+  "",
+  "$DENOMINATION SARL au capital de $CAPITAL_CHIFFRES DH — Siège social : $SIEGE_SOCIAL — RC N° $RC_NUMERO.",
+  "",
+  "Aux termes de l'assemblée générale extraordinaire en date du $ASSEMBLEE_DATE, les associés de la société $DENOMINATION SARL au capital de $CAPITAL_CHIFFRES DH, ont décidé :",
+  "",
+  "La fermeture de la succursale exploitée sous l'enseigne « $SUCCURSALE_ENSEIGNE », sise à $SUCCURSALE_ADRESSE, $SUCCURSALE_VILLE, immatriculée au registre du commerce de $SUCCURSALE_VILLE_GREFFE sous le n° $SUCCURSALE_RC_NUMERO, à compter du $SUCCURSALE_DATE_FERMETURE ;",
+  "",
+  "Cette fermeture est motivée par $SUCCURSALE_MOTIF ;",
+  "",
+  "Pouvoirs à conférer en vue de la radiation de la succursale du registre du commerce et de l'accomplissement des formalités prévues par la loi.",
+  "",
+  "La succursale sera radiée du registre du commerce du tribunal de Commerce de $SUCCURSALE_VILLE_GREFFE.",
+  "",
+  "Le dépôt légal a été effectué au Greffier du tribunal de Commerce de $VILLE_GREFFE, le $DATE_DEPOT_LEGAL sous le numéro $DEPOT_LEGAL_NUMERO RC N° $RC_NUMERO."
+]

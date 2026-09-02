@@ -1,0 +1,54 @@
+# Sprint 14 ter C1 -- Profil "it" pour IT TestContainers.
+# Force HS256 (pas de PEM RSA requis) + secret dev. Active uniquement pour les tests integration.
+
+jurika:
+  jwt:
+    algorithm: HS256
+    hmac-secret: dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345
+    public-key-path: ""
+    issuer: jurika.ma
+  minio:
+    endpoint: http://localhost:9099
+    access-key: test
+    secret-key: test-secret
+    bucket: jurika-it
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  main:
+    allow-bean-definition-overriding: true
+  cloud:
+    discovery:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+management:
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+
+logging:
+  level:
+    org.springframework.test: WARN
+    org.testcontainers: INFO
+    ma.jurika: INFO

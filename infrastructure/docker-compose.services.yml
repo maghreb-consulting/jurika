@@ -1,0 +1,374 @@
+# JURIKA — Compose des 7 services Java + Node realtime (Sprint 2 / TASK 7).
+#
+# Ce fichier est versionne pour preparer le deploiement Sprint 15 (K8s). Il complete
+# infrastructure/docker-compose.yml (PG/Redis/Rabbit/MinIO/Mailhog) et s'attend a un
+# Dockerfile par service (a livrer Sprint 15).
+#
+# Healthcheck : interroge /actuator/health/readiness. Le service est marque healthy
+# uniquement quand toutes ses dependances (db, rabbit, minio, redis) sont UP.
+#
+# Usage :
+#   docker compose -f infrastructure/docker-compose.yml \
+#                  -f infrastructure/docker-compose.services.yml up -d
+
+# YAML anchor : ENV OTel partagee par tous les services Java (Sprint 2 / TASK 3).
+# Le nom du service est surcharge dans chaque bloc via OTEL_SERVICE_NAME.
+x-otel-environment: &otel-env
+  OTEL_TRACES_EXPORTER: otlp
+  OTEL_METRICS_EXPORTER: none
+  OTEL_LOGS_EXPORTER: none
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://tempo:4318}
+  OTEL_TRACES_SAMPLER: ${OTEL_TRACES_SAMPLER:-parentbased_traceidratio}
+  OTEL_TRACES_SAMPLER_ARG: ${OTEL_TRACES_SAMPLER_ARG:-1.0}
+  OTEL_PROPAGATORS: tracecontext,baggage,b3
+  OTEL_RESOURCE_ATTRIBUTES: deployment.environment=${JURIKA_ENV:-dev}
+
+services:
+  # ──────────────────────────────────────────────────────────────────
+  # JAVA SERVICES
+  # ──────────────────────────────────────────────────────────────────
+  discovery-service:
+    build:
+      context: ../backend-java
+      dockerfile: discovery-service/Dockerfile
+    container_name: jurika-discovery
+    restart: unless-stopped
+    ports:
+      - "${DISCOVERY_PORT:-8761}:8761"
+    environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: discovery-service
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      JURIKA_ENV: ${JURIKA_ENV:-dev}
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8761/actuator/health/readiness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    networks:
+      - jurika-network
+
+  gateway-service:
+    build:
+      context: ../backend-java
+      dockerfile: gateway-service/Dockerfile
+    container_name: jurika-gateway
+    restart: unless-stopped
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
+    environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: gateway-service
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      JURIKA_ENV: ${JURIKA_ENV:-dev}
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-JurikaRedis2026}
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
+    volumes:
+      - ./secrets/jwt:/run/secrets/jwt:ro
+    depends_on:
+      discovery-service: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8080/actuator/health/readiness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    networks:
+      - jurika-network
+
+  auth-service:
+    build:
+      context: ../backend-java
+      dockerfile: auth-service/Dockerfile
+    container_name: jurika-auth
+    restart: unless-stopped
+    ports:
+      - "${AUTH_SERVICE_PORT:-8081}:8081"
+    environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: auth-service
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      JURIKA_ENV: ${JURIKA_ENV:-dev}
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-JurikaRedis2026}
+      RABBITMQ_HOST: rabbitmq
+      JWT_PRIVATE_KEY_PATH: /run/secrets/jwt/jwt-private-pkcs8.pem
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
+    volumes:
+      - ./secrets/jwt:/run/secrets/jwt:ro
+    depends_on:
+      discovery-service: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8081/actuator/health/readiness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    networks:
+      - jurika-network
+
+  ticket-service:
+    build:
+      context: ../backend-java
+      dockerfile: ticket-service/Dockerfile
+    container_name: jurika-ticket
+    restart: unless-stopped
+    ports:
+      - "${TICKET_SERVICE_PORT:-8082}:8082"
+    environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: ticket-service
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      JURIKA_ENV: ${JURIKA_ENV:-dev}
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka
+      POSTGRES_HOST: postgres
+      RABBITMQ_HOST: rabbitmq
+      MINIO_ENDPOINT: http://minio:9000
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
+    volumes:
+      - ./secrets/jwt:/run/secrets/jwt:ro
+    depends_on:
+      discovery-service: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8082/actuator/health/readiness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    networks:
+      - jurika-network
+
+  workflow-service:
+    build:
+      context: ../backend-java
+      dockerfile: workflow-service/Dockerfile
+    container_name: jurika-workflow
+    restart: unless-stopped
+    ports:
+      - "${WORKFLOW_SERVICE_PORT:-8083}:8083"
+    environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: workflow-service
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      JURIKA_ENV: ${JURIKA_ENV:-dev}
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka
+      POSTGRES_HOST: postgres
+      RABBITMQ_HOST: rabbitmq
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
+    volumes:
+      - ./secrets/jwt:/run/secrets/jwt:ro
+    depends_on:
+      discovery-service: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8083/actuator/health/readiness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    networks:
+      - jurika-network
+
+  dataroom-service:
+    build:
+      context: ../backend-java
+      dockerfile: dataroom-service/Dockerfile
+    container_name: jurika-dataroom
+    restart: unless-stopped
+    ports:
+      - "${DATAROOM_SERVICE_PORT:-8084}:8084"
+    environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: dataroom-service
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      JURIKA_ENV: ${JURIKA_ENV:-dev}
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka
+      POSTGRES_HOST: postgres
+      RABBITMQ_HOST: rabbitmq
+      MINIO_ENDPOINT: http://minio:9000
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
+      # Microservice kie-service (Donut KIE pour CIN / CN).
+      KIE_BASE_URL: ${KIE_BASE_URL:-http://kie-service:8088}
+      KIE_TIMEOUT: ${KIE_TIMEOUT:-30s}
+    volumes:
+      - ./secrets/jwt:/run/secrets/jwt:ro
+    depends_on:
+      discovery-service: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      # kie-service est optionnel — l'extraction d'identité tombe en 503 si absent
+      # (le reste de la Data Room continue de fonctionner).
+      kie-service: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8084/actuator/health/readiness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    networks:
+      - jurika-network
+
+  ai-service:
+    build:
+      context: ../backend-java
+      dockerfile: ai-service/Dockerfile
+    container_name: jurika-ai
+    restart: unless-stopped
+    ports:
+      - "${AI_SERVICE_PORT:-8085}:8085"
+    environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: ai-service
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      JURIKA_ENV: ${JURIKA_ENV:-dev}
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka
+      POSTGRES_HOST: postgres
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
+      # Voie OCR rapide CPU (2026-06-09 — branche feat/ocr-paddle-cpu).
+      OCR_FAST_ENABLED: ${OCR_FAST_ENABLED:-true}
+      OCR_SERVICE_URL: ${OCR_SERVICE_URL:-http://ocr-service:8089}
+      OCR_FAST_TIMEOUT: ${OCR_FAST_TIMEOUT:-30}
+      OCR_FAST_LANG: ${OCR_FAST_LANG:-latin}
+      # RAG chatbot (Gemini gratuit) — 2026-07-01. Cle vide = RAG desactive (FTS + KB), pas de casse.
+      RAG_ENABLED: ${RAG_ENABLED:-false}
+      RAG_CHAT_BASE_URL: ${RAG_CHAT_BASE_URL:-}
+      RAG_CHAT_API_KEY: ${RAG_CHAT_API_KEY:-}
+      RAG_CHAT_MODEL: ${RAG_CHAT_MODEL:-gemini-1.5-flash}
+      RAG_EMBED_BASE_URL: ${RAG_EMBED_BASE_URL:-}
+      RAG_EMBED_API_KEY: ${RAG_EMBED_API_KEY:-}
+      RAG_EMBED_MODEL: ${RAG_EMBED_MODEL:-text-embedding-004}
+      RAG_EMBED_DIMENSIONS: ${RAG_EMBED_DIMENSIONS:-768}
+    volumes:
+      - ./secrets/jwt:/run/secrets/jwt:ro
+    depends_on:
+      discovery-service: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+      # ocr-service est optionnel — l'ai-service tolère son absence (fallback vision/manuel).
+      # On le déclare en condition: started pour ne pas bloquer le boot si l'OCR met du
+      # temps à charger les modèles ; le HealthCache côté Java gère la transition.
+      ocr-service: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8085/actuator/health/readiness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    networks:
+      - jurika-network
+
+  # ──────────────────────────────────────────────────────────────────
+  # OCR SERVICE (Python, CPU only) — 2026-06-09 branche feat/ocr-paddle-cpu
+  # Voie texte rapide pour les images / scans (CIN, CN, RC). Remplace
+  # avantageusement le LLM vision qwen3-vl en CPU (100-120s -> 1-3s).
+  # ──────────────────────────────────────────────────────────────────
+  ocr-service:
+    build:
+      context: ../backend-python/ocr-service
+      dockerfile: Dockerfile
+    container_name: jurika-ocr
+    restart: unless-stopped
+    ports:
+      - "${OCR_PORT:-8089}:8089"
+    environment:
+      OCR_ENGINE: ${OCR_ENGINE:-doctr}
+      OCR_DEFAULT_LANG: ${OCR_DEFAULT_LANG:-latin}
+      OCR_MAX_WIDTH: ${OCR_MAX_WIDTH:-1600}
+      OCR_PRELOAD: ${OCR_PRELOAD:-true}
+      OCR_LOG_LEVEL: ${OCR_LOG_LEVEL:-INFO}
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8089/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      # Premier boot : DL des poids docTR (~200 MB) puis warmup torch.
+      start_period: 180s
+    networks:
+      - jurika-network
+
+  # ──────────────────────────────────────────────────────────────────
+  # KIE SERVICE (Python, CPU only) — branche feat/kie-service-ocr
+  # Donut KIE (VisionEncoderDecoderModel) pour extraire les champs
+  # structurés d'une CIN ou CN marocaine. Poids montés en volume
+  # read-only ; jamais embarqués dans l'image.
+  # ──────────────────────────────────────────────────────────────────
+  kie-service:
+    build:
+      context: ../backend-python/kie-service
+      dockerfile: Dockerfile
+    container_name: jurika-kie
+    restart: unless-stopped
+    ports:
+      - "${KIE_PORT:-8088}:8088"
+    environment:
+      DONUT_MODEL_DIR: ${DONUT_MODEL_DIR:-/models/donut-jurika-final}
+      MAX_FILE_MB: ${KIE_MAX_FILE_MB:-15}
+      KIE_PRELOAD: ${KIE_PRELOAD:-true}
+      KIE_LOG_LEVEL: ${KIE_LOG_LEVEL:-INFO}
+    volumes:
+      # Le répertoire host doit contenir les poids déjà entraînés
+      # (config.json + model.safetensors + tokenizer*). Le path est relatif
+      # à ce fichier compose (infrastructure/), donc ../models/ pointe vers
+      # projet/models/. Surchargeable via DONUT_MODEL_DIR_HOST en absolu.
+      - ${DONUT_MODEL_DIR_HOST:-../models/donut-jurika-final}:/models/donut-jurika-final:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8088/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      # Premier boot : chargement Donut sur CPU (~30-60s host).
+      start_period: 180s
+    networks:
+      - jurika-network
+
+  supervision-service:
+    build:
+      context: ../backend-java
+      dockerfile: supervision-service/Dockerfile
+    container_name: jurika-supervision
+    restart: unless-stopped
+    ports:
+      - "${SUPERVISION_SERVICE_PORT:-8086}:8086"
+    environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: supervision-service
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      JURIKA_ENV: ${JURIKA_ENV:-dev}
+      EUREKA_SERVER_URL: http://discovery-service:8761/eureka
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-JurikaRedis2026}
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
+    volumes:
+      - ./secrets/jwt:/run/secrets/jwt:ro
+    depends_on:
+      discovery-service: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8086/actuator/health/readiness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    networks:
+      - jurika-network
+
+networks:
+  jurika-network:
+    external: true
+    name: jurika-network

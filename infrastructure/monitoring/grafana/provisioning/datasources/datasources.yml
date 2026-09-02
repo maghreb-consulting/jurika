@@ -1,0 +1,69 @@
+# JURIKA — Datasources Grafana provisionnees (Sprint 2 — complete).
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: jurika-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      manageAlerts: true
+      prometheusType: Prometheus
+      prometheusVersion: 2.54.0
+
+  - name: Loki
+    uid: jurika-loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false
+    jsonData:
+      # Sprint 2 / TASK 4 — derivedFields : extrait correlationId + trace_id du JSON
+      # log pour proposer "View related trace" (Tempo arrive au commit 3).
+      derivedFields:
+        - name: CorrelationID
+          matcherRegex: '"correlationId":"([^"]+)"'
+          url: ''
+          urlDisplayLabel: Filter
+        - name: TraceID
+          matcherRegex: '"trace_id":"([a-f0-9]+)"'
+          url: '$${__value.raw}'
+          datasourceUid: jurika-tempo
+
+  - name: Tempo
+    uid: jurika-tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: false
+    jsonData:
+      # Sprint 2 / TASK 3 — log<->trace correlation : sur un span, "Logs for this span"
+      # ouvre Loki filtre par trace_id. Sur un log avec trace_id, "View trace" ouvre Tempo.
+      tracesToLogsV2:
+        datasourceUid: jurika-loki
+        spanStartTimeShift: -1m
+        spanEndTimeShift: 1m
+        tags:
+          - key: service.name
+            value: service
+        filterByTraceID: true
+        filterBySpanID: false
+        customQuery: true
+        query: '{service=~".+"} | json | trace_id="$${__span.traceId}"'
+      tracesToMetrics:
+        datasourceUid: jurika-prometheus
+        spanStartTimeShift: -2m
+        spanEndTimeShift: 2m
+      serviceMap:
+        datasourceUid: jurika-prometheus
+      nodeGraph:
+        enabled: true
+      search:
+        hide: false
+      lokiSearch:
+        datasourceUid: jurika-loki

@@ -1,0 +1,186 @@
+{
+  "PV_APPROBATION_COMPTES_SARL": {
+    "societe": {
+      "denomination": "ACME SARL",
+      "formeJuridique": "SARL",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 Rue des Hôpitaux, 20000 Casablanca",
+      "nombreParts": 1000,
+      "rcNumero": "123456",
+      "villeGreffe": "Casablanca"
+    },
+    "seance": {
+      "type": "ordinaire",
+      "date": "2026-06-15",
+      "heure": "10 heures",
+      "lieu": "au siège social",
+      "heureCloture": "12 heures",
+      "presidentNom": "M. Karim BENALI",
+      "presidentQualite": "gérant",
+      "secretairePresent": "oui",
+      "secretaireNom": "Mme Sofia ALAOUI"
+    },
+    "convocation": {
+      "auteur": "la gérance",
+      "date": "2026-05-30",
+      "mode": "lettre recommandée avec accusé de réception"
+    },
+    "ordreDuJour": [
+      "Lecture du rapport de gestion et des comptes de l'exercice clos le 31/12/2025",
+      "Approbation des comptes et affectation du résultat",
+      "Quitus à la gérance"
+    ],
+    "associes": [
+      {
+        "typePersonne": "PHYSIQUE",
+        "civilite": "M",
+        "prenom": "Karim",
+        "nom": "BENALI",
+        "adresse": "5 Boulevard Zerktouni, Casablanca",
+        "nombreParts": 600,
+        "presence": "présent"
+      },
+      {
+        "typePersonne": "PHYSIQUE",
+        "civilite": "Mme",
+        "prenom": "Sofia",
+        "nom": "ALAOUI",
+        "adresse": "22 Avenue Hassan II, Rabat",
+        "nombreParts": 400,
+        "presence": "représenté",
+        "mandataireNom": "M. Karim BENALI"
+      }
+    ],
+    "resolutions": [
+      {
+        "intitule": "Approbation des comptes",
+        "texte": "L'assemblée approuve le rapport de gestion et les comptes de l'exercice clos le 31/12/2025.",
+        "voixPour": "1000",
+        "voixContre": "0",
+        "abstentions": "0",
+        "resultat": "adoptée"
+      },
+      {
+        "intitule": "Affectation du résultat",
+        "texte": "L'assemblée affecte le résultat conformément au tableau ci-dessus.",
+        "voixPour": "1000",
+        "voixContre": "0",
+        "abstentions": "0",
+        "resultat": "adoptée"
+      }
+    ],
+    "approbation": {
+      "exerciceClosDate": "2025-12-31",
+      "commissairePresent": "non",
+      "resultatType": "bénéfice",
+      "resultatNet": 250000,
+      "affectations": [
+        { "libelle": "Réserve légale", "montant": 12500 },
+        { "libelle": "Dividendes", "montant": 150000 },
+        { "libelle": "Report à nouveau", "montant": 87500 }
+      ],
+      "dividendeDistribue": "oui",
+      "dividendeParPart": 150,
+      "dividendeMiseEnPaiementDate": "2026-07-01"
+    }
+  },
+  "PV_APPROBATION_COMPTES_SARL_AU": {
+    "societe": {
+      "denomination": "ACME SARL AU",
+      "formeJuridique": "SARL AU",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 Rue des Hôpitaux, 20000 Casablanca",
+      "nombreParts": 1000,
+      "rcNumero": "654321",
+      "villeGreffe": "Casablanca"
+    },
+    "associeUnique": true,
+    "seance": {
+      "type": "ordinaire",
+      "date": "2026-06-15",
+      "heure": "10 heures",
+      "lieu": "au siège social",
+      "heureCloture": "11 heures",
+      "presidentNom": "M. Karim BENALI",
+      "presidentQualite": "gérant"
+    },
+    "convocation": {
+      "auteur": "la gérance",
+      "date": "2026-05-30"
+    },
+    "ordreDuJour": [
+      "Approbation des comptes de l'exercice clos le 31/12/2025",
+      "Affectation du résultat",
+      "Quitus à la gérance"
+    ],
+    "associes": [
+      {
+        "typePersonne": "PHYSIQUE",
+        "civilite": "M",
+        "prenom": "Karim",
+        "nom": "BENALI",
+        "nationalite": "marocaine",
+        "adresse": "5 Boulevard Zerktouni, Casablanca",
+        "pieceType": "CIN",
+        "pieceNumero": "BK123456",
+        "nombreParts": 1000,
+        "presence": "présent"
+      }
+    ],
+    "gerants": [
+      { "civilite": "M", "prenom": "Karim", "nom": "BENALI" }
+    ],
+    "resolutions": [
+      {
+        "intitule": "Approbation des comptes",
+        "texte": "L'associé unique approuve le rapport de gestion et les comptes de l'exercice clos le 31/12/2025.",
+        "resultat": "adoptée"
+      },
+      {
+        "intitule": "Affectation du résultat",
+        "texte": "L'associé unique affecte le résultat conformément au tableau ci-dessus.",
+        "resultat": "adoptée"
+      }
+    ],
+    "approbation": {
+      "exerciceClosDate": "2025-12-31",
+      "commissairePresent": "non",
+      "resultatType": "bénéfice",
+      "resultatNet": 180000,
+      "affectations": [
+        { "libelle": "Réserve légale", "montant": 9000 },
+        { "libelle": "Report à nouveau", "montant": 171000 }
+      ],
+      "dividendeDistribue": "non"
+    }
+  },
+  "RAPPORT_GESTION": {
+    "societe": {
+      "denomination": "ACME SARL",
+      "formeJuridique": "SARL",
+      "capitalChiffres": 100000,
+      "adresseSiege": "12 Rue des Hôpitaux, 20000 Casablanca",
+      "rcNumero": "123456",
+      "rcVille": "Casablanca",
+      "ifNumero": "40123456",
+      "iceNumero": "001234567000099",
+      "activiteSociete": "Conseil juridique et fiscal aux entreprises"
+    },
+    "exercice": {
+      "dateCloture": "2025-12-31",
+      "resultatNet": 250000,
+      "chiffreAffaires": 1200000,
+      "reserveLegale": 12500,
+      "dividendes": 150000,
+      "reportANouveau": 87500,
+      "commentaireActivite": "L'exercice 2025 a été marqué par une croissance soutenue du portefeuille clients.",
+      "evenementsPerspectives": "L'ouverture d'une agence à Tanger est prévue en 2026."
+    },
+    "gerant": {
+      "nom": "Karim BENALI"
+    },
+    "signature": {
+      "lieuDateEmission": "Casablanca, le 15 mars 2026"
+    }
+  }
+}

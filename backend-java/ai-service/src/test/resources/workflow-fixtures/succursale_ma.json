@@ -1,0 +1,105 @@
+{
+  "PV_CREATION_SUCCURSALE_MAROC_SARL": {
+    "societe": {
+      "denomination": "PARACOSME",
+      "formeJuridique": "SARL",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 RUE DES FOULES, CASABLANCA",
+      "nombreParts": 1000,
+      "rcNumero": "123456",
+      "villeGreffe": "CASABLANCA"
+    },
+    "seance": {
+      "type": "extraordinaire",
+      "date": "2026-09-05",
+      "heure": "10H00",
+      "lieu": "au siège social",
+      "heureCloture": "12H00",
+      "presidentNom": "M. Karim BENALI",
+      "presidentQualite": "gérant",
+      "secretairePresent": "oui",
+      "secretaireNom": "Mme Sofia ALAOUI"
+    },
+    "convocation": {"auteur": "la gérance", "date": "2026-08-20", "mode": "lettre recommandée"},
+    "associes": [
+      {"civilite": "M.", "prenom": "Karim", "nom": "BENALI", "nombreParts": 600, "presence": "présent"},
+      {"civilite": "Mme", "prenom": "Sofia", "nom": "ALAOUI", "nombreParts": 400, "presence": "représenté",
+       "mandataireNom": "M. BENALI"}
+    ],
+    "ordreDuJour": ["Ouverture d'une succursale", "Désignation du responsable", "Pouvoirs pour formalités"],
+    "succursale": {
+      "enseigne": "PARACOSME — Agence Marrakech",
+      "adresse": "5 Avenue Mohammed VI",
+      "ville": "Marrakech",
+      "villeGreffe": "MARRAKECH",
+      "activite": "Conseil juridique et fiscal",
+      "dateOuverture": "2026-10-01",
+      "dotationPresente": "oui",
+      "dotationMontant": 50000,
+      "responsablePresent": "oui",
+      "responsable": {
+        "civilite": "M.", "prenom": "Yassine", "nom": "TAZI", "nationalite": "marocaine",
+        "adresse": "8 Rue Ibn Khaldoun, Marrakech", "pieceType": "CIN", "pieceNumero": "MK456789",
+        "pouvoirs": "la gestion courante de la succursale"
+      }
+    },
+    "formalitesMandataireNom": "M. Karim BENALI"
+  },
+  "PV_CREATION_SUCCURSALE_MAROC_SARL_AU": {
+    "societe": {
+      "denomination": "PARACOSME AU",
+      "formeJuridique": "SARL_AU",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 RUE DES FOULES, CASABLANCA",
+      "nombreParts": 1000,
+      "rcNumero": "123456",
+      "villeGreffe": "CASABLANCA"
+    },
+    "associeUnique": true,
+    "seance": {
+      "date": "2026-09-05", "heure": "10H00", "lieu": "au siège social", "heureCloture": "11H00",
+      "presidentNom": "M. Omar CHERKAOUI", "presidentQualite": "gérant"
+    },
+    "associes": [
+      {"typePersonne": "PHYSIQUE", "civilite": "M.", "prenom": "Omar", "nom": "CHERKAOUI",
+       "nationalite": "marocaine", "adresse": "12 rue X, Casablanca", "pieceType": "CIN",
+       "pieceNumero": "BK12345", "nombreParts": 1000, "presence": "présent"}
+    ],
+    "gerants": [{"civilite": "M.", "prenom": "Omar", "nom": "CHERKAOUI"}],
+    "ordreDuJour": ["Ouverture d'une succursale", "Pouvoirs pour formalités"],
+    "succursale": {
+      "enseigne": "PARACOSME AU — Agence Tanger",
+      "adresse": "10 Boulevard Pasteur",
+      "ville": "Tanger",
+      "villeGreffe": "TANGER",
+      "activite": "Import-export",
+      "dateOuverture": "2026-10-15",
+      "dotationPresente": "non",
+      "responsablePresent": "non"
+    },
+    "formalitesMandataireNom": "M. Omar CHERKAOUI"
+  },
+  "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL": {
+    "societe": {
+      "denomination": "PARACOSME",
+      "formeJuridique": "SARL",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 RUE DES FOULES, CASABLANCA",
+      "adresseSiege": "12 RUE DES FOULES, CASABLANCA",
+      "rcNumero": "123456",
+      "rcVille": "CASABLANCA",
+      "ifNumero": "40123456",
+      "iceNumero": "001234567000099"
+    },
+    "seance": {"date": "2026-09-05"},
+    "succursale": {
+      "enseigne": "PARACOSME — Agence Marrakech",
+      "adresse": "5 Avenue Mohammed VI, Marrakech",
+      "activite": "Conseil juridique et fiscal",
+      "responsable": {"civilite": "M.", "prenom": "Yassine", "nom": "TAZI"},
+      "numeroRcSuccursale": "55512"
+    },
+    "dateDepot": "2026-10-05",
+    "numeroDepot": "DEPOT-2026-991"
+  }
+}

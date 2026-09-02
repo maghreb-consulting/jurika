@@ -1,0 +1,48 @@
+{
+  "societe": {
+    "denomination": "PARACOSME",
+    "capitalChiffres": 100000,
+    "siegeSocial": "12 RUE DES FOULES, CASABLANCA",
+    "nombreParts": 1000,
+    "rcNumero": "123456",
+    "villeGreffe": "CASABLANCA",
+    "formeJuridique": "SARL"
+  },
+  "seance": {
+    "type": "extraordinaire",
+    "date": "2026-06-20",
+    "heure": "10H00",
+    "lieu": "SIEGE SOCIAL",
+    "presidentNom": "M. Ahmed Alaoui",
+    "presidentQualite": "gérant",
+    "heureCloture": "12H00"
+  },
+  "convocation": { "mode": "lettre recommandée", "date": "2026-06-05" },
+  "associes": [
+    { "civilite": "M.", "prenom": "Ahmed", "nom": "Alaoui", "nationalite": "marocaine",
+      "adresse": "5 RUE D'ALGER, CASABLANCA", "pieceType": "CIN", "pieceNumero": "BE123456",
+      "nombreParts": 600, "presence": "présent", "boniChiffres": 30000 },
+    { "civilite": "Mme", "prenom": "Fatima", "nom": "Bennani",
+      "nombreParts": 400, "presence": "présent", "boniChiffres": 20000 }
+  ],
+  "ordreDuJour": ["Approbation des comptes définitifs", "Quitus au liquidateur", "Répartition du boni", "Clôture de la liquidation"],
+  "resolutions": [
+    { "objet": "Approbation des comptes définitifs de liquidation", "type": "approbation_comptes_cloture", "resultat": "à l'unanimité" },
+    { "objet": "Quitus au liquidateur", "type": "quitus_liquidateur", "resultat": "à l'unanimité" },
+    { "objet": "Répartition du boni de liquidation", "type": "repartition_boni", "resultat": "à l'unanimité" },
+    { "objet": "Clôture de la liquidation", "type": "cloture_liquidation", "resultat": "à l'unanimité" }
+  ],
+  "dissolution": { "date": "2026-05-15" },
+  "liquidateur": {
+    "civilite": "M.", "prenom": "Ahmed", "nom": "Alaoui",
+    "adresse": "5 RUE D'ALGER, CASABLANCA", "pieceType": "CIN", "pieceNumero": "BE123456",
+    "genre": "masculin", "remuneration": "exercées à titre gratuit", "siege": "12 RUE DES FOULES, CASABLANCA"
+  },
+  "cloture": {
+    "resultatSens": "boni", "resultatMontant": 50000,
+    "boniExiste": "oui", "boniMontant": 50000, "boniParPart": 50,
+    "dateClotureLiquidation": "2026-06-20", "actifRealise": 300000, "passifRegle": 150000,
+    "resultatType": "boni"
+  },
+  "signature": { "lieu": "CASABLANCA", "date": "2026-06-25", "nombreOriginaux": "quatre" }
+}

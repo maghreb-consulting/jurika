@@ -1,0 +1,90 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "schemaVersion": 39,
+  "tags": ["jurika", "business"],
+  "title": "JURIKA Business Metrics",
+  "uid": "jurika-business",
+  "time": {"from": "now-24h", "to": "now"},
+  "refresh": "1m",
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Logins reussis (24h)",
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 0},
+      "targets": [{
+        "refId": "A",
+        "datasource": {"type": "prometheus", "uid": "jurika-prometheus"},
+        "expr": "sum(increase(jurika_auth_login_success_total[24h]))"
+      }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Logins echoues (24h)",
+      "gridPos": {"h": 5, "w": 6, "x": 6, "y": 0},
+      "targets": [{
+        "refId": "A",
+        "datasource": {"type": "prometheus", "uid": "jurika-prometheus"},
+        "expr": "sum(increase(jurika_auth_login_failed_total[24h]))"
+      }],
+      "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 50}, {"color": "red", "value": 500}]}}}
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Refresh tokens emis (24h)",
+      "gridPos": {"h": 5, "w": 6, "x": 12, "y": 0},
+      "targets": [{
+        "refId": "A",
+        "datasource": {"type": "prometheus", "uid": "jurika-prometheus"},
+        "expr": "sum(increase(jurika_auth_refresh_issued_total[24h]))"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Documents uploades (24h)",
+      "gridPos": {"h": 5, "w": 6, "x": 18, "y": 0},
+      "targets": [{
+        "refId": "A",
+        "datasource": {"type": "prometheus", "uid": "jurika-prometheus"},
+        "expr": "sum(increase(jurika_documents_uploaded_total[24h]))"
+      }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Logins reussis vs echoues (rate/min)",
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 5},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "jurika-prometheus"},
+          "expr": "sum(rate(jurika_auth_login_success_total[5m])) * 60",
+          "legendFormat": "succes/min"
+        },
+        {
+          "refId": "B",
+          "datasource": {"type": "prometheus", "uid": "jurika-prometheus"},
+          "expr": "sum(rate(jurika_auth_login_failed_total[5m])) * 60",
+          "legendFormat": "echec/min"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Tickets crees par workspace",
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 5},
+      "targets": [{
+        "refId": "A",
+        "datasource": {"type": "prometheus", "uid": "jurika-prometheus"},
+        "expr": "sum by (workspace) (rate(jurika_tickets_created_total[15m])) * 60",
+        "legendFormat": "ws:{{workspace}}"
+      }]
+    }
+  ]
+}

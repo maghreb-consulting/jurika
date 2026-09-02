@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head><meta charset="UTF-8"/><title>Bienvenue dans JURIKA</title></head>
+<body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#0F172A;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:12px;overflow:hidden;">
+            <tr th:replace="~{email/_billing-base :: header(title=${'Bienvenue dans ' + planLabel + ' !'})}"></tr>
+            <tr><td style="padding:32px;">
+                <p style="margin:0 0 16px;">Felicitations <span th:text="${contactName}">cabinet</span>,</p>
+                <p style="margin:0 0 16px;">Votre abonnement <strong th:text="${planLabel}">Business</strong>
+                    est desormais actif. Vous avez acces a l'ensemble des fonctionnalites JURIKA :</p>
+                <ul style="margin:0 0 16px;padding-left:20px;color:#334155;">
+                    <li>Tickets &amp; workflows juridiques (Creation SARL, Modifs, AGO)</li>
+                    <li>Data Room V2 (Juridique + Comptable + Fiscal)</li>
+                    <li>Dashboards multi-roles + alertes echeances DGI</li>
+                    <li>Support <span th:text="${supportLevel}">prioritaire</span></li>
+                </ul>
+                <p style="margin:0 0 16px;">Prochain renouvellement le <strong th:text="${nextRenewal}">28/04/2026</strong>.
+                    Votre premiere facture sera disponible dans quelques minutes dans votre espace billing.</p>
+                <p style="margin:24px 0;">
+                    <a th:href="${dashboardUrl}" style="display:inline-block;background:#16A34A;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Acceder au dashboard</a>
+                </p>
+            </td></tr>
+            <tr th:replace="~{email/_billing-base :: footer}"></tr>
+        </table>
+    </td></tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,188 @@
+/**
+ * v2 Flagship — TASK 3 polish chirurgical.
+ *
+ * Micro-interactions, hairlines or, focus refinement, grain animé,
+ * scroll progress, ::selection signature. Tout est subtle by design —
+ * "Hermès filet doré qui ne crie pas".
+ */
+
+/* ---- ScrollProgress 1px or fixed top ---- */
+.scroll-progress {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  z-index: 1000;
+  background: transparent;
+  pointer-events: none;
+}
+.scroll-progress__bar {
+  height: 100%;
+  background: linear-gradient(90deg,
+    rgba(200, 164, 92, 0) 0%,
+    var(--gold-500) 40%,
+    var(--gold-400) 50%,
+    var(--gold-500) 60%,
+    rgba(200, 164, 92, 0) 100%);
+  background-size: 200% 100%;
+  animation: scrollGoldShimmer 4s ease-in-out infinite;
+  transition: width 0.12s ease-out;
+  box-shadow: 0 0 8px rgba(200, 164, 92, 0.4);
+}
+@keyframes scrollGoldShimmer {
+  0%, 100% { background-position: 0% 0%; }
+  50% { background-position: 100% 0%; }
+}
+
+/* ---- ::selection global (gold signature) ---- */
+::selection {
+  background: var(--gold-500);
+  color: var(--navy-900);
+  text-shadow: none;
+}
+::-moz-selection {
+  background: var(--gold-500);
+  color: var(--navy-900);
+  text-shadow: none;
+}
+
+/* ---- Hairlines or sur séparateurs sections ---- */
+.section + .section::before,
+.section + .sticky-showcase::before,
+.sticky-showcase + .section::before,
+.section + .trust-marquee::before,
+.trust-marquee + .section::before {
+  content: '';
+  display: block;
+  width: 100%;
+  max-width: var(--container-max, 1240px);
+  height: 1px;
+  margin: 0 auto;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(200, 164, 92, 0.18) 30%,
+    rgba(200, 164, 92, 0.45) 50%,
+    rgba(200, 164, 92, 0.18) 70%,
+    transparent 100%);
+}
+
+/* ---- Grain overlay plus visible + animation très lente ---- */
+.grain-overlay {
+  opacity: 0.06; /* 4% -> 6%, subtil mais perceptible sur fonds clairs */
+  animation: grainShift 14s steps(8) infinite;
+}
+@keyframes grainShift {
+  0%, 100% { transform: translate(0, 0); }
+  12.5% { transform: translate(-2%, 1%); }
+  25%    { transform: translate(1%, -1%); }
+  37.5%  { transform: translate(-1%, 2%); }
+  50%    { transform: translate(2%, 1%); }
+  62.5%  { transform: translate(-2%, -2%); }
+  75%    { transform: translate(1%, 1%); }
+  87.5%  { transform: translate(-1%, -1%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .grain-overlay { animation: none; }
+}
+
+/* ---- Magnetic button refinement : depth shadow on hover ---- */
+.magnetic-btn:hover {
+  box-shadow: 0 12px 24px -8px rgba(200, 164, 92, 0.35),
+              0 4px 8px -2px rgba(5, 13, 31, 0.2);
+}
+.magnetic-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%),
+    rgba(200, 164, 92, 0.18),
+    transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.magnetic-btn { position: relative; overflow: hidden; }
+.magnetic-btn:hover::after { opacity: 1; }
+
+/* ---- Focus ring or signature (renforcé) ---- */
+:where(a, button, [role='button'], input, textarea, select):focus-visible {
+  outline: 2px solid var(--gold-400);
+  outline-offset: 4px;
+  border-radius: 6px;
+  transition: outline-offset 0.18s var(--ease-magnetic, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+/* Sur les boutons primaires, l'offset est plus serré pour ne pas casser la
+   silhouette ronde des CTAs (le filet d'or reste lisible). */
+.btn.btn-primary:focus-visible {
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(200, 164, 92, 0.18);
+}
+
+/* ---- Skip-link a11y (signature pro) ---- */
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: -64px;
+  background: var(--navy-900);
+  color: var(--gold-300);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  z-index: 10001;
+  transition: top 0.2s var(--ease-magnetic, cubic-bezier(0.22, 1, 0.36, 1));
+}
+.skip-link:focus {
+  top: 16px;
+  outline: 2px solid var(--gold-400);
+  outline-offset: 4px;
+}
+
+/* ---- Navbar : underline or sur link au hover + active ---- */
+.nav-links a {
+  position: relative;
+  padding: 6px 2px;
+  transition: color 0.2s ease;
+}
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-500), transparent);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.3s var(--ease-magnetic, cubic-bezier(0.22, 1, 0.36, 1));
+}
+.nav-links a:hover::after,
+.nav-links a:focus-visible::after {
+  transform: scaleX(1);
+}
+.nav-links a:hover {
+  color: var(--gold-500);
+}
+
+/* ---- Eyebrow : micro-glow au hover des cards parent ---- */
+.bento-tile:hover .bento-tile__icon,
+.module-card:hover .module-n {
+  filter: drop-shadow(0 0 8px rgba(200, 164, 92, 0.4));
+  transition: filter 0.3s ease;
+}
+
+/* ---- Cursor refinement sur magnetic CTAs ---- */
+.magnetic-btn { cursor: pointer; }
+
+/* ---- Image-rendering optimization (legible mockups) ---- */
+.mock-window, .ai-chat, .kanban-card, .sticky-mockup {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* ---- Container baseline grid (debug, optional) ---- */
+/* Uncomment to debug spacing */
+/*
+.container {
+  background-image: linear-gradient(to bottom, rgba(200, 164, 92, 0.04) 1px, transparent 1px);
+  background-size: 100% 8px;
+}
+*/

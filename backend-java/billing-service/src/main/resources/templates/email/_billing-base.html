@@ -1,0 +1,50 @@
+<!--
+  Fragments Thymeleaf billing-service. Meme charte que auth-service/templates/email/_base.html
+  (duplique pour eviter la dependance cross-module sur les resources d'auth-service).
+  Charte JURIKA (navy #0c1d3f / or #c8a45c). Wordmark texte garanti + embleme CID
+  (cid:jurika-logo, attache par BillingEmailService). RG-BL16 emails en FR.
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<body>
+
+<th:block th:fragment="header(title)">
+    <tr>
+        <td bgcolor="#0c1d3f"
+            style="background-color:#0c1d3f;padding:34px 24px 26px;text-align:center;border-bottom:3px solid #c8a45c;">
+            <!-- Embleme JURIKA en CID (attache par BillingEmailService : cid:jurika-logo). alt="JURIKA" si bloque. -->
+            <img th:src="${logoUrl} ?: 'cid:jurika-logo'"
+                 width="52" height="52" alt="JURIKA"
+                 style="display:inline-block;border:0;border-radius:11px;margin:0 0 12px;" />
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:32px;font-weight:700;letter-spacing:0.03em;line-height:1;">
+                <span style="color:#f5efe0;">JURI</span><span style="color:#c8a45c;">KA</span>
+            </div>
+            <div style="margin:9px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:#c8a45c;">
+                Gestion juridique augment&eacute;e &middot; Facturation
+            </div>
+            <div th:if="${title}"
+                 style="margin:20px 0 0;padding:16px 8px 0;border-top:1px solid rgba(200,164,92,0.35);font-family:Georgia,'Times New Roman',serif;font-size:19px;font-weight:600;line-height:1.35;color:#ffffff;"
+                 th:text="${title}">Titre</div>
+        </td>
+    </tr>
+</th:block>
+
+<th:block th:fragment="footer">
+    <tr>
+        <td style="background:#f7f1e3;padding:24px 32px;border-top:2px solid #c8a45c;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#475569;">
+            <p style="margin:0 0 8px;font-family:Georgia,'Times New Roman',serif;font-size:15px;font-weight:700;">
+                <span style="color:#0c1d3f;">JURI</span><span style="color:#c8a45c;">KA</span>
+                <span style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:400;color:#475569;">
+                    &mdash; plateforme SaaS de gestion juridique &eacute;dit&eacute;e par Maghreb Consulting.</span>
+            </p>
+            <p style="margin:0 0 8px;">Casablanca, Maroc &mdash;
+                <a href="mailto:facturation@maghreb-consulting.ma" style="color:#8a6d1f;text-decoration:none;">facturation@maghreb-consulting.ma</a></p>
+            <p style="margin:0;font-size:11px;color:#64748B;">
+                Conform&eacute;ment &agrave; la Loi 09-08, vos donn&eacute;es sont trait&eacute;es pour la facturation. Vous pouvez exercer vos droits &agrave; tout moment.
+            </p>
+        </td>
+    </tr>
+</th:block>
+
+</body>
+</html>

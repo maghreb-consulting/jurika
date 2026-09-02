@@ -1,0 +1,84 @@
+name: Deploy marketing-site staging
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'marketing-site/**'
+      - '.github/workflows/deploy-marketing.yml'
+  workflow_dispatch:
+
+# Sprint 11 TASK 8 — Pipeline deploiement de la landing standalone vers
+# VM staging Hetzner (jurika-staging.ma). Build statique Vite + scp +
+# Traefik routing (nginx-marketing service dans docker-compose.staging.yml).
+#
+# Pre-requis : 7 secrets GitHub (cf. README deploy-staging.yml Sprint 14 ter)
+#   STAGING_HOST, STAGING_USER, STAGING_SSH_KEY, STAGING_DEPLOY_PATH
+
+concurrency:
+  group: deploy-marketing-staging
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    name: Build + scp + reload nginx-marketing
+    runs-on: ubuntu-latest
+    if: ${{ vars.STAGING_ENABLED == 'true' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 20 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: marketing-site/package-lock.json
+
+      - name: Install marketing-site deps
+        working-directory: marketing-site
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+
+      - name: Build production bundle
+        working-directory: marketing-site
+        env:
+          VITE_API_URL: ${{ vars.STAGING_API_URL || 'https://api.jurika-staging.ma' }}
+          VITE_APP_URL: ${{ vars.STAGING_APP_URL || 'https://app.jurika-staging.ma' }}
+        run: npm run build
+
+      - name: Run Vitest before deploy (gate)
+        working-directory: marketing-site
+        run: npm run test:run
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/staging.key
+          chmod 600 ~/.ssh/staging.key
+          ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Upload dist via rsync
+        run: |
+          rsync -avz --delete -e "ssh -i ~/.ssh/staging.key" \
+            marketing-site/dist/ \
+            ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:${{ secrets.STAGING_DEPLOY_PATH }}/marketing/dist/
+
+      - name: Smoke test (curl homepage)
+        run: |
+          MARKETING_URL=${{ vars.STAGING_MARKETING_URL || 'https://jurika-staging.ma' }}
+          for i in 1 2 3 4 5; do
+            if curl -fsSL "$MARKETING_URL" | grep -q "JURIKA"; then
+              echo "Smoke OK"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Smoke FAIL"
+          exit 1
+
+      - name: Notify Slack (success)
+        if: success() && vars.SLACK_NOTIFICATIONS_ENABLED == 'true'
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"Marketing site deployed to staging ✓"}' \
+            "${{ secrets.SLACK_WEBHOOK_URL }}"

@@ -1,0 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+/* =====================================================================
+ * JURIKA Design Tokens — Sprint 12.6 (Strategie A : clone marketing)
+ * Inversion par rapport a Sprint 12.5 T1 : LIGHT defaut + dark override.
+ * Alignement complet sur marketing-site Flagship (velin/navy/or).
+ * ===================================================================== */
+@theme {
+  /* Backgrounds — palette LIGHT editorial (velin signature marketing) */
+  --color-bg: #fafaf7;             /* "Velin" — fond principal */
+  --color-bg-raised: #ffffff;      /* Cards, panels (blanc pur) */
+  --color-bg-overlay: #f4f4ef;     /* Modals, popovers, sections alternees */
+  --color-border: #e2e1da;         /* Bordures discretes (ink subtle) */
+  --color-border-hi: #c8c7bf;      /* Bordures actives, focus */
+
+  /* Foreground — navy fonce sur fond clair */
+  --color-fg: #050d1f;             /* navy-900 "Encre d'huissier minuit" */
+  --color-fg-muted: #1c3461;       /* navy-600 "Velours de bureau" */
+  --color-fg-subtle: #64748b;      /* slate-500 "Cendre de papier" */
+
+  /* Accents signature marketing (or durci AA sur fond clair) */
+  --color-accent: #a8853d;         /* gold-700 durci pour contraste AA velin */
+  --color-accent-hover: #8e6e2f;   /* gold-800 hover */
+  --color-accent-soft: #d4b06a;    /* gold-400 backgrounds soft */
+
+  /* Status (alignes marketing, inchanges) */
+  --color-success: #10b981;        /* emerald-500 "Tampon Valide" */
+  --color-success-soft: #34d399;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  /* Typography (inchangee) */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-heading: 'Playfair Display', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Shadows — versions LIGHT (subtiles, navy-ombred) */
+  --shadow-glow-gold: 0 0 60px rgba(200, 164, 92, 0.30);
+  --shadow-card: 0 8px 24px rgba(5, 13, 31, 0.08);
+  --shadow-card-lifted: 0 30px 80px -20px rgba(5, 13, 31, 0.15);
+}
+
+/* =====================================================================
+ * Dark mode override — [data-theme="dark"] sur <html>.
+ * Strategie B Sprint 12.5 preservee comme option pour les users qui
+ * preferent les sessions longues confort dark. Toggle reste fonctionnel.
+ * ===================================================================== */
+:root[data-theme="dark"] {
+  --color-bg: #050d1f;             /* navy-900 */
+  --color-bg-raised: #0a1628;      /* navy-800 */
+  --color-bg-overlay: #112240;     /* navy-700 */
+  --color-border: #1c3461;         /* navy-600 */
+  --color-border-hi: #2a4a85;      /* navy-500 */
+
+  --color-fg: #f8fafc;             /* ink-50 */
+  --color-fg-muted: #cbd5e1;       /* ink-300 */
+  --color-fg-subtle: #64748b;
+
+  /* Or vif en dark (le durcissement AA n'est utile que sur fond clair) */
+  --color-accent: #c8a45c;
+  --color-accent-hover: #d4b06a;
+  --color-accent-soft: #e3c688;
+
+  --shadow-card: 0 8px 24px rgba(5, 13, 31, 0.4);
+  --shadow-card-lifted: 0 30px 80px -20px rgba(5, 13, 31, 0.6);
+
+  color-scheme: dark;
+}
+
+:root {
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  line-height: 1.55;
+  font-weight: 400;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: light;
+}
+
+html, body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+/* Headings editoriaux — Playfair Display (signature marketing) */
+.font-heading {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Compat : .font-tight conserve pour composants existants — fallback Inter */
+.font-tight {
+  font-family: 'Inter Tight', 'Inter', sans-serif;
+  letter-spacing: -0.02em;
+}
+.font-mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+.eyebrow {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Grid background — adapte a la palette LIGHT (lignes navy subtle) */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(5, 13, 31, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(5, 13, 31, 0.06) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, black 30%, transparent 80%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, black 30%, transparent 80%);
+}
+
+:root[data-theme="dark"] .bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(248, 250, 252, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(248, 250, 252, 0.04) 1px, transparent 1px);
+}
+
+/* Texture grain subtile — moins visible sur fond LIGHT, opacity reduite */
+.grain {
+  position: relative;
+}
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/></svg>");
+  mix-blend-mode: multiply;
+}
+
+/* Marquee */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-marquee { animation: marquee 36s linear infinite; }
+
+/* Pulse status dot — emeraude (success) */
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+  50%      { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+}
+.pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+
+/* Selection — accent or */
+::selection { background: rgba(168, 133, 61, 0.30); color: var(--color-fg); }
+
+/* Scrollbar LIGHT par defaut */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(5, 13, 31, 0.12);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(5, 13, 31, 0.22); }
+
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(248, 250, 252, 0.08);
+}
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(248, 250, 252, 0.16);
+}
+
+/* prefers-reduced-motion respecte globalement */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .pulse-dot {
+    animation: none !important;
+  }
+}
+
+/* =====================================================================
+ * Sprint 12.5 T13 — Gold focus ring signature (a11y + brand).
+ * Outline or sur tout element focusable au clavier. Offset 4px pour ne
+ * pas coller au content, radius leger pour suivre les rounded-* Tailwind.
+ * ===================================================================== */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* Cards interactives (utilisable via classe utility .lift-on-hover ou
+   prop interactive de la Card primitive). */
+.lift-on-hover {
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+}
+.lift-on-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-lifted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lift-on-hover {
+    transition: none;
+  }
+  .lift-on-hover:hover {
+    transform: none;
+  }
+}
+
+/* =====================================================================
+ * 2026-07-04 — Champs mot de passe : on masque l'oeil/croix NATIFS des
+ * navigateurs (Edge/IE ::-ms-reveal & ::-ms-clear). Ils n'apparaissent
+ * qu'au focus et disparaissent des qu'on change de champ. On les remplace
+ * par un bouton oeil PERSISTANT rendu par TextField (afficher/masquer).
+ * ===================================================================== */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}

@@ -1,0 +1,31 @@
+{
+  "RAPPORT_GESTION": {
+    "societe": {
+      "denomination": "ACME SARL",
+      "formeJuridique": "SARL",
+      "capitalChiffres": 100000,
+      "adresseSiege": "12 Rue des Hôpitaux, 20000 Casablanca",
+      "rcNumero": "123456",
+      "rcVille": "Casablanca",
+      "ifNumero": "40123456",
+      "iceNumero": "001234567000099",
+      "activiteSociete": "Conseil juridique et fiscal aux entreprises"
+    },
+    "exercice": {
+      "dateCloture": "2025-12-31",
+      "resultatNet": 250000,
+      "chiffreAffaires": 1200000,
+      "reserveLegale": 12500,
+      "dividendes": 150000,
+      "reportANouveau": 87500,
+      "commentaireActivite": "L'exercice 2025 a été marqué par une croissance soutenue du portefeuille clients.",
+      "evenementsPerspectives": "L'ouverture d'une agence à Tanger est prévue en 2026."
+    },
+    "gerant": {
+      "nom": "Karim BENALI"
+    },
+    "signature": {
+      "lieuDateEmission": "Casablanca, le 15 mars 2026"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+# JURIKA — kie-service (Donut KIE, CPU host, CNDP-compliant).
+# Versions IDENTIQUES au notebook d'entraînement.
+# Python 3.11.
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+pydantic==2.10.5
+
+# Stack ML : Donut = VisionEncoderDecoderModel sur transformers 4.44.2.
+transformers==4.44.2
+sentencepiece==0.2.0
+
+# torch CPU wheel (cf. Dockerfile pour l'index --extra-index-url).
+torch==2.4.1
+
+# Image et PDF (1re page).
+Pillow==11.1.0
+pymupdf==1.24.10

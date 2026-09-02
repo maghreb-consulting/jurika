@@ -1,0 +1,235 @@
+/**
+ * v2 Flagship — TASK 5 sticky-scroll showcase mockup art.
+ *
+ * 5 mockups vectoriels qui morphent au scroll progress :
+ * ticket → workflow → ai → dataroom → signed.
+ */
+
+/* ---- Override v2.css basics : frames active state ---- */
+.sticky-mockup .mockup-frame {
+  opacity: 0;
+  transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  transform: scale(0.97) translateY(8px);
+}
+.sticky-mockup .mockup-frame.is-active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+/* ---- Mockup art : container central + base typography ---- */
+.mockup-art {
+  margin-top: 24px;
+  width: 80%;
+  max-width: 420px;
+  padding: 24px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+  text-align: left;
+}
+
+/* ---- 01 Ticket card ---- */
+.ma-ticket-card { display: flex; flex-direction: column; gap: 8px; position: relative; }
+.ma-line {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+.ma-w-30 { width: 30%; }
+.ma-w-50 { width: 50%; }
+.ma-w-60 { width: 60%; }
+.ma-w-80 { width: 80%; }
+.ma-tag {
+  display: inline-block;
+  width: fit-content;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(200, 164, 92, 0.15);
+  color: var(--gold-300);
+  border: 1px solid rgba(200, 164, 92, 0.3);
+}
+
+/* ---- 02 Workflow steps ---- */
+.workflow-art {
+  flex-direction: row !important;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.ma-step {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--ink-300);
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+.ma-step.is-done {
+  background: rgba(200, 164, 92, 0.18);
+  border-color: var(--gold-500);
+  color: var(--gold-300);
+}
+.ma-step.is-current {
+  background: var(--gold-500);
+  border-color: var(--gold-300);
+  color: var(--navy-900);
+  box-shadow: 0 0 16px rgba(200, 164, 92, 0.6);
+  animation: stepPulse 1.4s ease-in-out infinite;
+}
+@keyframes stepPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+/* ---- 03 AI prompt + typing + output ---- */
+.ma-prompt {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--gold-300);
+  border-left: 2px solid var(--gold-500);
+  padding-left: 8px;
+}
+.ma-typing {
+  display: flex; gap: 4px;
+}
+.ma-typing span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--gold-400);
+  animation: aiDot 1.2s ease-in-out infinite;
+}
+.ma-typing span:nth-child(2) { animation-delay: 0.2s; }
+.ma-typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes aiDot {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+.ma-output {
+  height: 8px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.14), rgba(200, 164, 92, 0.12));
+  border-radius: 4px;
+  animation: typingReveal 1.8s ease-out forwards;
+  transform-origin: left;
+}
+@keyframes typingReveal {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* ---- 04 Data Room files grid ---- */
+.dataroom-art {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.ma-file {
+  aspect-ratio: 3/4;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+}
+.ma-file::before {
+  content: '';
+  position: absolute;
+  top: 8px; left: 8px; right: 8px;
+  height: 2px;
+  background: var(--gold-500);
+  opacity: 0.6;
+}
+.ma-file::after {
+  content: '';
+  position: absolute;
+  top: 16px; left: 8px; right: 12px; bottom: 8px;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0,
+    rgba(255, 255, 255, 0.08) 1px,
+    transparent 1px,
+    transparent 5px
+  );
+}
+
+/* ---- 05 Signed PV + seal ---- */
+.signed-art {
+  align-items: center !important;
+  text-align: center;
+}
+.ma-pv {
+  font-family: var(--heading);
+  font-size: 1.6rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-100);
+  margin-bottom: 8px;
+}
+.ma-seal {
+  width: 96px; height: 96px;
+  filter: drop-shadow(0 0 20px rgba(200, 164, 92, 0.5));
+  animation: sealStamp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes sealStamp {
+  0% { transform: scale(0) rotate(-12deg); opacity: 0; }
+  60% { transform: scale(1.15) rotate(-4deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); }
+}
+
+/* ---- Sticky text : steps inactives en gris, active en gold ---- */
+.sticky-step {
+  transition: opacity 0.4s ease, transform 0.4s ease, border-color 0.4s ease;
+  opacity: 0.35;
+}
+.sticky-step.is-active {
+  opacity: 1;
+}
+.sticky-step.is-active .sticky-step-title {
+  color: var(--navy-900);
+}
+.sticky-step.is-active .eyebrow {
+  border-color: var(--gold-500);
+  background: rgba(200, 164, 92, 0.15);
+}
+.sticky-step.is-past {
+  opacity: 0.6;
+}
+
+/* ---- Progress bar bas du mockup ---- */
+.sticky-mockup__progress {
+  position: absolute;
+  bottom: 16px; left: 16px; right: 16px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.sticky-mockup__bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-500), var(--gold-300));
+  border-radius: 999px;
+  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 0 12px rgba(200, 164, 92, 0.4);
+}
+
+/* ---- reduced-motion : tout statique, frames visibles en empilement ---- */
+@media (prefers-reduced-motion: reduce) {
+  .sticky-mockup .mockup-frame {
+    position: relative !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .ma-step.is-current { animation: none; }
+  .ma-output { animation: none; transform: scaleX(1); }
+  .ma-seal { animation: none; }
+}

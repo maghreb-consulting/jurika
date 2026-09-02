@@ -1,0 +1,33 @@
+# JURIKA — Configuration Prometheus (Sprint 2 / TASK 2).
+# Scrape les 7 services Java sur /actuator/prometheus via basic_auth ops.
+
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    cluster: jurika
+    env: ${ENV:dev}
+
+scrape_configs:
+  - job_name: jurika-services
+    metrics_path: /actuator/prometheus
+    basic_auth:
+      username: ops
+      password: ${PROMETHEUS_OPS_PASSWORD}
+    static_configs:
+      - targets:
+          - gateway-service:8080
+          - auth-service:8081
+          - ticket-service:8082
+          - workflow-service:8083
+          - dataroom-service:8084
+          - ai-service:8085
+          - supervision-service:8086
+        labels:
+          source: jurika-platform
+
+  # Prometheus s'observe lui-meme.
+  - job_name: prometheus-self
+    static_configs:
+      - targets:
+          - localhost:9090

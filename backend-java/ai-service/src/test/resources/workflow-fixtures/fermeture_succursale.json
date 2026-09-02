@@ -1,0 +1,74 @@
+{
+  "PV_FERMETURE_SUCCURSALE_SARL": {
+    "societe": {
+      "denomination": "PARACOSME",
+      "formeJuridique": "SARL",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 RUE DES FOULES, CASABLANCA",
+      "nombreParts": 1000,
+      "rcNumero": "123456",
+      "villeGreffe": "CASABLANCA"
+    },
+    "seance": {
+      "type": "extraordinaire",
+      "date": "2026-09-20", "heure": "10H00", "lieu": "au siège social", "heureCloture": "11H30",
+      "presidentNom": "M. Karim BENALI", "presidentQualite": "gérant",
+      "secretairePresent": "oui", "secretaireNom": "Mme Sofia ALAOUI"
+    },
+    "convocation": {"auteur": "la gérance", "date": "2026-09-05", "mode": "lettre recommandée"},
+    "associes": [
+      {"civilite": "M.", "prenom": "Karim", "nom": "BENALI", "nombreParts": 600, "presence": "présent"},
+      {"civilite": "Mme", "prenom": "Sofia", "nom": "ALAOUI", "nombreParts": 400, "presence": "présent"}
+    ],
+    "ordreDuJour": ["Fermeture de la succursale", "Cessation des fonctions du responsable",
+                    "Pouvoirs pour formalités"],
+    "succursale": {
+      "enseigne": "PARACOSME — Agence Marrakech",
+      "adresse": "5 Avenue Mohammed VI",
+      "ville": "Marrakech",
+      "villeGreffe": "MARRAKECH",
+      "activite": "Conseil juridique et fiscal",
+      "rcNumero": "78901",
+      "dateFermeture": "2026-10-31",
+      "motif": "réorganisation de l'exploitation",
+      "responsablePresent": "oui",
+      "responsable": {"civilite": "M.", "prenom": "Yassine", "nom": "TAZI"}
+    },
+    "formalitesMandataireNom": "M. Karim BENALI"
+  },
+  "PV_FERMETURE_SUCCURSALE_SARL_AU": {
+    "societe": {
+      "denomination": "PARACOSME AU",
+      "formeJuridique": "SARL_AU",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 RUE DES FOULES, CASABLANCA",
+      "nombreParts": 1000,
+      "rcNumero": "123456",
+      "villeGreffe": "CASABLANCA"
+    },
+    "associeUnique": true,
+    "seance": {
+      "date": "2026-09-20", "heure": "10H00", "lieu": "au siège social", "heureCloture": "11H00",
+      "presidentNom": "M. Omar CHERKAOUI", "presidentQualite": "gérant"
+    },
+    "associes": [
+      {"typePersonne": "PHYSIQUE", "civilite": "M.", "prenom": "Omar", "nom": "CHERKAOUI",
+       "nationalite": "marocaine", "adresse": "12 rue X, Casablanca", "pieceType": "CIN",
+       "pieceNumero": "BK12345", "nombreParts": 1000, "presence": "présent"}
+    ],
+    "gerants": [{"civilite": "M.", "prenom": "Omar", "nom": "CHERKAOUI"}],
+    "ordreDuJour": ["Fermeture de la succursale", "Pouvoirs pour formalités"],
+    "succursale": {
+      "enseigne": "PARACOSME AU — Agence Tanger",
+      "adresse": "10 Boulevard Pasteur",
+      "ville": "Tanger",
+      "villeGreffe": "TANGER",
+      "activite": "Import-export",
+      "rcNumero": "45612",
+      "dateFermeture": "2026-11-30",
+      "motif": "cessation de l'activité exercée dans la succursale",
+      "responsablePresent": "non"
+    },
+    "formalitesMandataireNom": "M. Omar CHERKAOUI"
+  }
+}

@@ -1,0 +1,65 @@
+# Profile 'it' — config de l'OnboardingFlowIT (Sprint 3 / TASK 4).
+# Database/Redis URLs sont injectes via @DynamicPropertySource.
+
+server:
+  port: 0   # MOCK web environment, port ignore mais evite collision
+
+spring:
+  cloud:
+    discovery:
+      enabled: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    table: flyway_history_auth
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  mail:
+    host: localhost
+    port: 1025
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+jurika:
+  audit:
+    async-enabled: false   # bypass RabbitAuditEventEmitter -> JdbcAuditEventEmitter direct
+  jwt:
+    algorithm: HS256                    # evite la generation de cles RSA dans les tests
+    hmac-secret: "test-only-secret-min-32-chars-for-onboarding-flow-it-1234567890"
+    access-ttl-ms: 900000
+    refresh-ttl-ms: 604800000
+    issuer: "jurika.ma"
+  encryption:
+    aes-secret: "test-only-aes-secret-min-32-chars-onboarding-flow-it-12345"
+  validation:
+    dns-mx-enabled: false               # short-circuit DNS lookup
+  auth:
+    bcrypt-strength: 4                  # accelere les tests (default 12)
+    max-failed-attempts: 5
+    lock-duration-minutes: 15
+    new-device-lookback-days: 30
+    # BUG 7 (2026-06-08) — OnboardingFlowE2ETest a ete ecrit avant la dissociation
+    # login_email / contact_email : il pose `email: "smsuser1@example.com"` et s'en
+    # sert ensuite comme identifiant de connexion. Pour le couvrir sans tout
+    # refacto, on desactive le flag dans le profil IT — LoginUseCase tombe alors
+    # sur findByWorkspaceAndEmail (chemin legacy V1). En prod, defaut = true.
+    login-email-enabled: false
+  sms:
+    provider: logger                    # pas de Twilio en test
+  email:
+    from: noreply@jurika.ma
+    from-name: JURIKA
+    verification-base-url: http://localhost:5173/auth/verify-email
+
+logging:
+  level:
+    ma.jurika: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN

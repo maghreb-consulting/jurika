@@ -1,0 +1,126 @@
+### =====================================================================
+### JURIKA — Smoke tests Sprint 2 (Observabilite + Audit)
+###
+### Pre-requis Java :
+###   - Stack applicative demarree
+###   - Compte demo : JUR-DEMO1 / admin@jurika.ma / Admin@2026 (SUPER_ADMIN)
+###
+### Pre-requis stack monitoring (etapes 7-8) :
+###   $env:PROMETHEUS_OPS_PASSWORD = "..."
+###   docker compose -f infrastructure/docker-compose.yml \
+###                  -f infrastructure/monitoring/docker-compose.monitoring.yml up -d
+### Sans monitoring, etapes 7-8 sont SKIPPABLES (Loki + Tempo).
+### =====================================================================
+
+@gateway = http://localhost:8080
+@auth    = http://localhost:8081
+@prometheus = http://localhost:9090
+@grafana = http://localhost:3001
+@loki = http://localhost:3100
+@tempo = http://localhost:3200
+@opsPassword = changeme-only-for-dev
+
+### -------------------------------------------------------------------
+### 1. Login + verifier X-Correlation-Id propage en reponse
+###    (TASK 1 — correlation ID HTTP)
+### -------------------------------------------------------------------
+# @name login
+POST {{gateway}}/api/v1/auth/login
+Content-Type: application/json
+X-Correlation-Id: smoke-test-{{$randomInt 1000 9999}}
+
+{
+  "workspaceCode": "JUR-DEMO1",
+  "email": "admin@jurika.ma",
+  "password": "Admin@2026"
+}
+
+###
+@accessToken = {{login.response.body.tokens.accessToken}}
+### Attendu : status 200 + header X-Correlation-Id echo back
+
+### -------------------------------------------------------------------
+### 2. /actuator/health/readiness — K8s probe
+###    (TASK 7 — health checks)
+### -------------------------------------------------------------------
+GET {{auth}}/actuator/health/readiness
+### Attendu : status 200 + body {"status":"UP","groups":[...]}
+
+### -------------------------------------------------------------------
+### 3. /actuator/health/liveness — pas d'auth requise
+### -------------------------------------------------------------------
+GET {{auth}}/actuator/health/liveness
+### Attendu : status 200 + body {"status":"UP"}
+
+### -------------------------------------------------------------------
+### 4. /actuator/prometheus avec basic auth ops
+###    (TASK 2 — Micrometer + OPS security)
+###    Sans password configure, retourne 200 sans auth (dev local OK).
+###    Avec password : 401 sans Authorization, 200 avec.
+### -------------------------------------------------------------------
+GET {{auth}}/actuator/prometheus
+Authorization: Basic {{$base64 ops:{{opsPassword}}}}
+### Attendu : status 200 + body text format Prometheus contenant :
+###   - http_server_requests_seconds_count{application="auth-service",...}
+###   - jvm_memory_used_bytes{application="auth-service",...}
+###   - jurika_auth_login_success_total (apres l'etape 1)
+
+### -------------------------------------------------------------------
+### 5. Verifier compteur business apres login
+###    (TASK 2 — BusinessMetrics jurika.auth.login.success)
+### -------------------------------------------------------------------
+GET {{auth}}/actuator/prometheus
+Authorization: Basic {{$base64 ops:{{opsPassword}}}}
+### Filtrer : grep "jurika_auth_login" dans la reponse
+### Attendu : jurika_auth_login_success_total >= 1
+
+### -------------------------------------------------------------------
+### 6. /api/v1/admin/audit — endpoint admin avec RLS bypass
+###    (TASK 6 — audit log universel + admin endpoint)
+###    Requiert ROLE_SUPER_ADMIN.
+### -------------------------------------------------------------------
+GET {{gateway}}/api/v1/admin/audit?action=LOGIN_SUCCESS&limit=10
+Authorization: Bearer {{accessToken}}
+### Attendu : status 200, items[] non vide, contient le login de l'etape 1
+### avec correlationId, sourceService=auth-service, workspaceId, userId
+
+### -------------------------------------------------------------------
+### 7. Verifier presence du log dans Loki (PRE-REQUIS: stack monitoring up)
+###    (TASK 4 — Loki + Promtail)
+### -------------------------------------------------------------------
+GET {{loki}}/loki/api/v1/query_range?query={service="auth-service"}|json|correlationId!=""&limit=5
+### Attendu : status 200, streams[] contient au moins une entree avec
+### "correlationId":"smoke-test-..." du POST /login etape 1
+### Si Loki pas demarre : SKIP cette etape.
+
+### -------------------------------------------------------------------
+### 8. Verifier trace OTel dans Tempo (PRE-REQUIS: stack monitoring up)
+###    (TASK 3 — OpenTelemetry + Tempo)
+### -------------------------------------------------------------------
+GET {{tempo}}/api/search?tags=service.name%3Dauth-service&limit=5
+### Attendu : status 200, traces[] contient des spans recents
+### Avec service.name=auth-service. Cliquer sur une trace dans Grafana
+### Explore -> Tempo doit montrer le span gateway -> auth-service -> postgresql.
+### Si Tempo pas demarre : SKIP cette etape.
+
+### =====================================================================
+### Script PowerShell pour valider tout en un coup :
+###
+###   # Etape 1 (correlationId echo)
+###   $login = Invoke-RestMethod -Uri "http://localhost:8080/api/v1/auth/login" `
+###     -Method POST -ContentType "application/json" `
+###     -Headers @{"X-Correlation-Id"="smoke-ps-test"} `
+###     -Body '{"workspaceCode":"JUR-DEMO1","email":"admin@jurika.ma","password":"Admin@2026"}'
+###   $token = $login.tokens.accessToken
+###
+###   # Etape 4 (prometheus)
+###   $opsAuth = "Basic " + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("ops:changeme-only-for-dev"))
+###   $prom = Invoke-RestMethod -Uri "http://localhost:8081/actuator/prometheus" `
+###     -Headers @{"Authorization"=$opsAuth}
+###   $prom | Select-String "jurika_auth_login"
+###
+###   # Etape 6 (admin audit)
+###   $audit = Invoke-RestMethod -Uri "http://localhost:8080/api/v1/admin/audit?action=LOGIN_SUCCESS&limit=10" `
+###     -Headers @{"Authorization"="Bearer $token"}
+###   $audit.items | Format-Table createdAt, sourceService, action, correlationId
+### =====================================================================

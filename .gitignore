@@ -1,0 +1,121 @@
+# ══════════════════════════════════════════════════════════════
+# JURIKA — .gitignore
+# ══════════════════════════════════════════════════════════════
+
+# ─── Environment & Secrets ───────────────────────────────────
+.env
+.env.local
+.env.*.local
+!.env.example
+*.pem
+*.key
+*.crt
+*.cer
+**/firebase-service-account.json
+**/service-account*.json
+models/
+
+# ─── Java / Spring Boot ─────────────────────────────────────
+**/target/
+**/*.class
+**/*.jar
+**/*.war
+**/.mvn/
+**/mvnw
+**/mvnw.cmd
+**/.settings/
+**/.project
+**/.classpath
+**/hs_err_pid*
+
+# ─── Node.js ─────────────────────────────────────────────────
+**/node_modules/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/.pnp
+**/.pnp.js
+
+# ─── Frontend Build ─────────────────────────────────────────
+**/dist/
+**/build/
+**/.next/
+**/.expo/
+**/.cache/
+
+# ─── React Native / Expo ────────────────────────────────────
+**/ios/Pods/
+**/android/.gradle/
+**/android/app/build/
+**/android/build/
+**/*.apk
+**/*.aab
+**/*.ipa
+
+# ─── IDE ─────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+*~
+
+# ─── OS ──────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# ─── Docker Volumes ──────────────────────────────────────────
+postgres_data/
+redis_data/
+rabbitmq_data/
+minio_data/
+
+# ─── Logs ────────────────────────────────────────────────────
+*.log
+**/logs/
+**/boot_log.txt
+**/error.log
+
+# ─── Test & Coverage ────────────────────────────────────────
+**/coverage/
+**/.nyc_output/
+**/test-results/
+**/surefire-reports/
+
+# ─── Temporary Files ────────────────────────────────────────
+*.tmp
+*.temp
+*.bak
+*.orig
+
+scripts/demo-credentials.txt
+.claude/worktrees/
+
+# Sprint 2026-06-12 — audit pré/post conversion templates SARL.
+.audit-2026-06-12/
+**/.audit-2026-06-12/
+**/*.preconv.docx
+
+# ─── Modèles ML (poids Donut, etc.) — ne JAMAIS committer ─────
+backend-python/kie-service/models/
+**/donut-jurika-final/
+*.safetensors
+*.bin
+
+# ─── Python ─────────────────────────────────────────────────
+**/__pycache__/
+*.pyc
+*.pyo
+**/.pytest_cache/
+**/.venv/
+**/venv/
+
+# Video de demonstration (scripts/demo-video) — secret TOTP du compte de demo
+# et artefacts de captation : jamais versionnes.
+scripts/demo-video/demo-secrets.json
+scripts/demo-video/assets/
+# (scripts/demo-video/corpus/ est ecrit a la main : il reste versionne)

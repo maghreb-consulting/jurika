@@ -1,0 +1,69 @@
+# JURIKA — Promtail config (Sprint 2 / TASK 4).
+# Scrape les logs Docker, parse les champs JSON (logback-spring.xml prod profile)
+# et envoie a Loki. En dev (logs texte), les champs MDC ne sont pas extractables
+# mais les logs restent ingerables.
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: info
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # 1. Source : Docker daemon socket. Tous les conteneurs sur jurika-network.
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 15s
+        filters:
+          - name: network
+            values: ["jurika-network"]
+
+    pipeline_stages:
+      # Tentative parse JSON (production profile, logback-spring.xml JSON encoder).
+      - json:
+          expressions:
+            level: level
+            service: service
+            correlationId: correlationId
+            workspaceId: workspaceId
+            userId: userId
+            trace_id: trace_id
+            span_id: span_id
+            message: message
+            logger: logger_name
+      # Si parse JSON OK : timestamp du log = celui de l'app (sinon Docker).
+      - timestamp:
+          source: '@timestamp'
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
+          action_on_failure: skip
+      # Labels indexables (cardinality limitee).
+      - labels:
+          level:
+          service:
+      # Field correlationId publie en structured metadata, requetable via JSON.
+      - structured_metadata:
+          correlationId:
+          workspaceId:
+          userId:
+          trace_id:
+          span_id:
+
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: container
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: stream
+
+limits_config:
+  readline_rate_enabled: true
+  readline_rate: 10000
+  readline_burst: 20000
