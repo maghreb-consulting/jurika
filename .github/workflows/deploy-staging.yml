@@ -1,4 +1,4 @@
-﻿# JURIKA â€” Deploy staging (Sprint 14 ter F4).
+# JURIKA â€” Deploy staging (Sprint 14 ter F4).
 #
 # Trigger : push sur main.
 # Pipeline : build matrix par service -> push ghcr.io -> SSH staging.jurika.ma
@@ -15,8 +15,9 @@
 name: deploy-staging
 
 on:
-  push:
-    branches: [main]
+  # Declenchement manuel uniquement : les secrets STAGING_* / GHCR_TOKEN
+  # ne sont pas configures sur ce depot. Un pipeline qui ne peut pas reussir
+  # ne doit pas s executer automatiquement.
   workflow_dispatch:
 
 permissions:
