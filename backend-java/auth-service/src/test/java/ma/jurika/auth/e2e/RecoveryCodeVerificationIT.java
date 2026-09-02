@@ -72,6 +72,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         properties = {
                 "spring.autoconfigure.exclude="
                         + "org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration",
+                // SyncWiring redefinit `businessMetrics`, deja fourni par
+                // ObservabilityAutoConfiguration : sans cette propriete Spring Boot
+                // refuse la redefinition et le contexte ne charge pas.
+                "spring.main.allow-bean-definition-overriding=true",
                 "jurika.auth.recovery-code.max-attempts=5",
                 "jurika.auth.recovery-code.window-minutes=15"
         }
@@ -325,7 +329,9 @@ class RecoveryCodeVerificationIT {
                         .content("""
                                 {"oldPassword":"%s","newPassword":"%s","confirmPassword":"%s"}
                                 """.formatted(tempPwd, newPwd, newPwd)))
-                .andExpect(status().isNoContent());
+                // Hotfix 2026-06-04 : /change-password renvoie un nouveau couple de
+                // tokens (200 + corps), plus 204. Test aligne sur le contrat reel.
+                .andExpect(status().isOk());
 
         MvcResult login2 = mvc.perform(post("/api/v1/auth/login")
                         .contentType("application/json")
