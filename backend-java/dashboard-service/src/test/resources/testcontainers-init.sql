@@ -8,6 +8,12 @@ CREATE TABLE IF NOT EXISTS workspaces (
     name VARCHAR(255) NOT NULL,
     code_workspace VARCHAR(20) UNIQUE NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
+    -- Colonnes reelles de auth-service (V1__init_auth_schema, V16__sprint11_*)
+    -- que l'aggregateur SUPER_ADMIN interroge sur `workspaces` : sans elles,
+    -- DashboardSprint10IT.superAdminAggregator echoue en BadSqlGrammar.
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    trial_status VARCHAR(20),
+    selected_plan VARCHAR(20),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
