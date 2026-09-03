@@ -231,4 +231,4 @@ au greffe · fédération d'identité (OIDC).
 
 ---
 
-*Développé par Abdellah MAAGOUL — EMSI, Génie Informatique — 2025/2026.*
+*Développé par Oussama BENATIK — EMSI, Génie Informatique — 2025/2026.*
