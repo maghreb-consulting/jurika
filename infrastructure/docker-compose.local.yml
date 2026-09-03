@@ -42,7 +42,12 @@ services:
     container_name: jurika-billing
     restart: unless-stopped
     ports:
-      - "0.0.0.0:${BILLING_SERVICE_PORT:-8090}:8090"
+      # Pas de prefixe `0.0.0.0:` : il publiait le port en IPv4 SEULE.
+      # Les clients qui resolvent `localhost` en ::1 d abord (fetch de
+      # Node >=17, ordre DNS verbatim) recevaient ECONNREFUSED alors que
+      # le service repondait en IPv4 -> smoke test en echec sur billing.
+      # Sans prefixe, Docker publie sur les deux piles, LAN inclus.
+      - "${BILLING_SERVICE_PORT:-8090}:8090"
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod-local}
       JURIKA_ENV: ${JURIKA_ENV:-local}
@@ -102,7 +107,7 @@ services:
     container_name: jurika-dashboard
     restart: unless-stopped
     ports:
-      - "0.0.0.0:${DASHBOARD_SERVICE_PORT:-8087}:8087"
+      - "${DASHBOARD_SERVICE_PORT:-8087}:8087"
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod-local}
       JURIKA_ENV: ${JURIKA_ENV:-local}
@@ -140,7 +145,7 @@ services:
     container_name: jurika-realtime
     restart: unless-stopped
     ports:
-      - "0.0.0.0:${REALTIME_SERVICE_PORT:-3000}:3000"
+      - "${REALTIME_SERVICE_PORT:-3000}:3000"
     environment:
       PORT: 3000
       # JWT — utilise la cle publique RS256 partagee avec les services Java.
@@ -189,7 +194,7 @@ services:
     ports:
       # Port 80 sur le LAN. Reverse-proxy peut le re-router via 443
       # via Traefik en prod (cf deployment/docker-compose.staging.yml).
-      - "0.0.0.0:${FRONTEND_PORT:-80}:80"
+      - "${FRONTEND_PORT:-80}:80"
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://${JURIKA_LAN_HOST:-localhost}:8080/api/v1}
       VITE_REALTIME_URL: ${VITE_REALTIME_URL:-http://${JURIKA_LAN_HOST:-localhost}:3000}
@@ -198,7 +203,13 @@ services:
       gateway-service: { condition: service_healthy }
       realtime-service: { condition: service_healthy }
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      # 127.0.0.1 et non `localhost` : la conf nginx du projet ne declare que
+      # `listen 80;` (IPv4). Le script 10-listen-on-ipv6-by-default.sh de
+      # l'image ne l'ajoute pas car default.conf differe de la version packagee.
+      # wget resolvait donc `localhost` en [::1] -> "Connection refused" et le
+      # conteneur restait `unhealthy` alors que nginx servait bien l'appli, ce
+      # qui bloquait tout `depends_on: service_healthy` sur le frontend.
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/"]
       interval: 30s
       timeout: 5s
       retries: 3

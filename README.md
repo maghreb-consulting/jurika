@@ -48,7 +48,8 @@ certificat négatif) · assistant juridique avec réponses sourcées · copilote
 
 ## Architecture
 
-Architecture microservices — **15 conteneurs** orchestrés par Docker Compose.
+Architecture microservices — **18 conteneurs** orchestrés par Docker Compose
+(+ MailHog, optionnel, via le profil Compose `mailhog`).
 
 ```
 Frontend React  →  API Gateway  →  services métier
@@ -91,23 +92,72 @@ produit.
 
 **Prérequis** — Docker Engine 24+ avec Compose v2 · Node.js 18+ · 8 Go de RAM · 12 Go de disque.
 
-```bash
+### Éléments non versionnés (à obtenir séparément)
+
+Cinq éléments sont volontairement absents du dépôt : ils contiennent des secrets
+réels ou dépassent les limites de taille de GitHub. Sans eux, la pile démarre en
+apparence mais reste partiellement inopérante.
+
+| Élément | Taille | Conséquence de son absence |
+|---|---|---|
+| `.env` (racine) | ~5 Ko | Mots de passe d'infrastructure vides → services incapables de s'authentifier |
+| `.env.local` | ~10 Ko | La pile ne démarre pas (`start-local` s'arrête en pré-vol) |
+| `models/donut-jurika-final/` | 777 Mo | Extraction d'identité inactive — `kie-service` se déclare pourtant *healthy* |
+| `backend-python/kie-service/.venv` | 1 458 Mo | Extraction inactive **en mode hôte** uniquement |
+| `backend-python/ocr-service/.venv` | 1 042 Mo | OCR inactif **en mode hôte** uniquement |
+
+Les deux `.venv` ne concernent que le mode hôte (`scripts/start-all.ps1`) : en mode
+conteneurisé, les dépendances Python sont installées dans les images. Les clés JWT
+RS256 n'ont pas à être fournies — `start-local.ps1` les génère si elles manquent.
+
+### Démarrage (mode conteneurisé)
+
+```powershell
 # 1. Configuration
-cp .env.local.server.example .env.local
-#    renseigner JURIKA_LAN_HOST (IP du poste), les mots de passe et AES_SECRET_KEY (32 caractères)
+copy .env.local.server.example .env.local
+#    renseigner JURIKA_LAN_HOST (IP du poste), les mots de passe et AES_SECRET_KEY (32 caracteres)
 
-# 2. Démarrage de la pile complète
-./scripts/start-local.sh          # Linux / macOS
-.\scripts\start-local.ps1         # Windows
+# 2. Dependances Node de la racine (module `pg`, requis par seed-demo)
+npm ci
 
-# 3. Jeu de données de démonstration
+# 3. Demarrage de la pile complete (build ~30 min la premiere fois)
+.\scripts\start-local.ps1
+
+# 4. Jeu de donnees de demonstration
 node scripts/seed-demo.mjs
 
-# 4. Vérification
-./scripts/smoke-test.sh
+# 5. Verification
+.\scripts\smoke-test.ps1
 ```
 
-Interface : `http://<JURIKA_LAN_HOST>/`
+Interface : `http://<JURIKA_LAN_HOST>/` — par défaut `http://localhost/`
+
+> **Vérifié le 2026-09-03 sur Windows 11 / Docker Desktop** : `start-local.ps1`
+> retourne le code 0 avec 17/17 services *healthy* (18 conteneurs au total),
+> `seed-demo.mjs` peuple le workspace `JUR-DEMO2`, et `smoke-test.ps1` renvoie
+> 8 PASS / 0 FAIL.
+>
+> Les équivalents POSIX (`start-local.sh`, `smoke-test.sh`) existent dans le dépôt
+> mais **n'ont pas été exécutés** lors de cette vérification.
+
+### Contrôler que l'extraction fonctionne réellement
+
+`kie-service` répond *healthy* même sans les poids du modèle : un `docker ps`
+entièrement vert ne prouve donc rien sur l'extraction. Le seul contrôle qui
+distingue une pile complète d'une pile silencieusement dégradée :
+
+```powershell
+curl http://localhost:8088/health
+#    attendu : {"status":"UP","model_loaded":true}
+
+curl -X POST http://localhost:8088/api/v1/kie/extract `
+  -F "file=@scripts/demo-video/assets/CIN_specimen_recto.png" `
+  -F "doc_type=cin_nouv_recto"
+#    attendu : des champs renseignes + "source":"kie"
+```
+
+Une réponse 200 avec `model_loaded: false` ou des champs vides signale que
+`models/donut-jurika-final/` est absent ou mal monté.
 
 ### Comptes de démonstration
 
@@ -117,8 +167,11 @@ Interface : `http://<JURIKA_LAN_HOST>/`
 | Employé | `employe1@demo.jurika.ma` | `Demo@2026` |
 | Client | `client@demo.jurika.ma` | `Demo@2026` |
 
-> Le modèle d'extraction (`models/donut-jurika-final/`, ~700 Mo) n'est pas versionné. Sans lui, le
-> service `kie-service` démarre en mode dégradé et l'extraction des pièces d'identité est indisponible.
+Code workspace : `JUR-DEMO2`.
+
+> Le compte `employe1@demo.jurika.ma` a la double authentification **TOTP** active :
+> le jeton renvoyé par `/auth/login` est refusé (403) jusqu'à l'appel de
+> `/auth/verify-2fa`. Prévoir l'application d'authentification associée.
 
 ---
 

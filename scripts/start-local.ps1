@@ -60,6 +60,12 @@ $composeArgs = @(
     '-f', 'infrastructure/docker-compose.yml',
     '-f', 'infrastructure/docker-compose.services.yml',
     '-f', 'infrastructure/docker-compose.local.yml',
+    # Deux --env-file, dans cet ordre : `.env` fournit les mots de passe infra
+    # (POSTGRES / REDIS / RABBITMQ / MINIO), `.env.local` surcharge le reste.
+    # Ne passer que `.env.local` REMPLACE le chargement par defaut de `.env` :
+    # les 4 mots de passe tombaient a vide ("variable is not set") et les
+    # services ne pouvaient plus s'authentifier aupres de l'infrastructure.
+    '--env-file', '.env',
     '--env-file', '.env.local',
     '-p', 'jurika-local'
 )
@@ -83,8 +89,14 @@ Write-Host "🚀 docker compose up -d"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # ─── 5) Attente healthchecks ─────────────────────────────────────────
+# `jurika-mailhog` n'est PAS attendu ici : dans docker-compose.yml il porte
+# `profiles: ["mailhog"]` et ce script n'active pas ce profil, donc Compose ne
+# le cree jamais. Le laisser dans la liste rendait l'attente des healthchecks
+# impossible a satisfaire (17/18 en boucle -> timeout, code de sortie 2) alors
+# que la pile etait entierement fonctionnelle. Pour utiliser MailHog au lieu de
+# Brevo : ajouter `--profile mailhog` aux arguments compose ci-dessus.
 $expected = @(
-    'jurika-postgres', 'jurika-redis', 'jurika-rabbitmq', 'jurika-mailhog',
+    'jurika-postgres', 'jurika-redis', 'jurika-rabbitmq',
     'jurika-discovery', 'jurika-gateway', 'jurika-auth', 'jurika-ticket',
     'jurika-workflow', 'jurika-dataroom', 'jurika-ai', 'jurika-supervision',
     'jurika-dashboard', 'jurika-billing',
@@ -115,14 +127,14 @@ Write-Host ""
 Write-Host "✅ Stack JURIKA UP sur LAN $LanHost" -ForegroundColor Green
 Write-Host ""
 Write-Host "   App (frontend)      :  http://$LanHost/"
-Write-Host "   API Gateway         :  http://$LanHost:8080/actuator/health"
-Write-Host "   Realtime (Socket)   :  http://$LanHost:3000/health"
-Write-Host "   Discovery (Eureka)  :  http://$LanHost:8761"
-Write-Host "   OCR (docTR)         :  http://$LanHost:8089/health"
-Write-Host "   KIE (Donut)         :  http://$LanHost:8088/health"
-Write-Host "   MailHog UI          :  http://$LanHost:8025"
-Write-Host "   RabbitMQ Mgmt       :  http://$LanHost:15672"
-Write-Host "   MinIO Console       :  http://$LanHost:9001"
+Write-Host "   API Gateway         :  http://${LanHost}:8080/actuator/health"
+Write-Host "   Realtime (Socket)   :  http://${LanHost}:3000/health"
+Write-Host "   Discovery (Eureka)  :  http://${LanHost}:8761"
+Write-Host "   OCR (docTR)         :  http://${LanHost}:8089/health"
+Write-Host "   KIE (Donut)         :  http://${LanHost}:8088/health"
+Write-Host "   MailHog UI          :  http://${LanHost}:8025"
+Write-Host "   RabbitMQ Mgmt       :  http://${LanHost}:15672"
+Write-Host "   MinIO Console       :  http://${LanHost}:9001"
 Write-Host ""
 Write-Host "   Comptes demo (apres seed) :"
 Write-Host "     Superviseur : superviseur@demo.jurika.ma / Demo@2026"

@@ -8,8 +8,20 @@ WORKDIR /build
 RUN apt-get update && apt-get install -y --no-install-recommends maven \
     && rm -rf /var/lib/apt/lists/*
 COPY pom.xml ./
-COPY jurika-common/pom.xml jurika-common/
-COPY gateway-service/pom.xml gateway-service/
+# Le POM parent declare 11 modules : Maven charge le reacteur complet avant
+# d'appliquer -pl, et echoue si un module declare est absent. Tous les POM
+# enfants sont donc requis, meme pour construire un seul service.
+COPY jurika-common/pom.xml        jurika-common/
+COPY discovery-service/pom.xml    discovery-service/
+COPY gateway-service/pom.xml      gateway-service/
+COPY auth-service/pom.xml         auth-service/
+COPY ticket-service/pom.xml       ticket-service/
+COPY workflow-service/pom.xml     workflow-service/
+COPY dataroom-service/pom.xml     dataroom-service/
+COPY supervision-service/pom.xml  supervision-service/
+COPY ai-service/pom.xml           ai-service/
+COPY dashboard-service/pom.xml    dashboard-service/
+COPY billing-service/pom.xml      billing-service/
 RUN --mount=type=cache,target=/root/.m2/repository \
     mvn -B -pl :gateway-service -am -DskipTests dependency:go-offline || true
 COPY jurika-common/src jurika-common/src

@@ -1,0 +1,33 @@
+# Contexte de build Docker du backend Java.
+# Sans ce fichier, le contexte embarque les `target/` locaux (des centaines de
+# Mo de classes et de JAR deja compiles sur le poste) : build fortement ralenti,
+# et risque de faire fuiter des artefacts locaux dans l'image.
+# Les sources necessaires sont copiees explicitement par chaque Dockerfile.
+
+# Artefacts de compilation Maven
+target/
+*/target/
+*.jar
+*.war
+*.class
+
+# Historique et metadonnees Git
+.git
+.gitignore
+.gitattributes
+
+# Journaux et fichiers temporaires
+*.log
+.tmp/
+*/.tmp/
+
+# Secrets et configuration locale (ne doivent jamais entrer dans une image)
+.env
+.env.local
+*.pem
+firebase-service-account.json
+
+# Reglages d'IDE
+.idea/
+.vscode/
+*.iml

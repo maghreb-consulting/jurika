@@ -315,7 +315,14 @@ services:
     ports:
       - "${KIE_PORT:-8088}:8088"
     environment:
-      DONUT_MODEL_DIR: ${DONUT_MODEL_DIR:-/models/donut-jurika-final}
+      # Chemin INTERNE au conteneur : il doit toujours correspondre a la cible
+      # du montage ci-dessous. Ne pas le rendre surchargeable par la variable
+      # DONUT_MODEL_DIR : en mode hote, `.env.local` la definit avec un chemin
+      # Windows (C:\...\models\donut-jurika-final) pour start-all.ps1, et comme
+      # compose est lance avec --env-file .env.local, cette valeur fuitait dans
+      # le conteneur Linux -> modele introuvable, kie-service degrade en
+      # silence. Le chemin hote reste surchargeable via DONUT_MODEL_DIR_HOST.
+      DONUT_MODEL_DIR: /models/donut-jurika-final
       MAX_FILE_MB: ${KIE_MAX_FILE_MB:-15}
       KIE_PRELOAD: ${KIE_PRELOAD:-true}
       KIE_LOG_LEVEL: ${KIE_LOG_LEVEL:-INFO}
