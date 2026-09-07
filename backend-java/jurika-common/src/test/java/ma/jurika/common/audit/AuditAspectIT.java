@@ -83,6 +83,12 @@ import static org.mockito.Mockito.verify;
                         + "ma.jurika.common.observability.OpsActuatorReactiveSecurityAutoConfiguration,"
                         + "ma.jurika.common.security.JwtAutoConfiguration,"
                         + "org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration",
+                // AuditAutoConfiguration enregistre aussi un bean nomme
+                // `jdbcAuditEventEmitter` (@ConditionalOnMissingBean). TestApp en
+                // declare un identique ci-dessous : sans cette propriete, Spring Boot
+                // refuse la redefinition (BeanDefinitionOverrideException) et le
+                // contexte ne charge pas. On laisse la declaration explicite gagner.
+                "spring.main.allow-bean-definition-overriding=true",
                 "jurika.audit.async-enabled=false",
                 // Pool a 1 connexion : indispensable pour que SET / SET LOCAL voient
                 // les memes lignes a travers BeforeEach + audit writes + assertions

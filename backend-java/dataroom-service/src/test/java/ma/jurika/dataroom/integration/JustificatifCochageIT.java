@@ -282,9 +282,61 @@ class JustificatifCochageIT {
                 .flatMap(g -> g.documents().stream())
                 .map(DocumentSummary::id)
                 .toList();
+
+        // Lot 2 (2026-09-07) — LA VERSION REMPLACEE N'A PLUS SA PROPRE LIGNE
+        // QUAND C'EST LE MEME TICKET QUI L'A REMPLACEE.
+        //
+        // Elle en avait une avant, et le dossier annoncait « 2 documents » pour
+        // un seul acte : la meme piece figurait en ligne de premier niveau ET
+        // sous « Anciennes versions » de la ligne courante, avec les memes
+        // actions et rien qui les distingue.
+        //
+        // Le principe « un ticket clos EST l'archive » n'est pas abandonne : il
+        // est servi par le lignage, verifie ci-dessous. Un acte remplace lors
+        // d'une operation ULTERIEURE, lui, garde bien sa ligne dans le ticket
+        // qui l'a produit — c'est le cas que couvre `versionRemplaceeAilleurs`.
         assertThat(ids)
-                .as("un ticket clos EST l'archive : ses versions ne disparaissent pas")
+                .as("le ticket montre l'acte une fois, dans sa version en vigueur")
+                .containsExactly(v2.id());
+        assertThat(dossier.totalDocuments()).isEqualTo(1);
+
+        assertThat(juridique.listVersions(v2.id()))
+                .as("rien n'est perdu : la version remplacee reste dans le lignage")
+                .extracting(DocumentSummary::id)
                 .contains(v1.id(), v2.id());
-        assertThat(dossier.totalDocuments()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Un acte remplace par une operation ULTERIEURE reste dans le ticket qui l'a produit")
+    void versionRemplaceeAilleurs() {
+        // C'est le cas qui porte reellement le principe « un ticket clos EST
+        // l'archive ». Les statuts d'origine ont ete produits a la creation ;
+        // une modification, des mois plus tard, en publie une version refondue.
+        // Le juriste qui rouvre le dossier de la CREATION doit y retrouver les
+        // statuts tels qu'ils etaient alors — c'est ce qu'il vient y chercher.
+        DocumentSummary v1 = juridique.uploadVersion(dossierId, "STATUTS", "Statuts",
+                ticketCreation, pdf("statuts-origine.pdf"), uploaderId, true);
+        DocumentSummary v2 = juridique.uploadVersion(dossierId, "STATUTS", "Statuts",
+                ticketModification, pdf("statuts-refondus.pdf"), uploaderId, true);
+
+        List<DossierTicket> dossiers = juridique.view(dossierId).dossiersParTicket();
+
+        List<UUID> creation = dossiers.stream()
+                .filter(t -> ticketCreation.equals(t.ticketId()))
+                .findFirst().orElseThrow()
+                .groupes().stream().flatMap(g -> g.documents().stream())
+                .map(DocumentSummary::id).toList();
+        assertThat(creation)
+                .as("la version d'origine reste dans le ticket qui l'a produite")
+                .containsExactly(v1.id());
+
+        List<UUID> modification = dossiers.stream()
+                .filter(t -> ticketModification.equals(t.ticketId()))
+                .findFirst().orElseThrow()
+                .groupes().stream().flatMap(g -> g.documents().stream())
+                .map(DocumentSummary::id).toList();
+        assertThat(modification)
+                .as("la version refondue appartient au ticket qui l'a produite")
+                .containsExactly(v2.id());
     }
 }
