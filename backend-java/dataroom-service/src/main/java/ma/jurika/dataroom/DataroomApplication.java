@@ -13,14 +13,16 @@ import java.time.Clock;
 @EnableDiscoveryClient
 // Sprint 7 / TASK 5 -- @Async pour ClientAccessLogger (insert non bloquant)
 @EnableAsync
-// Sprint 8 -- @Scheduled pour AlertesEcheancesScheduler (RG-DF20)
+// Lot 1 (2026-09-04) — le dernier @Scheduled du service (alertes d'echeances
+// fiscales) a disparu avec le dossier fiscal. On conserve @EnableScheduling :
+// le cout est nul et un futur planificateur n'aura pas a le redecouvrir.
 @EnableScheduling
 public class DataroomApplication {
     public static void main(String[] args) {
         SpringApplication.run(DataroomApplication.class, args);
     }
 
-    /** Bean Clock injectable pour AlertesEcheancesScheduler (testable via override). */
+    /** Bean Clock injectable, pour que tout traitement date reste testable. */
     @Bean
     public Clock systemClock() {
         return Clock.systemUTC();

@@ -93,33 +93,33 @@ public class DemoDataSeeder implements CommandLineRunner {
                      assigne_id, cree_par_id, description, deadline, cloture_at, created_at, updated_at)
                 VALUES
                     ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1'::uuid, ?1::uuid,
-                     'T-DEMO-' || ?2 || '-1', 'Creation SARL Atlas Trading', 'CREATION', 'EN_COURS', 'NORMALE',
+                     'T-DEMO-' || ?2 || '-1', 'Creation SARL Atlas Trading', 'CREATION', 'GENERATION_DOCUMENTS', 'NORMALE',
                      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1'::uuid,
                      ?3::uuid, ?3::uuid,
                      'Constitution societe ATLAS TRADING SARL', '2026-06-18'::timestamptz, NULL,
                      NOW() - INTERVAL '10 days', NOW()),
                     ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2'::uuid, ?1::uuid,
-                     'T-DEMO-' || ?2 || '-2', 'Transfert siege CASA Services', 'MODIFICATION', 'EN_COURS', 'HAUTE',
+                     'T-DEMO-' || ?2 || '-2', 'Transfert siege CASA Services', 'MODIFICATION', 'DEROULEMENT_DEMARCHE', 'HAUTE',
                      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2'::uuid,
                      ?3::uuid, ?3::uuid,
                      'Transfert siege social vers Rabat', '2026-06-20'::timestamptz, NULL,
                      NOW() - INTERVAL '5 days', NOW()),
                     ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3'::uuid, ?1::uuid,
-                     'T-DEMO-' || ?2 || '-3', 'Augmentation capital Atlas', 'MODIFICATION', 'CLOTURE', 'NORMALE',
+                     'T-DEMO-' || ?2 || '-3', 'Augmentation capital Atlas', 'MODIFICATION', 'CLOTURE_DOSSIER', 'NORMALE',
                      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1'::uuid,
                      ?3::uuid, ?3::uuid,
                      'Augmentation capital de 100k a 150k MAD',
                      NOW() - INTERVAL '30 days', NOW() - INTERVAL '30 days',
                      NOW() - INTERVAL '45 days', NOW() - INTERVAL '30 days'),
                     ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb4'::uuid, ?1::uuid,
-                     'T-DEMO-' || ?2 || '-4', 'Creation Maroc Export Plus', 'CREATION', 'CLOTURE', 'NORMALE',
+                     'T-DEMO-' || ?2 || '-4', 'Creation Maroc Export Plus', 'CREATION', 'CLOTURE_DOSSIER', 'NORMALE',
                      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3'::uuid,
                      ?3::uuid, ?3::uuid,
                      'Constitution MAROC EXPORT PLUS SARL',
                      NOW() - INTERVAL '60 days', NOW() - INTERVAL '70 days',
                      NOW() - INTERVAL '80 days', NOW() - INTERVAL '70 days'),
                     ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb5'::uuid, ?1::uuid,
-                     'T-DEMO-' || ?2 || '-5', 'Question juridique Atlas', 'MODIFICATION', 'NOUVEAU', 'BASSE',
+                     'T-DEMO-' || ?2 || '-5', 'Question juridique Atlas', 'MODIFICATION', 'CREATION_TICKET', 'BASSE',
                      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1'::uuid,
                      NULL, ?3::uuid,
                      'Demande de conseil sur cession de parts', NULL, NULL,
@@ -163,79 +163,19 @@ public class DemoDataSeeder implements CommandLineRunner {
                     UPDATE tickets SET assigne_id = ?1, updated_at = NOW()
                     WHERE workspace_id = ?2
                       AND assigne_id IS NULL
-                      AND statut IN ('NOUVEAU','EN_COURS')
+                      AND statut IN ('CREATION_TICKET','GENERATION_DOCUMENTS','DEROULEMENT_DEMARCHE')
                     """)
                     .setParameter(1, employeId)
                     .setParameter(2, wsId)
                     .executeUpdate();
             if (assigned > 0) {
-                log.info("Demo enrich : {} tickets EN_COURS/NOUVEAU reassignes a karim", assigned);
+                log.info("Demo enrich : {} tickets ouverts reassignes a karim", assigned);
             }
 
-            // ─── 2. Echeances DGI demo ────────────────────────────────────
-            Number echeancesCount = (Number) em.createNativeQuery(
-                    "SELECT COUNT(*) FROM dataroom_alertes_echeances WHERE workspace_id = ?1")
-                    .setParameter(1, wsId)
-                    .getSingleResult();
-            if (echeancesCount.longValue() == 0) {
-                // Premier dossier du workspace (peu importe la raison_sociale) :
-                // l'enrich tourne aussi sur des workspaces seedes ailleurs ou
-                // les dossiers fixtures (aaaa-...-aaa1) n'existent pas.
-                @SuppressWarnings("unchecked")
-                java.util.List<Object> dossierIds = em.createNativeQuery(
-                        "SELECT id FROM entreprise_dossiers WHERE workspace_id = ?1 ORDER BY created_at LIMIT 1")
-                        .setParameter(1, wsId)
-                        .getResultList();
-                if (!dossierIds.isEmpty()) {
-                    UUID dossierUuid = (UUID) dossierIds.get(0);
-                    // 2a. Exercice fiscal courant (annee N) requis (FK NOT NULL)
-                    UUID exerciceId = UUID.randomUUID();
-                    em.createNativeQuery("""
-                            INSERT INTO dataroom_exercices_fiscaux
-                                (id, workspace_id, dossier_id, annee, date_debut, date_fin,
-                                 statut, date_ouverture, created_at, updated_at)
-                            VALUES
-                                (?1, ?2, ?3,
-                                 EXTRACT(YEAR FROM CURRENT_DATE)::smallint,
-                                 (DATE_TRUNC('year', CURRENT_DATE))::date,
-                                 (DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '1 year' - INTERVAL '1 day')::date,
-                                 'OUVERT', NOW(), NOW(), NOW())
-                            ON CONFLICT DO NOTHING
-                            """)
-                            .setParameter(1, exerciceId)
-                            .setParameter(2, wsId)
-                            .setParameter(3, dossierUuid)
-                            .executeUpdate();
-
-                    em.createNativeQuery("""
-                            INSERT INTO dataroom_alertes_echeances
-                                (id, workspace_id, dossier_id, exercice_fiscal_id, type_echeance,
-                                 date_echeance, date_alerte, statut, created_at, updated_at)
-                            VALUES
-                                (gen_random_uuid(), ?1, ?2, ?3, 'TVA_MENSUELLE',
-                                 CURRENT_DATE + INTERVAL '3 day',
-                                 CURRENT_DATE - INTERVAL '12 day', 'PLANIFIEE', NOW(), NOW()),
-                                (gen_random_uuid(), ?1, ?2, ?3, 'TVA_MENSUELLE',
-                                 CURRENT_DATE + INTERVAL '12 day',
-                                 CURRENT_DATE - INTERVAL '3 day', 'PLANIFIEE', NOW(), NOW()),
-                                (gen_random_uuid(), ?1, ?2, ?3, 'IS_ACOMPTE_T1',
-                                 CURRENT_DATE + INTERVAL '20 day',
-                                 CURRENT_DATE + INTERVAL '5 day', 'PLANIFIEE', NOW(), NOW()),
-                                (gen_random_uuid(), ?1, ?2, ?3, 'IS_DECLARATION_ANNUELLE',
-                                 CURRENT_DATE + INTERVAL '28 day',
-                                 CURRENT_DATE + INTERVAL '13 day', 'PLANIFIEE', NOW(), NOW()),
-                                (gen_random_uuid(), ?1, ?2, ?3, 'IR_DECLARATION_ANNUELLE',
-                                 CURRENT_DATE - INTERVAL '2 day',
-                                 CURRENT_DATE - INTERVAL '17 day', 'ENVOYEE',   NOW(), NOW())
-                            """)
-                            .setParameter(1, wsId)
-                            .setParameter(2, dossierUuid)
-                            .setParameter(3, exerciceId)
-                            .executeUpdate();
-                    log.info("Demo enrich : 1 exercice + 5 echeances DGI seedees pour JUR-DEMO1");
-                }
-            }
-
+            // Lot 1 (2026-09-04) — le seed des echeances DGI (TVA, IS, IR) est
+            // retire : ces echeances recurrentes sont abandonnees avec le dossier
+            // fiscal. Les echeances affichees viennent desormais des delais legaux
+            // portes par les demarches du parcours (referentiel ticket V20/V21).
             // ─── 3. Audit log dataroom pour karim (activite recente) ──────
             Number datroomEvents = (Number) em.createNativeQuery("""
                     SELECT COUNT(*) FROM audit_log

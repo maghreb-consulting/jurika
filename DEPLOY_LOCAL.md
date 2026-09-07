@@ -37,15 +37,49 @@ URL démo : `http://<IP-LAN-DU-SERVEUR>/` (ex `http://192.168.1.42/`).
 | Docker Engine + Compose v2 | 24.0 / v2.20 | `docker compose version` |
 | Node.js | 18 LTS | `node --version` |
 | OpenSSL | 3.0 (Windows : `winget install OpenSSL.OpenSSL`) | `openssl version` |
-| RAM dispo | 8 Go | — |
-| Disque dispo | 12 Go | (images Docker + volumes) |
+| RAM dispo | **10 Go** (8 Go avant le lot 3 ; l'éditeur bureautique en demande ~1 Go de plus, et il faut de la marge) | — |
+| Disque dispo | **15 Go** (12 Go avant le lot 3 ; l'image `collabora/code` pèse 1,87 Go) | (images Docker + volumes) |
 | Modèle Donut KIE local | `projet/models/donut-jurika-final/` (~700 Mo, config.json + model.safetensors + tokenizer*) | copier sur le serveur avant le `start-local`, sinon `kie-service` reste unhealthy |
-| Ports libres sur le serveur | 80, 1025, 3000, 5432, 6379, 5672, 8025, 8080-8090, 8761, 9000-9001, 15672 | `netstat -tlnp` (Linux) ou `Get-NetTCPConnection` (Win) |
+| Ports libres sur le serveur | 80, 1025, 3000, 5432, 6379, 5672, 8025, 8080-8090, 8761, **9980**, 9000-9001, 15672 | `netstat -tlnp` (Linux) ou `Get-NetTCPConnection` (Win) |
 
 > Détail des ports exposés en LAN : 80 (frontend), 3000 (realtime-service WebSocket),
 > 8080 (gateway), 8081-8087 (services Java auth/ticket/workflow/dataroom/ai/supervision/dashboard),
 > 8088 (kie-service Donut), 8089 (ocr-service docTR), 8090 (billing-service),
-> 8761 (Eureka), 8025/15672/9001 (UIs MailHog/RabbitMQ/MinIO), 5432/6379/5672/9000 (infra).
+> 8761 (Eureka), 8025/15672/9001 (UIs MailHog/RabbitMQ/MinIO), 5432/6379/5672/9000 (infra),
+> **9980 (collabora — éditeur bureautique, lot 3)**.
+
+### Édition bureautique — Collabora Online CODE (lot 3, 2026-09-07)
+
+La pile passe de **18 à 19 conteneurs**. Le nouveau service édite les `.docx` sans passer par un
+format intermédiaire : c'est ce qui préserve la mise en page des modèles du directeur.
+
+**Variables** (dans `.env.local`, jamais dans le fichier Compose) :
+
+| Variable | Rôle |
+|---|---|
+| `COLLABORA_ADMIN_USER` / `COLLABORA_ADMIN_PASSWORD` | Console d'administration. **Ne jamais les écrire dans `docker-compose*.yml`.** |
+| `COLLABORA_ALIASGROUP` | Hôtes WOPI autorisés. Le 1er est l'hôte principal, les suivants ses alias. Une valeur fausse donne « Unauthorized WOPI host » — le mode d'échec le plus fréquent. |
+| `COLLABORA_FRAME_ANCESTORS` | Origines autorisées à embarquer l'éditeur dans une iframe (CSP). |
+| `COLLABORA_SSL_TERMINATION` | `false` tant que rien ne termine le TLS devant Collabora. À passer à `true` **le jour où** un reverse proxy HTTPS sera en place — pas avant : sinon la découverte annonce des URL `https://` que le navigateur ne peut pas joindre, et l'éditeur ne s'ouvre jamais. |
+| `COLLABORA_MEM_LIMIT` | Plafond mémoire (défaut `1g`). Mesuré : **590 Mo avec un document de 13 pages ouvert**, avec `--o:num_prespawn_children=1`. |
+| `WOPI_BASE_URL` | Adresse du backend **telle que Collabora la voit** (`http://dataroom-service:8084`). `localhost` désignerait le conteneur Collabora lui-même. |
+| `WOPI_EDITOR_URL` | Adresse de l'éditeur **telle que le navigateur la voit** (`http://localhost:9980`). |
+| `WOPI_GRACE_WINDOW` | Fenêtre pendant laquelle un enregistrement tardif reste accepté après fermeture (défaut `PT3M`). La réduire à zéro ferait perdre la dernière sauvegarde en silence. |
+
+**Le contrôle qui atteste que le service est utilisable** — à faire avant de chercher plus loin :
+
+```bash
+curl -fs http://localhost:9980/hosting/discovery | head -c 300
+```
+
+Il doit rendre un XML `<wopi-discovery>` avec une `<net-zone name="external-http">` et des `urlsrc`
+en `http://localhost:9980`. **S'il ne répond pas, inutile de déboguer l'application** : rien ne peut
+fonctionner au-dessus. Si les `urlsrc` sont en `https://` alors qu'aucun proxy TLS n'est en place,
+c'est que `COLLABORA_SSL_TERMINATION` vaut `true` à tort.
+
+> **Réserve portée au dossier.** L'éditeur déclare CODE **non recommandé en production**
+> (publication continue, sans SLA). Acceptable pour un usage interne au cabinet ; à réévaluer avant
+> toute commercialisation. Licence MPL-2.0, gratuite, sans limite d'utilisateurs.
 
 > ⚠️ Sur Windows, le contrôle de dossiers Windows Defender peut bloquer
 > AF_UNIX dans `%TEMP%` (cf. `[[never-stop-winnat]]`). Les scripts utilisent
@@ -160,7 +194,7 @@ Options :
 - `--logs` : tail des logs en sortie après le up
 
 À la fin, le script vérifie les healthchecks de la stack complète
-(4 infra + 9 services Java + realtime-service + ocr/kie + frontend)
+(4 infra + 9 services Java + realtime-service + ocr/kie + frontend + collabora)
 et affiche les URLs LAN.
 
 ### Vérifier 10/10 healthy

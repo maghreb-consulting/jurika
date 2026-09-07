@@ -43,8 +43,16 @@ public final class DashboardDtos {
     // ----- SUPERVISEUR -----
     public record EmployeeLoad(UUID userId, String email, long ticketsOuverts, long echeancesAssignees) {}
     public record EcheanceBucket(String label, List<EcheanceItem> items) {}
-    public record EcheanceItem(UUID id, UUID dossierId, String typeEcheance, LocalDate dateEcheance,
-                                String statut) {}
+    /**
+     * Une echeance legale du parcours : le delai du guide attache a une demarche
+     * restant a accomplir. Remplace les anciennes alertes fiscales.
+     *
+     * @param severite DEPASSE | CRITIQUE (J-3) | APPROCHE. L ancien champ
+     *                 `statut` valait toujours « PLANIFIEE » : il ne portait
+     *                 aucune information.
+     */
+    public record EcheanceItem(UUID id, UUID dossierId, String libelle, LocalDate dateEcheance,
+                                String severite) {}
     public record DossierRisk(UUID dossierId, String raisonSociale, String motif) {}
 
     public record SuperviseurDashboardDto(

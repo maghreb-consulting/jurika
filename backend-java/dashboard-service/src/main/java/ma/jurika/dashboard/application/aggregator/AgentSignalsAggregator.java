@@ -94,31 +94,37 @@ public class AgentSignalsAggregator {
                             dossierId, rs.getString("raison_sociale"), lien);
                 }, emp, ws));
 
-        // (b) alertes d'echeances fiscales (dataroom-service)
-        out.addAll(jdbc.query("""
-                SELECT a.id, a.type_echeance, a.date_echeance,
-                       dos.id AS dossier_id, dos.raison_sociale
-                FROM dataroom_alertes_echeances a
+        // (b) delais legaux des DEMARCHES du parcours (referentiel ticket V20/V21).
+        //     Ils remplacent les anciennes alertes fiscales, abandonnees avec le
+        //     dossier fiscal : ce sont desormais les seules echeances reglementaires
+        //     du produit, et un delai manque a des consequences reelles.
+        out.addAll(jdbc.query(DemarcheEcheancesSql.resoudre("""
+                SELECT md5(t.id::text || dr.id::text)::uuid AS id,
+                       t.id AS ticket_id,
+                       dr.libelle,
+                       {{ECHEANCE}} AS date_echeance,
+                       dos.id AS dossier_id,
+                       dos.raison_sociale
+                FROM tickets t
                 JOIN entreprise_dossiers dos
-                       ON dos.id = a.dossier_id
-                      AND dos.workspace_id = a.workspace_id
-                      AND dos.responsable_id = ?
-                WHERE a.workspace_id = ?
-                  AND a.statut IN ('PLANIFIEE','ENVOYEE')
-                  AND a.date_echeance <= CURRENT_DATE + 7
-                  AND a.date_echeance >= CURRENT_DATE - INTERVAL '%d day'
-                ORDER BY a.date_echeance ASC
+                      ON dos.id = t.dossier_id AND dos.workspace_id = t.workspace_id
+                     AND dos.responsable_id = ?
+                {{JOINTURES}}
+                {{FILTRE}}
+                  AND {{ECHEANCE}} <= CURRENT_DATE + 7
+                  AND {{ECHEANCE}} >= CURRENT_DATE - INTERVAL '%d day'
+                ORDER BY date_echeance ASC
                 LIMIT 30
-                """.formatted(RETARD_MAX_JOURS), (rs, rn) -> {
+                """.formatted(RETARD_MAX_JOURS)), (rs, rn) -> {
                     LocalDate date = rs.getDate("date_echeance").toLocalDate();
                     long jours = ChronoUnit.DAYS.between(LocalDate.now(), date);
                     String severite = jours < 0 ? "CRITICAL" : (jours <= 3 ? "WARNING" : "INFO");
                     UUID dossierId = (UUID) rs.getObject("dossier_id");
                     return new EcheanceSignal(
-                            "ALERTE_FISCALE", (UUID) rs.getObject("id"), rs.getString("type_echeance"),
+                            "DELAI_LEGAL", (UUID) rs.getObject("id"), rs.getString("libelle"),
                             date, severite, jours < 0, jours,
                             dossierId, rs.getString("raison_sociale"),
-                            "/data-rooms?dossier=" + dossierId + "&tab=fiscal");
+                            "/tickets?ticket=" + rs.getObject("ticket_id"));
                 }, emp, ws));
 
         out.sort(Comparator.comparing(EcheanceSignal::date));
@@ -141,7 +147,7 @@ public class AgentSignalsAggregator {
                       AND dos.workspace_id = t.workspace_id
                       AND dos.responsable_id = ?
                 WHERE t.workspace_id = ?
-                  AND t.statut IN ('NOUVEAU','EN_COURS')
+                  AND t.statut IN ('CREATION_TICKET','GENERATION_DOCUMENTS','DEROULEMENT_DEMARCHE')
                 ORDER BY t.created_at ASC
                 LIMIT 50
                 """, (rs, rn) -> new TacheSignal(

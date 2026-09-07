@@ -26,6 +26,7 @@ import type { Debours, DeboursCategorie, Ticket } from '../../types/ticket';
 import { CancelTicketDialog } from './CancelTicketDialog';
 import { SensitiveTransitionDialog } from './SensitiveTransitionDialog';
 import { DeadlinesPanel } from '../../components/tickets/DeadlinesPanel';
+import { DemarchesPanel } from './DemarchesPanel';
 import { EntityActivityPanel } from '../../components/tracabilite/EntityActivityPanel';
 
 interface Props {
@@ -120,30 +121,45 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
               {/* 2026-07-04 — Le transfert ne se fait QUE sur les Data Rooms
                   (page Data Room), pas depuis un ticket. Un ticket n'est pas
                   transferable en soi ; on retire donc le bouton ici. */}
-              {ticket.statut === 'NOUVEAU' && (
-                <Button onClick={() => handleTransition('EN_COURS')}>
+              {ticket.statut === 'CREATION_TICKET' && (
+                <Button onClick={() => handleTransition('GENERATION_DOCUMENTS')}>
                   <Play className="mr-1 h-4 w-4" /> Prendre en charge
                 </Button>
               )}
-              {ticket.statut === 'EN_COURS' && (
+              {ticket.statut === 'GENERATION_DOCUMENTS' && (
                 <>
                   <Button variant="primary" onClick={() => navigate(`/workflows/${ticket.id}`)}>
                     Reprendre le workflow
                   </Button>
-                  <Button variant="secondary" onClick={() => handleTransition('CLOTURE')}>
-                    Cloturer
+                  {/* Lot 1 — le parcours passe par « Déroulement de la démarche » :
+                      on ne clôture plus directement depuis la génération. */}
+                  <Button
+                    variant="secondary"
+                    onClick={() => handleTransition('DEROULEMENT_DEMARCHE')}
+                  >
+                    Passer aux démarches
+                  </Button>
+                </>
+              )}
+              {ticket.statut === 'DEROULEMENT_DEMARCHE' && (
+                <>
+                  <Button variant="primary" onClick={() => navigate(`/workflows/${ticket.id}`)}>
+                    Consulter le workflow
+                  </Button>
+                  <Button variant="secondary" onClick={() => handleTransition('CLOTURE_DOSSIER')}>
+                    Clôturer le dossier
                   </Button>
                 </>
               )}
               {/* 2026-08-12 — Ticket CLOTURE : le workflow reste CONSULTABLE en
                   lecture seule (valeurs saisies + étapes + documents générés). */}
-              {ticket.statut === 'CLOTURE' && (
+              {ticket.statut === 'CLOTURE_DOSSIER' && (
                 <Button variant="secondary" onClick={() => navigate(`/workflows/${ticket.id}`)}>
                   Consulter le workflow
                 </Button>
               )}
-              {/* 2026-06-25 — Un ticket ANNULE peut etre repris (-> EN_COURS) ou
-                  cloture (-> CLOTURE), chacun via dialog de motif obligatoire.
+              {/* 2026-06-25 — Un ticket ANNULE peut etre repris ou cloture,
+                  chacun via dialog de motif obligatoire.
                   2026-08-12 — + consultation lecture seule du workflow. */}
               {ticket.statut === 'ANNULE' && (
                 <>
@@ -158,8 +174,8 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
                   </Button>
                 </>
               )}
-              {/* Annulation possible depuis NOUVEAU, EN_COURS et CLOTURE
-                  (plus seulement les statuts non terminaux). */}
+              {/* Annulation possible depuis chacun des quatre autres statuts :
+                  c'est une sortie latérale, pas une étape du parcours. */}
               {ticket.statut !== 'ANNULE' && (
                 <Button variant="danger" onClick={() => setShowCancel(true)}>
                   Annuler le ticket
@@ -288,6 +304,15 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
             </ul>
           </section>
 
+          {/* Lot 1 (2026-09-04) — avancement du parcours et cochage des demarches,
+              consultables SANS ouvrir le workflow. Le panneau ne rend rien pour
+              les workflows sans referentiel charge. */}
+          <DemarchesPanel
+            ticketId={ticketId}
+            dossierId={ticket.dossierId ?? null}
+            canAct={canAct}
+          />
+
           <DeadlinesPanel ticketId={ticketId} />
 
           {/* E2 — Activite (tracabilite) de ce ticket */}
@@ -316,7 +341,7 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
           variant="primary"
           onClose={() => setSensitive(null)}
           onConfirm={async (comment) => {
-            await handleTransition('EN_COURS', comment);
+            await handleTransition('GENERATION_DOCUMENTS', comment);
             setSensitive(null);
           }}
         />
@@ -332,7 +357,7 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
           variant="primary"
           onClose={() => setSensitive(null)}
           onConfirm={async (comment) => {
-            await handleTransition('CLOTURE', comment);
+            await handleTransition('CLOTURE_DOSSIER', comment);
             setSensitive(null);
           }}
         />
@@ -369,9 +394,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function StatutBadge({ s }: { s: Ticket['statut'] }) {
   const variant = {
-    NOUVEAU: 'info',
-    EN_COURS: 'warning',
-    CLOTURE: 'success',
+    CREATION_TICKET: 'info',
+    GENERATION_DOCUMENTS: 'warning',
+    DEROULEMENT_DEMARCHE: 'warning',
+    CLOTURE_DOSSIER: 'success',
     ANNULE: 'danger',
   }[s] as 'info' | 'warning' | 'success' | 'danger';
   return <Badge variant={variant}>{STATUT_LABELS[s]}</Badge>;

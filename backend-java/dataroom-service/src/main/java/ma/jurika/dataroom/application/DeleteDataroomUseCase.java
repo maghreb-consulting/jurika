@@ -109,7 +109,7 @@ public class DeleteDataroomUseCase {
         List<Object[]> activeTickets = em.createNativeQuery("""
                 SELECT id, reference, statut FROM tickets
                  WHERE dossier_id = ?1 AND workspace_id = ?2
-                   AND statut IN ('NOUVEAU','EN_COURS')
+                   AND statut IN ('CREATION_TICKET','GENERATION_DOCUMENTS','DEROULEMENT_DEMARCHE')
                  LIMIT 5
                 """)
                 .setParameter(1, cmd.dossierId())
@@ -128,20 +128,18 @@ public class DeleteDataroomUseCase {
 
         // 3) Suppression EXPLICITE de toutes les tables filles ratachees au dossier.
         //    En base, toutes les FK pointent vers entreprise_dossiers ON DELETE CASCADE
-        //    (V5 dataroom_documents/comptable/demandes/snapshots, V6 dataroom_settings,
-        //    V11 access_log, V12 exercices, V13 fiscal, V14 alertes). Mais on n'a pas
+        //    (V5 dataroom_documents/demandes/snapshots, V6 dataroom_settings,
+        //    V11 access_log, V20 depots). Mais on n'a pas
         //    forcement le droit de DELETE entreprise_dossiers (cf etape 4 : RADIE
         //    si des tickets historiques referencent encore le dossier). On nettoie
         //    donc explicitement chaque table fille -- meme si on finit par DELETE
         //    le dossier (les CASCADE absorbent les rares orphelins eventuels).
         //    Note : ticket_document_snapshots cascade depuis dataroom_documents.
         int settingsDeleted = exec("DELETE FROM dataroom_settings WHERE dossier_id = ?1 AND workspace_id = ?2", cmd);
-        exec("DELETE FROM dataroom_alertes_echeances WHERE dossier_id = ?1 AND workspace_id = ?2", cmd);
-        exec("DELETE FROM dataroom_fiscal_documents WHERE dossier_id = ?1 AND workspace_id = ?2", cmd);
-        exec("DELETE FROM dataroom_exercices_fiscaux WHERE dossier_id = ?1 AND workspace_id = ?2", cmd);
+        // V25 : les tables comptable / fiscal / exercices / alertes ont disparu.
         exec("DELETE FROM dataroom_client_access_log WHERE dossier_id = ?1 AND workspace_id = ?2", cmd);
         exec("DELETE FROM dataroom_demandes_client WHERE dossier_id = ?1 AND workspace_id = ?2", cmd);
-        exec("DELETE FROM dataroom_comptable_documents WHERE dossier_id = ?1 AND workspace_id = ?2", cmd);
+        exec("DELETE FROM dataroom_depots WHERE dossier_id = ?1 AND workspace_id = ?2", cmd);
         // snapshots reference dataroom_documents (ON DELETE CASCADE) -- les suivants
         // partent au DELETE des documents.
         exec("DELETE FROM dataroom_documents WHERE dossier_id = ?1 AND workspace_id = ?2", cmd);

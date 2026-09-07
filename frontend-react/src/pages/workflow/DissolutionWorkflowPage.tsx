@@ -464,7 +464,7 @@ function DissolutionWorkflowPageBody() {
   async function handleCloturer() {
     if (!ticket) return;
     try {
-      await ticketService.transition(ticket.id, { target: 'CLOTURE' });
+      await ticketService.transition(ticket.id, { target: 'CLOTURE_DOSSIER' });
       navigate('/tickets');
     } catch (err) {
       setError((err as Error)?.message ?? 'Echec de cloture');

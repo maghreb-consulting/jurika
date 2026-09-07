@@ -8,12 +8,12 @@ CREATE TABLE IF NOT EXISTS workspaces (
     name VARCHAR(255) NOT NULL,
     code_workspace VARCHAR(20) UNIQUE NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
-    -- Colonnes reelles de auth-service (V1__init_auth_schema, V16__sprint11_*)
-    -- que l'aggregateur SUPER_ADMIN interroge sur `workspaces` : sans elles,
-    -- DashboardSprint10IT.superAdminAggregator echoue en BadSqlGrammar.
-    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    trial_status VARCHAR(20),
+    -- Colonne Sprint 11 lue par SuperAdminDashboardAggregator (repartition par
+    -- forfait). Son absence faisait echouer superAdminAggregator AVANT ce lot.
     selected_plan VARCHAR(20),
+    status VARCHAR(20) DEFAULT 'ACTIVE',
+    trial_status VARCHAR(20),
+    trial_ends_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     reference VARCHAR(50),
     titre VARCHAR(500),
     type VARCHAR(100),
-    statut VARCHAR(50) DEFAULT 'NOUVEAU',
+    statut VARCHAR(50) DEFAULT 'CREATION_TICKET',
     priorite VARCHAR(20) DEFAULT 'NORMALE',
     dossier_id UUID REFERENCES entreprise_dossiers(id),
     assigne_id UUID REFERENCES users(id),
@@ -67,42 +67,24 @@ CREATE TABLE IF NOT EXISTS dataroom_documents (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS dataroom_comptable_documents (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    workspace_id UUID NOT NULL REFERENCES workspaces(id),
-    dossier_id UUID,
-    size_bytes BIGINT DEFAULT 0,
-    deleted_at TIMESTAMPTZ
-);
 
-CREATE TABLE IF NOT EXISTS dataroom_fiscal_documents (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    workspace_id UUID NOT NULL REFERENCES workspaces(id),
-    dossier_id UUID,
-    size_bytes BIGINT DEFAULT 0,
-    is_deleted BOOLEAN DEFAULT FALSE
-);
 
-CREATE TABLE IF NOT EXISTS dataroom_exercices_fiscaux (
+
+
+-- Lot IA-1 -- tables consommees par AgentSignalsAggregator
+CREATE TABLE IF NOT EXISTS dataroom_depots (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id),
     dossier_id UUID REFERENCES entreprise_dossiers(id),
-    statut VARCHAR(20) DEFAULT 'OUVERT',
-    closed_at TIMESTAMPTZ
-);
-
-CREATE TABLE IF NOT EXISTS dataroom_alertes_echeances (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    workspace_id UUID NOT NULL REFERENCES workspaces(id),
-    dossier_id UUID REFERENCES entreprise_dossiers(id),
-    exercice_fiscal_id UUID,
-    type_echeance VARCHAR(40),
-    date_echeance DATE,
-    statut VARCHAR(20) DEFAULT 'PLANIFIEE',
+    title VARCHAR(200),
+    filename VARCHAR(255),
+    object_key VARCHAR(500),
+    size_bytes BIGINT DEFAULT 0,
+    uploaded_by UUID,
+    deleted_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Lot IA-1 -- tables consommees par AgentSignalsAggregator
 CREATE TABLE IF NOT EXISTS deadlines (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id),
@@ -145,4 +127,56 @@ CREATE TABLE IF NOT EXISTS audit_log (
     source_service VARCHAR(40),
     correlation_id VARCHAR(64),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ---------------------------------------------------------------------
+-- Lot 1 (2026-09-04) -- referentiel des demarches + cochage. Les dashboards
+-- y lisent les echeances legales, qui remplacent les alertes fiscales.
+-- Schema minimal, aligne sur ticket-service V20/V21.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS demarches_referentiel (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    workflow_type VARCHAR(30) NOT NULL,
+    ordre SMALLINT NOT NULL,
+    phase_code VARCHAR(8) NOT NULL,
+    phase_libelle VARCHAR(60) NOT NULL,
+    libelle VARCHAR(400) NOT NULL,
+    statut_ticket VARCHAR(30) NOT NULL,
+    acteur VARCHAR(80),
+    organisme VARCHAR(300),
+    obligatoire CHAR(1) NOT NULL,
+    condition_application TEXT,
+    pieces_entrantes TEXT,
+    document_produit TEXT,
+    justificatifs_texte TEXT,
+    modele_jurika VARCHAR(200),
+    delai VARCHAR(300),
+    cout_indicatif TEXT,
+    variables_alimentees TEXT,
+    delai_valeur SMALLINT,
+    delai_unite VARCHAR(5),
+    delai_reference_ordre SMALLINT,
+    UNIQUE (workflow_type, ordre)
+);
+
+CREATE TABLE IF NOT EXISTS demarches_justificatifs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    demarche_id UUID NOT NULL REFERENCES demarches_referentiel(id) ON DELETE CASCADE,
+    alternative_groupe SMALLINT NOT NULL,
+    document_type VARCHAR(60) NOT NULL,
+    libelle TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ticket_demarches (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    workspace_id UUID NOT NULL REFERENCES workspaces(id),
+    ticket_id UUID NOT NULL REFERENCES tickets(id),
+    demarche_id UUID NOT NULL REFERENCES demarches_referentiel(id),
+    etat VARCHAR(20) NOT NULL DEFAULT 'A_FAIRE',
+    motif TEXT,
+    acteur_id UUID,
+    coche_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (ticket_id, demarche_id)
 );

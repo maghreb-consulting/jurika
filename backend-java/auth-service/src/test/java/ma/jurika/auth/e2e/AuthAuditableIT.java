@@ -70,11 +70,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         webEnvironment = SpringBootTest.WebEnvironment.MOCK,
         properties = {
                 "spring.autoconfigure.exclude="
-                        + "org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration",
-                // SyncWiring redefinit `businessMetrics`, deja fourni par
-                // ObservabilityAutoConfiguration : sans cette propriete Spring Boot
-                // refuse la redefinition et le contexte ne charge pas.
-                "spring.main.allow-bean-definition-overriding=true"
+                        + "org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration"
         }
 )
 @AutoConfigureMockMvc
@@ -359,9 +355,7 @@ class AuthAuditableIT {
                         .content("""
                                 {"oldPassword":"%s","newPassword":"%s","confirmPassword":"%s"}
                                 """.formatted(tempPwd, newPwd, newPwd)))
-                // Hotfix 2026-06-04 : /change-password renvoie un nouveau couple de
-                // tokens (200 + corps), plus 204. Test aligne sur le contrat reel.
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         MvcResult login2 = mvc.perform(post("/api/v1/auth/login")
                         .contentType("application/json")

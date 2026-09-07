@@ -49,6 +49,28 @@ eureka:
     prefer-ip-address: true
 
 jurika:
+  # Edition bureautique fidele (lot 3) — Collabora Online CODE via WOPI.
+  wopi:
+    # `base-url` est l'adresse du backend TELLE QUE COLLABORA LA VOIT : un nom
+    # de service resolvable a l'interieur du reseau Docker. `localhost`
+    # designerait le conteneur Collabora lui-meme — c'est la 2e cause d'echec
+    # la plus courante de cette integration.
+    base-url: ${WOPI_BASE_URL:http://dataroom-service:8084}
+    # `editor-url` est l'adresse de l'editeur TELLE QUE LE NAVIGATEUR LA VOIT.
+    editor-url: ${WOPI_EDITOR_URL:http://localhost:9980}
+    # Duree d'une seance : assez longue pour rediger un acte, assez courte pour
+    # un jeton qui voyage dans une URL.
+    session-duration: ${WOPI_SESSION_DURATION:PT2H}
+    # Fenetre pendant laquelle un enregistrement TARDIF reste accepte apres la
+    # fermeture de l'editeur. Collabora enregistre de facon asynchrone et
+    # appelle souvent PutFile apres la fermeture de l'onglet : reduire cette
+    # fenetre a zero ferait perdre la derniere sauvegarde en silence.
+    grace-window: ${WOPI_GRACE_WINDOW:PT3M}
+    # Duree de vie d'un verrou d'edition (lot 4). Collabora le rafraichit
+    # toutes les ~10 min ; 30 min laisse passer un rafraichissement manque
+    # sans bloquer l'acte une demi-journee si le navigateur du detenteur
+    # plante. La reprise d'un verrou echu est journalisee en WARN.
+    lock-duration: ${WOPI_LOCK_DURATION:PT30M}
   jwt:
     algorithm: ${JWT_ALGORITHM:RS256}
     public-key-path: ${JWT_PUBLIC_KEY_PATH:/run/secrets/jwt/jwt-public.pem}

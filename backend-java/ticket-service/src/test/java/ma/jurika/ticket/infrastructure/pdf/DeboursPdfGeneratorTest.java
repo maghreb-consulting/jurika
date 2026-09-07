@@ -32,7 +32,7 @@ class DeboursPdfGeneratorTest {
 
     private Ticket ticket() {
         return new Ticket(UUID.randomUUID(), UUID.randomUUID(), "TCK-2026-014",
-                "Constitution SARL ACME", TicketType.CREATION, TicketStatut.CLOTURE,
+                "Constitution SARL ACME", TicketType.CREATION, TicketStatut.CLOTURE_DOSSIER,
                 null, null, null, null, null, null, null, null, null, Instant.now());
     }
 

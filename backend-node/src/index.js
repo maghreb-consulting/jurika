@@ -51,16 +51,31 @@ if (JWT_ALGO === 'RS256') {
   console.log(`[realtime] JWT verification HS256 (secret ${verificationKey.slice(0, 6)}…)`);
 }
 
+// ----------------------------------------------------------------------
+// CORS (lot 2, 2026-09-07) — le frontend est servi par nginx sur le PORT 80,
+// donc depuis l'origine `http://localhost` (sans port). Les deux valeurs par
+// defaut ne citaient que `http://localhost:5173`, l'ancien serveur de dev Vite :
+// en pile Docker, `/notifications/unread-count` et `/chat/conversations`
+// echouaient au preflight, en boucle et en silence cote utilisateur —
+// notifications et chat simplement hors service. Un defaut d'origine ne doit
+// pas dependre d'un port qui n'existe plus.
+//
+// Les deux listes (HTTP et WebSocket) partagent desormais la meme source : les
+// voir diverger etait la moitie du probleme.
+// ----------------------------------------------------------------------
+const DEFAULT_CORS_ORIGINS = 'http://localhost,http://localhost:80,http://localhost:5173';
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || DEFAULT_CORS_ORIGINS)
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 const app = express();
 app.use(express.json({ limit: '1mb' }));
-app.use(cors({ origin: (process.env.CORS_ORIGINS || 'http://localhost:5173').split(',') }));
+app.use(cors({ origin: CORS_ORIGINS }));
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
-  cors: {
-    origin: (process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:3000').split(','),
-    methods: ['GET', 'POST'],
-  },
+  cors: { origin: CORS_ORIGINS, methods: ['GET', 'POST'] },
 });
 
 // ----------------------------------------------------------------------

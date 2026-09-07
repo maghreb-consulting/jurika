@@ -12,12 +12,49 @@ public final class DataroomDtos {
 
     private DataroomDtos() {}
 
+    /**
+     * @param editeManuellementAt lot 3 — date de la derniere edition dans
+     *        l'editeur bureautique, ou {@code null} si le document est tel que
+     *        genere. L'interface s'en sert pour NOMMER ce qu'une regeneration
+     *        ferait perdre : un avertissement generique se clique sans se lire.
+     */
     public record DocumentSummary(UUID id, UUID dossierId, UUID ticketId,
                                    String documentType, String title,
                                    short version, boolean current,
                                    String filename, String contentType, long sizeBytes,
                                    Instant createdAt, Instant replacedAt,
-                                   String motif) {}
+                                   String motif, Instant editeManuellementAt) {
+        /** Surcharge de compatibilite : documents non issus d'une edition manuelle. */
+        public DocumentSummary(UUID id, UUID dossierId, UUID ticketId,
+                                String documentType, String title,
+                                short version, boolean current,
+                                String filename, String contentType, long sizeBytes,
+                                Instant createdAt, Instant replacedAt, String motif) {
+            this(id, dossierId, ticketId, documentType, title, version, current,
+                    filename, contentType, sizeBytes, createdAt, replacedAt, motif, null);
+        }
+    }
+
+    /**
+     * Un groupe de documents dans le dossier d'un ticket : actes generes,
+     * justificatifs administratifs, pieces client.
+     *
+     * @param code identifiant stable pour l'interface (ACTES_GENERES, ...)
+     */
+    public record GroupeDocuments(String code, String libelle, List<DocumentSummary> documents) {}
+
+    /**
+     * Le dossier juridique s'organise par TICKET : chaque operation forme un
+     * dossier, dont le libelle est CALCULE (jamais saisi).
+     *
+     * <p>{@code ticketId} vaut null pour le regroupement « Hors ticket », qui
+     * recueille les documents anterieurs a ce lot ou deposes hors workflow. Ils
+     * doivent rester accessibles : un document mal classe se retrouve, un
+     * document invisible est perdu.
+     */
+    public record DossierTicket(UUID ticketId, String libelle, String reference, String type,
+                                 String statut, Instant ouvertLe,
+                                 List<GroupeDocuments> groupes, int totalDocuments) {}
 
     public record TicketHistoryEntry(UUID ticketId, String reference, String titre, String type,
                                       Instant clotureAt, String description,
@@ -37,28 +74,16 @@ public final class DataroomDtos {
                                         java.math.BigDecimal capitalSocialMad,
                                         java.time.LocalDate dateConstitution, String statut,
                                         List<DocumentSummary> documentsEnVigueur,
-                                        List<TicketHistoryEntry> historiqueOperations) {}
-
-    public record ComptableDocumentSummary(UUID id, short annee, String categorie, String title,
-                                            String filename, String contentType, long sizeBytes,
-                                            Instant createdAt) {}
-
-    public record YearCount(short annee, long total) {}
-
-    public record CategoryCount(String categorie, long total) {}
-
-    public record DossierComptableView(UUID dossierId, List<Short> annees, short anneeCourante,
-                                        List<CategoryCount> totauxParCategorie) {}
+                                        List<TicketHistoryEntry> historiqueOperations,
+                                        /* Lot 1 (2026-09-04) — le dossier juridique organise par
+                                           ticket. Contient TOUS les documents du dossier, versions
+                                           historiques comprises : rien ne doit disparaitre. */
+                                        List<DossierTicket> dossiersParTicket) {}
 
     public record UploadJuridiqueRequest(
             @NotBlank @Size(max = 40) String documentType,
             @NotBlank @Size(max = 200) String title,
             UUID ticketId) {}
-
-    public record UploadComptableRequest(
-            @Min(2000) short annee,
-            @NotBlank @Size(max = 20) String categorie,
-            @NotBlank @Size(max = 200) String title) {}
 
     public record CreateDemandeRequest(
             @NotBlank @Size(max = 200) String sujet,
@@ -106,8 +131,7 @@ public final class DataroomDtos {
 
     public record SettingsView(UUID dossierId, String accessStatus, boolean permDownload,
                                 boolean permPrint, boolean permDepot, UUID clientLinkToken, int accessCount,
-                                Instant lastAccessedAt,
-                                String accountantEmail, boolean notifyAccountantOnUpload) {}
+                                Instant lastAccessedAt) {}
 
     public record UpdatePermissionsRequest(boolean permDownload, boolean permPrint, boolean permDepot) {}
 
@@ -115,16 +139,13 @@ public final class DataroomDtos {
      * Vue allegee des permissions exposee AU CLIENT (lecture seule). Ne contient
      * que ce dont le client a besoin pour afficher l'etat reel de ses droits et
      * activer/desactiver ses boutons -- jamais le token de lien, l'email
-     * comptable ni les compteurs internes (reserves a {@link SettingsView}).
+     * ni les compteurs internes (reserves a {@link SettingsView}).
      */
     public record ClientPermissionsView(UUID dossierId, String accessStatus,
                                         boolean permDownload, boolean permPrint,
                                         boolean permDepot) {}
 
     public record ToggleSuspensionRequest(boolean suspended) {}
-
-    /** RG-DC27 : config notif comptable. */
-    public record UpdateAccountantNotifRequest(String accountantEmail, boolean enabled) {}
 
     public record ClientLinkResponse(String url, UUID token) {}
 
@@ -188,33 +209,6 @@ public final class DataroomDtos {
 
     public record AccessLogPage(List<AccessLogEntry> items, long total) {}
 
-    // ================================================================
-    // Sprint 7 / TASK 6.1 -- Dossier Fiscal placeholder (Sprint 8 base)
-    // ================================================================
-
-    public record ExerciceFiscalSummary(
-            UUID id,
-            short annee,
-            String dateDebut, // ISO LocalDate
-            String dateFin,
-            String statut,    // OUVERT / CLOTURE / VERROUILLE
-            Instant dateOuverture,
-            Instant dateCloture) {}
-
-    /**
-     * Vue placeholder du Dossier Fiscal (Sprint 7). Sprint 8 ajoutera la
-     * pagination par exercice + 7 categories CGI + sous-classifications.
-     *
-     * @param exercices liste des exercices detectes (V12 + backfill annee en cours)
-     * @param categoriesCgi liste annoncee des futures categories (constante)
-     * @param message message UI explicite Sprint 8
-     */
-    public record DossierFiscalView(
-            UUID dossierId,
-            UUID exerciceCourant,
-            List<ExerciceFiscalSummary> exercices,
-            List<String> categoriesCgi,
-            String message) {}
 
     // ================================================================
     // Sprint 7 / TASK 6.2 -- Brief dossier (extrait de DataroomController
@@ -247,87 +241,6 @@ public final class DataroomDtos {
                                    valeur-ci qu'il faut afficher. Null pour un dossier
                                    marocain. */
                                 String formeJuridiqueOrigine) {}
-
-    // ================================================================
-    // Sprint 8 -- Dossier Fiscal complet (7 categories CGI)
-    // ================================================================
-
-    /** RG-DF01..28 : resume document fiscal. */
-    public record FiscalDocumentSummary(
-            UUID id,
-            UUID dossierId,
-            UUID exerciceFiscalId,
-            String categorie,
-            String sousClassification,
-            String title,
-            String commentaire,
-            String filename,
-            String contentType,
-            long sizeBytes,
-            String tifMetadata,
-            String numeroDeclaration,
-            String periodeDeclaree,
-            UUID comptableDocSource,
-            String comptableDocSourceTitle,
-            Instant createdAt,
-            Instant deletedAt) {}
-
-    public record FiscalCategoryCount(String categorie, long total) {}
-
-    /** Vue du dossier fiscal pour un exercice donne (grille 7 cats + compteurs). */
-    public record DossierFiscalDetailedView(
-            UUID dossierId,
-            UUID exerciceCourant,
-            List<ExerciceFiscalSummary> exercices,
-            List<FiscalCategoryCount> compteurs,
-            List<String> categoriesCgi) {}
-
-    public record UploadFiscalRequest(
-            @NotBlank @Size(max = 20) String categorie,
-            @NotBlank @Size(max = 40) String sousClassification,
-            @NotBlank @Size(max = 200) String title,
-            @Size(max = 4000) String commentaire,
-            @Size(max = 20) String tifMetadata,
-            @Size(max = 60) String numeroDeclaration,
-            @Size(max = 20) String periodeDeclaree,
-            UUID comptableDocSource) {}
-
-    public record SubClassificationDef(String categorie, List<String> values) {}
-
-    // ----- Transitions exercice fiscal -----
-
-    public record OpenExerciceRequest(
-            @Min(2000) short annee,
-            String dateDebut, // ISO LocalDate optional
-            String dateFin,
-            boolean regimeTvaMensuel,
-            /* RG-DF03 (2026-06-24) : si true (finalisation import/création), l'ancre
-               comptable de l'année est créée à la volée avant d'ouvrir le fiscal
-               (jamais bloquant). Si false (ouverture manuelle onglet Fiscal), l'absence
-               d'année comptable est rejetée — le fiscal doit être conforme au comptable. */
-            boolean autoCreateComptable) {}
-
-    public record UnlockExerciceRequest(
-            @NotBlank @Size(min = 20, max = 4000) String motif) {}
-
-    // ----- Echeances -----
-
-    public record EcheanceSummary(
-            UUID id,
-            UUID exerciceFiscalId,
-            String typeEcheance,
-            String dateEcheance,
-            String dateAlerte,
-            String statut,
-            UUID documentId,
-            Instant sentAt,
-            Instant traiteAt) {}
-
-    public record MarquerEcheanceTraitee(UUID documentId, String note) {}
-
-    // ================================================================
-    // Lot V -- Espace « Depots » client (depot libre + consultation employe)
-    // ================================================================
 
     /** Resume d'un depot libre (espace « Depots », sans categorie). */
     public record DepotSummary(

@@ -88,7 +88,9 @@ class DashboardSprint10IT {
 
     @BeforeEach
     void seed() {
-        jdbc.execute("DELETE FROM dataroom_alertes_echeances");
+        jdbc.execute("DELETE FROM ticket_demarches");
+        jdbc.execute("DELETE FROM demarches_justificatifs");
+        jdbc.execute("DELETE FROM demarches_referentiel");
         jdbc.execute("DELETE FROM tickets");
         jdbc.execute("DELETE FROM dataroom_documents");
         jdbc.execute("DELETE FROM entreprise_dossiers");
@@ -111,31 +113,50 @@ class DashboardSprint10IT {
                 dossier, ws, "SARL Test S10", clientUser);
 
         // 2 tickets ouverts + 1 cloturé
+        UUID ticketCreation = UUID.randomUUID();
         jdbc.update("""
                 INSERT INTO tickets(id,workspace_id,reference,titre,type,statut,priorite,dossier_id,assigne_id,created_at)
                 VALUES (?,?,?,?,?,?,?,?,?, NOW())
-                """, UUID.randomUUID(), ws, "T-001", "T1", "CREATION", "EN_COURS", "NORMALE", dossier, employeUser);
+                """, ticketCreation, ws, "T-001", "T1", "CREATION", "GENERATION_DOCUMENTS", "NORMALE", dossier, employeUser);
         jdbc.update("""
                 INSERT INTO tickets(id,workspace_id,reference,titre,type,statut,priorite,dossier_id,assigne_id,created_at)
                 VALUES (?,?,?,?,?,?,?,?,?, NOW())
-                """, UUID.randomUUID(), ws, "T-002", "T2", "MODIFICATION", "NOUVEAU", "HAUTE", dossier, employeUser);
+                """, UUID.randomUUID(), ws, "T-002", "T2", "MODIFICATION", "CREATION_TICKET", "HAUTE", dossier, employeUser);
         jdbc.update("""
                 INSERT INTO tickets(id,workspace_id,reference,titre,type,statut,priorite,dossier_id,assigne_id,created_at,cloture_at)
                 VALUES (?,?,?,?,?,?,?,?,?, NOW() - INTERVAL '5 days', NOW() - INTERVAL '1 day')
-                """, UUID.randomUUID(), ws, "T-003", "T3", "CREATION", "CLOTURE", "NORMALE", dossier, employeUser);
+                """, UUID.randomUUID(), ws, "T-003", "T3", "CREATION", "CLOTURE_DOSSIER", "NORMALE", dossier, employeUser);
 
-        // Echeances : 1 J-10 + 1 J-2 (rouge)
-        UUID exercice = UUID.randomUUID();
+        // Echeances : 1 a J+10 + 1 a J+2 (rouge). Elles proviennent desormais des
+        // DELAIS LEGAUX des demarches du parcours, plus des alertes fiscales.
+        //
+        // Le delai court depuis la date de cochage de l'etape de reference : on
+        // coche l'etape 1 il y a 200 jours, puis on donne aux etapes porteuses un
+        // delai de 210 et 202 jours, ce qui place les echeances a J+10 et J+2.
+        UUID reference = insertDemarcheReferentiel(1, "Signature des statuts", null, null, null);
         jdbc.update("""
-                INSERT INTO dataroom_alertes_echeances(id,workspace_id,dossier_id,exercice_fiscal_id,type_echeance,date_echeance,statut)
-                VALUES (?,?,?,?,?, CURRENT_DATE + INTERVAL '10 day', 'PLANIFIEE')
-                """, UUID.randomUUID(), ws, dossier, exercice, "TVA_MENSUELLE");
-        jdbc.update("""
-                INSERT INTO dataroom_alertes_echeances(id,workspace_id,dossier_id,exercice_fiscal_id,type_echeance,date_echeance,statut)
-                VALUES (?,?,?,?,?, CURRENT_DATE + INTERVAL '2 day', 'PLANIFIEE')
-                """, UUID.randomUUID(), ws, dossier, exercice, "IS_ACOMPTE_T1");
+                INSERT INTO ticket_demarches(id, workspace_id, ticket_id, demarche_id, etat, coche_at)
+                VALUES (?,?,?,?, 'COCHEE', NOW() - INTERVAL '200 day')
+                """, UUID.randomUUID(), ws, ticketCreation, reference);
+        insertDemarcheReferentiel(2, "Immatriculation au RC", 210, "JOURS", 1);
+        insertDemarcheReferentiel(3, "Publication au journal", 202, "JOURS", 1);
 
         TenantContext.set(ws);
+    }
+
+    /** Insere une ligne du referentiel des demarches (schema ticket-service V20). */
+    private UUID insertDemarcheReferentiel(int ordre, String libelle,
+                                            Integer delaiValeur, String delaiUnite,
+                                            Integer referenceOrdre) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO demarches_referentiel(id, workflow_type, ordre, phase_code, phase_libelle,
+                        libelle, statut_ticket, obligatoire, delai_valeur, delai_unite, delai_reference_ordre)
+                VALUES (?, 'CREATION', ?, 'P5', 'P5 Fiscal / RC', ?, 'DEROULEMENT_DEMARCHE', 'O', ?, ?, ?)
+                """, id, (short) ordre, libelle,
+                delaiValeur == null ? null : delaiValeur.shortValue(), delaiUnite,
+                referenceOrdre == null ? null : referenceOrdre.shortValue());
+        return id;
     }
 
     @Test

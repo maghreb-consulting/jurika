@@ -48,3 +48,19 @@ export function formatDateTime(value: string | number | null | undefined): strin
   const d = toDate(value);
   return d ? FR_DATE_TIME.format(d) : '—';
 }
+
+const FR_DATE = new Intl.DateTimeFormat('fr-FR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
+
+/**
+ * Date seule au format fr-FR (`JJ/MM/AAAA`), ou `'—'` si absente/invalide.
+ * Les echeances legales se comptent en jours de calendrier : afficher une heure
+ * y serait trompeur.
+ */
+export function formatDate(value: string | number | null | undefined): string {
+  const d = toDate(value);
+  return d ? FR_DATE.format(d) : '—';
+}

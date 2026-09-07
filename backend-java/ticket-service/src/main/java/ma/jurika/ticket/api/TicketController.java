@@ -145,15 +145,19 @@ public class TicketController {
 
     /**
      * Contenu du commentaire de la transition de reprise la plus recente
-     * ({@code from=ANNULE}, {@code to=EN_COURS}), ou {@code null} si le ticket n'a
-     * jamais ete repris. Les commentaires sont deja tries du plus recent au plus
-     * ancien : le premier match est donc la reprise la plus recente.
+     * ({@code from=ANNULE}), ou {@code null} si le ticket n'a jamais ete repris.
+     * Les commentaires sont deja tries du plus recent au plus ancien : le premier
+     * match est donc la reprise la plus recente.
+     *
+     * <p>Depuis les cinq statuts du guide, une reprise peut viser n'importe lequel
+     * des quatre statuts du parcours : on ne teste donc plus la destination, mais
+     * seulement le fait de quitter ANNULE.
      */
     private String latestRepriseMotif(UUID workspaceId, UUID ticketId) {
         return commentRepository.findByTicket(workspaceId, ticketId).stream()
                 .filter(c -> c.metadata() != null
                         && "ANNULE".equals(String.valueOf(c.metadata().get("from")))
-                        && "EN_COURS".equals(String.valueOf(c.metadata().get("to"))))
+                        && !"ANNULE".equals(String.valueOf(c.metadata().get("to"))))
                 .map(TicketComment::contenu)
                 .findFirst()
                 .orElse(null);

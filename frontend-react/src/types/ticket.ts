@@ -34,7 +34,26 @@ export interface CompanyInfo {
   formeJuridique: FormeJuridique;
 }
 
-export type TicketStatut = 'NOUVEAU' | 'EN_COURS' | 'CLOTURE' | 'ANNULE';
+/**
+ * Les cinq statuts du guide du cabinet (onglet « 2. Workflow ticket »).
+ *
+ * ANNULE n'est pas la fin du parcours mais une SORTIE LATERALE : il est
+ * atteignable depuis n'importe quel statut, y compris CLOTURE_DOSSIER.
+ */
+export type TicketStatut =
+  | 'CREATION_TICKET'
+  | 'GENERATION_DOCUMENTS'
+  | 'DEROULEMENT_DEMARCHE'
+  | 'CLOTURE_DOSSIER'
+  | 'ANNULE';
+
+/** Les quatre statuts du parcours nominal, dans l'ordre. */
+export const PARCOURS_STATUTS: TicketStatut[] = [
+  'CREATION_TICKET',
+  'GENERATION_DOCUMENTS',
+  'DEROULEMENT_DEMARCHE',
+  'CLOTURE_DOSSIER',
+];
 
 export type TicketPriorite = 'BASSE' | 'NORMALE' | 'HAUTE' | 'URGENTE';
 
@@ -161,10 +180,20 @@ export const TICKET_TYPE_LABELS: Record<TicketType, string> = {
 };
 
 export const STATUT_LABELS: Record<TicketStatut, string> = {
-  NOUVEAU: 'Nouveau',
-  EN_COURS: 'En cours',
-  CLOTURE: 'Cloture',
-  ANNULE: 'Annule',
+  CREATION_TICKET: 'Création du ticket',
+  GENERATION_DOCUMENTS: 'Génération des documents',
+  DEROULEMENT_DEMARCHE: 'Déroulement de la démarche',
+  CLOTURE_DOSSIER: 'Clôture de dossier',
+  ANNULE: 'Ticket annulé',
+};
+
+/** Libellé court, pour les badges et les colonnes étroites. */
+export const STATUT_LABELS_COURTS: Record<TicketStatut, string> = {
+  CREATION_TICKET: 'Création',
+  GENERATION_DOCUMENTS: 'Génération',
+  DEROULEMENT_DEMARCHE: 'Démarches',
+  CLOTURE_DOSSIER: 'Clôturé',
+  ANNULE: 'Annulé',
 };
 
 export const PRIORITE_LABELS: Record<TicketPriorite, string> = {

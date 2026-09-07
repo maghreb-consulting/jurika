@@ -47,7 +47,7 @@ public class TicketRepositoryAdapter implements TicketRepository {
         e.setReference(reference);
         e.setTitre(titre);
         e.setType(type.name());
-        e.setStatut(TicketStatut.NOUVEAU.name());
+        e.setStatut(TicketStatut.CREATION_TICKET.name());
         e.setPriorite(priorite.name());
         e.setDossierId(dossierId);
         e.setAssigneId(assigneId);

@@ -86,13 +86,26 @@ if ($EnvVarsMap['SMTP_HOST'] -match 'brevo|sendinblue') {
     }
 }
 
+# Voir la note de stop-all.ps1 : quand la pile CONTENEURISEE tourne, ces ports
+# sont tenus par les publicateurs de Docker Desktop. Les tuer tue le moteur.
+$ProcessusProteges = @(
+    'com.docker.backend', 'com.docker.service', 'com.docker.build',
+    'Docker Desktop', 'wslrelay', 'wslhost', 'vpnkit', 'vpnkit-bridge', 'dockerd'
+)
+
 function Stop-PortIfBusy([int]$Port) {
-    $proc = (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue).OwningProcess
-    if ($proc) {
-        Write-Host "Liberation du port $Port (PID $proc)..." -ForegroundColor Yellow
-        Stop-Process -Id $proc -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Milliseconds 500
+    $procId = (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue).OwningProcess |
+              Select-Object -First 1
+    if (-not $procId) { return }
+    $p = Get-Process -Id $procId -ErrorAction SilentlyContinue
+    if (-not $p) { return }
+    if ($ProcessusProteges -contains $p.Name) {
+        Write-Host "Port $Port tenu par $($p.Name) (Docker) : NON tue." -ForegroundColor Cyan
+        return
     }
+    Write-Host "Liberation du port $Port (PID $procId, $($p.Name))..." -ForegroundColor Yellow
+    Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 500
 }
 
 function Wait-ForHealth([string]$Url, [int]$TimeoutSec = 60) {
@@ -109,6 +122,28 @@ function Wait-ForHealth([string]$Url, [int]$TimeoutSec = 60) {
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host " JURIKA -- demarrage de la stack complete V2" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
+
+# 0. Une seule pile a la fois.
+#
+# Ce script est le mode HOTE (JVM lancees par Maven). La pile CONTENEURISEE vit
+# sous le projet Compose `jurika-local` et utilise les MEMES ports. Lancer les
+# deux ne peut pas marcher : les JVM hote squattent les ports publies, les
+# conteneurs perdent leur publication en silence, et l'interface tape dans le
+# vide. Depuis le lot 1, la pile de reference est la pile conteneurisee.
+$pileConteneurs = @(docker ps -q --filter 'label=com.docker.compose.project=jurika-local' 2>$null)
+if ($pileConteneurs.Count -gt 0) {
+    Write-Host ''
+    Write-Host "  REFUS : $($pileConteneurs.Count) conteneur(s) de la pile 'jurika-local' tournent deja." -ForegroundColor Red
+    Write-Host '  Le mode hote et la pile conteneurisee partagent les memes ports.' -ForegroundColor Yellow
+    Write-Host ''
+    Write-Host '  Pour (re)demarrer la pile conteneurisee :' -ForegroundColor Cyan
+    Write-Host '    .\scripts\start-local.ps1 -NoBuild' -ForegroundColor White
+    Write-Host ''
+    Write-Host '  Pour forcer malgre tout le mode hote, arretez d abord la pile :' -ForegroundColor Cyan
+    Write-Host '    docker compose -p jurika-local stop     (jamais down -v)' -ForegroundColor White
+    Write-Host ''
+    exit 1
+}
 
 # 1. Liberer les ports (tous les services V2)
 Write-Host "`n[1/6] Liberation des ports occupes..." -ForegroundColor Green

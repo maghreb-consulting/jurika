@@ -59,13 +59,19 @@ export interface SuperAdminDashboardDto {
   generatedAt: string;
 }
 
-// SUPERVISEUR
+/**
+ * Une echeance legale du parcours : le delai du guide attache a une demarche
+ * restant a accomplir. Remplace les anciennes alertes fiscales (lot 1,
+ * 2026-09-04) — le champ statut valait toujours PLANIFIEE, il cede la place a
+ * une severite qui, elle, porte une information.
+ */
 export interface EcheanceItem {
   id: string;
   dossierId: string;
-  typeEcheance: string;
+  libelle: string;
   dateEcheance: string | null;
-  statut: string;
+  /** DEPASSE | CRITIQUE (J-3) | APPROCHE */
+  severite: string;
 }
 
 export interface EcheanceBucket {

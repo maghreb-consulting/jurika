@@ -16,8 +16,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDate;
-import java.time.Year;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -28,8 +26,7 @@ import java.util.concurrent.ThreadLocalRandom;
  *
  * <p>Cree en une seule transaction un workspace + un utilisateur EMPLOYE
  * (email verifie, password connu, sans 2FA initial) + un dossier
- * entreprise + un exercice fiscal OUVERT pour l'annee en cours + 2 documents
- * comptables + 2 documents fiscaux. Le response retourne tous les IDs et le
+ * entreprise. Le response retourne tous les IDs et le
  * mot de passe en clair pour permettre au test Playwright de se connecter
  * directement.
  *
@@ -92,7 +89,6 @@ public class TestSeedController {
         UUID employeId   = UUID.randomUUID();
         UUID clientId    = UUID.randomUUID();
         UUID dossierId   = UUID.randomUUID();
-        UUID exerciceId  = UUID.randomUUID();
 
         String code = generateWorkspaceCode();
         String email = "demo-" + code.toLowerCase().replace("-", "") + "@jurika.test";
@@ -177,30 +173,11 @@ public class TestSeedController {
                 """,
                 dossierId, workspaceId, "SARL Demo " + code, clientId, employeId, ficheJson);
 
-        // 5. Exercice fiscal OUVERT pour l'annee en cours.
-        short annee = (short) Year.now().getValue();
-        LocalDate debut = LocalDate.of(annee, 1, 1);
-        LocalDate fin   = LocalDate.of(annee, 12, 31);
-        jdbc.update("""
-                INSERT INTO dataroom_exercices_fiscaux(id, workspace_id, dossier_id, annee,
-                                                         date_debut, date_fin, statut,
-                                                         date_ouverture, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, 'OUVERT', NOW(), NOW(), NOW())
-                ON CONFLICT (workspace_id, dossier_id, annee) DO NOTHING
-                """,
-                exerciceId, workspaceId, dossierId, annee, debut, fin);
-
-        // 6. 2 documents Comptables (categories ACHATS + VENTES).
-        UUID compDoc1 = insertComptable(workspaceId, dossierId, employeId, annee, "ACHATS",
-                "Factures fournisseurs Q1");
-        UUID compDoc2 = insertComptable(workspaceId, dossierId, employeId, annee, "VENTES",
-                "Factures clients Q1");
-
-        // 7. 2 documents Fiscaux (TVA + IS).
-        UUID fiscDoc1 = insertFiscal(workspaceId, dossierId, exerciceId, employeId, "TVA",
-                "DECLARATION_MENSUELLE", "TVA mensuelle " + annee + "-03");
-        UUID fiscDoc2 = insertFiscal(workspaceId, dossierId, exerciceId, employeId, "IS",
-                "DECLARATION_ANNUELLE", "IS annuel " + annee);
+        // Lot 1 (2026-09-04) -- les dossiers comptable et fiscal sont sortis du
+        // perimetre produit : plus d'exercice fiscal ni de documents comptables /
+        // fiscaux a semer. Le seed se limite au workspace, aux utilisateurs et au
+        // dossier ; les scenarios e2e du dossier juridique deposent leurs propres
+        // documents par l'API.
 
         // Sprint 11 TASK 7 : enrichissement trial OPT-IN si parametres fournis
         // (workspaces seed sans ces params restent dans l'etat Sprint 14 ter = legacy/null).
@@ -245,9 +222,6 @@ public class TestSeedController {
         out.put("clientEmail", clientEmail);
         out.put("password", DEFAULT_PASSWORD);
         out.put("dossierId", dossierId);
-        out.put("exerciceFiscalId", exerciceId);
-        out.put("comptableDocIds", new UUID[]{compDoc1, compDoc2});
-        out.put("fiscalDocIds", new UUID[]{fiscDoc1, fiscDoc2});
         return ResponseEntity.ok(out);
     }
 
@@ -256,23 +230,13 @@ public class TestSeedController {
     @Transactional
     public ResponseEntity<Map<String, Object>> cleanup(@PathVariable UUID workspaceId) {
         // Le ON DELETE CASCADE sur les FK workspaces -> users -> dossiers ->
-        // documents fait le menage en cascade. Sur dataroom_exercices_fiscaux
-        // -> dataroom_fiscal_documents le ON DELETE RESTRICT exige de supprimer
-        // les documents d'abord.
-        int dossiers   = jdbc.update("DELETE FROM dataroom_fiscal_documents WHERE workspace_id = ?", workspaceId);
-        int comptables = jdbc.update("DELETE FROM dataroom_comptable_documents WHERE workspace_id = ?", workspaceId);
-        int exercices  = jdbc.update("DELETE FROM dataroom_exercices_fiscaux WHERE workspace_id = ?", workspaceId);
-        int alertes    = jdbc.update("DELETE FROM dataroom_alertes_echeances WHERE workspace_id = ?", workspaceId);
-        int ws         = jdbc.update("DELETE FROM workspaces WHERE id = ?", workspaceId);
-        log.info("TestSeed cleanup workspace={} workspaces={} fiscal={} comptable={} exercice={} alertes={}",
-                workspaceId, ws, dossiers, comptables, exercices, alertes);
+        // documents fait tout le menage. Les tables comptable / fiscal /
+        // exercices / alertes ont ete supprimees par la migration V25.
+        int ws = jdbc.update("DELETE FROM workspaces WHERE id = ?", workspaceId);
+        log.info("TestSeed cleanup workspace={} workspaces={}", workspaceId, ws);
         return ResponseEntity.ok(Map.of(
                 "workspaceId", workspaceId,
-                "deleted", ws,
-                "fiscalDocs", dossiers,
-                "comptableDocs", comptables,
-                "exercices", exercices,
-                "alertes", alertes
+                "deleted", ws
         ));
     }
 
@@ -280,52 +244,6 @@ public class TestSeedController {
     // Internals
     // -----------------------------------------------------------------
 
-    private UUID insertComptable(UUID ws, UUID dossier, UUID uploader,
-                                  short annee, String categorie, String title) {
-        return insertComptable(ws, dossier, null, uploader, annee, categorie, title);
-    }
-
-    private UUID insertComptable(UUID ws, UUID dossier, UUID exerciceFiscalId, UUID uploader,
-                                  short annee, String categorie, String title) {
-        UUID id = UUID.randomUUID();
-        // V14 (Sprint 8) a rendu exercice_fiscal_id NOT NULL. Si null en arg,
-        // on retrouve l'id via dossier+annee.
-        UUID exId = exerciceFiscalId;
-        if (exId == null) {
-            exId = jdbc.queryForObject(
-                    "SELECT id FROM dataroom_exercices_fiscaux WHERE workspace_id = ? AND dossier_id = ? AND annee = ?",
-                    UUID.class, ws, dossier, annee);
-        }
-        jdbc.update("""
-                INSERT INTO dataroom_comptable_documents(id, workspace_id, dossier_id, exercice_fiscal_id,
-                                                           annee, categorie,
-                                                           title, object_key, filename, content_type,
-                                                           size_bytes, uploaded_by, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'application/pdf', 1024, ?, NOW())
-                """,
-                id, ws, dossier, exId, annee, categorie, title,
-                "demo/" + id + ".pdf", title.toLowerCase().replace(" ", "-") + ".pdf",
-                uploader);
-        return id;
-    }
-
-    private UUID insertFiscal(UUID ws, UUID dossier, UUID exercice, UUID uploader,
-                               String categorie, String sousClassif, String title) {
-        UUID id = UUID.randomUUID();
-        jdbc.update("""
-                INSERT INTO dataroom_fiscal_documents(id, workspace_id, dossier_id, exercice_fiscal_id,
-                                                       categorie, sous_classification, title,
-                                                       object_key, filename, content_type, size_bytes,
-                                                       uploaded_by, is_deleted, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'application/pdf', 1024, ?, FALSE, NOW(), NOW())
-                """,
-                id, ws, dossier, exercice, categorie, sousClassif, title,
-                "demo/" + id + ".pdf", title.toLowerCase().replace(" ", "-") + ".pdf",
-                uploader);
-        return id;
-    }
-
-    /** Genere un code workspace au format JUR-XXXXX (5 alphanumeriques majuscules). */
     private String generateWorkspaceCode() {
         String alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sans 0/O/1/I pour lisibilite
         StringBuilder sb = new StringBuilder("JUR-");

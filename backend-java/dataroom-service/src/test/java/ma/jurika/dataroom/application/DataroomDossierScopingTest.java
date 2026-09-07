@@ -48,7 +48,10 @@ class DataroomDossierScopingTest {
 
     private DataroomJuridiqueService service() {
         return new DataroomJuridiqueService(
-                documentRepo, dossierRepo, ticketRepo, snapshotRepo, storage, events, metrics,
+                documentRepo, dossierRepo, ticketRepo,
+                org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.WorkflowProgressViewJpaRepository.class),
+                new com.fasterxml.jackson.databind.ObjectMapper(),
+                snapshotRepo, storage, events, metrics,
                 org.mockito.Mockito.mock(DossierArchiveGuard.class));
     }
 

@@ -15,9 +15,8 @@ import java.util.UUID;
  * Lot DIVERS §A (2026-08-13) — SOURCE UNIQUE de la regle « Data Room en lecture
  * seule quand la societe n'est plus vivante ».
  *
- * <p>Jusqu'ici la regle etait dupliquee a l'identique dans trois services
- * ({@code DataroomComptableService}, {@code DataroomFiscalService},
- * {@code DataroomDepotService}) — chacun avec sa propre constante
+ * <p>Jusqu'ici la regle etait dupliquee a l'identique dans plusieurs services
+ * de depot — chacun avec sa propre constante
  * {@code ARCHIVED_DOSSIER_STATUS} — et <b>absente</b> du Dossier Juridique et des
  * demandes / requetes client. Concretement : a la finalisation d'une DISSOLUTION
  * (dossier -> {@code DISSOUTE}) on pouvait encore televerser, remplacer, restaurer
@@ -63,8 +62,12 @@ public class DossierArchiveGuard {
      */
     private static final Set<String> WRITE_ALLOWED_TICKET_TYPES = Set.of("LIQUIDATION");
 
-    /** Statuts de ticket consideres « en cours » pour la derogation. */
-    private static final Set<String> OPEN_TICKET_STATUS = Set.of("NOUVEAU", "EN_COURS");
+    /**
+     * Statuts de ticket consideres « en cours » pour la derogation. Les trois
+     * statuts du parcours anterieurs a la cloture (guide cabinet v2, onglet 2).
+     */
+    private static final Set<String> OPEN_TICKET_STATUS =
+            Set.of("CREATION_TICKET", "GENERATION_DOCUMENTS", "DEROULEMENT_DEMARCHE");
 
     private final DossierViewJpaRepository dossiers;
     private final TicketViewJpaRepository tickets;

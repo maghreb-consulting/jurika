@@ -15,6 +15,7 @@ import ma.jurika.dataroom.api.dto.DataroomDtos.VersionScope;
 import ma.jurika.dataroom.application.OfficePreviewSupport;
 import ma.jurika.dataroom.application.ClientDataroomPermissionGuard;
 import ma.jurika.dataroom.application.DataroomJuridiqueService;
+import ma.jurika.dataroom.application.DocumentTypeCatalogue;
 import ma.jurika.dataroom.application.FicheClientService;
 import ma.jurika.dataroom.application.PreviewDocumentUseCase;
 import ma.jurika.dataroom.application.SearchJuridiqueDocumentsUseCase;
@@ -196,6 +197,88 @@ public class JuridiqueController {
                 : title;
         return juridique.uploadVersionBatch(dossierId, type, t, ticketId, files, user.userId());
     }
+
+    @GetMapping("/document-types")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
+    @Operation(summary = "Types de document acceptes par la Data Room",
+            description = "Source unique du menu de depot : la liste vivait en dur dans le "
+                    + "frontend et ignorait les types introduits par le lot 1, si bien qu'un "
+                    + "certificat negatif depose a la main tombait en « AUTRE ».")
+    public List<DocumentTypeCatalogue.TypeDocument> documentTypes() {
+        return DocumentTypeCatalogue.tous();
+    }
+
+    // ============================================================
+    // Brouillons de generation (lot 2, 2026-09-07)
+    //
+    //   POST   /dossiers/{id}/juridique/brouillons        → enregistrer/remplacer
+    //   GET    /tickets/{ticketId}/juridique/brouillons   → ré-hydrater l'etape
+    //   POST   /documents/{id}/valider-brouillon          → valider (depot)
+    //   DELETE /documents/{id}/brouillon                  → abandonner
+    //
+    // Un brouillon est un acte genere par un workflow, PERSISTE des sa
+    // generation mais pas encore valide. Il n'apparait dans aucune vue du
+    // dossier juridique tant qu'il n'est pas valide.
+    // ============================================================
+
+    @PostMapping(value = "/dossiers/{dossierId}/juridique/brouillons",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
+    @Operation(summary = "Enregistre (ou remplace) le brouillon d'un acte genere",
+            description = "Regenerer ou re-editer remplace le brouillon existant du meme "
+                    + "emplacement au lieu de l'empiler.")
+    public DocumentSummary enregistrerBrouillon(@AuthenticationPrincipal AuthenticatedUser user,
+                                                 @PathVariable UUID dossierId,
+                                                 MultipartHttpServletRequest req) {
+        MultipartFile file = req.getFile("file");
+        if (file == null && !req.getFileMap().isEmpty()) {
+            file = req.getFileMap().values().iterator().next();
+        }
+        if (file == null || file.isEmpty()) {
+            throw new ma.jurika.common.exception.ValidationException(
+                    "FILE_MISSING : aucun fichier dans la requete");
+        }
+        String documentType = req.getParameter("documentType");
+        String title = req.getParameter("title");
+        String ticketIdStr = req.getParameter("ticketId");
+        if (ticketIdStr == null || ticketIdStr.isBlank()) {
+            throw new ma.jurika.common.exception.ValidationException(
+                    "ticketId obligatoire : un brouillon appartient a une operation");
+        }
+        String type = (documentType == null || documentType.isBlank()) ? "AUTRE" : documentType;
+        String t = (title == null || title.isBlank()) ? defaultTitle(file) : title;
+        return juridique.enregistrerBrouillon(
+                dossierId, UUID.fromString(ticketIdStr), type, t, file, user.userId());
+    }
+
+    @GetMapping("/tickets/{ticketId}/juridique/brouillons")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
+    @Operation(summary = "Brouillons d'une operation (ré-hydratation de l'etape de generation)")
+    public List<DocumentSummary> listBrouillons(@PathVariable UUID ticketId) {
+        return juridique.listBrouillons(ticketId);
+    }
+
+    @PostMapping("/documents/{documentId}/valider-brouillon")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
+    @Operation(summary = "Valide un brouillon : il devient l'acte en vigueur de son emplacement",
+            description = "Emprunte le versionnement juridique existant — l'occupant "
+                    + "precedent bascule en historique avec sa version.")
+    public DocumentSummary validerBrouillon(@AuthenticationPrincipal AuthenticatedUser user,
+                                             @PathVariable UUID documentId,
+                                             @RequestBody(required = false) ValiderBrouillonRequest req) {
+        return juridique.validerBrouillon(documentId, req == null ? null : req.motif(), user.userId());
+    }
+
+    @DeleteMapping("/documents/{documentId}/brouillon")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
+    @Operation(summary = "Abandonne un brouillon non valide")
+    public ResponseEntity<Void> supprimerBrouillon(@PathVariable UUID documentId) {
+        juridique.supprimerBrouillon(documentId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Motif facultatif, trace sur la version remplacee lors de la validation. */
+    public record ValiderBrouillonRequest(String motif) {}
 
     private static String defaultTitle(MultipartFile file) {
         String name = file.getOriginalFilename();

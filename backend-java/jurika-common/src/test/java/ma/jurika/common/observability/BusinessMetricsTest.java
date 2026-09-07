@@ -181,15 +181,15 @@ class BusinessMetricsTest {
     @Test
     void ticketStateTransitionTagsFromToAndBucket() {
         UUID ws = UUID.randomUUID();
-        metrics.ticketStateTransition("NOUVEAU", "EN_COURS", ws);
-        metrics.ticketStateTransition("EN_COURS", "CLOTURE", ws);
+        metrics.ticketStateTransition("CREATION_TICKET", "GENERATION_DOCUMENTS", ws);
+        metrics.ticketStateTransition("GENERATION_DOCUMENTS", "CLOTURE_DOSSIER", ws);
 
         String bucket = BusinessMetrics.workspaceBucket(ws);
         Counter c1 = registry.find(BusinessMetrics.TICKET_STATE_TRANSITION)
-                .tag("from", "NOUVEAU").tag("to", "EN_COURS")
+                .tag("from", "CREATION_TICKET").tag("to", "GENERATION_DOCUMENTS")
                 .tag("workspace_bucket", bucket).counter();
         Counter c2 = registry.find(BusinessMetrics.TICKET_STATE_TRANSITION)
-                .tag("from", "EN_COURS").tag("to", "CLOTURE")
+                .tag("from", "GENERATION_DOCUMENTS").tag("to", "CLOTURE_DOSSIER")
                 .tag("workspace_bucket", bucket).counter();
         assertThat(c1).isNotNull();
         assertThat(c1.count()).isEqualTo(1.0);

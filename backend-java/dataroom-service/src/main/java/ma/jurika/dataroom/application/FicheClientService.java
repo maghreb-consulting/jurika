@@ -99,36 +99,6 @@ public class FicheClientService {
             Map.entry("FERMETURE_SUCCURSALE", "Fermeture de succursale"),
             Map.entry("PV_AGO", "Assemblée générale ordinaire (PV AGO)"));
 
-    /** 28 sous-types de MODIFICATION (alignes MOD_CATEGORIES front) -> libelle. */
-    static final Map<String, String> MODIFICATION_LABELS = Map.ofEntries(
-            Map.entry("CHANGEMENT_DENOMINATION", "changement de dénomination"),
-            Map.entry("CHANGEMENT_OBJET", "changement de l'objet social"),
-            Map.entry("TRANSFERT_SIEGE", "transfert du siège social"),
-            Map.entry("PROROGATION_DUREE", "prorogation de la durée"),
-            Map.entry("TRANSFORMATION", "transformation de la forme juridique"),
-            Map.entry("AUGMENTATION_CAPITAL", "augmentation de capital (numéraire)"),
-            Map.entry("AUGMENTATION_CAPITAL_NATURE", "augmentation de capital (apport en nature)"),
-            Map.entry("AUGMENTATION_CAPITAL_RESERVES", "augmentation de capital (incorporation de réserves)"),
-            Map.entry("REDUCTION_CAPITAL", "réduction de capital"),
-            Map.entry("MODIF_VALEUR_NOMINALE", "modification de la valeur nominale des parts"),
-            Map.entry("CESSION_PARTIELLE", "cession partielle de parts"),
-            Map.entry("CESSION_TOTALE", "cession totale de parts"),
-            Map.entry("TRANSMISSION_PARTS", "transmission de parts (succession / donation)"),
-            Map.entry("NANTISSEMENT", "nantissement de parts"),
-            Map.entry("DESIGNATION_GERANT", "nomination d'un gérant"),
-            Map.entry("REVOCATION_GERANT", "révocation d'un gérant"),
-            Map.entry("MODIF_NOMBRE_GERANTS", "modification du nombre / durée des gérants"),
-            Map.entry("MODIF_POUVOIRS_GERANT", "modification des pouvoirs / rémunération du gérant"),
-            Map.entry("MODALITES_DECISIONS", "modalités de décisions"),
-            Map.entry("DESIGNATION_CAC", "désignation d'un commissaire aux comptes"),
-            Map.entry("CLAUSE_AGREMENT", "clause d'agrément"),
-            Map.entry("CLAUSE_PREEMPTION", "clause de préemption / inaliénabilité"),
-            Map.entry("PACTE_ASSOCIES", "pacte d'associés"),
-            Map.entry("CONTINUATION_PERTES", "continuation malgré pertes"),
-            Map.entry("FUSION_SCISSION", "fusion / scission / apport partiel"),
-            Map.entry("CREATION_SUCCURSALE", "création / transfert / suppression de succursale"),
-            Map.entry("POUVOIRS_FORMALITES", "pouvoirs pour formalités"));
-
     // ── API ───────────────────────────────────────────────────────────────
 
     /**
@@ -227,29 +197,15 @@ public class FicheClientService {
             if (wf != null) {
                 JsonNode data = parseJson(wf.getDataJson());
                 if ("MODIFICATION".equals(type)) {
-                    sousType = modificationSousType(data);
+                    sousType = ModificationSousTypes.enPhrase(data);
                 }
                 dateActe = extractActeDate(data);
             }
-            boolean finalisee = "CLOTURE".equals(t.getStatut());
+            boolean finalisee = "CLOTURE_DOSSIER".equals(t.getStatut());
             out.add(new Operation(type, typeLabel, sousType, t.getReference(),
                     t.getCreatedAt(), t.getClotureAt(), dateActe, finalisee));
         }
         return out;
-    }
-
-    /** Extrait « changement de gerant, ... » depuis data.step1.selectedTypes. */
-    private String modificationSousType(JsonNode data) {
-        JsonNode selected = firstNonMissing(
-                data.path("step1").path("selectedTypes"),
-                data.path("selectedTypes"));
-        if (selected == null || !selected.isArray() || selected.isEmpty()) return null;
-        List<String> labels = new ArrayList<>();
-        for (JsonNode n : selected) {
-            String id = n.asText();
-            labels.add(MODIFICATION_LABELS.getOrDefault(id, humanize(id)));
-        }
-        return labels.isEmpty() ? null : String.join(", ", labels);
     }
 
     /** date juridique de l'acte : step1.datePV, sinon dateActe / dateEffet. */

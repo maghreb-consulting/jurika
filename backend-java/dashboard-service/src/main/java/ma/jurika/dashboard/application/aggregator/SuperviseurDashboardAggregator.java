@@ -11,9 +11,9 @@ import java.util.UUID;
 /**
  * Sprint 10 -- aggregator SUPERVISEUR (1 workspace).
  * Requetes alignees sur le schema reel post-audit Sprint 10 TASK 0 :
- *   - tickets.statut IN ('NOUVEAU','EN_COURS','CLOTURE','ANNULE')
+ *   - tickets.statut IN ('CREATION_TICKET','GENERATION_DOCUMENTS','DEROULEMENT_DEMARCHE','CLOTURE_DOSSIER','ANNULE')
  *   - tickets.cloture_at (PAS closed_at)
- *   - dataroom_alertes_echeances.date_echeance + statut IN ('PLANIFIEE','ENVOYEE')
+ *   - delais legaux des demarches restant a accomplir (referentiel + cochage)
  */
 @Component
 public class SuperviseurDashboardAggregator {
@@ -28,11 +28,11 @@ public class SuperviseurDashboardAggregator {
         // Tickets ouverts vs clos 30j
         Long ticketsOuverts = jdbc.queryForObject("""
                 SELECT COUNT(*) FROM tickets
-                WHERE workspace_id = ? AND statut IN ('NOUVEAU','EN_COURS')
+                WHERE workspace_id = ? AND statut IN ('CREATION_TICKET','GENERATION_DOCUMENTS','DEROULEMENT_DEMARCHE')
                 """, Long.class, workspaceId);
         Long ticketsClos30d = jdbc.queryForObject("""
                 SELECT COUNT(*) FROM tickets
-                WHERE workspace_id = ? AND statut = 'CLOTURE'
+                WHERE workspace_id = ? AND statut = 'CLOTURE_DOSSIER'
                   AND cloture_at >= NOW() - INTERVAL '30 days'
                 """, Long.class, workspaceId);
 
@@ -40,7 +40,7 @@ public class SuperviseurDashboardAggregator {
         Double moyenneH = jdbc.queryForObject("""
                 SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (cloture_at - created_at))/3600), 0)
                 FROM tickets
-                WHERE workspace_id = ? AND statut='CLOTURE'
+                WHERE workspace_id = ? AND statut='CLOTURE_DOSSIER'
                   AND cloture_at >= NOW() - INTERVAL '30 days'
                 """, Double.class, workspaceId);
 
@@ -64,7 +64,7 @@ public class SuperviseurDashboardAggregator {
         // Charge par employe
         List<EmployeeLoad> charge = jdbc.query("""
                 SELECT t.assigne_id, COALESCE(u.email, t.assigne_id::text) AS email,
-                       COUNT(*) FILTER (WHERE t.statut IN ('NOUVEAU','EN_COURS')) AS tickets_ouverts,
+                       COUNT(*) FILTER (WHERE t.statut IN ('CREATION_TICKET','GENERATION_DOCUMENTS','DEROULEMENT_DEMARCHE')) AS tickets_ouverts,
                        0 AS echeances_assignees
                 FROM tickets t
                 LEFT JOIN users u ON u.id = t.assigne_id
@@ -84,25 +84,25 @@ public class SuperviseurDashboardAggregator {
                 new EcheanceBucket("J-15", j15),
                 new EcheanceBucket("J-3",  j3));
 
-        // Dossiers a risque (echeances depassees OU exercice VERROUILLE non clos)
-        List<DossierRisk> risques = jdbc.query("""
-                SELECT DISTINCT d.id, d.raison_sociale,
-                       'Echeance depassee' AS motif
-                FROM dataroom_alertes_echeances a
-                JOIN entreprise_dossiers d ON d.id = a.dossier_id
-                WHERE a.workspace_id = ? AND a.statut IN ('PLANIFIEE','ENVOYEE')
-                  AND a.date_echeance < CURRENT_DATE
-                UNION
-                SELECT d.id, d.raison_sociale,
-                       'Exercice VERROUILLE (controle fiscal)' AS motif
-                FROM dataroom_exercices_fiscaux ex
-                JOIN entreprise_dossiers d ON d.id = ex.dossier_id
-                WHERE ex.workspace_id = ? AND ex.statut = 'VERROUILLE'
+        // Dossiers a risque : au moins un delai legal DEPASSE sur une demarche
+        // restant a accomplir. Le second motif historique (« exercice VERROUILLE »)
+        // disparait avec le dossier fiscal (dataroom V25).
+        // Dossiers a risque : au moins un delai legal DEPASSE sur une demarche
+        // restant a accomplir. Le motif historique « exercice VERROUILLE » disparait
+        // avec le dossier fiscal.
+        List<DossierRisk> risques = jdbc.query(DemarcheEcheancesSql.resoudre("""
+                SELECT DISTINCT dos.id, dos.raison_sociale, 'Delai legal depasse' AS motif
+                FROM tickets t
+                JOIN entreprise_dossiers dos
+                      ON dos.id = t.dossier_id AND dos.workspace_id = t.workspace_id
+                {{JOINTURES}}
+                {{FILTRE}}
+                  AND {{ECHEANCE}} < CURRENT_DATE
                 LIMIT 20
-                """, (rs, rn) -> new DossierRisk(
+                """),
+                (rs, rn) -> new DossierRisk(
                         (UUID) rs.getObject(1), rs.getString(2), rs.getString(3)),
-                workspaceId, workspaceId);
-
+                workspaceId);
         // Tickets par statut (workspace entier) -- pour donut de repartition
         List<CategoryCount> ticketsParStatut = jdbc.query("""
                 SELECT statut, COUNT(*) AS n
@@ -130,7 +130,7 @@ public class SuperviseurDashboardAggregator {
                 LEFT JOIN (
                     SELECT date_trunc('month', cloture_at) AS mois, COUNT(*) AS clotures
                     FROM tickets
-                    WHERE workspace_id = ? AND statut = 'CLOTURE'
+                    WHERE workspace_id = ? AND statut = 'CLOTURE_DOSSIER'
                       AND cloture_at >= date_trunc('month', CURRENT_DATE) - INTERVAL '5 month'
                     GROUP BY 1
                 ) cl ON cl.mois = m.mois
@@ -155,16 +155,17 @@ public class SuperviseurDashboardAggregator {
                 Instant.now());
     }
 
+    /**
+     * Echeances legales du parcours, dans une fenetre de jours. Meme forme de
+     * ligne que les anciennes alertes fiscales : les buckets J-30 / J-15 / J-3
+     * et l ecran superviseur sont inchanges.
+     */
     private List<EcheanceItem> listEcheances(UUID ws, int fromDays, int toDays) {
-        return jdbc.query("""
-                SELECT id, dossier_id, type_echeance, date_echeance, statut
-                FROM dataroom_alertes_echeances
-                WHERE workspace_id = ?
-                  AND statut IN ('PLANIFIEE','ENVOYEE')
-                  AND date_echeance BETWEEN CURRENT_DATE + (? || ' day')::interval
-                                        AND CURRENT_DATE + (? || ' day')::interval
+        return jdbc.query(DemarcheEcheancesSql.BASE + DemarcheEcheancesSql.resoudre("""
+                  AND {{ECHEANCE}} BETWEEN CURRENT_DATE + (? || ' day')::interval
+                                       AND CURRENT_DATE + (? || ' day')::interval
                 ORDER BY date_echeance ASC LIMIT 30
-                """,
+                """),
                 (rs, rn) -> new EcheanceItem(
                         (UUID) rs.getObject(1), (UUID) rs.getObject(2),
                         rs.getString(3),

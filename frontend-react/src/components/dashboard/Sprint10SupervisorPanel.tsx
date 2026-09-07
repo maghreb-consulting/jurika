@@ -160,7 +160,7 @@ export function Sprint10SupervisorPanel() {
                   <ul className="space-y-1">
                     {b.items.slice(0, 4).map((it) => (
                       <li key={it.id} className="truncate text-fg-muted">
-                        {it.typeEcheance}
+                        {it.libelle}
                       </li>
                     ))}
                   </ul>

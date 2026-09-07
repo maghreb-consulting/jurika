@@ -1,10 +1,7 @@
 import { api } from '../lib/api';
 import type {
   AccessLogPage,
-  CategorieComptable,
-  CategorieFiscale,
   ClientPermissions,
-  ComptableDocumentSummary,
   DataroomSettings,
   DemandeDirection,
   DemandeStatut,
@@ -19,18 +16,11 @@ import type {
   DocumentSummary,
   DocumentType,
   DossierBrief,
-  DossierComptableView,
-  DossierFiscalDetailedView,
   DossierJuridiqueView,
   UpdateIdentifiantsPayload,
-  EcheanceSummary,
-  ExerciceFiscalSummary,
-  FiscalDocumentSummary,
-  OpenExerciceRequest,
   SearchJuridiqueParams,
   SearchJuridiqueResult,
-  SubClassificationDef,
-  UnlockExerciceRequest,
+  SeanceEdition,
 } from '../types/dataroom';
 
 export interface UploadJuridiqueParams {
@@ -38,13 +28,6 @@ export interface UploadJuridiqueParams {
   documentType: DocumentType | string;
   title: string;
   ticketId?: string;
-}
-
-export interface UploadComptableParams {
-  file: File;
-  annee: number;
-  categorie: CategorieComptable | string;
-  title: string;
 }
 
 export interface CreateDemandePayload {
@@ -123,7 +106,14 @@ export const dataroomService = {
     return data;
   },
 
-  async uploadJuridique(dossierId: string, params: UploadJuridiqueParams): Promise<void> {
+  /**
+   * Depose un document juridique. Renvoie le document cree : le cochage d une
+   * demarche a besoin de son identifiant pour le rattacher.
+   */
+  async uploadJuridique(
+    dossierId: string,
+    params: UploadJuridiqueParams,
+  ): Promise<DocumentSummary> {
     const form = new FormData();
     form.append('file', params.file);
     form.append('documentType', String(params.documentType));
@@ -133,9 +123,12 @@ export const dataroomService = {
     }
     // L'instance Axios a Content-Type=application/json par defaut.
     // On force multipart/form-data ici (Axios v1+ ajoute le boundary tout seul).
-    await api.post(`/dataroom/dossiers/${dossierId}/juridique/upload`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const { data } = await api.post<DocumentSummary>(
+      `/dataroom/dossiers/${dossierId}/juridique/upload`,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return data;
   },
 
   /**
@@ -310,6 +303,88 @@ export const dataroomService = {
    * l'aperçu / l'édition d'un document déjà déposé en Data Room après une
    * navigation (le blob n'est jamais persisté côté brouillon React).
    */
+  /**
+   * Lot 3 (2026-09-07) — ÉDITION BUREAUTIQUE FIDÈLE (Collabora / WOPI).
+   *
+   * Ouvre une séance : le serveur rend l'URL de l'éditeur, le `WOPISrc` que
+   * COLLABORA appellera (jamais le navigateur) et un jeton d'accès à durée de
+   * vie courte, propre à ce document et à cet utilisateur. Le jeton n'est rendu
+   * qu'une fois — il n'est stocké côté serveur que sous forme d'empreinte.
+   */
+  async ouvrirSeanceEdition(documentId: string): Promise<SeanceEdition> {
+    const { data } = await api.post<SeanceEdition>(
+      `/dataroom/documents/${documentId}/edition-session`,
+    );
+    return data;
+  },
+
+  /**
+   * Ferme la séance. La lecture est coupée aussitôt côté serveur ; l'écriture
+   * reste acceptée le temps d'une fenêtre de grâce, parce que Collabora
+   * enregistre de façon asynchrone et appelle souvent PutFile APRÈS la
+   * fermeture de l'onglet.
+   */
+  async fermerSeanceEdition(sessionId: string): Promise<void> {
+    await api.delete(`/dataroom/edition-session/${sessionId}`);
+  },
+
+  /**
+   * Lot 2 (2026-09-07) — catalogue des types acceptes par la Data Room.
+   * Source unique du menu de depot, alignee sur la contrainte de la table.
+   */
+  async listDocumentTypes(): Promise<
+    { code: string; libelle: string; groupe: string | null }[]
+  > {
+    const { data } = await api.get<{ code: string; libelle: string; groupe: string | null }[]>(
+      '/dataroom/document-types',
+    );
+    return data;
+  },
+
+  /**
+   * Lot 2 (2026-09-07) — BROUILLONS DE GENERATION.
+   *
+   * Un acte genere par un workflow est persiste des sa generation, avant toute
+   * validation : c'est ce qui fait qu'il survit a un rechargement de page et a
+   * une navigation entre etapes. Un brouillon n'apparait dans aucune vue du
+   * dossier juridique tant qu'il n'est pas valide.
+   *
+   * Regenerer ou re-editer REMPLACE le brouillon du meme emplacement.
+   */
+  async saveBrouillon(
+    dossierId: string,
+    params: { file: File; documentType: DocumentType | string; title: string; ticketId: string },
+  ): Promise<DocumentSummary> {
+    const form = new FormData();
+    form.append('file', params.file);
+    form.append('documentType', String(params.documentType));
+    form.append('title', params.title);
+    form.append('ticketId', params.ticketId);
+    const { data } = await api.post<DocumentSummary>(
+      `/dataroom/dossiers/${dossierId}/juridique/brouillons`,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return data;
+  },
+
+  /** Brouillons d'une operation — ré-hydratation de l'etape de generation. */
+  async listBrouillons(ticketId: string): Promise<DocumentSummary[]> {
+    const { data } = await api.get<DocumentSummary[]>(
+      `/dataroom/tickets/${ticketId}/juridique/brouillons`,
+    );
+    return data;
+  },
+
+  /** Valide un brouillon : il devient l'acte en vigueur de son emplacement. */
+  async validerBrouillon(documentId: string, motif?: string): Promise<DocumentSummary> {
+    const { data } = await api.post<DocumentSummary>(
+      `/dataroom/documents/${documentId}/valider-brouillon`,
+      { motif: motif ?? null },
+    );
+    return data;
+  },
+
   async fetchDocumentBlob(documentId: string): Promise<Blob> {
     const response = await api.get(`/dataroom/documents/${documentId}/download`, {
       responseType: 'blob',
@@ -436,85 +511,6 @@ export const dataroomService = {
     await api.patch(`/dossiers/${dossierId}/identifiants`, payload);
   },
 
-  // ---- Dossier comptable ----
-  async getComptable(dossierId: string): Promise<DossierComptableView> {
-    const { data } = await api.get<DossierComptableView>(
-      `/dataroom/dossiers/${dossierId}/comptable`,
-    );
-    return data;
-  },
-
-  async listComptableDocuments(
-    dossierId: string,
-    annee: number,
-    categorie: CategorieComptable | string,
-  ): Promise<ComptableDocumentSummary[]> {
-    const { data } = await api.get<ComptableDocumentSummary[]>(
-      `/dataroom/dossiers/${dossierId}/comptable/documents`,
-      { params: { annee, categorie } },
-    );
-    return data;
-  },
-
-  async uploadComptable(dossierId: string, params: UploadComptableParams): Promise<void> {
-    const form = new FormData();
-    form.append('file', params.file);
-    form.append('annee', String(params.annee));
-    form.append('categorie', String(params.categorie));
-    form.append('title', params.title);
-    await api.post(`/dataroom/dossiers/${dossierId}/comptable/upload`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-  },
-
-  /**
-   * Upload batch comptable : N appels au endpoint single (plus robuste).
-   */
-  async uploadComptableBatch(
-    dossierId: string,
-    files: File[],
-    params: { annee: number; categorie: CategorieComptable | string; title?: string },
-  ): Promise<void> {
-    if (files.length === 0) return;
-    const errors: string[] = [];
-    for (let i = 0; i < files.length; i++) {
-      const f = files[i];
-      const fileTitle = params.title?.trim()
-        ? `${params.title.trim()} (${i + 1}/${files.length})`
-        : f.name.replace(/\.[^.]+$/, '') || f.name;
-      try {
-        await this.uploadComptable(dossierId, {
-          file: f,
-          annee: params.annee,
-          categorie: params.categorie,
-          title: fileTitle,
-        });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        errors.push(`${f.name} : ${msg}`);
-      }
-    }
-    if (errors.length === files.length) {
-      throw new Error(`Tous les uploads ont echoue :\n${errors.join('\n')}`);
-    }
-    if (errors.length > 0) {
-      throw new Error(
-        `${files.length - errors.length}/${files.length} uploades. Echecs :\n${errors.join('\n')}`,
-      );
-    }
-  },
-
-  async deleteComptableDocument(documentId: string): Promise<void> {
-    await api.delete(`/dataroom/comptable/documents/${documentId}`);
-  },
-
-  async downloadComptableDocument(documentId: string, filename: string): Promise<void> {
-    const response = await api.get(`/dataroom/comptable/documents/${documentId}/download`, {
-      responseType: 'blob',
-    });
-    triggerDownload(response.data as Blob, filename);
-  },
-
   // ---- Depots (Lot V : espace « Depots » client) ----
   /** Depot libre d'un fichier (multipart). CLIENT gate par perm_depot cote back. */
   async uploadDepot(dossierId: string, file: File, title?: string): Promise<DepotSummary> {
@@ -565,42 +561,6 @@ export const dataroomService = {
     await api.delete(`/dataroom/depots/${id}`);
   },
 
-  /**
-   * Lot AA (2026-07-05) -- Apercu inline d'un document COMPTABLE (miroir de
-   * previewDocument/previewDepot). Non gate par perm_download cote backend (le
-   * visionnage est un droit de consultation). Le caller DOIT appeler
-   * URL.revokeObjectURL(url) a la fermeture pour eviter la fuite memoire.
-   */
-  async previewComptable(id: string): Promise<{ url: string; contentType: string }> {
-    const response = await api.get<Blob>(
-      `/dataroom/comptable/documents/${id}/preview`,
-      { responseType: 'blob' },
-    );
-    const blob = response.data as Blob;
-    const ctHeader = response.headers['content-type'];
-    const contentType =
-      (typeof ctHeader === 'string' ? ctHeader : undefined) ??
-      blob.type ??
-      'application/pdf';
-    const url = window.URL.createObjectURL(blob);
-    return { url, contentType };
-  },
-
-  /** Lot AA -- Apercu inline d'un document FISCAL (idem previewComptable). */
-  async previewFiscal(id: string): Promise<{ url: string; contentType: string }> {
-    const response = await api.get<Blob>(
-      `/dataroom/fiscal/documents/${id}/preview`,
-      { responseType: 'blob' },
-    );
-    const blob = response.data as Blob;
-    const ctHeader = response.headers['content-type'];
-    const contentType =
-      (typeof ctHeader === 'string' ? ctHeader : undefined) ??
-      blob.type ??
-      'application/pdf';
-    const url = window.URL.createObjectURL(blob);
-    return { url, contentType };
-  },
 
   // ---- Demandes ----
   async createDemande(payload: CreateDemandePayload): Promise<DemandeSummary> {
@@ -730,184 +690,6 @@ export const dataroomService = {
    */
   async deleteDataroom(dossierId: string): Promise<void> {
     await api.delete(`/dataroom/dossiers/${dossierId}`);
-  },
-
-  // ---- Dossier fiscal (Sprint 7 / TASK 6 - Sprint 8 placeholder) ----
-  async getFiscal(
-    dossierId: string,
-    exerciceId?: string,
-  ): Promise<import('../types/dataroom').DossierFiscalView> {
-    const { data } = await api.get<import('../types/dataroom').DossierFiscalView>(
-      `/dataroom/dossiers/${dossierId}/fiscal`,
-      { params: exerciceId ? { exerciceId } : undefined },
-    );
-    return data;
-  },
-
-  // ---- Sprint 8 -- Dossier Fiscal complet ----
-  async getFiscalDetail(
-    dossierId: string,
-    exerciceId?: string,
-  ): Promise<DossierFiscalDetailedView> {
-    const { data } = await api.get<DossierFiscalDetailedView>(
-      `/dataroom/dossiers/${dossierId}/fiscal/detail`,
-      { params: exerciceId ? { exerciceId } : undefined },
-    );
-    return data;
-  },
-
-  async listFiscalDocuments(
-    dossierId: string,
-    exerciceId: string,
-    categorie?: CategorieFiscale | string,
-  ): Promise<FiscalDocumentSummary[]> {
-    const params: Record<string, unknown> = { exerciceId };
-    if (categorie) params.categorie = categorie;
-    const { data } = await api.get<FiscalDocumentSummary[]>(
-      `/dataroom/dossiers/${dossierId}/fiscal/documents`,
-      { params },
-    );
-    return data;
-  },
-
-  async getSubClassifications(
-    categorie?: CategorieFiscale | string,
-  ): Promise<SubClassificationDef[]> {
-    const { data } = await api.get<SubClassificationDef[]>(
-      '/dataroom/fiscal/sub-classifications',
-      { params: categorie ? { categorie } : undefined },
-    );
-    return data;
-  },
-
-  async uploadFiscal(
-    dossierId: string,
-    payload: {
-      file: File;
-      /** Prompt H (2026-06-23) — optionnel : si absent, fournir `annee`. */
-      exerciceId?: string;
-      /** Prompt H (2026-06-23) — alternative à exerciceId (import flow). */
-      annee?: number;
-      categorie: CategorieFiscale | string;
-      sousClassification: string;
-      title?: string;
-      commentaire?: string;
-      tifMetadata?: string;
-      numeroDeclaration?: string;
-      periodeDeclaree?: string;
-      comptableDocSource?: string;
-    },
-  ): Promise<FiscalDocumentSummary> {
-    if (!payload.exerciceId && payload.annee == null) {
-      throw new Error('uploadFiscal: `exerciceId` ou `annee` requis.');
-    }
-    const form = new FormData();
-    form.append('file', payload.file);
-    if (payload.exerciceId) form.append('exerciceId', payload.exerciceId);
-    if (payload.annee != null) form.append('annee', String(payload.annee));
-    form.append('categorie', String(payload.categorie));
-    form.append('sousClassification', payload.sousClassification);
-    if (payload.title) form.append('title', payload.title);
-    if (payload.commentaire) form.append('commentaire', payload.commentaire);
-    if (payload.tifMetadata) form.append('tifMetadata', payload.tifMetadata);
-    if (payload.numeroDeclaration) form.append('numeroDeclaration', payload.numeroDeclaration);
-    if (payload.periodeDeclaree) form.append('periodeDeclaree', payload.periodeDeclaree);
-    if (payload.comptableDocSource) form.append('comptableDocSource', payload.comptableDocSource);
-    const { data } = await api.post<FiscalDocumentSummary>(
-      `/dataroom/dossiers/${dossierId}/fiscal/upload`,
-      form,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
-    );
-    return data;
-  },
-
-  async deleteFiscal(documentId: string): Promise<void> {
-    await api.delete(`/dataroom/fiscal/documents/${documentId}`);
-  },
-
-  async downloadFiscal(documentId: string, filename: string): Promise<void> {
-    const response = await api.get(`/dataroom/fiscal/documents/${documentId}/download`, {
-      responseType: 'blob',
-    });
-    triggerDownload(response.data as Blob, filename);
-  },
-
-  async exportFiscalExerciceZip(
-    dossierId: string,
-    exerciceId: string,
-  ): Promise<void> {
-    const response = await api.get(
-      `/dataroom/dossiers/${dossierId}/fiscal/${exerciceId}/export-zip`,
-      { responseType: 'blob' },
-    );
-    triggerDownload(response.data as Blob, `fiscal_${dossierId.slice(0, 8)}_${exerciceId.slice(0, 8)}.zip`);
-  },
-
-  // ---- Exercices fiscaux ----
-  async listExercices(dossierId: string): Promise<ExerciceFiscalSummary[]> {
-    const { data } = await api.get<ExerciceFiscalSummary[]>(
-      `/dataroom/dossiers/${dossierId}/exercices`,
-    );
-    return data;
-  },
-
-  async openExercice(
-    dossierId: string,
-    req: OpenExerciceRequest,
-  ): Promise<ExerciceFiscalSummary> {
-    const { data } = await api.post<ExerciceFiscalSummary>(
-      `/dataroom/dossiers/${dossierId}/exercices`,
-      req,
-    );
-    return data;
-  },
-
-  async cloturerExercice(exerciceId: string): Promise<ExerciceFiscalSummary> {
-    const { data } = await api.patch<ExerciceFiscalSummary>(
-      `/dataroom/exercices/${exerciceId}/cloturer`,
-    );
-    return data;
-  },
-
-  async verrouillerExercice(exerciceId: string): Promise<ExerciceFiscalSummary> {
-    const { data } = await api.patch<ExerciceFiscalSummary>(
-      `/dataroom/exercices/${exerciceId}/verrouiller`,
-    );
-    return data;
-  },
-
-  async deverrouillerExercice(
-    exerciceId: string,
-    req: UnlockExerciceRequest,
-  ): Promise<ExerciceFiscalSummary> {
-    const { data } = await api.patch<ExerciceFiscalSummary>(
-      `/dataroom/exercices/${exerciceId}/deverrouiller`,
-      req,
-    );
-    return data;
-  },
-
-  // ---- Echeances ----
-  async listEcheances(
-    dossierId: string,
-    params: { from?: string; to?: string; statut?: string } = {},
-  ): Promise<EcheanceSummary[]> {
-    const { data } = await api.get<EcheanceSummary[]>(
-      `/dataroom/dossiers/${dossierId}/echeances`,
-      { params },
-    );
-    return data;
-  },
-
-  async marquerEcheanceTraitee(
-    echeanceId: string,
-    payload: { documentId?: string; note?: string } = {},
-  ): Promise<EcheanceSummary> {
-    const { data } = await api.patch<EcheanceSummary>(
-      `/dataroom/echeances/${echeanceId}/marquer-traite`,
-      payload,
-    );
-    return data;
   },
 
   // ---- Access log (Sprint 7 / TASK 5) ----

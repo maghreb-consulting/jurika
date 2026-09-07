@@ -10,7 +10,7 @@ function ticket(partial: Partial<Ticket>): Ticket {
     reference: 'REF',
     titre: 'T',
     type: 'CREATION',
-    statut: 'NOUVEAU',
+    statut: 'CREATION_TICKET',
     priorite: 'NORMALE',
     dossierId: null,
     assigneId: 'u1',
@@ -36,15 +36,15 @@ describe('ticketsByStatut', () => {
 
   it('compte par statut dans l ordre canonique, sans tranche a 0', () => {
     const res = ticketsByStatut([
-      ticket({ statut: 'NOUVEAU' }),
-      ticket({ statut: 'EN_COURS' }),
-      ticket({ statut: 'EN_COURS' }),
-      ticket({ statut: 'CLOTURE' }),
+      ticket({ statut: 'CREATION_TICKET' }),
+      ticket({ statut: 'GENERATION_DOCUMENTS' }),
+      ticket({ statut: 'GENERATION_DOCUMENTS' }),
+      ticket({ statut: 'CLOTURE_DOSSIER' }),
     ]);
     expect(res).toEqual([
-      { key: 'NOUVEAU', label: 'Nouveau', count: 1 },
-      { key: 'EN_COURS', label: 'En cours', count: 2 },
-      { key: 'CLOTURE', label: 'Clôturé', count: 1 },
+      { key: 'CREATION_TICKET', label: 'Création du ticket', count: 1 },
+      { key: 'GENERATION_DOCUMENTS', label: 'Génération des documents', count: 2 },
+      { key: 'CLOTURE_DOSSIER', label: 'Clôture de dossier', count: 1 },
     ]);
     // ANNULE (0) est exclu.
     expect(res.find((s) => s.key === 'ANNULE')).toBeUndefined();

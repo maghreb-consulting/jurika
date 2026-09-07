@@ -22,7 +22,7 @@ import {
   type TemplateInfo,
 } from '../../../services/workflowDocumentService';
 import { DocumentEditor } from '../../../components/document/DocumentEditor';
-import { documentService } from '../../../services/document.service';
+import { CollaboraEditor } from '../../../components/document/CollaboraEditor';
 import { dataroomService } from '../../../services/dataroom.service';
 import { buildDocFilename } from '../../../components/workflow/workflowFilename';
 import type { DocumentType } from '../../../types/dataroom';
@@ -63,6 +63,13 @@ interface Props {
    */
   dossierId?: string | null;
   /**
+   * Lot 2 (2026-09-07) — opération porteuse. Un document généré est persisté
+   * comme BROUILLON rattaché à ce ticket dès sa génération : c'est ce qui le
+   * fait survivre à un rechargement de page comme à un aller-retour entre
+   * étapes. Sans ticket, on retombe sur l'ancien comportement (mémoire seule).
+   */
+  ticketId?: string | null;
+  /**
    * 2026-08-12 (consultation lecture seule) — quand `true` (ticket clôturé /
    * annulé / workflow terminé) : documents affichés en **Aperçu + Télécharger**
    * uniquement (ni Générer, ni Régénérer, ni Éditer, ni Valider), aucune
@@ -86,6 +93,18 @@ interface DocState {
    * téléchargé porte alors « - v2 », « - v3 »… (cf. {@link cleanDocFilename}).
    */
   version?: number;
+  /**
+   * Lot 2 (2026-09-07) — `documentId` designe un BROUILLON (document persiste
+   * mais pas encore valide). Sert a promouvoir ce document exact a la
+   * validation, plutot que de re-televerser le binaire.
+   */
+  brouillon?: boolean;
+  /**
+   * Lot 3 (2026-09-07) — date de la derniere edition manuelle dans l'editeur
+   * bureautique. Sert a NOMMER ce qu'une regeneration ferait perdre : un
+   * avertissement generique se clique sans se lire.
+   */
+  editeManuellementAt?: string | null;
 }
 
 function freshState(): DocState {
@@ -219,6 +238,7 @@ export function Step7Generation({
   onNavigate,
   onDocumentGenerated,
   dossierId,
+  ticketId,
   readOnly = false,
 }: Props) {
   // 2026-06-10 — Fix persistance : le onSubmit envoie { documents: {...} }
@@ -252,6 +272,12 @@ export function Step7Generation({
   // Sprint 2026-06-12 — éditeur in-app TipTap : code du template ouvert dans
   // le modal d'édition (null = modal fermé).
   const [editingTplCode, setEditingTplCode] = useState<string | null>(null);
+  /**
+   * Lot 3 — code du template dont la régénération attend une confirmation.
+   * On ne demande cette confirmation QUE si le document a été édité à la main :
+   * une confirmation systématique se clique sans se lire.
+   */
+  const [regenerationAConfirmer, setRegenerationAConfirmer] = useState<string | null>(null);
   // Étape 7 (aperçu 2026-08) — aperçu fidèle plein écran : code du template
   // ouvert dans le modal d'aperçu (null = fermé). L'aperçu s'affiche sur toute
   // la largeur disponible et défile sur toute la longueur du document.
@@ -561,23 +587,74 @@ export function Step7Generation({
    * Exécuté une seule fois au montage (les blobs vivent en mémoire React).
    */
   useEffect(() => {
-    // Codes persistés comme générés/validés mais sans blob en mémoire.
-    const codesToRestore = Object.entries(persistedDocs)
-      .filter(([code, st]) => (st.generated || st.validated) && !docs[code]?.blob)
-      .map(([code]) => code);
-    if (codesToRestore.length === 0) return;
-
     let cancelled = false;
-    setRestoring((prev) => {
-      const next = { ...prev };
-      for (const code of codesToRestore) next[code] = true;
-      return next;
-    });
 
     (async () => {
+      // Lot 2 — 0) LES BROUILLONS D'ABORD. Un document généré est persisté dès
+      // sa génération : il se retrouve même si l'étape n'a jamais été soumise,
+      // et il porte l'édition faite avant de quitter la page. C'est ce qui rend
+      // la restauration fiable au lieu de dépendre des drapeaux du brouillon de
+      // workflow (qui, eux, ne sont écrits qu'à « Valider et continuer »).
+      let brouillons: import('../../../types/dataroom').DocumentSummary[] = [];
+      if (ticketId) {
+        try {
+          brouillons = await dataroomService.listBrouillons(ticketId);
+        } catch {
+          // best-effort : on retombe sur les documents en vigueur.
+        }
+      }
+      if (cancelled) return;
+
+      const codesBrouillon = Object.entries(TEMPLATE_TO_DOCTYPE)
+        .filter(([code, type]) =>
+          !docs[code]?.blob && brouillons.some((b) => b.documentType === type),
+        )
+        .map(([code]) => code);
+
+      // Codes persistés comme générés/validés mais sans blob en mémoire.
+      const codesToRestore = Object.entries(persistedDocs)
+        .filter(([code, st]) => (st.generated || st.validated) && !docs[code]?.blob)
+        .map(([code]) => code)
+        .filter((code) => !codesBrouillon.includes(code));
+
+      const tousLesCodes = [...codesBrouillon, ...codesToRestore];
+      if (tousLesCodes.length === 0) return;
+
+      setRestoring((prev) => {
+        const next = { ...prev };
+        for (const code of tousLesCodes) next[code] = true;
+        return next;
+      });
+
+      for (const code of codesBrouillon) {
+        if (cancelled) return;
+        try {
+          const type = TEMPLATE_TO_DOCTYPE[code];
+          const b = brouillons.find((x) => x.documentType === type);
+          if (!b) continue;
+          const blob = await dataroomService.fetchDocumentBlob(b.id);
+          if (cancelled) return;
+          updateDoc(code, {
+            blob,
+            documentId: b.id,
+            brouillon: true,
+            generated: true,
+            filename: b.filename,
+            // Lot 3 — l'état « modifié manuellement » doit survivre au
+            // rechargement : c'est lui qui commande l'avertissement de
+            // régénération.
+            editeManuellementAt: b.editeManuellementAt ?? null,
+          });
+        } catch {
+          // best-effort : la carte reste telle quelle, Régénérer reste dispo.
+        } finally {
+          if (!cancelled) setRestoring((prev) => ({ ...prev, [code]: false }));
+        }
+      }
+
       // 1) Un seul appel Data Room : liste des documents en vigueur du dossier.
       let enVigueur: import('../../../types/dataroom').DocumentSummary[] = [];
-      if (dossierId) {
+      if (dossierId && codesToRestore.length > 0) {
         try {
           const view = await dataroomService.getJuridique(dossierId);
           enVigueur = view.documentsEnVigueur ?? [];
@@ -602,7 +679,11 @@ export function Step7Generation({
             // PRIORITÉ Data Room — récupère le blob déposé (sans re-télécharger).
             const blob = await dataroomService.fetchDocumentBlob(match.id);
             if (cancelled) return;
-            updateDoc(code, { blob, documentId: match.id });
+            updateDoc(code, {
+              blob,
+              documentId: match.id,
+              editeManuellementAt: match.editeManuellementAt ?? null,
+            });
           } else if (!readOnly) {
             // FALLBACK — régénération silencieuse (déterministe, pas d'IA).
             // JAMAIS en lecture seule (aucune génération sur ticket clôturé) :
@@ -644,6 +725,84 @@ export function Step7Generation({
     cleanDocBaseName(tpl, denomination, forme, docs[tpl.code]?.version);
 
   /**
+   * Lot 2 (2026-09-07) — PERSISTANCE À LA GÉNÉRATION.
+   *
+   * Le document généré (ou ré-édité) est enregistré comme BROUILLON de la Data
+   * Room, immédiatement, avant toute validation. C'est la correction de la
+   * cause unique des quatre symptômes rapportés : jusqu'ici l'acte n'existait
+   * que comme Blob en mémoire React, donc un rechargement ou un simple
+   * Précédent/Suivant le perdait — édition comprise.
+   *
+   * Un brouillon n'apparaît dans aucune vue du dossier juridique. Régénérer
+   * remplace le brouillon précédent au lieu de l'empiler (garanti en base).
+   * Best-effort : un échec de persistance n'empêche pas de travailler sur le
+   * document en mémoire, il est signalé sur la carte.
+   */
+  /**
+   * Lot 3 — après une séance d'édition, le document en base a changé : on
+   * recharge son binaire pour que l'aperçu et le téléchargement montrent la
+   * version ÉDITÉE, et on note la date d'édition pour l'avertissement de
+   * régénération. Sans cela, la carte continuerait d'afficher l'avant.
+   */
+  async function recupererApresEdition(tpl: TemplateInfo) {
+    const st = docs[tpl.code];
+    if (!st?.documentId || !dossierId) return;
+    try {
+      const vue = await dataroomService.getJuridique(dossierId);
+      const type = TEMPLATE_TO_DOCTYPE[tpl.code];
+      const courant = vue.documentsEnVigueur.find((d) => d.documentType === type);
+      // Un brouillon n'apparaît pas dans les documents en vigueur : on garde
+      // alors son identifiant, seul le binaire est rechargé.
+      const cible = st.brouillon ? st.documentId : (courant?.id ?? st.documentId);
+      const blob = await dataroomService.fetchDocumentBlob(cible);
+      updateDoc(tpl.code, {
+        blob,
+        documentId: cible,
+        validated: false,
+        editeManuellementAt:
+          (st.brouillon ? null : courant?.editeManuellementAt ?? null) ?? new Date().toISOString(),
+      });
+    } catch {
+      updateDoc(tpl.code, {
+        error:
+          'Modifications enregistrées, mais l’aperçu n’a pas pu être rechargé. '
+          + 'Rouvrez l’étape pour le rafraîchir.',
+      });
+    }
+  }
+
+  async function persistBrouillon(
+    tpl: TemplateInfo,
+    blob: Blob,
+    filename: string,
+  ): Promise<string | undefined> {
+    if (readOnly || !dossierId || !ticketId) return undefined;
+    const type = TEMPLATE_TO_DOCTYPE[tpl.code];
+    if (!type) return undefined;
+    try {
+      const file = new File([blob], filename, {
+        type: blob.type || 'application/octet-stream',
+      });
+      const saved = await dataroomService.saveBrouillon(dossierId, {
+        file,
+        documentType: type,
+        title: docLabel(tpl),
+        ticketId,
+      });
+      updateDoc(tpl.code, { documentId: saved.id, brouillon: true });
+      return saved.id;
+    } catch (err) {
+      updateDoc(tpl.code, {
+        error:
+          'Document généré, mais NON enregistré : ' +
+          (err instanceof Error ? err.message : 'échec de la sauvegarde') +
+          '. Il sera perdu si vous quittez la page.',
+      });
+      return undefined;
+    }
+  }
+
+  /**
    * 2026-06-09 (fix LLM-off) — Generation 100% deterministe via le template engine.
    * Tout template (Statuts, JAL, Acte) emprunte la meme pipeline /ai/workflows/.../documents
    * qui renvoie un .docx natif rendu a partir du gabarit du directeur. Aucune sortie
@@ -673,7 +832,10 @@ export function Step7Generation({
         filename,
         version: nextVersion,
       });
-      // Pas de depot dataroom ici : on attend la validation user.
+      // Pas de DEPOT dataroom ici : on attend la validation de l'employe. Mais
+      // le document est PERSISTE comme brouillon, sans quoi il ne survivrait pas
+      // a un rechargement (lot 2).
+      await persistBrouillon(tpl, blob, cleanDocFilename(tpl, denomination, forme, nextVersion));
     } catch (err) {
       updateDoc(tpl.code, {
         generating: false,
@@ -751,8 +913,28 @@ export function Step7Generation({
         return;
       }
     }
+    // Lot 2 — le document valide est CELUI qui a ete apercu et edite : on
+    // promeut le brouillon deja stocke plutot que de re-televerser un binaire.
+    // Il emprunte alors le versionnement juridique existant (l'occupant du meme
+    // emplacement bascule en historique avec sa version).
+    const st2 = docs[tpl.code];
+    if (st2?.documentId && st2.brouillon) {
+      try {
+        await dataroomService.validerBrouillon(st2.documentId);
+        updateDoc(tpl.code, { validated: true, brouillon: false });
+        return;
+      } catch (err) {
+        updateDoc(tpl.code, {
+          error:
+            'Validation impossible : ' +
+            (err instanceof Error ? err.message : 'échec du dépôt en Data Room'),
+        });
+        return;
+      }
+    }
     updateDoc(tpl.code, { validated: true });
-    // Dépôt dataroom au nom propre (pas de code technique dans la Data Room).
+    // Repli (aucun brouillon : ticket absent, ou persistance en echec) — depot
+    // classique au nom propre, jamais le code technique.
     void onDocumentGenerated?.(tpl.code, docLabel(tpl), blob, fileFor(tpl));
   }
 
@@ -975,7 +1157,10 @@ export function Step7Generation({
                         par défaut dès qu'un blob est disponible (docx-preview, même
                         rendu que le téléchargement). Repliable ; « Plein écran »
                         ouvre le même rendu en modal pleine largeur. */}
-                    {st.blob && (
+                    {/* Lot 2 — l'apercu s'efface pendant l'edition : on est
+                        dans un mode ou dans l'autre, jamais les deux (et le
+                        document n'est plus rendu deux fois simultanement). */}
+                    {st.blob && editingTplCode !== tpl.code && (
                       <div className="rounded-lg border border-border bg-bg-overlay">
                         <button
                           type="button"
@@ -1004,6 +1189,7 @@ export function Step7Generation({
                               filename={fileFor(tpl)}
                               title={docLabel(tpl)}
                               readOnly
+                              forceMode="fidele"
                             />
                           </div>
                         )}
@@ -1035,7 +1221,16 @@ export function Step7Generation({
                         <>
                           <button
                             type="button"
-                            onClick={() => void generateOne(tpl)}
+                            onClick={() => {
+                              // Régénérer repart des VARIABLES : les retouches
+                              // manuelles disparaissent. On ne le fait pas dans
+                              // le dos de l'employé.
+                              if (st.editeManuellementAt) {
+                                setRegenerationAConfirmer(tpl.code);
+                                return;
+                              }
+                              void generateOne(tpl);
+                            }}
                             disabled={st.generating || restoring[tpl.code] || preflightBlocked}
                             className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent disabled:opacity-60"
                           >
@@ -1181,31 +1376,106 @@ export function Step7Generation({
       })()}
 
       {/* Sprint 2026-06-12 — modal d'édition WYSIWYG TipTap. */}
+      {/*
+        ÉDITION BUREAUTIQUE FIDÈLE (lot 3, 2026-09-07).
+
+        La modale n'ouvre plus TipTap : son aller-retour `.docx → HTML → .docx`
+        détruisait la mise en page du directeur (mesuré au lot 2 : styles.xml
+        absent, 49 paragraphes stylés perdus, 11 numérotations et 89 alignements
+        à zéro). Collabora édite le .docx lui-même, sans format intermédiaire.
+
+        La séparation obtenue au lot 2 tient : on est en aperçu OU en édition,
+        jamais les deux — l'aperçu en ligne se démonte pendant l'édition.
+      */}
+      {/*
+        AVERTISSEMENT DE RÉGÉNÉRATION (lot 3).
+
+        Régénérer repart des variables du dossier : toutes les retouches faites
+        dans l'éditeur disparaissent. Une confirmation générique — « êtes-vous
+        sûr ? » — se clique sans se lire ; celle-ci NOMME ce qui sera perdu,
+        avec la date de l'édition.
+      */}
+      {regenerationAConfirmer && (() => {
+        const tpl = templates.find((t) => t.code === regenerationAConfirmer);
+        const st = docs[regenerationAConfirmer];
+        if (!tpl) return null;
+        const quand = st?.editeManuellementAt
+          ? new Date(st.editeManuellementAt).toLocaleString('fr-FR', {
+              day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+            })
+          : null;
+        return (
+          <div
+            role="dialog"
+            aria-modal="true"
+            data-testid="confirmation-regeneration"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setRegenerationAConfirmer(null);
+            }}
+          >
+            <div className="w-[min(560px,95vw)] rounded-xl bg-bg-raised p-5 shadow-xl">
+              <div className="mb-3 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-warning" />
+                <h3 className="text-sm font-semibold text-fg">
+                  Régénérer effacera vos modifications
+                </h3>
+              </div>
+              <p className="mb-2 text-sm leading-relaxed text-fg">
+                Ce document ({docLabel(tpl)}) a été <strong>modifié à la main</strong>
+                {quand ? <> le <strong>{quand}</strong></> : null}. La régénération repart
+                des données du dossier :{' '}
+                <strong>vos modifications manuelles seront remplacées</strong>.
+              </p>
+              <p className="mb-4 text-xs leading-relaxed text-fg-subtle">
+                La version actuelle ne disparaît pas : elle reste consultable dans
+                «&nbsp;Anciennes versions&nbsp;» du document, et peut être restaurée.
+              </p>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRegenerationAConfirmer(null)}
+                  className="rounded-lg border border-border bg-bg-raised px-3 py-2 text-xs font-semibold text-fg"
+                >
+                  Conserver mes modifications
+                </button>
+                <button
+                  type="button"
+                  data-testid="confirmer-regeneration"
+                  onClick={() => {
+                    setRegenerationAConfirmer(null);
+                    void generateOne(tpl);
+                  }}
+                  className="rounded-lg bg-warning px-3 py-2 text-xs font-semibold text-bg-raised"
+                >
+                  Régénérer et remplacer
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {editingTplCode && (() => {
         const tpl = templates.find((t) => t.code === editingTplCode);
         const st = docs[editingTplCode];
-        if (!tpl || !st?.blob) return null;
-        const handleSave = async (editedHtml: string) => {
-          // Reconvertir en .docx SANS télécharger : on remplace le blob en
-          // mémoire pour que l'aperçu fidèle ET le téléchargement reflètent les
-          // modifications. Une édition compte comme une nouvelle version (« - v<n> »
-          // à partir de la v2). On dévalide pour forcer un nouveau dépôt dataroom,
-          // puis on ferme le modal (l'aperçu de la carte se met à jour).
-          const nextVersion = (st.version ?? 1) + 1;
-          const cleanName = cleanDocFilename(tpl, denomination, forme, nextVersion);
-          const blob = await documentService.convertHtmlToDocx(
-            editedHtml,
-            cleanName,
-            docLabel(tpl),
+        if (!tpl) return null;
+        if (!st?.documentId) {
+          // Sans document persisté, il n'y a rien à ouvrir dans l'éditeur : on
+          // le dit au lieu d'afficher un cadre vide.
+          return (
+            <div
+              role="dialog"
+              aria-modal="true"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm"
+              onClick={() => setEditingTplCode(null)}
+            >
+              <div className="max-w-md rounded-xl bg-bg-raised p-5 text-sm text-fg shadow-xl">
+                Ce document n'est pas encore enregistré : régénérez-le avant de l'éditer.
+              </div>
+            </div>
           );
-          updateDoc(tpl.code, {
-            blob,
-            filename: cleanName,
-            version: nextVersion,
-            validated: false,
-          });
-          setEditingTplCode(null);
-        };
+        }
         return (
           <div
             role="dialog"
@@ -1215,7 +1485,7 @@ export function Step7Generation({
               if (e.target === e.currentTarget) setEditingTplCode(null);
             }}
           >
-            <div className="m-auto flex h-[90vh] w-[min(1200px,95vw)] flex-col overflow-hidden rounded-xl bg-bg-raised shadow-xl">
+            <div className="m-auto flex h-[92vh] w-[min(1400px,97vw)] flex-col overflow-hidden rounded-xl bg-bg-raised shadow-xl">
               <div className="flex items-center justify-between border-b border-border bg-bg-overlay px-4 py-3">
                 <div className="flex items-center gap-2">
                   <Pencil className="h-4 w-4 text-accent" />
@@ -1232,12 +1502,12 @@ export function Step7Generation({
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <div className="flex-1 overflow-auto p-4">
-                <DocumentEditor
-                  docxBlob={st.blob}
-                  filename={fileFor(tpl)}
-                  title={docLabel(tpl)}
-                  onSave={handleSave}
+              <div className="min-h-0 flex-1">
+                <CollaboraEditor
+                  documentId={st.documentId}
+                  titre={docLabel(tpl)}
+                  onClose={() => setEditingTplCode(null)}
+                  onEdited={() => void recupererApresEdition(tpl)}
                 />
               </div>
             </div>

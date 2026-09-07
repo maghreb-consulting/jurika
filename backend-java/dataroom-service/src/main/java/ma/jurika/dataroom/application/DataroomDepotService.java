@@ -25,9 +25,10 @@ import java.util.UUID;
 /**
  * Lot V -- Espace « Depots » client (depot libre + consultation employe).
  *
- * <p>Modele : {@link DataroomComptableService#upload} (memes validations /
- * stockage MinIO) sans annee / categorie / exercice fiscal. Le CLIENT depose
+ * <p>Depot libre : ni annee, ni categorie, ni exercice. Le CLIENT depose
  * librement ; l'EMPLOYE responsable (et SUPERVISEUR / SUPER_ADMIN) consulte.
+ * Depuis le lot 1 (2026-09-04), c'est aussi la destination des pieces
+ * comptables et fiscales, qui ne sont plus classees.
  *
  * <p>Le scoping responsable / client est factorise dans
  * {@link #assertCanAccessDossier(UUID, UUID, Role)} et applique par
@@ -218,9 +219,6 @@ public class DataroomDepotService {
             Number usedBytes = (Number) em.createNativeQuery("""
                     SELECT COALESCE(
                       (SELECT COALESCE(SUM(size_bytes),0) FROM dataroom_depots
-                       WHERE workspace_id = ?1 AND deleted_at IS NULL), 0
-                    ) + COALESCE(
-                      (SELECT COALESCE(SUM(size_bytes),0) FROM dataroom_comptable_documents
                        WHERE workspace_id = ?1 AND deleted_at IS NULL), 0
                     ) + COALESCE(
                       (SELECT COALESCE(SUM(size_bytes),0) FROM dataroom_documents

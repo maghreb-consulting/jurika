@@ -5,11 +5,17 @@ public enum WorkflowType {
     // 2026-06-25 — Refonte IMPORT : meme tronc de SAISIE que la CREATION
     // (1 Denomination, 2 Siege, 3 Capital, 4 Activite, 5 Dirigeants,
     // 6 Associes) — saisie FORCEE pour une fiche structuree COMPLETE — puis
-    // 3 etapes d'UPLOAD typees (7 Juridique, 8 Comptable, 9 Fiscal) au lieu
-    // de la Generation IA + Pieces jointes de la Creation, enfin 10 Suivi
-    // (regime TVA + exercices) et 11 Synthese. Migration en vol : un import
-    // commence sous l'ancien total (6) verra son total passer a 11.
-    IMPORT(11),
+    // des etapes d'UPLOAD au lieu de la Generation IA de la Creation.
+    //
+    // 2026-09-04 (lot 1) — les dossiers comptable et fiscal sortent du perimetre
+    // produit. Les anciennes etapes 8 (Comptable), 9 (Fiscal) et 10 (Suivi :
+    // regime TVA + ouverture d'exercices) sont remplacees par une SEULE etape 8
+    // « Depot » : les fichiers de cette nature sont stockes tels quels dans
+    // l'espace Depot, sans classement ni traitement. Total 11 -> 9. Le workflow
+    // IMPORT sera refondu dans un lot ulterieur ; ce lot se borne a le laisser
+    // coherent. Migration en vol : la position courante est bornee par
+    // WorkflowProgressAdapter.
+    IMPORT(9),
     // 2026-08-11 — Refonte MODIFICATION en 5 etapes (spec directeur consolidee) :
     // 1 Selection · 2 Saisie · 3 Generation · 4 Pieces jointes (optionnelle) ·
     // 5 Synthese/Finalisation. Migration en vol : un workflow demarre sous

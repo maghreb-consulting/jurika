@@ -2,11 +2,6 @@
 # Force HS256 (pas de PEM RSA requis) + relax JPA pour IT.
 
 jurika:
-  # Sans URL explicite, le @FeignClient supervision-service bascule sur le
-  # load-balancing ; or la discovery est desactivee plus bas -> l'appel bloque
-  # jusqu'au timeout du job CI. URL morte = echec immediat au lieu d'un blocage.
-  supervision:
-    internal-url: http://127.0.0.1:1
   jwt:
     algorithm: HS256
     hmac-secret: dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345
@@ -17,15 +12,6 @@ jurika:
     rebuild-lock-seconds: 10
 
 spring.data.redis.client-type: jedis
-# Le test anti-stampede lance 20 threads puis appelle pool.shutdownNow() :
-# les threads interrompus ne rendent pas leur connexion Redis. Avec le
-# max-wait Jedis par defaut (-1 = infini), le pool epuise bloque l'appel
-# suivant indefiniment -> job CI tue au bout de 30 min. On dimensionne le
-# pool au-dela des 20 threads et on borne l'attente : un epuisement devient
-# une erreur immediate et diagnosticable au lieu d'un blocage.
-spring.data.redis.jedis.pool.max-active: 32
-spring.data.redis.jedis.pool.max-idle: 32
-spring.data.redis.jedis.pool.max-wait: 5s
 
 spring:
   jpa:

@@ -29,10 +29,6 @@ public class SettingsEntity {
     @Column(name = "last_accessed_at")
     private Instant lastAccessedAt;
     /** RG-DC27 : email du comptable du cabinet, recoit une notif a chaque upload comptable. */
-    @Column(name = "accountant_email", length = 255)
-    private String accountantEmail;
-    @Column(name = "notify_accountant_on_upload", nullable = false)
-    private boolean notifyAccountantOnUpload;
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
     @Column(name = "updated_at", nullable = false)
@@ -70,10 +66,6 @@ public class SettingsEntity {
     public void setAccessCount(int v) { this.accessCount = v; }
     public Instant getLastAccessedAt() { return lastAccessedAt; }
     public void setLastAccessedAt(Instant v) { this.lastAccessedAt = v; }
-    public String getAccountantEmail() { return accountantEmail; }
-    public void setAccountantEmail(String v) { this.accountantEmail = v; }
-    public boolean isNotifyAccountantOnUpload() { return notifyAccountantOnUpload; }
-    public void setNotifyAccountantOnUpload(boolean v) { this.notifyAccountantOnUpload = v; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

@@ -314,7 +314,10 @@ class DataroomTenantIsolationTest {
     void juridiqueView_blockedWhenNoTenant() {
         TenantContext.clear();
         DataroomJuridiqueService svc = new DataroomJuridiqueService(
-                documentRepo, dossierRepo, ticketRepo, snapshotRepo, storage, events, metrics,
+                documentRepo, dossierRepo, ticketRepo,
+                org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.WorkflowProgressViewJpaRepository.class),
+                new com.fasterxml.jackson.databind.ObjectMapper(),
+                snapshotRepo, storage, events, metrics,
                 org.mockito.Mockito.mock(DossierArchiveGuard.class));
 
         assertThatThrownBy(() -> svc.view(UUID.randomUUID(), null, null, null))
@@ -342,7 +345,10 @@ class DataroomTenantIsolationTest {
                 .thenReturn(List.of());
 
         DataroomJuridiqueService svc = new DataroomJuridiqueService(
-                documentRepo, dossierRepo, ticketRepo, snapshotRepo, storage, events, metrics,
+                documentRepo, dossierRepo, ticketRepo,
+                org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.WorkflowProgressViewJpaRepository.class),
+                new com.fasterxml.jackson.databind.ObjectMapper(),
+                snapshotRepo, storage, events, metrics,
                 org.mockito.Mockito.mock(DossierArchiveGuard.class));
         svc.view(dossier, null, null, null);
 
@@ -359,7 +365,10 @@ class DataroomTenantIsolationTest {
     void juridiqueAssertClientAccess_blockedWhenNoTenant() {
         TenantContext.clear();
         DataroomJuridiqueService svc = new DataroomJuridiqueService(
-                documentRepo, dossierRepo, ticketRepo, snapshotRepo, storage, events, metrics,
+                documentRepo, dossierRepo, ticketRepo,
+                org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.WorkflowProgressViewJpaRepository.class),
+                new com.fasterxml.jackson.databind.ObjectMapper(),
+                snapshotRepo, storage, events, metrics,
                 org.mockito.Mockito.mock(DossierArchiveGuard.class));
 
         assertThatThrownBy(() -> svc.assertClientAccess(UUID.randomUUID(), UUID.randomUUID()))
@@ -378,7 +387,10 @@ class DataroomTenantIsolationTest {
         when(dossierRepo.findByWorkspaceIdAndId(ws, dossier)).thenReturn(Optional.of(d));
 
         DataroomJuridiqueService svc = new DataroomJuridiqueService(
-                documentRepo, dossierRepo, ticketRepo, snapshotRepo, storage, events, metrics,
+                documentRepo, dossierRepo, ticketRepo,
+                org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.WorkflowProgressViewJpaRepository.class),
+                new com.fasterxml.jackson.databind.ObjectMapper(),
+                snapshotRepo, storage, events, metrics,
                 org.mockito.Mockito.mock(DossierArchiveGuard.class));
         svc.assertClientAccess(dossier, client); // ne throw pas
 

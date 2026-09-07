@@ -40,14 +40,19 @@ public class SupervisionService {
 
         Number tickets = singleNumber(
                 "SELECT COUNT(*) FROM tickets WHERE workspace_id = ?1", ws);
+        // Lot 1 (2026-09-04) — cinq statuts du guide cabinet. « En cours » couvre
+        // desormais les deux statuts de production (generation des actes puis
+        // deroulement des demarches administratives), « nouveaux » le seul statut
+        // d'ouverture.
         Number ticketsEnCours = singleNumber(
-                "SELECT COUNT(*) FROM tickets WHERE workspace_id = ?1 AND statut = 'EN_COURS'", ws);
+                "SELECT COUNT(*) FROM tickets WHERE workspace_id = ?1 "
+                        + "AND statut IN ('GENERATION_DOCUMENTS','DEROULEMENT_DEMARCHE')", ws);
         Number ticketsClotures = singleNumber(
-                "SELECT COUNT(*) FROM tickets WHERE workspace_id = ?1 AND statut = 'CLOTURE'", ws);
+                "SELECT COUNT(*) FROM tickets WHERE workspace_id = ?1 AND statut = 'CLOTURE_DOSSIER'", ws);
         Number ticketsAnnules = singleNumber(
                 "SELECT COUNT(*) FROM tickets WHERE workspace_id = ?1 AND statut = 'ANNULE'", ws);
         Number ticketsNouveaux = singleNumber(
-                "SELECT COUNT(*) FROM tickets WHERE workspace_id = ?1 AND statut = 'NOUVEAU'", ws);
+                "SELECT COUNT(*) FROM tickets WHERE workspace_id = ?1 AND statut = 'CREATION_TICKET'", ws);
         Number dossiers = singleNumber(
                 "SELECT COUNT(*) FROM entreprise_dossiers WHERE workspace_id = ?1", ws);
         Number dossiersActifs = singleNumber(
@@ -111,8 +116,9 @@ public class SupervisionService {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = em.createNativeQuery("""
                 SELECT u.id, u.first_name, u.last_name,
-                       COUNT(t.id) FILTER (WHERE t.statut = 'EN_COURS') AS en_cours,
-                       COUNT(t.id) FILTER (WHERE t.statut = 'CLOTURE') AS clotures,
+                       COUNT(t.id) FILTER (WHERE t.statut IN ('GENERATION_DOCUMENTS',
+                                                              'DEROULEMENT_DEMARCHE')) AS en_cours,
+                       COUNT(t.id) FILTER (WHERE t.statut = 'CLOTURE_DOSSIER') AS clotures,
                        COUNT(t.id) FILTER (WHERE t.statut = 'ANNULE')  AS annules
                   FROM users u
                   LEFT JOIN tickets t

@@ -57,7 +57,7 @@ public class TicketEntity {
         Instant now = Instant.now();
         createdAt = now;
         updatedAt = now;
-        if (statut == null) statut = "NOUVEAU";
+        if (statut == null) statut = "CREATION_TICKET";
         if (priorite == null) priorite = "NORMALE";
     }
 

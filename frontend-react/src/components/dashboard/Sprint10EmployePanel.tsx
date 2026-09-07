@@ -98,7 +98,7 @@ export function Sprint10EmployePanel() {
             <ul className="divide-y divide-border">
               {data.mesEcheancesAssignees.slice(0, 5).map((e) => (
                 <li key={e.id} className="flex items-center justify-between py-2 text-sm">
-                  <span>{e.typeEcheance}</span>
+                  <span>{e.libelle}</span>
                   <span className="text-xs text-fg-subtle">
                     {e.dateEcheance
                       ? new Date(e.dateEcheance).toLocaleDateString('fr-FR')

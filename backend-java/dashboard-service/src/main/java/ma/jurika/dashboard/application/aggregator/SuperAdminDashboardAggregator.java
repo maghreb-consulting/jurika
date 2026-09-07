@@ -102,19 +102,18 @@ public class SuperAdminDashboardAggregator {
             }
         }
 
+        // Lot 1 (2026-09-04) -- le stockage ne compte plus que le dossier juridique
+        // et les depots : les tables comptable et fiscale ont ete supprimees.
         Long totalDocs = jdbc.queryForObject("""
                 SELECT COALESCE(SUM(size_bytes),0) FROM (
                     SELECT size_bytes FROM dataroom_documents WHERE is_current = true
                     UNION ALL
-                    SELECT size_bytes FROM dataroom_comptable_documents WHERE deleted_at IS NULL
-                    UNION ALL
-                    SELECT size_bytes FROM dataroom_fiscal_documents WHERE is_deleted = false
+                    SELECT size_bytes FROM dataroom_depots WHERE deleted_at IS NULL
                 ) all_docs
                 """, Long.class);
         Long countDocs = jdbc.queryForObject("""
                 SELECT (SELECT COUNT(*) FROM dataroom_documents WHERE is_current = true)
-                     + (SELECT COUNT(*) FROM dataroom_comptable_documents WHERE deleted_at IS NULL)
-                     + (SELECT COUNT(*) FROM dataroom_fiscal_documents WHERE is_deleted = false)
+                     + (SELECT COUNT(*) FROM dataroom_depots WHERE deleted_at IS NULL)
                 """, Long.class);
         StorageSummary storage = new StorageSummary(
                 totalDocs == null ? 0 : totalDocs,

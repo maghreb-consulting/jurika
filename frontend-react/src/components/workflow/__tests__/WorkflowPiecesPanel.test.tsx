@@ -21,7 +21,7 @@ function makeProgress(pieces: Record<string, unknown> = {}): WorkflowProgress {
     currentStep: 5,
     totalSteps: 9,
     data: { pieces },
-    statut: 'EN_COURS',
+    statut: 'GENERATION_DOCUMENTS',
     startedById: 'u1',
     completedAt: null,
     updatedAt: '2026-06-04T00:00:00Z',

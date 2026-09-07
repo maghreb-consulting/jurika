@@ -19,7 +19,13 @@ export interface Slice {
 }
 
 /** Ordre canonique des statuts pour un rendu stable du donut. */
-const STATUT_ORDER: TicketStatut[] = ['NOUVEAU', 'EN_COURS', 'CLOTURE', 'ANNULE'];
+const STATUT_ORDER: TicketStatut[] = [
+  'CREATION_TICKET',
+  'GENERATION_DOCUMENTS',
+  'DEROULEMENT_DEMARCHE',
+  'CLOTURE_DOSSIER',
+  'ANNULE',
+];
 
 /**
  * Repartition de MES tickets par statut. Ordre canonique, statuts a 0 exclus

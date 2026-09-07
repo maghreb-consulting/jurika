@@ -50,7 +50,12 @@ public interface DocumentJpaRepository
      * `actor.workspaceId()`.
      */
     @Deprecated(forRemoval = false)
-    List<DocumentEntity> findAllByTicketIdOrderByCreatedAtAsc(UUID ticketId);
+    @Query("""
+        SELECT d FROM DocumentEntity d
+        WHERE d.ticketId = :ticketId AND d.brouillon = false
+        ORDER BY d.createdAt ASC
+    """)
+    List<DocumentEntity> findAllByTicketIdOrderByCreatedAtAsc(@Param("ticketId") UUID ticketId);
 
     /**
      * Variante workspace-scoped explicite (defense-in-depth contre BYPASSRLS).
@@ -58,7 +63,14 @@ public interface DocumentJpaRepository
      * {@link #findAllByTicketIdOrderByCreatedAtAsc(UUID)} partout où un
      * workspaceId est disponible via le TenantContext ou l'acteur.
      */
-    List<DocumentEntity> findAllByWorkspaceIdAndTicketIdOrderByCreatedAtAsc(UUID workspaceId, UUID ticketId);
+    @Query("""
+        SELECT d FROM DocumentEntity d
+        WHERE d.workspaceId = :workspaceId AND d.ticketId = :ticketId
+          AND d.brouillon = false
+        ORDER BY d.createdAt ASC
+    """)
+    List<DocumentEntity> findAllByWorkspaceIdAndTicketIdOrderByCreatedAtAsc(
+            @Param("workspaceId") UUID workspaceId, @Param("ticketId") UUID ticketId);
 
     /**
      * Defense-in-depth contre fuite cross-tenant : findById hérite de
@@ -73,8 +85,45 @@ public interface DocumentJpaRepository
      * d'un dossier, pour reconstruire l'historique documentaire (ajouts /
      * remplacements). Tri le plus recent d'abord ; workspace-scoped.
      */
+    @Query("""
+        SELECT d FROM DocumentEntity d
+        WHERE d.workspaceId = :workspaceId AND d.dossierId = :dossierId
+          AND d.brouillon = false
+        ORDER BY d.createdAt DESC
+    """)
     List<DocumentEntity> findAllByWorkspaceIdAndDossierIdOrderByCreatedAtDesc(
-            UUID workspaceId, UUID dossierId);
+            @Param("workspaceId") UUID workspaceId, @Param("dossierId") UUID dossierId);
+
+    // =================================================================
+    //  Brouillons de generation (V26, lot 2)
+    //
+    //  Un brouillon est un document genere par un workflow et pas encore
+    //  valide. Il vit dans cette table pour reutiliser le stockage objet, le
+    //  telechargement et l'apercu — mais AUCUNE des lectures ci-dessus ne le
+    //  renvoie. Seules les deux requetes suivantes le voient.
+    // =================================================================
+
+    /** Le brouillon d'un emplacement pour une operation, s'il existe. */
+    @Query("""
+        SELECT d FROM DocumentEntity d
+        WHERE d.workspaceId = :workspaceId AND d.ticketId = :ticketId
+          AND d.documentType = :type AND d.title = :title
+          AND d.brouillon = true
+    """)
+    Optional<DocumentEntity> findBrouillon(@Param("workspaceId") UUID workspaceId,
+                                            @Param("ticketId") UUID ticketId,
+                                            @Param("type") String type,
+                                            @Param("title") String title);
+
+    /** Tous les brouillons d'une operation, pour la ré-hydratation de l'etape 7. */
+    @Query("""
+        SELECT d FROM DocumentEntity d
+        WHERE d.workspaceId = :workspaceId AND d.ticketId = :ticketId
+          AND d.brouillon = true
+        ORDER BY d.createdAt ASC
+    """)
+    List<DocumentEntity> findBrouillonsByTicket(@Param("workspaceId") UUID workspaceId,
+                                                 @Param("ticketId") UUID ticketId);
 
     /**
      * Retourne le doc current du type donne (au plus 1 en theorie ; ORDER BY +
@@ -160,6 +209,7 @@ public interface DocumentJpaRepository
           AND d.dossierId = :dossierId
           AND d.documentType = :type
           AND d.title = :title
+          AND d.brouillon = false
         ORDER BY d.version DESC
     """)
     List<DocumentEntity> findLineage(@Param("workspaceId") UUID workspaceId,
@@ -193,6 +243,7 @@ public interface DocumentJpaRepository
     @Query(value = """
         SELECT id FROM dataroom_documents
         WHERE dossier_id = :dossierId
+          AND NOT brouillon
           AND search_vector @@ websearch_to_tsquery('french', :q)
         """, nativeQuery = true)
     List<UUID> ftsMatchIds(@Param("dossierId") UUID dossierId, @Param("q") String q);

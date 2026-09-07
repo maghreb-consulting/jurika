@@ -60,11 +60,10 @@ $composeArgs = @(
     '-f', 'infrastructure/docker-compose.yml',
     '-f', 'infrastructure/docker-compose.services.yml',
     '-f', 'infrastructure/docker-compose.local.yml',
-    # Deux --env-file, dans cet ordre : `.env` fournit les mots de passe infra
-    # (POSTGRES / REDIS / RABBITMQ / MINIO), `.env.local` surcharge le reste.
-    # Ne passer que `.env.local` REMPLACE le chargement par defaut de `.env` :
-    # les 4 mots de passe tombaient a vide ("variable is not set") et les
-    # services ne pouvaient plus s'authentifier aupres de l'infrastructure.
+    # Les DEUX fichiers sont requis. `--env-file` REMPLACE le `.env` par defaut
+    # (Compose v2) : avec `.env.local` seul, POSTGRES_PASSWORD et REDIS_PASSWORD
+    # -- qui ne vivent que dans `.env` -- se resolvent en chaine VIDE, et la pile
+    # demarre avec un mot de passe de base vide sans que rien ne le signale.
     '--env-file', '.env',
     '--env-file', '.env.local',
     '-p', 'jurika-local'
@@ -89,14 +88,12 @@ Write-Host "🚀 docker compose up -d"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # ─── 5) Attente healthchecks ─────────────────────────────────────────
-# `jurika-mailhog` n'est PAS attendu ici : dans docker-compose.yml il porte
-# `profiles: ["mailhog"]` et ce script n'active pas ce profil, donc Compose ne
-# le cree jamais. Le laisser dans la liste rendait l'attente des healthchecks
-# impossible a satisfaire (17/18 en boucle -> timeout, code de sortie 2) alors
-# que la pile etait entierement fonctionnelle. Pour utiliser MailHog au lieu de
-# Brevo : ajouter `--profile mailhog` aux arguments compose ci-dessus.
 $expected = @(
-    'jurika-postgres', 'jurika-redis', 'jurika-rabbitmq',
+    # `jurika-minio` et NON `jurika-mailhog` : MailHog a ete retire quand le SMTP
+    # est passe a Brevo (2026-06-03). Le script attendait donc un conteneur qui
+    # n'existe plus, et ignorait MinIO qui existe : le compteur plafonnait a
+    # 17/18 et le timeout de 5 minutes tombait A CHAQUE LANCEMENT, pile saine.
+    'jurika-postgres', 'jurika-redis', 'jurika-rabbitmq', 'jurika-minio',
     'jurika-discovery', 'jurika-gateway', 'jurika-auth', 'jurika-ticket',
     'jurika-workflow', 'jurika-dataroom', 'jurika-ai', 'jurika-supervision',
     'jurika-dashboard', 'jurika-billing',
@@ -127,12 +124,15 @@ Write-Host ""
 Write-Host "✅ Stack JURIKA UP sur LAN $LanHost" -ForegroundColor Green
 Write-Host ""
 Write-Host "   App (frontend)      :  http://$LanHost/"
+# Accolades OBLIGATOIRES : dans "http://$LanHost:8080", PowerShell lit `:` comme
+# un qualificateur de portee (a la maniere de $env:PATH) et cherche une variable
+# nommee « 8080 » dans la portee « LanHost ». Resultat affiche : « http:/// ».
+# La ligne du frontend ci-dessus fonctionnait justement faute de `:`.
 Write-Host "   API Gateway         :  http://${LanHost}:8080/actuator/health"
 Write-Host "   Realtime (Socket)   :  http://${LanHost}:3000/health"
 Write-Host "   Discovery (Eureka)  :  http://${LanHost}:8761"
 Write-Host "   OCR (docTR)         :  http://${LanHost}:8089/health"
 Write-Host "   KIE (Donut)         :  http://${LanHost}:8088/health"
-Write-Host "   MailHog UI          :  http://${LanHost}:8025"
 Write-Host "   RabbitMQ Mgmt       :  http://${LanHost}:15672"
 Write-Host "   MinIO Console       :  http://${LanHost}:9001"
 Write-Host ""

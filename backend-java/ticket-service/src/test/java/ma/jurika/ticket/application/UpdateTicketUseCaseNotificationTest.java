@@ -92,7 +92,7 @@ class UpdateTicketUseCaseNotificationTest {
 
     private Ticket ticket(UUID assigne) {
         return new Ticket(TICKET, WS, "T-2026-00042", "Ticket", TicketType.MODIFICATION,
-                TicketStatut.NOUVEAU, TicketPriorite.NORMALE, null, assigne, ACTOR, null, null, null, null,
+                TicketStatut.CREATION_TICKET, TicketPriorite.NORMALE, null, assigne, ACTOR, null, null, null, null,
                 null, Instant.now());
     }
 }

@@ -274,11 +274,13 @@ public class WorkflowUseCases {
         boolean finalStepValidated = step == p.totalSteps();
         WorkflowStatut newStatut = finalStepValidated ? WorkflowStatut.TERMINE : p.statut();
         Instant completedAt = (finalStepValidated && p.completedAt() == null) ? Instant.now() : p.completedAt();
-        // P3 2026-06-04 : a la 1ere validation effective (step 1 OK + ticket NOUVEAU),
-        // on s'assure que le ticket est passe en EN_COURS. Idempotent.
+        // P3 2026-06-04 : a la 1ere validation effective, on s'assure que le ticket a
+        // quitte le statut d'ouverture. Idempotent.
+        // Lot 1 (2026-09-04) : NOUVEAU -> EN_COURS devient CREATION_TICKET ->
+        // GENERATION_DOCUMENTS, qui designe le meme moment du parcours.
         if (step == 1 && p.currentStep() <= 1) {
-            autoTransitionTicket(workspaceId, ticketId, userId, "NOUVEAU", "EN_COURS",
-                    "WORKFLOW_STEP1_VALIDATED");
+            autoTransitionTicket(workspaceId, ticketId, userId,
+                    "CREATION_TICKET", "GENERATION_DOCUMENTS", "WORKFLOW_STEP1_VALIDATED");
         }
         // Lot « Liquidation 4 etapes » (2026-08-13) — CAS DE SECOURS. Un dossier dissous
         // AVANT la persistance du liquidateur n'en porte aucun en base : l'etape 1 de la
@@ -311,11 +313,22 @@ public class WorkflowUseCases {
                         + "ticket={} : {}", ticketId, ex.getMessage());
             }
         }
-        // P3 : a la VRAIE finalisation, ticket -> CLOTURE (uniquement si pas deja en
-        // statut terminal CLOTURE/ANNULE ; un ticket ANNULE ne reviendra pas en CLOTURE).
+        // P3 : a la VRAIE finalisation, on fait avancer le ticket. L'UPDATE est
+        // conditionnee au statut de depart, donc un ticket ANNULE reste annule.
+        //
+        // Lot 1 (2026-09-04) — le workflow CREATION ne produit que les ACTES
+        // (etapes 4 a 12 du guide). Les etapes 13 a 33 (signature, enregistrement,
+        // immatriculation, publications, CNSS) restent a accomplir : la fin du
+        // workflow fait donc passer le ticket au statut 3 « Deroulement de la
+        // demarche », et non a la cloture. Les autres workflows, qui n'ont pas de
+        // referentiel de demarches, conservent leur comportement : fin de workflow
+        // = ticket cloture.
         if (finalStepValidated && p.statut() != WorkflowStatut.TERMINE) {
-            autoTransitionTicket(workspaceId, ticketId, userId, "EN_COURS", "CLOTURE",
-                    "WORKFLOW_COMPLETED");
+            String cible = p.type() == WorkflowType.CREATION
+                    ? "DEROULEMENT_DEMARCHE"
+                    : "CLOTURE_DOSSIER";
+            autoTransitionTicket(workspaceId, ticketId, userId,
+                    "GENERATION_DOCUMENTS", cible, "WORKFLOW_COMPLETED");
         }
 
         WorkflowProgress updated = progressRepository.save(
@@ -2064,7 +2077,7 @@ public class WorkflowUseCases {
         try {
             int updated = em.createNativeQuery(
                     "UPDATE tickets SET statut = ?1, " +
-                            "cloture_at = CASE WHEN ?1 = 'CLOTURE' THEN NOW() ELSE cloture_at END, " +
+                            "cloture_at = CASE WHEN ?1 = 'CLOTURE_DOSSIER' THEN NOW() ELSE cloture_at END, " +
                             "updated_at = NOW() " +
                             "WHERE id = ?2 AND workspace_id = ?3 AND statut = ?4")
                     .setParameter(1, newStatut)

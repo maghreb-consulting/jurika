@@ -49,14 +49,18 @@ public class TicketDeadlineHooks {
      * CN 90 j) et {@link DeadlineRule#STEP_STALE_7D} (alerte planifiee) restent des perspectives.
      *
      * <p>Idempotence : {@link DeadlineUseCase#computeAuto} deduplique par (ticket, regle), donc
-     * un re-passage en EN_COURS (retry) rafraichit l'echeance existante sans la dupliquer.
+     * un re-passage au meme statut (retry) rafraichit l'echeance existante sans la dupliquer.
+     *
+     * <p>Le declencheur etait l'ancien statut EN_COURS ; c'est desormais
+     * GENERATION_DOCUMENTS, qui marque le meme moment du parcours : le demarrage
+     * effectif de la production sur le dossier.
      */
     public void onTransition(Ticket ticket, TicketStatut from, TicketStatut to) {
-        if (to != TicketStatut.EN_COURS) {
+        if (to != TicketStatut.GENERATION_DOCUMENTS) {
             return;
         }
         Map<String, Object> meta = Map.of(
-                "from", from.name(), "to", to.name(), "trigger", "transition_en_cours");
+                "from", from.name(), "to", to.name(), "trigger", "transition_generation_documents");
         switch (ticket.type()) {
             case CREATION -> computeAuto(ticket, DeadlineRule.CN_EXPIRY_90D, ticket.createdAt(), meta);
             case LIQUIDATION -> computeAuto(ticket, DeadlineRule.LIQUIDATION_PUBLI_16J, ticket.createdAt(), meta);

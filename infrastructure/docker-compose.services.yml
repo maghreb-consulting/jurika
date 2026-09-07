@@ -64,6 +64,14 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       JURIKA_ENV: ${JURIKA_ENV:-dev}
       EUREKA_SERVER_URL: http://discovery-service:8761/eureka
+      # Amorce de la liste blanche CORS au demarrage. Elle est ensuite REMPLACEE
+      # toutes les 5 min par la liste venue de la base
+      # (auth-service /api/v1/admin/cors-origins, cf. DynamicCorsConfigurationSource) :
+      # la base reste la source durable. Cette valeur ne couvre que la fenetre
+      # entre le demarrage et le premier sondage -- sans elle, les requetes de la
+      # page servie par le conteneur (http://localhost, port 80) sont refusees en
+      # 403 pendant ce laps de temps.
+      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost,http://localhost:5173}"
       REDIS_HOST: redis
       REDIS_PASSWORD: ${REDIS_PASSWORD:-JurikaRedis2026}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
@@ -101,6 +109,14 @@ services:
       RABBITMQ_HOST: rabbitmq
       JWT_PRIVATE_KEY_PATH: /run/secrets/jwt/jwt-private-pkcs8.pem
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
+      # Cle AES qui chiffre les secrets TOTP en base. SANS cette ligne, le
+      # conteneur retombait sur la valeur de repli d'application.yml
+      # (`dev-only-aes-secret-...`), differente de celle du mode hote qui a
+      # chiffre les secrets deja en base : /verify-2fa repondait 500 avec
+      # `AEADBadTagException: Tag mismatch`, et la 2FA etait infranchissable.
+      # `:?` fait echouer Compose bruyamment plutot que de repartir en silence
+      # sur une mauvaise cle -- une divergence de cle ne doit jamais etre muette.
+      AES_SECRET_KEY: "${AES_SECRET_KEY:?AES_SECRET_KEY absent, .env doit etre passe en --env-file}"
     volumes:
       - ./secrets/jwt:/run/secrets/jwt:ro
     depends_on:
@@ -192,6 +208,11 @@ services:
     ports:
       - "${DATAROOM_SERVICE_PORT:-8084}:8084"
     environment:
+      # Edition bureautique (lot 3) — cf. commentaires dans application.yml.
+      WOPI_BASE_URL: ${WOPI_BASE_URL:-http://dataroom-service:8084}
+      WOPI_EDITOR_URL: ${WOPI_EDITOR_URL:-http://localhost:9980}
+      WOPI_SESSION_DURATION: ${WOPI_SESSION_DURATION:-PT2H}
+      WOPI_GRACE_WINDOW: ${WOPI_GRACE_WINDOW:-PT3M}
       <<: *otel-env
       OTEL_SERVICE_NAME: dataroom-service
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
@@ -315,14 +336,7 @@ services:
     ports:
       - "${KIE_PORT:-8088}:8088"
     environment:
-      # Chemin INTERNE au conteneur : il doit toujours correspondre a la cible
-      # du montage ci-dessous. Ne pas le rendre surchargeable par la variable
-      # DONUT_MODEL_DIR : en mode hote, `.env.local` la definit avec un chemin
-      # Windows (C:\...\models\donut-jurika-final) pour start-all.ps1, et comme
-      # compose est lance avec --env-file .env.local, cette valeur fuitait dans
-      # le conteneur Linux -> modele introuvable, kie-service degrade en
-      # silence. Le chemin hote reste surchargeable via DONUT_MODEL_DIR_HOST.
-      DONUT_MODEL_DIR: /models/donut-jurika-final
+      DONUT_MODEL_DIR: ${DONUT_MODEL_DIR:-/models/donut-jurika-final}
       MAX_FILE_MB: ${KIE_MAX_FILE_MB:-15}
       KIE_PRELOAD: ${KIE_PRELOAD:-true}
       KIE_LOG_LEVEL: ${KIE_LOG_LEVEL:-INFO}
@@ -372,6 +386,83 @@ services:
       timeout: 5s
       retries: 3
       start_period: 90s
+    networks:
+      - jurika-network
+
+  # ──────────────────────────────────────────────────────────────────
+  # COLLABORA ONLINE CODE (lot 3) — édition bureautique fidèle
+  #
+  # Pourquoi ce conteneur : l'aller-retour .docx → HTML → .docx de l'éditeur
+  # TipTap détruit la mise en page du directeur. Mesuré au lot 2 sur un même
+  # acte : styles.xml absent, 49 paragraphes stylés `JurikaTitreArticle` → 0,
+  # 11 numérotations automatiques → 0, 89 alignements → 0. Aucun format
+  # intermédiaire ne préserve cela ; il faut un moteur bureautique réel.
+  #
+  # Licence MPL-2.0, gratuit, sans limite d'utilisateurs. ONLYOFFICE est écarté
+  # (AGPL v3, incompatible avec une diffusion SaaS sans publication du code).
+  #
+  # RÉSERVE PORTÉE AU DOSSIER : l'éditeur déclare CODE « non recommandé en
+  # production » (publication continue, sans SLA). Acceptable pour un usage
+  # interne au cabinet ; à réévaluer avant commercialisation.
+  # ──────────────────────────────────────────────────────────────────
+  collabora:
+    image: collabora/code:latest
+    container_name: jurika-collabora
+    restart: unless-stopped
+    ports:
+      - "${COLLABORA_PORT:-9980}:9980"
+    environment:
+      # aliasgroup1 — LA cause d'échec n° 1 de cette intégration
+      # (« Unauthorized WOPI host »). Collabora valide l'hôte du paramètre
+      # `WOPISrc` contre cette liste. Le premier élément est l'hôte WOPI
+      # principal, les suivants en sont des alias.
+      #
+      # Ici `WOPISrc` désigne le backend par son nom de service Docker : c'est
+      # Collabora qui appelle le backend, jamais le navigateur. On déclare
+      # néanmoins aussi l'origine publique, pour qu'une configuration passant
+      # par la passerelle continue de fonctionner sans re-toucher ce fichier.
+      aliasgroup1: ${COLLABORA_ALIASGROUP:-http://dataroom-service:8084,http://gateway-service:8080,http://localhost:8084,http://localhost}
+      # Console d'administration — jamais en clair ici, cf. .env.local.
+      username: ${COLLABORA_ADMIN_USER:-}
+      password: ${COLLABORA_ADMIN_PASSWORD:-}
+      DONT_GEN_SSL_CERT: "true"
+      # TLS — POINT OUVERT DE L'AUDIT DE SÉCURITÉ, à revoir le jour où HTTPS
+      # sera déployé.
+      #   ssl.enable=false      : pas de TLS interne au conteneur.
+      #   ssl.termination=FALSE : aujourd'hui RIEN ne termine le TLS en amont —
+      #     le navigateur appelle http://localhost:9980 en clair. Mettre `true`
+      #     ici fait annoncer par /hosting/discovery des URL en `https://`
+      #     (mesuré : 278 urlsrc en https), que le navigateur ne peut pas
+      #     joindre puisque le conteneur n'écoute qu'en HTTP : l'éditeur ne
+      #     s'ouvre jamais. Le jour où un reverse proxy terminera TLS devant
+      #     Collabora, passer COLLABORA_SSL_TERMINATION à `true` — et alors
+      #     seulement.
+      extra_params: >-
+        --o:ssl.enable=false
+        --o:ssl.termination=${COLLABORA_SSL_TERMINATION:-false}
+        --o:num_prespawn_children=1
+        --o:net.frame_ancestors=${COLLABORA_FRAME_ANCESTORS:-http://localhost http://localhost:80}
+        --o:logging.level=warning
+    # Voie A (arbitrage 2026-09-07) : la VM Docker n'a que ~2,4 Go de marge pour
+    # 18 conteneurs. Un seul processus de rendu pré-alloué au lieu de quatre, et
+    # un plafond mémoire explicite — mieux vaut une file d'attente qu'un OOM
+    # killer qui choisit sa victime parmi les autres services.
+    mem_limit: ${COLLABORA_MEM_LIMIT:-1g}
+    cap_add:
+      - MKNOD
+    # PAS DE `healthcheck:` ICI, ET C'EST VOULU.
+    #
+    # L'image embarque le sien : `/usr/bin/coolwsd --probe --use-env-vars`,
+    # exécuté SANS interpréteur. Le conteneur n'a ni `/bin/sh` ni coreutils —
+    # `docker exec jurika-collabora ls` échoue par « executable file not found ».
+    # Toute sonde écrite en `CMD-SHELL` (un `curl` sur /hosting/discovery, par
+    # exemple) échoue donc systématiquement, et le conteneur reste marqué
+    # `unhealthy` alors que le service répond parfaitement — mesuré : 200 depuis
+    # l'hôte comme depuis `dataroom-service`. Un `unhealthy` permanent est pire
+    # qu'une absence de sonde : il use le seul signal qui devrait alerter.
+    #
+    # Laisser l'image faire évite aussi de figer un chemin de binaire qui
+    # changerait à la prochaine publication de CODE.
     networks:
       - jurika-network
 

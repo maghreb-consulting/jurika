@@ -5,6 +5,8 @@ import {
   FileDown,
   FileText,
   Filter,
+  ChevronDown,
+  ChevronRight,
   History,
   IdCard,
   Loader2,
@@ -28,12 +30,15 @@ import {
 } from '../../lib/dossierArchive';
 import type {
   DocumentSummary,
-  DocumentType,
   DossierJuridiqueView,
+  DossierTicket,
+  GroupeDocuments,
 } from '../../types/dataroom';
-import { DOCUMENT_TYPE_LABELS, DOCUMENT_TYPE_ORDER } from '../../types/dataroom';
+import { DOCUMENT_TYPE_LABELS } from '../../types/dataroom';
 
 import type { Role } from '../../types/auth';
+import { STATUT_LABELS_COURTS } from '../../types/ticket';
+import type { TicketStatut } from '../../types/ticket';
 import {
   DEFAULT_FILTERS,
   JuridiqueSearchBar,
@@ -55,37 +60,6 @@ import { IdentifiantsDrawer } from './components/IdentifiantsDrawer';
 import { FichePreflightModal } from './components/FichePreflightModal';
 import { computeMissingIdentity } from './components/ficheClientPreflight';
 
-/**
- * Regroupe les documents en vigueur PAR TYPE, dans l'ordre métier (fix DR3).
- *
- * Les types inconnus (données plus anciennes que la nomenclature courante) sont
- * conservés et rejetés en fin de liste : rien ne disparaît jamais de la vue.
- */
-function groupesParType(
-  docs: DocumentSummary[],
-): Array<{ type: string; label: string; docs: DocumentSummary[] }> {
-  const parType = new Map<string, DocumentSummary[]>();
-  for (const d of docs) {
-    const t = d.documentType ?? 'AUTRE';
-    const liste = parType.get(t);
-    if (liste) liste.push(d);
-    else parType.set(t, [d]);
-  }
-  const rang = (t: string) => {
-    const i = DOCUMENT_TYPE_ORDER.indexOf(t as DocumentType);
-    return i === -1 ? DOCUMENT_TYPE_ORDER.length : i;
-  };
-  return [...parType.entries()]
-    .sort(([a], [b]) => rang(a) - rang(b) || a.localeCompare(b))
-    .map(([type, liste]) => ({
-      type,
-      label: (DOCUMENT_TYPE_LABELS as Record<string, string>)[type] ?? type,
-      // Version courante en tête, puis du plus récent au plus ancien.
-      docs: [...liste].sort(
-        (x, y) => new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime(),
-      ),
-    }));
-}
 
 interface Props {
   dossierId: string;
@@ -470,47 +444,38 @@ export function DossierJuridiqueTab({
             </div>
           </header>
           {/*
-            Fix DR3 (2026-08-16) — VUE REGROUPÉE PAR TYPE.
+            Lot 1 (2026-09-04) — LE DOSSIER JURIDIQUE S'ORGANISE PAR TICKET.
 
-            La liste était plate : le type n'apparaissait qu'en libellé de seconde
-            ligne (« Statuts • v3 • 12/05/2026 »). Sur un dossier ayant vécu
-            plusieurs opérations, retrouver « les statuts » ou « le dernier PV »
-            imposait de parcourir toute la liste. On rend donc des sections
-            ordonnées (statuts → PV → séance → annonces → actes → identité →
-            identifiants → autres), chacune avec sa version courante en tête et son
-            historique replié sous le document (DocumentVersionsDropdown existant).
-            La recherche plein texte, elle, garde volontairement sa liste à plat :
-            elle répond à une question ponctuelle, pas à un besoin de classement.
+            Chaque opération forme un dossier, portant un libellé calculé côté
+            serveur (« Création — T-2026-00841 — 15/06/2026 »), et contenant ses
+            documents rangés en trois groupes : actes générés, justificatifs
+            administratifs, pièces client.
+
+            Deux règles, toutes deux destinées à ce qu'aucun document ne se perde :
+            les versions historiques restent visibles dans le ticket qui les a
+            produites (un ticket clos EST l'archive), et les documents rattachés à
+            aucun ticket rejoignent un dossier « Hors ticket » au lieu d'être
+            masqués.
+
+            La recherche plein texte garde sa liste à plat : elle répond à une
+            question ponctuelle, pas à un besoin de classement.
           */}
-          {view.documentsEnVigueur.length === 0 ? (
+          {view.dossiersParTicket.length === 0 ? (
             <ul className="divide-y divide-border">
               <li className="px-5 py-8 text-center text-sm text-fg-subtle">
-                Aucun document en vigueur pour ce dossier.
+                Aucun document dans le dossier juridique.
               </li>
             </ul>
           ) : (
-            groupesParType(view.documentsEnVigueur).map((groupe) => (
-              <section key={groupe.type} data-testid={`groupe-${groupe.type}`}>
-                <h4 className="flex items-center gap-2 border-b border-border bg-bg-overlay/60 px-5 py-1.5 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
-                  {groupe.label}
-                  <span className="rounded-full bg-bg-raised px-1.5 text-[10px] font-bold text-fg-subtle">
-                    {groupe.docs.length}
-                  </span>
-                </h4>
-                <ul className="divide-y divide-border">
-                  {groupe.docs.map((doc) => (
-                    <DocumentRow
-                      key={doc.id}
-                      doc={doc}
-                      canDelete={canUpload}
-                      onDeleted={load}
-                      selectable
-                      selected={selectedIds.has(doc.id)}
-                      onToggleSelect={() => toggleSelect(doc.id)}
-                    />
-                  ))}
-                </ul>
-              </section>
+            view.dossiersParTicket.map((dossier) => (
+              <DossierDeTicket
+                key={dossier.ticketId ?? 'hors-ticket'}
+                dossier={dossier}
+                canDelete={canUpload}
+                onDeleted={load}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+              />
             ))
           )}
         </Card>
@@ -632,6 +597,88 @@ export function DossierJuridiqueTab({
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * Le dossier d'un ticket : un libellé calculé, puis les documents rangés en
+ * trois groupes. Replié par défaut au-delà du premier, pour qu'un dossier ayant
+ * vécu dix opérations reste lisible.
+ */
+function DossierDeTicket({
+  dossier,
+  canDelete,
+  onDeleted,
+  selectedIds,
+  onToggleSelect,
+}: {
+  dossier: DossierTicket;
+  canDelete: boolean;
+  onDeleted: () => void;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
+}) {
+  const [ouvert, setOuvert] = useState(true);
+  const horsTicket = dossier.ticketId === null;
+
+  return (
+    <section data-testid={`dossier-ticket-${dossier.ticketId ?? 'hors-ticket'}`}>
+      <button
+        type="button"
+        onClick={() => setOuvert((v) => !v)}
+        aria-expanded={ouvert}
+        className="flex w-full items-center gap-2 border-b border-border bg-bg-overlay/60 px-5 py-2 text-left transition hover:bg-bg-overlay"
+      >
+        {ouvert ? (
+          <ChevronDown className="h-4 w-4 shrink-0 text-fg-subtle" />
+        ) : (
+          <ChevronRight className="h-4 w-4 shrink-0 text-fg-subtle" />
+        )}
+        <span className={`text-sm font-semibold ${horsTicket ? 'text-fg-subtle' : 'text-fg'}`}>
+          {dossier.libelle}
+        </span>
+        {dossier.statut && (
+          <Badge variant={dossier.statut === 'CLOTURE_DOSSIER' ? 'success' : 'info'}>
+            {STATUT_LABELS_COURTS[dossier.statut as TicketStatut] ?? dossier.statut}
+          </Badge>
+        )}
+        <span className="ml-auto rounded-full bg-bg-raised px-2 py-0.5 text-[11px] font-bold text-fg-subtle">
+          {dossier.totalDocuments}
+        </span>
+      </button>
+
+      {ouvert && horsTicket && (
+        <p className="border-b border-border bg-bg-overlay/30 px-5 py-2 text-xs text-fg-subtle">
+          Documents antérieurs au classement par ticket, ou déposés hors workflow.
+          Ils restent consultables et téléchargeables.
+        </p>
+      )}
+
+      {ouvert &&
+        dossier.groupes.map((groupe: GroupeDocuments) => (
+          <div key={groupe.code} data-testid={`groupe-${groupe.code}`}>
+            <h4 className="flex items-center gap-2 border-b border-border px-8 py-1.5 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
+              {groupe.libelle}
+              <span className="rounded-full bg-bg-raised px-1.5 text-[10px] font-bold text-fg-subtle">
+                {groupe.documents.length}
+              </span>
+            </h4>
+            <ul className="divide-y divide-border">
+              {groupe.documents.map((doc: DocumentSummary) => (
+                <DocumentRow
+                  key={doc.id}
+                  doc={doc}
+                  canDelete={canDelete}
+                  onDeleted={onDeleted}
+                  selectable
+                  selected={selectedIds.has(doc.id)}
+                  onToggleSelect={() => onToggleSelect(doc.id)}
+                />
+              ))}
+            </ul>
+          </div>
+        ))}
+    </section>
   );
 }
 

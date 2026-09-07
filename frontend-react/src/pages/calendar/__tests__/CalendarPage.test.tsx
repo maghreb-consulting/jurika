@@ -32,7 +32,7 @@ function mkTicket(p: Partial<Ticket>): Ticket {
     reference: p.reference ?? 'TCK-001',
     titre: p.titre ?? 'Constituer SARL ACME',
     type: 'CREATION',
-    statut: p.statut ?? 'NOUVEAU',
+    statut: p.statut ?? 'CREATION_TICKET',
     priorite: p.priorite ?? 'URGENTE',
     dossierId: null,
     assigneId: null,

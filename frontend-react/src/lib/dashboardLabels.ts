@@ -5,9 +5,10 @@
  */
 
 export const STATUT_TICKET_LABELS: Record<string, string> = {
-  NOUVEAU: 'Nouveau',
-  EN_COURS: 'En cours',
-  CLOTURE: 'Clôturé',
+  CREATION_TICKET: 'Création du ticket',
+  GENERATION_DOCUMENTS: 'Génération des documents',
+  DEROULEMENT_DEMARCHE: 'Déroulement de la démarche',
+  CLOTURE_DOSSIER: 'Clôture de dossier',
   ANNULE: 'Annulé',
 };
 

@@ -40,7 +40,7 @@ public class ClientDashboardAggregator {
                 FROM tickets t
                 JOIN entreprise_dossiers d ON d.id = t.dossier_id
                 WHERE t.workspace_id = ? AND d.client_id = ?
-                  AND t.statut IN ('NOUVEAU','EN_COURS')
+                  AND t.statut IN ('CREATION_TICKET','GENERATION_DOCUMENTS','DEROULEMENT_DEMARCHE')
                 ORDER BY t.created_at DESC LIMIT 10
                 """, (rs, rn) -> new TicketLite(
                         (UUID) rs.getObject(1), rs.getString(2), rs.getString(3),
@@ -60,15 +60,13 @@ public class ClientDashboardAggregator {
                         rs.getTimestamp(4).toInstant()),
                 workspaceId, clientUserId);
 
-        List<EcheanceItem> echeances = jdbc.query("""
-                SELECT a.id, a.dossier_id, a.type_echeance, a.date_echeance, a.statut
-                FROM dataroom_alertes_echeances a
-                JOIN entreprise_dossiers d ON d.id = a.dossier_id
-                WHERE a.workspace_id = ? AND d.client_id = ?
-                  AND a.statut IN ('PLANIFIEE','ENVOYEE')
-                  AND a.date_echeance <= CURRENT_DATE + INTERVAL '30 day'
-                ORDER BY a.date_echeance ASC LIMIT 20
-                """, (rs, rn) -> new EcheanceItem(
+        // Lot 1 (2026-09-04) -- les echeances viennent desormais des DEMARCHES du
+        // parcours (delais legaux du guide) et non plus des alertes fiscales,
+        // supprimees avec le dossier fiscal.
+        List<EcheanceItem> echeances = jdbc.query(
+                DemarcheEcheancesSql.BASE + DemarcheEcheancesSql.SCOPE_CLIENT
+                        + DemarcheEcheancesSql.ORDER,
+                (rs, rn) -> new EcheanceItem(
                         (UUID) rs.getObject(1), (UUID) rs.getObject(2),
                         rs.getString(3),
                         rs.getDate(4) == null ? null : rs.getDate(4).toLocalDate(),

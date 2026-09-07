@@ -133,7 +133,7 @@ class FicheClientServiceTest {
         DossierViewEntity d = dossier("ACTIVE", responsable);
         when(dossiers.findByWorkspaceIdAndId(ws, dossierId)).thenReturn(Optional.of(d));
         UUID ticketId = UUID.randomUUID();
-        TicketViewEntity t = ticket(ticketId, "MODIFICATION", "CLOTURE", "TCK-14",
+        TicketViewEntity t = ticket(ticketId, "MODIFICATION", "CLOTURE_DOSSIER", "TCK-14",
                 Instant.parse("2026-03-01T00:00:00Z"), Instant.parse("2026-03-20T00:00:00Z"));
         when(tickets.findAllByDossierIdAndStatutNot(dossierId, "ANNULE")).thenReturn(List.of(t));
         String dataJson = "{\"step1\":{\"selectedTypes\":[\"DESIGNATION_GERANT\"],"
@@ -155,7 +155,7 @@ class FicheClientServiceTest {
         DossierViewEntity d = dossier("ACTIVE", responsable);
         when(dossiers.findByWorkspaceIdAndId(ws, dossierId)).thenReturn(Optional.of(d));
         UUID ticketId = UUID.randomUUID();
-        TicketViewEntity t = ticket(ticketId, "DISSOLUTION", "EN_COURS", "TCK-88",
+        TicketViewEntity t = ticket(ticketId, "DISSOLUTION", "GENERATION_DOCUMENTS", "TCK-88",
                 Instant.parse("2026-05-01T00:00:00Z"), null);
         when(tickets.findAllByDossierIdAndStatutNot(dossierId, "ANNULE")).thenReturn(List.of(t));
 

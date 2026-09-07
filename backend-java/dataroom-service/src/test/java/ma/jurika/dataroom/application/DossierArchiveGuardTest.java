@@ -175,9 +175,9 @@ class DossierArchiveGuardTest {
     void archivageIdentite_autoriseSiLiquidationOuverte() {
         dossierStatut("DISSOUTE");
         TicketViewEntity t = ticket("LIQUIDATION", DOSSIER);
-        lenient().when(tickets.findAllByDossierIdAndStatutOrderByClotureAtDesc(DOSSIER, "NOUVEAU"))
+        lenient().when(tickets.findAllByDossierIdAndStatutOrderByClotureAtDesc(DOSSIER, "CREATION_TICKET"))
                 .thenReturn(List.of());
-        lenient().when(tickets.findAllByDossierIdAndStatutOrderByClotureAtDesc(DOSSIER, "EN_COURS"))
+        lenient().when(tickets.findAllByDossierIdAndStatutOrderByClotureAtDesc(DOSSIER, "GENERATION_DOCUMENTS"))
                 .thenReturn(List.of(t));
 
         assertThatCode(() -> guard.assertWritableForLiquidationCapableWrite(DOSSIER))

@@ -5,7 +5,8 @@
  */
 
 export interface EcheanceSignal {
-  source: 'DEADLINE' | 'ALERTE_FISCALE' | string;
+  /** DEADLINE = echeance calculee du ticket ; DELAI_LEGAL = delai du guide porte par une demarche. */
+  source: 'DEADLINE' | 'DELAI_LEGAL' | string;
   refId: string;
   intitule: string;
   date: string | null; // ISO date (yyyy-MM-dd)

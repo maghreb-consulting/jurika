@@ -130,7 +130,7 @@ class TicketSearchScopingTest {
         UUID ticketId = UUID.randomUUID();
 
         Ticket assigned = new Ticket(ticketId, ws, "T-2026-00042", "Creation SARL",
-                TicketType.CREATION, TicketStatut.EN_COURS, TicketPriorite.NORMALE,
+                TicketType.CREATION, TicketStatut.GENERATION_DOCUMENTS, TicketPriorite.NORMALE,
                 UUID.randomUUID(), assigne, UUID.randomUUID(),
                 null, null, null, Instant.now(), null, null, Instant.now());
         when(searchTicketsUseCase.execute(any(), anyInt(), anyInt()))
@@ -157,7 +157,7 @@ class TicketSearchScopingTest {
 
         // Ticket SANS assigne_id mais porte par un dossier ayant un responsable.
         Ticket t = new Ticket(ticketId, ws, "T-2026-00050", "Modification",
-                TicketType.MODIFICATION, TicketStatut.EN_COURS, TicketPriorite.NORMALE,
+                TicketType.MODIFICATION, TicketStatut.GENERATION_DOCUMENTS, TicketPriorite.NORMALE,
                 dossierId, null, UUID.randomUUID(),
                 null, null, null, Instant.now(), null, null, Instant.now());
         when(searchTicketsUseCase.execute(any(), anyInt(), anyInt()))
@@ -183,7 +183,7 @@ class TicketSearchScopingTest {
         UUID createur = UUID.randomUUID();
         // Ticket NOUVEAU sans assigne_id ni dossier : le createur est le responsable.
         Ticket nouveau = new Ticket(UUID.randomUUID(), ws, "T-2026-00043", "Import",
-                TicketType.IMPORT, TicketStatut.NOUVEAU, TicketPriorite.NORMALE,
+                TicketType.IMPORT, TicketStatut.CREATION_TICKET, TicketPriorite.NORMALE,
                 null, null, createur,
                 null, null, null, Instant.now(), null, null, Instant.now());
         when(searchTicketsUseCase.execute(any(), anyInt(), anyInt()))
@@ -205,7 +205,7 @@ class TicketSearchScopingTest {
         UUID ws = UUID.randomUUID();
         // Createur purge : introuvable dans l'annuaire -> nom null -> "Non assigne".
         Ticket orphan = new Ticket(UUID.randomUUID(), ws, "T-2026-00044", "Import",
-                TicketType.IMPORT, TicketStatut.NOUVEAU, TicketPriorite.NORMALE,
+                TicketType.IMPORT, TicketStatut.CREATION_TICKET, TicketPriorite.NORMALE,
                 null, null, UUID.randomUUID(),
                 null, null, null, Instant.now(), null, null, Instant.now());
         when(searchTicketsUseCase.execute(any(), anyInt(), anyInt()))
@@ -229,7 +229,7 @@ class TicketSearchScopingTest {
         // Ticket repris via transfert : garde son ancien assigne_id, mais le dossier
         // a un NOUVEAU responsable -> c'est lui qui doit s'afficher.
         Ticket transfere = new Ticket(UUID.randomUUID(), ws, "T-2026-00045", "Modification",
-                TicketType.MODIFICATION, TicketStatut.EN_COURS, TicketPriorite.NORMALE,
+                TicketType.MODIFICATION, TicketStatut.GENERATION_DOCUMENTS, TicketPriorite.NORMALE,
                 dossierId, ancienAssigne, UUID.randomUUID(),
                 null, null, null, Instant.now(), null, null, Instant.now());
         when(searchTicketsUseCase.execute(any(), anyInt(), anyInt()))
@@ -259,7 +259,7 @@ class TicketSearchScopingTest {
 
         // Ticket CLOTURE assigne a l'ANCIEN employe (non reassigne au transfert).
         Ticket clos = new Ticket(ticketId, ws, "T-2026-00009", "Creation SARL",
-                TicketType.CREATION, TicketStatut.CLOTURE, TicketPriorite.NORMALE,
+                TicketType.CREATION, TicketStatut.CLOTURE_DOSSIER, TicketPriorite.NORMALE,
                 dossierId, UUID.randomUUID(), UUID.randomUUID(),
                 null, null, null, Instant.now(), null, null, Instant.now());
         when(ticketRepository.findById(ws, ticketId)).thenReturn(Optional.of(clos));
@@ -282,7 +282,7 @@ class TicketSearchScopingTest {
         UUID ticketId = UUID.randomUUID();
 
         Ticket clos = new Ticket(ticketId, ws, "T-2026-00010", "Creation SARL",
-                TicketType.CREATION, TicketStatut.CLOTURE, TicketPriorite.NORMALE,
+                TicketType.CREATION, TicketStatut.CLOTURE_DOSSIER, TicketPriorite.NORMALE,
                 dossierId, UUID.randomUUID(), UUID.randomUUID(),
                 null, null, null, Instant.now(), null, null, Instant.now());
         when(ticketRepository.findById(ws, ticketId)).thenReturn(Optional.of(clos));
@@ -304,16 +304,16 @@ class TicketSearchScopingTest {
 
         // Ticket repris : EN_COURS, assigne a l'employe (RG-U08 ok).
         Ticket repris = new Ticket(ticketId, ws, "T-2026-00011", "Creation SARL",
-                TicketType.CREATION, TicketStatut.EN_COURS, TicketPriorite.NORMALE,
+                TicketType.CREATION, TicketStatut.GENERATION_DOCUMENTS, TicketPriorite.NORMALE,
                 null, employe, employe, null, null, "Annulation initiale", null, null, Instant.now());
         when(ticketRepository.findById(ws, ticketId)).thenReturn(Optional.of(repris));
 
         // Historique (deja trie du plus recent au plus ancien par l'adapter) :
         // une reprise recente, une annulation, une premiere reprise plus ancienne.
         when(commentRepository.findByTicket(ws, ticketId)).thenReturn(List.of(
-                comment(ws, ticketId, "Reprise pour complement de piece", "ANNULE", "EN_COURS"),
-                comment(ws, ticketId, "Annulation initiale", "EN_COURS", "ANNULE"),
-                comment(ws, ticketId, "Ancienne reprise", "ANNULE", "EN_COURS")));
+                comment(ws, ticketId, "Reprise pour complement de piece", "ANNULE", "GENERATION_DOCUMENTS"),
+                comment(ws, ticketId, "Annulation initiale", "GENERATION_DOCUMENTS", "ANNULE"),
+                comment(ws, ticketId, "Ancienne reprise", "ANNULE", "GENERATION_DOCUMENTS")));
 
         var dto = controller().get(user(Role.EMPLOYE, employe, ws), ticketId);
         assertThat(dto.repriseMotif()).isEqualTo("Reprise pour complement de piece");

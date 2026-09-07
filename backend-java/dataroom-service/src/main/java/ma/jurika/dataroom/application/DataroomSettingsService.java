@@ -88,20 +88,6 @@ public class DataroomSettingsService {
         return repo.save(s);
     }
 
-    /**
-     * RG-DC27 : configure l'email du comptable et active/desactive la notif a chaque upload.
-     */
-    @Transactional
-    public SettingsEntity updateAccountantNotification(UUID dossierId, String accountantEmail, boolean enabled) {
-        if (enabled && (accountantEmail == null || accountantEmail.isBlank() || !accountantEmail.contains("@"))) {
-            throw new ValidationException("Email comptable invalide");
-        }
-        SettingsEntity s = getOrCreate(dossierId);
-        s.setAccountantEmail(accountantEmail == null || accountantEmail.isBlank() ? null : accountantEmail.trim());
-        s.setNotifyAccountantOnUpload(enabled);
-        return repo.save(s);
-    }
-
     @Transactional
     public void incrementAccess(UUID dossierId) {
         repo.incrementAccess(dossierId, Instant.now());

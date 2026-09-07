@@ -64,7 +64,7 @@ export function TicketCard({ ticket, onClick, onDragStart }: Props) {
   const overdue =
     ticket.deadline &&
     new Date(ticket.deadline).getTime() < Date.now() &&
-    ticket.statut !== 'CLOTURE' &&
+    ticket.statut !== 'CLOTURE_DOSSIER' &&
     ticket.statut !== 'ANNULE';
 
   return (

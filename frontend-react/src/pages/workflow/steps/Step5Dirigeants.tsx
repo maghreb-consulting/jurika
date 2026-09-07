@@ -406,7 +406,12 @@ export function Step5Dirigeants({
         d.cinNumero &&
         d.adresse &&
         (importMode || d.cinUploaded) &&
-        !cinInvalidMessage(d.cinNumero),
+        !cinInvalidMessage(d.cinNumero) &&
+        // Lot 2 (2026-09-07) — l'acte de nomination du gerant imprime
+        // $GERANT_DATE_NAISSANCE : sans elle, l'acte sortait avec un trou
+        // (« né le , demeurant à… »). Une date de naissance manquante dans un
+        // acte est une lacune de fond, pas de forme.
+        d.dateNaissance,
     );
   }
   const dirigeantsValid = dirigeants.length >= 1 && dirigeants.every(isDirigeantValid);
@@ -582,6 +587,9 @@ export function Step5Dirigeants({
         if (!d.cinNumero) manques.push('n° de CIN');
         else if (cinInvalidMessage(d.cinNumero)) manques.push('n° de CIN valide');
         if (!d.adresse) manques.push('adresse');
+        if (!d.dateNaissance) {
+          manques.push('date de naissance (imprimée dans l’acte de nomination)');
+        }
         // LE piège : le fichier joint ne suffit pas, il faut lancer l'extraction.
         if (!importMode && !d.cinUploaded) {
           manques.push('CIN extraite — joindre le fichier ne suffit pas, cliquez « Extraire »');
@@ -632,10 +640,15 @@ export function Step5Dirigeants({
       className="mx-auto max-w-[880px] space-y-6"
     >
       <div className="rounded-xl border border-border bg-accent/10 p-4 text-xs text-fg">
+        {/* Lot 2 (2026-09-07) — le texte disait « aide optionnelle » alors que
+            l'etape BLOQUE tant que l'extraction n'a pas ete lancee. L'un des
+            deux mentait ; c'est celui-ci, puisque la regle metier veut que la
+            CIN soit lue, pas seulement jointe. */}
         Identifiez le ou les gerants de la societe. Au moins un gerant est
-        requis. <strong>L'upload de la CIN est obligatoire</strong> pour chaque
-        dirigeant. Vous pouvez aussi cliquer sur &laquo; Extraire les donnees
-        &raquo; pour pre-remplir le formulaire via OCR (aide optionnelle).
+        requis. <strong>Pour chaque dirigeant, la CIN doit etre jointe PUIS
+        lue</strong> : televersez le recto, cliquez &laquo; Extraire &raquo;,
+        puis &laquo; Appliquer au formulaire &raquo;. Les champs pre-remplis
+        restent modifiables a la main.
         {isSarlAu && (
           <p className="mt-1 font-medium text-accent">
             SARL_AU : un seul dirigeant peut etre coche comme &laquo; Associe

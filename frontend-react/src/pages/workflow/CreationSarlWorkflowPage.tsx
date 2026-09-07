@@ -679,7 +679,7 @@ function CreationSarlWorkflowPageBody() {
   // ADDITIF : le mode normal (NOUVEAU / EN_COURS) est inchangé.
   const readOnly =
     progress.statut === 'TERMINE' ||
-    ticket.statut === 'CLOTURE' ||
+    ticket.statut === 'CLOTURE_DOSSIER' ||
     ticket.statut === 'ANNULE';
   // Miroir ref lu par les callbacks mémoïsées (upload / dépôt document).
   readOnlyRef.current = readOnly;
@@ -698,11 +698,12 @@ function CreationSarlWorkflowPageBody() {
   /**
    * Finalisation Creation (etape 9). Apres la finalisation du workflow
    * (executeStep 9 -> ticket CLOTURE + creation/lien du dossier cote backend),
-   * on OUVRE l'exercice fiscal de l'annee de constitution. Comme en Import (A2),
-   * l'orchestration est cote front (workflow-service n'a pas de client
-   * dataroom-service) : openExercice -> EcheancesGenerator -> echeances visibles
-   * (EcheancesPanel + dashboard). Regime TVA par defaut : mensuel. Annee = annee
-   * de la date de commencement d'exercice saisie a l'etape 3 (source unique), sinon
+   * on met a jour les identifiants du dossier. L'orchestration est cote front
+   * (workflow-service n'a pas de client dataroom-service).
+   *
+   * Lot 1 (2026-09-04) : l'ouverture d'un exercice fiscal a disparu avec le
+   * dossier fiscal. Les echeances du dossier viennent desormais des delais
+   * legaux portes par les demarches du parcours, sinon
    * annee courante. Le 409 EXERCICE_EXISTS est absorbe (best-effort, ne bloque jamais).
    */
   async function finalizeCreation(): Promise<void> {
@@ -711,12 +712,6 @@ function CreationSarlWorkflowPageBody() {
     try {
       // 2026-08 (dé-dup) — la date de commencement de l'exercice a une source UNIQUE :
       // Step3 (capital.dateCommencement). Step4 ne la saisit plus.
-      const s3 = (stepData.step3 as Record<string, unknown> | undefined) ?? {};
-      const cap = (s3.capital as Record<string, unknown> | undefined) ?? s3;
-      const debut = cap.dateCommencement as string | undefined;
-      const annee =
-        debut && /^\d{4}/.test(debut) ? Number(debut.slice(0, 4)) : new Date().getFullYear();
-
       // Le dossier peut etre (re)cree/relie a la finalisation cote backend :
       // on relit le ticket pour obtenir le dossierId le plus a jour.
       let dossierId = ticket?.dossierId ?? '';
@@ -772,25 +767,9 @@ function CreationSarlWorkflowPageBody() {
           ]);
         }
 
-        try {
-          // RG-DF03 : la Creation cree l'ancre comptable de l'annee de constitution
-          // a la volee (autoCreateComptable) pour ouvrir un fiscal conforme sans bloquer.
-          await dataroomService.openExercice(dossierId, {
-            annee,
-            regimeTvaMensuel: true,
-            autoCreateComptable: true,
-          });
-        } catch (err) {
-          const { code, message } = extractError(err);
-          const exists =
-            code === 'EXERCICE_EXISTS' || /exist|déjà|deja/i.test(message ?? '');
-          if (!exists) {
-            setDatasetWarnings((prev) => [
-              ...prev,
-              `Ouverture exercice ${annee} : ${message}`,
-            ]);
-          }
-        }
+        // Lot 1 (2026-09-04) — l'ouverture d'un exercice fiscal a la finalisation
+        // disparait avec le dossier fiscal. Les echeances du dossier viennent
+        // desormais des delais legaux portes par les demarches du parcours.
       }
     } catch {
       // best-effort : la finalisation du workflow a deja reussi.
@@ -986,7 +965,7 @@ function CreationSarlWorkflowPageBody() {
                 {' — '}
                 {ticket.statut === 'ANNULE'
                   ? 'ticket annulé'
-                  : ticket.statut === 'CLOTURE'
+                  : ticket.statut === 'CLOTURE_DOSSIER'
                     ? 'ticket clôturé'
                     : 'workflow terminé'}
                 . Les valeurs saisies, les étapes et les documents générés sont
@@ -1013,6 +992,7 @@ function CreationSarlWorkflowPageBody() {
             onNavigate={goToStep}
             onDocumentGenerated={onDocumentGenerated}
             dossierId={ticket?.dossierId ?? null}
+            ticketId={ticket?.id ?? null}
             readOnly={readOnly}
           />
         ) : readOnly ? (

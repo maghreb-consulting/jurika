@@ -32,15 +32,6 @@ export type DocumentType =
   | 'RAPPORT_LIQUIDATION'
   | 'AUTRE';
 
-export type CategorieComptable =
-  | 'ACHATS'
-  | 'VENTES'
-  | 'BANQUE'
-  | 'CAISSE'
-  | 'NDF'
-  | 'LA_PAIE'
-  // Prompt G (2026-06-23) — fourre-tout pour les imports d'anciens dossiers.
-  | 'AUTRE';
 
 export type DemandeStatut = 'NON_TRAITEE' | 'EN_COURS' | 'TRAITEE';
 
@@ -110,6 +101,13 @@ export interface DocumentSummary {
   replacedAt: string | null;
   /** Sprint 2026-06-23 — raison du remplacement / de la création de version. */
   motif?: string | null;
+  /**
+   * Lot 3 (2026-09-07) — date de la dernière édition manuelle dans l'éditeur
+   * bureautique, ou `null` si le document est tel que généré. L'interface s'en
+   * sert pour NOMMER ce qu'une régénération ferait perdre : un avertissement
+   * générique se clique sans se lire.
+   */
+  editeManuellementAt?: string | null;
 }
 
 export interface TicketHistoryEntry {
@@ -142,6 +140,36 @@ export interface DossierJuridiqueView {
   statut: string | null;
   documentsEnVigueur: DocumentSummary[];
   historiqueOperations: TicketHistoryEntry[];
+  /** Lot 1 (2026-09-04) — le dossier juridique organise par ticket. */
+  dossiersParTicket: DossierTicket[];
+}
+
+/** Un groupe de documents dans le dossier d un ticket. */
+export interface GroupeDocuments {
+  /** ACTES_GENERES | JUSTIFICATIFS_ADMINISTRATIFS | PIECES_CLIENT */
+  code: string;
+  libelle: string;
+  documents: DocumentSummary[];
+}
+
+/**
+ * Chaque ticket forme un dossier. Le libelle est CALCULE cote serveur
+ * (« Creation — T-2026-00841 — 15/06/2026 »), jamais saisi.
+ *
+ * ticketId vaut null pour le regroupement « Hors ticket », qui recueille les
+ * documents anterieurs a ce lot ou deposes hors workflow. Ils restent
+ * accessibles : un document mal classe se retrouve, un document invisible est
+ * perdu.
+ */
+export interface DossierTicket {
+  ticketId: string | null;
+  libelle: string;
+  reference: string | null;
+  type: string | null;
+  statut: string | null;
+  ouvertLe: string | null;
+  groupes: GroupeDocuments[];
+  totalDocuments: number;
 }
 
 /**
@@ -162,30 +190,6 @@ export interface UpdateIdentifiantsPayload {
   dateConstitution?: string | null;
 }
 
-export interface ComptableTotal {
-  categorie: CategorieComptable | string;
-  total: number;
-}
-
-export interface DossierComptableView {
-  dossierId: string;
-  annees: number[];
-  anneeCourante: number;
-  totauxParCategorie: ComptableTotal[];
-}
-
-export interface ComptableDocumentSummary {
-  id: string;
-  annee: number;
-  categorie: CategorieComptable | string;
-  title: string;
-  filename: string;
-  contentType: string | null;
-  sizeBytes: number;
-  createdAt: string;
-}
-
-// Lot V -- Espace « Depots » client (depot libre, sans categorie)
 export interface DepotSummary {
   id: string;
   title: string;
@@ -269,26 +273,6 @@ export const DOCUMENT_TYPE_ORDER: DocumentType[] = [
   'TP',
   'CNSS',
   'APOSTILLE',
-  'AUTRE',
-];
-
-export const CATEGORIE_COMPTABLE_LABELS: Record<CategorieComptable, string> = {
-  ACHATS: 'Achats',
-  VENTES: 'Ventes',
-  BANQUE: 'Banque',
-  CAISSE: 'Caisse',
-  NDF: 'Notes de frais',
-  LA_PAIE: 'La paie',
-  AUTRE: 'Autre',
-};
-
-export const CATEGORIE_COMPTABLE_ORDER: CategorieComptable[] = [
-  'ACHATS',
-  'VENTES',
-  'BANQUE',
-  'CAISSE',
-  'NDF',
-  'LA_PAIE',
   'AUTRE',
 ];
 
@@ -476,192 +460,39 @@ export interface DataroomDocumentEvent {
 }
 
 // =====================================================================
-// Sprint 7 / TASK 6 -- Dossier Fiscal placeholder (Sprint 8 base)
+// Lot 2 (2026-09-07) — TYPES COMPTABLE ET FISCAL RETIRES
+//
+// Les dossiers comptable et fiscal sont sortis du perimetre produit au lot 1
+// (migration dataroom V25 : tables supprimees apres inventaire chiffre valide).
+// Les types, libelles, ordres d'affichage et DTO d'exercice restaient ici sans
+// plus rien decrire — ni ecran, ni endpoint, ni table. Ils sont retires : du
+// code mort qui parle de sections disparues finit par se relire comme une
+// specification, et par etre reimplemente.
 // =====================================================================
 
-export type ExerciceFiscalStatut = 'OUVERT' | 'CLOTURE' | 'VERROUILLE';
-
-export interface ExerciceFiscalSummary {
-  id: string;
-  annee: number;
-  dateDebut: string | null;
-  dateFin: string | null;
-  statut: ExerciceFiscalStatut | string;
-  dateOuverture: string;
-  dateCloture: string | null;
-}
-
-export interface DossierFiscalView {
-  dossierId: string;
-  exerciceCourant: string | null;
-  exercices: ExerciceFiscalSummary[];
-  categoriesCgi: string[];
-  message: string;
-}
-
-export const CATEGORIE_CGI_LABELS: Record<string, string> = {
-  TVA: 'TVA',
-  IS: "Impot sur les Societes (IS)",
-  IR: 'Impot sur le Revenu (IR)',
-  TP_TSC: 'TP / TSC',
-  RAS: 'Retenues a la source',
-  ATTESTATIONS: 'Attestations',
-  CONTENTIEUX: 'Contentieux',
-};
-
-// =====================================================================
-// Sprint 8 -- Dossier Fiscal complet (7 categories CGI)
-// =====================================================================
-
-export type CategorieFiscale =
-  | 'TVA'
-  | 'IS'
-  | 'IR'
-  | 'TP_TSC'
-  | 'RAS'
-  | 'ATTESTATIONS'
-  | 'CONTENTIEUX'
-  // Prompt G (2026-06-23) — fourre-tout pour les imports d'anciens dossiers.
-  | 'AUTRE';
-
-export const CATEGORIES_FISCALES_ORDER: CategorieFiscale[] = [
-  'TVA',
-  'IS',
-  'IR',
-  'TP_TSC',
-  'RAS',
-  'ATTESTATIONS',
-  'CONTENTIEUX',
-  'AUTRE',
-];
-
-export const CATEGORIES_FISCALES_LABELS: Record<CategorieFiscale, string> = {
-  TVA: 'TVA',
-  IS: 'Impôt sur les sociétés',
-  IR: 'Impôt sur le revenu',
-  TP_TSC: 'TP / TSC',
-  RAS: 'Retenues à la source',
-  ATTESTATIONS: 'Attestations',
-  CONTENTIEUX: 'Contentieux',
-  AUTRE: 'Autre',
-};
-
-export interface FiscalDocumentSummary {
-  id: string;
-  dossierId: string;
-  exerciceFiscalId: string;
-  categorie: CategorieFiscale | string;
-  sousClassification: string;
-  title: string;
-  commentaire: string | null;
-  filename: string;
-  contentType: string | null;
-  sizeBytes: number;
-  tifMetadata: string | null;
-  numeroDeclaration: string | null;
-  periodeDeclaree: string | null;
-  comptableDocSource: string | null;
-  comptableDocSourceTitle: string | null;
-  createdAt: string;
-  deletedAt: string | null;
-}
-
-export interface FiscalCategoryCount {
-  categorie: CategorieFiscale | string;
-  total: number;
-}
-
-export interface DossierFiscalDetailedView {
-  dossierId: string;
-  exerciceCourant: string | null;
-  exercices: ExerciceFiscalSummary[];
-  compteurs: FiscalCategoryCount[];
-  categoriesCgi: string[];
-}
-
-export interface SubClassificationDef {
-  categorie: CategorieFiscale | string;
-  values: string[];
-}
-
-export interface OpenExerciceRequest {
-  annee: number;
-  dateDebut?: string | null;
-  dateFin?: string | null;
-  regimeTvaMensuel: boolean;
+/**
+ * Lot 3 (2026-09-07) — une séance d'édition bureautique.
+ *
+ * `wopiSrc` désigne le backend par son nom de service Docker : c'est Collabora
+ * qui l'appelle, le navigateur ne le joint jamais. `editeurUrl` est lue dans le
+ * document de découverte de Collabora — son chemin porte une empreinte de
+ * version qui change à chaque publication de l'image, elle ne se devine pas.
+ */
+export interface SeanceEdition {
+  sessionId: string;
+  wopiSrc: string;
+  accessToken: string;
+  accessTokenTtlMs: number;
+  editeurUrl: string;
+  canWrite: boolean;
+  /** Date de la dernière édition manuelle, ou null si le document est tel que généré. */
+  editeManuellementAt: string | null;
   /**
-   * RG-DF03 (2026-06-24) — conformité au comptable.
-   * - `false`/absent (ouverture manuelle onglet Fiscal) : l'année doit déjà être
-   *   tenue en comptabilité, sinon le backend rejette (422).
-   * - `true` (finalisation import/création) : l'ancre comptable de l'année est
-   *   créée à la volée avant d'ouvrir le fiscal, pour rester conforme sans bloquer.
+   * Nom de l'employé qui édite déjà cet acte, ou null. Renseigné, la séance
+   * s'ouvre en lecture seule — et on le dit AVANT d'ouvrir l'éditeur, plutôt
+   * que de laisser découvrir en fermant que le travail n'a pas été gardé.
    */
-  autoCreateComptable?: boolean;
+  verrouPar: string | null;
+  /** Depuis quand, pour que l'appel téléphonique qui suit soit informé. */
+  verrouDepuis: string | null;
 }
-
-export interface UnlockExerciceRequest {
-  motif: string;
-}
-
-export interface EcheanceSummary {
-  id: string;
-  exerciceFiscalId: string;
-  typeEcheance: string;
-  dateEcheance: string;
-  dateAlerte: string;
-  statut: 'PLANIFIEE' | 'ENVOYEE' | 'TRAITEE' | 'EXPIREE' | string;
-  documentId: string | null;
-  sentAt: string | null;
-  traiteAt: string | null;
-}
-
-export const TYPE_ECHEANCE_LABELS: Record<string, string> = {
-  TVA_MENSUELLE: 'TVA mensuelle',
-  TVA_TRIMESTRIELLE: 'TVA trimestrielle',
-  IS_ACOMPTE_T1: 'IS acompte T1',
-  IS_ACOMPTE_T2: 'IS acompte T2',
-  IS_ACOMPTE_T3: 'IS acompte T3',
-  IS_ACOMPTE_T4: 'IS acompte T4',
-  IS_DECLARATION_ANNUELLE: 'IS declaration annuelle',
-  TP_TSC_DECLARATION: 'TP / TSC declaration',
-  ETAT_9421: 'Etat 9421',
-  IR_DECLARATION_ANNUELLE: 'IR declaration annuelle',
-};
-
-export const SOUS_CLASSIFICATION_LABELS: Record<string, string> = {
-  DECLARATION_MENSUELLE: 'Declaration mensuelle',
-  DECLARATION_TRIMESTRIELLE: 'Declaration trimestrielle',
-  PAIEMENT: 'Paiement',
-  DEMANDE_REMBOURSEMENT: 'Demande remboursement',
-  ATTESTATION: 'Attestation',
-  ACOMPTE_T1: 'Acompte T1',
-  ACOMPTE_T2: 'Acompte T2',
-  ACOMPTE_T3: 'Acompte T3',
-  ACOMPTE_T4: 'Acompte T4',
-  DECLARATION_ANNUELLE: 'Declaration annuelle',
-  ETATS_DE_SYNTHESE: 'Etats de synthese',
-  COTISATION_MINIMALE: 'Cotisation minimale',
-  RAS_SALARIES_MENSUEL: 'RAS salaries mensuel',
-  DECLARATION_IR_PRO: 'Declaration IR pro',
-  ETAT_9421: 'Etat 9421',
-  ROLE_ANNUEL: 'Role annuel',
-  DECLARATION_EXISTENCE: "Declaration d'existence",
-  DECLARATION_CESSATION: 'Declaration cessation',
-  RECLAMATION: 'Reclamation',
-  HONORAIRES_10: 'Honoraires 10%',
-  HONORAIRES_20: 'Honoraires 20%',
-  DIVIDENDES_15: 'Dividendes 15%',
-  INTERETS: 'Interets',
-  LOCATIONS: 'Locations',
-  OPCVM: 'OPCVM',
-  REGULARITE_FISCALE: 'Regularite fiscale',
-  QUITUS_FISCAL: 'Quitus fiscal',
-  ATTESTATION_IS: 'Attestation IS',
-  ATTESTATION_TVA: 'Attestation TVA',
-  ETAT_IMPOSITION: "Etat d'imposition",
-  NOTIFICATION_DGI: 'Notification DGI',
-  AVIS_REDRESSEMENT: 'Avis de redressement',
-  ACCORD: 'Accord',
-  RECOURS_HIERARCHIQUE: 'Recours hierarchique',
-  JUGEMENT_TRIBUNAL: 'Jugement tribunal',
-};

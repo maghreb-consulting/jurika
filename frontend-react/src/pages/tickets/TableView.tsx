@@ -69,9 +69,10 @@ function ResponsableCell({ t }: { t: Ticket }) {
 
 function StatutBadge({ s }: { s: TicketStatut }) {
   const variant = {
-    NOUVEAU: 'info',
-    EN_COURS: 'warning',
-    CLOTURE: 'success',
+    CREATION_TICKET: 'info',
+    GENERATION_DOCUMENTS: 'warning',
+    DEROULEMENT_DEMARCHE: 'warning',
+    CLOTURE_DOSSIER: 'success',
     ANNULE: 'danger',
   }[s] as 'info' | 'warning' | 'success' | 'danger';
   return <Badge variant={variant}>{STATUT_LABELS[s]}</Badge>;

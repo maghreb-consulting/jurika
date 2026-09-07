@@ -3,6 +3,7 @@ import { AlertCircle, FileUp, Loader2, X } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { uploadOrReplace } from '../../../lib/dataroomUpload';
 import type { DocumentSummary, DocumentType } from '../../../types/dataroom';
+import { useDocumentTypes } from '../useDocumentTypes';
 
 /**
  * Sprint 2026-06-23 — Modale d'upload avec versioning explicite.
@@ -25,16 +26,16 @@ export interface UploadDocumentDialogProps {
   activeDocuments: DocumentSummary[];
   onClose: () => void;
   onUploaded: () => Promise<void> | void;
-  /** Liste des types autorisés pour un nouveau Document (par défaut : toutes). */
+  /**
+   * Types autorisés pour un nouveau Document. Sans override, la liste vient du
+   * backend (lot 2) : elle vivait ici en dur et ignorait les types introduits
+   * par le lot 1, si bien qu'un certificat négatif déposé à la main tombait
+   * sous « AUTRE ».
+   */
   documentTypes?: ReadonlyArray<DocumentType | string>;
 }
 
 const NEW_DOCUMENT_VALUE = '__NEW__';
-const DEFAULT_TYPES: ReadonlyArray<DocumentType | string> = [
-  'STATUTS', 'PV_AGE', 'PV_AGO', 'PV_MODIFICATION', 'PV_DISSOLUTION', 'PV_LIQUIDATION',
-  'ACTE_NOMINATION', 'CONTRAT_BAIL', 'CNIE_GERANT', 'ANNONCE_JAL',
-  'RC', 'ICE', 'TP', 'CNSS', 'APOSTILLE', 'AUTRE',
-];
 
 export function UploadDocumentDialog({
   open,
@@ -42,8 +43,16 @@ export function UploadDocumentDialog({
   activeDocuments,
   onClose,
   onUploaded,
-  documentTypes = DEFAULT_TYPES,
+  documentTypes,
 }: UploadDocumentDialogProps) {
+  const { types: catalogue } = useDocumentTypes();
+  const options = useMemo(
+    () =>
+      documentTypes
+        ? documentTypes.map((t) => ({ code: String(t), libelle: String(t) }))
+        : catalogue.map((t) => ({ code: t.code, libelle: t.libelle })),
+    [documentTypes, catalogue],
+  );
   const [target, setTarget] = useState<string>(NEW_DOCUMENT_VALUE);
   const [file, setFile] = useState<File | null>(null);
   const [motif, setMotif] = useState('');
@@ -180,9 +189,9 @@ export function UploadDocumentDialog({
                   onChange={(e) => setNewType(e.target.value)}
                   className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
                 >
-                  {documentTypes.map((t) => (
-                    <option key={String(t)} value={String(t)}>
-                      {String(t)}
+                  {options.map((t) => (
+                    <option key={t.code} value={t.code}>
+                      {t.libelle}
                     </option>
                   ))}
                 </select>

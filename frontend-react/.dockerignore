@@ -1,0 +1,30 @@
+# Contexte de build Docker du frontend.
+#
+# INDISPENSABLE. Le Dockerfile fait `COPY package*.json ./` puis `npm ci`, et
+# SEULEMENT ENSUITE `COPY . .`. Sans ce fichier, le `node_modules` de l'hote
+# ecrase l'installation Linux fraichement faite : sur un poste Windows, vite se
+# retrouve avec `@rolldown/binding-win32-x64-msvc` -- un binaire natif Windows --
+# et le build echoue en « onLog option: The function returned object » au moment
+# ou vite bundle son propre fichier de configuration.
+#
+# Le defaut est reste invisible tant qu'aucun `npm install` n'avait ete lance sur
+# le poste : le repertoire etait absent, donc le COPY n'ecrasait rien.
+
+# Dependances : reinstallees dans l'image par npm ci
+node_modules/
+
+# Artefacts de build et de test
+dist/
+coverage/
+playwright-report/
+test-results/
+.vite/
+
+# Secrets et configuration locale : les valeurs VITE_* arrivent par ARG
+.env
+.env.*
+!.env.example
+
+# Divers
+.git/
+*.log

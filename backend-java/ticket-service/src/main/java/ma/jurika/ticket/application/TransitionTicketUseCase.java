@@ -60,8 +60,9 @@ public class TransitionTicketUseCase {
             return current;
         }
 
-        // Auto-assignation a l'actor si transition vers EN_COURS et pas d'assigne
-        if (cmd.target() == TicketStatut.EN_COURS && current.assigneId() == null) {
+        // Auto-assignation a l'acteur au demarrage de la production (statut 2
+        // « Generation des documents ») si le ticket n'a pas encore de responsable.
+        if (cmd.target() == TicketStatut.GENERATION_DOCUMENTS && current.assigneId() == null) {
             ticketRepository.updateAssignment(current.id(), cmd.actorId(),
                     current.priorite(), current.deadline(), current.titre(), current.description());
             current = ticketRepository.findById(cmd.workspaceId(), cmd.ticketId())
@@ -73,7 +74,7 @@ public class TransitionTicketUseCase {
 
         TicketStatut previous = current.statut();
         Instant now = Instant.now();
-        Instant clotureAt = cmd.target() == TicketStatut.CLOTURE ? now : current.clotureAt();
+        Instant clotureAt = cmd.target() == TicketStatut.CLOTURE_DOSSIER ? now : current.clotureAt();
         Instant annuleAt = cmd.target() == TicketStatut.ANNULE ? now : current.annuleAt();
         String motif = cmd.target() == TicketStatut.ANNULE ? cmd.comment() : current.annulationMotif();
 
@@ -81,7 +82,7 @@ public class TransitionTicketUseCase {
 
         TicketCommentType commentType = switch (cmd.target()) {
             case ANNULE -> TicketCommentType.ANNULATION;
-            case CLOTURE -> TicketCommentType.CLOTURE;
+            case CLOTURE_DOSSIER -> TicketCommentType.CLOTURE;
             default -> TicketCommentType.TRANSITION_STATUT;
         };
         String contenu = cmd.comment() == null || cmd.comment().isBlank()

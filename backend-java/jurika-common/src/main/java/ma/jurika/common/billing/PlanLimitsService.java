@@ -177,14 +177,15 @@ public class PlanLimitsService {
     }
 
     private long countStorageBytes(UUID workspaceId) {
-        // Approx : somme des tailles des documents juridiques + comptables +
-        // fiscaux. Tables peuvent etre absentes selon le microservice qui
-        // appelle — on tente chacune et on tolere une erreur (renvoie 0).
+        // Somme des tailles des documents juridiques et des depots client. Les
+        // dossiers comptable et fiscal sont sortis du perimetre (dataroom V25).
+        // Les tables peuvent etre absentes selon le microservice qui appelle : on
+        // tente chacune et on tolere une erreur (renvoie 0).
         long total = 0;
         for (String sql : new String[]{
                 "SELECT COALESCE(SUM(file_size_bytes), 0) FROM dataroom_documents WHERE workspace_id = ?",
-                "SELECT COALESCE(SUM(file_size_bytes), 0) FROM dataroom_comptable_documents WHERE workspace_id = ?",
-                "SELECT COALESCE(SUM(file_size_bytes), 0) FROM dataroom_fiscal_documents WHERE workspace_id = ?"
+                "SELECT COALESCE(SUM(size_bytes), 0) FROM dataroom_depots "
+                        + "WHERE workspace_id = ? AND deleted_at IS NULL"
         }) {
             try {
                 Long n = jdbc.queryForObject(sql, Long.class, workspaceId);

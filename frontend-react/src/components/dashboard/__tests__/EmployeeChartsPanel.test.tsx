@@ -19,7 +19,7 @@ vi.mock('../DistributionChart', () => ({
 function ticket(partial: Partial<Ticket>): Ticket {
   return {
     id: Math.random().toString(36).slice(2),
-    workspaceId: 'w1', reference: 'R', titre: 'T', type: 'CREATION', statut: 'NOUVEAU',
+    workspaceId: 'w1', reference: 'R', titre: 'T', type: 'CREATION', statut: 'CREATION_TICKET',
     priorite: 'NORMALE', dossierId: null, assigneId: 'u1', creeParId: 'u1',
     description: null, deadline: null, annulationMotif: null, clotureAt: null,
     annuleAt: null, createdAt: '2026-07-01', ...partial,
@@ -31,8 +31,8 @@ describe('EmployeeChartsPanel', () => {
     render(
       <EmployeeChartsPanel
         tickets={[
-          ticket({ statut: 'NOUVEAU', type: 'CREATION' }),
-          ticket({ statut: 'EN_COURS', type: 'MODIFICATION' }),
+          ticket({ statut: 'CREATION_TICKET', type: 'CREATION' }),
+          ticket({ statut: 'GENERATION_DOCUMENTS', type: 'MODIFICATION' }),
         ]}
       />,
     );

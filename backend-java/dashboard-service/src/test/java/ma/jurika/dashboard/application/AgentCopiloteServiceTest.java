@@ -189,7 +189,7 @@ class AgentCopiloteServiceTest {
                 "ALERTE_FISCALE", UUID.randomUUID(), "TVA", LocalDate.now().plusDays(5),
                 "INFO", false, 5, UUID.randomUUID(), "SARL Beta", "/data-rooms?dossier=y");
         TacheSignal ticket = new TacheSignal(
-                "TICKET", UUID.randomUUID(), "T-010", "Modif statuts", "EN_COURS", 4,
+                "TICKET", UUID.randomUUID(), "T-010", "Modif statuts", "GENERATION_DOCUMENTS", 4,
                 UUID.randomUUID(), "SARL Alpha", "/workflows/z");
         TacheSignal demande = new TacheSignal(
                 "DEMANDE", UUID.randomUUID(), null, "Question TVA", "NON_TRAITEE", 6,

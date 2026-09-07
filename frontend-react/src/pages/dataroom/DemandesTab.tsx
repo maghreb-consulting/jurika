@@ -9,7 +9,6 @@ import { Select } from '../../components/ui/Select';
 import { dataroomService } from '../../services/dataroom.service';
 import { ticketService } from '../../services/ticket.service';
 import { formatDateTime } from '../../lib/date';
-import { RequetesAuClientSection } from './RequetesAuClientSection';
 import { extractError } from '../../lib/api';
 import { requiredMsg } from '../../lib/formValidation';
 import type {
@@ -61,7 +60,6 @@ export function DemandesTab({
   dossierId,
   role,
   readOnly = false,
-  readOnlyStatut = null,
 }: Props) {
   const [demandes, setDemandes] = useState<DemandeSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -152,13 +150,8 @@ export function DemandesTab({
         </ul>
       </Card>
 
-      {/* Lot AG — section separee : requetes de l'employe AU client (EMPLOYE_TO_CLIENT). */}
-      <RequetesAuClientSection
-        dossierId={dossierId}
-        role={role}
-        readOnly={readOnly}
-        readOnlyStatut={readOnlyStatut}
-      />
+      {/* Lot 1 (2026-09-04) — les requetes de l'employe AU client ont leur propre
+          section dans la Data Room : elles ne sont plus imbriquees ici. */}
 
       <NewDemandeDrawer
         open={newOpen}

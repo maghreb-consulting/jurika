@@ -48,8 +48,9 @@ public class SearchJuridiqueDocumentsUseCase {
 
     @Transactional(readOnly = true)
     public SearchJuridiqueOutput execute(SearchJuridiqueInput in) {
-        Specification<DocumentEntity> spec = Specification.where(
-                DocumentSpecifications.byDossier(in.dossierId()));
+        Specification<DocumentEntity> spec = Specification
+                .where(DocumentSpecifications.byDossier(in.dossierId()))
+                .and(DocumentSpecifications.horsBrouillons());
 
         if (in.types() != null && !in.types().isEmpty()) {
             spec = spec.and(DocumentSpecifications.ofTypes(in.types()));

@@ -53,6 +53,16 @@ export interface DocumentEditorProps {
   onSave?: (html: string) => void | Promise<void>;
   /** Lecture seule (preview). */
   readOnly?: boolean;
+  /**
+   * Lot 2 (2026-09-07) — SEPARATION FRANCHE APERÇU / ÉDITION.
+   *
+   * Le composant proposait les deux modes cote a cote, si bien qu'on pouvait
+   * etre « en apercu » et « en edition » en meme temps : le bouton Éditer
+   * n'ouvrait pas un mode, il ajoutait deux onglets. Quand `forceMode` est
+   * fourni, la barre de bascule disparait et le composant ne fait qu'une chose.
+   * L'appelant decide : la carte affiche un apercu, la modale edite.
+   */
+  forceMode?: 'fidele' | 'edition';
 }
 
 export function DocumentEditor({
@@ -62,6 +72,7 @@ export function DocumentEditor({
   title,
   onSave,
   readOnly = false,
+  forceMode,
 }: DocumentEditorProps) {
   const [initialHtml, setInitialHtml] = useState<string | null>(value ?? null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -72,10 +83,18 @@ export function DocumentEditor({
   // numerotation, styles JurikaTitreArticle/SousTitre). L'utilisateur bascule
   // vers "edition" pour modifier librement via TipTap.
   const [mode, setMode] = useState<'fidele' | 'edition'>(
-    docxBlob && !value ? 'fidele' : 'edition',
+    forceMode ?? (docxBlob && !value ? 'fidele' : 'edition'),
   );
   const fidelityRef = useRef<HTMLDivElement | null>(null);
   const [fidelityError, setFidelityError] = useState<string | null>(null);
+  /**
+   * Lot 2 — l'apercu etait COUPE : docx-preview rend une page A4 a sa taille
+   * reelle (794 px a 96 dpi) et le conteneur d'accueil fait souvent moins de
+   * 500 px, si bien qu'environ 300 px de page disparaissaient a droite. On
+   * mesure donc le conteneur et on met la page a l'echelle.
+   */
+  const [echelle, setEchelle] = useState(1);
+  const [hauteurRendue, setHauteurRendue] = useState<number | null>(null);
 
   const editor = useEditor(
     {
@@ -126,6 +145,44 @@ export function DocumentEditor({
     })();
     return () => {
       cancelled = true;
+    };
+  }, [mode, docxBlob]);
+
+  /**
+   * Lot 2 — AJUSTEMENT DE L'ÉCHELLE. La page rendue garde ses dimensions
+   * Word ; on la reduit juste ce qu'il faut pour qu'elle tienne dans la
+   * largeur disponible, et on reserve la hauteur correspondante (une mise a
+   * l'echelle CSS ne modifie pas la place occupee dans le flux). Jamais
+   * d'agrandissement : au-dela de 100 % on deformerait le rendu fidele.
+   */
+  useEffect(() => {
+    if (mode !== 'fidele') return;
+    const hote = fidelityRef.current;
+    if (!hote) return;
+
+    const mesurer = () => {
+      const page = hote.querySelector<HTMLElement>('section.docx-fidele');
+      const wrapper = hote.querySelector<HTMLElement>('.docx-fidele-wrapper');
+      if (!page || !wrapper) return;
+      const largeurPage = page.offsetWidth;
+      const largeurDispo = hote.parentElement?.clientWidth ?? hote.clientWidth;
+      if (!largeurPage || !largeurDispo) return;
+      const k = Math.min(1, largeurDispo / largeurPage);
+      setEchelle(k);
+      setHauteurRendue(k < 1 ? wrapper.offsetHeight * k : null);
+    };
+
+    // Le rendu docx-preview est asynchrone : on observe les mutations plutot
+    // que de parier sur un delai.
+    const mo = new MutationObserver(mesurer);
+    mo.observe(hote, { childList: true, subtree: true });
+    const ro =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(mesurer) : null;
+    if (ro && hote.parentElement) ro.observe(hote.parentElement);
+    mesurer();
+    return () => {
+      mo.disconnect();
+      ro?.disconnect();
     };
   }, [mode, docxBlob]);
 
@@ -202,7 +259,7 @@ export function DocumentEditor({
     <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
       {/* BLOC B 2026-06-21 — Toggle Aperçu fidèle / Édition libre. Mode fidèle
           = docx-preview (styles Word préservés) ; édition = TipTap. */}
-      {docxBlob && !readOnly && (
+      {docxBlob && !readOnly && !forceMode && (
         <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs">
           <button
             type="button"
@@ -375,18 +432,32 @@ export function DocumentEditor({
 
       {/* BLOC B 2026-06-21 — Rendu fidele (docx-preview) ou edition (TipTap). */}
       {mode === 'fidele' && docxBlob ? (
-        <div className="overflow-auto bg-slate-100 p-4">
+        <div className="overflow-x-hidden overflow-y-auto bg-slate-100 p-4">
           {fidelityError ? (
             <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
-              Aperçu fidèle indisponible : {fidelityError}. Basculez en
-              «&nbsp;Édition libre&nbsp;» pour visualiser le document.
+              Aperçu fidèle indisponible : {fidelityError}. Ouvrez
+              «&nbsp;Éditer&nbsp;» pour visualiser le document.
             </div>
           ) : (
             <div
-              ref={fidelityRef}
-              className="mx-auto max-w-full"
-              aria-label="Aperçu fidèle du document Word"
-            />
+              // La hauteur est reservee explicitement : `transform: scale()` ne
+              // reduit pas la place prise dans le flux, sans quoi le conteneur
+              // garderait la hauteur de la page a 100 % et laisserait un grand
+              // vide sous le document.
+              style={hauteurRendue != null ? { height: hauteurRendue } : undefined}
+              data-testid="apercu-fidele-hote"
+            >
+              <div
+                ref={fidelityRef}
+                className="mx-auto"
+                style={
+                  echelle < 1
+                    ? { transform: `scale(${echelle})`, transformOrigin: 'top center' }
+                    : undefined
+                }
+                aria-label="Aperçu fidèle du document Word"
+              />
+            </div>
           )}
         </div>
       ) : (

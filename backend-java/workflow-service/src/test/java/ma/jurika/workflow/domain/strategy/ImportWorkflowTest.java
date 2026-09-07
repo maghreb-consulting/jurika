@@ -41,9 +41,9 @@ class ImportWorkflowTest {
     }
 
     @Test
-    @DisplayName("IMPORT compte 11 etapes")
+    @DisplayName("IMPORT compte 9 etapes depuis le retrait du comptable et du fiscal")
     void totalSteps() {
-        assertThat(workflow.totalSteps()).isEqualTo(11);
+        assertThat(workflow.totalSteps()).isEqualTo(9);
     }
 
     @Test
@@ -154,28 +154,28 @@ class ImportWorkflowTest {
     }
 
     @Test
-    @DisplayName("Step 8/9 (comptable/fiscal) sont optionnels et persistent le payload")
-    void step8et9Optionnels() {
-        assertThat(run(8, Map.of("documentsFinanciers", List.of()), Map.of()).canAdvance()).isTrue();
-        assertThat(run(9, Map.of("documentsFiscaux", List.of()), Map.of()).canAdvance()).isTrue();
+    @DisplayName("Step 8 (depot des pieces) est optionnel et persiste le payload tel quel")
+    void step8DepotOptionnel() {
+        StepResult vide = run(8, Map.of("pieces", List.of()), Map.of());
+        assertThat(vide.canAdvance())
+                .describedAs("un import doit pouvoir se terminer sans aucun depot")
+                .isTrue();
+
+        StepResult avecPieces = run(8, Map.of("pieces", List.of(
+                Map.of("nom", "grand-livre-2025.pdf", "etat", "DEPOSE"))), Map.of());
+        assertThat(avecPieces.canAdvance()).isTrue();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> depot = (Map<String, Object>) avecPieces.stepData().get("depot");
+        @SuppressWarnings("unchecked")
+        List<Object> pieces = (List<Object>) depot.get("pieces");
+        assertThat(pieces).hasSize(1);
     }
 
     @Test
-    @DisplayName("Step 10 (Suivi) persiste regime TVA + annee + anterieures filtrees")
-    void step10Suivi() {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("regimeTvaMensuel", false);
-        payload.put("anneeExercice", 2025);
-        payload.put("anneesAnterieuresSelectionnees", List.of(2023, 2024, 2025, 2030));
-        StepResult r = run(10, payload, Map.of());
-        assertThat(r.canAdvance()).isTrue();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> suivi = (Map<String, Object>) r.stepData().get("suivi");
-        assertThat(suivi.get("regimeTvaMensuel")).isEqualTo(false);
-        assertThat(suivi.get("anneeExercice")).isEqualTo(2025);
-        @SuppressWarnings("unchecked")
-        List<Object> ant = (List<Object>) suivi.get("anneesAnterieuresSelectionnees");
-        assertThat(ant).containsExactly(2023, 2024);
+    @DisplayName("Il n'existe plus d'etape 10 : le suivi des exercices a disparu")
+    void plusDEtapeSuivi() {
+        assertThatThrownBy(() -> run(10, Map.of("regimeTvaMensuel", false), Map.of()))
+                .hasMessageContaining("hors plage (1..9)");
     }
 
     @Test
@@ -197,11 +197,9 @@ class ImportWorkflowTest {
                         Map.of("nom", "BENATIK", "prenom", "Oussama", "cin", "BK1", "nombreParts", 3000)))));
         existing.put("step7", Map.of("juridique", Map.of(
                 "documents", List.of(Map.of("type", "STATUTS", "filename", "statuts.pdf")))));
-        existing.put("step10", Map.of("suivi", Map.of(
-                "regimeTvaMensuel", true, "anneeExercice", 2025,
-                "anneesAnterieuresSelectionnees", List.of(2024))));
+        existing.put("step8", Map.of("depot", Map.of("pieces", List.of())));
 
-        StepResult r = run(11, Map.of("validated", true), existing);
+        StepResult r = run(9, Map.of("validated", true), existing);
         assertThat(r.canAdvance()).isTrue();
         @SuppressWarnings("unchecked")
         Map<String, Object> synthese = (Map<String, Object>) r.stepData().get("synthese");
@@ -218,10 +216,8 @@ class ImportWorkflowTest {
         assertThat(fiche.get("capitalSocial")).isEqualTo(300000);
         assertThat(fiche).containsKey("associes");
         assertThat(fiche).containsKey("dirigeants");
-        // Le suivi est reporte dans la synthese.
-        @SuppressWarnings("unchecked")
-        Map<String, Object> suivi = (Map<String, Object>) synthese.get("suivi");
-        assertThat(suivi.get("anneeExercice")).isEqualTo(2025);
+        // Le suivi des exercices a disparu : la synthese ne doit plus le porter.
+        assertThat(synthese).doesNotContainKey("suivi");
     }
 
     // =====================================================================
@@ -241,7 +237,7 @@ class ImportWorkflowTest {
      * qui ne serait plus alimentable ferait echouer la traversee ici.
      */
     @Test
-    @DisplayName("C1 — IMPORT SARL : les 11 etapes s'enchainent jusqu'a importComplete")
+    @DisplayName("C1 — IMPORT SARL : les 9 etapes s'enchainent jusqu'a importComplete")
     void traverseeComplete_sarl() {
         Map<String, Object> fiche = traverse("SARL", List.of(
                 Map.of("nom", "EL AMRANI", "prenom", "Youssef", "cin", "BK1", "nombreParts", 600),
@@ -257,7 +253,7 @@ class ImportWorkflowTest {
     }
 
     @Test
-    @DisplayName("C1 — IMPORT SARL AU : les 11 etapes s'enchainent jusqu'a importComplete")
+    @DisplayName("C1 — IMPORT SARL AU : les 9 etapes s'enchainent jusqu'a importComplete")
     void traverseeComplete_sarlAu() {
         Map<String, Object> fiche = traverse("SARL_AU", List.of(
                 Map.of("nom", "BENJELLOUN", "prenom", "Salma", "cin", "BK9", "nombreParts", 1000)));
@@ -308,17 +304,11 @@ class ImportWorkflowTest {
                 Map.of("type", "STATUTS", "filename", "statuts.pdf", "uploaded", true),
                 Map.of("type", "RC", "filename", "rc.pdf", "uploaded", true))), acc));
 
-        acc.put("step8", stepOk(8, Map.of("documentsFinanciers", List.of()), acc));
-        acc.put("step9", stepOk(9, Map.of("documentsFiscaux", List.of()), acc));
+        acc.put("step8", stepOk(8, Map.of("pieces", List.of()), acc));
 
-        acc.put("step10", stepOk(10, Map.of(
-                "regimeTvaMensuel", true,
-                "anneeExercice", 2026,
-                "anneesAnterieuresSelectionnees", List.of(2024)), acc));
-
-        Map<String, Object> synthese11 = stepOk(11, Map.of("validated", true), acc);
+        Map<String, Object> synthese9 = stepOk(9, Map.of("validated", true), acc);
         @SuppressWarnings("unchecked")
-        Map<String, Object> synthese = (Map<String, Object>) synthese11.get("synthese");
+        Map<String, Object> synthese = (Map<String, Object>) synthese9.get("synthese");
         assertThat(synthese.get("importComplete")).isEqualTo(true);
         @SuppressWarnings("unchecked")
         Map<String, Object> fiche = (Map<String, Object>) synthese.get("ficheJuridique");
@@ -336,12 +326,12 @@ class ImportWorkflowTest {
     }
 
     @Test
-    @DisplayName("Step 11 bloque si l'etape 1 (denomination) est absente")
-    void step11BloqueSansDenomination() {
+    @DisplayName("La synthese bloque si l'etape 1 (denomination) est absente")
+    void syntheseBloqueSansDenomination() {
         Map<String, Object> existing = Map.of(
                 "step7", Map.of("juridique", Map.of(
                         "documents", List.of(Map.of("type", "RC", "filename", "rc.pdf")))));
-        StepResult r = run(11, Map.of("validated", true), existing);
+        StepResult r = run(9, Map.of("validated", true), existing);
         assertThat(r.canAdvance()).isFalse();
         assertThat(r.message()).contains("Etape 1");
     }

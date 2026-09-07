@@ -71,12 +71,12 @@ describe('EmployeeDashboard', () => {
   });
 
   it('derive les 4 KpiCards de MES donnees scopees (aucun total workspace)', async () => {
-    // 3 de mes tickets : 1 NOUVEAU, 1 EN_COURS, 1 CLOTURE.
+    // 3 de mes tickets, un par statut du parcours.
     list.mockResolvedValue({
       items: [
-        { id: 't1', workspaceId: 'w1', dossierId: 'd1', statut: 'NOUVEAU', type: 'CREATION', titre: 'A', createdAt: '2026-07-01' },
-        { id: 't2', workspaceId: 'w1', dossierId: 'd1', statut: 'EN_COURS', type: 'CREATION', titre: 'B', createdAt: '2026-07-01' },
-        { id: 't3', workspaceId: 'w1', dossierId: 'd1', statut: 'CLOTURE', type: 'CREATION', titre: 'C', createdAt: '2026-07-01' },
+        { id: 't1', workspaceId: 'w1', dossierId: 'd1', statut: 'CREATION_TICKET', type: 'CREATION', titre: 'A', createdAt: '2026-07-01' },
+        { id: 't2', workspaceId: 'w1', dossierId: 'd1', statut: 'GENERATION_DOCUMENTS', type: 'CREATION', titre: 'B', createdAt: '2026-07-01' },
+        { id: 't3', workspaceId: 'w1', dossierId: 'd1', statut: 'CLOTURE_DOSSIER', type: 'CREATION', titre: 'C', createdAt: '2026-07-01' },
       ],
     });
     // 1 seul dossier transfere (actif) — le nouvel employe ne doit PAS voir "23".
@@ -100,11 +100,11 @@ describe('EmployeeDashboard', () => {
     expect(screen.queryByText('23')).not.toBeInTheDocument();
   });
 
-  it('affiche le banner alerte quand au moins 1 ticket EN_COURS', async () => {
+  it('affiche le banner alerte quand au moins 1 ticket est en cours', async () => {
     list.mockResolvedValue({
       items: [
-        { id: 't1', workspaceId: 'w1', dossierId: 'd1', statut: 'EN_COURS', type: 'CREATION', titre: 'X', createdAt: '2026-05-22' },
-        { id: 't2', workspaceId: 'w1', dossierId: 'd2', statut: 'EN_COURS', type: 'CREATION', titre: 'Y', createdAt: '2026-05-22' },
+        { id: 't1', workspaceId: 'w1', dossierId: 'd1', statut: 'GENERATION_DOCUMENTS', type: 'CREATION', titre: 'X', createdAt: '2026-05-22' },
+        { id: 't2', workspaceId: 'w1', dossierId: 'd2', statut: 'GENERATION_DOCUMENTS', type: 'CREATION', titre: 'Y', createdAt: '2026-05-22' },
       ],
     });
     listDossiers.mockResolvedValue([]);

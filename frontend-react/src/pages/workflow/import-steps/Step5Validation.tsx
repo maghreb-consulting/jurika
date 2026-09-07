@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import {
-  CalendarClock,
   Check,
   CheckCircle2,
   ChevronRight,
@@ -9,22 +8,13 @@ import {
   Users,
 } from 'lucide-react';
 import {
-  CATEGORIES_FISCALES_LABELS,
-  CATEGORIES_FISCALES_ORDER,
-  CATEGORIE_COMPTABLE_LABELS,
-  CATEGORIE_COMPTABLE_ORDER,
 } from '../../../types/dataroom';
-import type { ExerciceOpenResult } from '../ImportWorkflowPage';
 
 interface Props {
   existing?: Record<string, unknown>;
   data: Record<string, Record<string, unknown>>;
   /** dossierId canonique du ticket (source fiable, vs step4.dataRoom). */
   dossierId?: string | null;
-  /** Resultats d'ouverture des exercices (renseigne apres finalisation). */
-  exerciceResults?: ExerciceOpenResult[] | null;
-  /** Total d'echeances du dossier recharge apres finalisation. */
-  echeancesTotal?: number | null;
   saving: boolean;
   onSubmit: (payload: Record<string, unknown>) => Promise<void>;
 }
@@ -63,8 +53,6 @@ export function Step5Validation({
   existing,
   data,
   dossierId,
-  exerciceResults,
-  echeancesTotal,
   saving,
   onSubmit,
 }: Props) {
@@ -80,36 +68,21 @@ export function Step5Validation({
   const associes = (associesBag.associes as AssocieRow[] | undefined) ?? [];
   const dirigeantsBag = unwrap(data, 'step5', 'dirigeants');
   const gerants = (dirigeantsBag.dirigeants as GerantRow[] | undefined) ?? [];
-  const suivi = unwrap(data, 'step10', 'suivi');
-  const plannedAnnee =
-    suivi.anneeExercice != null ? Number(suivi.anneeExercice) : undefined;
-  const plannedAnterieures = Array.isArray(suivi.anneesAnterieuresSelectionnees)
-    ? (suivi.anneesAnterieuresSelectionnees as unknown[]).map((y) => Number(y))
-    : [];
-  const regimeTvaMensuel = suivi.regimeTvaMensuel !== false;
   const juridique = unwrap(data, 'step7', 'juridique');
   const docs = ((juridique.documents as unknown[]) ?? []) as Array<{
     uploaded?: boolean;
     uiType?: string;
     type?: string;
   }>;
-  const comptableBag = unwrap(data, 'step8', 'comptable');
-  const fin = ((comptableBag.documentsFinanciers as unknown[]) ?? []) as Array<{
-    state?: string;
-    category?: string;
-  }>;
-  const fiscalBag = unwrap(data, 'step9', 'fiscal');
-  const fiscalDocs =
-    ((fiscalBag.documentsFiscaux as unknown[]) ?? []) as Array<{
-      state?: string;
-      category?: string;
-    }>;
+  // Lot 2 (2026-09-07) — les recapitulatifs COMPTABLE et FISCAL sont retires.
+  // Les etapes 8/9/10 qui les alimentaient ont disparu avec les dossiers
+  // comptable et fiscal (lot 1) : les deux panneaux affichaient donc « 0 / 0 »
+  // et une grille de categories toujours vide, pour des sections qui n'existent
+  // plus dans le produit.
   // dossierId canonique du ticket (auto-create IMPORT).
   const resolvedDossierId = (dossierId && dossierId.trim()) || '';
 
   const uploadedJuridique = docs.filter((d) => d.uploaded).length;
-  const uploadedFin = fin.filter((d) => d.state === 'UPLOADED').length;
-  const uploadedFiscal = fiscalDocs.filter((d) => d.state === 'UPLOADED').length;
 
   // Prompt H (2026-06-23) — guide de complétude par dossier.
   const completionJuridique = useMemo(() => {
@@ -121,26 +94,6 @@ export function Step5Validation({
     const cats = ['STATUTS', 'BAIL', 'DOMICILIATION', 'CNIE', 'CN', 'RC', 'IF'];
     return cats.map((c) => ({ value: c, done: set.has(c) }));
   }, [docs]);
-  const completionComptable = useMemo(() => {
-    const set = new Set<string>();
-    fin.forEach((d) => {
-      if (d.state === 'UPLOADED' && d.category) set.add(d.category);
-    });
-    return CATEGORIE_COMPTABLE_ORDER.map((c) => ({
-      value: c,
-      label: CATEGORIE_COMPTABLE_LABELS[c],
-      done: set.has(c),
-    }));
-  }, [fin]);
-  const completionFiscal = useMemo(() => {
-    const set = new Set<string>();
-    fiscalDocs.forEach((d) => {
-      if (d.state === 'UPLOADED' && d.category) set.add(d.category);
-    });
-    return CATEGORIES_FISCALES_ORDER.filter((c) => c !== 'CONTENTIEUX').map(
-      (c) => ({ value: c, label: CATEGORIES_FISCALES_LABELS[c], done: set.has(c) }),
-    );
-  }, [fiscalDocs]);
 
   return (
     <form
@@ -240,86 +193,14 @@ export function Step5Validation({
           <li>
             Juridique : {uploadedJuridique} / {docs.length} document(s) déposé(s)
           </li>
-          <li>
-            Comptable : {uploadedFin} / {fin.length} document(s) déposé(s)
-          </li>
-          <li>
-            Fiscal : {uploadedFiscal} / {fiscalDocs.length} document(s) déposé(s)
-          </li>
         </ul>
         {/* PROMPT H — guide complétude par dossier, non bloquant. */}
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3">
           <CompletenessPanel title="Juridique" items={completionJuridique} />
-          <CompletenessPanel title="Comptable" items={completionComptable} />
-          <CompletenessPanel title="Fiscal" items={completionFiscal} />
         </div>
         <p className="mt-2 text-[11px] text-fg-subtle">
           Indicatif — un dossier vide ne bloque pas la finalisation.
         </p>
-      </div>
-
-      {/* 2026-06-24 — Suivi fiscal : exercice(s) + echeances. Avant finalisation,
-          on montre ce qui SERA ouvert ; apres, le resultat reel + le nb d'echeances. */}
-      <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
-        <h3 className="mb-3 flex items-center gap-2 text-base font-bold text-fg">
-          <CalendarClock className="h-5 w-5 text-accent" />
-          Suivi fiscal
-        </h3>
-        <p className="mb-3 text-xs text-fg-muted">
-          Regime TVA :{' '}
-          <strong className="text-fg">{regimeTvaMensuel ? 'Mensuel' : 'Trimestriel'}</strong>
-        </p>
-
-        {exerciceResults && exerciceResults.length > 0 ? (
-          <>
-            <ul className="space-y-1 text-sm">
-              {exerciceResults.map((r) => (
-                <li key={r.annee} className="flex items-center justify-between gap-2">
-                  <span className="text-fg">Exercice {r.annee}</span>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                      r.status === 'OPENED'
-                        ? 'bg-success/10 text-success'
-                        : r.status === 'EXISTS'
-                          ? 'bg-accent/10 text-accent'
-                          : 'bg-danger/10 text-danger'
-                    }`}
-                    title={r.message}
-                  >
-                    {r.status === 'OPENED'
-                      ? 'Ouvert'
-                      : r.status === 'EXISTS'
-                        ? 'Deja ouvert'
-                        : 'Echec'}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {echeancesTotal != null && (
-              <p className="mt-3 rounded-lg bg-success/10 px-3 py-2 text-sm font-semibold text-success">
-                {echeancesTotal} echeance(s) au calendrier du dossier.
-              </p>
-            )}
-          </>
-        ) : (
-          <div className="text-sm text-fg-muted">
-            {plannedAnnee ? (
-              <p>
-                Exercice(s) a ouvrir a la finalisation :{' '}
-                <strong className="text-fg">
-                  {[plannedAnnee, ...plannedAnterieures.filter((y) => y !== plannedAnnee)]
-                    .sort((a, b) => b - a)
-                    .join(', ')}
-                </strong>{' '}
-                — les echeances seront generees automatiquement.
-              </p>
-            ) : (
-              <p className="text-fg-subtle">
-                Aucun exercice selectionne a l'etape Suivi.
-              </p>
-            )}
-          </div>
-        )}
       </div>
 
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">

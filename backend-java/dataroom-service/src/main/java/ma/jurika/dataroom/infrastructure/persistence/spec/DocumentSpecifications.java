@@ -27,6 +27,15 @@ public final class DocumentSpecifications {
         return (root, q, cb) -> cb.equal(root.get("dossierId"), dossierId);
     }
 
+    /**
+     * Lot 2 (V26) — exclut les brouillons de generation. La recherche du dossier
+     * juridique ne doit jamais faire remonter un acte non valide : un employe
+     * qui trouve un document par recherche le tient pour acquis.
+     */
+    public static Specification<DocumentEntity> horsBrouillons() {
+        return (root, q, cb) -> cb.isFalse(root.get("brouillon"));
+    }
+
     public static Specification<DocumentEntity> ofTypes(List<String> types) {
         if (types == null || types.isEmpty()) return null;
         return (root, q, cb) -> root.get("documentType").in(types);

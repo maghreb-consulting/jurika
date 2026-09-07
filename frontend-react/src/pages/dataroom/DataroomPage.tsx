@@ -4,13 +4,11 @@ import {
   Activity,
   ArrowLeft,
   Building2,
-  Calculator,
   Check,
   Download,
   Eye,
   FileText,
   FolderOpen,
-  Landmark,
   Loader2,
   Lock,
   MessageSquare,
@@ -20,6 +18,7 @@ import {
   Search,
   Trash2,
   Upload,
+  Send,
   UserCheck,
   UserMinus,
   UserPlus,
@@ -40,9 +39,8 @@ import type { DataroomSettings, DossierBrief } from '../../types/dataroom';
 import { displayFormeJuridique } from '../../types/dataroom';
 import type { DossierClient } from '../../types/auth';
 import { DossierJuridiqueTab } from './DossierJuridiqueTab';
-import { DossierComptableTab } from './DossierComptableTab';
-import { DossierFiscalTab } from './DossierFiscalTab';
 import { DemandesTab } from './DemandesTab';
+import { RequetesAuClientSection } from './RequetesAuClientSection';
 import { DepotsTab } from './DepotsTab';
 import { ClientDataroomView } from './ClientDataroomView';
 import { InviteClientDrawer } from './InviteClientDrawer';
@@ -51,8 +49,15 @@ import { authService } from '../../services/auth.service';
 import { TransferDossierButton } from '../../components/transfer/TransferDossierButton';
 import { EntityActivityPanel } from '../../components/tracabilite/EntityActivityPanel';
 
-// Sprint 7 / TASK 6.3 -- ajout 4e tab "Dossier Fiscal" (placeholder Sprint 8)
-type Tab = 'juridique' | 'comptable' | 'fiscal' | 'depots' | 'demandes';
+/**
+ * Lot 1 (2026-09-04) — la Data Room compte QUATRE sections, et quatre seulement :
+ * le dossier juridique (organise par ticket), le depot libre du client, les
+ * requetes de l'employe AU client, et les demandes du client AU cabinet.
+ *
+ * Les dossiers comptable et fiscal sont sortis du perimetre produit. Les pieces
+ * de cette nature se deposent desormais dans « Depot client », sans traitement.
+ */
+type Tab = 'juridique' | 'depots' | 'requetes' | 'demandes';
 
 const TABS: {
   value: Tab;
@@ -60,11 +65,10 @@ const TABS: {
   icon: typeof FileText;
   activeBg: string;
 }[] = [
-  { value: 'juridique', label: 'Dossier Juridique', icon: FileText, activeBg: 'bg-accent' },
-  { value: 'comptable', label: 'Dossier Comptable', icon: Calculator, activeBg: 'bg-success' },
-  { value: 'fiscal',    label: 'Dossier Fiscal',    icon: Landmark,  activeBg: 'bg-warning' },
-  { value: 'depots',    label: 'Depots',            icon: Upload,    activeBg: 'bg-warning' },
-  { value: 'demandes',  label: 'Demandes',          icon: MessageSquare, activeBg: 'bg-accent' },
+  { value: 'juridique', label: 'Dossier juridique', icon: FileText, activeBg: 'bg-accent' },
+  { value: 'depots',    label: 'Depot client',     icon: Upload, activeBg: 'bg-warning' },
+  { value: 'requetes',  label: 'Requetes',         icon: Send, activeBg: 'bg-success' },
+  { value: 'demandes',  label: 'Demandes',         icon: MessageSquare, activeBg: 'bg-accent' },
 ];
 
 /**
@@ -459,7 +463,7 @@ function DataroomDetail({
   initialTab?: string | null;
 }) {
   const user = useCurrentUser();
-  const VALID_TABS: Tab[] = ['juridique', 'comptable', 'fiscal', 'depots', 'demandes'];
+  const VALID_TABS: Tab[] = ['juridique', 'depots', 'requetes', 'demandes'];
   const [tab, setTab] = useState<Tab>(
     initialTab && VALID_TABS.includes(initialTab as Tab) ? (initialTab as Tab) : 'juridique',
   );
@@ -862,16 +866,8 @@ function DataroomDetail({
           readOnlyStatut={dossier.statut}
         />
       )}
-      {tab === 'comptable' && (
-        <DossierComptableTab
-          dossierId={dossier.id}
-          role={user?.role ?? null}
-          readOnly={archived}
-          readOnlyStatut={dossier.statut}
-        />
-      )}
-      {tab === 'fiscal' && (
-        <DossierFiscalTab
+      {tab === 'requetes' && (
+        <RequetesAuClientSection
           dossierId={dossier.id}
           role={user?.role ?? null}
           readOnly={archived}
@@ -926,8 +922,9 @@ function DataroomDetail({
         title="SUPPRESSION DEFINITIVE du dataroom"
         description={
           <>
-            Tous les documents (juridique, comptable, fiscal), demandes,
-            snapshots et l'historique d'acces seront DETRUITS. Si des tickets
+            Tous les documents du dossier juridique et des dépôts client, les
+            requêtes, les demandes, snapshots et l'historique d'acces seront
+            DETRUITS. Si des tickets
             historiques existent, le dossier passe en RADIE ; sinon il est
             supprime physiquement. Cette action est IRREVERSIBLE.
           </>

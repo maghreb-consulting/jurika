@@ -32,14 +32,14 @@ class TicketDeadlineHooksTest {
 
     private Ticket ticket(TicketType type) {
         return new Ticket(UUID.randomUUID(), UUID.randomUUID(), "T-1", "Titre",
-                type, TicketStatut.EN_COURS, TicketPriorite.NORMALE,
+                type, TicketStatut.GENERATION_DOCUMENTS, TicketPriorite.NORMALE,
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "desc",
                 null, null, null, null, createdAt);
     }
 
     @Test
     void creation_en_cours_declenche_cn_expiry_90j() {
-        hooks.onTransition(ticket(TicketType.CREATION), TicketStatut.NOUVEAU, TicketStatut.EN_COURS);
+        hooks.onTransition(ticket(TicketType.CREATION), TicketStatut.CREATION_TICKET, TicketStatut.GENERATION_DOCUMENTS);
 
         ArgumentCaptor<DeadlineUseCase.AutoComputeCommand> cap =
                 ArgumentCaptor.forClass(DeadlineUseCase.AutoComputeCommand.class);
@@ -50,7 +50,7 @@ class TicketDeadlineHooksTest {
 
     @Test
     void liquidation_en_cours_conserve_publi_16j() {
-        hooks.onTransition(ticket(TicketType.LIQUIDATION), TicketStatut.NOUVEAU, TicketStatut.EN_COURS);
+        hooks.onTransition(ticket(TicketType.LIQUIDATION), TicketStatut.CREATION_TICKET, TicketStatut.GENERATION_DOCUMENTS);
 
         ArgumentCaptor<DeadlineUseCase.AutoComputeCommand> cap =
                 ArgumentCaptor.forClass(DeadlineUseCase.AutoComputeCommand.class);
@@ -60,13 +60,13 @@ class TicketDeadlineHooksTest {
 
     @Test
     void autre_type_ne_declenche_aucune_echeance() {
-        hooks.onTransition(ticket(TicketType.MODIFICATION), TicketStatut.NOUVEAU, TicketStatut.EN_COURS);
+        hooks.onTransition(ticket(TicketType.MODIFICATION), TicketStatut.CREATION_TICKET, TicketStatut.GENERATION_DOCUMENTS);
         verify(deadlineUseCase, never()).computeAuto(any());
     }
 
     @Test
     void transition_non_en_cours_ne_declenche_rien() {
-        hooks.onTransition(ticket(TicketType.CREATION), TicketStatut.EN_COURS, TicketStatut.CLOTURE);
+        hooks.onTransition(ticket(TicketType.CREATION), TicketStatut.GENERATION_DOCUMENTS, TicketStatut.CLOTURE_DOSSIER);
         verify(deadlineUseCase, never()).computeAuto(any());
     }
 
@@ -75,7 +75,7 @@ class TicketDeadlineHooksTest {
         // best-effort : une exception du calcul ne doit pas casser la transition
         org.mockito.Mockito.when(deadlineUseCase.computeAuto(any()))
                 .thenThrow(new RuntimeException("boom"));
-        hooks.onTransition(ticket(TicketType.CREATION), TicketStatut.NOUVEAU, TicketStatut.EN_COURS);
+        hooks.onTransition(ticket(TicketType.CREATION), TicketStatut.CREATION_TICKET, TicketStatut.GENERATION_DOCUMENTS);
         // pas d'exception remontee = OK
     }
 }

@@ -80,7 +80,7 @@ class TicketWriteSecurityTest {
 
     private Ticket sampleTicket() {
         return new Ticket(UUID.randomUUID(), UUID.randomUUID(), "T-2026-00001", "Ticket",
-                TicketType.MODIFICATION, TicketStatut.NOUVEAU, TicketPriorite.NORMALE,
+                TicketType.MODIFICATION, TicketStatut.CREATION_TICKET, TicketPriorite.NORMALE,
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 null, null, null, null, null, Instant.now());
     }
@@ -125,7 +125,7 @@ class TicketWriteSecurityTest {
         mvc.perform(post("/api/v1/tickets/{id}/transition", UUID.randomUUID())
                         .with(as(Role.SUPERVISEUR)).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target\":\"EN_COURS\"}"))
+                        .content("{\"target\":\"GENERATION_DOCUMENTS\"}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -135,7 +135,7 @@ class TicketWriteSecurityTest {
         mvc.perform(post("/api/v1/tickets/{id}/transition", UUID.randomUUID())
                         .with(as(Role.EMPLOYE)).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target\":\"EN_COURS\"}"))
+                        .content("{\"target\":\"GENERATION_DOCUMENTS\"}"))
                 .andExpect(status().isOk());
     }
 

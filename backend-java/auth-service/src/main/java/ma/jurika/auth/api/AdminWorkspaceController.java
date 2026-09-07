@@ -106,9 +106,7 @@ public class AdminWorkspaceController {
                     FROM (
                         SELECT workspace_id, size_bytes FROM dataroom_documents WHERE is_current = true
                         UNION ALL
-                        SELECT workspace_id, size_bytes FROM dataroom_comptable_documents WHERE deleted_at IS NULL
-                        UNION ALL
-                        SELECT workspace_id, size_bytes FROM dataroom_fiscal_documents WHERE is_deleted = false
+                        SELECT workspace_id, size_bytes FROM dataroom_depots WHERE deleted_at IS NULL
                     ) t
                     WHERE workspace_id IS NOT NULL
                     GROUP BY workspace_id
@@ -259,21 +257,16 @@ public class AdminWorkspaceController {
             docsByType.add(new CategoryCount("JURIDIQUE", jdbc.queryForObject(
                     "SELECT COUNT(*) FROM dataroom_documents WHERE workspace_id = ? AND is_current = true",
                     Long.class, workspaceId)));
-            docsByType.add(new CategoryCount("COMPTABLE", jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM dataroom_comptable_documents WHERE workspace_id = ? AND deleted_at IS NULL",
-                    Long.class, workspaceId)));
-            docsByType.add(new CategoryCount("FISCAL", jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM dataroom_fiscal_documents WHERE workspace_id = ? AND is_deleted = false",
+            docsByType.add(new CategoryCount("DEPOT", jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM dataroom_depots WHERE workspace_id = ? AND deleted_at IS NULL",
                     Long.class, workspaceId)));
             Map<String, Object> st = jdbc.queryForMap("""
                     SELECT COALESCE(SUM(size_bytes),0) AS bytes, COUNT(*) AS n FROM (
                         SELECT size_bytes FROM dataroom_documents WHERE workspace_id = ? AND is_current = true
                         UNION ALL
-                        SELECT size_bytes FROM dataroom_comptable_documents WHERE workspace_id = ? AND deleted_at IS NULL
-                        UNION ALL
-                        SELECT size_bytes FROM dataroom_fiscal_documents WHERE workspace_id = ? AND is_deleted = false
+                        SELECT size_bytes FROM dataroom_depots WHERE workspace_id = ? AND deleted_at IS NULL
                     ) t
-                    """, workspaceId, workspaceId, workspaceId);
+                    """, workspaceId, workspaceId);
             storageBytes = ((Number) st.get("bytes")).longValue();
             storageFiles = ((Number) st.get("n")).longValue();
         } catch (RuntimeException ignored) {

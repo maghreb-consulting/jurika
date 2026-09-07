@@ -144,7 +144,7 @@ public class TicketAnnulationListener {
             Number activeOthers = (Number) em.createNativeQuery("""
                     SELECT COUNT(*) FROM tickets
                      WHERE workspace_id = ?1 AND dossier_id = ?2
-                       AND id <> ?3 AND statut IN ('NOUVEAU','EN_COURS')
+                       AND id <> ?3 AND statut IN ('CREATION_TICKET','GENERATION_DOCUMENTS','DEROULEMENT_DEMARCHE')
                     """)
                     .setParameter(1, workspaceId)
                     .setParameter(2, dossierId)

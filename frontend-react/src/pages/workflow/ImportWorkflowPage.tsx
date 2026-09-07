@@ -6,7 +6,6 @@ import { Badge } from '../../components/ui/Badge';
 import { ticketService } from '../../services/ticket.service';
 import { workflowService } from '../../services/workflow.service';
 import { dataroomService } from '../../services/dataroom.service';
-import { extractError } from '../../lib/api';
 import type { FormeJuridique } from '../../types/ticket';
 import type { DocumentType } from '../../types/dataroom';
 import { WorkflowRoadmap } from './WorkflowRoadmap';
@@ -20,8 +19,7 @@ import { Step4Activite } from './steps/Step4Activite';
 import { Step5Dirigeants } from './steps/Step5Dirigeants';
 import { Step6Associes } from './steps/Step6Associes';
 import { Step2ImportJuridique } from './import-steps/Step2ImportJuridique';
-import { StepImportFolder } from './import-steps/StepImportFolder';
-import { StepSuiviExercices } from './import-steps/StepSuiviExercices';
+import { StepDepotPieces } from './import-steps/StepDepotPieces';
 import { Step5Validation } from './import-steps/Step5Validation';
 import { CancelTicketDialog } from '../tickets/CancelTicketDialog';
 import { useWorkflow } from './useWorkflow';
@@ -38,10 +36,11 @@ const IMPORT_STEP_LABELS: Record<number, string> = {
   5: 'Dirigeants',
   6: 'Associes',
   7: 'Upload juridique',
-  8: 'Upload comptable',
-  9: 'Upload fiscal',
-  10: 'Suivi',
-  11: 'Validation',
+  // Lot 1 (2026-09-04) — les dossiers comptable et fiscal sortent du perimetre :
+  // les anciennes etapes 8 / 9 / 10 (comptable, fiscal, suivi des exercices)
+  // laissent place a un simple depot de pieces. 11 etapes -> 9.
+  8: 'Depot des pieces',
+  9: 'Validation',
 };
 
 /** Resultat d'ouverture d'un exercice a la finalisation de l'import. */
@@ -133,9 +132,6 @@ function ImportWorkflowPageBody() {
   const [showCancel, setShowCancel] = useState(false);
   const [ticketForme, setTicketForme] = useState<SarlForm | null>(null);
   const [datasetWarnings, setDatasetWarnings] = useState<string[]>([]);
-  // 2026-06-24 — Resultats d'ouverture des exercices a la finalisation (suivi).
-  const [exerciceResults, setExerciceResults] = useState<ExerciceOpenResult[] | null>(null);
-  const [echeancesTotal, setEcheancesTotal] = useState<number | null>(null);
   const [finalizing, setFinalizing] = useState(false);
 
   // Forme juridique definie a la creation du ticket -> lockee dans Step1.
@@ -311,57 +307,15 @@ function ImportWorkflowPageBody() {
   }
 
   /**
-   * Finalisation de l'import (etape 11). Apres la finalisation du workflow
-   * (executeStep 11 -> ticket CLOTURE + consolidation fiche_structuree cote
-   * backend), on OUVRE les exercices fiscaux choisis a l'etape Suivi (step10).
-   * L'orchestration est cote front (workflow-service n'a pas de client
-   * dataroom-service) : openExercice -> EcheancesGenerator -> echeances visibles.
+   * Finalisation de l'import (etape 9). Lot 1 (2026-09-04) : l'ouverture des
+   * exercices fiscaux et la generation des echeances DGI disparaissent avec le
+   * dossier fiscal. La finalisation se limite desormais a l'etape de workflow,
+   * qui consolide la fiche structuree cote backend.
    */
   async function finalizeImport(p: Record<string, unknown>): Promise<void> {
     setFinalizing(true);
     try {
-      const dossierId = ticket?.dossierId ?? '';
-      const suivi = unwrap(stepData, 'step10', 'suivi');
-      const regimeTvaMensuel = suivi.regimeTvaMensuel !== false;
-      const anneeExercice = Number(suivi.anneeExercice ?? new Date().getFullYear());
-      const anterieures = Array.isArray(suivi.anneesAnterieuresSelectionnees)
-        ? (suivi.anneesAnterieuresSelectionnees as unknown[]).map((y) => Number(y))
-        : [];
-      const annees = Array.from(new Set([anneeExercice, ...anterieures])).filter(
-        (a) => Number.isFinite(a) && a > 0,
-      );
-
-      const results: ExerciceOpenResult[] = [];
-      if (dossierId) {
-        for (const annee of annees) {
-          try {
-            await dataroomService.openExercice(dossierId, {
-              annee,
-              regimeTvaMensuel,
-              autoCreateComptable: true,
-            });
-            results.push({ annee, status: 'OPENED' });
-          } catch (err) {
-            const { code, message } = extractError(err);
-            const exists =
-              code === 'EXERCICE_EXISTS' || /exist|déjà|deja/i.test(message ?? '');
-            results.push({
-              annee,
-              status: exists ? 'EXISTS' : 'ERROR',
-              message: exists ? undefined : message,
-            });
-          }
-        }
-        try {
-          const ech = await dataroomService.listEcheances(dossierId);
-          setEcheancesTotal(ech.length);
-        } catch {
-          /* best-effort */
-        }
-      }
-      setExerciceResults(results);
-
-      await executeStep(11, p);
+      await executeStep(9, p);
     } finally {
       setFinalizing(false);
     }
@@ -522,40 +476,18 @@ function ImportWorkflowPageBody() {
           />
         )}
         {step === 8 && (
-          <StepImportFolder
-            kind="COMPTABLE"
-            existing={unwrap(stepData, 'step8', 'comptable')}
+          <StepDepotPieces
+            existing={unwrap(stepData, 'step8', 'depot')}
             dossierId={ticket.dossierId}
-            denomination={denomination}
             saving={saving}
             onSubmit={(p) => submit(8, p)}
           />
         )}
         {step === 9 && (
-          <StepImportFolder
-            kind="FISCAL"
-            existing={unwrap(stepData, 'step9', 'fiscal')}
-            dossierId={ticket.dossierId}
-            denomination={denomination}
-            saving={saving}
-            onSubmit={(p) => submit(9, p)}
-          />
-        )}
-        {step === 10 && (
-          <StepSuiviExercices
-            existing={stepData.step10}
-            data={stepData}
-            saving={saving}
-            onSubmit={(p) => submit(10, p)}
-          />
-        )}
-        {step === 11 && (
           <Step5Validation
-            existing={stepData.step11}
+            existing={stepData.step9}
             data={stepData}
             dossierId={ticket.dossierId ?? null}
-            exerciceResults={exerciceResults}
-            echeancesTotal={echeancesTotal}
             saving={saving || finalizing}
             onSubmit={finalizeImport}
           />

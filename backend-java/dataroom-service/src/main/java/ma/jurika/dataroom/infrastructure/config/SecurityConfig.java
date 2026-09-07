@@ -42,6 +42,21 @@ public class SecurityConfig {
                         // @Profile("!prod") + @ConditionalOnProperty(jurika.test.seed.enabled=true).
                         // En prod l'endpoint n'existe meme pas, donc permitAll ici est sans risque.
                         .requestMatchers("/api/v1/test/**").permitAll()
+                        // Lot 3 (2026-09-07) — POINTS D'ENTREE WOPI.
+                        //
+                        // Collabora appelle le backend depuis l'interieur du
+                        // reseau Docker et ne presente AUCUN JWT : le filtre ne
+                        // peut rien authentifier ici. Le controle n'est pas
+                        // supprime, il est DEPLACE dans WopiService — jeton
+                        // opaque a duree de vie courte, correspondance fileId /
+                        // seance, et cloisonnement multi-tenant verifie
+                        // explicitement a chaque appel.
+                        //
+                        // Ce deplacement est couvert par WopiSecuriteTest, en
+                        // assertions positives : jeton expire refuse, jeton d'un
+                        // autre workspace refuse, fileId ne correspondant pas au
+                        // jeton refuse, droit d'ecriture absent -> PutFile refuse.
+                        .requestMatchers("/api/v1/dataroom/wopi/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

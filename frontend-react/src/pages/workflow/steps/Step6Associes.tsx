@@ -12,6 +12,7 @@ import {
   Users,
   Link2,
 } from 'lucide-react';
+import { BlocageValidation } from '../../../components/workflow/BlocageValidation';
 import { IdentityExtractor } from '../../../components/identity/IdentityExtractor';
 import { toIsoDate } from '../../../types/identity';
 import { useStepAutosave } from '../useStepAutosave';
@@ -662,9 +663,18 @@ export function Step6Associes({
       );
     }
     return Boolean(
-      a.nom && a.prenom && a.cin && a.adresse && (importMode || a.cinUploaded) && !cinInvalidMessage(a.cin),
+      a.nom && a.prenom && a.cin && a.adresse && (importMode || a.cinUploaded) && !cinInvalidMessage(a.cin)
+        // Lot 2 (2026-09-07) — DATE ET LIEU DE NAISSANCE OBLIGATOIRES.
+        // L'etape laissait valider sans, et les statuts sortaient avec
+        // « M. KARIM TAZI, de nationalite Marocaine, ne le a, demeurant a… » :
+        // la comparution des associes imprime $ASSOCIE_DATE_NAISSANCE et
+        // $ASSOCIE_LIEU_NAISSANCE. Une date de naissance manquante dans des
+        // statuts est une lacune de fond, pas de forme : on bloque la saisie
+        // plutot que d'omettre la mention.
+        && a.dateNaissance && a.lieuNaissance,
     );
   }
+
   // Règle de forme : SARL = 2 associés minimum (1 seul = SARL à associé unique) ;
   // SARL AU = exactement 1 associé.
   const nombreAssociesValide = isUnique
@@ -675,6 +685,69 @@ export function Step6Associes({
     associes.every(isAssocieValid) &&
     sumPartsValid &&
     apportValid;
+
+  /**
+   * Ce qui manque, associe par associe. Sans cette liste, « Valider et
+   * continuer » ne faisait RIEN et ne disait rien : l'employe cliquait dans le
+   * vide sans savoir quel champ lui etait reproche.
+   */
+  const raisonsBlocage: string[] = (() => {
+    if (canSubmit) return [];
+    const out: string[] = [];
+    if (!nombreAssociesValide) {
+      out.push(
+        isUnique
+          ? 'Une SARL AU compte exactement un associé.'
+          : 'Une SARL requiert au moins deux associés.',
+      );
+    }
+    associes.forEach((a, i) => {
+      if (isAssocieValid(a)) return;
+      const qui = [a.prenom, a.nom].filter(Boolean).join(' ').trim()
+        || a.denomination
+        || `Associé ${i + 1}`;
+      const manques: string[] = [];
+      if (a.nombreParts <= 0) manques.push('nombre de parts');
+      if (a.typePersonne === 'MORALE') {
+        if (!a.denomination) manques.push('dénomination');
+        if (!a.rc || rcInvalidMessage(a.rc)) manques.push('RC');
+        if (!a.ice || iceInvalidMessage(a.ice)) manques.push('ICE');
+        if (!a.ifFiscal || ifInvalidMessage(a.ifFiscal)) manques.push('identifiant fiscal');
+        if (!a.siege) manques.push('siège');
+        if (!a.repNom || !a.repPrenom) manques.push('représentant légal');
+        if (!a.repCin || cinInvalidMessage(a.repCin)) manques.push('CIN du représentant');
+        if (!a.repAdresse) manques.push('adresse du représentant');
+        if (!a.repQualite) manques.push('qualité du représentant');
+        if (!importMode && !a.rcUploaded) manques.push('RC de l’entité (fichier)');
+        if (!importMode && !a.statutsEntiteUploaded) manques.push('statuts de l’entité (fichier)');
+        if (!importMode && !a.repCinUploaded) manques.push('CIN du représentant (extraite)');
+      } else {
+        if (!a.nom) manques.push('nom');
+        if (!a.prenom) manques.push('prénom');
+        if (!a.cin) manques.push('n° de CIN');
+        else if (cinInvalidMessage(a.cin)) manques.push('n° de CIN valide');
+        if (!a.adresse) manques.push('adresse');
+        if (!a.dateNaissance) manques.push('date de naissance (imprimée dans les statuts)');
+        if (!a.lieuNaissance) manques.push('lieu de naissance (imprimé dans les statuts)');
+        if (!importMode && !a.cinUploaded) {
+          manques.push('CIN extraite — joindre le fichier ne suffit pas, cliquez « Extraire »');
+        }
+      }
+      if (manques.length) out.push(`${qui} : ${manques.join(', ')}.`);
+    });
+    if (!sumPartsValid) {
+      out.push(
+        `La somme des parts doit égaler ${totalPartsExpected ?? 0} (actuellement ${totalParts}).`,
+      );
+    }
+    if (!apportValid) {
+      out.push(
+        `La somme des apports doit égaler le capital ${capitalSocialExpected ?? 0} MAD `
+          + `(actuellement ${totalApport}).`,
+      );
+    }
+    return out;
+  })();
 
   return (
     <form
@@ -1555,6 +1628,11 @@ export function Step6Associes({
             </p>
           </div>
         )}
+
+        {/* Lot 2 (2026-09-07) — l'etape bloquait EN SILENCE : le bouton etait
+            desactive sans dire pourquoi, et un clic ne produisait rien. On
+            enonce ce qui manque, associe par associe, comme le fait l'etape 5. */}
+        <BlocageValidation raisons={raisonsBlocage} testId="step6-blocage" />
 
         <div className="flex items-center justify-end pt-2">
           <button

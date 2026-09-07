@@ -56,13 +56,27 @@ CREATE TABLE IF NOT EXISTS entreprise_dossiers (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Lot 1 (2026-09-04) — le libelle du dossier de ticket lit les sous-types de
+-- MODIFICATION dans les donnees du workflow. Table creee par workflow-service
+-- en production ; stubbee ici comme les autres tables amont.
+CREATE TABLE IF NOT EXISTS workflow_progress (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    workspace_id UUID NOT NULL,
+    ticket_id UUID NOT NULL,
+    workflow_type VARCHAR(40),
+    statut VARCHAR(20) DEFAULT 'EN_COURS',
+    data JSONB DEFAULT '{}'::jsonb,
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS tickets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id),
     reference VARCHAR(50),
     titre VARCHAR(500),
     type VARCHAR(100),
-    statut VARCHAR(50) DEFAULT 'NOUVEAU',
+    statut VARCHAR(50) DEFAULT 'CREATION_TICKET',
     dossier_id UUID REFERENCES entreprise_dossiers(id),
     cloture_at TIMESTAMPTZ,
     description TEXT,

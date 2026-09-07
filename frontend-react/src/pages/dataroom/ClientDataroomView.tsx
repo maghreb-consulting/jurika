@@ -4,9 +4,7 @@ import {
   Clock,
   Download,
   Eye,
-  FileSpreadsheet,
   FileText,
-  Landmark,
   Loader2,
   Lock,
   MessageSquare,
@@ -35,11 +33,9 @@ import type {
   DossierJuridiqueView,
 } from '../../types/dataroom';
 import { DOCUMENT_TYPE_LABELS } from '../../types/dataroom';
-import { DossierComptableTab } from './DossierComptableTab';
-import { DossierFiscalTab } from './DossierFiscalTab';
 import { DataroomReadOnlyHint } from './components/DataroomReadOnlyHint';
 
-type Tab = 'juridique' | 'comptable' | 'fiscal' | 'depots' | 'demandes';
+type Tab = 'juridique' | 'depots' | 'demandes';
 
 const STATUT_LABEL: Record<DemandeStatut, string> = {
   NON_TRAITEE: 'Non traitee',
@@ -74,7 +70,7 @@ export function ClientDataroomView() {
   // pour atterrir directement sur l'onglet voulu ; défaut = juridique.
   const [tab, setTab] = useState<Tab>(() => {
     const t = new URLSearchParams(window.location.search).get('tab');
-    const allowed: Tab[] = ['juridique', 'comptable', 'fiscal', 'depots', 'demandes'];
+    const allowed: Tab[] = ['juridique', 'depots', 'demandes'];
     return (allowed as string[]).includes(t ?? '') ? (t as Tab) : 'juridique';
   });
 
@@ -373,25 +369,11 @@ export function ClientDataroomView() {
                 label="Dossier Juridique"
               />
               <TabButton
-                active={tab === 'comptable'}
-                onClick={() => setTab('comptable')}
-                color="#10B981"
-                icon={<FileSpreadsheet className="w-4 h-4" />}
-                label="Dossier Comptable"
-              />
-              <TabButton
-                active={tab === 'fiscal'}
-                onClick={() => setTab('fiscal')}
-                color="#0EA5E9"
-                icon={<Landmark className="w-4 h-4" />}
-                label="Dossier Fiscal"
-              />
-              <TabButton
                 active={tab === 'depots'}
                 onClick={() => setTab('depots')}
                 color="#F59E0B"
                 icon={<Upload className="w-4 h-4" />}
-                label="Depots"
+                label="Depot"
               />
               <TabButton
                 active={tab === 'demandes'}
@@ -410,30 +392,6 @@ export function ClientDataroomView() {
                 docs={juridique?.documentsEnVigueur ?? []}
                 canDownload={canDownload}
                 canPrint={canPrint}
-              />
-            )}
-            {tab === 'comptable' && (
-              <DossierComptableTab
-                dossierId={dossier.id}
-                role="CLIENT"
-                canDepot={settings?.permDepot ?? false}
-                canDownload={canDownload}
-                canPrint={canPrint}
-                readOnly={archived}
-                readOnlyStatut={dossier.statut}
-              />
-            )}
-            {tab === 'fiscal' && (
-              // Lecture seule cote CLIENT : DossierFiscalTab masque upload/delete
-              // quand role !== EMPLOYE ; le download suit perm_download (backend).
-              // Lot AA : « Voir » toujours actif ; download/print gates par perms.
-              <DossierFiscalTab
-                dossierId={dossier.id}
-                role="CLIENT"
-                canDownload={canDownload}
-                canPrint={canPrint}
-                readOnly={archived}
-                readOnlyStatut={dossier.statut}
               />
             )}
             {tab === 'depots' && (

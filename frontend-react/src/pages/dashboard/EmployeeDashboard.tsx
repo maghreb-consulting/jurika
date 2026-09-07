@@ -28,11 +28,17 @@ import type {
 } from '../../types/dataroom';
 import { TYPE_REQUETE_LABELS } from '../../types/dataroom';
 
-const KANBAN_STATUTS = ['NOUVEAU', 'EN_COURS', 'CLOTURE'] as const;
+const KANBAN_STATUTS = [
+  'CREATION_TICKET',
+  'GENERATION_DOCUMENTS',
+  'DEROULEMENT_DEMARCHE',
+  'CLOTURE_DOSSIER',
+] as const;
 const KANBAN_LABELS: Record<string, string> = {
-  NOUVEAU: 'OUVERT',
-  EN_COURS: 'EN COURS',
-  CLOTURE: 'CLOTURE',
+  CREATION_TICKET: 'CREATION',
+  GENERATION_DOCUMENTS: 'GENERATION',
+  DEROULEMENT_DEMARCHE: 'DEMARCHES',
+  CLOTURE_DOSSIER: 'CLOTURE',
 };
 
 const DEMANDE_COLUMNS: Array<{ key: 'NON_TRAITEE' | 'EN_COURS' | 'TRAITEE'; label: string; bg: string }> = [
@@ -95,16 +101,21 @@ export function EmployeeDashboard() {
   // Compteurs 100% derives de MES donnees (aucun total workspace-wide).
   const dossiersInactifs = new Set(['CLOTURE', 'ARCHIVE', 'RADIE']);
   const dossiersActifs = dossiers.filter((d) => !dossiersInactifs.has(d.statut)).length;
-  const ticketsEnCours = tickets.filter((t) => t.statut === 'EN_COURS').length;
-  const ticketsNouveaux = tickets.filter((t) => t.statut === 'NOUVEAU').length;
+  // « En cours » couvre les deux statuts de production : generation des actes,
+  // puis deroulement des demarches administratives.
+  const ticketsEnCours = tickets.filter(
+    (t) => t.statut === 'GENERATION_DOCUMENTS' || t.statut === 'DEROULEMENT_DEMARCHE',
+  ).length;
+  const ticketsNouveaux = tickets.filter((t) => t.statut === 'CREATION_TICKET').length;
   // "Taches urgentes" = mes tickets EN_COURS.
   const taches = ticketsEnCours;
-  const cloturesMois = tickets.filter((t) => t.statut === 'CLOTURE').length;
+  const cloturesMois = tickets.filter((t) => t.statut === 'CLOTURE_DOSSIER').length;
 
   const ticketsByStatut: Record<string, Ticket[]> = {
-    NOUVEAU: [],
-    EN_COURS: [],
-    CLOTURE: [],
+    CREATION_TICKET: [],
+    GENERATION_DOCUMENTS: [],
+    DEROULEMENT_DEMARCHE: [],
+    CLOTURE_DOSSIER: [],
   };
   for (const t of tickets) {
     if (t.statut in ticketsByStatut) ticketsByStatut[t.statut].push(t);
@@ -176,7 +187,7 @@ export function EmployeeDashboard() {
             Voir tous →
           </a>
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {KANBAN_STATUTS.map((s) => (
             <div key={s}>
               <div className="rounded-t-lg bg-bg-overlay px-3 py-2">

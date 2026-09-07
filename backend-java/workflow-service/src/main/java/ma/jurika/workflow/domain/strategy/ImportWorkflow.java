@@ -44,9 +44,7 @@ import java.util.Set;
  *   <li>Dirigeants (+ gerance)</li>
  *   <li>Associes (repartition des parts)</li>
  *   <li>Upload dossier JURIDIQUE (typed, Data Room)</li>
- *   <li>Upload dossier COMPTABLE (typed, Data Room)</li>
- *   <li>Upload dossier FISCAL (typed, Data Room)</li>
- *   <li>Suivi (regime TVA + annees d'exercice a ouvrir)</li>
+ *   <li>Depot libre des pieces comptables et fiscales (aucun traitement)</li>
  *   <li>Synthese (consolide la fiche juridique + marque l'import complete)</li>
  * </ol>
  */
@@ -71,10 +69,8 @@ public class ImportWorkflow extends AbstractWorkflow {
             case 5 -> handleDirigeants(ctx);
             case 6 -> handleAssocies(ctx);
             case 7 -> handleUploadJuridique(ctx);
-            case 8 -> handleUploadComptable(ctx);
-            case 9 -> handleUploadFiscal(ctx);
-            case 10 -> handleSuivi(ctx);
-            case 11 -> handleSynthese(ctx);
+            case 8 -> handleDepot(ctx);
+            case 9 -> handleSynthese(ctx);
             default -> StepResult.blocked("Etape inconnue : " + ctx.step());
         };
     }
@@ -366,72 +362,23 @@ public class ImportWorkflow extends AbstractWorkflow {
     }
 
     /**
-     * Etape 8 — Upload du dossier COMPTABLE. Etape OPTIONNELLE (non bloquante) :
-     * on persiste les metadonnees fournies (deja deposees en Data Room cote front).
+     * Etape 8 — Depot des pieces comptables et fiscales. Etape OPTIONNELLE et
+     * SANS TRAITEMENT : les fichiers sont deposes tels quels dans l'espace
+     * « Depot » de la Data Room (cote front), on ne fait que conserver les
+     * metadonnees. Les dossiers comptable et fiscal, avec leur classement par
+     * categorie et leurs exercices, sont sortis du perimetre produit.
      */
-    private StepResult handleUploadComptable(StepContext ctx) {
-        return StepResult.ok(Map.of("comptable", ctx.payload()));
-    }
-
-    /**
-     * Etape 9 — Upload du dossier FISCAL. Etape OPTIONNELLE (non bloquante).
-     */
-    private StepResult handleUploadFiscal(StepContext ctx) {
-        return StepResult.ok(Map.of("fiscal", ctx.payload()));
+    private StepResult handleDepot(StepContext ctx) {
+        return StepResult.ok(Map.of("depot", ctx.payload()));
     }
 
     // =========================================================================
-    //  ETAPES 10-11 — Suivi des exercices + Synthese
+    //  ETAPE 9 — Synthese
     // =========================================================================
 
     /**
-     * Etape 10 (Suivi) — Persiste les choix de suivi fiscal : regime TVA
-     * (mensuel/trimestriel), annee de l'exercice EN COURS et liste optionnelle
-     * des annees ANTERIEURES a ouvrir. L'ouverture EFFECTIVE des exercices (et la
-     * generation des echeances) est orchestree cote frontend a la finalisation
-     * (workflow-service ne dialogue pas avec dataroom-service).
-     */
-    private StepResult handleSuivi(StepContext ctx) {
-        Map<String, Object> p = ctx.payload();
-        boolean regimeTvaMensuel = !Boolean.FALSE.equals(p.get("regimeTvaMensuel"));
-        int currentYear = java.time.Year.now().getValue();
-        int annee;
-        try {
-            annee = p.get("anneeExercice") != null
-                    ? Integer.parseInt(String.valueOf(p.get("anneeExercice")))
-                    : currentYear;
-        } catch (NumberFormatException e) {
-            annee = currentYear;
-        }
-        if (annee < 1990 || annee > currentYear + 1) {
-            return StepResult.blocked(
-                    "Annee d'exercice invalide : " + annee + " (attendu entre 1990 et "
-                            + (currentYear + 1) + ").");
-        }
-
-        List<Object> anterieures = new java.util.ArrayList<>();
-        Object raw = p.get("anneesAnterieuresSelectionnees");
-        if (raw instanceof List<?> l) {
-            for (Object o : l) {
-                try {
-                    int y = Integer.parseInt(String.valueOf(o));
-                    if (y >= 1990 && y < annee) anterieures.add(y);
-                } catch (NumberFormatException ignore) {
-                    // ignore les valeurs non numeriques
-                }
-            }
-        }
-
-        Map<String, Object> suivi = new HashMap<>();
-        suivi.put("regimeTvaMensuel", regimeTvaMensuel);
-        suivi.put("anneeExercice", annee);
-        suivi.put("anneesAnterieuresSelectionnees", anterieures);
-        return StepResult.ok(Map.of("suivi", suivi));
-    }
-
-    /**
-     * Etape 11 (Synthese) — Consolide la fiche juridique a partir des etapes de
-     * SAISIE (1-6) + le Suivi (10), et marque l'import comme complete. La
+     * Etape 9 (Synthese) — Consolide la fiche juridique a partir des etapes de
+     * SAISIE (1-6) et marque l'import comme complete. La
      * persistance effective dans {@code entreprise_dossiers.fiche_structuree} est
      * faite par {@code WorkflowUseCases.applyImportConsolidation} a la finalisation.
      */
@@ -489,7 +436,6 @@ public class ImportWorkflow extends AbstractWorkflow {
             ficheJuridique.put("dossierId", dossierId);
         }
 
-        Map<String, Object> suivi = unwrapStep(existing, "step10", "suivi");
 
         if (p.containsKey("validated") && !Boolean.TRUE.equals(p.get("validated"))) {
             return StepResult.blocked("Validation finale requise (validated=true).");
@@ -497,9 +443,6 @@ public class ImportWorkflow extends AbstractWorkflow {
 
         Map<String, Object> synthese = new HashMap<>();
         synthese.put("ficheJuridique", ficheJuridique);
-        if (suivi != null && !suivi.isEmpty()) {
-            synthese.put("suivi", suivi);
-        }
         synthese.put("importComplete", true);
         synthese.put("finalisedAt", java.time.Instant.now().toString());
         return StepResult.ok(Map.of("synthese", synthese));

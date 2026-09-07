@@ -52,7 +52,7 @@ const PRIORITE_RANK: Record<TicketPriorite, number> = {
 
 /** Statuts terminaux : on les garde dans le calendrier mais grises (option du brief). */
 export function isTicketTermine(t: Ticket): boolean {
-  return t.statut === 'CLOTURE' || t.statut === 'ANNULE';
+  return t.statut === 'CLOTURE_DOSSIER' || t.statut === 'ANNULE';
 }
 
 /** Cle de jour locale stable (annee-mois-jour) a partir d'une date ISO. */

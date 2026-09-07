@@ -10,7 +10,6 @@ import ma.jurika.dataroom.api.dto.DataroomDtos.ClientLinkResponse;
 import ma.jurika.dataroom.api.dto.DataroomDtos.ClientPermissionsView;
 import ma.jurika.dataroom.api.dto.DataroomDtos.SettingsView;
 import ma.jurika.dataroom.api.dto.DataroomDtos.ToggleSuspensionRequest;
-import ma.jurika.dataroom.api.dto.DataroomDtos.UpdateAccountantNotifRequest;
 import ma.jurika.dataroom.api.dto.DataroomDtos.UpdatePermissionsRequest;
 import ma.jurika.dataroom.application.DataroomSettingsService;
 import ma.jurika.dataroom.application.DeleteDataroomUseCase;
@@ -100,14 +99,6 @@ public class SettingsController {
                 s.getClientLinkToken());
     }
 
-    /** RG-DC27 : config notif comptable a chaque upload comptable. */
-    @PatchMapping("/dossiers/{dossierId}/settings/accountant-notif")
-    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
-    public SettingsView updateAccountantNotif(@PathVariable UUID dossierId,
-                                                @Valid @RequestBody UpdateAccountantNotifRequest req) {
-        return toView(settings.updateAccountantNotification(dossierId, req.accountantEmail(), req.enabled()));
-    }
-
     /**
      * Sprint 7 / TASK 5 -- Drawer "Activite client" : 50 dernieres actions.
      * Tri DESC sur created_at, pagination simple.
@@ -133,9 +124,10 @@ public class SettingsController {
     @DeleteMapping("/dossiers/{dossierId}")
     @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR')")
     @Operation(summary = "Supprime un dataroom (destructif, idempotent)",
-            description = "Supprime dataroom_settings + tous les documents/demandes/snapshots/access-log/exercices/echeances/alertes "
+            description = "Supprime dataroom_settings + tous les documents / depots / demandes / "
+                    + "snapshots / access-log "
                     + "rattaches. Le dossier passe en RADIE si des tickets historiques le referencent, "
-                    + "sinon il est DELETE physique. Refuse 409 si un ticket actif (NOUVEAU/EN_COURS) "
+                    + "sinon il est DELETE physique. Refuse 409 si un ticket actif "
                     + "est encore rattache.")
     public ResponseEntity<Void> deleteDataroom(@AuthenticationPrincipal AuthenticatedUser user,
                                                 @PathVariable UUID dossierId,
@@ -156,7 +148,6 @@ public class SettingsController {
         var stats = accessLogQuery.clientAccessStats(s.getDossierId());
         return new SettingsView(s.getDossierId(), s.getAccessStatus(),
                 s.isPermDownload(), s.isPermPrint(), s.isPermDepot(), s.getClientLinkToken(),
-                clientsWithAccess, stats.lastAt(),
-                s.getAccountantEmail(), s.isNotifyAccountantOnUpload());
+                clientsWithAccess, stats.lastAt());
     }
 }
