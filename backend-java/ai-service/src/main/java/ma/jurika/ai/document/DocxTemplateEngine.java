@@ -189,13 +189,15 @@ public class DocxTemplateEngine {
         }
 
         try (InputStream in = templateResource.getInputStream()) {
-            RenderOutcome outcome = renderInternal(in, withDefaults, isStatutsTemplate(templateCode));
+            RenderOutcome outcome = renderInternal(in, withDefaults,
+                    isStatutsTemplate(templateCode), estImprimeAdministratif(templateCode));
             return new DocumentResult(
                     outcome.bytes(),
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     templateCode + ".docx",
                     true,
-                    outcome.missingVariables());
+                    outcome.missingVariables(),
+                    outcome.detail());
         } catch (Exception ex) {
             throw new RuntimeException(
                     "Echec generation document " + templateCode + " : " + ex.getMessage(), ex);
@@ -209,16 +211,48 @@ public class DocxTemplateEngine {
      */
     DocumentResult render(byte[] docxBytes, String filename, Map<String, Object> variables) {
         try (InputStream in = new ByteArrayInputStream(docxBytes)) {
-            RenderOutcome outcome = renderInternal(in, variables, isStatutsTemplate(filename));
+            RenderOutcome outcome = renderInternal(in, variables,
+                    isStatutsTemplate(filename), estImprimeAdministratif(filename));
             return new DocumentResult(
                     outcome.bytes(),
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     filename,
                     true,
-                    outcome.missingVariables());
+                    outcome.missingVariables(),
+                    outcome.detail());
         } catch (Exception ex) {
             throw new RuntimeException("Echec render in-memory : " + ex.getMessage(), ex);
         }
+    }
+
+    /**
+     * Lot 5 (2026-09-07) — les trois IMPRIMES de l'administration : demande de taxe
+     * professionnelle, declaration d'existence, declaration d'immatriculation au
+     * registre du commerce.
+     *
+     * <p>Ce ne sont pas des actes mais des formulaires officiels, faits de cases.
+     * Une case laissee blanche y est recevable — c'est deja ce que dit le controle
+     * de completude, qui ne bloque que sur un blanc AU MILIEU D'UNE PHRASE. Le rendu
+     * doit dire la meme chose : sur ces trois modeles, une case non renseignee sort
+     * BLANCHE, au lieu du « ‹ VALEUR MANQUANTE : … › » rouge qui serait imprime sur
+     * un document remis a la DGI ou au greffe.
+     *
+     * <p>Defaut trouve en conditions reelles, sur le document produit et non sur un
+     * test : la declaration d'existence est sortie avec
+     * « ‹ VALEUR MANQUANTE : ASSOCIE_PRINCIPAL_FAX › » imprime dessus.
+     *
+     * <p>La liste est explicite plutot que deduite : c'est une decision de rendu, et
+     * elle doit se relire. Les huit autres workflows ne sont pas concernes.
+     */
+    private static final java.util.Set<String> IMPRIMES_ADMINISTRATIFS = java.util.Set.of(
+            "DEMANDE_TAXE_PROFESSIONNELLE",
+            "DECLARATION_EXISTENCE",
+            "DECLARATION_IMMATRICULATION_RC");
+
+    private boolean estImprimeAdministratif(String codeOrFilename) {
+        if (codeOrFilename == null) return false;
+        String base = codeOrFilename.toUpperCase(Locale.ROOT).replace(".DOCX", "");
+        return IMPRIMES_ADMINISTRATIFS.contains(base);
     }
 
     /**
@@ -236,9 +270,21 @@ public class DocxTemplateEngine {
 
     private RenderOutcome renderInternal(InputStream in,
                                           Map<String, Object> variables,
-                                          boolean applyStatutsHierarchy) throws Exception {
+                                          boolean applyStatutsHierarchy,
+                                          boolean imprimeAdministratif) throws Exception {
         try (XWPFDocument doc = new XWPFDocument(in);
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            // PRE-PASS V5 (2026-09) : retrait des lignes d'annotation « ↳ ».
+            // Doit tourner EN PREMIER : ces lignes sont des reperes de lecture, elles
+            // ne participent ni aux conditions ni aux boucles.
+            retirerAnnotations(doc);
+
+            // PRE-PASS V5 (2026-09 — formulaires DGI / greffe) : cases a cocher
+            // ◈ CASE À COCHER … / ☐ option. Doit tourner AVANT l'evaluateur
+            // conditionnel : une option cochee peut se trouver dans une branche
+            // conservee, et surtout le marqueur ◈ ne doit jamais survivre.
+            List<String> casesNonRenseignees = resolveDirectorCheckboxes(doc, variables);
 
             // PRE-PASS V4 (2026-08 — modeles directeur) : evaluateur conditionnel
             // ◇ SI / ◇ SINON SI / ◇ SINON / ◆ FIN SI au niveau DOCUMENT (scope global).
@@ -310,22 +356,39 @@ public class DocxTemplateEngine {
                     && manifestLoader.dictionary().fillLater() != null) {
                 fillLaterKeys = new java.util.HashSet<>(manifestLoader.dictionary().fillLater());
             }
-            List<String> missing = MissingVariableMarker.apply(doc, fillLaterKeys);
+            List<MissingVariableMarker.Manquante> detail =
+                    MissingVariableMarker.applyDetailed(doc, fillLaterKeys, imprimeAdministratif);
+            // Lot 5 — une case a cocher restee vide est une variable non renseignee,
+            // meme si son nom ne figure nulle part dans le texte rendu (le marqueur ◈
+            // a ete consomme). Elle n'est jamais bloquante : c'est une case.
+            for (String v : casesNonRenseignees) {
+                boolean deja = detail.stream().anyMatch(m -> m.nom().equals(v));
+                if (!deja) {
+                    detail = new ArrayList<>(detail);
+                    detail.add(new MissingVariableMarker.Manquante(
+                            v, "case a cocher non renseignee", false));
+                }
+            }
+            List<String> missing = new ArrayList<>(detail.size());
+            for (MissingVariableMarker.Manquante m : detail) missing.add(m.nom());
             if (!missing.isEmpty()) {
                 log.info("Variables manquantes dans le document genere ({}) : {}",
                         missing.size(), missing);
             }
 
             doc.write(out);
-            return new RenderOutcome(out.toByteArray(), missing);
+            // Lot A — l'horodatage ZIP fige, sinon deux rendus du meme dossier
+            // different sur les octets de date sans qu'une ligne ait bouge.
+            return new RenderOutcome(ZipHorodatage.figer(out.toByteArray()), missing, detail);
         }
     }
 
     /**
      * Resultat interne d'un rendu : bytes du .docx + liste ordonnee / dedupliquee
-     * des noms de variables manquantes.
+     * des noms de variables manquantes, et leur detail (endroit + caractere bloquant).
      */
-    private record RenderOutcome(byte[] bytes, List<String> missingVariables) {}
+    private record RenderOutcome(byte[] bytes, List<String> missingVariables,
+                                  List<MissingVariableMarker.Manquante> detail) {}
 
     // ============================================================
     // EXPANSION DES BLOCS REPETABLES (▶ NOM_BLOC)
@@ -812,17 +875,71 @@ public class DocxTemplateEngine {
     private boolean evalCondition(String expr, Map<String, Object> scope) {
         if (expr == null || expr.isBlank()) return false;
         String e = expr.trim();
-        if (e.matches("(?siu).*\\s+OU\\s+.*")) {
-            for (String part : e.split("(?iu)\\s+OU\\s+")) {
+        List<String> ou = decouperHorsLitteral(e, "OU");
+        if (ou.size() > 1) {
+            for (String part : ou) {
                 if (evalAtomic(part.trim(), scope)) return true;
             }
             return false;
         }
         boolean all = true;
-        for (String part : e.split("(?iu)\\s+ET\\s+")) {
+        for (String part : decouperHorsLitteral(e, "ET")) {
             all &= evalAtomic(part.trim(), scope);
         }
         return all;
+    }
+
+    /**
+     * Decoupe une condition sur le mot-cle ET / OU, MAIS JAMAIS A L'INTERIEUR
+     * D'UN LITTERAL {@code « … »}.
+     *
+     * <p>Lot A (2026-09-10), defaut trouve sur le document PRODUIT. Le corpus
+     * creation du 9 septembre porte, dans la demande d'affiliation CNSS :
+     *
+     * <pre>    ◇ SI : $CNSS_MODE_DECLARATION = « Teledeclaration et telepaiement (DAMANCOM) »</pre>
+     *
+     * Le decoupage precedent, un simple {@code split("\\s+ET\\s+")}, coupait la
+     * condition sur le « et » DU LIBELLE. La premiere moitie comparait
+     * « Teledeclaration » a la valeur entiere : fausse. La seconde,
+     * « telepaiement (DAMANCOM) » », n'etait reconnue par aucun patron et
+     * partait en {@code log.warn} — donc a false, elle aussi. La ligne
+     * « Personne habilitee pour la teledeclaration » disparaissait du formulaire
+     * alors que le dossier portait exactement la valeur attendue : une demande
+     * d'affiliation deposee a la CNSS sans son correspondant DAMANCOM.
+     *
+     * <p>Le defaut etait dormant tant qu'aucun libelle ne contenait « et » ou
+     * « ou ». Il ne l'est plus, et il pouvait frapper les neuf autres workflows
+     * a la premiere valeur mal choisie.
+     */
+    static List<String> decouperHorsLitteral(String expr, String motCle) {
+        List<String> parts = new ArrayList<>();
+        if (expr == null) return parts;
+        int profondeur = 0;
+        int debut = 0;
+        int i = 0;
+        while (i < expr.length()) {
+            char c = expr.charAt(i);
+            if (c == '«') { profondeur++; i++; continue; }
+            if (c == '»') { if (profondeur > 0) profondeur--; i++; continue; }
+            if (profondeur == 0 && Character.isWhitespace(c)) {
+                int j = i;
+                while (j < expr.length() && Character.isWhitespace(expr.charAt(j))) j++;
+                int fin = j + motCle.length();
+                boolean motSuivi = fin < expr.length() && Character.isWhitespace(expr.charAt(fin));
+                if (motSuivi && expr.regionMatches(true, j, motCle, 0, motCle.length())) {
+                    parts.add(expr.substring(debut, i));
+                    while (fin < expr.length() && Character.isWhitespace(expr.charAt(fin))) fin++;
+                    debut = fin;
+                    i = fin;
+                    continue;
+                }
+                i = j;
+                continue;
+            }
+            i++;
+        }
+        parts.add(expr.substring(debut));
+        return parts;
     }
 
     /** Evalue une condition atomique : {@code $VAR existe} ou {@code $VAR = « valeur »}. */
@@ -856,7 +973,15 @@ public class DocxTemplateEngine {
      * normalisée (sans accents, minuscules, espaces compactés).
      */
     private static final Map<String, String> NL_CONDITION_FLAGS = Map.of(
-            "au moins un apport est realise en nature", "HAS_APPORT_NATURE");
+            "au moins un apport est realise en nature", "HAS_APPORT_NATURE",
+            // Lot 5 (2026-09-07) — formulaire DECLARATION_IMMATRICULATION_RC. Les cinq
+            // conditions du modele 2 sont redigees en francais et non en $VAR = « … » ;
+            // le fichier du directeur reste INTOUCHE, la resolution se fait ici.
+            "le siege etait precedemment exploite par un tiers", "HAS_SIEGE_PRECEDENT",
+            "la societe comporte des succursales", "HAS_SUCCURSALES",
+            "capital variable", "HAS_CAPITAL_VARIABLE",
+            "brevets ou marques deposes", "HAS_BREVETS_MARQUES",
+            "un dirigeant est une personne morale", "HAS_DIRIGEANT_PM");
 
     /** Retire guillemets francais « », droits, apostrophes et espaces (fins inclus). */
     private String stripGuillemets(String v) {
@@ -867,11 +992,31 @@ public class DocxTemplateEngine {
         return s.trim();
     }
 
-    /** Normalisation de comparaison : sans accents, minuscules, espaces compactes. */
+    /**
+     * Normalisation de comparaison : sans accents, minuscules, espaces compactes —
+     * ET APOSTROPHES REPLIEES.
+     *
+     * <p>Lot 5 (2026-09-07), defaut trouve sur le document PRODUIT. Les modeles du
+     * directeur portent l'apostrophe typographique (U+2019) la ou les mappers
+     * produisent l'apostrophe droite. La demande de taxe professionnelle porte la
+     * condition
+     *
+     * <pre>    ◇ SI : $TP_OBJET = « Creation d’une personne morale »</pre>
+     *
+     * qui comparait « d’une » a « d'une » : FAUSSE. Le formulaire sortait sans le
+     * moindre marqueur residuel, toutes ses valeurs en place, la bonne case cochee —
+     * et la MAUVAISE liste de pieces a joindre, celle de la branche SINON. Un
+     * document recevable a l'oeil, faux devant la DGI.
+     *
+     * <p>Le repliement vit ici, dans la normalisation PARTAGEE, et non au seul
+     * endroit ou le defaut s'est manifeste : conditions, cases a cocher et
+     * conditions en langage naturel comparent desormais de la meme facon.
+     */
     private String normalizeCompare(String s) {
         if (s == null) return "";
         String n = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD);
         n = n.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+        n = n.replaceAll("[\\u2018\\u2019\\u201B\\u02BC\\u0060\\u00B4]", "'");
         return n.toLowerCase(Locale.ROOT).replaceAll("[\\s\\u00A0\\u202F]+", " ").trim();
     }
 
@@ -989,6 +1134,217 @@ public class DocxTemplateEngine {
             idx++;
         }
         removeParagraphsByPosition(doc, toRemove);
+    }
+
+    // ============================================================
+    // FORMAT DIRECTEUR (2026-09) — LIGNES D'ANNOTATION « ↳ »
+    // ============================================================
+    //
+    // Le directeur documente lui-meme la convention, en tete de chacun des trois
+    // formulaires :
+    //
+    //   « ↳ Les bandeaux bleus fonces sont les intitules de sections du formulaire
+    //     officiel. Les bandeaux bleu clair / oranges sont des reperes de
+    //     generation, NON IMPRIMES DANS LE DOCUMENT FINAL. »
+    //
+    // Et cette phrase est elle-meme une ligne « ↳ ». Le caractere U+21B3 est donc
+    // un marqueur de balisage au meme titre que ▼▲, ◇◆ et ◈ : ce qu'il ouvre est
+    // une note de lecture destinee au cabinet, pas au greffe ni a la DGI.
+    //
+    // La convention vit ICI, dans le moteur — le fichier du directeur reste intact.
+    // C'est la meme regle que pour les conditions en langage naturel : on ne
+    // reecrit pas le modele, on apprend a le lire.
+    //
+    // ⚠ UN CAS EN ATTENTE D'ARBITRAGE. Le « ↳ NOTA — La presente declaration doit
+    // etre redigee en triple exemplaire… » du modele 2 porte l'article 64 du Code
+    // de commerce : il pourrait appartenir au formulaire OFFICIEL du greffe plutot
+    // qu'aux notes de preparation. La question est posee au cabinet
+    // (`rapport-cabinet.md` § 11) ; en attendant, la regle s'applique
+    // uniformement — un traitement au cas par cas serait une decision prise a la
+    // place du cabinet.
+
+    /** Ligne d'annotation du directeur : commence par « ↳ » (U+21B3). */
+    static final Pattern ANNOTATION_PATTERN = Pattern.compile("^\\s*\\u21B3");
+
+    /**
+     * Retire les paragraphes d'annotation. Retourne leur nombre (journalise : ces
+     * lignes disparaissent du rendu, l'employe doit pouvoir le constater).
+     */
+    private int retirerAnnotations(XWPFDocument doc) {
+        java.util.Set<XWPFParagraph> toRemove = new java.util.LinkedHashSet<>();
+        for (XWPFParagraph p : new ArrayList<>(doc.getParagraphs())) {
+            if (ANNOTATION_PATTERN.matcher(paragraphText(p)).find()) toRemove.add(p);
+        }
+        // Tableaux : une annotation peut vivre dans une cellule de formulaire.
+        for (XWPFTable table : doc.getTables()) {
+            for (XWPFTableRow row : table.getRows()) {
+                for (XWPFTableCell cell : row.getTableCells()) {
+                    for (XWPFParagraph p : new ArrayList<>(cell.getParagraphs())) {
+                        if (!ANNOTATION_PATTERN.matcher(paragraphText(p)).find()) continue;
+                        // On VIDE le paragraphe au lieu de le supprimer : retirer une
+                        // ligne d'une cellule deplacerait la mise en page du tableau.
+                        for (int i = p.getRuns().size() - 1; i >= 0; i--) p.removeRun(i);
+                    }
+                }
+            }
+        }
+        removeParagraphsByPosition(doc, toRemove);
+        if (!toRemove.isEmpty()) {
+            log.debug("Lignes d'annotation « ↳ » retirees du rendu : {}", toRemove.size());
+        }
+        return toRemove.size();
+    }
+
+    // ============================================================
+    // FORMAT DIRECTEUR (2026-09) — CASES A COCHER
+    //   ◈ CASE À COCHER (choix unique) pilotée par $VAR
+    //   ☐  Libelle A
+    //   ☐  Libelle B
+    // ============================================================
+    //
+    // Les trois formulaires DGI / greffe du lot 5 sont des CASES, pas de la prose :
+    // l'administration attend une croix dans l'une des cases pre-imprimees, jamais
+    // une valeur recopiee. Sans cette passe, la ligne « ◈ CASE À COCHER … » et ses
+    // options s'imprimaient telles quelles — un marqueur de moteur sur un document
+    // remis a la DGI.
+    //
+    // La passe coche l'option dont le libelle egale (comparaison sans accents ni
+    // casse) la valeur de la variable pilote, puis supprime la ligne de marqueur.
+    // Aucune option ne correspond (variable vide, ou valeur hors liste) : toutes les
+    // cases restent vides et la variable est REMONTEE comme non renseignee — non
+    // bloquante, puisqu'une case administrative vide reste un formulaire recevable
+    // (cf. classification obligatoire / optionnel du lot 5).
+
+    /** Ligne de marqueur : {@code ◈ CASE À COCHER (choix unique) pilotée par $VAR} (U+25C8). */
+    static final Pattern CHECKBOX_MARKER_PATTERN = Pattern.compile(
+            "\\u25C8\\s*CASE\\s+[A\\u00C0]\\s+COCHER.*?\\$([A-Z][A-Z0-9_]*)",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE | Pattern.DOTALL);
+
+    /** Case vide (U+2610) ouvrant une ligne d'option. */
+    private static final char CHECKBOX_EMPTY = '☐';
+
+    /** Case cochee (U+2612) substituee a l'option retenue. */
+    private static final char CHECKBOX_TICKED = '☒';
+
+    /**
+     * Coche les options des blocs {@code ◈ CASE À COCHER} et retire les lignes de
+     * marqueur.
+     *
+     * @return noms des variables pilotes dont AUCUNE option n'a pu etre cochee
+     *         (valeur absente ou hors liste), dans l'ordre du document.
+     */
+    private List<String> resolveDirectorCheckboxes(XWPFDocument doc, Map<String, Object> scope) {
+        List<XWPFParagraph> paras = new ArrayList<>(doc.getParagraphs());
+        java.util.Set<XWPFParagraph> toRemove = new java.util.LinkedHashSet<>();
+        List<String> unresolved = new ArrayList<>();
+
+        for (int i = 0; i < paras.size(); i++) {
+            Matcher m = CHECKBOX_MARKER_PATTERN.matcher(paragraphText(paras.get(i)));
+            if (!m.find()) continue;
+            String variable = m.group(1);
+            String attendu = normalizeCompare(scopeString(scope, variable));
+            toRemove.add(paras.get(i));
+
+            boolean coche = false;
+            boolean casesEcrites = i + 1 < paras.size()
+                    && paragraphText(paras.get(i + 1)).indexOf(CHECKBOX_EMPTY) >= 0;
+
+            if (casesEcrites) {
+                // CONVENTION DU 4 SEPTEMBRE : chaque option porte sa case ☐.
+                for (int j = i + 1; j < paras.size(); j++) {
+                    String texte = paragraphText(paras.get(j));
+                    int box = texte.indexOf(CHECKBOX_EMPTY);
+                    if (box < 0) break; // fin du bloc d'options
+                    String libelle = texte.substring(box + 1).trim();
+                    if (!attendu.isEmpty() && !coche
+                            && normalizeCompare(libelle).equals(attendu)) {
+                        cocherCase(paras.get(j));
+                        coche = true;
+                    }
+                }
+            } else {
+                for (XWPFParagraph option : optionsParStyle(paras, i)) {
+                    boolean retenue = !attendu.isEmpty() && !coche
+                            && normalizeCompare(paragraphText(option)).equals(attendu);
+                    prefixerCase(option, retenue ? CHECKBOX_TICKED : CHECKBOX_EMPTY);
+                    coche |= retenue;
+                }
+            }
+
+            if (!coche) {
+                if (!unresolved.contains(variable)) unresolved.add(variable);
+                log.info("Case a cocher non renseignee : ${} (valeur « {} » absente des options)",
+                        variable, scopeString(scope, variable));
+            }
+        }
+        removeParagraphsByPosition(doc, toRemove);
+        return unresolved;
+    }
+
+
+    /**
+     * CONVENTION DU 9 SEPTEMBRE : les options ne portent plus de case ☐. Ce sont
+     * les paragraphes qui suivent le marqueur et qui partagent tous un meme style
+     * de liste — le gabarit dit « ceci est une option » par le style, plus par un
+     * caractere.
+     *
+     * <p>Le corpus livre le 9 septembre declare 27 blocs {@code ◈ CASE À COCHER}
+     * et ne contient que 14 caracteres ☐, sur 4 blocs. Les 23 autres sortaient
+     * donc en liste nue : rien de coche, aucun marqueur residuel, aucune alarme —
+     * la declaration d'existence partait a la DGI sans forme juridique declaree.
+     *
+     * <p>La borne du bloc est le style : on prend celui du PREMIER paragraphe qui
+     * suit le marqueur et on s'arrete des qu'il change. On refuse un style vide,
+     * et le style du marqueur lui-meme ({@code JurikaBalise} porte aussi les
+     * conditions et les boucles) : sans cela, un {@code ◇ SI} placé juste apres
+     * les options serait avale comme une option de plus.
+     *
+     * @return les paragraphes d'option, dans l'ordre ; vide s'il n'y en a pas.
+     */
+    private List<XWPFParagraph> optionsParStyle(List<XWPFParagraph> paras, int marqueur) {
+        List<XWPFParagraph> options = new ArrayList<>();
+        if (marqueur + 1 >= paras.size()) return options;
+        String styleMarqueur = paras.get(marqueur).getStyle();
+        String styleOption = paras.get(marqueur + 1).getStyle();
+        if (styleOption == null || styleOption.isBlank()
+                || styleOption.equals(styleMarqueur)) {
+            return options;
+        }
+        for (int j = marqueur + 1; j < paras.size(); j++) {
+            if (!styleOption.equals(paras.get(j).getStyle())) break;
+            options.add(paras.get(j));
+        }
+        return options;
+    }
+
+    /**
+     * Ecrit la case devant le libelle d'une option qui n'en portait pas. La case
+     * est ajoutee au rendu, jamais au gabarit : le fichier du cabinet reste
+     * intouche.
+     */
+    private void prefixerCase(XWPFParagraph p, char casePrefixe) {
+        String prefixe = casePrefixe + " ";
+        List<XWPFRun> runs = p.getRuns();
+        if (runs.isEmpty()) {
+            XWPFRun r = p.createRun();
+            r.setText(prefixe.trim(), 0);
+            return;
+        }
+        XWPFRun premier = runs.get(0);
+        String t = premier.text();
+        premier.setText(prefixe + (t == null ? "" : t), 0);
+    }
+
+    /** Remplace la 1re case vide du paragraphe par une case cochee, run par run. */
+    private void cocherCase(XWPFParagraph p) {
+        for (XWPFRun r : p.getRuns()) {
+            String t = r.text();
+            if (t == null) continue;
+            int idx = t.indexOf(CHECKBOX_EMPTY);
+            if (idx < 0) continue;
+            r.setText(t.substring(0, idx) + CHECKBOX_TICKED + t.substring(idx + 1), 0);
+            return;
+        }
     }
 
     /** Regions de boucle directeur de plus haut niveau : index_start -> index_end. */
@@ -1563,7 +1919,7 @@ public class DocxTemplateEngine {
             footerRun.setText("Document genere par JURIKA - Maghreb Consulting - Conforme Loi 5-96");
 
             doc.write(out);
-            return out.toByteArray();
+            return ZipHorodatage.figer(out.toByteArray());
         } catch (Exception ex) {
             throw new RuntimeException("Echec generation placeholder : " + ex.getMessage(), ex);
         }
@@ -1577,16 +1933,40 @@ public class DocxTemplateEngine {
      *                         "‹ VALEUR MANQUANTE : ... ›" dans le .docx).
      *                         Vide pour le placeholder fallback ou si toutes les
      *                         variables ont ete resolues.
+     * @param manquantes       Lot 5 (2026-09-07) — meme liste, mais qualifiee : pour
+     *                         chaque variable, l'endroit du document ou elle apparait
+     *                         et si son vide se lit DANS UNE PHRASE. C'est ce qui
+     *                         permet a l'appelant de refuser une generation qui
+     *                         produirait « ne le  a , demeurant a  », sans refuser
+     *                         une case administrative laissee blanche.
      */
     public record DocumentResult(byte[] bytes,
                                   String contentType,
                                   String filename,
                                   boolean templateFound,
-                                  List<String> missingVariables) {
+                                  List<String> missingVariables,
+                                  List<MissingVariableMarker.Manquante> manquantes) {
         public DocumentResult {
             missingVariables = missingVariables == null
                     ? Collections.emptyList()
                     : List.copyOf(missingVariables);
+            manquantes = manquantes == null
+                    ? Collections.emptyList()
+                    : List.copyOf(manquantes);
+        }
+
+        /** Compat : appelants anterieurs au lot 5, qui n'ont pas le detail. */
+        public DocumentResult(byte[] bytes, String contentType, String filename,
+                              boolean templateFound, List<String> missingVariables) {
+            this(bytes, contentType, filename, templateFound, missingVariables, List.of());
+        }
+
+        /**
+         * Variables dont le vide s'imprime dans une phrase. Non vide = la generation
+         * doit etre refusee : le document sortirait avec un trou grammatical.
+         */
+        public List<MissingVariableMarker.Manquante> manquantesBloquantes() {
+            return manquantes.stream().filter(MissingVariableMarker.Manquante::bloquante).toList();
         }
     }
 

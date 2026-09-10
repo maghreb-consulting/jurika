@@ -1,28 +1,17 @@
 package ma.jurika.ai.document;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import ma.jurika.ai.document.DocxTemplateEngine.DocumentResult;
-import ma.jurika.ai.document.manifest.DictionaryManifest;
 import ma.jurika.ai.document.manifest.TemplateDefaultsApplier;
 import ma.jurika.ai.document.manifest.TemplateManifest;
 import ma.jurika.ai.document.manifest.TemplateManifestLoader;
-import ma.jurika.ai.workflow.mapper.CreationSarlMapper;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.InputStream;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
@@ -51,8 +40,6 @@ class TemplateCoverageTest {
 
     private static TemplateManifestLoader loader;
     private static DocxTemplateEngine engine;
-    private static CreationSarlMapper creationSarlMapper;
-    private static Set<String> fillLater;
 
     private static synchronized TemplateManifestLoader loader() {
         if (loader == null) {
@@ -68,21 +55,6 @@ class TemplateCoverageTest {
             engine = new DocxTemplateEngine(loader(), applier);
         }
         return engine;
-    }
-
-    private static synchronized CreationSarlMapper sarlMapper() {
-        if (creationSarlMapper == null) creationSarlMapper = new CreationSarlMapper();
-        return creationSarlMapper;
-    }
-
-    private static synchronized Set<String> fillLater() {
-        if (fillLater == null) {
-            DictionaryManifest dict = loader().dictionary();
-            fillLater = (dict == null || dict.fillLater() == null)
-                    ? Collections.emptySet()
-                    : new HashSet<>(dict.fillLater());
-        }
-        return fillLater;
     }
 
     // ---------------------------------------------------------------------
@@ -116,54 +88,20 @@ class TemplateCoverageTest {
     }
 
     // ---------------------------------------------------------------------
-    // Test 2 — Couverture statuts SARL/SARL_AU : missingVariables ⊆ fillLater
-    //          avec fixture "dossier complet".
+    // Lot A (2026-09-10) — les deux tests de couverture des statuts CRÉATION
+    // sont RETIRÉS : leur sujet n'existe plus. Ils vérifiaient que
+    // STATUTS_SARL_DIRECTEUR / _AU, rendus depuis la fixture « dossier complet »,
+    // ne laissaient aucune variable manquante hors fill_later. Ces deux codes
+    // sont sortis du manifeste avec le corpus d'août ; le corpus du 9 septembre
+    // les remplace par STATUTS_SARL / STATUTS_SARL_AU, qu'aucun mapper ne résout
+    // encore.
+    //
+    // La garantie doit REVENIR au lot B, sur les nouveaux codes et une fixture
+    // couvrant les 404 variables. En attendant :
+    //   — le gabarit lui-même reste couvert par StatutsRefondusTest, qui le rend
+    //     par la voie MODIFICATION (STATUTS_REFONDUS_*, même fichier) ;
+    //   — le rendu des 23 nouveaux gabarits est relevé par
+    //     ma.jurika.ai.lotA.CorpusCreation0909RenduTest.
     // ---------------------------------------------------------------------
 
-    // Phase E2 (2026-08-09) — la couverture porte désormais sur les Statuts
-    // DIRECTEUR (STATUTS_SARL_DIRECTEUR / _AU), le même gabarit que la refonte
-    // MODIFICATION rend (STATUTS_REFONDUS_* pointent dessus). La voie LEGACY
-    // STATUTS_CONSTITUTIFS_* a été retirée.
-
-    @Test
-    void statuts_directeur_sarl_full_payload_no_missing_except_fillLater() throws Exception {
-        Map<String, Object> payload = loadFixture("/workflow-fixtures/creation_sarl_full.json");
-        Map<String, Object> vars = sarlMapper().map("STATUTS_SARL_DIRECTEUR", payload);
-        DocumentResult result = engine().generate("STATUTS_SARL_DIRECTEUR", vars);
-
-        List<String> missing = result.missingVariables();
-        Set<String> illegal = missing.stream()
-                .filter(name -> !fillLater().contains(name))
-                .collect(Collectors.toSet());
-        assertTrue(illegal.isEmpty(),
-                "STATUTS_SARL_DIRECTEUR : variables manquantes hors fillLater = " + illegal
-                        + ". Soit ajouter au builder, soit declarer fill_later dans dictionary.json.");
-    }
-
-    @Test
-    void statuts_directeur_sarl_au_full_payload_no_missing_except_fillLater() throws Exception {
-        Map<String, Object> payload = loadFixture("/workflow-fixtures/creation_sarl_full.json");
-        Map<String, Object> vars = sarlMapper().map("STATUTS_SARL_AU_DIRECTEUR", payload);
-        DocumentResult result = engine().generate("STATUTS_SARL_AU_DIRECTEUR", vars);
-
-        List<String> missing = result.missingVariables();
-        Set<String> illegal = missing.stream()
-                .filter(name -> !fillLater().contains(name))
-                .collect(Collectors.toSet());
-        assertTrue(illegal.isEmpty(),
-                "STATUTS_SARL_AU_DIRECTEUR : variables manquantes hors fillLater = " + illegal);
-    }
-
-    // ---------------------------------------------------------------------
-    // Helpers
-    // ---------------------------------------------------------------------
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> loadFixture(String resourcePath) throws Exception {
-        try (InputStream in = TemplateCoverageTest.class.getResourceAsStream(resourcePath)) {
-            assertNotNull(in, "Fixture introuvable : " + resourcePath);
-            Map<String, Object> raw = MAPPER.readValue(in, Map.class);
-            return new LinkedHashMap<>(raw);
-        }
-    }
 }

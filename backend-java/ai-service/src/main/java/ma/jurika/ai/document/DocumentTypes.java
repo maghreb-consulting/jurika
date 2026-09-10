@@ -3,8 +3,13 @@ package ma.jurika.ai.document;
 import java.util.Set;
 
 /**
- * Catalogue des 42 types de documents generes par la plateforme JURIKA.
+ * Catalogue des 82 types de documents generes par la plateforme JURIKA.
  * Reference : docs/v2/Documents_a_fournir.md
+ *
+ * <p>Lot A (2026-09-10) : le corpus CREATION est passe de 7 a 23 modeles, ceux
+ * que le cabinet a livres le 9 septembre. Les quatre codes {@code *_DIRECTEUR}
+ * de la voie creation d'aout ont ete retires en meme temps que leurs entrees de
+ * manifeste.
  */
 public final class DocumentTypes {
 
@@ -15,7 +20,8 @@ public final class DocumentTypes {
     // Phase E2 (2026-08-09) — Retrait du dernier LEGACY : les gabarits
     // STATUTS_CONSTITUTIFS_SARL / _AU (placeholder {{}}) ont été supprimés. La
     // refonte des statuts (voie MODIFICATION) passe désormais par la voie directeur
-    // (STATUTS_SARL_DIRECTEUR / _AU via RefonteStatutsVarsBuilder). La voie CRÉATION
+    // (STATUTS_REFONDUS_SARL / _AU via RefonteStatutsVarsBuilder, qui rend le même
+    // gabarit que la création d'août rendait). La voie CRÉATION
     // LEGACY (ACTE_NOMINATION_GERANT, DECLARATION_SOUSCRIPTION_VERSEMENT, ANNONCE_JAL_*,
     // AVIS_CONSTITUTION_SARL) avait déjà été retirée (voie directeur uniquement).
     public static final String ATTESTATION_BLOCAGE_FONDS = "ATTESTATION_BLOCAGE_FONDS";
@@ -144,11 +150,52 @@ public final class DocumentTypes {
     // 2026-08-10 (audit directeur) — PV_OUVERTURE_COMPTE_BANCAIRE retiré : template
     // orphelin (généré par aucun workflow, voie création legacy retirée en E2).
 
-    // Modeles deterministes officiels du directeur (CREATION SARL / SARL AU)
-    public static final String STATUTS_SARL_DIRECTEUR = "STATUTS_SARL_DIRECTEUR";
-    public static final String STATUTS_SARL_AU_DIRECTEUR = "STATUTS_SARL_AU_DIRECTEUR";
-    public static final String ACTE_NOMINATION_GERANT_DIRECTEUR = "ACTE_NOMINATION_GERANT_DIRECTEUR";
-    public static final String ANNONCE_LEGALE_DIRECTEUR = "ANNONCE_LEGALE_DIRECTEUR";
+    // ── CORPUS CRÉATION DU 9 SEPTEMBRE 2026 (lot A) ─────────────────────────
+    // Les 23 documents que JURIKA produit au parcours de création, livrés
+    // harmonisés par le cabinet et intégrés en bloc. Ils REMPLACENT les quatre
+    // modèles déterministes du directeur d'août (STATUTS_SARL_DIRECTEUR,
+    // STATUTS_SARL_AU_DIRECTEUR, ACTE_NOMINATION_GERANT_DIRECTEUR,
+    // ANNONCE_LEGALE_DIRECTEUR), retirés du manifeste avec eux.
+    //
+    // ⚠ Les gabarits STATUTS_SARL_modele_deterministe.docx et son pendant SARL AU
+    // restent sur le disque : la refonte des statuts (MODIFICATION,
+    // STATUTS_REFONDUS_*) les rend encore, via RefonteStatutsVarsBuilder.
+    //
+    // ⚠ Aucun mapper ne route ces 23 codes : la résolution des variables est
+    // l'objet du lot B (253 variables nouvelles, dont 160 à saisir). Jusque-là,
+    // le workflow CREATION_SARL ne génère rien — cf. CreationSarlMapper.
+    //
+    // Les trois formulaires administratifs gardent LEUR CODE DU LOT 5
+    // (DEMANDE_TAXE_PROFESSIONNELLE, DECLARATION_EXISTENCE,
+    // DECLARATION_IMMATRICULATION_RC) : ces codes sont nommés comme DONNÉES dans
+    // deux migrations déjà appliquées — dataroom V30 et ticket V20 — qui les
+    // relient aux documents qu'ils font obtenir (TP, BULLETIN_IF, RC). Les
+    // renommer aurait laissé ces lignes orphelines en base.
+    public static final String STATUTS_SARL = "STATUTS_SARL";
+    public static final String STATUTS_SARL_AU = "STATUTS_SARL_AU";
+    public static final String ACTE_NOMINATION_GERANT = "ACTE_NOMINATION_GERANT";
+    public static final String ANNONCE_LEGALE_CONSTITUTION = "ANNONCE_LEGALE_CONSTITUTION";
+    public static final String ATTESTATION_SOUSCRIPTION_LIBERATION =
+            "ATTESTATION_SOUSCRIPTION_LIBERATION";
+    public static final String BORDEREAU_REMISE_DOSSIER = "BORDEREAU_REMISE_DOSSIER";
+    public static final String CONTRAT_BAIL = "CONTRAT_BAIL";
+    public static final String CONTRAT_DOMICILIATION = "CONTRAT_DOMICILIATION";
+    public static final String DECLARATION_BENEFICIAIRES_EFFECTIFS =
+            "DECLARATION_BENEFICIAIRES_EFFECTIFS";
+    public static final String DECLARATION_CNDP = "DECLARATION_CNDP";
+    public static final String DEMANDE_ADHESION_SIMPL = "DEMANDE_ADHESION_SIMPL";
+    public static final String DEMANDE_AFFILIATION_CNSS = "DEMANDE_AFFILIATION_CNSS";
+    public static final String DEMANDE_DEBLOCAGE_CAPITAL = "DEMANDE_DEBLOCAGE_CAPITAL";
+    public static final String ETAT_ACTES_SOCIETE_EN_FORMATION = "ETAT_ACTES_SOCIETE_EN_FORMATION";
+    public static final String FICHE_RENSEIGNEMENTS_CREATION = "FICHE_RENSEIGNEMENTS_CREATION";
+    public static final String LETTRE_RETRAIT_DEPOT = "LETTRE_RETRAIT_DEPOT";
+    public static final String NOTE_ANNULATION_DOSSIER = "NOTE_ANNULATION_DOSSIER";
+    public static final String NOTE_CONFORMITE_MENTIONS_LEGALES = "NOTE_CONFORMITE_MENTIONS_LEGALES";
+    public static final String POUVOIR_FORMALITES_CREATION = "POUVOIR_FORMALITES_CREATION";
+    public static final String RAPPORT_COMMISSAIRE_APPORTS = "RAPPORT_COMMISSAIRE_APPORTS";
+    public static final String DEMANDE_TAXE_PROFESSIONNELLE = "DEMANDE_TAXE_PROFESSIONNELLE";
+    public static final String DECLARATION_EXISTENCE = "DECLARATION_EXISTENCE";
+    public static final String DECLARATION_IMMATRICULATION_RC = "DECLARATION_IMMATRICULATION_RC";
 
     // PV de seance (incident) transverses — generables dans tout workflow tenant une AG (Phase 4)
     public static final String PV_DEFAUT_QUORUM_SARL = "PV_DEFAUT_QUORUM_SARL";
@@ -190,8 +237,15 @@ public final class DocumentTypes {
             PV_APPROBATION_COMPTES_SARL, PV_APPROBATION_COMPTES_SARL_AU, RAPPORT_GESTION,
             ETAT_DEBOURS_PDF, FICHE_JURIDIQUE, LETTRE_CONVOCATION_AGE,
             LETTRE_CONVOCATION_AGO, FEUILLE_PRESENCE,
-            STATUTS_SARL_DIRECTEUR, STATUTS_SARL_AU_DIRECTEUR,
-            ACTE_NOMINATION_GERANT_DIRECTEUR, ANNONCE_LEGALE_DIRECTEUR,
+            STATUTS_SARL, STATUTS_SARL_AU, ACTE_NOMINATION_GERANT,
+            ANNONCE_LEGALE_CONSTITUTION, ATTESTATION_SOUSCRIPTION_LIBERATION,
+            BORDEREAU_REMISE_DOSSIER, CONTRAT_BAIL, CONTRAT_DOMICILIATION,
+            DECLARATION_BENEFICIAIRES_EFFECTIFS, DECLARATION_CNDP,
+            DEMANDE_ADHESION_SIMPL, DEMANDE_AFFILIATION_CNSS, DEMANDE_DEBLOCAGE_CAPITAL,
+            ETAT_ACTES_SOCIETE_EN_FORMATION, FICHE_RENSEIGNEMENTS_CREATION,
+            LETTRE_RETRAIT_DEPOT, NOTE_ANNULATION_DOSSIER, NOTE_CONFORMITE_MENTIONS_LEGALES,
+            POUVOIR_FORMALITES_CREATION, RAPPORT_COMMISSAIRE_APPORTS,
+            DEMANDE_TAXE_PROFESSIONNELLE, DECLARATION_EXISTENCE, DECLARATION_IMMATRICULATION_RC,
             PV_DEFAUT_QUORUM_SARL, PV_DEFAUT_QUORUM_SARL_AU,
             PV_IRREGULARITE_CONVOCATION_SARL, PV_IRREGULARITE_CONVOCATION_SARL_AU,
             CONVOCATION_AG, FEUILLE_PRESENCE_AG);

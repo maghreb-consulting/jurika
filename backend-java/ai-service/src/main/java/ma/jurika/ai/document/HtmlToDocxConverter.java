@@ -53,7 +53,9 @@ public class HtmlToDocxConverter {
             renderBlock(doc, body, new Style());
 
             doc.write(out);
-            return out.toByteArray();
+            // Lot A — meme exigence que la generation : le retour d'edition doit
+            // etre reproductible octet pour octet (cf. ZipHorodatage).
+            return ZipHorodatage.figer(out.toByteArray());
         } catch (Exception ex) {
             throw new RuntimeException("Echec conversion HTML -> DOCX : " + ex.getMessage(), ex);
         }

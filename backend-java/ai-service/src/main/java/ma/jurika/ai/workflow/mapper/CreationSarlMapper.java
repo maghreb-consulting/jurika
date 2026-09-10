@@ -1,48 +1,59 @@
 package ma.jurika.ai.workflow.mapper;
 
 import ma.jurika.ai.workflow.WorkflowDocumentMapper;
-import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.Set;
 
 /**
- * Mapper L4 du workflow {@code CREATION_SARL}.
+ * Mapper L4 du workflow {@code CREATION_SARL} — <b>DÉBRANCHÉ AU LOT A
+ * (2026-09-10), EN ATTENTE DU LOT B</b>.
  *
- * <p><b>Voie de génération CRÉATION active (unique)</b> : modèles déterministes du
- * directeur (codes {@code *_DIRECTEUR}, routés vers
- * {@link CreationDirecteurVarsBuilder}) :
- * <ul>
- *     <li>{@code STATUTS_SARL_DIRECTEUR} / {@code STATUTS_SARL_AU_DIRECTEUR}</li>
- *     <li>{@code ACTE_NOMINATION_GERANT_DIRECTEUR}</li>
- *     <li>{@code ANNONCE_LEGALE_DIRECTEUR}</li>
- * </ul>
+ * <p><b>Pourquoi il n'est plus un bean.</b> Le lot A a remplacé le corpus de
+ * création : les 7 modèles d'août et de lot 5 sont sortis du manifeste, les 23
+ * gabarits livrés par le cabinet le 9 septembre les ont remplacés. Ces 23
+ * gabarits emploient 404 variables, dont <b>253 que la plateforme ne résout
+ * pas</b> — 160 sont des données à saisir qui n'ont pas encore de champ au
+ * parcours. Un mapper qui les déclarerait rendrait des documents troués ; c'est
+ * l'objet du lot B, pas de celui-ci.
  *
- * <p><b>Phase E2 (2026-08-09)</b> : la voie LEGACY {@code STATUTS_CONSTITUTIFS_SARL} /
- * {@code STATUTS_CONSTITUTIFS_SARL_AU} (placeholder {@code {{}}}) a été retirée. Elle
- * n'était conservée que pour la refonte des statuts côté MODIFICATION, qui passe
- * désormais par la voie directeur (cf. {@code RefonteStatutsVarsBuilder}). Le mapper
- * ne fait donc plus que router les 4 codes directeur vers
- * {@link CreationDirecteurVarsBuilder}.
+ * <p><b>Pourquoi {@code @Component} est retiré plutôt que
+ * {@link #supportedTemplates()} vidé.</b>
+ * {@code WorkflowDocumentMappingService} refuse au démarrage un mapper dont
+ * l'ensemble est vide — et il a raison : un mapper qui ne sait rien produire est
+ * une erreur de câblage, pas un état. Sans bean, le service n'enregistre
+ * simplement pas {@code CREATION_SARL} ; {@code WorkflowDocumentController}
+ * traite ce cas explicitement et renvoie une liste de modèles vide plutôt
+ * qu'une erreur.
  *
- * <p>Pas d'accès DB : toutes les données viennent du payload.
+ * <p><b>Conséquence assumée : le parcours de création ne génère plus aucun
+ * document</b> jusqu'à ce que le lot B recâble la résolution sur le nouveau
+ * corpus.
+ *
+ * <p>La classe et {@link CreationFormulairesVarsBuilder} sont conservées telles
+ * quelles : elles portent la résolution des anciens formulaires, dont le lot B
+ * repartira. {@link CreationDirecteurVarsBuilder}, lui, reste <b>en service</b> —
+ * la refonte des statuts (MODIFICATION, {@code STATUTS_REFONDUS_*}) l'appelle
+ * via {@link RefonteStatutsVarsBuilder}.
  */
-@Component
 public class CreationSarlMapper implements WorkflowDocumentMapper {
 
     private static final String WORKFLOW_CODE = "CREATION_SARL";
 
-    // 2026-08 — MODÈLES DÉTERMINISTES DU DIRECTEUR (unique voie de génération).
-    public static final String TPL_STATUTS_SARL_DIR = "STATUTS_SARL_DIRECTEUR";
-    public static final String TPL_STATUTS_SARL_AU_DIR = "STATUTS_SARL_AU_DIRECTEUR";
-    public static final String TPL_ACTE_NOMINATION_GERANT_DIR = "ACTE_NOMINATION_GERANT_DIRECTEUR";
-    public static final String TPL_ANNONCE_LEGALE_DIR = "ANNONCE_LEGALE_DIRECTEUR";
+    // Lot 5 (2026-09-07) — TROIS FORMULAIRES administratifs (etapes 19, 20 et 21
+    // du guide). Leurs CODES survivent au lot A : deux migrations deja appliquees
+    // (dataroom V30, ticket V20) les nomment comme donnees. Leurs GABARITS, eux,
+    // ont ete remplaces par ceux du 9 septembre, bien plus fournis (84, 136 et 76
+    // variables contre 38, 44 et 22) : le builder ci-dessous ne les couvre plus.
+    public static final String TPL_DEMANDE_TP = CreationFormulairesVarsBuilder.TPL_DEMANDE_TP;
+    public static final String TPL_DECLARATION_EXISTENCE =
+            CreationFormulairesVarsBuilder.TPL_DECLARATION_EXISTENCE;
+    public static final String TPL_DECLARATION_RC = CreationFormulairesVarsBuilder.TPL_DECLARATION_RC;
 
     private static final Set<String> SUPPORTED = Set.of(
-            TPL_STATUTS_SARL_DIR,
-            TPL_STATUTS_SARL_AU_DIR,
-            TPL_ACTE_NOMINATION_GERANT_DIR,
-            TPL_ANNONCE_LEGALE_DIR
+            TPL_DEMANDE_TP,
+            TPL_DECLARATION_EXISTENCE,
+            TPL_DECLARATION_RC
     );
 
     @Override
@@ -62,10 +73,7 @@ public class CreationSarlMapper implements WorkflowDocumentMapper {
                     "Template non supporté par CreationSarlMapper : " + templateCode
                             + " (supportés : " + SUPPORTED + ")");
         }
-        Map<String, Object> safe = payload == null ? Map.of() : payload;
-        // Voie MODÈLES DÉTERMINISTES DU DIRECTEUR : le builder produit EXACTEMENT
-        // les variables du dictionnaire officiel + les boucles. Aucune clé hors
-        // dictionnaire n'est émise.
-        return CreationDirecteurVarsBuilder.build(templateCode, safe);
+        return CreationFormulairesVarsBuilder.build(templateCode,
+                payload == null ? Map.of() : payload);
     }
 }

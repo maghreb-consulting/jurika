@@ -30,6 +30,16 @@ export type DocumentType =
   | 'FEUILLE_PRESENCE'
   | 'RAPPORT_GESTION'
   | 'RAPPORT_LIQUIDATION'
+  // 2026-09-07 (lot 5) — FORMULAIRES administratifs generes par la plateforme
+  // (etapes 19, 20 et 21 du parcours de creation). A ne pas confondre avec les
+  // documents que ces formulaires font OBTENIR, deja au catalogue : l'attestation
+  // de taxe professionnelle ('TP'), le bulletin d'identification fiscale
+  // ('BULLETIN_IF') et le certificat d'immatriculation modele J ('RC'). Sans type
+  // dedie ils tombaient en 'AUTRE' — et deux 'AUTRE' de meme titre se
+  // dedupliquent (unicite du courant, V23).
+  | 'DEMANDE_TAXE_PROFESSIONNELLE'
+  | 'DECLARATION_EXISTENCE'
+  | 'DECLARATION_IMMATRICULATION_RC'
   | 'AUTRE';
 
 
@@ -239,6 +249,10 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   FEUILLE_PRESENCE: 'Feuille de presence',
   RAPPORT_GESTION: 'Rapport de gestion',
   RAPPORT_LIQUIDATION: 'Rapport de liquidation',
+  // 2026-09-07 (lot 5) — formulaires administratifs deposes par le cabinet.
+  DEMANDE_TAXE_PROFESSIONNELLE: "Demande d'inscription a la taxe professionnelle",
+  DECLARATION_EXISTENCE: "Declaration d'existence",
+  DECLARATION_IMMATRICULATION_RC: "Declaration d'immatriculation au RC (modele 2)",
   AUTRE: 'Autre',
 };
 
@@ -263,6 +277,9 @@ export const DOCUMENT_TYPE_ORDER: DocumentType[] = [
   'ACTE_NOMINATION',
   'RAPPORT_GESTION',
   'RAPPORT_LIQUIDATION',
+  'DEMANDE_TAXE_PROFESSIONNELLE',
+  'DECLARATION_EXISTENCE',
+  'DECLARATION_IMMATRICULATION_RC',
   'CONTRAT_BAIL',
   'CNIE_GERANT',
   'CIN_NOUVELLE',

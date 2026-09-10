@@ -6,6 +6,7 @@ import { Badge } from '../../components/ui/Badge';
 import { ticketService } from '../../services/ticket.service';
 import { workflowService } from '../../services/workflow.service';
 import { dataroomService } from '../../services/dataroom.service';
+import { demarcheService } from '../../services/demarche.service';
 import { extractError } from '../../lib/api';
 import type { FormeJuridique } from '../../types/ticket';
 import type { DocumentType } from '../../types/dataroom';
@@ -60,6 +61,13 @@ function mapPieceToDocumentType(code: string): DocumentType {
       || base === 'STATUTS') return 'STATUTS';
   if (base === 'ANNONCE_LEGALE' || base === 'ANNONCE_JAL') return 'ANNONCE_JAL';
   if (base === 'ACTE_NOMINATION_GERANT' || base === 'ACTE_NOMINATION') return 'ACTE_NOMINATION';
+  // Lot 5 (2026-09-07) — les trois formulaires administratifs ont chacun leur type
+  // (dataroom V30). Sans ces trois lignes ils retombaient en 'AUTRE' : invisibles
+  // dans les filtres, et surtout DÉDUPLIQUÉS entre eux (deux 'AUTRE' de même titre
+  // sur un même dossier — le défaut corrigé en V23 pour les documents de séance).
+  if (code === 'DEMANDE_TAXE_PROFESSIONNELLE') return 'DEMANDE_TAXE_PROFESSIONNELLE';
+  if (code === 'DECLARATION_EXISTENCE') return 'DECLARATION_EXISTENCE';
+  if (code === 'DECLARATION_IMMATRICULATION_RC') return 'DECLARATION_IMMATRICULATION_RC';
   if (code === 'STATUTS_SARL' || code === 'STATUTS_VALIDES' || code === 'STATUTS') return 'STATUTS';
   if (code.startsWith('CIN_DIRIGEANT_') || code.startsWith('CIN_ASSOCIE_') || code === 'CIN_DIRIGEANTS')
     return 'CNIE_GERANT';
@@ -689,6 +697,35 @@ function CreationSarlWorkflowPageBody() {
   async function submit(s: number, p: Record<string, unknown>): Promise<void> {
     if (readOnly) return; // aucune validation d'étape en consultation.
     await executeStep(s, p);
+    if (s === 5) await propagerConditionGerance(p);
+  }
+
+  /**
+   * Lot 5 (2026-09-07) — UNE RÉPONSE, TROIS DÉMARCHES.
+   *
+   * La question « la gérance est-elle désignée dans les statuts ? » se répond à
+   * l'étape 5, une case par gérant. Le référentiel du guide porte la MÊME
+   * condition sur trois démarches — établir l'acte de nomination (9), le faire
+   * signer et légaliser (15), l'enregistrer (18). Laisser l'employé les écarter
+   * une par une, en retapant trois fois le même motif, c'est lui demander trois
+   * fois ce qu'il vient de dire — et risquer qu'une des trois reste ouverte et
+   * bloque la transition de statut.
+   *
+   * <p>Best-effort : l'étape 5 est validée quoi qu'il arrive. Le pire cas est
+   * l'état d'avant le lot — trois démarches à écarter à la main.
+   */
+  async function propagerConditionGerance(p: Record<string, unknown>): Promise<void> {
+    if (!ticket?.id) return;
+    const dirigeants = (p.dirigeants as Array<Record<string, unknown>> | undefined) ?? [];
+    if (dirigeants.length === 0) return;
+    // Statutaire = TOUTE la gérance est désignée dans les statuts. Un seul gérant
+    // nommé par acte séparé suffit à rendre les trois démarches applicables.
+    const statutaire = dirigeants.every((d) => d.isStatutaire === true);
+    try {
+      await demarcheService.appliquerConditionGerance(ticket.id, statutaire);
+    } catch {
+      // best-effort : ne bloque jamais la validation de l'étape.
+    }
   }
   async function draft(s: number, p: Record<string, unknown>) {
     if (readOnly) return; // aucun brouillon en consultation.

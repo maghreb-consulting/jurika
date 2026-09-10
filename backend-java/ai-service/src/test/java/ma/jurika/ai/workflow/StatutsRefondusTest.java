@@ -24,6 +24,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>Remplace l'ancienne preuve via la voie LEGACY {@code STATUTS_CONSTITUTIFS_*}.
  */
+// Lot A (2026-09-10) — ce test est devenu la SEULE couverture de rendu du gabarit
+// des statuts déterministes : les tests de la voie création (CreationDirecteurRenderTest,
+// TemplateCoverageTest) sont partis avec le corpus d'août. Le code
+// STATUTS_SARL_DIRECTEUR cité ci-dessus n'existe plus au manifeste ; le fichier
+// qu'il désignait, si.
 class StatutsRefondusTest {
 
     private final ModificationMapper mapper = new ModificationMapper();

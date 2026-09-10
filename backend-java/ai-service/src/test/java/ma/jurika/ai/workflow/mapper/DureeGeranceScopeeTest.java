@@ -24,6 +24,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Chaque document porte la durée des SEULS gérants qu'il nomme :
  * statuts → tous ; acte de nomination → les non statutaires. Mandats identiques →
  * la valeur commune ; mandats divergents → énumération nominative.
+ *
+ * <h2>Lot A (2026-09-10) — pourquoi des codes qui n'existent plus</h2>
+ * Le test appelle {@code CreationDirecteurVarsBuilder} DIRECTEMENT, sans passer
+ * par le manifeste. Les chaînes {@code STATUTS_SARL_DIRECTEUR} et
+ * {@code ACTE_NOMINATION_GERANT_DIRECTEUR} ne sont plus des codes de modèle — ce
+ * sont les arguments que le builder lit pour savoir quel document il alimente.
+ * La branche « statuts » sert encore la refonte MODIFICATION ; la branche
+ * « acte », elle, n'a plus d'appelant tant que le lot B n'a pas recâblé la
+ * création. La règle qu'elles protègent, elle, reste vraie.
  */
 class DureeGeranceScopeeTest {
 

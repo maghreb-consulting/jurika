@@ -32,18 +32,49 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class DocumentTypeCatalogueTest {
 
-    /** La migration qui porte la liste des types acceptes. */
-    private static final Path V24 = Path.of(
-            "src/main/resources/db/migration/V24__documents_types_creation_et_groupes.sql");
+    private static final Path MIGRATIONS = Path.of("src/main/resources/db/migration");
+
+    /**
+     * Le CHECK sur {@code document_type} est REPOSE en entier par chaque migration
+     * qui l'etend (V23, V24, V30...) : la regle du projet interdit d'editer une
+     * migration deja appliquee, on la remplace donc par un sur-ensemble.
+     *
+     * <p>Lot 5 (2026-09-07) — ce test lisait V24 EN DUR. V30 a ajoute trois types,
+     * et le test a echoue en denoncant comme « refuses par la base » des types que
+     * la base accepte : la source de verite avait vieilli sans que rien ne le dise.
+     * On lit desormais la DERNIERE migration qui porte ce CHECK, quel que soit son
+     * numero — le test suit les migrations au lieu de les dater.
+     */
+    private static Path derniereMigrationPortantLeCheck() throws IOException {
+        Pattern version = Pattern.compile("^V(\\d+)__");
+        Path derniere = null;
+        int max = -1;
+        try (var fichiers = Files.list(MIGRATIONS)) {
+            for (Path f : fichiers.toList()) {
+                Matcher v = version.matcher(f.getFileName().toString());
+                if (!v.find()) continue;
+                if (!CHECK_DOCUMENT_TYPE.matcher(
+                        Files.readString(f, StandardCharsets.UTF_8)).find()) continue;
+                int n = Integer.parseInt(v.group(1));
+                if (n > max) { max = n; derniere = f; }
+            }
+        }
+        assertThat(derniere)
+                .as("aucune migration de %s ne porte le CHECK sur document_type", MIGRATIONS)
+                .isNotNull();
+        return derniere;
+    }
+
+    private static final Pattern CHECK_DOCUMENT_TYPE = Pattern.compile(
+            "CHECK\\s*\\(\\s*document_type\\s+IN\\s*\\(([\\s\\S]*?)\\)\\s*\\)",
+            Pattern.CASE_INSENSITIVE);
 
     private static Set<String> typesAcceptesEnBase() throws IOException {
-        String sql = Files.readString(V24, StandardCharsets.UTF_8);
-        // La contrainte CHECK enumere les valeurs autorisees.
-        Matcher check = Pattern.compile(
-                "CHECK\\s*\\(\\s*document_type\\s+IN\\s*\\(([\\s\\S]*?)\\)\\s*\\)",
-                Pattern.CASE_INSENSITIVE).matcher(sql);
+        Path migration = derniereMigrationPortantLeCheck();
+        String sql = Files.readString(migration, StandardCharsets.UTF_8);
+        Matcher check = CHECK_DOCUMENT_TYPE.matcher(sql);
         assertThat(check.find())
-                .as("la contrainte CHECK sur document_type doit etre lisible dans %s", V24)
+                .as("la contrainte CHECK sur document_type doit etre lisible dans %s", migration)
                 .isTrue();
         Matcher valeurs = Pattern.compile("'([A-Z0-9_]+)'").matcher(check.group(1));
         Set<String> out = new java.util.LinkedHashSet<>();
@@ -117,5 +148,30 @@ class DocumentTypeCatalogueTest {
         assertThat(auMenu).contains(
                 "CN", "CONTRAT_DOMICILIATION", "TITRE_PROPRIETE", "ATTESTATION_ENREGISTREMENT",
                 "POUVOIR", "RAPPORT_COMMISSAIRE_APPORTS", "ETAT_ACTES_FORMATION");
+    }
+
+    @Test
+    @DisplayName("Lot 5 : les trois formulaires DEPOSES ne se confondent pas avec ce qu'ils font obtenir")
+    void formulairesDuLot5DistinctsDesJustificatifsRecus() {
+        Set<String> auMenu = DocumentTypeCatalogue.tous().stream()
+                .map(DocumentTypeCatalogue.TypeDocument::code)
+                .collect(Collectors.toSet());
+
+        // Les imprimes que le cabinet DEPOSE...
+        assertThat(auMenu).contains("DEMANDE_TAXE_PROFESSIONNELLE", "DECLARATION_EXISTENCE",
+                "DECLARATION_IMMATRICULATION_RC");
+        // ... et les documents qu'il RECOIT en retour, qui restent des types distincts.
+        assertThat(auMenu).contains("TP", "BULLETIN_IF", "RC");
+
+        // Les trois formulaires sont produits par JURIKA : ils se rangent avec les
+        // actes generes, jamais avec les justificatifs de l'administration.
+        for (String code : List.of("DEMANDE_TAXE_PROFESSIONNELLE", "DECLARATION_EXISTENCE",
+                "DECLARATION_IMMATRICULATION_RC")) {
+            assertThat(GroupeDocument.deduire(code))
+                    .as("%s est produit par la plateforme", code)
+                    .isEqualTo(GroupeDocument.ACTES_GENERES);
+        }
+        assertThat(GroupeDocument.deduire("TP"))
+                .isEqualTo(GroupeDocument.JUSTIFICATIFS_ADMINISTRATIFS);
     }
 }

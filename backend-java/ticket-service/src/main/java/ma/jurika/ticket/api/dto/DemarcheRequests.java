@@ -19,4 +19,11 @@ public final class DemarcheRequests {
     public record Cocher(List<UUID> documentIds) {}
 
     public record NonApplicable(@NotBlank(message = "Motif obligatoire") String motif) {}
+
+    /**
+     * Lot 5 (2026-09-07) — reponse a « la gerance est-elle designee dans les
+     * statuts ? », donnee une seule fois a l'etape 5 du workflow et propagee aux
+     * trois demarches qui portent cette condition (9, 15 et 18).
+     */
+    public record ConditionGerance(boolean statutaire) {}
 }

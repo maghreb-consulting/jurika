@@ -48,4 +48,25 @@ export const demarcheService = {
     );
     return data;
   },
+
+  /**
+   * Lot 5 (2026-09-07) — propage la réponse « la gérance est-elle désignée dans
+   * les statuts ? » aux TROIS démarches qui portent cette condition : établir
+   * l'acte de nomination (9), le faire signer et légaliser (15), l'enregistrer
+   * (18). Une réponse, trois démarches — au lieu de les écarter une par une en
+   * retapant le même motif.
+   *
+   * <p>Le serveur ne défait que son propre écartement : un choix de l'employé,
+   * ou une démarche déjà cochée, n'est jamais annulé.
+   */
+  async appliquerConditionGerance(
+    ticketId: string,
+    statutaire: boolean,
+  ): Promise<VueDemarches> {
+    const { data } = await api.post<VueDemarches>(
+      `/tickets/${ticketId}/demarches/condition-gerance`,
+      { statutaire },
+    );
+    return data;
+  },
 };

@@ -119,3 +119,6 @@ backend-python/kie-service/models/
 scripts/demo-video/demo-secrets.json
 scripts/demo-video/assets/
 # (scripts/demo-video/corpus/ est ecrit a la main : il reste versionne)
+
+# Lot A (2026-09-10) — documents temoins regeneres par CorpusCreation0909RenduTest
+output/lotA/temoins/**/*.docx

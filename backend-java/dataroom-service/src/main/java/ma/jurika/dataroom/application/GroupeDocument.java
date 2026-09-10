@@ -22,7 +22,10 @@ public enum GroupeDocument {
             "STATUTS", "PV_AGE", "PV_AGO", "PV_MODIFICATION", "PV_DISSOLUTION", "PV_LIQUIDATION",
             "ACTE_NOMINATION", "ANNONCE_JAL", "CONVOCATION", "FEUILLE_PRESENCE",
             "RAPPORT_GESTION", "RAPPORT_LIQUIDATION", "ETAT_ACTES_FORMATION",
-            "NOTE_CONFORMITE", "BORDEREAU_REMISE", "FICHE_RENSEIGNEMENTS");
+            "NOTE_CONFORMITE", "BORDEREAU_REMISE", "FICHE_RENSEIGNEMENTS",
+            // Lot 5 — les trois formulaires administratifs sont PRODUITS par JURIKA.
+            "DEMANDE_TAXE_PROFESSIONNELLE", "DECLARATION_EXISTENCE",
+            "DECLARATION_IMMATRICULATION_RC");
 
     private static final Set<String> JUSTIFICATIFS = Set.of(
             "RC", "ICE", "TP", "CNSS", "CN", "APOSTILLE", "BULLETIN_IF", "ACCUSE_RBE",

@@ -283,6 +283,89 @@ public class DemarcheUseCases {
         return vue(workspaceId, ticketId);
     }
 
+    /**
+     * Lot 5 (2026-09-07) — UNE RÉPONSE, TROIS DÉMARCHES.
+     *
+     * <p>« La gérance est-elle désignée dans les statuts ? » se répond une fois, à
+     * l'étape 5 du workflow (case « Gérant statutaire », par gérant). Le référentiel,
+     * lui, porte la MÊME condition sur trois démarches : établir l'acte de nomination
+     * (9), le faire signer et légaliser (15), l'enregistrer (18). Les écarter une par
+     * une, avec un motif à retaper trois fois, c'est demander trois fois la même
+     * chose — et prendre le risque qu'une des trois reste ouverte et bloque la
+     * transition de statut.
+     *
+     * <p>Gérance statutaire → les trois deviennent NON_APPLICABLE, avec un motif qui
+     * cite la condition du guide. Gérance non statutaire → elles redeviennent
+     * À_FAIRE, mais UNIQUEMENT si elles portaient ce motif système : un écartement
+     * décidé par l'employé, ou une démarche déjà cochée, n'est jamais défait.
+     *
+     * <p>Le contrôle « démarche du statut courant » ne s'applique pas ici : les trois
+     * démarches relèvent de deux statuts différents, et la réponse est donnée bien
+     * avant qu'on y arrive. C'est une propagation système, pas un geste d'employé.
+     *
+     * <p>Sans effet hors du workflow CRÉATION : les huit autres n'ont pas de
+     * référentiel chargé, et aucune démarche n'est trouvée.
+     */
+    @Transactional
+    @Auditable(action = "DEMARCHES_CONDITION_GERANCE", resourceType = "ticket",
+            resourceIdExpr = "#ticketId")
+    public Vue appliquerConditionGerance(UUID workspaceId, UUID ticketId,
+                                          boolean geranceStatutaire, UUID acteurId) {
+        TenantContext.set(workspaceId);
+        Ticket ticket = charger(workspaceId, ticketId);
+
+        Map<UUID, TicketDemarche> parDemarche = etats.findByTicket(workspaceId, ticketId);
+        for (int ordre : ORDRES_ACTE_NOMINATION) {
+            Optional<Demarche> trouvee =
+                    referentiel.findByWorkflowAndOrdre(ticket.type().name(), ordre);
+            if (trouvee.isEmpty()) continue;
+            Demarche d = trouvee.get();
+            if (d.obligatoire()) continue; // garde-fou : on n'écarte jamais une obligatoire
+            TicketDemarche courant = parDemarche.get(d.id());
+
+            if (geranceStatutaire) {
+                if (courant != null && courant.etat() == DemarcheEtat.COCHEE) continue;
+                if (courant != null && courant.etat() == DemarcheEtat.NON_APPLICABLE
+                        && MOTIF_GERANCE_STATUTAIRE.equals(courant.motif())) continue;
+                etats.upsert(workspaceId, ticketId, d.id(), DemarcheEtat.NON_APPLICABLE,
+                        MOTIF_GERANCE_STATUTAIRE, acteurId, List.of());
+                journaliser(workspaceId, ticketId, acteurId, d,
+                        "Demarche " + d.ordre() + " ecartee automatiquement : "
+                                + MOTIF_GERANCE_STATUTAIRE,
+                        Map.of("ordre", d.ordre(), "etat", DemarcheEtat.NON_APPLICABLE.name(),
+                                "origine", "CONDITION_GERANCE"));
+            } else {
+                // On ne défait QUE notre propre écartement.
+                if (courant == null || courant.etat() != DemarcheEtat.NON_APPLICABLE) continue;
+                if (!MOTIF_GERANCE_STATUTAIRE.equals(courant.motif())) continue;
+                etats.upsert(workspaceId, ticketId, d.id(), DemarcheEtat.A_FAIRE,
+                        null, acteurId, List.of());
+                journaliser(workspaceId, ticketId, acteurId, d,
+                        "Demarche " + d.ordre() + " redevenue applicable : la gerance "
+                                + "n'est pas designee dans les statuts",
+                        Map.of("ordre", d.ordre(), "etat", DemarcheEtat.A_FAIRE.name(),
+                                "origine", "CONDITION_GERANCE"));
+            }
+        }
+        return vue(workspaceId, ticketId);
+    }
+
+    /**
+     * Les trois démarches du référentiel CRÉATION qui portent la condition « acte de
+     * nomination non statutaire » : établissement (9), signature et légalisation (15),
+     * enregistrement (18).
+     */
+    private static final int[] ORDRES_ACTE_NOMINATION = {9, 15, 18};
+
+    /**
+     * Motif système. Sert AUSSI de signature : seul un écartement portant ce motif
+     * exact est défait quand la réponse change.
+     */
+    static final String MOTIF_GERANCE_STATUTAIRE =
+            "Gerance designee dans les statuts : l'acte de nomination separe n'a pas lieu "
+                    + "d'etre (condition du guide : « Si la gerance n'est pas designee dans "
+                    + "les statuts »). Reponse donnee a l'etape 5 du workflow.";
+
     // =================================================================
     //  Verifications
     // =================================================================

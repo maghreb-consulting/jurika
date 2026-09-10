@@ -183,6 +183,8 @@ public class WorkflowDocumentController {
                     "Template inconnu (manifest L3 + classpath) : " + templateCode);
         }
 
+        refuserSiTrouGrammatical(workflowCode, templateCode, result);
+
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + result.filename() + "\"")
@@ -191,6 +193,32 @@ public class WorkflowDocumentController {
                 .header("X-Missing-Variables", String.join(",", result.missingVariables()))
                 .contentType(MediaType.parseMediaType(result.contentType()))
                 .body(result.bytes());
+    }
+
+    /**
+     * Lot 5 (2026-09-07) — CONTRÔLE DE COMPLÉTUDE À LA GÉNÉRATION.
+     *
+     * <p>Le point de contrôle « jeu de variables complet » du guide vivait jusqu'ici
+     * dans {@code GuideTransitionChecks}, côté ticket-service, et portait sur DIX
+     * colonnes du dossier — jamais sur les variables réellement consommées par les
+     * modèles. C'est ce trou qui a laissé sortir « né le  à , demeurant à  ».
+     *
+     * <p>Le contrôle porte désormais sur le document RENDU : une variable dont le
+     * vide s'imprime au milieu d'une phrase fait échouer la génération, avec son nom
+     * ET la ligne où elle se trouve. Une case administrative laissée blanche passe :
+     * un formulaire DGI incomplet reste un formulaire recevable — c'est la
+     * classification posée au lot 5.
+     *
+     * <p>Portée volontairement limitée au workflow CRÉATION : les huit autres
+     * conservent le comportement historique (marqueur rouge dans le document).
+     */
+    private void refuserSiTrouGrammatical(String workflowCode, String templateCode,
+                                           DocumentResult result) {
+        if (!"CREATION_SARL".equals(workflowCode)) return;
+        String motif = ma.jurika.ai.document.ControleCompletude.motifDeRefus(result);
+        if (motif == null) return;
+        log.warn("Refus generation {} / {} : {}", workflowCode, templateCode, motif);
+        throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, motif);
     }
 
     /**

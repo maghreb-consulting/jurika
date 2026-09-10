@@ -24,6 +24,8 @@ import {
 import { DocumentEditor } from '../../../components/document/DocumentEditor';
 import { CollaboraEditor } from '../../../components/document/CollaboraEditor';
 import { dataroomService } from '../../../services/dataroom.service';
+import { REPRISES_AUTOMATIQUES, champsParDocument } from './documents-creation';
+import { dureeMandatLabel } from './Step5Dirigeants';
 import { buildDocFilename } from '../../../components/workflow/workflowFilename';
 import type { DocumentType } from '../../../types/dataroom';
 import { formatObjetSocial } from '../objetSocial';
@@ -156,12 +158,35 @@ const TEMPLATE_ALLOWLIST_BASE: Record<'SARL' | 'SARL_AU', string[]> = {
   SARL: [
     'STATUTS_SARL_DIRECTEUR',
     'ANNONCE_LEGALE_DIRECTEUR',
+    // Lot 5 (2026-09-07) — les trois formulaires administratifs (etapes 19, 20
+    // et 21 du guide). Obligatoires « dans tous les dossiers » au referentiel.
+    'DEMANDE_TAXE_PROFESSIONNELLE',
+    'DECLARATION_EXISTENCE',
+    'DECLARATION_IMMATRICULATION_RC',
   ],
   SARL_AU: [
     'STATUTS_SARL_AU_DIRECTEUR',
     'ANNONCE_LEGALE_DIRECTEUR',
+    'DEMANDE_TAXE_PROFESSIONNELLE',
+    'DECLARATION_EXISTENCE',
+    'DECLARATION_IMMATRICULATION_RC',
   ],
 };
+
+/**
+ * Lot 5 — documents OBLIGATOIRES du parcours (referentiel V20, colonne
+ * « Tous dossiers ») : coches d'office et non decochables. Le seul document
+ * conditionnel est l'acte de nomination, qui suit la reponse « gerance
+ * statutaire ? » de l'etape 5.
+ */
+const DOCUMENTS_OBLIGATOIRES = new Set<string>([
+  'STATUTS_SARL_DIRECTEUR',
+  'STATUTS_SARL_AU_DIRECTEUR',
+  'ANNONCE_LEGALE_DIRECTEUR',
+  'DEMANDE_TAXE_PROFESSIONNELLE',
+  'DECLARATION_EXISTENCE',
+  'DECLARATION_IMMATRICULATION_RC',
+]);
 
 /**
  * Étape 7 (noms propres 2026-08) — Libellés « métier » affichés à l'utilisateur.
@@ -175,6 +200,9 @@ const DOCUMENT_LABELS: Record<string, string> = {
   STATUTS_SARL_AU_DIRECTEUR: 'Statuts',
   ACTE_NOMINATION_GERANT_DIRECTEUR: 'Acte de nomination du gérant',
   ANNONCE_LEGALE_DIRECTEUR: 'Annonce légale',
+  DEMANDE_TAXE_PROFESSIONNELLE: "Demande d'inscription à la taxe professionnelle",
+  DECLARATION_EXISTENCE: "Déclaration d'existence",
+  DECLARATION_IMMATRICULATION_RC: "Déclaration d'immatriculation au RC (modèle 2)",
   PV_DEFAUT_QUORUM_SARL: 'PV — Défaut de quorum',
   PV_DEFAUT_QUORUM_SARL_AU: 'PV — Défaut de quorum',
   PV_IRREGULARITE_CONVOCATION_SARL: 'PV — Irrégularité de convocation',
@@ -197,6 +225,11 @@ const TEMPLATE_TO_DOCTYPE: Record<string, DocumentType> = {
   STATUTS_SARL_AU_DIRECTEUR: 'STATUTS',
   ACTE_NOMINATION_GERANT_DIRECTEUR: 'ACTE_NOMINATION',
   ANNONCE_LEGALE_DIRECTEUR: 'ANNONCE_JAL',
+  // Lot 5 — chaque formulaire a SON type : sans cela les trois tombaient en
+  // « AUTRE », et deux « AUTRE » de meme titre se dedupliquent en Data Room.
+  DEMANDE_TAXE_PROFESSIONNELLE: 'DEMANDE_TAXE_PROFESSIONNELLE',
+  DECLARATION_EXISTENCE: 'DECLARATION_EXISTENCE',
+  DECLARATION_IMMATRICULATION_RC: 'DECLARATION_IMMATRICULATION_RC',
 };
 
 /**
@@ -255,6 +288,27 @@ export function Step7Generation({
     | undefined;
   const persistedDocs: Record<string, Partial<DocState>> =
     directDocs ?? wrappedGen?.documents ?? {};
+
+  /**
+   * Lot 5 (2026-09-07) — SAISIES PROPRES AUX FORMULAIRES.
+   *
+   * Elles vivent avec l'etape (donc dans le brouillon), pas dans un etat volatile :
+   * revenir sur l'etape 7 apres avoir genere ne doit pas les faire disparaitre.
+   */
+  const [complements, setComplements] = useState<Record<string, string>>(
+    () => (previous.complements as Record<string, string> | undefined) ?? {},
+  );
+
+  /**
+   * Lot 5 — documents RETENUS. Les obligatoires sont coches d'office et ne se
+   * decochent pas ; le seul conditionnel (acte de nomination) suit la reponse
+   * « gerance statutaire ? » donnee a l'etape 5. La liste sert AUSSI a decider
+   * quels champs complementaires afficher : un champ n'apparait que si le
+   * document qui le consomme est retenu.
+   */
+  const [ecartes, setEcartes] = useState<Set<string>>(
+    () => new Set((previous.documentsEcartes as string[] | undefined) ?? []),
+  );
 
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
@@ -381,7 +435,12 @@ export function Step7Generation({
           code === STATUTS_TEMPLATE_CODE ? 0
             : code.startsWith('ANNONCE_') ? 1
             : code.startsWith('ACTE_NOMINATION_GERANT') ? 2
-            : 3;
+            // Lot 5 — les trois formulaires viennent apres les actes, dans
+            // l'ordre du parcours : TP (etape 19), existence (20), RC (21).
+            : code === 'DEMANDE_TAXE_PROFESSIONNELLE' ? 3
+            : code === 'DECLARATION_EXISTENCE' ? 4
+            : code === 'DECLARATION_IMMATRICULATION_RC' ? 5
+            : 6;
         const sorted = filtered.sort((a, b) => {
           const oa = order(a.code), ob = order(b.code);
           if (oa !== ob) return oa - ob;
@@ -459,7 +518,27 @@ export function Step7Generation({
             (siege.province as string | undefined) ??
             (siege.commune as string | undefined) ??
             'Casablanca',
+          // Lot 5 (2026-09-07) — donnees DEJA saisies aux etapes 1, 2 et 4 mais que
+          // le payload ne transportait pas, faute de modele qui les consomme. Les
+          // trois formulaires les reclament : les redemander aurait ete une saisie
+          // en double.
+          sigle: den.sigle,
+          certificatNegatifNumero: den.cnNumero,
+          certificatNegatifDate: den.cnDate,
+          ville:
+            ((siege.commune as string | undefined) ??
+              (siege.ville as string | undefined) ??
+              (siege.province as string | undefined)),
+          activites: act.activites,
+          nationalite: 'marocaine',
+          // 2026-09-08 — repli de la durée du mandat, quand aucun gérant ne porte
+          // le sien (brouillon antérieur à la saisie par dirigeant). Même source
+          // que `buildPayloadCreationSarl`, qui la transmettait déjà.
+          dureeGerance: (gerance7.dureeGerance ?? gerance7.dureeMandat) as string | undefined,
         },
+        // Lot 5 — saisies propres aux formulaires (cf. `documents-creation.ts`).
+        // Elles n'existent nulle part ailleurs dans le workflow.
+        formulaires: complements,
         gerants: dirs.map((d) => ({
           civilite: d.civilite ?? 'M',
           prenom: d.prenom ?? '',
@@ -471,6 +550,26 @@ export function Step7Generation({
           lieuNaissance: d.lieuNaissance ?? undefined,
           // 2026-06-11 — Pour {{gerant_piece_validite}}.
           pieceValidite: d.pieceValidite ?? undefined,
+          /**
+           * 2026-09-08 — LA DURÉE DU MANDAT ARRIVE JUSQU'À L'ACTE.
+           *
+           * Elle était saisie à l'étape 5, rendue OBLIGATOIRE là-bas, et le
+           * préflight ci-dessus BLOQUE encore la génération si elle manque — puis
+           * ce payload ne la transmettait pas. Le moteur retombait sur son défaut
+           * codé en dur, et l'acte de nomination annonçait « pour une durée de
+           * 99 années » — la durée de la SOCIÉTÉ — quel que soit le mandat choisi.
+           * On forçait une saisie pour la jeter.
+           *
+           * `buildPayloadCreationSarl` (étape 9) transmettait déjà la donnée : les
+           * deux constructeurs de payload divergeaient, et c'est celui qui produit
+           * le document validé par l'employé qui avait tort.
+           *
+           * Le mandat PROPRE au dirigeant prime ; l'agrégat de l'étape 5 sert de
+           * repli pour les brouillons antérieurs à la saisie par dirigeant.
+           */
+          dureeMandat: d.dureeMandatType
+            ? dureeMandatLabel(d as { dureeMandatType?: string; dureeAnnees?: number })
+            : (gerance7.dureeMandat as string | undefined),
           isStatutaire: d.isStatutaire === true,
           typePersonne: d.typePersonne ?? 'PHYSIQUE',
           denomination: d.denomination ?? undefined,
@@ -557,6 +656,15 @@ export function Step7Generation({
       cap.apportIndustrie,
       cap.banqueDepot,
       act.description,
+      act.activites,
+      gerance7.dureeGerance,
+      gerance7.dureeMandat,
+      den.sigle,
+      den.cnNumero,
+      den.cnDate,
+      siege.province,
+      siege.villeGreffe,
+      complements,
       dirs,
       associesStep6,
       existing,
@@ -946,6 +1054,26 @@ export function Step7Generation({
   const statutsState = docs[STATUTS_TEMPLATE_CODE];
   const canSubmit = !!statutsState?.generated && !!statutsState?.validated;
 
+  /**
+   * Lot 5 — documents RETENUS : tous ceux que l'allowlist expose, moins ceux que
+   * l'employe a explicitement ecartes. Un document obligatoire ne peut pas etre
+   * ecarte (le referentiel le donne « Tous dossiers »).
+   */
+  const documentsRetenus = useMemo(
+    () => templates.map((t) => t.code).filter((c) => !ecartes.has(c)),
+    [templates, ecartes],
+  );
+
+  /**
+   * Lot 5 — LES CHAMPS SUIVENT LES DOCUMENTS. Groupes par document, et jamais
+   * affiches deux fois : un champ que deux imprimes partagent (le telephone de la
+   * societe) n'est demande qu'une seule fois.
+   */
+  const groupesChamps = useMemo(
+    () => champsParDocument(documentsRetenus),
+    [documentsRetenus],
+  );
+
   const documentsPayload = useMemo(() => {
     const out: Record<string, unknown> = {};
     for (const [code, st] of Object.entries(docs)) {
@@ -972,6 +1100,10 @@ export function Step7Generation({
           actesNominationIds: [],
           statutsValides: !!statutsState?.validated,
           documents: documentsPayload,
+          // Lot 5 — la selection et les saisies propres aux formulaires vivent
+          // avec l'etape : revenir dessus ne doit rien effacer.
+          documentsEcartes: Array.from(ecartes),
+          complements,
         });
       }}
       className="space-y-6"
@@ -1013,10 +1145,20 @@ export function Step7Generation({
         </div>
       )}
 
+      {/*
+        Lot A (2026-09-10) — la liste est vide PAR CONSTRUCTION, et le message le
+        dit. Le corpus de creation a ete remplace par les 23 modeles livres le
+        9 septembre ; leur resolution (253 variables nouvelles) est l'objet du
+        lot B. Tant qu'aucun mapper ne les route, le backend renvoie une liste
+        vide. L'ancien message envoyait verifier le manifest : il est pourtant
+        complet, et l'employe serait parti chercher au mauvais endroit.
+      */}
       {!loadingTemplates && templates.length === 0 && !loadError && (
         <div className="rounded-xl border border-border bg-bg-raised p-6 text-sm text-fg-subtle">
-          Aucun template enregistre pour CREATION_SARL — verifiez le manifest
-          backend.
+          La génération des documents de création est en cours de refonte : les
+          23 modèles livrés le 9 septembre ont remplacé les précédents, et leur
+          alimentation reste à câbler. Aucun document n'est générable depuis cette
+          étape pour l'instant.
         </div>
       )}
 
@@ -1052,8 +1194,160 @@ export function Step7Generation({
         </div>
       )}
 
+      {!loadingTemplates && templates.length > 0 && (
+        <div className="rounded-xl border border-border bg-bg-raised p-5">
+          <h4 className="text-sm font-semibold text-fg">Documents a generer</h4>
+          <p className="mt-1 text-xs text-fg-subtle">
+            Les documents obligatoires dans tous les dossiers sont retenus d&rsquo;office.
+            L&rsquo;acte de nomination n&rsquo;apparait que si la gerance n&rsquo;est pas
+            designee dans les statuts &mdash; reponse donnee a l&rsquo;etape 5.
+          </p>
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {templates.map((tpl) => {
+              const obligatoire = DOCUMENTS_OBLIGATOIRES.has(tpl.code);
+              const retenu = !ecartes.has(tpl.code);
+              return (
+                <label
+                  key={tpl.code}
+                  className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${
+                    retenu ? 'border-accent/40 bg-accent/5' : 'border-border'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={retenu}
+                    disabled={obligatoire || readOnly}
+                    onChange={() =>
+                      setEcartes((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(tpl.code)) next.delete(tpl.code);
+                        else next.add(tpl.code);
+                        return next;
+                      })
+                    }
+                  />
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium text-fg">
+                      {docLabel(tpl)}
+                    </span>
+                    <span className="text-[11px] text-fg-subtle">
+                      {obligatoire ? 'Obligatoire — tous dossiers' : 'Conditionnel'}
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!readOnly && groupesChamps.length > 0 && (
+        <div className="rounded-xl border border-border bg-bg-raised p-5">
+          <h4 className="text-sm font-semibold text-fg">
+            Complements demandes par les documents retenus
+          </h4>
+          <p className="mt-1 text-xs text-fg-subtle">
+            Ces champs n&rsquo;apparaissent que parce que le document qui les consomme
+            est retenu. Ils sont <strong>facultatifs</strong> : ils alimentent des
+            cases d&rsquo;imprimes administratifs, jamais une phrase d&rsquo;acte
+            &mdash; une case laissee blanche ne bloque pas la generation.
+          </p>
+          {groupesChamps.map((groupe) => (
+            <div key={groupe.code} className="mt-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+                {DOCUMENT_LABELS[groupe.code] ?? groupe.code}
+              </p>
+              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {groupe.champs.map((champ) => (
+                  <div key={champ.key}>
+                    <label
+                      htmlFor={`complement-${champ.key}`}
+                      className="mb-1 block text-xs font-medium text-fg"
+                    >
+                      {champ.label}
+                      {champ.documents.length > 1 && (
+                        <span className="ml-1 font-normal text-fg-subtle">
+                          — sert aussi a{' '}
+                          {champ.documents
+                            .filter((d) => d !== groupe.code)
+                            .map((d) => DOCUMENT_LABELS[d] ?? d)
+                            .join(', ')}
+                        </span>
+                      )}
+                    </label>
+                    {champ.type === 'select' ? (
+                      <select
+                        id={`complement-${champ.key}`}
+                        value={complements[champ.key] ?? ''}
+                        onChange={(e) =>
+                          setComplements((prev) => ({
+                            ...prev,
+                            [champ.key]: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg"
+                      >
+                        <option value="">&mdash; non renseigne &mdash;</option>
+                        {(champ.options ?? []).map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
+                      </select>
+                    ) : champ.type === 'textarea' ? (
+                      <textarea
+                        id={`complement-${champ.key}`}
+                        rows={2}
+                        value={complements[champ.key] ?? ''}
+                        onChange={(e) =>
+                          setComplements((prev) => ({
+                            ...prev,
+                            [champ.key]: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg"
+                      />
+                    ) : (
+                      <input
+                        id={`complement-${champ.key}`}
+                        type={champ.type === 'date' ? 'date' : 'text'}
+                        value={complements[champ.key] ?? ''}
+                        onChange={(e) =>
+                          setComplements((prev) => ({
+                            ...prev,
+                            [champ.key]: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg"
+                      />
+                    )}
+                    {champ.aide && (
+                      <p className="mt-1 text-[11px] text-fg-subtle">{champ.aide}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <div className="mt-5 rounded-lg border border-border bg-bg-overlay p-3">
+            <p className="text-xs font-semibold text-fg">
+              Repris automatiquement &mdash; rien a ressaisir
+            </p>
+            <ul className="mt-1.5 space-y-0.5 text-[11px] text-fg-subtle">
+              {REPRISES_AUTOMATIQUES.map((r) => (
+                <li key={r.libelle}>
+                  &bull; {r.libelle} <span className="opacity-70">({r.source})</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {templates.map((tpl) => {
+        {templates.filter((t) => !ecartes.has(t.code)).map((tpl) => {
           const st = docs[tpl.code] ?? freshState();
           const isStatuts = tpl.code === STATUTS_TEMPLATE_CODE;
           return (

@@ -37,7 +37,14 @@
     "BONI_LIQUIDATION_LETTRES",
     "MALI_LIQUIDATION_CHIFFRES",
     "MALI_LIQUIDATION_LETTRES",
-    "ASSOCIE_BONI_CHIFFRES"
+    "ASSOCIE_BONI_CHIFFRES",
+    "IDENTIFIANT_TP",
+    "IDENTIFIANT_FISCAL",
+    "CNSS_NUMERO",
+    "TAXE_SERVICES_COMMUNAUX_NUMERO",
+    "DEPOT_ACTES_REFERENCE",
+    "ETAB_IDENTIFIANT_TP",
+    "ASSOCIE_PRINCIPAL_IF"
   ],
   "_comment_gerant_pm": "GERANT_PM_* sont dans fill_later TEMPORAIREMENT en attendant que le wrap conditionnel ◇gerant_est_morale soit livre dans les .docx (chantier C2). Une fois C2 livre, ces variables seront supprimees du document quand le gerant est physique (cas le plus frequent) -> a retirer de fill_later.",
   "variables": [
@@ -58,6 +65,24 @@
       "meaning": "Total de l'actif réalisé (lettres)",
       "format": "autre",
       "source": "directeur-2026-08"
+    },
+    {
+      "name": "ACTIVITES_AUTRES",
+      "meaning": "Activites secondaires de la societe, separees par « ; » (derive de l'objet social)",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "ACTIVITE_EXERCEE",
+      "meaning": "Activite effectivement exercee (formulaire RC, rubrique 3)",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "ACTIVITE_PRINCIPALE",
+      "meaning": "Activite principale de la societe (1re activite de l'objet social)",
+      "format": "texte",
+      "source": "directeur-2026-09"
     },
     {
       "name": "ACTIVITE_SOCIETE",
@@ -324,6 +349,54 @@
       "source": "directeur-2026-08"
     },
     {
+      "name": "ASSOCIE_PRINCIPAL_ADRESSE",
+      "meaning": "Adresse de l'associe principal",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "ASSOCIE_PRINCIPAL_CNI",
+      "meaning": "N° CNI ou carte de sejour de l'associe principal",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "ASSOCIE_PRINCIPAL_EMAIL",
+      "meaning": "Adresse electronique de l'associe principal",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "ASSOCIE_PRINCIPAL_FAX",
+      "meaning": "Telecopie de l'associe principal",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "ASSOCIE_PRINCIPAL_IF",
+      "meaning": "N° d'identification fiscale de l'associe principal",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "ASSOCIE_PRINCIPAL_NOM",
+      "meaning": "Nom et prenom(s) de l'associe principal (le plus grand nombre de parts)",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "ASSOCIE_PRINCIPAL_TEL",
+      "meaning": "Telephone de l'associe principal",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "ASSOCIE_PRINCIPAL_VILLE",
+      "meaning": "Ville de l'associe principal",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
       "name": "ASSOCIE_RC_NUMERO",
       "meaning": "Variable des modèles déterministes du directeur (2026-08)",
       "format": "autre",
@@ -438,6 +511,12 @@
       "source": "directeur-2026-08"
     },
     {
+      "name": "BREVETS_MARQUES_REFERENCE",
+      "meaning": "References des brevets d'invention et marques deposes",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
       "name": "CAC_EXISTE",
       "meaning": "La societe est-elle dotee d un commissaire aux comptes (oui/non)",
       "format": "enum",
@@ -468,6 +547,24 @@
       "source": "déduit_modèles_L3"
     },
     {
+      "name": "CAPITAL_VARIABLE_MINIMUM",
+      "meaning": "Montant minimum du capital, si le capital est variable",
+      "format": "montant",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "CERTIFICAT_NEGATIF_DATE",
+      "meaning": "Date du certificat negatif (JJ/MM/AAAA)",
+      "format": "date",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "CERTIFICAT_NEGATIF_NUMERO",
+      "meaning": "Numero du certificat negatif delivre par l'OMPIC",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
       "name": "CESSION_ACTIF_OBJET",
       "meaning": "Actif dont la cession est autorisée au liquidateur",
       "format": "autre",
@@ -478,6 +575,18 @@
       "meaning": "Chiffre d'affaires de l'exercice",
       "format": "autre",
       "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "CNI_CS_NUMERO",
+      "meaning": "N° de la carte nationale d'identite ou de la carte de sejour du signataire",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "CNSS_NUMERO",
+      "meaning": "N° d'affiliation a la CNSS de la societe",
+      "format": "texte",
+      "source": "directeur-2026-09"
     },
     {
       "name": "COMMENTAIRE_ACTIVITE",
@@ -576,10 +685,22 @@
       "source": "déduit_modèles_L3"
     },
     {
+      "name": "DATE_COMMENCEMENT_EXPLOITATION",
+      "meaning": "Date de commencement d'exploitation (formulaire RC, rubrique 8)",
+      "format": "date",
+      "source": "directeur-2026-09"
+    },
+    {
       "name": "DATE_CONVOCATION",
       "meaning": "Date d'envoi des convocations.",
       "format": "autre",
       "source": "directeur-2026-08"
+    },
+    {
+      "name": "DATE_DEBUT_ACTIVITE",
+      "meaning": "Date de debut d'activite declaree a la DGI",
+      "format": "date",
+      "source": "directeur-2026-09"
     },
     {
       "name": "DATE_DEPOT",
@@ -624,10 +745,34 @@
       "source": "déduit_modèles_L3"
     },
     {
+      "name": "DATE_FIN_SOCIETE",
+      "meaning": "Date a laquelle la personne morale doit finir (constitution + duree)",
+      "format": "date",
+      "source": "directeur-2026-09"
+    },
+    {
       "name": "DATE_SIGNATURE",
       "meaning": "Variable des modèles déterministes du directeur (2026-08)",
       "format": "autre",
       "source": "directeur-2026-08"
+    },
+    {
+      "name": "DECLARANT_ADRESSE",
+      "meaning": "Adresse personnelle du declarant",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "DECLARANT_NOM",
+      "meaning": "Nom du soussigne qui requiert l'immatriculation (art. 38 al. 2 : un gerant)",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "DECLARANT_QUALITE",
+      "meaning": "Qualite en laquelle le declarant agit",
+      "format": "texte",
+      "source": "directeur-2026-09"
     },
     {
       "name": "DENOMINATION",
@@ -640,6 +785,12 @@
       "meaning": "Nom du dépositaire des fonds (banque)",
       "format": "autre",
       "source": "déduit_modèles_L3"
+    },
+    {
+      "name": "DEPOT_ACTES_REFERENCE",
+      "meaning": "Numero et date du depot des actes au greffe",
+      "format": "texte",
+      "source": "directeur-2026-09"
     },
     {
       "name": "DEPOT_FONDS_BLOQUE",
@@ -664,6 +815,78 @@
       "meaning": "Lieu de la seconde assemblée",
       "format": "autre",
       "source": "directeur-2026-08"
+    },
+    {
+      "name": "DE_ACTIVITE_NATURE",
+      "meaning": "Nature de l'activite : « Permanente » | « Saisonniere » | « Periodique » | « Occasionnelle »",
+      "format": "enum",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "DE_REGIME_RESULTAT",
+      "meaning": "Regime de determination du resultat : « Resultat net reel » | « Resultat net simplifie » | « Contribution professionnelle unique »",
+      "format": "enum",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "DE_TVA_ASSUJETTISSEMENT",
+      "meaning": "Assujettissement TVA : « De plein droit » | « Sur option » | « Hors champ » | « Totalement exonere sans droit a deduction » | « Totalement exonere avec droit a deduction »",
+      "format": "enum",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "DE_TVA_FAIT_GENERATEUR",
+      "meaning": "Fait generateur de la TVA : « Encaissement » | « Debit »",
+      "format": "enum",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "DE_TVA_PERIODICITE",
+      "meaning": "Periodicite de declaration de la TVA : « Mensuelle » | « Trimestrielle »",
+      "format": "enum",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "DIRECTION_REGIONALE",
+      "meaning": "Direction regionale, provinciale ou (inter) prefectorale DGI competente",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "DIRIGEANT_PM_DENOMINATION",
+      "meaning": "Raison sociale du dirigeant personne morale",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "DIRIGEANT_PM_FORME",
+      "meaning": "Forme juridique du dirigeant personne morale",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "DIRIGEANT_PM_OBJET",
+      "meaning": "Objet social du dirigeant personne morale",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "DIRIGEANT_PM_RC",
+      "meaning": "N° de registre du commerce du dirigeant personne morale",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "DIRIGEANT_PM_REPRESENTANT",
+      "meaning": "Representant permanent du dirigeant personne morale",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "DIRIGEANT_PM_SIEGE",
+      "meaning": "Siege social du dirigeant personne morale",
+      "format": "texte",
+      "source": "directeur-2026-09"
     },
     {
       "name": "DISSOLUTION_MOTIF",
@@ -702,6 +925,12 @@
       "source": "directeur-2026-08"
     },
     {
+      "name": "DOMICILE_FISCAL",
+      "meaning": "Adresse du domicile fiscal ou du principal etablissement",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
       "name": "DUREE_GERANCE",
       "meaning": "Variable des modèles déterministes du directeur (2026-08)",
       "format": "autre",
@@ -726,10 +955,46 @@
       "source": "directeur-2026-08"
     },
     {
+      "name": "EMAIL",
+      "meaning": "Adresse electronique de la societe",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
       "name": "ENGAGEMENTS_MANDAT",
       "meaning": "Variable des modèles déterministes du directeur (2026-08)",
       "format": "autre",
       "source": "directeur-2026-08"
+    },
+    {
+      "name": "ENSEIGNE",
+      "meaning": "Enseigne commerciale de la societe (facultative)",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "ETAB_ACTIVITE",
+      "meaning": "Activite exercee dans l'etablissement",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "ETAB_ADRESSE",
+      "meaning": "Adresse ou lieu de situation de l'etablissement",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "ETAB_IDENTIFIANT_TP",
+      "meaning": "N° d'identification a la taxe professionnelle de l'etablissement",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "ETAB_VILLE",
+      "meaning": "Ville de l'etablissement",
+      "format": "texte",
+      "source": "directeur-2026-09"
     },
     {
       "name": "EVENEMENTS_PERSPECTIVES",
@@ -754,6 +1019,12 @@
       "meaning": "Variable des modèles déterministes du directeur (2026-08)",
       "format": "autre",
       "source": "directeur-2026-08"
+    },
+    {
+      "name": "FAX",
+      "meaning": "Numero de telecopie de la societe",
+      "format": "texte",
+      "source": "directeur-2026-09"
     },
     {
       "name": "FORMALITES_MANDATAIRE_NOM",
@@ -816,6 +1087,12 @@
       "source": "directeur_PV_modification"
     },
     {
+      "name": "GERANT_LIEU_NAISSANCE",
+      "meaning": "Lieu de naissance du gerant (imprime « ne le ... a ... »)",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
       "name": "GERANT_MODE_DESIGNATION",
       "meaning": "Variable des modèles déterministes du directeur (2026-08)",
       "format": "autre",
@@ -858,6 +1135,12 @@
       "source": "directeur-2026-08"
     },
     {
+      "name": "GERANT_QUALITE",
+      "meaning": "Qualite du gerant (« gerant statutaire » / « gerant »)",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
       "name": "HAS_APPORT_NATURE",
       "meaning": "Variable des modèles déterministes du directeur (2026-08)",
       "format": "autre",
@@ -888,10 +1171,28 @@
       "source": "directeur-2026-08"
     },
     {
+      "name": "ICE",
+      "meaning": "Identifiant commun de l'entreprise (15 chiffres)",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
       "name": "ICE_NUMERO",
       "meaning": "ICE (Identifiant Commun Entreprise)",
       "format": "chiffres",
       "source": "dict_directeur"
+    },
+    {
+      "name": "IDENTIFIANT_FISCAL",
+      "meaning": "N° d'identification fiscale (IF) delivre par la DGI",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "IDENTIFIANT_TP",
+      "meaning": "N° d'identification a la taxe professionnelle (patente)",
+      "format": "texte",
+      "source": "directeur-2026-09"
     },
     {
       "name": "IF_NUMERO",
@@ -904,6 +1205,12 @@
       "meaning": "Nature de l'irrégularité de convocation",
       "format": "autre",
       "source": "directeur-2026-08"
+    },
+    {
+      "name": "LIEU_ACTIVITE",
+      "meaning": "Lieu d'exercice de l'activite declare a la DGI",
+      "format": "texte",
+      "source": "directeur-2026-09"
     },
     {
       "name": "LIEU_AG",
@@ -1230,6 +1537,12 @@
       "source": "directeur-2026-08"
     },
     {
+      "name": "PIECES_PRODUITES",
+      "meaning": "Liste des pieces jointes a la declaration d'immatriculation",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
       "name": "POINT_ODJ_LIBELLE",
       "meaning": "Libellé d'un point de l'ordre du jour (boucle POINTS_ODJ).",
       "format": "autre",
@@ -1476,10 +1789,28 @@
       "source": "déduit_modèles_L3"
     },
     {
+      "name": "SIEGE_PRECEDENT_EXPLOITANT",
+      "meaning": "Exploitant precedent du siege (si le local etait deja exploite)",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "SIEGE_PRECEDENT_RC",
+      "meaning": "N° RC de l'exploitant precedent du siege",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
       "name": "SIEGE_SOCIAL",
       "meaning": "Variable des modèles déterministes du directeur (2026-08)",
       "format": "autre",
       "source": "directeur-2026-08"
+    },
+    {
+      "name": "SIGLE",
+      "meaning": "Sigle commercial de la societe (facultatif)",
+      "format": "texte",
+      "source": "directeur-2026-09"
     },
     {
       "name": "SIGNATAIRE_ACCORD",
@@ -1492,6 +1823,12 @@
       "meaning": "Variable des modèles déterministes du directeur (2026-08)",
       "format": "autre",
       "source": "directeur-2026-08"
+    },
+    {
+      "name": "SIGNATAIRE_NOM_QUALITE",
+      "meaning": "Nom, prenom(s) et qualite du signataire de la declaration",
+      "format": "texte",
+      "source": "directeur-2026-09"
     },
     {
       "name": "SIGNATAIRE_QUALITE",
@@ -1564,6 +1901,36 @@
       "meaning": "Adresse du siège social de la société mère à l'étranger",
       "format": "autre",
       "source": "directeur-2026-08"
+    },
+    {
+      "name": "SOCIETE_NATIONALITE",
+      "meaning": "Nationalite de la societe (« marocaine » par defaut)",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "SUBDIVISION",
+      "meaning": "Subdivision DGI competente",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "SUCCURSALES_ETRANGER",
+      "meaning": "Succursales a l'etranger (ville, departement, pays)",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "SUCCURSALES_MAROC",
+      "meaning": "Succursales au Maroc (adresses)",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "SUCCURSALES_PATENTE",
+      "meaning": "N° de patente des succursales",
+      "format": "texte",
+      "source": "directeur-2026-09"
     },
     {
       "name": "SUCCURSALE_ACTIVITE",
@@ -1704,6 +2071,42 @@
       "source": "directeur-2026-08"
     },
     {
+      "name": "TAXE_SERVICES_COMMUNAUX_NUMERO",
+      "meaning": "N° d'identification a la taxe de services communaux",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "TELEPHONE",
+      "meaning": "Numero de telephone de la societe",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "TP_OBJET",
+      "meaning": "Objet de la demande TP : « Creation d'une personne physique » | « Creation d'une personne morale » | « Autre »",
+      "format": "enum",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "TP_OBJET_AUTRE_PRECISION",
+      "meaning": "Precision de l'objet quand $TP_OBJET vaut « Autre »",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "TRIBUNAL_TYPE",
+      "meaning": "« Tribunal de commerce » ou « Tribunal de premiere instance »",
+      "format": "enum",
+      "source": "directeur-2026-09"
+    },
+    {
+      "name": "TRIBUNAL_VILLE",
+      "meaning": "Ville du tribunal aupres duquel l'immatriculation est requise",
+      "format": "texte",
+      "source": "directeur-2026-09"
+    },
+    {
       "name": "VALEUR_NOMINALE_DE_PARTS_SOCIALES_EN_CHIFFRES",
       "meaning": "Valeur nominale en chiffres (JAL)",
       "format": "MAD",
@@ -1720,6 +2123,12 @@
       "meaning": "Valeur nominale d'une part",
       "format": "chiffres",
       "source": "dict_directeur"
+    },
+    {
+      "name": "VILLE",
+      "meaning": "Ville du domicile fiscal / principal etablissement",
+      "format": "texte",
+      "source": "directeur-2026-09"
     },
     {
       "name": "VILLE_GREFFE",

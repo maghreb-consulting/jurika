@@ -433,4 +433,103 @@ class DemarcheUseCasesTest {
         assertThat(lignes.get(1).horsSequence())
                 .as("l'etape 14 est cochee alors que la 13 ne l'est pas").isTrue();
     }
+
+    // =================================================================
+    //  Lot 5 — une reponse (« gerance statutaire ? »), trois demarches
+    // =================================================================
+
+    /** Les trois demarches du referentiel qui portent la condition « acte separe ». */
+    private void referentielActeNomination() {
+        demarche(9, TicketStatut.GENERATION_DOCUMENTS, false,
+                List.of(new JustificatifAttendu(1, "ACTE_NOMINATION", "Acte valide par le client")));
+        demarche(15, TicketStatut.DEROULEMENT_DEMARCHE, false,
+                List.of(new JustificatifAttendu(1, "ACTE_NOMINATION", "Acte signe et legalise")));
+        demarche(18, TicketStatut.DEROULEMENT_DEMARCHE, false,
+                List.of(new JustificatifAttendu(1, "ACTE_NOMINATION", "Acte enregistre")));
+    }
+
+    private DemarcheEtat etatDe(int ordre) {
+        TicketDemarche td = etatsCourants.get(referentiel.get(ordre).id());
+        return td == null ? DemarcheEtat.A_FAIRE : td.etat();
+    }
+
+    private String motifDe(int ordre) {
+        TicketDemarche td = etatsCourants.get(referentiel.get(ordre).id());
+        return td == null ? null : td.motif();
+    }
+
+    @Test
+    @DisplayName("Gerance statutaire : les demarches 9, 15 et 18 deviennent non applicables d'un coup")
+    void geranceStatutaire_ecarteLesTroisDemarches() {
+        referentielActeNomination();
+
+        useCases.appliquerConditionGerance(WS, TICKET, true, ACTEUR);
+
+        assertThat(etatDe(9)).isEqualTo(DemarcheEtat.NON_APPLICABLE);
+        assertThat(etatDe(15)).isEqualTo(DemarcheEtat.NON_APPLICABLE);
+        assertThat(etatDe(18)).isEqualTo(DemarcheEtat.NON_APPLICABLE);
+        // Le motif cite la condition du guide : un ecartement sans motif probant
+        // ne vaut rien devant un controle.
+        assertThat(motifDe(9)).contains("Gerance designee dans les statuts");
+        assertThat(motifDe(15)).isEqualTo(motifDe(9));
+        assertThat(motifDe(18)).isEqualTo(motifDe(9));
+    }
+
+    @Test
+    @DisplayName("La gerance redevient non statutaire : les trois demarches redeviennent a faire")
+    void geranceNonStatutaire_lesTroisRedeviennentApplicables() {
+        referentielActeNomination();
+        useCases.appliquerConditionGerance(WS, TICKET, true, ACTEUR);
+
+        useCases.appliquerConditionGerance(WS, TICKET, false, ACTEUR);
+
+        assertThat(etatDe(9)).isEqualTo(DemarcheEtat.A_FAIRE);
+        assertThat(etatDe(15)).isEqualTo(DemarcheEtat.A_FAIRE);
+        assertThat(etatDe(18)).isEqualTo(DemarcheEtat.A_FAIRE);
+        assertThat(motifDe(9)).isNull();
+    }
+
+    @Test
+    @DisplayName("Un ecartement decide par l'employe n'est jamais defait par la propagation")
+    void ecartementManuelPreserve() {
+        referentielActeNomination();
+        statutTicket = TicketStatut.GENERATION_DOCUMENTS;
+        useCases.marquerNonApplicable(WS, TICKET, 9,
+                "Le client fournit son propre acte de nomination", ACTEUR);
+
+        useCases.appliquerConditionGerance(WS, TICKET, false, ACTEUR);
+
+        assertThat(etatDe(9)).as("l'ecartement de l'employe fait foi")
+                .isEqualTo(DemarcheEtat.NON_APPLICABLE);
+        assertThat(motifDe(9)).isEqualTo("Le client fournit son propre acte de nomination");
+    }
+
+    @Test
+    @DisplayName("Une demarche deja cochee n'est pas ecartee par la propagation")
+    void demarcheCocheeNonEcartee() {
+        referentielActeNomination();
+        statutTicket = TicketStatut.GENERATION_DOCUMENTS;
+        UUID acte = document("ACTE_NOMINATION", TICKET);
+        useCases.cocher(WS, TICKET, 9, List.of(acte), ACTEUR);
+
+        useCases.appliquerConditionGerance(WS, TICKET, true, ACTEUR);
+
+        assertThat(etatDe(9)).as("un fait accompli ne se reecrit pas")
+                .isEqualTo(DemarcheEtat.COCHEE);
+        // Les deux autres, elles, sont bien ecartees.
+        assertThat(etatDe(15)).isEqualTo(DemarcheEtat.NON_APPLICABLE);
+        assertThat(etatDe(18)).isEqualTo(DemarcheEtat.NON_APPLICABLE);
+    }
+
+    @Test
+    @DisplayName("Une demarche OBLIGATOIRE ne peut pas etre ecartee par la propagation")
+    void demarcheObligatoireJamaisEcartee() {
+        // Cas de garde : si une version du guide rendait l'etape 9 obligatoire,
+        // la propagation ne doit pas passer outre.
+        demarche(9, TicketStatut.GENERATION_DOCUMENTS, true, List.of());
+
+        useCases.appliquerConditionGerance(WS, TICKET, true, ACTEUR);
+
+        assertThat(etatDe(9)).isEqualTo(DemarcheEtat.A_FAIRE);
+    }
 }

@@ -66,4 +66,19 @@ public class DemarcheController {
         return demarches.marquerNonApplicable(user.workspaceId(), ticketId, ordre,
                 body.motif(), user.userId());
     }
+
+    /**
+     * Lot 5 (2026-09-07) — propage la reponse « gerance designee dans les statuts ? »
+     * aux trois demarches qui portent cette condition (9, 15 et 18), au lieu de
+     * demander a l'employe de les ecarter une par une avec le meme motif.
+     */
+    @PostMapping("/condition-gerance")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
+    public DemarcheUseCases.Vue conditionGerance(@AuthenticationPrincipal AuthenticatedUser user,
+                                                  @PathVariable UUID ticketId,
+                                                  @Valid @RequestBody
+                                                  DemarcheRequests.ConditionGerance body) {
+        return demarches.appliquerConditionGerance(user.workspaceId(), ticketId,
+                body.statutaire(), user.userId());
+    }
 }

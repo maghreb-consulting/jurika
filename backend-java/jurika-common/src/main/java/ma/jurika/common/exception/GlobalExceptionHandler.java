@@ -159,10 +159,74 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("BAD_REQUEST", message));
     }
 
+    /**
+     * 2026-09-08 — UNE EXCEPTION QUI PORTE SON STATUT LE GARDE.
+     *
+     * <p><b>Le defaut.</b> Ce {@code @RestControllerAdvice} declare un
+     * {@code @ExceptionHandler(Exception.class)}. Un handler d'advice prime sur la
+     * gestion native de Spring MVC : TOUT ce que Spring aurait traduit en 4xx
+     * tombait donc ici, et sortait en 500 « Erreur interne du serveur », avec une
+     * pile d'appels journalisee en ERROR.
+     *
+     * <p><b>Mesure sur la pile qui tourne</b>, avant correction :
+     * <pre>
+     *   attendu 404 -> recu 500   DELETE /api/v1/chatbot/sources/{inconnu}
+     *   attendu 405 -> recu 500   mauvaise methode HTTP
+     *   attendu 415 -> recu 500   mauvais Content-Type
+     * </pre>
+     *
+     * <p>Deux familles etaient touchees :
+     * <ul>
+     *   <li>les {@code ResponseStatusException} levees par les controleurs du
+     *       projet — 14 occurrences dans 5 controleurs de 3 services (ai,
+     *       auth, dataroom), visant 400, 401, 404, 422 et 503 ;</li>
+     *   <li>les exceptions de Spring MVC elles-memes, qui n'ont pourtant aucun
+     *       {@code throw} dans le projet : 405 methode non supportee, 415 type de
+     *       contenu refuse, 406 non acceptable, 400 parametre manquant, 413 upload
+     *       trop volumineux — la Data Room a justement une limite a 15 Mo —, 503
+     *       delai asynchrone depasse.</li>
+     * </ul>
+     *
+     * <p><b>Le correctif, a la source.</b> Depuis Spring 6, ces exceptions
+     * implementent {@link ErrorResponseException}'s interface
+     * {@code org.springframework.web.ErrorResponse}, qui EXPOSE le statut voulu.
+     * On l'honore avant de retomber sur le 500 : une seule regle, pour les dix
+     * services, plutot qu'un handler local a recopier dans chaque controleur.
+     *
+     * <p>Un 4xx n'est pas un incident serveur : il est journalise en WARN, sans
+     * pile d'appels. Le 500 garde son ERROR et sa pile — c'est la, et la seule,
+     * qu'il y a quelque chose a corriger.
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
+        if (ex instanceof org.springframework.web.ErrorResponse porteur) {
+            HttpStatus statut = HttpStatus.valueOf(porteur.getStatusCode().value());
+            String message = messageDe(ex, statut);
+            if (statut.is5xxServerError()) {
+                log.error("{} {} : {}", statut.value(), statut.getReasonPhrase(), message, ex);
+            } else {
+                log.warn("{} {} : {}", statut.value(), statut.getReasonPhrase(), message);
+            }
+            return ResponseEntity.status(statut)
+                    .body(new ErrorResponse(statut.name(), message));
+        }
         log.error("Erreur interne non geree", ex);
         return ResponseEntity.internalServerError()
                 .body(new ErrorResponse("INTERNAL_ERROR", "Erreur interne du serveur"));
+    }
+
+    /**
+     * Message a rendre au client. {@code ResponseStatusException} porte son motif
+     * dans {@code getReason()} ; les exceptions de Spring MVC, elles, portent un
+     * message deja formule ({@code "Request method 'PATCH' is not supported"}).
+     * A defaut, on ne renvoie que la phrase du statut plutot qu'un
+     * {@code getMessage()} technique.
+     */
+    private static String messageDe(Exception ex, HttpStatus statut) {
+        if (ex instanceof org.springframework.web.server.ResponseStatusException rse) {
+            return rse.getReason() != null ? rse.getReason() : statut.getReasonPhrase();
+        }
+        String m = ex.getMessage();
+        return m == null || m.isBlank() ? statut.getReasonPhrase() : m;
     }
 }

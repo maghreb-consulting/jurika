@@ -51,6 +51,12 @@ public final class DocumentTypeCatalogue {
             new String[] {"FICHE_RENSEIGNEMENTS", "Fiche de renseignements"},
             new String[] {"NOTE_CONFORMITE", "Note de conformité"},
             new String[] {"BORDEREAU_REMISE", "Bordereau de remise"},
+            // Lot 5 (2026-09-07) — formulaires administratifs DEPOSES par le cabinet.
+            // A ne pas confondre avec les documents RECUS qu'ils font obtenir (TP,
+            // BULLETIN_IF, RC), qui figurent plus bas parmi les justificatifs.
+            new String[] {"DEMANDE_TAXE_PROFESSIONNELLE", "Demande d'inscription à la taxe professionnelle"},
+            new String[] {"DECLARATION_EXISTENCE", "Déclaration d'existence"},
+            new String[] {"DECLARATION_IMMATRICULATION_RC", "Déclaration d'immatriculation au RC (modèle 2)"},
             // — Justificatifs delivres par les administrations —
             new String[] {"CN", "Certificat négatif"},
             new String[] {"ATTESTATION_ENREGISTREMENT", "Attestation d'enregistrement"},

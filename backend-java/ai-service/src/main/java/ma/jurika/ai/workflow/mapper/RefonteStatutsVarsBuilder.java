@@ -11,6 +11,13 @@ import java.util.Map;
  * après une modification, par la voie <b>DIRECTEUR</b>
  * ({@code STATUTS_SARL_DIRECTEUR} / {@code STATUTS_SARL_AU_DIRECTEUR}).
  *
+ * <p>Lot A (2026-09-10) : ces deux CODES ont ete retires du manifeste avec le
+ * corpus de creation d'aout, mais le GABARIT, lui, est reste sur le disque —
+ * c'est celui que {@code STATUTS_REFONDUS_SARL} / {@code _AU} rendent. Les codes
+ * passes plus bas a {@link CreationDirecteurVarsBuilder} ne sont donc plus des
+ * codes de manifeste : ce sont des arguments que le builder lit pour reconnaitre
+ * la forme (« SARL_AU »). La refonte des statuts est le SEUL appelant restant.
+ *
  * <p>Remplace l'ancienne voie LEGACY (refonte via {@code CreationSarlMapper} +
  * {@code STATUTS_CONSTITUTIFS_*}). L'assemblage est identique en esprit
  * (état structuré courant ⊕ nouvelles valeurs des modifications = « overlay ») mais
