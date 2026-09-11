@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
  *
  * <p>Points de controle du guide (onglet 2, ligne 1) : fiche de renseignements
  * complete et signee, pieces d'identite recues, forme sociale et capital
- * arretes. Ils correspondent exactement aux etapes 1 a 3 du parcours, donc au
+ * arretes. Ils correspondent a la ligne 1 du parcours du 9 septembre, donc au
  * cochage integral des demarches du statut « Creation du ticket » — ce que
  * verifie {@link ParcoursHandler}.
  *

@@ -40,6 +40,50 @@ export type DocumentType =
   | 'DEMANDE_TAXE_PROFESSIONNELLE'
   | 'DECLARATION_EXISTENCE'
   | 'DECLARATION_IMMATRICULATION_RC'
+  // 2026-09-11 (lot B) — les types du parcours du 9 septembre, alignés sur les
+  // migrations dataroom V24 et V31. Deux familles :
+  //
+  //  1. Les JUSTIFICATIFS que le parcours fait archiver. `RECEPISSE_DEPOT`
+  //     revient sur ONZE lignes — c'est la pièce rendue au dépôt, celle dont la
+  //     date fait courir l'attente du retrait. `AVIS_VERSEMENT_BANQUE` n'est pas
+  //     `ATTESTATION_BLOCAGE_CAPITAL` : le premier prouve le versement, la
+  //     seconde l'indisponibilité — deux pièces, deux moments.
+  | 'RECEPISSE_DEPOT'
+  | 'AVIS_VERSEMENT_BANQUE'
+  | 'INVESTISSEMENT_ETRANGER'
+  | 'ACCUSE_RETRAIT_DEPOT'
+  | 'ATTESTATION_ENREGISTREMENT'
+  | 'ATTESTATION_BLOCAGE_CAPITAL'
+  | 'BULLETIN_IF'
+  | 'JOURNAL_ANNONCE'
+  | 'PUBLICATION_BO'
+  | 'ACCUSE_RBE'
+  | 'RIB'
+  | 'LIVRES_LEGAUX'
+  | 'AUTORISATION_SECTORIELLE'
+  | 'IDENTIFIANTS_SIMPL'
+  | 'RECEPISSE_CNDP'
+  | 'PIECE_IDENTITE'
+  | 'VALIDATION_CLIENT'
+  | 'TITRE_PROPRIETE'
+  //  2. Les DOCUMENTS QUE JURIKA PRODUIT et qui n'avaient pas de type : sans
+  //     lui, ils tombaient tous en 'AUTRE', et deux 'AUTRE' de même titre se
+  //     dédupliquent (unicité du courant, V23) — un document en effaçait un autre.
+  | 'CONTRAT_DOMICILIATION'
+  | 'ETAT_ACTES_FORMATION'
+  | 'ATTESTATION_SOUSCRIPTION_LIBERATION'
+  | 'POUVOIR'
+  | 'BORDEREAU_REMISE'
+  | 'FICHE_RENSEIGNEMENTS'
+  | 'RAPPORT_COMMISSAIRE_APPORTS'
+  | 'DEMANDE_AFFILIATION_CNSS'
+  | 'DECLARATION_BENEFICIAIRES_EFFECTIFS'
+  | 'DEMANDE_DEBLOCAGE_CAPITAL'
+  | 'DECLARATION_CNDP'
+  | 'DEMANDE_ADHESION_SIMPL'
+  | 'NOTE_CONFORMITE'
+  | 'NOTE_ANNULATION'
+  | 'LETTRE_RETRAIT_DEPOT'
   | 'AUTRE';
 
 
@@ -253,6 +297,41 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   DEMANDE_TAXE_PROFESSIONNELLE: "Demande d'inscription a la taxe professionnelle",
   DECLARATION_EXISTENCE: "Declaration d'existence",
   DECLARATION_IMMATRICULATION_RC: "Declaration d'immatriculation au RC (modele 2)",
+  // 2026-09-11 (lot B) — les justificatifs du parcours du 9 septembre (V24, V31).
+  RECEPISSE_DEPOT: 'Recepisse de depot',
+  AVIS_VERSEMENT_BANQUE: 'Avis de versement de la banque',
+  INVESTISSEMENT_ETRANGER: "Formulaire d'investissement etranger",
+  ACCUSE_RETRAIT_DEPOT: 'Accuse de reception (retrait ou regularisation)',
+  ATTESTATION_ENREGISTREMENT: "Attestation d'enregistrement",
+  ATTESTATION_BLOCAGE_CAPITAL: 'Attestation de blocage du capital',
+  BULLETIN_IF: "Bulletin d'identification fiscale",
+  JOURNAL_ANNONCE: "Journal d'annonces legales",
+  PUBLICATION_BO: 'Publication au Bulletin officiel',
+  ACCUSE_RBE: 'Accuse de depot — beneficiaires effectifs',
+  RIB: 'RIB',
+  LIVRES_LEGAUX: 'Livres legaux cotes et paraphes',
+  AUTORISATION_SECTORIELLE: 'Autorisation, licence ou agrement',
+  IDENTIFIANTS_SIMPL: "Identifiants d'acces SIMPL",
+  RECEPISSE_CNDP: 'Recepisse CNDP',
+  PIECE_IDENTITE: "Piece d'identite",
+  VALIDATION_CLIENT: 'Validation ecrite du client',
+  TITRE_PROPRIETE: 'Titre de propriete',
+  // Les documents que JURIKA produit au corpus du 9 septembre.
+  CONTRAT_DOMICILIATION: 'Contrat de domiciliation',
+  ETAT_ACTES_FORMATION: 'Etat des actes accomplis en formation',
+  ATTESTATION_SOUSCRIPTION_LIBERATION: 'Declaration de souscription et de versement',
+  POUVOIR: 'Pouvoir pour les formalites',
+  BORDEREAU_REMISE: 'Bordereau de remise',
+  FICHE_RENSEIGNEMENTS: 'Fiche de renseignements',
+  RAPPORT_COMMISSAIRE_APPORTS: 'Rapport du commissaire aux apports',
+  DEMANDE_AFFILIATION_CNSS: "Demande d'affiliation CNSS",
+  DECLARATION_BENEFICIAIRES_EFFECTIFS: 'Declaration des beneficiaires effectifs',
+  DEMANDE_DEBLOCAGE_CAPITAL: 'Demande de deblocage du capital',
+  DECLARATION_CNDP: 'Declaration CNDP',
+  DEMANDE_ADHESION_SIMPL: "Demande d'adhesion aux teleservices SIMPL",
+  NOTE_CONFORMITE: 'Note de conformite des mentions legales',
+  NOTE_ANNULATION: "Note d'annulation du dossier",
+  LETTRE_RETRAIT_DEPOT: 'Lettre de retrait ou de regularisation',
   AUTRE: 'Autre',
 };
 

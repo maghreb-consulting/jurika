@@ -6,7 +6,9 @@ import ma.jurika.common.exception.NotFoundException;
 import ma.jurika.common.exception.ValidationException;
 import ma.jurika.common.security.TenantContext;
 import ma.jurika.ticket.domain.model.Demarche;
+import ma.jurika.ticket.domain.model.DemarcheEvenement;
 import ma.jurika.ticket.domain.model.DemarcheEtat;
+import ma.jurika.ticket.domain.model.FormaliteVolet;
 import ma.jurika.ticket.domain.model.JustificatifAttendu;
 import ma.jurika.ticket.domain.model.Ticket;
 import ma.jurika.ticket.domain.model.TicketCommentType;
@@ -14,7 +16,9 @@ import ma.jurika.ticket.domain.model.TicketDemarche;
 import ma.jurika.ticket.domain.model.TicketStatut;
 import ma.jurika.ticket.domain.port.CommentRepository;
 import ma.jurika.ticket.domain.port.DataroomDocumentLookup;
+import ma.jurika.ticket.domain.port.DemarcheJournalRepository;
 import ma.jurika.ticket.domain.port.DemarcheReferentielRepository;
+import ma.jurika.ticket.domain.port.SaisieDossierLookup;
 import ma.jurika.ticket.domain.port.TicketDemarcheRepository;
 import ma.jurika.ticket.domain.port.TicketRepository;
 import ma.jurika.ticket.domain.service.EcheanceCalculator;
@@ -51,15 +55,20 @@ public class DemarcheUseCases {
     private final TicketDemarcheRepository etats;
     private final DataroomDocumentLookup documents;
     private final CommentRepository comments;
+    private final DemarcheJournalRepository journal;
+    private final SaisieDossierLookup saisies;
 
     public DemarcheUseCases(TicketRepository tickets, DemarcheReferentielRepository referentiel,
                              TicketDemarcheRepository etats, DataroomDocumentLookup documents,
-                             CommentRepository comments) {
+                             CommentRepository comments, DemarcheJournalRepository journal,
+                             SaisieDossierLookup saisies) {
         this.tickets = tickets;
         this.referentiel = referentiel;
         this.etats = etats;
         this.documents = documents;
         this.comments = comments;
+        this.journal = journal;
+        this.saisies = saisies;
     }
 
     // =================================================================
@@ -73,15 +82,58 @@ public class DemarcheUseCases {
                         String documentProduit, String justificatifsTexte, String modeleJurika,
                         String delai, String coutIndicatif, String variablesAlimentees,
                         /**
-                         * true si le guide permet de CALCULER une echeance pour cette
-                         * etape. Les etapes 16, 19 et 26 portent un delai chiffre mais
-                         * aucun point de depart mecanisable : l interface doit le dire,
-                         * et surtout ne jamais fabriquer de date.
+                         * true si le parcours permet de CALCULER une echeance pour
+                         * cette etape.
+                         *
+                         * <p>Une seule ligne du parcours du 9 septembre ne le permet
+                         * pas : la 15, « dans les 30 jours de la signature du contrat »
+                         * — aucune ligne cochable ne porte cette signature. L interface
+                         * doit le dire, et surtout ne jamais fabriquer de date.
+                         *
+                         * <p>Les lignes 23 (taxe professionnelle) et 32 (CNSS) etaient
+                         * dans le meme cas jusqu au lot B : leur depart, le debut
+                         * d activite, n etait pas une donnee du dossier. Il l est.
+                         *
+                         * <p>(Le commentaire precedent citait les etapes 16, 19 et 26 :
+                         * c etait la numerotation du referentiel a 36 lignes du lot 1,
+                         * remplace par le parcours a 51 lignes.)
                          */
                         boolean delaiCalculable,
                         List<JustificatifAttendu> justificatifsAttendus,
                         DemarcheEtat etat, String motif, Instant cocheAt, List<UUID> documentsDeposes,
-                        boolean actionnableMaintenant, boolean horsSequence) {}
+                        boolean actionnableMaintenant, boolean horsSequence,
+                        /**
+                         * Lot B — les deux lignes d une meme formalite, depot puis
+                         * retrait, portent le meme code. Une ligne unique n en a pas.
+                         */
+                        String formaliteCode,
+                        FormaliteVolet formaliteVolet,
+                        /** Pour un RETRAIT : l ordre de la ligne de depot. */
+                        Integer depotOrdre,
+                        /**
+                         * Pour un RETRAIT : la date a laquelle le depot a ete coche.
+                         * C est elle qui repond a « depuis quand attendons-nous ? »,
+                         * et c est elle qui fait courir le delai du retrait.
+                         */
+                        Instant deposeLe,
+                        /**
+                         * Le journal des gestes poses sur cette demarche. Un cochage
+                         * annule y garde SES DEUX horodatages ; une demarche decochee
+                         * puis recochee y garde les trois evenements.
+                         */
+                        List<DemarcheEvenement> journal,
+                        /**
+                         * Lot B — nom de la DONNEE qui ferait courir le delai et qui
+                         * n est pas encore saisie ; {@code null} des qu elle l est, ou
+                         * quand le delai ne depend d aucune saisie.
+                         *
+                         * <p>Sans ce champ, la taxe professionnelle et la CNSS
+                         * afficheraient « Delai : dans les 30 jours du debut
+                         * d activite » sans alerte et sans explication — le produit
+                         * aurait l air de savoir calculer et de ne rien dire. Il sait
+                         * calculer ; il attend la date.
+                         */
+                        String delaiDepartManquant) {}
 
     public record Phase(String code, String libelle, List<Ligne> demarches,
                         int traitees, int total) {}
@@ -109,6 +161,21 @@ public class DemarcheUseCases {
         Ticket ticket = charger(workspaceId, ticketId);
         List<Demarche> toutes = referentiel.findByWorkflow(ticket.type().name());
         Map<UUID, TicketDemarche> parDemarche = etats.findByTicket(workspaceId, ticketId);
+        Map<UUID, List<DemarcheEvenement>> journaux = journal.parDemarche(workspaceId,
+                parDemarche.values().stream().map(TicketDemarche::id)
+                        .filter(java.util.Objects::nonNull).toList());
+
+        // Le depot d une formalite scindee, retrouve par son code : c est ce lien
+        // qui permet a la ligne « retrait » de dire depuis quand elle attend.
+        Map<String, Demarche> depotParFormalite = new LinkedHashMap<>();
+        for (Demarche d : toutes) {
+            if (d.estDepot()) depotParFormalite.put(d.formaliteCode(), d);
+        }
+
+        // Lot B — les dates saisies dont depend un delai. Resolues UNE fois ici :
+        // elles servent a la fois a dire, ligne par ligne, qu'on attend encore la
+        // date, et a calculer les echeances plus bas.
+        Map<String, Optional<LocalDate>> datesSaisies = datesDesDelais(ticket, toutes);
 
         List<Ligne> lignes = new ArrayList<>(toutes.size());
         for (Demarche d : toutes) {
@@ -122,7 +189,13 @@ public class DemarcheUseCases {
                     e, etat == null ? null : etat.motif(), etat == null ? null : etat.cocheAt(),
                     etat == null ? List.of() : etat.justificatifsDeposes(),
                     d.statutTicket() == ticket.statut(),
-                    false));
+                    false,
+                    d.formaliteCode(), d.formaliteVolet(),
+                    depotOrdre(d, depotParFormalite),
+                    deposeLe(d, depotParFormalite, parDemarche),
+                    etat == null || etat.id() == null ? List.of()
+                            : journaux.getOrDefault(etat.id(), List.of()),
+                    departManquant(d, datesSaisies)));
         }
         lignes = marquerHorsSequence(lignes);
 
@@ -136,7 +209,62 @@ public class DemarcheUseCases {
                 .toList();
 
         return new Vue(ticket.type().name(), ticket.statut(), phases,
-                avancement(ticket, toutes, lignes));
+                avancement(ticket, toutes, lignes, datesSaisies));
+    }
+
+    /**
+     * Les dates saisies dont depend au moins un delai, resolues une seule fois.
+     *
+     * <p>Deux lignes du parcours partagent la meme donnee : lire deux fois serait
+     * deux requetes pour la meme reponse. {@code Optional} en valeur pour
+     * memoriser aussi l absence, qui est la reponse normale d un dossier jeune.
+     */
+    private Map<String, Optional<LocalDate>> datesDesDelais(Ticket ticket, List<Demarche> toutes) {
+        Map<String, Optional<LocalDate>> out = new LinkedHashMap<>();
+        for (Demarche d : toutes) {
+            if (!d.delaiCalculable() || !d.delaiPartDuneDonnee()) continue;
+            out.computeIfAbsent(d.delaiReferenceDonnee(),
+                    nom -> saisies.dateSaisie(ticket.workspaceId(), ticket.id(), nom));
+        }
+        return out;
+    }
+
+    /** La donnee qu on attend pour faire courir ce delai, ou {@code null}. */
+    private static String departManquant(Demarche d, Map<String, Optional<LocalDate>> dates) {
+        if (!d.delaiCalculable() || !d.delaiPartDuneDonnee()) return null;
+        return dates.getOrDefault(d.delaiReferenceDonnee(), Optional.empty()).isPresent()
+                ? null : d.delaiReferenceDonnee();
+    }
+
+    /**
+     * L ordre de la ligne de DEPOT d une formalite, pour sa ligne de RETRAIT.
+     * {@code null} partout ailleurs : une ligne unique n a pas de depot separe.
+     */
+    private static Integer depotOrdre(Demarche d, Map<String, Demarche> depots) {
+        if (!d.estRetrait()) return null;
+        Demarche depot = depots.get(d.formaliteCode());
+        return depot == null ? null : depot.ordre();
+    }
+
+    /**
+     * LA DATE DU DEPOT, portee par la ligne de RETRAIT.
+     *
+     * <p>« Selon le delai du service de l enregistrement » ne se calcule pas : le
+     * parcours ne donne aucune duree. Ce qu on peut dire, en revanche, c est
+     * DEPUIS QUAND on attend — et c est ce que le cabinet demande. La date vient
+     * du cochage du depot, jamais d une saisie.
+     *
+     * <p>Elle n est rendue que si le depot est effectivement COCHE : un retrait
+     * dont le depot n a pas eu lieu n attend rien.
+     */
+    private static Instant deposeLe(Demarche d, Map<String, Demarche> depots,
+                                     Map<UUID, TicketDemarche> parDemarche) {
+        if (!d.estRetrait()) return null;
+        Demarche depot = depots.get(d.formaliteCode());
+        if (depot == null) return null;
+        TicketDemarche etat = parDemarche.get(depot.id());
+        if (etat == null || etat.etat() != DemarcheEtat.COCHEE) return null;
+        return etat.cocheAt();
     }
 
     /**
@@ -157,13 +285,16 @@ public class DemarcheUseCases {
                     l.variablesAlimentees(), l.delaiCalculable(), l.justificatifsAttendus(),
                     l.etat(), l.motif(),
                     l.cocheAt(), l.documentsDeposes(), l.actionnableMaintenant(),
-                    traitee && trou));
+                    traitee && trou,
+                    l.formaliteCode(), l.formaliteVolet(), l.depotOrdre(), l.deposeLe(),
+                    l.journal(), l.delaiDepartManquant()));
             if (!traitee) trouAvant.put(l.phaseCode(), true);
         }
         return out;
     }
 
-    private Avancement avancement(Ticket ticket, List<Demarche> toutes, List<Ligne> lignes) {
+    private Avancement avancement(Ticket ticket, List<Demarche> toutes, List<Ligne> lignes,
+                                   Map<String, Optional<LocalDate>> datesSaisies) {
         List<Ligne> duStatut = lignes.stream()
                 .filter(l -> l.statutTicket() == ticket.statut()).toList();
         int traitees = (int) duStatut.stream().filter(l -> l.etat() != DemarcheEtat.A_FAIRE).count();
@@ -179,17 +310,30 @@ public class DemarcheUseCases {
                 duStatut.size(),
                 prochaine.map(Ligne::ordre).orElse(null),
                 prochaine.map(Ligne::libelle).orElse(null),
-                pointsAttention(toutes, lignes));
+                pointsAttention(toutes, lignes, datesSaisies));
     }
 
     /**
      * Echeances legales calculables. Une demarche n'entre dans la liste que si
-     * son point de depart est POSE (l'etape de reference est cochee) et qu'elle
-     * n'est pas elle-meme traitee. Les etapes dont le guide ne permet pas de
-     * calculer un point de depart n'y figurent jamais : mieux vaut aucune alerte
-     * qu'une fausse.
+     * son point de depart est POSE et qu'elle n'est pas elle-meme traitee. Les
+     * etapes dont le guide ne permet pas de calculer un point de depart n'y
+     * figurent jamais : mieux vaut aucune alerte qu'une fausse.
+     *
+     * <p>Le point de depart est POSE dans deux cas :
+     *
+     * <ul>
+     *   <li>l'etape de reference est cochee — huit delais du parcours ;</li>
+     *   <li>la donnee de reference est saisie — deux delais, la taxe
+     *       professionnelle et l'affiliation CNSS, qui courent depuis le debut
+     *       d'activite. Ils etaient aveugles jusqu'a ce que le champ existe.</li>
+     * </ul>
+     *
+     * <p>Tant que la date n'est pas saisie, ces deux lignes se comportent
+     * exactement comme une ligne dont l'etape de reference n'est pas cochee :
+     * aucune echeance, aucune alerte, et AUCUNE DATE FABRIQUEE.
      */
-    private List<PointAttention> pointsAttention(List<Demarche> toutes, List<Ligne> lignes) {
+    private List<PointAttention> pointsAttention(List<Demarche> toutes, List<Ligne> lignes,
+                                                  Map<String, Optional<LocalDate>> datesSaisies) {
         Map<Integer, Ligne> parOrdre = new LinkedHashMap<>();
         for (Ligne l : lignes) parOrdre.put(l.ordre(), l);
 
@@ -200,13 +344,21 @@ public class DemarcheUseCases {
             Ligne cible = parOrdre.get(d.ordre());
             if (cible == null || cible.etat() != DemarcheEtat.A_FAIRE) continue;
 
-            Ligne reference = parOrdre.get(d.delaiReferenceOrdre());
-            if (reference == null || reference.cocheAt() == null
-                    || reference.etat() != DemarcheEtat.COCHEE) {
-                continue; // le delai n'a pas commence a courir
+            LocalDate depart;
+            if (d.delaiPartDuneDonnee()) {
+                depart = datesSaisies.getOrDefault(d.delaiReferenceDonnee(), Optional.empty())
+                        .orElse(null);
+                if (depart == null) continue; // la date n'est pas saisie : rien a calculer
+            } else {
+                Ligne reference = parOrdre.get(d.delaiReferenceOrdre());
+                if (reference == null || reference.cocheAt() == null
+                        || reference.etat() != DemarcheEtat.COCHEE) {
+                    continue; // le delai n'a pas commence a courir
+                }
+                depart = LocalDate.ofInstant(reference.cocheAt(), EcheanceCalculator.ZONE);
             }
             LocalDate echeance = EcheanceCalculator.echeance(
-                    reference.cocheAt(), d.delaiValeur(), d.delaiUnite());
+                    depart, d.delaiValeur(), d.delaiUnite());
             long jours = ChronoUnit.DAYS.between(aujourdhui, echeance);
             String severite = jours < 0 ? "DEPASSE"
                     : jours <= JOURS_CRITIQUE ? "CRITIQUE"
@@ -233,7 +385,13 @@ public class DemarcheUseCases {
         List<TicketDemarcheRepository.JustificatifDepose> deposes =
                 verifierJustificatifs(workspaceId, ticketId, d, documentIds);
 
-        etats.upsert(workspaceId, ticketId, d.id(), DemarcheEtat.COCHEE, null, acteurId, deposes);
+        UUID ligneId = etats.upsert(workspaceId, ticketId, d.id(), DemarcheEtat.COCHEE,
+                null, acteurId, deposes);
+        // Le journal enregistre la date, l heure et QUI a coche. C est lui qui
+        // survit a un decochage — pas la colonne `coche_at`, qui ne porte que
+        // l etat courant.
+        journal.enregistrer(workspaceId, ligneId, DemarcheEvenement.Type.COCHAGE,
+                null, acteurId, deposes.size());
         journaliser(workspaceId, ticketId, acteurId, d,
                 "Demarche " + d.ordre() + " cochee : " + d.libelle(),
                 Map.of("ordre", d.ordre(), "etat", DemarcheEtat.COCHEE.name(),
@@ -243,17 +401,44 @@ public class DemarcheUseCases {
 
     @Transactional
     @Auditable(action = "DEMARCHE_DECOCHEE", resourceType = "ticket", resourceIdExpr = "#ticketId")
-    public Vue decocher(UUID workspaceId, UUID ticketId, int ordre, UUID acteurId) {
+    public Vue decocher(UUID workspaceId, UUID ticketId, int ordre, String motif, UUID acteurId) {
         TenantContext.set(workspaceId);
         Ticket ticket = charger(workspaceId, ticketId);
         // Le decochage n'est possible que tant que le ticket n'a pas quitte le
         // statut dont releve la demarche.
         Demarche d = demarcheDuStatutCourant(ticket, ordre);
 
-        etats.upsert(workspaceId, ticketId, d.id(), DemarcheEtat.A_FAIRE, null, acteurId, List.of());
+        // LE MOTIF EST OBLIGATOIRE. Decision du cabinet : l annulation d un cochage
+        // est possible apres validation, mais elle doit se justifier. Annuler sans
+        // dire pourquoi laisserait un trou dans le journal exactement la ou il est
+        // le plus consulte.
+        if (motif == null || motif.isBlank()) {
+            throw new ValidationException("Motif obligatoire pour annuler le cochage de la "
+                    + "demarche " + d.ordre() + " : " + d.libelle());
+        }
+
+        Map<UUID, TicketDemarche> avant = etats.findByTicket(workspaceId, ticketId);
+        TicketDemarche precedent = avant.get(d.id());
+        if (precedent == null || precedent.etat() == DemarcheEtat.A_FAIRE) {
+            throw new ConflictException("La demarche " + d.ordre()
+                    + " n'est ni cochee ni ecartee : il n'y a rien a annuler.");
+        }
+        // Annuler un cochage et reprendre une demarche ecartee sont deux gestes
+        // differents, et le journal doit les distinguer : le premier revient sur un
+        // travail fait, le second sur une decision de perimetre.
+        DemarcheEvenement.Type type = precedent.etat() == DemarcheEtat.COCHEE
+                ? DemarcheEvenement.Type.ANNULATION
+                : DemarcheEvenement.Type.REPRISE;
+
+        // Le motif reste sur la ligne : l ecran doit pouvoir dire, sans deplier le
+        // journal, pourquoi cette demarche est redevenue « a faire ».
+        UUID ligneId = etats.upsert(workspaceId, ticketId, d.id(), DemarcheEtat.A_FAIRE,
+                motif.trim(), acteurId, List.of());
+        journal.enregistrer(workspaceId, ligneId, type, motif.trim(), acteurId, 0);
         journaliser(workspaceId, ticketId, acteurId, d,
-                "Demarche " + d.ordre() + " decochee : " + d.libelle(),
-                Map.of("ordre", d.ordre(), "etat", DemarcheEtat.A_FAIRE.name()));
+                "Demarche " + d.ordre() + " decochee : " + motif.trim(),
+                Map.of("ordre", d.ordre(), "etat", DemarcheEtat.A_FAIRE.name(),
+                        "type", type.name()));
         return vue(workspaceId, ticketId);
     }
 
@@ -275,8 +460,10 @@ public class DemarcheUseCases {
                     + d.ordre() + ". Condition du guide : "
                     + (d.conditionApplication() == null ? "non precisee" : d.conditionApplication()));
         }
-        etats.upsert(workspaceId, ticketId, d.id(), DemarcheEtat.NON_APPLICABLE,
+        UUID ligneId = etats.upsert(workspaceId, ticketId, d.id(), DemarcheEtat.NON_APPLICABLE,
                 motif.trim(), acteurId, List.of());
+        journal.enregistrer(workspaceId, ligneId, DemarcheEvenement.Type.HORS_PERIMETRE,
+                motif.trim(), acteurId, 0);
         journaliser(workspaceId, ticketId, acteurId, d,
                 "Demarche " + d.ordre() + " ecartee : " + motif.trim(),
                 Map.of("ordre", d.ordre(), "etat", DemarcheEtat.NON_APPLICABLE.name()));
@@ -327,8 +514,10 @@ public class DemarcheUseCases {
                 if (courant != null && courant.etat() == DemarcheEtat.COCHEE) continue;
                 if (courant != null && courant.etat() == DemarcheEtat.NON_APPLICABLE
                         && MOTIF_GERANCE_STATUTAIRE.equals(courant.motif())) continue;
-                etats.upsert(workspaceId, ticketId, d.id(), DemarcheEtat.NON_APPLICABLE,
-                        MOTIF_GERANCE_STATUTAIRE, acteurId, List.of());
+                UUID ligneId = etats.upsert(workspaceId, ticketId, d.id(),
+                        DemarcheEtat.NON_APPLICABLE, MOTIF_GERANCE_STATUTAIRE, acteurId, List.of());
+                journal.enregistrer(workspaceId, ligneId, DemarcheEvenement.Type.HORS_PERIMETRE,
+                        MOTIF_GERANCE_STATUTAIRE, acteurId, 0);
                 journaliser(workspaceId, ticketId, acteurId, d,
                         "Demarche " + d.ordre() + " ecartee automatiquement : "
                                 + MOTIF_GERANCE_STATUTAIRE,
@@ -338,8 +527,10 @@ public class DemarcheUseCases {
                 // On ne défait QUE notre propre écartement.
                 if (courant == null || courant.etat() != DemarcheEtat.NON_APPLICABLE) continue;
                 if (!MOTIF_GERANCE_STATUTAIRE.equals(courant.motif())) continue;
-                etats.upsert(workspaceId, ticketId, d.id(), DemarcheEtat.A_FAIRE,
-                        null, acteurId, List.of());
+                UUID ligneId = etats.upsert(workspaceId, ticketId, d.id(), DemarcheEtat.A_FAIRE,
+                        MOTIF_REPRISE_GERANCE, acteurId, List.of());
+                journal.enregistrer(workspaceId, ligneId, DemarcheEvenement.Type.REPRISE,
+                        MOTIF_REPRISE_GERANCE, acteurId, 0);
                 journaliser(workspaceId, ticketId, acteurId, d,
                         "Demarche " + d.ordre() + " redevenue applicable : la gerance "
                                 + "n'est pas designee dans les statuts",
@@ -351,11 +542,31 @@ public class DemarcheUseCases {
     }
 
     /**
-     * Les trois démarches du référentiel CRÉATION qui portent la condition « acte de
-     * nomination non statutaire » : établissement (9), signature et légalisation (15),
-     * enregistrement (18).
+     * Les démarches du parcours qui portent la condition « la gérance n'est pas
+     * désignée dans les statuts ».
+     *
+     * <p><b>Lot B — les numéros changent avec le parcours du 9 septembre.</b>
+     * L'ancien référentiel portait cette condition sur les étapes 9, 15 et 18.
+     * Le nouveau la porte sur la ligne <b>5</b> (acte de nomination du ou des
+     * gérants) et sur les lignes <b>21</b> et <b>22</b> (enregistrement de cet
+     * acte — dépôt, puis retrait), qui énoncent « si acte de nomination non
+     * statutaire ».
+     *
+     * <p>La ligne 14 (légalisation des signatures) n'y figure pas : le parcours
+     * l'a élargie aux statuts et au pouvoir, elle vaut « tous dossiers ». Le
+     * garde-fou {@code d.obligatoire()} l'écarterait de toute façon — on ne met
+     * jamais une démarche obligatoire hors périmètre.
      */
-    private static final int[] ORDRES_ACTE_NOMINATION = {9, 15, 18};
+    private static final int[] ORDRES_ACTE_NOMINATION = {5, 21, 22};
+
+    /**
+     * Motif de la reprise automatique, quand la réponse à « la gérance est-elle
+     * désignée dans les statuts ? » change. Le journal exige un motif sur une
+     * reprise comme sur une annulation : un geste du système se justifie autant
+     * qu'un geste de l'employé.
+     */
+    private static final String MOTIF_REPRISE_GERANCE =
+            "La gerance n'est pas designee dans les statuts : la demarche redevient applicable.";
 
     /**
      * Motif système. Sert AUSSI de signature : seul un écartement portant ce motif

@@ -57,6 +57,20 @@ public final class DocumentTypeCatalogue {
             new String[] {"DEMANDE_TAXE_PROFESSIONNELLE", "Demande d'inscription à la taxe professionnelle"},
             new String[] {"DECLARATION_EXISTENCE", "Déclaration d'existence"},
             new String[] {"DECLARATION_IMMATRICULATION_RC", "Déclaration d'immatriculation au RC (modèle 2)"},
+            // Lot B (2026-09-11) — les huit documents du corpus du 9 septembre que
+            // JURIKA produit. Sans entree ici, la base les acceptait mais le menu ne
+            // les proposait pas : ils n'etaient rangeables que sous « Autre », et
+            // deux « Autre » de meme titre se dedupliquent.
+            new String[] {"ATTESTATION_SOUSCRIPTION_LIBERATION",
+                    "Déclaration de souscription et de versement"},
+            new String[] {"DEMANDE_AFFILIATION_CNSS", "Demande d'affiliation CNSS"},
+            new String[] {"DECLARATION_BENEFICIAIRES_EFFECTIFS",
+                    "Déclaration des bénéficiaires effectifs"},
+            new String[] {"DEMANDE_DEBLOCAGE_CAPITAL", "Demande de déblocage du capital"},
+            new String[] {"DECLARATION_CNDP", "Déclaration CNDP"},
+            new String[] {"DEMANDE_ADHESION_SIMPL", "Demande d'adhésion aux téléservices SIMPL"},
+            new String[] {"LETTRE_RETRAIT_DEPOT", "Lettre de retrait ou de régularisation"},
+            new String[] {"NOTE_ANNULATION", "Note d'annulation du dossier"},
             // — Justificatifs delivres par les administrations —
             new String[] {"CN", "Certificat négatif"},
             new String[] {"ATTESTATION_ENREGISTREMENT", "Attestation d'enregistrement"},
@@ -75,6 +89,14 @@ public final class DocumentTypeCatalogue {
             new String[] {"RECEPISSE_CNDP", "Récépissé CNDP"},
             new String[] {"APOSTILLE", "Apostille"},
             new String[] {"RIB", "RIB"},
+            // Lot B — les quatre justificatifs du parcours du 9 septembre.
+            // AVIS_VERSEMENT_BANQUE n'est PAS ATTESTATION_BLOCAGE_CAPITAL : le
+            // premier prouve le versement des fonds, la seconde leur
+            // indisponibilite. Deux pieces, deux moments du parcours.
+            new String[] {"RECEPISSE_DEPOT", "Récépissé de dépôt"},
+            new String[] {"AVIS_VERSEMENT_BANQUE", "Avis de versement de la banque"},
+            new String[] {"INVESTISSEMENT_ETRANGER", "Formulaire d'investissement étranger"},
+            new String[] {"ACCUSE_RETRAIT_DEPOT", "Accusé de réception (retrait ou régularisation)"},
             // — Pieces fournies par le client —
             new String[] {"CIN_NOUVELLE", "CIN (nouvelle)"},
             new String[] {"CIN_ANCIENNE", "CIN (ancienne)"},

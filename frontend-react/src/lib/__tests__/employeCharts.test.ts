@@ -42,7 +42,7 @@ describe('ticketsByStatut', () => {
       ticket({ statut: 'CLOTURE_DOSSIER' }),
     ]);
     expect(res).toEqual([
-      { key: 'CREATION_TICKET', label: 'Création du ticket', count: 1 },
+      { key: 'CREATION_TICKET', label: "Création du ticket et collecte d'information", count: 1 },
       { key: 'GENERATION_DOCUMENTS', label: 'Génération des documents', count: 2 },
       { key: 'CLOTURE_DOSSIER', label: 'Clôture de dossier', count: 1 },
     ]);

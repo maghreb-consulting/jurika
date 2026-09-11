@@ -1,6 +1,7 @@
 package ma.jurika.ticket.infrastructure.persistence;
 
 import ma.jurika.ticket.domain.model.DelaiUnite;
+import ma.jurika.ticket.domain.model.FormaliteVolet;
 import ma.jurika.ticket.domain.model.Demarche;
 import ma.jurika.ticket.domain.model.JustificatifAttendu;
 import ma.jurika.ticket.domain.model.TicketStatut;
@@ -28,24 +29,24 @@ public class DemarcheReferentielRepositoryAdapter implements DemarcheReferentiel
 
     @Override
     public List<Demarche> findByWorkflow(String workflowType) {
-        return hydrate(referentiel.findByWorkflowTypeOrderByOrdreAsc(workflowType));
+        return hydrate(referentiel.findByWorkflowTypeAndActifIsTrueOrderByOrdreAsc(workflowType));
     }
 
     @Override
     public List<Demarche> findByWorkflowAndStatut(String workflowType, TicketStatut statut) {
-        return hydrate(referentiel.findByWorkflowTypeAndStatutTicketOrderByOrdreAsc(
+        return hydrate(referentiel.findByWorkflowTypeAndStatutTicketAndActifIsTrueOrderByOrdreAsc(
                 workflowType, statut.name()));
     }
 
     @Override
     public Optional<Demarche> findByWorkflowAndOrdre(String workflowType, int ordre) {
-        return referentiel.findByWorkflowTypeAndOrdre(workflowType, (short) ordre)
+        return referentiel.findByWorkflowTypeAndOrdreAndActifIsTrue(workflowType, (short) ordre)
                 .map(e -> hydrate(List.of(e)).get(0));
     }
 
     /**
      * Charge les justificatifs attendus en UNE requete pour tout le lot, plutot
-     * qu'une par demarche : la liste complete du parcours fait 36 lignes et se
+     * qu'une par demarche : la liste complete du parcours fait 51 lignes et se
      * lit a chaque affichage de l'onglet.
      */
     private List<Demarche> hydrate(List<DemarcheReferentielEntity> entities) {
@@ -83,6 +84,10 @@ public class DemarcheReferentielRepositoryAdapter implements DemarcheReferentiel
                     e.getDelaiValeur() == null ? null : e.getDelaiValeur().intValue(),
                     e.getDelaiUnite() == null ? null : DelaiUnite.valueOf(e.getDelaiUnite()),
                     e.getDelaiReferenceOrdre() == null ? null : e.getDelaiReferenceOrdre().intValue(),
+                    e.getDelaiReferenceDonnee(),
+                    e.getFormaliteCode(),
+                    e.getFormaliteVolet() == null ? null
+                            : FormaliteVolet.valueOf(e.getFormaliteVolet()),
                     parDemarche.getOrDefault(e.getId(), List.of())));
         }
         return out;

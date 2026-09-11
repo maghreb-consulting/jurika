@@ -1,25 +1,40 @@
 /// <reference types="vitest" />
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 /**
- * Lot 5 (2026-09-07) — l'étape 7 à l'écran.
+ * L'étape 7 à l'écran, sur le corpus du 9 septembre.
  *
- * Deux règles s'y vérifient, sur ce que l'employé voit :
- *  1. un champ complémentaire n'apparaît que si le document qui le consomme est
- *     retenu (règle posée par l'utilisateur) ;
- *  2. régénérer un document modifié à la main avertit NOMMÉMENT, y compris pour
- *     les trois documents ajoutés par ce lot.
+ * Trois règles s'y vérifient, sur ce que l'employé voit :
+ *  1. **Statuts et Annonce légale sont cochés par défaut**, les huit autres
+ *     documents décochés — décision du cabinet (énoncé 4) ;
+ *  2. un champ n'apparaît que si le document qui le consomme est retenu, et
+ *     disparaît quand on le décoche (énoncé 5) ;
+ *  3. régénérer un document modifié à la main avertit NOMMÉMENT.
  */
 
+/** Le manifeste expose les dix documents du statut 2, variantes comprises. */
 const TEMPLATES = [
-  { code: 'STATUTS_SARL_DIRECTEUR', documentKind: 'Statuts', file: 'a.docx', origin: 'd', deprecated: false, placeholderStyle: 's' },
-  { code: 'ANNONCE_LEGALE_DIRECTEUR', documentKind: 'Annonce', file: 'b.docx', origin: 'd', deprecated: false, placeholderStyle: 's' },
-  { code: 'DEMANDE_TAXE_PROFESSIONNELLE', documentKind: 'TP', file: 'c.docx', origin: 'd', deprecated: false, placeholderStyle: 's' },
-  { code: 'DECLARATION_EXISTENCE', documentKind: 'DE', file: 'd.docx', origin: 'd', deprecated: false, placeholderStyle: 's' },
-  { code: 'DECLARATION_IMMATRICULATION_RC', documentKind: 'RC', file: 'e.docx', origin: 'd', deprecated: false, placeholderStyle: 's' },
-];
+  'STATUTS_SARL',
+  'ANNONCE_LEGALE_CONSTITUTION',
+  'CONTRAT_BAIL',
+  'CONTRAT_DOMICILIATION',
+  'ETAT_ACTES_SOCIETE_EN_FORMATION',
+  'ACTE_NOMINATION_GERANT',
+  'ATTESTATION_SOUSCRIPTION_LIBERATION',
+  'POUVOIR_FORMALITES_CREATION',
+  'DEMANDE_TAXE_PROFESSIONNELLE',
+  'DECLARATION_IMMATRICULATION_RC',
+  'DECLARATION_EXISTENCE',
+].map((code) => ({
+  code,
+  documentKind: code,
+  file: `${code}.docx`,
+  origin: 'cabinet',
+  deprecated: false,
+  placeholderStyle: 'uppercase_dollar',
+}));
 
 vi.mock('../../../../services/workflowDocumentService', () => ({
   listTemplatesForWorkflow: vi.fn(async () => TEMPLATES),
@@ -48,13 +63,19 @@ import { Step7Generation } from '../Step7Generation';
 /** Dossier complet : toutes les étapes 1 à 6 validées (aucun préflight bloquant). */
 const data = {
   step1: { denomination: { denomination: 'PARACOSME', formeJuridique: 'SARL' } },
-  step2: { siege: { adresse: '101 bd Zerktouni', commune: 'Casablanca', villeGreffe: 'Casablanca' } },
+  step2: {
+    siege: {
+      adresse: '101 bd Zerktouni',
+      commune: 'Casablanca',
+      villeGreffe: 'Casablanca',
+      justificatifType: 'BAIL',
+    },
+  },
   step3: { capital: { capitalSocialMad: 100000, nombreParts: 1000, valeurNominale: 100, depotFondsBloque: 'non' } },
   step4: { activite: { description: 'le conseil', activites: ['le conseil'] } },
   step5: {
     dirigeants: [{
       prenom: 'Yassine', nom: 'BENANI', isStatutaire: false,
-      // Mandat PROPRE au dirigeant, tel que l'étape 5 le persiste.
       dureeMandatType: 'determinee', dureeAnnees: 3,
     }],
     gerance: { dureeMandat: '3 année(s)', dureeGerance: '3 année(s)', remunerationMode: 'gratuit' },
@@ -73,45 +94,152 @@ function rendre(existing: Record<string, unknown> = {}) {
   );
 }
 
-describe('Étape 7 — les champs suivent les documents retenus', () => {
+/** La case d'une ligne du parcours, par son numéro. */
+function caseDuDocument(ligne: number): HTMLInputElement {
+  return screen
+    .getByTestId(`choix-document-${ligne}`)
+    .querySelector('input[type="checkbox"]') as HTMLInputElement;
+}
+
+describe('Étape 7 — ce qui est coché par défaut (énoncé 4)', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('affiche les champs de la déclaration d’existence tant qu’elle est retenue', async () => {
+  it('coche Statuts et Annonce légale, et laisse les huit autres décochés', async () => {
     rendre();
-    // Les documents obligatoires sont retenus d'office : les champs sont là.
-    expect(await screen.findByLabelText(/Régime de détermination du résultat/i))
-      .toBeInTheDocument();
-    expect(screen.getByLabelText(/Enseigne commerciale/i)).toBeInTheDocument();
+    await screen.findByTestId('choix-document-3');
+
+    expect(caseDuDocument(3), 'Statuts').toBeChecked();
+    expect(caseDuDocument(11), 'Annonce légale').toBeChecked();
+
+    for (const ligne of [2, 4, 5, 6, 7, 8, 9, 10]) {
+      expect(caseDuDocument(ligne), `ligne ${ligne}`).not.toBeChecked();
+    }
   });
 
-  it('les champs disparaissent quand leur document est écarté', async () => {
-    rendre({ documentsEcartes: ['DECLARATION_EXISTENCE'] });
-    await screen.findByText(/Documents a generer/i);
-    expect(screen.queryByLabelText(/Régime de détermination du résultat/i)).toBeNull();
-    // Ceux du modèle 2, lui toujours retenu, restent affichés.
-    expect(screen.getByLabelText(/Enseigne commerciale/i)).toBeInTheDocument();
+  it('affiche, sous chaque document, la condition du parcours', async () => {
+    rendre();
+    await screen.findByTestId('choix-document-5');
+
+    // « Si la gérance n'est pas désignée dans les statuts » : l'employé décide en
+    // connaissance de cause, le système ne décide pas à sa place.
+    expect(screen.getByTestId('choix-document-5')).toHaveTextContent(
+      /gérance n'est pas désignée dans les statuts/i,
+    );
+    expect(screen.getByTestId('choix-document-4')).toHaveTextContent(
+      /engagements ont été pris avant l'immatriculation/i,
+    );
+  });
+});
+
+describe('Étape 7 — les champs suivent les documents retenus (énoncé 5)', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('n’affiche AUCUN champ tant que seuls les deux documents par défaut sont retenus', async () => {
+    rendre();
+    await screen.findByTestId('choix-document-3');
+
+    // Statuts et Annonce légale ne réclament aucune des 160 : tout ce qu'ils
+    // consomment est déjà résolu. Le parcours par défaut est donc muet.
+    expect(screen.queryByText(/Complements demandes par les documents retenus/i)).toBeNull();
+    expect(screen.queryByLabelText(/Taxe professionnelle commune/i)).toBeNull();
   });
 
-  it('ne demande le téléphone qu’une seule fois, bien qu’il serve deux imprimés', async () => {
+  it('fait apparaître les champs quand on retient la demande de taxe professionnelle', async () => {
     rendre();
-    await screen.findByText(/Documents a generer/i);
-    expect(screen.getAllByLabelText(/Téléphone de la société/i)).toHaveLength(1);
+    await screen.findByTestId('choix-document-8');
+
+    fireEvent.click(caseDuDocument(8));
+
+    expect(await screen.findByLabelText(/Taxe professionnelle commune/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Effectif prévisionnel/i)).toBeInTheDocument();
+  });
+
+  it('fait disparaître les champs quand on décoche le document', async () => {
+    rendre();
+    await screen.findByTestId('choix-document-8');
+
+    fireEvent.click(caseDuDocument(8));
+    await screen.findByLabelText(/Taxe professionnelle commune/i);
+
+    fireEvent.click(caseDuDocument(8));
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/Taxe professionnelle commune/i)).toBeNull(),
+    );
+  });
+
+  it('ne demande qu’UNE fois un champ que deux documents partagent', async () => {
+    rendre();
+    await screen.findByTestId('choix-document-8');
+
+    // Le numéro de pièce du déclarant sert les trois imprimés administratifs.
+    fireEvent.click(caseDuDocument(8));
+    fireEvent.click(caseDuDocument(9));
+    fireEvent.click(caseDuDocument(10));
+
+    await screen.findByLabelText(/Déclarant pièce numéro/i);
+    expect(screen.getAllByLabelText(/Déclarant pièce numéro/i)).toHaveLength(1);
   });
 
   it('rappelle à l’écran ce qui est repris sans ressaisie', async () => {
     rendre();
+    await screen.findByTestId('choix-document-8');
+    fireEvent.click(caseDuDocument(8));
+
     expect(await screen.findByText(/Repris automatiquement/i)).toBeInTheDocument();
     expect(
       screen.getByText(/date ET lieu de naissance, qualité, déclarant/i),
     ).toBeInTheDocument();
   });
+
+  it('dit pourquoi aucun champ n’est marqué obligatoire', async () => {
+    rendre();
+    await screen.findByTestId('choix-document-8');
+    fireEvent.click(caseDuDocument(8));
+
+    // Le jugement « phrase ou case » se fait sur le DOCUMENT RENDU, côté serveur.
+    // L'écran doit le dire, sinon l'employé croit que tout est facultatif.
+    //
+    // Le texte est coupé par un <strong> : on interroge donc le contenu du
+    // paragraphe entier plutôt qu'un nœud de texte isolé.
+    const explication = await screen.findByText((_, element) =>
+      element?.tagName === 'P'
+      && /milieu d[’']une phrase fait refuser la génération/i.test(element.textContent ?? ''),
+    );
+    expect(explication).toHaveTextContent(/case d[’']imprimé administratif laissée blanche/i);
+  });
 });
 
-describe('Étape 7 — régénérer un formulaire modifié à la main', () => {
+describe('Étape 7 — les boucles', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('ne propose pas de boucle tant qu’aucun document ne la porte', async () => {
+    rendre();
+    await screen.findByTestId('choix-document-2');
+    expect(screen.queryByTestId('boucle-BAIL_LOCAUX')).toBeNull();
+  });
+
+  it('propose la boucle des locaux quand le contrat de bail est retenu', async () => {
+    rendre();
+    await screen.findByTestId('choix-document-2');
+
+    fireEvent.click(caseDuDocument(2));
+
+    const boucle = await screen.findByTestId('boucle-BAIL_LOCAUX');
+    // Vide au départ : le document sortira sans la section, ce qui est correct
+    // si le dossier n'en comporte pas.
+    expect(boucle).toHaveTextContent(/Aucune occurrence/i);
+
+    fireEvent.click(within(boucle).getByRole('button', { name: /Ajouter/i }));
+    expect(await screen.findByText(/n° 1/i)).toBeInTheDocument();
+  });
+});
+
+describe('Étape 7 — régénérer un document modifié à la main', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('avertit NOMMÉMENT avant de remplacer les retouches manuelles', async () => {
     rendre({
+      lignesRetenues: [3, 9, 11],
       documents: {
         DECLARATION_IMMATRICULATION_RC: {
           generated: true,
@@ -123,14 +251,10 @@ describe('Étape 7 — régénérer un formulaire modifié à la main', () => {
       },
     });
 
-    // La carte du document régénérable est là.
     const boutons = await screen.findAllByRole('button', { name: /Regenerer/i });
     fireEvent.click(boutons[boutons.length - 1]);
 
-    const dialogue = await waitFor(() =>
-      screen.getByTestId('confirmation-regeneration'),
-    );
-    // L'avertissement NOMME le document concerné, et dit quand il a été retouché.
+    const dialogue = await waitFor(() => screen.getByTestId('confirmation-regeneration'));
     expect(dialogue).toHaveTextContent(/Déclaration d'immatriculation au RC/i);
     expect(dialogue).toHaveTextContent(/modifié à la main/i);
     expect(dialogue).toHaveTextContent(/5 septembre/i);
@@ -143,26 +267,18 @@ describe('Étape 7 — la durée du mandat arrive jusqu’au générateur', () =
   it('transmet la durée saisie à l’étape 5, au lieu de la laisser tomber', async () => {
     const { generateDocument } = await import('../../../../services/workflowDocumentService');
     rendre();
-    // L'acte de nomination est proposé : le gérant n'est pas statutaire.
     const boutons = await screen.findAllByRole('button', { name: /^Generer$/i });
     fireEvent.click(boutons[0]);
 
     await waitFor(() => expect(generateDocument).toHaveBeenCalled());
-    // generateDocument(workflowCode, templateCode, payload)
     const [, , payload] = (generateDocument as unknown as {
       mock: { calls: unknown[][] };
     }).mock.calls[0] as [string, string, Record<string, never>];
 
-    // Le mandat PROPRE au dirigeant — c'est lui que le moteur scope par gérant.
-    const gerants = (payload as unknown as {
-      gerants: { dureeMandat?: string }[];
-    }).gerants;
+    const gerants = (payload as unknown as { gerants: { dureeMandat?: string }[] }).gerants;
     expect(gerants[0].dureeMandat).toBe('3 année(s)');
 
-    // Et le repli au niveau société, pour les brouillons antérieurs.
-    const societe = (payload as unknown as {
-      societe: { dureeGerance?: string };
-    }).societe;
+    const societe = (payload as unknown as { societe: { dureeGerance?: string } }).societe;
     expect(societe.dureeGerance).toBe('3 année(s)');
   });
 
@@ -172,7 +288,6 @@ describe('Étape 7 — la durée du mandat arrive jusqu’au générateur', () =
     const boutons = await screen.findAllByRole('button', { name: /^Generer$/i });
     fireEvent.click(boutons[0]);
     await waitFor(() => expect(generateDocument).toHaveBeenCalled());
-    // generateDocument(workflowCode, templateCode, payload)
     const [, , payload] = (generateDocument as unknown as {
       mock: { calls: unknown[][] };
     }).mock.calls[0] as [string, string, Record<string, never>];
@@ -183,5 +298,25 @@ describe('Étape 7 — la durée du mandat arrive jusqu’au générateur', () =
     expect(societe.dureeAnnees).toBe(99);
     expect(societe.dureeGerance).not.toBe('99 années');
     expect(societe.dureeGerance).not.toBe(99);
+  });
+
+  it('transporte les saisies du parcours sous la clé que le mapper relit', async () => {
+    const { generateDocument } = await import('../../../../services/workflowDocumentService');
+    rendre();
+    await screen.findByTestId('choix-document-8');
+    fireEvent.click(caseDuDocument(8));
+    fireEvent.change(await screen.findByLabelText(/Taxe professionnelle commune/i), {
+      target: { value: 'Casablanca-Anfa' },
+    });
+
+    const boutons = await screen.findAllByRole('button', { name: /^Generer$/i });
+    fireEvent.click(boutons[0]);
+    await waitFor(() => expect(generateDocument).toHaveBeenCalled());
+
+    const [, , payload] = (generateDocument as unknown as {
+      mock: { calls: unknown[][] };
+    }).mock.calls[0] as [string, string, Record<string, never>];
+    const creation = (payload as unknown as { creation: Record<string, unknown> }).creation;
+    expect(creation.tpCommune).toBe('Casablanca-Anfa');
   });
 });

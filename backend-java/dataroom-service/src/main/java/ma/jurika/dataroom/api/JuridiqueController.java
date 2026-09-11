@@ -104,9 +104,13 @@ public class JuridiqueController {
         if (user != null && user.role() == ma.jurika.common.security.Role.CLIENT) {
             juridique.assertClientAccess(dossierId, user.userId());
         }
-        DossierJuridiqueView view = (types == null && from == null && to == null)
-                ? juridique.view(dossierId)
-                : juridique.view(dossierId, types, from, to);
+        // Lot B — un CLIENT ne voit que les documents marques « visible pour le
+        // client ». Le filtre est applique cote SERVEUR, sur la liste issue de la
+        // base : un indicateur que seule l'interface respecterait ne serait pas une
+        // visibilite, ce serait une convention.
+        boolean pourClient = estClient(user);
+        DossierJuridiqueView view =
+                juridique.view(dossierId, types, from, to, pourClient);
         if (user != null) {
             accessLogger.log(dossierId, null, "VIEW_DOSSIER", user);
         }
@@ -171,8 +175,16 @@ public class JuridiqueController {
         String t = (title == null || title.isBlank()) ? defaultTitle(file) : title;
         try {
             DocumentSummary result = juridique.uploadVersion(dossierId, type, t, ticketId, file, user.userId());
-            log.info("uploadJuridique SUCCESS docId={} version={} key={}",
-                    result.id(), result.version(), result.filename());
+            // Lot B — la visibilite client se REGLE AU DEPOT. Sans indication, la
+            // valeur par defaut du type s'applique (visible, sauf « AUTRE »). Avec
+            // indication, le geste est journalise sous l'origine DEPOT.
+            String visibilite = req.getParameter("visibleClient");
+            if (visibilite != null && !visibilite.isBlank()) {
+                result = juridique.changerVisibilite(result.id(),
+                        Boolean.parseBoolean(visibilite), "DEPOT", user.userId());
+            }
+            log.info("uploadJuridique SUCCESS docId={} version={} key={} visibleClient={}",
+                    result.id(), result.version(), result.filename(), result.visibleClient());
             return result;
         } catch (Exception ex) {
             log.error("uploadJuridique CRASH dossier={} type={} title={} file={} : {} - {}",
@@ -291,6 +303,51 @@ public class JuridiqueController {
     // Delete single + bulk (TASK 4)
     // ============================================================
 
+    /**
+     * Lot B (2026-09-11) — MONTRER OU MASQUER UN DOCUMENT AU CLIENT.
+     *
+     * <p>Le meme indicateur est regle au depot depuis le panneau de cochage du
+     * workflow et modifie ici depuis la Data Room : une seule colonne, deux points
+     * d'entree, et le changement se repercute des deux cotes parce qu'il n'y a
+     * rien a synchroniser.
+     *
+     * <p>Reserve a l'employe et a sa hierarchie. Le client, lui, ne decide pas de
+     * ce qu'on lui montre — il serait absurde qu'il puisse se rendre visible une
+     * piece qu'on a choisi de ne pas lui remettre.
+     */
+    @PatchMapping("/documents/{documentId}/visibilite")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
+    @Operation(summary = "Montrer ou masquer un document au client")
+    public DocumentSummary changerVisibilite(@AuthenticationPrincipal AuthenticatedUser user,
+                                              @PathVariable UUID documentId,
+                                              @Valid @RequestBody VisibiliteRequest req) {
+        return juridique.changerVisibilite(documentId, req.visible(),
+                req.origine() == null ? "DATAROOM" : req.origine(),
+                user == null ? null : user.userId());
+    }
+
+    /**
+     * @param origine d'ou vient le geste : {@code DATAROOM} (la Data Room),
+     *                {@code WORKFLOW} (le panneau de cochage) ou {@code DEPOT}
+     *                (au televersement). Le journal le conserve.
+     */
+    public record VisibiliteRequest(boolean visible, String origine) {}
+
+    private static boolean estClient(AuthenticatedUser user) {
+        return user != null && user.role() == ma.jurika.common.security.Role.CLIENT;
+    }
+
+    /**
+     * Acces UNITAIRE a un document : aucune liste ne filtre ici, la garde doit
+     * donc etre posee document par document. Un 404 plutot qu'un 403 : dire
+     * « ce document existe mais ne vous est pas montre » serait deja en dire trop.
+     */
+    private void assertVisiblePourClient(UUID documentId, AuthenticatedUser user) {
+        if (!estClient(user)) return;
+        if (juridique.estVisiblePour(documentId, true)) return;
+        throw new ma.jurika.common.exception.NotFoundException("Document inconnu");
+    }
+
     @DeleteMapping("/documents/{documentId}")
     @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     public ResponseEntity<Void> deleteJuridique(@PathVariable UUID documentId) {
@@ -371,6 +428,7 @@ public class JuridiqueController {
     public ResponseEntity<InputStreamResource> previewJuridique(
             @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable UUID documentId) {
+        assertVisiblePourClient(documentId, user);
         PreviewDocumentUseCase.PreviewPayload p = previewDocument.execute(documentId, user);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -385,6 +443,7 @@ public class JuridiqueController {
     public ResponseEntity<InputStreamResource> downloadJuridique(
             @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable UUID documentId) {
+        assertVisiblePourClient(documentId, user);
         DocumentEntity doc = juridique.loadForDownload(documentId);
         // Defense en profondeur : un CLIENT sans perm_download -> 403.
         permissionGuard.assertCanDownload(doc.getDossierId(), user);

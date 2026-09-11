@@ -175,6 +175,8 @@ public class WorkflowDocumentController {
         Map<String, Object> variables = mappingService.map(
                 workflowCode, templateCode, enriched);
 
+        refuserSiControleBloquant(workflowCode, templateCode, variables);
+
         DocumentResult result = docxTemplateEngine.generate(templateCode, variables);
 
         if (!result.templateFound()) {
@@ -193,6 +195,34 @@ public class WorkflowDocumentController {
                 .header("X-Missing-Variables", String.join(",", result.missingVariables()))
                 .contentType(MediaType.parseMediaType(result.contentType()))
                 .body(result.bytes());
+    }
+
+    /**
+     * Lot B (2026-09-11) — LES TROIS CONTRÔLES BLOQUANTS DU § 18.
+     *
+     * <p>Certificat négatif, pièces d'identité et de capacité des associés et des
+     * gérants, rapport du commissaire aux apports lorsque les apports en nature y
+     * sont soumis. Le parcours du 9 septembre en a fait des CONTRÔLES et non des
+     * étapes : ils ne se cochent pas, ils interrogent les variables résolues.
+     *
+     * <p>Ils s'exécutent après la résolution — les valeurs interrogées sont
+     * exactement celles qui seraient imprimées — et avant le rendu : produire un
+     * document pour le refuser ensuite n'aurait pas de sens.
+     *
+     * <p>Portée : les statuts, et eux seuls. Le dictionnaire est explicite —
+     * « contrôles bloquants au lancement de la génération des statuts ». Les huit
+     * autres workflows ne sont pas concernés.
+     *
+     * @see ControlesBloquantsStatuts
+     */
+    private void refuserSiControleBloquant(String workflowCode, String templateCode,
+                                            Map<String, Object> variables) {
+        if (!"CREATION_SARL".equals(workflowCode)) return;
+        if (!ControlesBloquantsStatuts.concerne(templateCode)) return;
+        String motif = ControlesBloquantsStatuts.motifDeRefus(variables);
+        if (motif == null) return;
+        log.warn("Controle bloquant {} / {} : {}", workflowCode, templateCode, motif);
+        throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, motif);
     }
 
     /**

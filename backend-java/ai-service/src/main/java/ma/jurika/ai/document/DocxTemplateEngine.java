@@ -245,9 +245,36 @@ public class DocxTemplateEngine {
      * elle doit se relire. Les huit autres workflows ne sont pas concernes.
      */
     private static final java.util.Set<String> IMPRIMES_ADMINISTRATIFS = java.util.Set.of(
+            // Lot 5 (2026-09-07) — les trois imprimes de l'administration fiscale
+            // et du greffe.
             "DEMANDE_TAXE_PROFESSIONNELLE",
             "DECLARATION_EXISTENCE",
-            "DECLARATION_IMMATRICULATION_RC");
+            "DECLARATION_IMMATRICULATION_RC",
+            // Lot B (2026-09-11) — LA LISTE PASSE DE TROIS A ONZE.
+            //
+            // Le lot A l'avait signalee : figee a trois entrees au lot 5, alors que
+            // « le corpus en compte au moins onze ». Le temoin du lot B l'a
+            // confirme en lisant les documents produits — la demande d'affiliation
+            // CNSS sortait avec sept « ‹ VALEUR MANQUANTE : … › » ROUGES imprimes
+            // dessus, sur un formulaire destine a la Caisse.
+            //
+            // Le critere n'est pas la provenance du modele mais sa NATURE : un
+            // formulaire fait de cases, ou une case vide reste recevable, contre un
+            // acte ou le blanc se lit au milieu d'une phrase. Restent donc des
+            // ACTES, et gardent le rouge : statuts, contrats de bail et de
+            // domiciliation, acte de nomination, pouvoir, annonce legale,
+            // declaration de souscription, demande de deblocage, note d'annulation,
+            // lettre de retrait, rapport du commissaire aux apports.
+            //
+            // A CONFIRMER PAR LE CABINET — porte au rapport.
+            "DEMANDE_AFFILIATION_CNSS",              // formulaire CNSS
+            "DECLARATION_BENEFICIAIRES_EFFECTIFS",   // formulaire RBE
+            "DECLARATION_CNDP",                      // formulaire CNDP
+            "DEMANDE_ADHESION_SIMPL",                // formulaire DGI
+            "FICHE_RENSEIGNEMENTS_CREATION",         // fiche interne, faite de rubriques
+            "BORDEREAU_REMISE_DOSSIER",              // tableau de pieces
+            "ETAT_ACTES_SOCIETE_EN_FORMATION",       // tableau annexe aux statuts
+            "NOTE_CONFORMITE_MENTIONS_LEGALES");     // liste de controle
 
     private boolean estImprimeAdministratif(String codeOrFilename) {
         if (codeOrFilename == null) return false;
@@ -1216,6 +1243,14 @@ public class DocxTemplateEngine {
     // (cf. classification obligatoire / optionnel du lot 5).
 
     /** Ligne de marqueur : {@code ◈ CASE À COCHER (choix unique) pilotée par $VAR} (U+25C8). */
+    /**
+     * Lot B — le seul PREFIXE du marqueur, sans son nom de variable. Sert au
+     * balayage d'apres expansion, ou la variable a deja ete substituee.
+     */
+    static final Pattern CHECKBOX_PREFIX_PATTERN = Pattern.compile(
+            "\\u25C8\\s*CASE\\s+[A\\u00C0]\\s+COCHER",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+
     static final Pattern CHECKBOX_MARKER_PATTERN = Pattern.compile(
             "\\u25C8\\s*CASE\\s+[A\\u00C0]\\s+COCHER.*?\\$([A-Z][A-Z0-9_]*)",
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE | Pattern.DOTALL);
@@ -1234,7 +1269,75 @@ public class DocxTemplateEngine {
      *         (valeur absente ou hors liste), dans l'ordre du document.
      */
     private List<String> resolveDirectorCheckboxes(XWPFDocument doc, Map<String, Object> scope) {
-        List<XWPFParagraph> paras = new ArrayList<>(doc.getParagraphs());
+        return resolveDirectorCheckboxes(doc, scope, horsBoucles(doc.getParagraphs()))
+                .nonRenseignees();
+    }
+
+    /**
+     * Lot B (2026-09-11) — LA PASSE DOCUMENT NE TOUCHE PAS AUX CASES D'UNE BOUCLE.
+     *
+     * <p>Elle tourne AVANT l'expansion des boucles — elle le doit, un bloc
+     * conditionnel peut contenir une boucle. Mais une case dont la valeur est une
+     * variable d'item ({@code $BE_GENRE}) n'a, à ce moment-là, aucun scope où se
+     * lire : la passe ne cochait rien et <b>consommait le marqueur</b>. La case
+     * sortait alors inerte — « ☐ Masculin ☐ Féminin » sur un bénéficiaire dont le
+     * genre était renseigné — sans marqueur résiduel, donc sans alarme.
+     *
+     * <p>Défaut trouvé au lot B en LISANT le document produit, pas par un
+     * compteur. C'est la même famille que le défaut ① du lot A.
+     *
+     * <p>On écarte donc les paragraphes situés entre {@code ▼ DÉBUT BOUCLE} et
+     * {@code ▲ FIN BOUCLE} : l'expansion les traitera, occurrence par occurrence,
+     * avec le scope de l'item.
+     */
+    private List<XWPFParagraph> horsBoucles(List<XWPFParagraph> paras) {
+        List<XWPFParagraph> out = new ArrayList<>(paras.size());
+        int profondeur = 0;
+        for (XWPFParagraph p : paras) {
+            String texte = paragraphText(p);
+            boolean debut = DIR_LOOP_START_PATTERN.matcher(texte).find();
+            boolean fin = DIR_LOOP_END_PATTERN.matcher(texte).find();
+            if (debut) {
+                profondeur++;
+                out.add(p);          // le délimiteur lui-même reste visible
+                continue;
+            }
+            if (fin) {
+                profondeur = Math.max(0, profondeur - 1);
+                out.add(p);
+                continue;
+            }
+            if (profondeur == 0) out.add(p);
+        }
+        return out;
+    }
+
+    /**
+     * Lot B (2026-09-11) — le résultat d'une passe de cases : ce qui n'a pas pu
+     * être coché, et combien de paragraphes-marqueurs ont été retirés.
+     *
+     * <p>Le compte de retraits n'est pas un détail : dans une boucle, il décale la
+     * position d'insertion de l'occurrence suivante. Sans lui, la deuxième
+     * occurrence s'insérerait au milieu de la première.
+     */
+    private record ResultatCases(List<String> nonRenseignees,
+                                 java.util.Set<XWPFParagraph> retires) {}
+
+    /**
+     * Lot B — LA PASSE DE CASES, BORNÉE À UN ENSEMBLE DE PARAGRAPHES.
+     *
+     * <p>Appelée deux fois, et pour deux raisons distinctes :
+     * <ul>
+     *   <li>une fois au niveau DOCUMENT, avec les variables globales — c'est le
+     *       comportement historique, inchangé ;</li>
+     *   <li>une fois par OCCURRENCE de boucle, avec le scope de l'item. Une case
+     *       dont la valeur est une variable d'item ({@code $BE_GENRE}) n'a de
+     *       sens que là : au niveau document, elle n'a aucun scope où se lire, et
+     *       elle restait inerte — sans marqueur résiduel, donc sans alarme.</li>
+     * </ul>
+     */
+    private ResultatCases resolveDirectorCheckboxes(XWPFDocument doc, Map<String, Object> scope,
+                                                     List<XWPFParagraph> paras) {
         java.util.Set<XWPFParagraph> toRemove = new java.util.LinkedHashSet<>();
         List<String> unresolved = new ArrayList<>();
 
@@ -1278,7 +1381,7 @@ public class DocxTemplateEngine {
             }
         }
         removeParagraphsByPosition(doc, toRemove);
-        return unresolved;
+        return new ResultatCases(unresolved, toRemove);
     }
 
 
@@ -1368,12 +1471,29 @@ public class DocxTemplateEngine {
     private void removeParagraphsByPosition(XWPFDocument doc, java.util.Set<XWPFParagraph> toRemove) {
         if (toRemove.isEmpty()) return;
         java.util.List<Integer> positions = new ArrayList<>();
+        java.util.List<XWPFParagraph> introuvables = new ArrayList<>();
         for (XWPFParagraph p : toRemove) {
             int pos = doc.getPosOfParagraph(p);
             if (pos >= 0) positions.add(pos);
+            else introuvables.add(p);
         }
         positions.sort(Collections.reverseOrder());
         for (int pos : positions) doc.removeBodyElement(pos);
+
+        // Lot B (2026-09-11) — `getPosOfParagraph` compare par IDENTITE. Un
+        // paragraphe que l'appelant n'a pas obtenu de `doc.getParagraphs()` n'y
+        // est pas retrouve, et la suppression echoue EN SILENCE.
+        //
+        // On ne tente pas de rattraper au curseur XML : retirer le noeud sans
+        // retirer le XWPFParagraph des listes internes de POI laisse un objet
+        // orphelin, et la passe suivante leve XmlValueDisconnectedException.
+        // L'appelant doit passer des paragraphes VIVANTS — cf.
+        // `paragraphesDepuis`, employe par l'expansion des boucles.
+        if (!introuvables.isEmpty()) {
+            log.warn("removeParagraphsByPosition : {} paragraphe(s) non retrouve(s) par identite "
+                    + "— l'appelant doit fournir des paragraphes issus de doc.getParagraphs()",
+                    introuvables.size());
+        }
     }
 
     /**
@@ -1432,6 +1552,13 @@ public class DocxTemplateEngine {
 
                 if (items == null) {
                     log.warn("Boucle directeur ▼ {} : aucune liste dans les variables, delimiteurs retires", blockName);
+                    // Lot B — LE CORPS EST CONSERVE ICI : il faut donc y resoudre les
+                    // cases a cocher, que la passe document-level a laissees de cote
+                    // parce qu'elles etaient entre ▼ et ▲. Sans cela, le marqueur
+                    // « ◈ CASE À COCHER » survivrait au rendu et s'imprimerait.
+                    // Le scope est le scope GLOBAL : il n'y a pas d'item.
+                    resolveDirectorCheckboxes(doc, variables,
+                            new ArrayList<>(paras.subList(i + 1, endIdx)));
                     removeParagraphFromBody(doc, paras.get(endIdx));
                     removeParagraphFromBody(doc, paras.get(i));
                     modified = true;
@@ -1455,17 +1582,114 @@ public class DocxTemplateEngine {
                     Map<String, Object> itemScope = mergedScope(variables, items.get(idx));
                     Map<String, String> scopedStr = buildScopedItemVars(items.get(idx), idx, blockName);
                     java.util.List<Integer> survivors = selectConditionalSurvivors(bodyTexts, itemScope);
-                    for (int s : survivors) {
-                        CTP cloned = (CTP) bodyCtps.get(s).copy();
-                        XWPFParagraph newPara = insertParagraphAtPosition(doc, firstPos + totalInserted, cloned);
+
+                    // Lot B — LES CASES A COCHER DE CETTE OCCURRENCE.
+                    //
+                    // Resolues AVANT l'insertion, sur le texte du corps de boucle :
+                    // une case dont la valeur est une variable d'ITEM
+                    // (« ◈ CASE À COCHER pilotée par $BE_GENRE ») n'a de scope que
+                    // la. La passe document-level, qui tourne avant l'expansion,
+                    // n'avait nulle part ou la lire — elle ne cochait rien et
+                    // consommait le marqueur : « ☐ Masculin ☐ Féminin » sortait
+                    // inerte sur un beneficiaire dont le genre etait renseigne.
+                    CasesDeBoucle cases = resoudreCasesDeBoucle(bodyCtps, bodyTexts,
+                            survivors, itemScope);
+
+                    java.util.List<XWPFParagraph> inserees = new ArrayList<>(survivors.size());
+                    for (int k = 0; k < survivors.size(); k++) {
+                        // Le paragraphe du marqueur n'est PAS insere. C'est ce qui
+                        // dispense de le retrouver ensuite pour le retirer — et un
+                        // clone insere par curseur n'apparait pas dans les listes
+                        // internes de POI, donc on ne le retrouverait pas.
+                        if (cases.marqueurs().contains(k)) continue;
+                        CTP cloned = (CTP) bodyCtps.get(survivors.get(k)).copy();
+                        XWPFParagraph newPara = insertParagraphAtPosition(
+                                doc, firstPos + totalInserted + inserees.size(), cloned);
+                        Boolean cochee = cases.options().get(k);
+                        if (cochee != null) {
+                            prefixerCase(newPara, cochee ? CHECKBOX_TICKED : CHECKBOX_EMPTY);
+                        }
                         replaceInParagraph(newPara, globalFlat, scopedStr);
-                        totalInserted++;
+                        inserees.add(newPara);
                     }
+                    totalInserted += inserees.size();
                 }
                 modified = true;
                 break; // re-scan sur snapshot frais
             }
         }
+    }
+
+    /**
+     * Lot B — le resultat d'une resolution de cases dans un corps de boucle.
+     *
+     * @param marqueurs index (dans {@code survivors}) des paragraphes
+     *                  {@code ◈ CASE À COCHER} : ils ne sont pas inseres
+     * @param options   index -> la case doit-elle etre cochee
+     */
+    private record CasesDeBoucle(java.util.Set<Integer> marqueurs,
+                                 Map<Integer, Boolean> options) {}
+
+    /**
+     * Lot B — RESOUT LES CASES A COCHER D'UN CORPS DE BOUCLE, POUR UNE OCCURRENCE.
+     *
+     * <p>Meme regle qu'au niveau document, et pour la meme raison : le gabarit dit
+     * « ceci est une option » par le STYLE des paragraphes qui suivent le
+     * marqueur, plus par un caractere ☐ — convention du 9 septembre. On prend le
+     * style du premier paragraphe suivant et on s'arrete des qu'il change.
+     *
+     * <p>On refuse le style du marqueur lui-meme : {@code JurikaBalise} porte
+     * aussi les conditions et les boucles, et un {@code ◇ SI} place juste apres
+     * les options serait avale comme une option de plus.
+     */
+    private CasesDeBoucle resoudreCasesDeBoucle(java.util.List<CTP> bodyCtps,
+                                                 java.util.List<String> bodyTexts,
+                                                 java.util.List<Integer> survivors,
+                                                 Map<String, Object> itemScope) {
+        java.util.Set<Integer> marqueurs = new java.util.LinkedHashSet<>();
+        Map<Integer, Boolean> options = new java.util.LinkedHashMap<>();
+
+        for (int k = 0; k < survivors.size(); k++) {
+            String texte = bodyTexts.get(survivors.get(k));
+            Matcher m = CHECKBOX_MARKER_PATTERN.matcher(texte);
+            if (!m.find()) continue;
+            marqueurs.add(k);
+
+            String attendu = normalizeCompare(scopeString(itemScope, m.group(1)));
+            String styleMarqueur = styleDe(bodyCtps.get(survivors.get(k)));
+            String styleOption = k + 1 < survivors.size()
+                    ? styleDe(bodyCtps.get(survivors.get(k + 1))) : null;
+            if (styleOption == null || styleOption.isBlank()
+                    || styleOption.equals(styleMarqueur)) {
+                // Aucun bloc d'options reconnaissable : on retire le marqueur et on
+                // le signale, plutot que de l'imprimer sur le document.
+                log.info("Case a cocher ${} : aucun bloc d'options identifiable dans la boucle",
+                        m.group(1));
+                continue;
+            }
+
+            boolean deja = false;
+            for (int j = k + 1; j < survivors.size(); j++) {
+                if (!styleOption.equals(styleDe(bodyCtps.get(survivors.get(j))))) break;
+                String libelle = bodyTexts.get(survivors.get(j)).trim();
+                boolean retenue = !attendu.isEmpty() && !deja
+                        && normalizeCompare(libelle).equals(attendu);
+                options.put(j, retenue);
+                deja |= retenue;
+            }
+            if (!deja) {
+                log.info("Case a cocher non renseignee dans une boucle : ${} (valeur « {} »)",
+                        m.group(1), scopeString(itemScope, m.group(1)));
+            }
+        }
+        return new CasesDeBoucle(marqueurs, options);
+    }
+
+    /** Nom du style d'un paragraphe, ou {@code ""} s'il n'en porte pas. */
+    private static String styleDe(CTP ctp) {
+        if (ctp.getPPr() == null || ctp.getPPr().getPStyle() == null) return "";
+        String val = ctp.getPPr().getPStyle().getVal();
+        return val == null ? "" : val;
     }
 
     /** Fusionne globals + item (l'item ecrase) en un scope pour l'evaluation conditionnelle. */

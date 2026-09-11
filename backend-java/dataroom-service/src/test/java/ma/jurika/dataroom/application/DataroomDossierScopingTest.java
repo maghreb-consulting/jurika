@@ -52,7 +52,10 @@ class DataroomDossierScopingTest {
                 org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.WorkflowProgressViewJpaRepository.class),
                 new com.fasterxml.jackson.databind.ObjectMapper(),
                 snapshotRepo, storage, events, metrics,
-                org.mockito.Mockito.mock(DossierArchiveGuard.class));
+                org.mockito.Mockito.mock(DossierArchiveGuard.class),
+                // Lot B — le journal des changements de visibilite client (V32).
+                org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence
+                        .VisibiliteEvenementJpaRepository.class));
     }
 
     private static DossierViewEntity dossierOwnedBy(UUID responsableId) {

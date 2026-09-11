@@ -53,7 +53,7 @@ class GuideTransitionChecksTest {
                 "Etape " + ordre, statut, "Cabinet", "DGI", obligatoire,
                 obligatoire ? "Tous dossiers" : "Si applicable",
                 null, null, "Justificatif " + ordre, null, null, null, variables,
-                null, null, null, List.of());
+                null, null, null, null, null, null, List.of());
         referentiel.put(ordre, d);
         return d;
     }

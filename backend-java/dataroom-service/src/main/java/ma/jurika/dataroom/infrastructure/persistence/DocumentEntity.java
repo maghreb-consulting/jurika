@@ -40,6 +40,19 @@ public class DocumentEntity {
     private Instant createdAt;
     @Column(name = "replaced_at")
     private Instant replacedAt;
+    /**
+     * Lot B (2026-09-11) — le client voit-il ce document dans sa Data Room ?
+     *
+     * <p>C'est une propriete du DOCUMENT, pas un reglage du workflow : elle se
+     * regle au depot depuis le panneau de cochage et se modifie ensuite depuis la
+     * Data Room, et les deux cotes lisent la meme colonne.
+     *
+     * <p>A ne pas confondre avec {@code dataroom_settings.perm_download}, qui est
+     * un droit GLOBAL sur le dossier : « ce client peut-il telecharger ? » et non
+     * « ce document-ci lui est-il montre ? ».
+     */
+    @Column(name = "visible_client", nullable = false)
+    private boolean visibleClient = true;
 
     /**
      * Sprint 2026-06-23 (V17) — raison du remplacement / de la création de la
@@ -131,6 +144,9 @@ public class DocumentEntity {
     public void setUploadedBy(UUID v) { this.uploadedBy = v; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant v) { this.createdAt = v; }
+    public boolean isVisibleClient() { return visibleClient; }
+    public void setVisibleClient(boolean v) { this.visibleClient = v; }
+
     public Instant getReplacedAt() { return replacedAt; }
     public void setReplacedAt(Instant v) { this.replacedAt = v; }
     public String getMotif() { return motif; }

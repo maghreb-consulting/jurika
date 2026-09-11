@@ -4,6 +4,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  History,
   Loader2,
   Paperclip,
   Undo2,
@@ -20,6 +21,7 @@ import { extractError } from '../../lib/api';
 import { formatDate } from '../../lib/date';
 import { AvancementPanel } from './AvancementPanel';
 import type {
+  DemarcheEvenement,
   JustificatifAttendu,
   LigneDemarche,
   VueDemarches,
@@ -33,6 +35,18 @@ import type {
  * que tant que le ticket n'a pas quitté le statut. L'interface ne se contente
  * pas de griser un bouton — elle DIT pourquoi, en nommant ce qui manque.
  */
+
+/**
+ * Lot B — comment NOMMER, à l'écran, la donnée qu'on attend pour faire courir
+ * un délai. Le serveur envoie le nom de la variable du corpus ; l'employé, lui,
+ * n'a jamais vu `$DATE_DEBUT_ACTIVITE` et n'a pas à le voir.
+ *
+ * Une donnée absente de cette table retombe sur une formule générique : le
+ * message reste juste, il est seulement moins précis.
+ */
+const LIBELLE_DONNEE_DEPART: Record<string, string> = {
+  DATE_DEBUT_ACTIVITE: 'la date de début d’activité',
+};
 
 /** Les alternatives d'un même groupe : l'une d'elles suffit. */
 function groupesAttendus(attendus: JustificatifAttendu[]): JustificatifAttendu[][] {
@@ -58,6 +72,8 @@ export function DemarchesPanel({
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
   const [ecarter, setEcarter] = useState<LigneDemarche | null>(null);
+  /** Lot B — annuler un cochage exige un motif : on passe par un tiroir. */
+  const [annuler, setAnnuler] = useState<LigneDemarche | null>(null);
 
   const charger = useCallback(async () => {
     setChargement(true);
@@ -123,6 +139,7 @@ export function DemarchesPanel({
             canAct={canAct}
             onChanged={setVue}
             onEcarter={setEcarter}
+            onAnnuler={setAnnuler}
           />
         ))}
       </Card>
@@ -135,6 +152,18 @@ export function DemarchesPanel({
           onDone={(v) => {
             setVue(v);
             setEcarter(null);
+          }}
+        />
+      )}
+
+      {annuler && (
+        <AnnulerDrawer
+          demarche={annuler}
+          ticketId={ticketId}
+          onClose={() => setAnnuler(null)}
+          onDone={(v) => {
+            setVue(v);
+            setAnnuler(null);
           }}
         />
       )}
@@ -151,6 +180,7 @@ function PhaseSection({
   canAct,
   onChanged,
   onEcarter,
+  onAnnuler,
 }: {
   code: string;
   libelle: string;
@@ -160,6 +190,7 @@ function PhaseSection({
   canAct: boolean;
   onChanged: (v: VueDemarches) => void;
   onEcarter: (d: LigneDemarche) => void;
+  onAnnuler: (d: LigneDemarche) => void;
 }) {
   // Les phases dont une démarche est actionnable s'ouvrent d'elles-mêmes : c'est
   // là que l'employé travaille.
@@ -196,6 +227,7 @@ function PhaseSection({
               canAct={canAct}
               onChanged={onChanged}
               onEcarter={onEcarter}
+              onAnnuler={onAnnuler}
             />
           ))}
         </ul>
@@ -211,6 +243,7 @@ function DemarcheRow({
   canAct,
   onChanged,
   onEcarter,
+  onAnnuler,
 }: {
   demarche: LigneDemarche;
   ticketId: string;
@@ -218,10 +251,20 @@ function DemarcheRow({
   canAct: boolean;
   onChanged: (v: VueDemarches) => void;
   onEcarter: (d: LigneDemarche) => void;
+  onAnnuler: (d: LigneDemarche) => void;
 }) {
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [fichiers, setFichiers] = useState<Map<string, File>>(new Map());
+  /**
+   * Lot B — LE CLIENT VERRA-T-IL CES PIÈCES ?
+   *
+   * Réglé ici, au dépôt, et modifiable ensuite depuis la Data Room : une seule
+   * colonne, deux points d'entrée. Coché par défaut, parce qu'un justificatif
+   * du parcours appartient au dossier du client — un récépissé de dépôt n'a pas
+   * le même statut qu'une note interne.
+   */
+  const [visibleClient, setVisibleClient] = useState(true);
 
   const groupes = groupesAttendus(d.justificatifsAttendus);
   const sansJustificatif = groupes.length === 0;
@@ -249,6 +292,7 @@ function DemarcheRow({
           documentType,
           title: `${d.ordre}. ${d.libelle}`,
           ticketId,
+          visibleClient,
         });
         documentIds.push(doc.id);
       }
@@ -262,17 +306,7 @@ function DemarcheRow({
     }
   }
 
-  async function decocher() {
-    setEnCours(true);
-    setErreur(null);
-    try {
-      onChanged(await demarcheService.decocher(ticketId, d.ordre));
-    } catch (err) {
-      setErreur(extractError(err).message);
-    } finally {
-      setEnCours(false);
-    }
-  }
+
 
   return (
     <li className="px-5 py-3" data-testid={`demarche-${d.ordre}`}>
@@ -328,8 +362,51 @@ function DemarcheRow({
                   — aucune alerte : le guide ne permet pas de déterminer le point de départ
                 </span>
               )}
+              {/*
+                Lot B — LE DÉLAI EST CALCULABLE, MAIS LA DATE MANQUE.
+                Dire « aucune alerte » sans plus serait faux : le produit sait
+                calculer. Dire pourquoi il ne le fait pas encore, c'est indiquer
+                le geste qui débloque l'alerte — et c'est une saisie, pas un
+                cochage.
+              */}
+              {d.delaiCalculable && d.delaiDepartManquant && (
+                <span className="italic">
+                  {' '}
+                  — aucune alerte tant que {LIBELLE_DONNEE_DEPART[d.delaiDepartManquant] ??
+                    'la donnée de départ'}{' '}
+                  n’est pas renseignée à l’étape de génération
+                </span>
+              )}
             </p>
           )}
+
+          {/*
+            Lot B — LA LIGNE DE RETRAIT DIT DEPUIS QUAND ELLE ATTEND.
+            Le parcours ne donne aucune durée pour un retrait (« selon le délai
+            du service de l'enregistrement ») : aucune échéance n'est donc
+            fabriquée. Mais il donne le point de départ — la date du dépôt — et
+            c'est la question qui se pose vraiment, des mois plus tard.
+          */}
+          {d.formaliteVolet === 'RETRAIT' && (
+            <p className="mt-1 text-xs text-fg-subtle">
+              {d.deposeLe ? (
+                <>
+                  Déposé le{' '}
+                  <span className="font-medium text-fg">
+                    {new Date(d.deposeLe).toLocaleDateString('fr-FR')}
+                  </span>
+                  {d.depotOrdre != null && <> (ligne {d.depotOrdre})</>} — en attente du retrait.
+                </>
+              ) : (
+                <>
+                  Le dépôt{d.depotOrdre != null && <> (ligne {d.depotOrdre})</>} n&rsquo;est pas
+                  encore coché : le retrait n&rsquo;attend rien.
+                </>
+              )}
+            </p>
+          )}
+
+          {d.journal.length > 0 && <JournalDemarche evenements={d.journal} />}
 
           {d.etat === 'NON_APPLICABLE' && d.motif && (
             <p className="mt-1 text-xs text-fg-subtle">
@@ -433,6 +510,16 @@ function DemarcheRow({
           {/* ── Actions ───────────────────────────────────────────── */}
           {actionnable && (
             <div className="mt-2 flex flex-wrap gap-2">
+              {d.etat === 'A_FAIRE' && !sansJustificatif && (
+                <label className="mr-2 flex items-center gap-2 self-center text-xs text-fg-subtle">
+                  <input
+                    type="checkbox"
+                    checked={visibleClient}
+                    onChange={(e) => setVisibleClient(e.target.checked)}
+                  />
+                  Visible pour le client
+                </label>
+              )}
               {d.etat === 'A_FAIRE' && (
                 <>
                   <Button
@@ -460,9 +547,10 @@ function DemarcheRow({
                   size="sm"
                   variant="secondary"
                   disabled={enCours}
-                  onClick={() => void decocher()}
+                  onClick={() => onAnnuler(d)}
                 >
-                  <Undo2 className="mr-1 h-3.5 w-3.5" /> Revenir dessus
+                  <Undo2 className="mr-1 h-3.5 w-3.5" />
+                  {d.etat === 'COCHEE' ? 'Annuler le cochage' : 'Remettre au périmètre'}
                 </Button>
               )}
             </div>
@@ -470,6 +558,138 @@ function DemarcheRow({
         </div>
       </div>
     </li>
+  );
+}
+
+/**
+ * Lot B — LE JOURNAL D'UNE DÉMARCHE.
+ *
+ * Ce n'est pas une case à décocher. Une démarche cochée, annulée, puis recochée
+ * garde la trace des trois événements — et les deux horodatages, celui du
+ * cochage et celui de l'annulation, sont conservés tous les deux. Sur des
+ * démarches administratives réelles, « quand avons-nous déposé ? » se pose des
+ * mois plus tard, et la réponse ne doit pas dépendre de ce qu'on a fait de la
+ * case depuis.
+ */
+const LIBELLE_EVENEMENT: Record<DemarcheEvenement['type'], string> = {
+  COCHAGE: 'Cochée',
+  ANNULATION: 'Cochage annulé',
+  HORS_PERIMETRE: 'Écartée du dossier',
+  REPRISE: 'Remise au périmètre',
+};
+
+function JournalDemarche({ evenements }: { evenements: DemarcheEvenement[] }) {
+  const [ouvert, setOuvert] = useState(false);
+  const dernier = evenements[evenements.length - 1];
+
+  return (
+    <div className="mt-1.5">
+      <button
+        type="button"
+        onClick={() => setOuvert((v) => !v)}
+        aria-expanded={ouvert}
+        className="flex items-center gap-1 text-xs text-fg-subtle underline-offset-2 hover:underline"
+      >
+        <History className="h-3 w-3" />
+        {evenements.length === 1
+          ? `${LIBELLE_EVENEMENT[dernier.type]} le ${new Date(dernier.survenuLe).toLocaleString('fr-FR')}`
+          : `${evenements.length} événements — dernier : ${LIBELLE_EVENEMENT[dernier.type]}`}
+      </button>
+      {ouvert && (
+        <ol className="mt-1 space-y-1 border-l border-border pl-3 text-xs text-fg-subtle">
+          {evenements.map((e) => (
+            <li key={e.id}>
+              <span className="font-medium text-fg">{LIBELLE_EVENEMENT[e.type]}</span>{' '}
+              le {new Date(e.survenuLe).toLocaleString('fr-FR')}
+              {e.justificatifs > 0 && <> — {e.justificatifs} justificatif(s)</>}
+              {e.motif && <div className="italic">« {e.motif} »</div>}
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Lot B — ANNULER UN COCHAGE, AVEC MOTIF.
+ *
+ * Le cochage reste annulable après validation, par l'employé : c'est la décision
+ * du cabinet. Mais l'annulation se justifie — et le serveur la refuse sans motif,
+ * comme la base refuse d'écrire un événement d'annulation sans motif.
+ */
+function AnnulerDrawer({
+  demarche: d,
+  ticketId,
+  onClose,
+  onDone,
+}: {
+  demarche: LigneDemarche;
+  ticketId: string;
+  onClose: () => void;
+  onDone: (v: VueDemarches) => void;
+}) {
+  const [motif, setMotif] = useState('');
+  const [enCours, setEnCours] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+  const annulation = d.etat === 'COCHEE';
+
+  async function valider() {
+    if (!motif.trim()) {
+      setErreur('Motif obligatoire.');
+      return;
+    }
+    setEnCours(true);
+    setErreur(null);
+    try {
+      onDone(await demarcheService.decocher(ticketId, d.ordre, motif.trim()));
+    } catch (err) {
+      setErreur(extractError(err).message);
+      setEnCours(false);
+    }
+  }
+
+  return (
+    <Drawer
+      open
+      onClose={onClose}
+      title={annulation ? `Annuler le cochage ${d.ordre}` : `Remettre la démarche ${d.ordre}`}
+      width="md"
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-fg">{d.libelle}</p>
+        {d.cocheAt && (
+          <p className="text-sm text-fg-subtle">
+            Cochée le {new Date(d.cocheAt).toLocaleString('fr-FR')}.
+          </p>
+        )}
+        <p className="rounded-lg border border-border bg-bg-overlay/60 px-3 py-2 text-sm text-fg-subtle">
+          L&rsquo;horodatage du cochage est <strong className="text-fg">conservé</strong> : le
+          journal de la démarche garde les deux dates, celle du cochage et celle de
+          l&rsquo;annulation.
+        </p>
+        <TextField
+          label="Motif"
+          value={motif}
+          onChange={(e) => setMotif(e.target.value)}
+          placeholder={
+            annulation
+              ? "Pourquoi ce cochage est annulé"
+              : 'Pourquoi cette démarche revient au périmètre'
+          }
+          error={erreur ?? undefined}
+        />
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose} disabled={enCours}>
+            Fermer
+          </Button>
+          <Button onClick={() => void valider()} disabled={enCours}>
+            {enCours ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+            {annulation ? 'Annuler le cochage' : 'Remettre au périmètre'}
+          </Button>
+        </div>
+      </div>
+    </Drawer>
   );
 }
 

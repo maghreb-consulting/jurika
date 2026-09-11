@@ -21,8 +21,20 @@ public class DataroomDocumentLookupAdapter implements DataroomDocumentLookup {
         // Le filtre workspace est EXPLICITE : la RLS est inerte en runtime
         // (l'application se connecte avec un role qui la contourne).
         return jpa.findByWorkspaceIdAndIdIn(workspaceId, documentIds).stream()
-                .map(e -> new DocumentVu(e.getId(), e.getDossierId(), e.getTicketId(),
-                        e.getDocumentType(), e.getTitle()))
+                .map(DataroomDocumentLookupAdapter::vu)
                 .toList();
+    }
+
+    @Override
+    public List<DocumentVu> findByTicket(UUID workspaceId, UUID ticketId) {
+        if (ticketId == null) return List.of();
+        return jpa.findByWorkspaceIdAndTicketIdAndCurrentTrue(workspaceId, ticketId).stream()
+                .map(DataroomDocumentLookupAdapter::vu)
+                .toList();
+    }
+
+    private static DocumentVu vu(DataroomDocumentViewEntity e) {
+        return new DocumentVu(e.getId(), e.getDossierId(), e.getTicketId(),
+                e.getDocumentType(), e.getTitle(), e.isVisibleClient());
     }
 }

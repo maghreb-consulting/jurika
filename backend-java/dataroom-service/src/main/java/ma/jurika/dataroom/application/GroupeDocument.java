@@ -25,13 +25,26 @@ public enum GroupeDocument {
             "NOTE_CONFORMITE", "BORDEREAU_REMISE", "FICHE_RENSEIGNEMENTS",
             // Lot 5 — les trois formulaires administratifs sont PRODUITS par JURIKA.
             "DEMANDE_TAXE_PROFESSIONNELLE", "DECLARATION_EXISTENCE",
-            "DECLARATION_IMMATRICULATION_RC");
+            "DECLARATION_IMMATRICULATION_RC",
+            // Lot B (2026-09-11) — les huit documents du corpus du 9 septembre que
+            // JURIKA produit et qui n'avaient pas de type. Meme rangement que le
+            // backfill de la migration V31 : un document depose aujourd'hui doit se
+            // ranger comme ceux qui l'ont precede.
+            "ATTESTATION_SOUSCRIPTION_LIBERATION", "DEMANDE_AFFILIATION_CNSS",
+            "DECLARATION_BENEFICIAIRES_EFFECTIFS", "DEMANDE_DEBLOCAGE_CAPITAL",
+            "DECLARATION_CNDP", "DEMANDE_ADHESION_SIMPL", "LETTRE_RETRAIT_DEPOT",
+            "NOTE_ANNULATION");
 
     private static final Set<String> JUSTIFICATIFS = Set.of(
             "RC", "ICE", "TP", "CNSS", "CN", "APOSTILLE", "BULLETIN_IF", "ACCUSE_RBE",
             "ATTESTATION_ENREGISTREMENT", "ATTESTATION_BLOCAGE_CAPITAL", "JOURNAL_ANNONCE",
             "PUBLICATION_BO", "LIVRES_LEGAUX", "AUTORISATION_SECTORIELLE",
-            "IDENTIFIANTS_SIMPL", "RECEPISSE_CNDP", "RIB");
+            "IDENTIFIANTS_SIMPL", "RECEPISSE_CNDP", "RIB",
+            // Lot B — les quatre justificatifs du parcours du 9 septembre.
+            // RECEPISSE_DEPOT revient sur ONZE lignes : c'est la piece rendue au
+            // depot, celle dont la date fait courir l'attente du retrait.
+            "RECEPISSE_DEPOT", "AVIS_VERSEMENT_BANQUE", "INVESTISSEMENT_ETRANGER",
+            "ACCUSE_RETRAIT_DEPOT");
 
     private static final Set<String> PIECES = Set.of(
             "CIN_NOUVELLE", "CIN_ANCIENNE", "CNIE_GERANT", "PIECE_IDENTITE", "CONTRAT_BAIL",

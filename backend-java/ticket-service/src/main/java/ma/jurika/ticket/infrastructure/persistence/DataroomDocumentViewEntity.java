@@ -32,6 +32,14 @@ public class DataroomDocumentViewEntity {
     private String documentType;
     @Column(insertable = false, updatable = false)
     private String title;
+    @Column(name = "is_current", insertable = false, updatable = false)
+    private boolean current;
+    /** Lot B — l'indicateur « visible pour le client », porte par le document. */
+    @Column(name = "visible_client", insertable = false, updatable = false)
+    private boolean visibleClient;
+
+    public boolean isCurrent() { return current; }
+    public boolean isVisibleClient() { return visibleClient; }
 
     public UUID getId() { return id; }
     public UUID getWorkspaceId() { return workspaceId; }

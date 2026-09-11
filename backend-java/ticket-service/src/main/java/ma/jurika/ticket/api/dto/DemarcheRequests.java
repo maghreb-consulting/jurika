@@ -21,6 +21,14 @@ public final class DemarcheRequests {
     public record NonApplicable(@NotBlank(message = "Motif obligatoire") String motif) {}
 
     /**
+     * Lot B — l'annulation d'un cochage. Le motif est obligatoire : annuler sans
+     * dire pourquoi laisserait un trou dans le journal exactement la ou il est le
+     * plus consulte, des mois plus tard.
+     */
+    public record Decocher(
+            @NotBlank(message = "Motif obligatoire pour annuler un cochage") String motif) {}
+
+    /**
      * Lot 5 (2026-09-07) — reponse a « la gerance est-elle designee dans les
      * statuts ? », donnee une seule fois a l'etape 5 du workflow et propagee aux
      * trois demarches qui portent cette condition (9, 15 et 18).

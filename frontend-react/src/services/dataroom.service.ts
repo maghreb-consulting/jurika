@@ -28,6 +28,14 @@ export interface UploadJuridiqueParams {
   documentType: DocumentType | string;
   title: string;
   ticketId?: string;
+  /**
+   * Lot B — le client verra-t-il ce document ? Réglé AU DÉPÔT, et modifiable
+   * ensuite depuis la Data Room : c'est la même colonne des deux côtés.
+   *
+   * Omis, la valeur par défaut du serveur s'applique : visible, sauf pour le
+   * type « AUTRE », le seul où une note interne peut atterrir.
+   */
+  visibleClient?: boolean;
 }
 
 export interface CreateDemandePayload {
@@ -120,6 +128,9 @@ export const dataroomService = {
     form.append('title', params.title);
     if (params.ticketId) {
       form.append('ticketId', params.ticketId);
+    }
+    if (params.visibleClient !== undefined) {
+      form.append('visibleClient', String(params.visibleClient));
     }
     // L'instance Axios a Content-Type=application/json par defaut.
     // On force multipart/form-data ici (Axios v1+ ajoute le boundary tout seul).

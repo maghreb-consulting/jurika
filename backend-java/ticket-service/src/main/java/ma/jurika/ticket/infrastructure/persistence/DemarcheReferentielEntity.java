@@ -58,6 +58,29 @@ public class DemarcheReferentielEntity {
     private String delaiUnite;
     @Column(name = "delai_reference_ordre", insertable = false, updatable = false)
     private Short delaiReferenceOrdre;
+    /**
+     * Lot B (V26) — nom de la donnee du dossier qui fait courir le delai, quand
+     * il ne part d'aucun cochage. Exclusive de {@code delai_reference_ordre},
+     * une contrainte de la base le garantit.
+     */
+    @Column(name = "delai_reference_donnee", insertable = false, updatable = false)
+    private String delaiReferenceDonnee;
+    /**
+     * Lot B — les deux lignes d'une meme formalite (depot puis retrait) portent
+     * le meme code. C'est ce qui permet a la ligne « retrait » de savoir depuis
+     * quand elle attend : la date de cochage du depot.
+     */
+    @Column(name = "formalite_code", insertable = false, updatable = false)
+    private String formaliteCode;
+    @Column(name = "formalite_volet", insertable = false, updatable = false)
+    private String formaliteVolet;
+    /**
+     * Lot B — une ligne retiree du parcours (migration V24) reste en base tant
+     * qu'un cochage la reference : son etat, son horodatage et ses justificatifs
+     * ne se jettent pas. Elle ne s'affiche pas pour autant.
+     */
+    @Column(insertable = false, updatable = false)
+    private Boolean actif;
 
     public UUID getId() { return id; }
     public String getWorkflowType() { return workflowType; }
@@ -80,4 +103,8 @@ public class DemarcheReferentielEntity {
     public Short getDelaiValeur() { return delaiValeur; }
     public String getDelaiUnite() { return delaiUnite; }
     public Short getDelaiReferenceOrdre() { return delaiReferenceOrdre; }
+    public String getDelaiReferenceDonnee() { return delaiReferenceDonnee; }
+    public String getFormaliteCode() { return formaliteCode; }
+    public String getFormaliteVolet() { return formaliteVolet; }
+    public Boolean getActif() { return actif; }
 }

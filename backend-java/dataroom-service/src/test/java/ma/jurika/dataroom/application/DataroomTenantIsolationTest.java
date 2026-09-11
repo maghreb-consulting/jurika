@@ -318,7 +318,10 @@ class DataroomTenantIsolationTest {
                 org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.WorkflowProgressViewJpaRepository.class),
                 new com.fasterxml.jackson.databind.ObjectMapper(),
                 snapshotRepo, storage, events, metrics,
-                org.mockito.Mockito.mock(DossierArchiveGuard.class));
+                org.mockito.Mockito.mock(DossierArchiveGuard.class),
+                // Lot B — le journal des changements de visibilite client (V32).
+                org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence
+                        .VisibiliteEvenementJpaRepository.class));
 
         assertThatThrownBy(() -> svc.view(UUID.randomUUID(), null, null, null))
                 .isInstanceOf(NotFoundException.class);
@@ -349,7 +352,10 @@ class DataroomTenantIsolationTest {
                 org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.WorkflowProgressViewJpaRepository.class),
                 new com.fasterxml.jackson.databind.ObjectMapper(),
                 snapshotRepo, storage, events, metrics,
-                org.mockito.Mockito.mock(DossierArchiveGuard.class));
+                org.mockito.Mockito.mock(DossierArchiveGuard.class),
+                // Lot B — le journal des changements de visibilite client (V32).
+                org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence
+                        .VisibiliteEvenementJpaRepository.class));
         svc.view(dossier, null, null, null);
 
         // findById brut NE doit JAMAIS etre appele
@@ -369,7 +375,10 @@ class DataroomTenantIsolationTest {
                 org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.WorkflowProgressViewJpaRepository.class),
                 new com.fasterxml.jackson.databind.ObjectMapper(),
                 snapshotRepo, storage, events, metrics,
-                org.mockito.Mockito.mock(DossierArchiveGuard.class));
+                org.mockito.Mockito.mock(DossierArchiveGuard.class),
+                // Lot B — le journal des changements de visibilite client (V32).
+                org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence
+                        .VisibiliteEvenementJpaRepository.class));
 
         assertThatThrownBy(() -> svc.assertClientAccess(UUID.randomUUID(), UUID.randomUUID()))
                 .isInstanceOf(NotFoundException.class);
@@ -391,7 +400,10 @@ class DataroomTenantIsolationTest {
                 org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.WorkflowProgressViewJpaRepository.class),
                 new com.fasterxml.jackson.databind.ObjectMapper(),
                 snapshotRepo, storage, events, metrics,
-                org.mockito.Mockito.mock(DossierArchiveGuard.class));
+                org.mockito.Mockito.mock(DossierArchiveGuard.class),
+                // Lot B — le journal des changements de visibilite client (V32).
+                org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence
+                        .VisibiliteEvenementJpaRepository.class));
         svc.assertClientAccess(dossier, client); // ne throw pas
 
         verify(dossierRepo, never()).findById(any());

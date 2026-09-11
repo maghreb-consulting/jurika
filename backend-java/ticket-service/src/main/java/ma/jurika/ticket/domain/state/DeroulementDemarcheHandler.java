@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
  * <p>Points de controle du guide (onglet 2, ligne 2) : certificat negatif
  * obtenu, siege justifie, JEU DE VARIABLES COMPLET, actes valides par le client.
  * Les trois premiers sont mecanises — cochage integral des demarches du statut
- * « Generation des documents » (etapes 4 a 12) + controle des variables du
+ * « Generation des documents » (lignes 2 a 12 du parcours) + controle des variables du
  * dossier par {@code GuideTransitionChecks}.
  */
 @Component

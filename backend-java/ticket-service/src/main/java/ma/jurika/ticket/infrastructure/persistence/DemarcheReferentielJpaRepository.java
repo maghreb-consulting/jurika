@@ -8,10 +8,21 @@ import java.util.UUID;
 
 public interface DemarcheReferentielJpaRepository extends JpaRepository<DemarcheReferentielEntity, UUID> {
 
-    List<DemarcheReferentielEntity> findByWorkflowTypeOrderByOrdreAsc(String workflowType);
+    /**
+     * Lot B — {@code actif} filtre les lignes RETIREES du parcours. La migration
+     * V24 en conserve une par ancienne ligne encore cochee sur un ticket : leur
+     * trace ne se jette pas, mais elles n'appartiennent plus au parcours et ne
+     * doivent apparaitre ni a l'ecran, ni dans un decompte d'avancement.
+     */
+    List<DemarcheReferentielEntity> findByWorkflowTypeAndActifIsTrueOrderByOrdreAsc(
+            String workflowType);
 
-    List<DemarcheReferentielEntity> findByWorkflowTypeAndStatutTicketOrderByOrdreAsc(
+    List<DemarcheReferentielEntity> findByWorkflowTypeAndStatutTicketAndActifIsTrueOrderByOrdreAsc(
             String workflowType, String statutTicket);
 
+    Optional<DemarcheReferentielEntity> findByWorkflowTypeAndOrdreAndActifIsTrue(
+            String workflowType, Short ordre);
+
+    /** Sans filtre : sert au rattachement d'un cochage porte par une ligne retiree. */
     Optional<DemarcheReferentielEntity> findByWorkflowTypeAndOrdre(String workflowType, Short ordre);
 }

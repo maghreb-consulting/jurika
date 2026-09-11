@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import ma.jurika.common.security.AuthenticatedUser;
 import ma.jurika.ticket.api.dto.DemarcheRequests;
 import ma.jurika.ticket.application.DemarcheUseCases;
+import ma.jurika.ticket.application.RecapitulatifClotureService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,9 +28,12 @@ import java.util.UUID;
 public class DemarcheController {
 
     private final DemarcheUseCases demarches;
+    private final RecapitulatifClotureService recapitulatif;
 
-    public DemarcheController(DemarcheUseCases demarches) {
+    public DemarcheController(DemarcheUseCases demarches,
+                               RecapitulatifClotureService recapitulatif) {
         this.demarches = demarches;
+        this.recapitulatif = recapitulatif;
     }
 
     @GetMapping
@@ -49,12 +53,21 @@ public class DemarcheController {
                 body.documentIds(), user.userId());
     }
 
+    /**
+     * Lot B — ANNULER UN COCHAGE EXIGE UN MOTIF.
+     *
+     * <p>Le cochage reste annulable apres validation, par l'employe : c'est la
+     * decision du cabinet. Mais l'annulation se justifie, et les deux horodatages
+     * — celui du cochage et celui de l'annulation — sont conserves tous les deux
+     * au journal de la demarche.
+     */
     @PostMapping("/{ordre}/decocher")
     @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     public DemarcheUseCases.Vue decocher(@AuthenticationPrincipal AuthenticatedUser user,
                                           @PathVariable UUID ticketId,
-                                          @PathVariable int ordre) {
-        return demarches.decocher(user.workspaceId(), ticketId, ordre, user.userId());
+                                          @PathVariable int ordre,
+                                          @Valid @RequestBody DemarcheRequests.Decocher body) {
+        return demarches.decocher(user.workspaceId(), ticketId, ordre, body.motif(), user.userId());
     }
 
     @PostMapping("/{ordre}/non-applicable")
@@ -65,6 +78,26 @@ public class DemarcheController {
                                                @Valid @RequestBody DemarcheRequests.NonApplicable body) {
         return demarches.marquerNonApplicable(user.workspaceId(), ticketId, ordre,
                 body.motif(), user.userId());
+    }
+
+    /**
+     * Lot B (2026-09-11) — LE RECAPITULATIF DU TICKET, AVANT DE LE CLORE.
+     *
+     * <p>Les documents produits, les demarches accomplies avec leurs dates, les
+     * justificatifs archives et CEUX QUI MANQUENT, les identifiants obtenus.
+     *
+     * <p>Ouvert au superviseur : il doit pouvoir constater l'avancement. Ouvert
+     * aussi apres la cloture — c'est cette meme vue que le detail d'un ticket
+     * clos affiche, en lecture seule. Aucune action n'y est attachee : cet
+     * endpoint ne modifie rien, la cloture reste une transition de statut,
+     * decidee explicitement.
+     */
+    @GetMapping("/recapitulatif")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
+    public RecapitulatifClotureService.Recapitulatif recapitulatif(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @PathVariable UUID ticketId) {
+        return recapitulatif.recapitulatif(user.workspaceId(), ticketId);
     }
 
     /**

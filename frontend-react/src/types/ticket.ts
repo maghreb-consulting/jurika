@@ -180,7 +180,9 @@ export const TICKET_TYPE_LABELS: Record<TicketType, string> = {
 };
 
 export const STATUT_LABELS: Record<TicketStatut, string> = {
-  CREATION_TICKET: 'Création du ticket',
+  // Lot B (2026-09-11) — libelle du parcours du 9 septembre. Le CODE ne change
+  // pas : il est porte par la base, l'API et neuf autres workflows.
+  CREATION_TICKET: "Création du ticket et collecte d'information",
   GENERATION_DOCUMENTS: 'Génération des documents',
   DEROULEMENT_DEMARCHE: 'Déroulement de la démarche',
   CLOTURE_DOSSIER: 'Clôture de dossier',

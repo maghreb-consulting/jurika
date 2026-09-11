@@ -7,11 +7,17 @@ import org.springframework.stereotype.Component;
 /**
  * Statut 4 — « Cloture de dossier ».
  *
- * <p>Point de controle du guide (onglet 2, ligne 3) : toutes les demarches
- * obligatoires accomplies, justificatifs recus et numerises. Mecanise par
- * {@link ParcoursHandler} : les 21 demarches du statut « Deroulement de la
- * demarche » (etapes 13 a 33) doivent etre cochees, et chaque conditionnelle
+ * <p>Point de controle : toutes les demarches obligatoires accomplies,
+ * justificatifs recus et numerises. Mecanise par {@link ParcoursHandler} : les
+ * demarches du statut « Deroulement de la demarche » — lignes 13 a 46 du parcours
+ * du 9 septembre, soit 34 lignes — doivent etre cochees, et chaque conditionnelle
  * cochee ou explicitement ecartee avec motif.
+ *
+ * <p>Lot B — le RECAPITULATIF que l'ecran affiche avant de clore est produit par
+ * {@code RecapitulatifClotureService} : il montre les documents, les demarches
+ * accomplies, les identifiants obtenus et, surtout, les justificatifs qui
+ * manquent. La cloture reste une decision explicite — ce handler la controle, le
+ * recapitulatif l'eclaire.
  *
  * <p>Reste non mecanisable : « facture soldee ».
  *

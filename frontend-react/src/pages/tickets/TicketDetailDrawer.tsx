@@ -27,6 +27,7 @@ import { CancelTicketDialog } from './CancelTicketDialog';
 import { SensitiveTransitionDialog } from './SensitiveTransitionDialog';
 import { DeadlinesPanel } from '../../components/tickets/DeadlinesPanel';
 import { DemarchesPanel } from './DemarchesPanel';
+import { RecapitulatifPanel } from './RecapitulatifPanel';
 import { EntityActivityPanel } from '../../components/tracabilite/EntityActivityPanel';
 
 interface Props {
@@ -304,14 +305,38 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
             </ul>
           </section>
 
-          {/* Lot 1 (2026-09-04) — avancement du parcours et cochage des demarches,
-              consultables SANS ouvrir le workflow. Le panneau ne rend rien pour
-              les workflows sans referentiel charge. */}
+          {/*
+            Lot 1 (2026-09-04) — avancement du parcours et cochage des demarches,
+            consultables SANS ouvrir le workflow. Le panneau ne rend rien pour les
+            workflows sans referentiel charge.
+
+            Lot B (2026-09-11) — EN LECTURE SEULE ICI.
+
+            Le detail d'un ticket est une vue de CONSULTATION, pas un poste de
+            travail : le cochage se fait dans le workflow, ou l'employe a sous les
+            yeux la condition d'application, les justificatifs attendus et le
+            document a deposer. Le meme geste pose depuis un tiroir de detail se
+            fait sans ce contexte.
+
+            La regle vaut pour tous les statuts, cloture comprise : un ticket clos
+            n'offre donc AUCUNE action.
+          */}
           <DemarchesPanel
             ticketId={ticketId}
             dossierId={ticket.dossierId ?? null}
-            canAct={canAct}
+            canAct={false}
           />
+
+          {/*
+            Lot B — LE RECAPITULATIF. Avant de clore, il montre ce que le dossier
+            contient et surtout ce qui lui manque ; apres, il est la vue resumee
+            du ticket clos. Il n'offre aucune action dans les deux cas.
+          */}
+          {(ticket.statut === 'DEROULEMENT_DEMARCHE'
+            || ticket.statut === 'CLOTURE_DOSSIER'
+            || ticket.statut === 'ANNULE') && (
+            <RecapitulatifPanel ticketId={ticketId} />
+          )}
 
           <DeadlinesPanel ticketId={ticketId} />
 

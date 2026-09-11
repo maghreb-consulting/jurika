@@ -5,7 +5,7 @@
  */
 
 export const STATUT_TICKET_LABELS: Record<string, string> = {
-  CREATION_TICKET: 'Création du ticket',
+  CREATION_TICKET: "Création du ticket et collecte d'information",
   GENERATION_DOCUMENTS: 'Génération des documents',
   DEROULEMENT_DEMARCHE: 'Déroulement de la démarche',
   CLOTURE_DOSSIER: 'Clôture de dossier',

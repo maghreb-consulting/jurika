@@ -1,5 +1,5 @@
 import { api } from '../lib/api';
-import type { VueDemarches } from '../types/demarche';
+import type { RecapitulatifCloture, VueDemarches } from '../types/demarche';
 
 /**
  * Cochage des démarches d'un ticket.
@@ -28,10 +28,26 @@ export const demarcheService = {
     return data;
   },
 
-  async decocher(ticketId: string, ordre: number): Promise<VueDemarches> {
+  /**
+   * Lot B — ANNULE UN COCHAGE. Le motif est OBLIGATOIRE : le serveur refuse
+   * sans lui.
+   *
+   * Les deux horodatages — celui du cochage et celui de l'annulation — sont
+   * conservés tous les deux au journal de la démarche. Une démarche décochée
+   * puis recochée garde la trace des trois événements.
+   */
+  async decocher(ticketId: string, ordre: number, motif: string): Promise<VueDemarches> {
     const { data } = await api.post<VueDemarches>(
       `/tickets/${ticketId}/demarches/${ordre}/decocher`,
-      {},
+      { motif },
+    );
+    return data;
+  },
+
+  /** Lot B — le récapitulatif du ticket : ce qui a été fait, et ce qui manque. */
+  async recapitulatif(ticketId: string): Promise<RecapitulatifCloture> {
+    const { data } = await api.get<RecapitulatifCloture>(
+      `/tickets/${ticketId}/demarches/recapitulatif`,
     );
     return data;
   },
@@ -52,9 +68,12 @@ export const demarcheService = {
   /**
    * Lot 5 (2026-09-07) — propage la réponse « la gérance est-elle désignée dans
    * les statuts ? » aux TROIS démarches qui portent cette condition : établir
-   * l'acte de nomination (9), le faire signer et légaliser (15), l'enregistrer
-   * (18). Une réponse, trois démarches — au lieu de les écarter une par une en
-   * retapant le même motif.
+   * l'acte de nomination (ligne 5), déposer son enregistrement (21) et en
+   * retirer l'attestation (22). Une réponse, trois démarches — au lieu de les
+   * écarter une par une en retapant le même motif.
+   *
+   * Lot B — les numéros ont changé avec le parcours du 9 septembre ; c'est le
+   * serveur qui les porte, ce commentaire ne fait que le rappeler.
    *
    * <p>Le serveur ne défait que son propre écartement : un choix de l'employé,
    * ou une démarche déjà cochée, n'est jamais annulé.

@@ -1,60 +1,66 @@
 package ma.jurika.ai.workflow.mapper;
 
 import ma.jurika.ai.workflow.WorkflowDocumentMapper;
+import org.springframework.stereotype.Component;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * Mapper L4 du workflow {@code CREATION_SARL} — <b>DÉBRANCHÉ AU LOT A
- * (2026-09-10), EN ATTENTE DU LOT B</b>.
+ * Mapper L4 du workflow {@code CREATION_SARL} — <b>reconstruit au lot B
+ * (2026-09-11) sur le corpus du 9 septembre</b>.
  *
- * <p><b>Pourquoi il n'est plus un bean.</b> Le lot A a remplacé le corpus de
- * création : les 7 modèles d'août et de lot 5 sont sortis du manifeste, les 23
- * gabarits livrés par le cabinet le 9 septembre les ont remplacés. Ces 23
- * gabarits emploient 404 variables, dont <b>253 que la plateforme ne résout
- * pas</b> — 160 sont des données à saisir qui n'ont pas encore de champ au
- * parcours. Un mapper qui les déclarerait rendrait des documents troués ; c'est
- * l'objet du lot B, pas de celui-ci.
+ * <p><b>D'où il repart.</b> Le lot A avait retiré le {@code @Component} : les
+ * sept modèles d'août étaient sortis du manifeste, les 23 gabarits du cabinet les
+ * avaient remplacés, et 253 de leurs 404 variables n'avaient aucune résolution.
+ * Un mapper qui les aurait déclarées aurait rendu des documents troués. L'étape
+ * de génération affichait donc une liste vide. Ce lot la remplit.
  *
- * <p><b>Pourquoi {@code @Component} est retiré plutôt que
- * {@link #supportedTemplates()} vidé.</b>
- * {@code WorkflowDocumentMappingService} refuse au démarrage un mapper dont
- * l'ensemble est vide — et il a raison : un mapper qui ne sait rien produire est
- * une erreur de câblage, pas un état. Sans bean, le service n'enregistre
- * simplement pas {@code CREATION_SARL} ; {@code WorkflowDocumentController}
- * traite ce cas explicitement et renvoie une liste de modèles vide plutôt
- * qu'une erreur.
+ * <p><b>Comment la résolution se compose.</b> Trois couches, dans cet ordre, et
+ * chacune ne pose que ce que la précédente n'a pas :
  *
- * <p><b>Conséquence assumée : le parcours de création ne génère plus aucun
- * document</b> jusqu'à ce que le lot B recâble la résolution sur le nouveau
- * corpus.
+ * <ol>
+ *   <li>{@link CreationFormulairesVarsBuilder} — qui part lui-même de
+ *       {@link CreationDirecteurVarsBuilder}. Les <b>149 variables déjà
+ *       résolues</b> et leurs dérivations (activité principale lue dans l'objet
+ *       social, type de tribunal déduit de la ville, échéance de société
+ *       calculée), plus les quatre boucles historiques {@code ASSOCIES},
+ *       {@code APPORTS_PAR_ASSOCIE}, {@code GERANTS}, {@code SIGNATAIRES}.</li>
+ *   <li>{@link CreationCorpusVarsBuilder} — les <b>160 saisies</b> du parcours,
+ *       lues au catalogue généré, et les <b>37 dérivations</b> propres au corpus
+ *       du 9 septembre.</li>
+ *   <li>Rien d'autre. Les <b>55 variables sans source</b> ne reçoivent aucune
+ *       valeur : elles remontent au contrôle de complétude et au rapport
+ *       cabinet.</li>
+ * </ol>
  *
- * <p>La classe et {@link CreationFormulairesVarsBuilder} sont conservées telles
- * quelles : elles portent la résolution des anciens formulaires, dont le lot B
- * repartira. {@link CreationDirecteurVarsBuilder}, lui, reste <b>en service</b> —
- * la refonte des statuts (MODIFICATION, {@code STATUTS_REFONDUS_*}) l'appelle
- * via {@link RefonteStatutsVarsBuilder}.
+ * <p><b>Les noms.</b> Les alignements se font ici, dans la résolution, et jamais
+ * dans le {@code .docx}. {@code $ICE} est tranché depuis le 9 septembre et la
+ * plateforme l'écrivait déjà : rien à aligner. Les trois arbitrages restés
+ * ouverts — {@code $SIEGE_VILLE} contre {@code $VILLE},
+ * {@code $SIGNATAIRE_NOM_QUALITE} contre {@code $FORMULAIRE_SIGNATAIRE} — ne sont
+ * pas tranchés par ce lot : {@link #alignerNomsEnVigueur} publie la valeur sous
+ * les DEUX noms quand la plateforme n'en résout qu'un, de sorte qu'aucun des deux
+ * arbitrages n'est préjugé.
+ *
+ * <p><b>Les 23 modèles viennent du catalogue</b>, pas d'une liste écrite ici :
+ * une liste en dur se désynchroniserait de la prochaine livraison du cabinet.
  */
+@Component
 public class CreationSarlMapper implements WorkflowDocumentMapper {
 
     private static final String WORKFLOW_CODE = "CREATION_SARL";
 
-    // Lot 5 (2026-09-07) — TROIS FORMULAIRES administratifs (etapes 19, 20 et 21
-    // du guide). Leurs CODES survivent au lot A : deux migrations deja appliquees
-    // (dataroom V30, ticket V20) les nomment comme donnees. Leurs GABARITS, eux,
-    // ont ete remplaces par ceux du 9 septembre, bien plus fournis (84, 136 et 76
-    // variables contre 38, 44 et 22) : le builder ci-dessous ne les couvre plus.
+    /**
+     * Codes des trois formulaires administratifs, conservés en constantes : deux
+     * migrations déjà appliquées les nomment comme données (dataroom V30,
+     * ticket V20) et {@code ModificationMapper} s'y réfère.
+     */
     public static final String TPL_DEMANDE_TP = CreationFormulairesVarsBuilder.TPL_DEMANDE_TP;
     public static final String TPL_DECLARATION_EXISTENCE =
             CreationFormulairesVarsBuilder.TPL_DECLARATION_EXISTENCE;
     public static final String TPL_DECLARATION_RC = CreationFormulairesVarsBuilder.TPL_DECLARATION_RC;
-
-    private static final Set<String> SUPPORTED = Set.of(
-            TPL_DEMANDE_TP,
-            TPL_DECLARATION_EXISTENCE,
-            TPL_DECLARATION_RC
-    );
 
     @Override
     public String workflowCode() {
@@ -63,17 +69,64 @@ public class CreationSarlMapper implements WorkflowDocumentMapper {
 
     @Override
     public Set<String> supportedTemplates() {
-        return SUPPORTED;
+        return CreationChampsCatalogue.get().codes();
     }
 
     @Override
     public Map<String, Object> map(String templateCode, Map<String, Object> payload) {
-        if (templateCode == null || !SUPPORTED.contains(templateCode)) {
+        Set<String> supportes = supportedTemplates();
+        if (templateCode == null || !supportes.contains(templateCode)) {
             throw new IllegalArgumentException(
                     "Template non supporté par CreationSarlMapper : " + templateCode
-                            + " (supportés : " + SUPPORTED + ")");
+                            + " (supportés : " + supportes + ")");
         }
-        return CreationFormulairesVarsBuilder.build(templateCode,
-                payload == null ? Map.of() : payload);
+        Map<String, Object> safe = payload == null ? Map.of() : payload;
+
+        // Couche 1 — ce que la plateforme résout déjà.
+        Map<String, Object> variables =
+                new LinkedHashMap<>(CreationFormulairesVarsBuilder.build(templateCode, safe));
+
+        // Couche 2 — les saisies et les dérivations du corpus du 9 septembre.
+        // Elles viennent APRÈS et écrasent : une donnée saisie au parcours pour ce
+        // document précis est plus précise qu'une valeur générique reprise du
+        // dossier. Une clé absente n'écrit rien, donc n'écrase rien.
+        variables.putAll(CreationCorpusVarsBuilder.build(templateCode, safe, variables));
+
+        alignerNomsEnVigueur(variables);
+        return variables;
+    }
+
+    /**
+     * LES TROIS ARBITRAGES DE NOMMAGE, NON TRANCHÉS.
+     *
+     * <p>Le corpus emploie {@code $SIEGE_VILLE} dans sept gabarits et
+     * {@code $VILLE} dans deux — et les deux coexistent <b>dans le même
+     * document</b> (déclaration d'existence, demande de taxe professionnelle). La
+     * plateforme, elle, ne résout que {@code $VILLE}.
+     *
+     * <p>Trancher reviendrait à réécrire un gabarit du cabinet, ce que ce lot
+     * s'interdit. On aligne donc <b>dans la résolution</b> : la valeur connue est
+     * publiée sous les deux noms. Le jour où le cabinet tranchera, il suffira de
+     * retirer l'alias — aucun document n'aura été touché entre-temps.
+     *
+     * <p>{@code $FORMULAIRE_SIGNATAIRE} n'est employé par aucun gabarit : l'alias
+     * ne sert donc à rien aujourd'hui, mais il rend le renommage sans effet de
+     * bord s'il est retenu.
+     *
+     * <p>{@code $DOMICILIATAIRE_ICE} désigne l'ICE d'un TIERS : il n'est pas
+     * concerné et n'est jamais aligné sur {@code $ICE}.
+     */
+    private static void alignerNomsEnVigueur(Map<String, Object> v) {
+        alias(v, "VILLE", "SIEGE_VILLE");
+        alias(v, "SIGNATAIRE_NOM_QUALITE", "FORMULAIRE_SIGNATAIRE");
+    }
+
+    /** Publie la valeur de {@code source} sous {@code cible}, sans jamais l'écraser. */
+    private static void alias(Map<String, Object> v, String source, String cible) {
+        Object valeur = v.get(source);
+        if (valeur == null) return;
+        String s = String.valueOf(valeur);
+        if (s.isBlank()) return;
+        v.putIfAbsent(cible, valeur);
     }
 }

@@ -69,6 +69,9 @@ public class DataroomJuridiqueService {
      * quatre (juridique / comptable / fiscal / depots) a n'avoir aucun garde.
      */
     private final DossierArchiveGuard archiveGuard;
+    /** Lot B — le journal des changements de visibilite client (migration V32). */
+    private final ma.jurika.dataroom.infrastructure.persistence.VisibiliteEvenementJpaRepository
+            visibiliteEvenements;
 
     public DataroomJuridiqueService(DocumentJpaRepository documents,
                                      DossierViewJpaRepository dossiers,
@@ -79,7 +82,9 @@ public class DataroomJuridiqueService {
                                      ObjectStorage storage,
                                      DataroomEventPublisher events,
                                      BusinessMetrics businessMetrics,
-                                     DossierArchiveGuard archiveGuard) {
+                                     DossierArchiveGuard archiveGuard,
+                                     ma.jurika.dataroom.infrastructure.persistence
+                                             .VisibiliteEvenementJpaRepository visibiliteEvenements) {
         this.documents = documents;
         this.dossiers = dossiers;
         this.tickets = tickets;
@@ -90,11 +95,21 @@ public class DataroomJuridiqueService {
         this.events = events;
         this.businessMetrics = businessMetrics;
         this.archiveGuard = archiveGuard;
+        this.visibiliteEvenements = visibiliteEvenements;
     }
 
     @Transactional(readOnly = true)
     public DossierJuridiqueView view(UUID dossierId) {
-        return view(dossierId, null, null, null);
+        return view(dossierId, null, null, null, false);
+    }
+
+    /** Surcharge de compatibilite : vue complete, sans filtre de visibilite. */
+    @Transactional(readOnly = true)
+    public DossierJuridiqueView view(UUID dossierId,
+                                      List<String> types,
+                                      java.time.Instant from,
+                                      java.time.Instant to) {
+        return view(dossierId, types, from, to, false);
     }
 
     /**
@@ -142,7 +157,8 @@ public class DataroomJuridiqueService {
     public DossierJuridiqueView view(UUID dossierId,
                                       List<String> types,
                                       java.time.Instant from,
-                                      java.time.Instant to) {
+                                      java.time.Instant to,
+                                      boolean pourClient) {
         // Defense-in-depth multi-tenant : tous les lookups passent par
         // workspace_id explicite (jurika_user a BYPASSRLS sous le conteneur
         // officiel, la RLS est court-circuitee). Sans ce filtre, un user A
@@ -154,8 +170,9 @@ public class DataroomJuridiqueService {
         DossierViewEntity dossier = dossiers.findByWorkspaceIdAndId(ws, dossierId)
                 .orElseThrow(() -> new NotFoundException("Dossier inconnu"));
 
-        List<DocumentEntity> enVigueur =
-                documents.findAllByWorkspaceIdAndDossierIdAndCurrentTrueOrderByCreatedAtDesc(ws, dossierId);
+        List<DocumentEntity> enVigueur = visiblesPour(
+                documents.findAllByWorkspaceIdAndDossierIdAndCurrentTrueOrderByCreatedAtDesc(
+                        ws, dossierId), pourClient);
 
         Specification<TicketViewEntity> spec = Specification
                 .where(TicketSpecifications.byDossier(dossierId))
@@ -190,7 +207,7 @@ public class DataroomJuridiqueService {
                 dossier.getStatut(),
                 enVigueur.stream().map(this::summary).toList(),
                 historique,
-                buildDossiersParTicket(ws, dossierId));
+                buildDossiersParTicket(ws, dossierId, pourClient));
     }
 
     /**
@@ -215,9 +232,11 @@ public class DataroomJuridiqueService {
         return d.getDocumentType() + " " + d.getTitle();
     }
 
-    private List<DossierTicket> buildDossiersParTicket(UUID ws, UUID dossierId) {
-        List<DocumentEntity> tous =
-                documents.findAllByWorkspaceIdAndDossierIdOrderByCreatedAtDesc(ws, dossierId);
+    private List<DossierTicket> buildDossiersParTicket(UUID ws, UUID dossierId,
+                                                        boolean pourClient) {
+        List<DocumentEntity> tous = visiblesPour(
+                documents.findAllByWorkspaceIdAndDossierIdOrderByCreatedAtDesc(ws, dossierId),
+                pourClient);
         if (tous.isEmpty()) return List.of();
 
         // Lot 2 (2026-09-07) — PLUS DE VERSION AFFICHEE DEUX FOIS.
@@ -497,6 +516,7 @@ public class DataroomJuridiqueService {
         // nature ne se deduit pas : on ne range pas de force dans un groupe faux.
         GroupeDocument groupe = GroupeDocument.deduire(documentType);
         e.setGroupe(groupe == null ? null : groupe.name());
+        e.setVisibleClient(visibiliteParDefaut(documentType));
         e.setTitle(title);
         e.setVersion(nextVersion);
         e.setCurrent(true);
@@ -586,6 +606,13 @@ public class DataroomJuridiqueService {
         e.setDocumentType(documentType);
         GroupeDocument groupe = GroupeDocument.deduire(documentType);
         e.setGroupe(groupe == null ? null : groupe.name());
+        // Lot B — un brouillon n'est visible de personne (il n'est pas « en
+        // vigueur », donc aucune lecture du dossier ne le renvoie), mais il
+        // portera cette valeur en devenant l'acte valide : elle se pose donc
+        // ici, à la création, et une régénération ne la réécrit pas.
+        if (e.getId() == null) {
+            e.setVisibleClient(visibiliteParDefaut(documentType));
+        }
         e.setTitle(title);
         e.setVersion((short) 1);
         // Un brouillon n'est JAMAIS en vigueur : il reste hors de l'index unique
@@ -648,6 +675,17 @@ public class DataroomJuridiqueService {
                 documents.findCurrentBySlot(e.getDossierId(), e.getDocumentType(), e.getTitle());
         if (occupant.isPresent() && !occupant.get().getId().equals(e.getId())) {
             DocumentEntity p = occupant.get();
+            // Lot B — LA VISIBILITÉ SE TRANSMET À LA VERSION SUIVANTE.
+            //
+            // Régénérer un acte n'est pas décider de le montrer. Si l'annonce
+            // légale du statut 2 a été masquée au client, celle qu'on complète
+            // du numéro RC au statut 4 doit l'être aussi : sans cette ligne, la
+            // valeur par défaut reprenait la main et la décision de l'employé
+            // était silencieusement annulée par une régénération.
+            //
+            // Lu AVANT `markReplaced`, dont le `clearAutomatically` vide le
+            // contexte de persistance.
+            e.setVisibleClient(p.isVisibleClient());
             if (motif == null || motif.isBlank()) {
                 documents.markReplaced(p.getId(), now);
             } else {
@@ -772,6 +810,9 @@ public class DataroomJuridiqueService {
         e.setTicketId(previous.getTicketId());
         e.setDocumentType(previous.getDocumentType());
         e.setGroupe(previous.getGroupe());
+        // Une nouvelle version HERITE de la visibilite de celle qu'elle remplace :
+        // remplacer un fichier n'est pas decider de le montrer.
+        e.setVisibleClient(previous.isVisibleClient());
         e.setTitle(previous.getTitle());
         e.setVersion(nextVersion);
         e.setCurrent(true);
@@ -1054,6 +1095,88 @@ public class DataroomJuridiqueService {
                 e.getVersion(), e.isCurrent(),
                 e.getFilename(), e.getContentType(), e.getSizeBytes(),
                 e.getCreatedAt(), e.getReplacedAt(),
-                e.getMotif(), e.getEditeManuellementAt());
+                e.getMotif(), e.getEditeManuellementAt(),
+                e.isVisibleClient());
+    }
+
+    // =====================================================================
+    //  Lot B — la visibilite client, appliquee cote SERVEUR
+    // =====================================================================
+
+    /**
+     * Retire de la liste ce que le client ne doit pas voir.
+     *
+     * <p>Le filtre est pose ICI, sur la liste issue de la base, et non a
+     * l'affichage : un indicateur que seule l'interface respecterait ne serait pas
+     * une visibilite, ce serait une convention. Les employes, superviseurs et
+     * super-admins voient tout, y compris ce qui est masque — ils doivent pouvoir
+     * constater qu'une piece existe et decider de la montrer.
+     */
+    /**
+     * LA VALEUR PAR DEFAUT DE « VISIBLE POUR LE CLIENT », A CHAQUE DEPOT.
+     *
+     * <p>Visible, sauf pour le type {@code AUTRE}.
+     *
+     * <p>La Data Room EST le dossier du client : les pieces que le parcours fait
+     * televerser sont, par construction, les « justificatifs a obtenir et
+     * archiver » de ses propres formalites. Les masquer par defaut rendrait son
+     * dossier silencieusement incomplet, et l'oubli le plus probable — un employe
+     * qui ne pense pas a cocher « visible » — le priverait d'une piece a laquelle
+     * il a droit sans que personne le sache. L'oubli inverse, lui, se voit.
+     *
+     * <p>{@code AUTRE} est l'exception, et c'est la seule : c'est le fourre-tout
+     * des documents dont la nature n'est pas deductible, donc le seul endroit ou
+     * une note interne peut atterrir. Un recepisse de depot n'a pas le meme statut
+     * qu'une note interne — la difference tient a ce que le referentiel sait
+     * nommer.
+     *
+     * <p>Dans les deux sens, le reglage reste un clic, au depot comme depuis la
+     * Data Room.
+     */
+    static boolean visibiliteParDefaut(String documentType) {
+        return !"AUTRE".equals(documentType);
+    }
+
+    static List<DocumentEntity> visiblesPour(List<DocumentEntity> docs, boolean pourClient) {
+        if (!pourClient) return docs;
+        return docs.stream().filter(DocumentEntity::isVisibleClient).toList();
+    }
+
+    /**
+     * Ce document est-il montrable a cet utilisateur ? Utilise aux acces
+     * UNITAIRES — apercu, telechargement, versions — ou aucune liste ne filtre.
+     */
+    @Transactional(readOnly = true)
+    public boolean estVisiblePour(UUID documentId, boolean pourClient) {
+        if (!pourClient) return true;
+        return documents.findById(documentId)
+                .map(DocumentEntity::isVisibleClient)
+                .orElse(false);
+    }
+
+    /**
+     * Montrer ou masquer un document, depuis la Data Room ou depuis le panneau de
+     * cochage — c'est la meme colonne, et le meme journal.
+     *
+     * <p>Le changement est JOURNALISE. Retirer une piece de la vue du client est
+     * une decision ; la rendre a nouveau visible en est une autre. « Qui a masque
+     * ce recepisse, et quand ? » doit avoir une reponse.
+     *
+     * @param origine {@code DEPOT}, {@code DATAROOM} ou {@code WORKFLOW}
+     */
+    @Transactional
+    public DocumentSummary changerVisibilite(UUID documentId, boolean visible,
+                                              String origine, UUID acteurId) {
+        UUID ws = TenantContext.get();
+        DocumentEntity doc = documents.findById(documentId)
+                .filter(d -> ws == null || ws.equals(d.getWorkspaceId()))
+                .orElseThrow(() -> new NotFoundException("Document inconnu"));
+        if (doc.isVisibleClient() != visible) {
+            doc.setVisibleClient(visible);
+            documents.save(doc);
+        }
+        visibiliteEvenements.enregistrer(doc.getWorkspaceId(), doc.getId(), visible,
+                origine, acteurId);
+        return summary(doc);
     }
 }

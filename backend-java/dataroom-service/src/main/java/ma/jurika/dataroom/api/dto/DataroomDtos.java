@@ -23,15 +23,37 @@ public final class DataroomDtos {
                                    short version, boolean current,
                                    String filename, String contentType, long sizeBytes,
                                    Instant createdAt, Instant replacedAt,
-                                   String motif, Instant editeManuellementAt) {
-        /** Surcharge de compatibilite : documents non issus d'une edition manuelle. */
+                                   String motif, Instant editeManuellementAt,
+                                   /**
+                                    * Lot B — le client voit-il ce document ? Reglé au
+                                    * depot depuis le panneau de cochage, modifiable
+                                    * ensuite depuis la Data Room : une seule colonne,
+                                    * deux points d'entree.
+                                    */
+                                   boolean visibleClient) {
+        /**
+         * Surcharge de compatibilite : documents non issus d'une edition manuelle.
+         * La visibilite y vaut {@code true}, valeur par defaut de la colonne.
+         */
         public DocumentSummary(UUID id, UUID dossierId, UUID ticketId,
                                 String documentType, String title,
                                 short version, boolean current,
                                 String filename, String contentType, long sizeBytes,
                                 Instant createdAt, Instant replacedAt, String motif) {
             this(id, dossierId, ticketId, documentType, title, version, current,
-                    filename, contentType, sizeBytes, createdAt, replacedAt, motif, null);
+                    filename, contentType, sizeBytes, createdAt, replacedAt, motif, null, true);
+        }
+
+        /** Surcharge de compatibilite anterieure au lot B. */
+        public DocumentSummary(UUID id, UUID dossierId, UUID ticketId,
+                                String documentType, String title,
+                                short version, boolean current,
+                                String filename, String contentType, long sizeBytes,
+                                Instant createdAt, Instant replacedAt, String motif,
+                                Instant editeManuellementAt) {
+            this(id, dossierId, ticketId, documentType, title, version, current,
+                    filename, contentType, sizeBytes, createdAt, replacedAt, motif,
+                    editeManuellementAt, true);
         }
     }
 
