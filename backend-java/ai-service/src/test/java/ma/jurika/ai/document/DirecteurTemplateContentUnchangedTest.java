@@ -31,10 +31,14 @@ class DirecteurTemplateContentUnchangedTest {
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {
+            // Lot A (2026-09-10) — les deux statuts RESTENT : le corpus de création
+            // d'août est parti, mais ces deux gabarits sont ceux que la refonte des
+            // statuts (MODIFICATION, STATUTS_REFONDUS_*) rend encore.
+            // ACTE_NOMINATION_GERANT_modele_deterministe.docx et
+            // ANNONCE_LEGALE_modele_deterministe.docx ont été supprimés avec la voie
+            // création : leurs entrées et leurs baselines sont retirées d'ici.
             "STATUTS_SARL_modele_deterministe.docx",
             "STATUTS_SARL_AU_modele_deterministe.docx",
-            "ACTE_NOMINATION_GERANT_modele_deterministe.docx",
-            "ANNONCE_LEGALE_modele_deterministe.docx",
             // Phase 4 — PV de séance (incident) transverses.
             "PV_DEFAUT_QUORUM_SARL.docx",
             "PV_DEFAUT_QUORUM_SARL_AU.docx",
@@ -111,8 +115,16 @@ class DirecteurTemplateContentUnchangedTest {
     }
 
     private static List<String> paragraphTexts(String resourcePath) throws Exception {
-        try (InputStream in = DirecteurTemplateContentUnchangedTest.class.getClassLoader()
+        // Lot A (2026-09-10) — un gabarit retiré du disque mais oublié dans la liste
+        // ci-dessus échouait par un NullPointerException sur `stream.close()`, au
+        // fond de POI : illisible, et rien ne nommait le fichier manquant. Le cas
+        // s'est produit — deux entrées avaient survécu à la suppression du corpus de
+        // création. On le dit maintenant en clair.
+        InputStream flux = DirecteurTemplateContentUnchangedTest.class.getClassLoader()
                 .getResourceAsStream(resourcePath);
+        assertNotNull(flux, "Gabarit introuvable sur le classpath : " + resourcePath
+                + " — s'il a été supprimé, retirer son entrée de la liste et sa baseline.");
+        try (InputStream in = flux;
              XWPFDocument doc = new XWPFDocument(in)) {
             List<String> lines = new ArrayList<>();
             for (XWPFParagraph p : doc.getParagraphs()) {
