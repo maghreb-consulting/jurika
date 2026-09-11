@@ -87,7 +87,18 @@ describe('EmployeeDashboard', () => {
 
     renderDash();
 
-    await waitFor(() => expect(screen.getByText('Dossiers actifs')).toBeInTheDocument());
+    // ON ATTEND LA DONNEE, PAS L'ETIQUETTE.
+    //
+    // « Dossiers actifs » est le titre d'une KpiCard : il est rendu au premier
+    // paint, avant tout appel resolu. L'attendre ne prouve donc rien, et les
+    // assertions qui suivaient couraient apres les promesses — elles gagnaient
+    // la course en local et l'ont perdue en CI, sur une machine plus lente.
+    // (Constate le 2026-09-11 : le DOM capture montrait encore « — » et
+    // « sur 0 de mes tickets ».)
+    //
+    // On attend donc un texte qui n'existe QUE si les donnees sont arrivees.
+    await screen.findByText('1 dossier a moi');
+    expect(screen.getByText('Dossiers actifs')).toBeInTheDocument();
     expect(screen.getByText('Tickets en cours')).toBeInTheDocument();
     expect(screen.getByText('Taches urgentes')).toBeInTheDocument();
     expect(screen.getByText('Cloturees')).toBeInTheDocument();
@@ -150,8 +161,11 @@ describe('EmployeeDashboard', () => {
 
     renderDash();
 
-    await waitFor(() => expect(screen.getByText('Mes requetes au client')).toBeInTheDocument());
-    expect(screen.getByText('Fournir bail')).toBeInTheDocument();
+    // Meme piege que plus haut : le titre « Mes requetes au client » est rendu
+    // au premier paint, la requete elle-meme arrive avec la promesse. On attend
+    // donc le SUJET de la requete, qui n'apparait qu'une fois la donnee la.
+    await screen.findByText('Fournir bail');
+    expect(screen.getByText('Mes requetes au client')).toBeInTheDocument();
     // Nom du dataroom present sur la carte requete + badge « a valider » (REPONDUE).
     expect(screen.getByText(/Dataroom : BETA SAS/i)).toBeInTheDocument();
     expect(screen.getByText(/1 a valider/i)).toBeInTheDocument();
