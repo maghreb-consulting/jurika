@@ -62,7 +62,7 @@ class WorkflowStartNoAutoTransitionTest {
                 .thenReturn(fresh);
 
         WorkflowUseCases uc = new WorkflowUseCases(
-                repo, new WorkflowOrchestrator(List.of()), lookup, null, null);
+                repo, new WorkflowOrchestrator(List.of()), lookup, null, null, null);
         // L'EntityManager est injecte par @PersistenceContext en prod ; on le force ici.
         ReflectionTestUtils.setField(uc, "em", em);
 

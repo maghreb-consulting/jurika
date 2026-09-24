@@ -748,8 +748,7 @@ export function Step7Generation({
           activites: act.activites,
           nationalite: 'marocaine',
           // 2026-09-08 — repli de la durée du mandat, quand aucun gérant ne porte
-          // le sien (brouillon antérieur à la saisie par dirigeant). Même source
-          // que `buildPayloadCreationSarl`, qui la transmettait déjà.
+          // le sien (brouillon antérieur à la saisie par dirigeant).
           dureeGerance: (gerance7.dureeGerance ?? gerance7.dureeMandat) as string | undefined,
         },
         // Lot 5 — saisies propres aux formulaires (cf. `documents-creation.ts`).
@@ -780,9 +779,10 @@ export function Step7Generation({
            * 99 années » — la durée de la SOCIÉTÉ — quel que soit le mandat choisi.
            * On forçait une saisie pour la jeter.
            *
-           * `buildPayloadCreationSarl` (étape 9) transmettait déjà la donnée : les
-           * deux constructeurs de payload divergeaient, et c'est celui qui produit
-           * le document validé par l'employé qui avait tort.
+           * Le constructeur de l'étape 9 transmettait déjà la donnée : les deux
+           * divergeaient, et c'est celui qui produit le document validé par
+           * l'employé qui avait tort. Le lot C a retiré le second et porté la
+           * construction côté serveur — il n'en reste qu'un.
            *
            * Le mandat PROPRE au dirigeant prime ; l'agrégat de l'étape 5 sert de
            * repli pour les brouillons antérieurs à la saisie par dirigeant.

@@ -41,10 +41,10 @@ class WorkflowUseCasesHwmTest {
                 3, 9, new HashMap<>(Map.of("step1", "data1", "step2", "data2")),
                 WorkflowStatut.EN_COURS, user, null, Instant.now());
         FakeRepo repo = new FakeRepo(initialState);
-        WorkflowUseCases uc = new WorkflowUseCases(repo, new WorkflowOrchestrator(java.util.List.of()), null, null, null);
+        WorkflowUseCases uc = new WorkflowUseCases(repo, new WorkflowOrchestrator(java.util.List.of()), null, null, null, null);
 
         // L'utilisateur revient a step 1 et sauve un brouillon.
-        WorkflowProgress after = uc.save(ws, ticket, 1, Map.of("step1", "data1-modifiee"));
+        WorkflowProgress after = uc.save(ws, ticket, 1, Map.of("step1", "data1-modifiee"), null);
 
         // HWM preservee a 3 -- pas de regression a 1.
         assertThat(after.currentStep()).isEqualTo(3);
@@ -61,9 +61,9 @@ class WorkflowUseCasesHwmTest {
                 UUID.randomUUID(), ws, ticket, WorkflowType.CREATION,
                 2, 9, new HashMap<>(), WorkflowStatut.EN_COURS, user, null, Instant.now());
         FakeRepo repo = new FakeRepo(initialState);
-        WorkflowUseCases uc = new WorkflowUseCases(repo, new WorkflowOrchestrator(java.util.List.of()), null, null, null);
+        WorkflowUseCases uc = new WorkflowUseCases(repo, new WorkflowOrchestrator(java.util.List.of()), null, null, null, null);
 
-        WorkflowProgress after = uc.save(ws, ticket, 4, Map.of("step3", "X"));
+        WorkflowProgress after = uc.save(ws, ticket, 4, Map.of("step3", "X"), null);
 
         assertThat(after.currentStep()).isEqualTo(4);
     }

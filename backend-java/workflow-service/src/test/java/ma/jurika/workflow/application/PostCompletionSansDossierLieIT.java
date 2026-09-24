@@ -276,7 +276,7 @@ class PostCompletionSansDossierLieIT {
     }
 
     private WorkflowUseCases newUseCases() {
-        WorkflowUseCases svc = new WorkflowUseCases(null, null, null, null, null);
+        WorkflowUseCases svc = new WorkflowUseCases(null, null, null, null, null, null);
         ReflectionTestUtils.setField(svc, "em", em);
         return svc;
     }

@@ -4,7 +4,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import ma.jurika.common.security.AuthenticatedUser;
+import ma.jurika.workflow.application.ConstructeurChargeUtileCreation;
 import ma.jurika.workflow.application.DossierIdentityQueryService;
+import ma.jurika.workflow.application.MagasinVariables;
 import ma.jurika.workflow.application.WorkflowUseCases;
 import ma.jurika.workflow.domain.model.WorkflowProgress;
 import ma.jurika.workflow.domain.model.WorkflowType;
@@ -29,11 +31,15 @@ public class WorkflowController {
 
     private final WorkflowUseCases useCases;
     private final DossierIdentityQueryService dossierIdentity;
+    /** Lot C — le magasin de variables du dossier, source unique de la génération. */
+    private final MagasinVariables magasin;
 
     public WorkflowController(WorkflowUseCases useCases,
-                              DossierIdentityQueryService dossierIdentity) {
+                              DossierIdentityQueryService dossierIdentity,
+                              MagasinVariables magasin) {
         this.useCases = useCases;
         this.dossierIdentity = dossierIdentity;
+        this.magasin = magasin;
     }
 
     /**
@@ -125,12 +131,45 @@ public class WorkflowController {
         return useCases.get(actor.workspaceId(), ticketId);
     }
 
+    /**
+     * LA CHARGE UTILE D'UN DOSSIER, CONSTRUITE À PARTIR DU MAGASIN.
+     *
+     * <p>Point d'entrée unique de la génération documentaire du parcours de
+     * création. Le navigateur ne construit plus rien : il demande ici ce que le
+     * dossier contient, et le transmet tel quel au moteur.
+     *
+     * <p>C'est ce qui rend la génération déterministe. Auparavant, deux
+     * constructeurs vivaient dans le navigateur — l'un mort et testé, l'autre
+     * vivant et amputé de 29 clés sur 54 — et le document produit dépendait de
+     * l'écran qui l'avait demandé.
+     *
+     * <p>La charge utile rendue est <b>profondément non modifiable</b> : elle est
+     * strictement dérivée du magasin, jamais un endroit où une valeur s'écrit.
+     * Corriger une valeur se fait au magasin.
+     */
+    @GetMapping("/{ticketId}/charge-utile")
+    @PreAuthorize("hasAnyRole('EMPLOYE','SUPERVISEUR')")
+    public Map<String, Object> chargeUtile(@AuthenticationPrincipal AuthenticatedUser actor,
+                                            @PathVariable UUID ticketId) {
+        return ConstructeurChargeUtileCreation.construire(
+                magasin.lirePourGeneration(actor.workspaceId(), ticketId));
+    }
+
+    /** Les variables du dossier avec leur provenance — affichage « en lecture » de l'étape 7. */
+    @GetMapping("/{ticketId}/variables")
+    @PreAuthorize("hasAnyRole('EMPLOYE','SUPERVISEUR')")
+    public Object variables(@AuthenticationPrincipal AuthenticatedUser actor,
+                             @PathVariable UUID ticketId) {
+        return magasin.lire(actor.workspaceId(), ticketId);
+    }
+
     @PostMapping("/{ticketId}/save")
     @PreAuthorize("hasRole('EMPLOYE') and !hasRole('SUPERVISEUR')")
     public WorkflowProgress save(@AuthenticationPrincipal AuthenticatedUser actor,
                                   @PathVariable UUID ticketId,
                                   @Valid @RequestBody SaveRequest req) {
-        return useCases.save(actor.workspaceId(), ticketId, req.currentStep(), req.data());
+        return useCases.save(actor.workspaceId(), ticketId, req.currentStep(), req.data(),
+                actor.userId());
     }
 
     @PostMapping("/{ticketId}/execute-step")

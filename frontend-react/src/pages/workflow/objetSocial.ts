@@ -10,8 +10,10 @@
  *     retours à la ligne sont convertis en vrais `<w:br/>` Word par le moteur
  *     DocxTemplateEngine, sans toucher au texte du modèle directeur).
  *
- * Partagé par les deux constructeurs de payload (buildPayloadCreationSarl et
- * Step7Generation.buildPayload) pour éviter toute divergence de rendu.
+ * Lot C (2026-09-23) — il n'y a plus qu'un constructeur de charge utile, et il
+ * est côté serveur (`ConstructeurChargeUtileCreation`). Cette fonction reste
+ * employée par l'étape 7 pour l'aperçu, et le jour où l'aperçu passera lui aussi
+ * par le serveur, elle le suivra.
  */
 
 /** Normalise l'entrée activités en une liste propre (déduplication des vides). */

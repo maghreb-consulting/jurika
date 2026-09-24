@@ -4,6 +4,7 @@ import ma.jurika.common.security.AuthenticatedUser;
 import ma.jurika.common.security.Role;
 import ma.jurika.common.security.RoleHierarchyAutoConfiguration;
 import ma.jurika.workflow.application.DossierIdentityQueryService;
+import ma.jurika.workflow.application.MagasinVariables;
 import ma.jurika.workflow.application.WorkflowUseCases;
 import ma.jurika.workflow.domain.model.WorkflowProgress;
 import ma.jurika.workflow.domain.model.WorkflowStatut;
@@ -52,6 +53,8 @@ class WorkflowWriteSecurityTest {
 
     @MockBean WorkflowUseCases useCases;
     @MockBean DossierIdentityQueryService dossierIdentity;
+    /** Lot C — le controleur lit le magasin de variables du dossier. */
+    @MockBean MagasinVariables magasin;
 
     private static RequestPostProcessor as(Role role) {
         AuthenticatedUser principal = new AuthenticatedUser(

@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { formatObjetSocial, normalizeActivites } from '../objetSocial';
-import { buildPayloadCreationSarl } from '../CreationSarlWorkflowPage';
 
 /**
  * 2026-08 — OBJET_SOCIAL multi-activités + VILLE_GREFFE (ville, jamais commune).
@@ -29,46 +28,16 @@ describe('formatObjetSocial / normalizeActivites', () => {
   });
 });
 
-describe('buildPayloadCreationSarl — VILLE_GREFFE & OBJET_SOCIAL', () => {
-  const base = (step2: Record<string, unknown>, step4: Record<string, unknown>) =>
-    ({
-      step1: { denomination: { denomination: 'ACME', formeJuridique: 'SARL' } },
-      step2: { siege: step2 },
-      step3: { capital: { capitalSocialMad: 100000, nombreParts: 1000 } },
-      step4: { activite: step4 },
-    }) as Record<string, Record<string, unknown>>;
-
-  it('villeGreffe = ville du greffe (Step2), JAMAIS la commune', () => {
-    const s = buildPayloadCreationSarl(
-      base(
-        { adresse: 'x', province: 'Casablanca', commune: 'Sidi Bernoussi', villeGreffe: 'Casablanca' },
-        { description: 'conseil' },
-      ),
-    ).societe as Record<string, unknown>;
-    expect(s.villeGreffe).toBe('Casablanca');
-    expect(s.villeGreffe).not.toBe('Sidi Bernoussi');
-  });
-
-  it('villeGreffe : à défaut de villeGreffe, retombe sur la province (pas la commune)', () => {
-    const s = buildPayloadCreationSarl(
-      base(
-        { adresse: 'x', province: 'Rabat', commune: 'Agdal' },
-        { description: 'conseil' },
-      ),
-    ).societe as Record<string, unknown>;
-    expect(s.villeGreffe).toBe('Rabat');
-    expect(s.villeGreffe).not.toBe('Agdal');
-  });
-
-  it('objetSocial rendu en liste à tirets pour plusieurs activités', () => {
-    const s = buildPayloadCreationSarl(
-      base(
-        { adresse: 'x', province: 'Casablanca', villeGreffe: 'Casablanca' },
-        { description: 'Le conseil\nLa formation\nL’import-export' },
-      ),
-    ).societe as Record<string, unknown>;
-    expect(s.objetSocial).toBe('- Le conseil\n- La formation\n- L’import-export');
-    // La description brute reste disponible (rétro-compat).
-    expect(s.activiteSociete).toBe('Le conseil\nLa formation\nL’import-export');
-  });
-});
+/*
+ * LOT C (2026-09-23) — les trois cas qui suivaient ont été retirés.
+ *
+ * Ils portaient sur `buildPayloadCreationSarl`, constructeur de charge utile
+ * qu'AUCUN code de production n'appelait plus : il n'était vivant que par ses
+ * propres tests. Le contrat qu'ils décrivaient — VILLE_GREFFE jamais la commune,
+ * OBJET_SOCIAL en liste à tirets — est désormais tenu par le constructeur unique
+ * côté serveur, et vérifié mécaniquement par `ContratChargeUtileCreationTest`
+ * (workflow-service), qui relève les 193 chemins sur les résolveurs eux-mêmes.
+ *
+ * Les quatre cas conservés ci-dessus portent sur `formatObjetSocial` /
+ * `normalizeActivites`, fonctions pures toujours employées.
+ */

@@ -54,6 +54,8 @@ public class WorkflowUseCases {
      * Optionnel : {@code null} dans les tests unitaires qui n'exercent pas
      * {@link #executeStep}. */
     private final WorkflowFinalizationService finalizationService;
+    /** Lot C — alimente {@code dossier_variables}. Optionnel dans les tests unitaires. */
+    private final ProjecteurVariablesCreation projecteurCreation;
 
     @PersistenceContext
     private EntityManager em;
@@ -62,12 +64,14 @@ public class WorkflowUseCases {
                             WorkflowOrchestrator orchestrator,
                             WorkflowProgressLookup progressLookup,
                             @Autowired(required = false) PlanLimitsService planLimitsService,
-                            WorkflowFinalizationService finalizationService) {
+                            WorkflowFinalizationService finalizationService,
+                            @Autowired(required = false) ProjecteurVariablesCreation projecteurCreation) {
         this.progressRepository = progressRepository;
         this.orchestrator = orchestrator;
         this.progressLookup = progressLookup;
         this.planLimitsService = planLimitsService;
         this.finalizationService = finalizationService;
+        this.projecteurCreation = projecteurCreation;
     }
 
     @Transactional
@@ -158,7 +162,7 @@ public class WorkflowUseCases {
 
     @Transactional
     public WorkflowProgress save(UUID workspaceId, UUID ticketId, int currentStep,
-                                  Map<String, Object> data) {
+                                  Map<String, Object> data, UUID userId) {
         TenantContext.set(workspaceId);
         WorkflowProgress p = progressRepository.findByTicket(workspaceId, ticketId)
                 .orElseThrow(() -> new NotFoundException("Aucun workflow en cours"));
@@ -168,7 +172,36 @@ public class WorkflowUseCases {
         // On NE REGRESSE JAMAIS : un saveDraft sur une etape anterieure (navigation arriere)
         // ne doit pas reduire la progression -- sinon le user perd l'acces aux steps suivants.
         int newCurrentStep = Math.max(p.currentStep(), currentStep);
-        return progressRepository.save(p.id(), newCurrentStep, merged, p.statut(), p.completedAt());
+        WorkflowProgress sauve =
+                progressRepository.save(p.id(), newCurrentStep, merged, p.statut(), p.completedAt());
+        projeterAuMagasin(workspaceId, ticketId, p.type(), merged, userId);
+        return sauve;
+    }
+
+    /**
+     * ALIMENTE LE MAGASIN DE VARIABLES — décision 2 du cabinet (lot C).
+     *
+     * <p>{@code workflow_progress.data} garde l'état des formulaires, ce que
+     * l'écran réaffiche. Les VARIABLES DE DOCUMENT vivent au magasin, et la
+     * génération ne lit que lui. Ce point-ci est le SEUL endroit où une saisie
+     * devient une variable : c'est ce qui permet d'affirmer qu'il n'existe pas
+     * deux chemins pour la même valeur.
+     *
+     * <p><b>Best-effort volontaire.</b> Un échec de projection ne doit pas faire
+     * perdre à l'employé la saisie qu'il vient de valider : la donnée est déjà
+     * persistée dans {@code data}, et la projection est idempotente — la
+     * sauvegarde suivante la rattrape. On journalise en WARN plutôt que de
+     * remonter, et le défaut se voit au contrôle de complétude, pas par une
+     * perte de travail.
+     */
+    private void projeterAuMagasin(UUID workspaceId, UUID ticketId, WorkflowType type,
+                                    Map<String, Object> data, UUID userId) {
+        if (projecteurCreation == null || type != WorkflowType.CREATION || userId == null) return;
+        try {
+            projecteurCreation.projeter(workspaceId, ticketId, data, userId);
+        } catch (Exception ex) {
+            log.warn("magasin.projection.echouee ticket={} : {}", ticketId, ex.getMessage());
+        }
     }
 
     @Transactional
@@ -333,6 +366,9 @@ public class WorkflowUseCases {
 
         WorkflowProgress updated = progressRepository.save(
                 p.id(), nextStep, merged, newStatut, completedAt);
+
+        // Lot C — l'etape validee alimente le magasin de variables du dossier.
+        projeterAuMagasin(workspaceId, ticketId, p.type(), merged, userId);
 
         // RG-C23 / RG-S01 : a la fin du workflow CREATION, on cree
         // automatiquement l'entreprise_dossier (= base du Data Room).
