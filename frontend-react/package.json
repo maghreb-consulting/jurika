@@ -27,7 +27,7 @@
     "@radix-ui/react-navigation-menu": "^1.2.14",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.13",
-    "@sentry/react": "^8.55.2",
+    "@sentry/react": "^10.75.0",
     "@tailwindcss/vite": "^4.2.2",
     "@tiptap/extension-table": "^3.26.1",
     "@tiptap/extension-table-cell": "^3.26.1",
