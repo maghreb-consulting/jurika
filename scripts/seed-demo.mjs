@@ -96,15 +96,15 @@ const DOSSIERS = [
 ];
 
 const TICKETS = [
-    { ref: 'T-DEMO-001', titre: 'Constitution SARL Atlas Conseil',         type: 'CREATION',    statut: 'CLOTURE',    priorite: 'NORMALE', dossierIdx: 0 },
-    { ref: 'T-DEMO-002', titre: 'Constitution SARL AU Khouribga Holding',  type: 'CREATION',    statut: 'CLOTURE',    priorite: 'NORMALE', dossierIdx: 1 },
-    { ref: 'T-DEMO-003', titre: 'Constitution Maroc Telecom Services',     type: 'CREATION',    statut: 'EN_COURS',   priorite: 'HAUTE',   dossierIdx: 2 },
-    { ref: 'T-DEMO-004', titre: 'Modification capital Casa Digital',       type: 'MODIFICATION', statut: 'EN_COURS',  priorite: 'NORMALE', dossierIdx: 3 },
-    { ref: 'T-DEMO-005', titre: 'Changement gerant Marrakech Tourism',     type: 'MODIFICATION', statut: 'NOUVEAU',   priorite: 'BASSE',   dossierIdx: 4 },
-    { ref: 'T-DEMO-006', titre: 'Dissolution Fes Patrimoine Immobilier',   type: 'DISSOLUTION', statut: 'CLOTURE',    priorite: 'NORMALE', dossierIdx: 7 },
-    { ref: 'T-DEMO-007', titre: 'Liquidation Oujda Mining Ventures',       type: 'LIQUIDATION', statut: 'EN_COURS',   priorite: 'HAUTE',   dossierIdx: 8 },
-    { ref: 'T-DEMO-008', titre: 'AGO 2025 Atlas Conseil',                  type: 'PV_AGO',      statut: 'NOUVEAU',    priorite: 'NORMALE', dossierIdx: 0 },
-    { ref: 'T-DEMO-009', titre: 'Ouverture succursale Tanger Med',         type: 'SUCCURSALE_MA', statut: 'EN_COURS', priorite: 'NORMALE', dossierIdx: 5 },
+    { ref: 'T-DEMO-001', titre: 'Constitution SARL Atlas Conseil',         type: 'CREATION',    statut: 'CLOTURE_DOSSIER',    priorite: 'NORMALE', dossierIdx: 0 },
+    { ref: 'T-DEMO-002', titre: 'Constitution SARL AU Khouribga Holding',  type: 'CREATION',    statut: 'CLOTURE_DOSSIER',    priorite: 'NORMALE', dossierIdx: 1 },
+    { ref: 'T-DEMO-003', titre: 'Constitution Maroc Telecom Services',     type: 'CREATION',    statut: 'DEROULEMENT_DEMARCHE',   priorite: 'HAUTE',   dossierIdx: 2 },
+    { ref: 'T-DEMO-004', titre: 'Modification capital Casa Digital',       type: 'MODIFICATION', statut: 'GENERATION_DOCUMENTS',  priorite: 'NORMALE', dossierIdx: 3 },
+    { ref: 'T-DEMO-005', titre: 'Changement gerant Marrakech Tourism',     type: 'MODIFICATION', statut: 'CREATION_TICKET',   priorite: 'BASSE',   dossierIdx: 4 },
+    { ref: 'T-DEMO-006', titre: 'Dissolution Fes Patrimoine Immobilier',   type: 'DISSOLUTION', statut: 'CLOTURE_DOSSIER',    priorite: 'NORMALE', dossierIdx: 7 },
+    { ref: 'T-DEMO-007', titre: 'Liquidation Oujda Mining Ventures',       type: 'LIQUIDATION', statut: 'DEROULEMENT_DEMARCHE',   priorite: 'HAUTE',   dossierIdx: 8 },
+    { ref: 'T-DEMO-008', titre: 'AGO 2025 Atlas Conseil',                  type: 'PV_AGO',      statut: 'CREATION_TICKET',    priorite: 'NORMALE', dossierIdx: 0 },
+    { ref: 'T-DEMO-009', titre: 'Ouverture succursale Tanger Med',         type: 'SUCCURSALE_MA', statut: 'DEROULEMENT_DEMARCHE', priorite: 'NORMALE', dossierIdx: 5 },
     { ref: 'T-DEMO-010', titre: 'Annule : doublon Agadir Maritime',        type: 'CREATION',    statut: 'ANNULE',     priorite: 'BASSE',   dossierIdx: 6 },
 ];
 
@@ -193,11 +193,12 @@ const TICKETS = [
                 id = randomUUID();
                 await client.query(`
                     INSERT INTO users
-                        (id, workspace_id, email, password_hash, first_name, last_name,
+                        (id, workspace_id, email, login_email, contact_email, password_hash,
+                         first_name, last_name,
                          role, must_change_password, is_active, totp_enabled, created_at, updated_at,
                          email_verified_at)
                     VALUES
-                        ($1, $2, $3, $4, $5, $6, $7, FALSE, TRUE, FALSE, NOW(), NOW(), NOW())
+                        ($1, $2, $3, $3, $3, $4, $5, $6, $7, FALSE, TRUE, FALSE, NOW(), NOW(), NOW())
                 `, [id, workspaceId, u.email, BCRYPT_DEMO_2026, u.first, u.last, u.role]);
             }
             userIds[u.email] = id;
@@ -244,7 +245,7 @@ const TICKETS = [
                 [workspaceId, t.ref]);
             const assigne = t.dossierIdx % 2 === 0 ? employe1 : employe2;
             const dossierId = dossierIds[t.dossierIdx];
-            const closingDate = t.statut === 'CLOTURE' ? 'NOW() - INTERVAL \'7 days\'' : 'NULL';
+            const closingDate = t.statut === 'CLOTURE_DOSSIER' ? 'NOW() - INTERVAL \'7 days\'' : 'NULL';
             if (existing.rowCount > 0) {
                 await client.query(`
                     UPDATE tickets SET titre = $1, type = $2, statut = $3,
