@@ -96,6 +96,20 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   1.32 -> « Could not find a valid Docker environment ». Les 17 classes `*IT`/`*E2ETest`/
   `RagCorpus...Test` ne tournent donc qu'en CI (Docker plus ancien). A lever par un bump de
   Testcontainers. En local, se limiter aux tests unitaires (surefire hors Testcontainers).
+- **`out-of-order: true` : une cle qui ouvre plus que sa serrure.** Active sur CINQ services
+  (ai, dashboard, workflow, dataroom, ticket) depuis l'import initial — jamais restreint a
+  ticket. Elle affaiblit durablement la garantie d'ordre : une migration de version inferieure
+  « oubliee » s'appliquera tard, sans bruit. La migration `V23_1` (ticket) en depend UNIQUEMENT
+  pour se poser sur une base deja passee a V26 (le Z440) ; une base vierge applique V23_1 dans
+  l'ordre, sans ce drapeau. Condition pour retirer cette dependance cote ticket : quand toutes
+  les bases vivantes portent V23_1 dans `flyway_history_ticket`. Revoir (voire desactiver) le
+  drapeau sur les 4 autres services est un chantier distinct, a instruire.
+- **Inventaire de derive — base Z440.** `flyway_history_ticket` du serveur porte l'empreinte de
+  l'ANCIEN V24 (variante videe, commit f8e09e0) et d'un V26 relache transitoire, tous deux
+  divergents du V24/V26 restaures au depot (4887fdb). `validate-on-migrate: false` le masque :
+  c'est le motif recurrent — un ecart reel que rien ne signale. La DONNEE, elle, est correcte
+  (V26 a bien cable taxe pro / CNSS). A resorber en rejouant ticket sur une base vierge, ou a
+  accepter en connaissance de cause tant que le Z440 reste une base de developpement.
 
 ## Documents de reference V2
 
