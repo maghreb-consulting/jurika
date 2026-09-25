@@ -33,6 +33,11 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    # jurika_db est partagee entre plusieurs services : quand auth migre, le schema public
+    # est deja peuple par d'autres services. baseline-on-migrate poserait alors un baseline
+    # a la version 1 (defaut) et SAUTERAIT V1__init_auth_schema (workspaces/users/subscriptions,
+    # le schema racine). baseline-version: 0 garantit que V1 s'applique toujours. Voir CLAUDE.md.
+    baseline-version: 0
     locations: classpath:db/migration
     table: flyway_history_auth
     validate-on-migrate: false

@@ -158,6 +158,9 @@ services:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       minio: { condition: service_healthy }
+      # auth-service cree le schema racine partage (workspaces/users) dans jurika_db :
+      # ticket-service le reference et doit donc migrer apres lui.
+      auth-service: { condition: service_healthy }
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:8082/actuator/health/readiness"]
       interval: 30s
@@ -190,6 +193,9 @@ services:
       discovery-service: { condition: service_healthy }
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
+      # auth-service cree le schema racine partage (workspaces) dans jurika_db :
+      # workflow-service le reference et doit donc migrer apres lui.
+      auth-service: { condition: service_healthy }
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:8083/actuator/health/readiness"]
       interval: 30s
@@ -235,6 +241,9 @@ services:
       # kie-service est optionnel — l'extraction d'identité tombe en 503 si absent
       # (le reste de la Data Room continue de fonctionner).
       kie-service: { condition: service_started }
+      # auth-service cree le schema racine partage (workspaces) dans jurika_db :
+      # dataroom-service le reference et doit donc migrer apres lui.
+      auth-service: { condition: service_healthy }
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:8084/actuator/health/readiness"]
       interval: 30s

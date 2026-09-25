@@ -93,7 +93,9 @@ services:
   # MINIO (S3-compatible Object Storage)
   # ══════════════════════════════════════════════════
   minio:
-    image: minio/minio:latest
+    # Image epinglee par digest (deterministe, reproductible, pas de pull de :latest qui derive).
+    # Digest de l'image validee localement sur le serveur.
+    image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
     container_name: jurika-minio
     restart: unless-stopped
     ports:

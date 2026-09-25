@@ -518,12 +518,14 @@ VALUES ('CREATION', 23, 'S3', 'Déroulement de la démarche',
         'Demande d''inscription à la taxe professionnelle — dépôt', 'DEROULEMENT_DEMARCHE', NULL, NULL, 'O', 'Tous dossiers',
         NULL, 'Demande d''inscription à la taxe professionnelle',
         'Récépissé de dépôt de la demande', 'DEMANDE_TAXE_PROFESSIONNELLE (livré)',
-        'Dans les 30 jours du début d''activité', NULL, NULL, 30, 'JOURS', NULL, 'TAXE_PROFESSIONNELLE', 'DEPOT', TRUE);
---   delai « Dans les 30 jours du debut d'activite » -> depart = $DATE_DEBUT_ACTIVITE, saisi au parcours (etape 7)
---   lecture alternative : la date d'immatriculation, si le cabinet estime que l'activite commence a l immatriculation et non a la date declaree
---   point de depart = la DONNEE $DATE_DEBUT_ACTIVITE, et non le cochage
---   d une autre ligne. La colonne `delai_reference_donnee` est posee par V26 :
---   elle n existe pas encore au moment ou cette migration s execute.
+        'Dans les 30 jours du début d''activité', NULL, NULL, NULL, NULL, NULL, 'TAXE_PROFESSIONNELLE', 'DEPOT', TRUE);
+--   delai « Dans les 30 jours du debut d'activite » -> depart = la DONNEE $DATE_DEBUT_ACTIVITE
+--   (saisi au parcours, etape 7), et non le cochage d'une autre ligne.
+--   lecture alternative : la date d'immatriculation, si le cabinet estime que l'activite
+--   commence a l'immatriculation et non a la date declaree.
+--   Le delai reste AVEUGLE ici (valeur/unite laissees NULL) : le mecanisme d'ancrage sur une
+--   donnee (colonne delai_reference_donnee + assouplissement de chk_delai_complet) est pose
+--   par V26. Poser (30,'JOURS',NULL) ici violerait chk_delai_complet, creee par V20.
 INSERT INTO demarches_justificatifs (demarche_id, alternative_groupe, document_type, libelle)
 SELECT id, 1, 'RECEPISSE_DEPOT', 'Récépissé de dépôt de la demande'
   FROM demarches_referentiel WHERE workflow_type = 'CREATION' AND ordre = 23;
@@ -677,12 +679,13 @@ VALUES ('CREATION', 32, 'S3', 'Déroulement de la démarche',
         'Affiliation à la CNSS et inscription aux téléservices DAMANCOM — dépôt', 'DEROULEMENT_DEMARCHE', NULL, NULL, 'O', 'Tous dossiers',
         NULL, 'Demande d''affiliation employeur',
         'Récépissé de dépôt de la demande', 'DEMANDE_AFFILIATION_CNSS (livré)',
-        'Dans les 30 jours du début d''activité ou de la première embauche', NULL, '$CNSS_DATE_PREMIER_SALARIE, $CNSS_MODE_DECLARATION', 30, 'JOURS', NULL, 'AFFILIATION_CNSS', 'DEPOT', TRUE);
---   delai « Dans les 30 jours du debut d'activite ou de la premiere embauche » -> depart = $DATE_DEBUT_ACTIVITE, saisi au parcours (etape 7)
---   lecture alternative : $CNSS_DATE_PREMIER_SALARIE, deja saisi, pour la branche « premiere embauche »
---   point de depart = la DONNEE $DATE_DEBUT_ACTIVITE, et non le cochage
---   d une autre ligne. La colonne `delai_reference_donnee` est posee par V26 :
---   elle n existe pas encore au moment ou cette migration s execute.
+        'Dans les 30 jours du début d''activité ou de la première embauche', NULL, '$CNSS_DATE_PREMIER_SALARIE, $CNSS_MODE_DECLARATION', NULL, NULL, NULL, 'AFFILIATION_CNSS', 'DEPOT', TRUE);
+--   delai « Dans les 30 jours du debut d'activite ou de la premiere embauche » -> depart = la
+--   DONNEE $DATE_DEBUT_ACTIVITE (saisi au parcours, etape 7), et non le cochage d'une autre ligne.
+--   lecture alternative : $CNSS_DATE_PREMIER_SALARIE, deja saisi, pour la branche « premiere embauche ».
+--   Le delai reste AVEUGLE ici (valeur/unite laissees NULL) : le mecanisme d'ancrage sur une
+--   donnee (colonne delai_reference_donnee + assouplissement de chk_delai_complet) est pose
+--   par V26. Poser (30,'JOURS',NULL) ici violerait chk_delai_complet, creee par V20.
 INSERT INTO demarches_justificatifs (demarche_id, alternative_groupe, document_type, libelle)
 SELECT id, 1, 'RECEPISSE_DEPOT', 'Récépissé de dépôt de la demande'
   FROM demarches_referentiel WHERE workflow_type = 'CREATION' AND ordre = 32;

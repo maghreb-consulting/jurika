@@ -107,7 +107,11 @@ CREATE INDEX idx_password_reset_user ON password_reset_tokens (user_id);
 -- ---------------------------------------------------------------------
 -- 6. AUDIT_LOG (CNDP Loi 09-08 : tracabilite des actions sensibles)
 -- ---------------------------------------------------------------------
-CREATE TABLE audit_log (
+-- audit_log est une table PARTAGEE (plusieurs services l'alimentent, cf. ai V13, ticket V5,
+-- dataroom V9, auth V8). Sa creation doit etre idempotente : selon l'ordre de demarrage, un
+-- autre service peut l'avoir deja creee. On aligne V1 sur la convention IF NOT EXISTS du reste
+-- du corpus (auth reste le proprietaire du schema racine, cf. CLAUDE.md).
+CREATE TABLE IF NOT EXISTS audit_log (
     id              BIGSERIAL PRIMARY KEY,
     workspace_id    UUID,
     user_id         UUID,
@@ -119,9 +123,9 @@ CREATE TABLE audit_log (
     metadata        JSONB,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_audit_log_workspace ON audit_log (workspace_id, created_at DESC);
-CREATE INDEX idx_audit_log_user      ON audit_log (user_id, created_at DESC);
-CREATE INDEX idx_audit_log_action    ON audit_log (action, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_workspace ON audit_log (workspace_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_user      ON audit_log (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_action    ON audit_log (action, created_at DESC);
 
 -- ---------------------------------------------------------------------
 -- 7. ROW LEVEL SECURITY (multi-tenancy)
@@ -157,6 +161,7 @@ CREATE POLICY password_reset_isolation ON password_reset_tokens
     USING (workspace_id = NULLIF(current_setting('app.current_workspace_id', TRUE), '')::uuid)
     WITH CHECK (workspace_id = NULLIF(current_setting('app.current_workspace_id', TRUE), '')::uuid);
 
+DROP POLICY IF EXISTS audit_log_isolation ON audit_log;
 CREATE POLICY audit_log_isolation ON audit_log
     FOR ALL
     USING (workspace_id IS NULL OR workspace_id = NULLIF(current_setting('app.current_workspace_id', TRUE), '')::uuid)

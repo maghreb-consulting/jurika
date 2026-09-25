@@ -3,7 +3,6 @@ package ma.jurika.dataroom.infrastructure.storage;
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,16 +25,20 @@ public class MinioConfig {
 
     @Bean
     public MinioClient minioClient() {
-        return MinioClient.builder()
+        MinioClient client = MinioClient.builder()
                 .endpoint(endpoint)
                 .credentials(accessKey, secretKey)
                 .build();
+        // Bootstrap du bucket a la creation du bean, avec le client qu'on vient de construire.
+        // Avant : @PostConstruct appelait minioClient() (methode @Bean proxifiee) pendant sa propre
+        // initialisation -> « bean currently in creation », capte et avale en WARN -> le bucket
+        // n'etait jamais cree sur un MinIO neuf, et l'indicateur de sante minio restait DOWN.
+        ensureBucket(client);
+        return client;
     }
 
-    @PostConstruct
-    public void ensureBucket() {
+    private void ensureBucket(MinioClient client) {
         try {
-            MinioClient client = minioClient();
             boolean exists = client.bucketExists(BucketExistsArgs.builder().bucket(bucket).build());
             if (!exists) {
                 client.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());

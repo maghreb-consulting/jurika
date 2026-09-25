@@ -60,6 +60,7 @@ COMPOSE_ARGS=(
   -f infrastructure/docker-compose.yml
   -f infrastructure/docker-compose.services.yml
   -f infrastructure/docker-compose.local.yml
+  --env-file .env
   --env-file .env.local
   -p jurika-local
 )
