@@ -45,6 +45,11 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
    inoperant** — test qui surveille du code mort, healthcheck qui ne s'execute pas, valeur de
    repli qui masque une donnee absente, cle presente mais fausse, baseline Flyway qui saute une
    migration fondatrice.
+10. **L'execution qui marche ne remplace pas la suite qui passe.** Une pile 18/18 saine, un
+    smoke-test vert et une extraction reussie ne valent pas `mvn -o clean verify -Pit` complet.
+    Le 2026-09-25, un correctif pousse sans avoir lance le verify a casse la CI (tests unitaires
+    de contenu des migrations qui affirmaient l'etat d'avant). Verify complet et vert AVANT tout
+    push, sans exception.
 
 ## Corpus documentaires (source de verite metier)
 
@@ -82,6 +87,15 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   demarrage sur base vierge (auth cree le schema racine, les autres migrent apres, buckets et
   seeds crees) n'est verifie par rien aujourd'hui. A prevoir : un controle CI de premier
   demarrage (up complet sur volumes neufs + attente 18/18 sain), independant de ce lot.
+- **Bump des actions CI** : `setup-java@v5`, et les versions d'actions ciblant Node 24 (les
+  actions actuelles s'appuient sur des runtimes en fin de vie).
+- **Nettoyage du lint frontend herite** : `frontend-react` porte des avertissements de lint
+  preexistants (bruit dans les annotations CI), a resorber independamment.
+- **ITs Testcontainers injouables en local sur le serveur Z440** : Docker Engine 29 impose une
+  API >= 1.40, or le docker-java embarque par la version actuelle de Testcontainers negocie en
+  1.32 -> « Could not find a valid Docker environment ». Les 17 classes `*IT`/`*E2ETest`/
+  `RagCorpus...Test` ne tournent donc qu'en CI (Docker plus ancien). A lever par un bump de
+  Testcontainers. En local, se limiter aux tests unitaires (surefire hors Testcontainers).
 
 ## Documents de reference V2
 

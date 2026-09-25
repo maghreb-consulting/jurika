@@ -58,19 +58,6 @@ ALTER TABLE demarches_referentiel
     ADD CONSTRAINT ck_demarches_un_seul_point_de_depart
     CHECK (delai_reference_ordre IS NULL OR delai_reference_donnee IS NULL);
 
--- chk_delai_complet (creee par V20) exigeait delai_reference_ordre des qu'un delai etait pose
--- (valeur + unite + reference_ordre : tout ou rien). Un delai ancre sur une DONNEE n'a pas de
--- reference_ordre — l'UPDATE ci-dessous pose (30,'JOURS') sans ordre et violerait cette contrainte.
--- On la remplace pour n'exiger que le couple valeur/unite ; le point de depart (ordre OU donnee)
--- est facultatif et gouverne par ck_demarches_un_seul_point_de_depart ci-dessus. Un delai sans
--- point de depart reste AVEUGLE (aucune echeance calculee), conformement a « aucune date fabriquee ».
-ALTER TABLE demarches_referentiel
-    DROP CONSTRAINT IF EXISTS chk_delai_complet;
-ALTER TABLE demarches_referentiel
-    ADD CONSTRAINT chk_delai_complet CHECK (
-        (delai_valeur IS NULL AND delai_unite IS NULL)
-     OR (delai_valeur IS NOT NULL AND delai_unite IS NOT NULL));
-
 -- ---------------------------------------------------------------------
 -- Les deux lignes concernées.
 --
