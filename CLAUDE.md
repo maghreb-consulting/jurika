@@ -1,8 +1,8 @@
 # CLAUDE.md — regles de travail sur le depot JURIKA (cabinet, V2)
 
-Ce fichier est lu au demarrage de chaque session. Il condense les regles de methode
-du document d'amorcage `docs/refonte-v2/CONTEXTE_PROJET_JURIKA.md` (a lire en entier au
-besoin). Tout est en ASCII pur (voir regle 6).
+Ce fichier est lu au demarrage de chaque session. Il condense les regles de methode du
+projet ; le document d'amorcage de reference est `~/docs/CAHIER_DES_CHARGES_JURIKA.md` (puis
+`~/docs/ANNEXE_TECHNIQUE_JURIKA.md`), a lire au besoin. Tout est en ASCII pur (voir regle 6).
 
 ## Ce qu'est JURIKA (rappel bref)
 
@@ -53,10 +53,16 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
 
 ## Corpus documentaires (source de verite metier)
 
+- Corpus de reference courant : `~/corpus/CORPUS_2026-10-03` (lire son `00_LISEZ_MOI.md`).
+  222 modeles, 12 matrices avec un onglet « Demarches », dictionnaire unique
+  `00_COMMUN/DICTIONNAIRE_UNIQUE_VARIABLES.xlsx`.
+- Le corpus est une **donnee versionnee** : chaque nouvelle version est un **nouveau dossier
+  date**, jamais une modification en place. Les anciennes livraisons de `~/corpus` (ex.
+  `LIVRAISON_2026-09-09`, `modifications_v2`) sont des **archives** — ne pas les utiliser
+  comme reference.
 - Gabarits du cabinet **intouchables** : tout ecart se **rapporte**, jamais ne se corrige en
-  silence. Les `.docx` sont la source d'execution, les `.md` des references.
-- Chaque livraison est datee et accompagnee d'une note ; tout changement de convention
-  s'annonce. La livraison du 3 septembre est ecartee (decision direction).
+  silence. Les `.docx` (`GABARITS_WORD/`) sont la source d'execution, les `.md` (`MODELES_MD/`)
+  des references.
 - La validation du directeur couvre le **contenu juridique**, pas la mecanique de balisage :
   les incoherences mecaniques sont attendues et se rapportent.
 
@@ -111,8 +117,10 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   (V26 a bien cable taxe pro / CNSS). A resorber en rejouant ticket sur une base vierge, ou a
   accepter en connaissance de cause tant que le Z440 reste une base de developpement.
 
-## Documents de reference V2
+## Documents de reference
 
-- `docs/refonte-v2/CONTEXTE_PROJET_JURIKA.md` — contexte complet + methode (source de ce fichier).
-- `CAHIER_DES_CHARGES_JURIKA_V2.md` — regles de gestion completes.
-- `GUIDE_REFONTE_JURIKA_V2.md` — ordre des lots.
+- `~/docs/CAHIER_DES_CHARGES_JURIKA.md` — cahier des charges final, qui **fait foi** (regles de
+  gestion completes).
+- `~/docs/ANNEXE_TECHNIQUE_JURIKA.md` — annexe technique.
+- Les anciens documents de `~/docs/archives/` sont des **archives** — ne pas les utiliser comme
+  reference.
