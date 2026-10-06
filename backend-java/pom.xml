@@ -44,7 +44,7 @@
         <googleauth.version>1.5.0</googleauth.version>
         <zxing.version>3.5.3</zxing.version>
         <springdoc.version>2.7.0</springdoc.version>
-        <testcontainers.version>1.20.4</testcontainers.version>
+        <testcontainers.version>1.21.4</testcontainers.version>
         <logstash-encoder.version>7.4</logstash-encoder.version>
         <sentry.version>7.14.0</sentry.version>
         <twilio.version>10.6.0</twilio.version>
