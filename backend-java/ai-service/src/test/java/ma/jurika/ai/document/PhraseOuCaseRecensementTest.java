@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>Ce test ne se contente pas de vérifier la nouvelle règle : il MESURE ce
  * qu'elle déplace. Il rejoue l'ancienne et la nouvelle sur chaque occurrence de
  * variable des 23 gabarits, et écrit la liste des variables qui changent de
- * classement dans {@code output/lotA/RECENSEMENT_PHRASE_CASE.md}. Un assouplissement
+ * classement dans {@code target/output/lotA/RECENSEMENT_PHRASE_CASE.md}. Un assouplissement
  * qu'on ne sait pas chiffrer n'est pas un assouplissement, c'est un pari.
  */
 class PhraseOuCaseRecensementTest {
@@ -201,7 +201,7 @@ class PhraseOuCaseRecensementTest {
 
         md.append(releveDesMarqueurs());
 
-        Path sortie = Path.of(System.getProperty("lotA.sortie", "../../output/lotA"))
+        Path sortie = Path.of(System.getProperty("lotA.sortie", "target/output/lotA"))
                 .toAbsolutePath().normalize();
         Files.createDirectories(sortie);
         Path fichier = sortie.resolve("RECENSEMENT_PHRASE_CASE.md");
@@ -304,8 +304,8 @@ class PhraseOuCaseRecensementTest {
     }
 
     /**
-     * Les six variables qui s'impriment en rouge sur les échantillons versionnés
-     * de {@code docs/v2/sample_outputs/}, nommément.
+     * Les six variables qui s'impriment en rouge sur les échantillons DGI,
+     * nommément.
      *
      * <p>Ce sont elles qu'on relit avant de commiter : chacune doit être une
      * PHRASE, sans quoi le marqueur rouge n'a rien à faire sur un imprimé

@@ -123,7 +123,7 @@ class FicheClientPdfTest {
     void ecrit_un_exemplaire_pour_validation_visuelle() throws Exception {
         byte[] pdf = new FicheClientPdf(completeView("ACTIVE")).generate();
         try {
-            Path out = Path.of("C:", "dev", "JURIKA", "output", "Fiche_Client_SAMPLE.pdf");
+            Path out = Path.of("target", "samples", "Fiche_Client_SAMPLE.pdf");
             Files.createDirectories(out.getParent());
             Files.write(out, pdf);
         } catch (Exception ignore) {

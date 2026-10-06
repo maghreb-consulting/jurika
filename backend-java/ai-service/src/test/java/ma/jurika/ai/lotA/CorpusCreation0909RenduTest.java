@@ -47,7 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * corpus n'ayant pas d'entrée de manifeste, {@code generate(code, vars)} ne
  * saurait pas le résoudre.
  *
- * <p>Le relevé est écrit dans {@code output/lotA/temoins/} — c'est lui, pas le
+ * <p>Le relevé est écrit dans {@code target/output/lotA/temoins/} — c'est lui, pas le
  * vert du test, qui constitue le livrable de la phase 7.
  */
 class CorpusCreation0909RenduTest {
@@ -86,7 +86,7 @@ class CorpusCreation0909RenduTest {
     @Test
     void les_23_gabarits_rendus_sur_quatre_dossiers_temoins() throws Exception {
         Path sortie = Path.of(System.getProperty("lotA.sortie",
-                "../../output/lotA/temoins")).toAbsolutePath().normalize();
+                "target/output/lotA/temoins")).toAbsolutePath().normalize();
         Files.createDirectories(sortie);
 
         DocxTemplateEngine engine = new DocxTemplateEngine();

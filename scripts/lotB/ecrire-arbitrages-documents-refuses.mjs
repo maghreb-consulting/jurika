@@ -6,7 +6,8 @@
  *   node scripts/lotB/ecrire-arbitrages-documents-refuses.mjs
  *
  * Les phrases sont reprises VERBATIM du rapport du parcours temoin
- * (`output/lotB/temoin/refus-SARL.md`), lui-meme ecrit a partir du texte
+ * (`backend-java/ai-service/target/output/lotB/temoin/refus-SARL.md`, ecrit par
+ * ParcoursCreationTemoinTest), lui-meme ecrit a partir du texte
  * reellement extrait des `.docx` produits. Aucune n'est retapee : une citation
  * approximative dans un document d'arbitrage ferait trancher sur autre chose que
  * ce que le gabarit ecrit.
@@ -20,7 +21,7 @@ import path from 'node:path';
 const RACINE = path.resolve(process.argv[2] ?? '.');
 const CATALOGUE = path.join(RACINE,
   'backend-java/ai-service/src/main/resources/templates/v2/creation-champs.json');
-const REFUS = path.join(RACINE, 'output/lotB/temoin/refus-SARL.md');
+const REFUS = path.join(RACINE, 'backend-java/ai-service/target/output/lotB/temoin/refus-SARL.md');
 const SORTIE = path.join(RACINE, 'output/lotB/arbitrages-documents-refuses.md');
 
 const cat = JSON.parse(fs.readFileSync(CATALOGUE, 'utf8'));
@@ -326,8 +327,8 @@ L.push('Si vous choisissez **rubrique laissée vide**, la mention disparaîtra d
 L.push('');
 L.push('Les cinquante-cinq variables sans source du corpus complet — dont les vingt-deux '
   + 'ci-dessus — sont listées dans `output/lotB/variables-sans-source.md`. Le détail des '
-  + 'refus, document par document, est dans `output/lotB/temoin/refus-SARL.md` et '
-  + '`refus-SARL_AU.md` : les deux listes sont identiques.');
+  + 'refus, document par document, est dans le relevé témoin des refus, produit par les '
+  + 'tests (formes SARL et SARL AU) : les deux listes sont identiques.');
 L.push('');
 
 fs.writeFileSync(SORTIE, L.join('\n'), 'utf8');

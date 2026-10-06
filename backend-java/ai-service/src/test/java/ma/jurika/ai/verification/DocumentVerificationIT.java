@@ -52,7 +52,7 @@ import java.util.regex.Pattern;
  *   <li>Charge la fixture JSON (workflow-fixtures/&lt;workflow&gt;.json)</li>
  *   <li>mapper.map(templateCode, payload) → Map&lt;String,Object&gt;</li>
  *   <li>DocxTemplateEngine.generate(templateCode, variables) → bytes</li>
- *   <li>Sauvegarde dans docs/v2/sample_outputs/&lt;CODE&gt;.docx</li>
+ *   <li>Sauvegarde dans target/sample_outputs/&lt;CODE&gt;.docx</li>
  *   <li>Re-parse via XWPFDocument, vérifie absence ${UPPER_VAR} et ▶ NOM résiduels</li>
  *   <li>Émet un rapport JSON dans target/document-verification-report.json</li>
  * </ol>
@@ -108,8 +108,7 @@ class DocumentVerificationIT {
         DocxTemplateEngine engine = new DocxTemplateEngine(loader);
 
         // ── 2. Préparer le dossier sample_outputs ──
-        Path projectRoot = findProjectRoot();
-        Path sampleOutputs = projectRoot.resolve("docs/v2/sample_outputs");
+        Path sampleOutputs = Paths.get("target/sample_outputs");
         Files.createDirectories(sampleOutputs);
 
         // ── 3. Itérer sur les bindings ──
@@ -258,23 +257,6 @@ class DocumentVerificationIT {
             }
             return JSON.readValue(is, new TypeReference<Map<String, Object>>() {});
         }
-    }
-
-    private Path findProjectRoot() {
-        // Le working dir du test est typically backend-java/ai-service.
-        // On remonte jusqu'à trouver le dossier "docs/v2" ou "projet" parent.
-        Path cwd = Paths.get(".").toAbsolutePath().normalize();
-        Path probe = cwd;
-        for (int i = 0; i < 8; i++) {
-            if (Files.isDirectory(probe.resolve("docs/v2"))) {
-                return probe;
-            }
-            Path parent = probe.getParent();
-            if (parent == null) break;
-            probe = parent;
-        }
-        // Fallback : retourner cwd (les fichiers iront sous ai-service/docs/v2/sample_outputs).
-        return cwd;
     }
 
     private String extractAllText(XWPFDocument doc) {

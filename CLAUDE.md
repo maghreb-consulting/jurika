@@ -111,6 +111,11 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   c'est le motif recurrent — un ecart reel que rien ne signale. La DONNEE, elle, est correcte
   (V26 a bien cable taxe pro / CNSS). A resorber en rejouant ticket sur une base vierge, ou a
   accepter en connaissance de cause tant que le Z440 reste une base de developpement.
+- FicheClientPdfTest et DeboursPdfGeneratorTest avalent les erreurs d'écriture (catch (Exception ignore)) : à remplacer par un échec ou un journal explicite.
+- **4 tests ai-service ignores faute de LibreOffice sur le serveur Z440** :
+  `DocxToPdfConverterTest.real_conversion_produces_valid_pdf_when_libreoffice_installed`
+  (`@EnabledIf("hasLibreOffice")`) et les 3 tests de `HtmlToPdfConverterTest` (assumption
+  « LibreOffice absent »). La conversion PDF n'est donc jamais verifiee par `verify -Pit` ici.
 
 ## Documents de reference
 
