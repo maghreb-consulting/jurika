@@ -165,7 +165,7 @@ class DeboursPdfGeneratorTest {
     private static void writeSample(String filename, byte[] pdf) {
         assertThat(pdf).isNotEmpty();
         try {
-            Path out = Path.of("C:", "dev", "JURIKA", "output", filename);
+            Path out = Path.of("target", "samples", filename);
             Files.createDirectories(out.getParent());
             Files.write(out, pdf);
         } catch (Exception ignore) {

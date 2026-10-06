@@ -97,11 +97,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   actions actuelles s'appuient sur des runtimes en fin de vie).
 - **Nettoyage du lint frontend herite** : `frontend-react` porte des avertissements de lint
   preexistants (bruit dans les annotations CI), a resorber independamment.
-- **ITs Testcontainers injouables en local sur le serveur Z440** : Docker Engine 29 impose une
-  API >= 1.40, or le docker-java embarque par la version actuelle de Testcontainers negocie en
-  1.32 -> « Could not find a valid Docker environment ». Les 17 classes `*IT`/`*E2ETest`/
-  `RagCorpus...Test` ne tournent donc qu'en CI (Docker plus ancien). A lever par un bump de
-  Testcontainers. En local, se limiter aux tests unitaires (surefire hors Testcontainers).
 - **`out-of-order: true` : une cle qui ouvre plus que sa serrure.** Active sur CINQ services
   (ai, dashboard, workflow, dataroom, ticket) depuis l'import initial — jamais restreint a
   ticket. Elle affaiblit durablement la garantie d'ordre : une migration de version inferieure
@@ -116,6 +111,11 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   c'est le motif recurrent — un ecart reel que rien ne signale. La DONNEE, elle, est correcte
   (V26 a bien cable taxe pro / CNSS). A resorber en rejouant ticket sur une base vierge, ou a
   accepter en connaissance de cause tant que le Z440 reste une base de developpement.
+- FicheClientPdfTest et DeboursPdfGeneratorTest avalent les erreurs d'écriture (catch (Exception ignore)) : à remplacer par un échec ou un journal explicite.
+- **4 tests ai-service ignores faute de LibreOffice sur le serveur Z440** :
+  `DocxToPdfConverterTest.real_conversion_produces_valid_pdf_when_libreoffice_installed`
+  (`@EnabledIf("hasLibreOffice")`) et les 3 tests de `HtmlToPdfConverterTest` (assumption
+  « LibreOffice absent »). La conversion PDF n'est donc jamais verifiee par `verify -Pit` ici.
 
 ## Documents de reference
 

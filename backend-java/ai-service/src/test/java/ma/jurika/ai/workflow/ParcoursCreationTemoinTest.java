@@ -47,13 +47,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>que les cases à cocher suivent la donnée.</li>
  * </ul>
  *
- * <p>Les documents produits sont écrits dans {@code output/lotB/temoin/} avec
+ * <p>Les documents produits sont écrits dans {@code target/output/lotB/temoin/} avec
  * leur texte extrait, pour être relus à la main — c'est ce que le lot demande de
  * rapporter, et un test ne remplace pas cette lecture.
  */
 class ParcoursCreationTemoinTest {
 
-    private static final Path SORTIE = Path.of("../../output/lotB/temoin");
+    private static final Path SORTIE = Path.of("target/output/lotB/temoin");
 
     private final CreationSarlMapper mapper = new CreationSarlMapper();
 
