@@ -41,11 +41,8 @@ public class SmsOtpCodeRepositoryAdapter implements SmsOtpCodeRepository {
     }
 
     @Override
-    public void markUsed(UUID id, Instant usedAt) {
-        repo.findById(id).ifPresent(e -> {
-            e.setUsedAt(usedAt);
-            repo.save(e);
-        });
+    public boolean markUsed(UUID id, Instant usedAt) {
+        return repo.consommer(id, usedAt) == 1;
     }
 
     @Override

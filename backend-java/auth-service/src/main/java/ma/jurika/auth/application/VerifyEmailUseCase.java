@@ -68,9 +68,14 @@ public class VerifyEmailUseCase {
 
         TenantContext.set(token.workspaceId());
 
+        // Lot L0 (E12b) : consommation ATOMIQUE avant les effets (activation,
+        // verification) ; un lien rejoue ou presente deux fois en meme temps
+        // n'est accepte qu'une fois.
+        if (!tokenRepository.markUsed(token.id(), Instant.now())) {
+            throw new ValidationException("EMAIL_VERIFICATION_ALREADY_USED");
+        }
         workspaceRepository.activate(token.workspaceId());
         userRepository.markEmailVerified(token.userId(), Instant.now());
-        tokenRepository.markUsed(token.id(), Instant.now());
 
         auditLogger.log(token.workspaceId(), token.userId(), "EMAIL_VERIFIED", "user",
                 token.userId(), cmd.ipAddress(), cmd.userAgent(),

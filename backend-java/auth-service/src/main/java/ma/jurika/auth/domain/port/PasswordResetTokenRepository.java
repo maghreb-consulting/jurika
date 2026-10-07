@@ -10,7 +10,12 @@ public interface PasswordResetTokenRepository {
 
     Optional<StoredResetToken> findByHash(String tokenHash);
 
-    void markUsed(String tokenHash, Instant when);
+    /**
+     * Lot L0 (E12b) : usage unique ATOMIQUE. Ne modifie la ligne que si le jeton
+     * n'est pas deja utilise ; renvoie {@code true} si cet appel l'a consomme,
+     * {@code false} sinon (rejeu, ou requete concurrente gagnee par une autre).
+     */
+    boolean markUsed(String tokenHash, Instant when);
 
     record StoredResetToken(UUID userId, UUID workspaceId, Instant expiresAt, Instant usedAt) {
         public boolean isUsable(Instant now) {

@@ -138,8 +138,12 @@ public class ResetPasswordUseCase {
         }
 
         TenantContext.set(stored.workspaceId());
+        // Lot L0 (E12b) : le jeton est consomme de facon ATOMIQUE et AVANT tout
+        // effet ; deux confirmations simultanees ne changent le mot de passe qu'une fois.
+        if (!resetTokenRepository.markUsed(hash, Instant.now())) {
+            throw new UnauthorizedException("Token expire ou deja utilise");
+        }
         userRepository.updatePasswordHash(stored.userId(), passwordHasher.hash(newPassword));
-        resetTokenRepository.markUsed(hash, Instant.now());
         refreshTokenRepository.revokeAllForUser(stored.userId(), Instant.now());
 
         auditLogger.log(stored.workspaceId(), stored.userId(), "PASSWORD_RESET_CONFIRMED", "user",

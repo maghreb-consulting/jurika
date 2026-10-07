@@ -24,9 +24,11 @@ public interface EmailVerificationTokenRepository {
     Optional<StoredToken> findByHash(String tokenHash);
 
     /**
-     * Marque un token comme utilise (set used_at = NOW).
+     * Lot L0 (E12b) : usage unique ATOMIQUE. Ne modifie la ligne que si le jeton
+     * n'est pas deja utilise ; renvoie {@code true} si cet appel l'a consomme,
+     * {@code false} sinon (rejeu, ou requete concurrente gagnee par une autre).
      */
-    void markUsed(UUID id, Instant usedAt);
+    boolean markUsed(UUID id, Instant usedAt);
 
     record StoredToken(
             UUID id,
