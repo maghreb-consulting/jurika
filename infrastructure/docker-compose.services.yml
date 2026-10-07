@@ -117,6 +117,9 @@ services:
       # `:?` fait echouer Compose bruyamment plutot que de repartir en silence
       # sur une mauvaise cle -- une divergence de cle ne doit jamais etre muette.
       AES_SECRET_KEY: "${AES_SECRET_KEY:?AES_SECRET_KEY absent, .env doit etre passe en --env-file}"
+      # Lot L0 (E13c) : role d'execution jurika_app (la RLS s'applique). Mot de
+      # passe dedie, obligatoire : Compose echoue bruyamment s'il manque.
+      JURIKA_APP_PASSWORD: "${JURIKA_APP_PASSWORD:?JURIKA_APP_PASSWORD absent, .env.local doit le definir}"
     volumes:
       - ./secrets/jwt:/run/secrets/jwt:ro
     depends_on:

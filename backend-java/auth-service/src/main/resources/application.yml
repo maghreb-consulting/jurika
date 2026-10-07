@@ -16,8 +16,13 @@ spring:
       max-request-size: 2MB
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:jurika_db}
-    username: ${POSTGRES_USER:jurika_user}
-    password: ${POSTGRES_PASSWORD:JurikaDevPass2026}
+    # Lot L0 (E13c) : l'application tourne en role d'execution jurika_app (non
+    # proprietaire, NOSUPERUSER, NOBYPASSRLS) pour que la Row Level Security
+    # s'applique. Mot de passe DEDIE et OBLIGATOIRE : pas de valeur de repli,
+    # le service ne demarre pas sans JURIKA_APP_PASSWORD. Flyway migre avec le
+    # proprietaire (bloc flyway ci-dessous).
+    username: ${JURIKA_APP_DB_USER:jurika_app}
+    password: ${JURIKA_APP_PASSWORD}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
@@ -40,6 +45,9 @@ spring:
     baseline-version: 0
     locations: classpath:db/migration
     table: flyway_history_auth
+    # Lot L0 (E13c) : DDL, politiques et droits exigent le proprietaire.
+    user: ${POSTGRES_USER:jurika_user}
+    password: ${POSTGRES_PASSWORD:JurikaDevPass2026}
     validate-on-migrate: false
     ignore-migration-patterns: "*:missing,*:future"
   data:
