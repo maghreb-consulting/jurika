@@ -19,6 +19,9 @@ public class CheckWorkspaceUseCase {
 
     public record Result(UUID workspaceId, String name) {}
 
+    // Lot L0 (E13a) : lecture en transaction, pour que le workspace pose par
+    // ContexteWorkspacePublic atteigne la RLS.
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public Result execute(String code) {
         Workspace workspace = workspaceRepository.findByCode(code)
                 .orElseThrow(() -> new NotFoundException("Code workspace inconnu"));

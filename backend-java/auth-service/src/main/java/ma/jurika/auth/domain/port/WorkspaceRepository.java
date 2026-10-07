@@ -17,7 +17,11 @@ public interface WorkspaceRepository {
      * Cree un workspace en status PENDING_VERIFICATION.
      * Sera activate via {@link #activate(UUID)} apres clic du lien email.
      */
-    Workspace createPending(String code, String name, String contactEmail, UUID subscriptionId);
+    /**
+     * Lot L0 (E13a) : l'identifiant est fourni par l'appelant ; c'est le
+     * workspace courant (TenantContext), pour que l'INSERT passe la RLS.
+     */
+    Workspace createPending(UUID id, String code, String name, String contactEmail, UUID subscriptionId);
 
     /**
      * Passe le workspace de PENDING_VERIFICATION a ACTIVE.

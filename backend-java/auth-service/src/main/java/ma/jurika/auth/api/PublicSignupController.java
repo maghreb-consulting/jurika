@@ -43,10 +43,14 @@ public class PublicSignupController {
      * tester Brevo / le contenu du welcome.html.
      */
     private final boolean deferCredentialsAllowed;
+    /** Lot L0 (E13a) : le workspace cree devient le workspace courant avant la transaction. */
+    private final ma.jurika.auth.application.ContexteWorkspacePublic contextePublic;
 
     public PublicSignupController(SignupCabinetUseCase signupCabinetUseCase,
-                                   @Value("${jurika.signup.defer-credentials-allowed:true}") boolean deferCredentialsAllowed) {
+                                   @Value("${jurika.signup.defer-credentials-allowed:true}") boolean deferCredentialsAllowed,
+                                   ma.jurika.auth.application.ContexteWorkspacePublic contextePublic) {
         this.signupCabinetUseCase = signupCabinetUseCase;
+        this.contextePublic = contextePublic;
         this.deferCredentialsAllowed = deferCredentialsAllowed;
         if (!deferCredentialsAllowed) {
             log.warn("Signup defer-credentials DESACTIVE par config -- le mail welcome partira AU SIGNUP "
@@ -75,6 +79,7 @@ public class PublicSignupController {
             log.info("Signup defer-credentials demande par le front mais DESACTIVE par config -- mail welcome envoye immediatement.");
         }
 
+        contextePublic.poserNouveauWorkspace();
         SignupCabinetUseCase.Result result = signupCabinetUseCase.execute(
                 new SignupCabinetUseCase.Command(
                         body.getWorkspaceName(),

@@ -29,12 +29,12 @@ public class WorkspaceRepositoryAdapter implements WorkspaceRepository {
 
     @Override
     public Workspace create(String code, String name, String contactEmail, UUID subscriptionId) {
-        return saveWithStatus(code, name, contactEmail, subscriptionId, WorkspaceStatus.ACTIVE);
+        return saveWithStatus(null, code, name, contactEmail, subscriptionId, WorkspaceStatus.ACTIVE);
     }
 
     @Override
-    public Workspace createPending(String code, String name, String contactEmail, UUID subscriptionId) {
-        return saveWithStatus(code, name, contactEmail, subscriptionId, WorkspaceStatus.PENDING_VERIFICATION);
+    public Workspace createPending(UUID id, String code, String name, String contactEmail, UUID subscriptionId) {
+        return saveWithStatus(id, code, name, contactEmail, subscriptionId, WorkspaceStatus.PENDING_VERIFICATION);
     }
 
     @Override
@@ -47,12 +47,16 @@ public class WorkspaceRepositoryAdapter implements WorkspaceRepository {
 
     @Override
     public boolean codeExists(String code) {
-        return jpa.existsByCode(code);
+        // Lot L0 (E13a) : unicite GLOBALE du code, hors RLS (fonction auth V34).
+        return jpa.codeExisteGlobalement(code);
     }
 
-    private Workspace saveWithStatus(String code, String name, String contactEmail,
+    private Workspace saveWithStatus(UUID id, String code, String name, String contactEmail,
                                       UUID subscriptionId, WorkspaceStatus status) {
         WorkspaceEntity entity = new WorkspaceEntity();
+        if (id != null) {
+            entity.setId(id);
+        }
         entity.setCode(code);
         entity.setName(name);
         entity.setContactEmail(contactEmail);

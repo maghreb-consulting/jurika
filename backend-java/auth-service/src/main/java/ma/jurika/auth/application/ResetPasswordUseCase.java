@@ -150,6 +150,11 @@ public class ResetPasswordUseCase {
                 stored.userId(), ip, ua, Map.of());
     }
 
+    /** Empreinte du jeton de reinitialisation, telle que stockee (lot L0 : reutilisee par ContexteWorkspacePublic). */
+    static String empreinte(String jeton) {
+        return sha256Hex(jeton);
+    }
+
     private static String sha256Hex(String input) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")

@@ -196,8 +196,16 @@ public class RegisterWorkspaceUseCase {
 
         // 3. RG-AU26/27 : creation workspace PENDING_VERIFICATION (pas ACTIVE)
         String code = codeGenerator.generateUnique();
+        // Lot L0 (E13a) : le workspace a creer est le workspace COURANT, pose par
+        // l'appelant AVANT la transaction (ContexteWorkspacePublic#poserNouveauWorkspace) :
+        // sans lui, l'INSERT est refuse par la politique RLS workspace_self_access.
+        UUID nouveauWorkspace = TenantContext.get();
+        if (nouveauWorkspace == null) {
+            throw new IllegalStateException("Inscription sans workspace courant : appeler "
+                    + "ContexteWorkspacePublic#poserNouveauWorkspace avant le cas d'usage");
+        }
         Workspace workspace = workspaceRepository.createPending(
-                code, cmd.workspaceName(), cmd.contactEmail(), cmd.subscriptionId());
+                nouveauWorkspace, code, cmd.workspaceName(), cmd.contactEmail(), cmd.subscriptionId());
 
         TenantContext.set(workspace.id());
 
