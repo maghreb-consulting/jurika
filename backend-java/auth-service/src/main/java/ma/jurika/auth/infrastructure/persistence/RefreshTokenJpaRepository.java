@@ -36,6 +36,10 @@ public interface RefreshTokenJpaRepository extends JpaRepository<RefreshTokenEnt
     @Query("DELETE FROM RefreshTokenEntity r WHERE r.expiresAt < :cutoff")
     int deleteExpiredBefore(@Param("cutoff") Instant cutoff);
 
+    /** Lot L0 (E13b) : purge transverse, hors RLS (fonction SECURITY DEFINER auth V34). */
+    @Query(value = "SELECT auth_purge_jetons_refresh(:cutoff)", nativeQuery = true)
+    int purgerExpires(@Param("cutoff") Instant cutoff);
+
     /**
      * Sprint 3 / TASK 2 — detection nouvelle IP/UA. Recherche un refresh_token deja
      * emis depuis le meme {@code ip + user-agent} depuis {@code since}. Comparaison

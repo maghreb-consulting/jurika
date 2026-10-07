@@ -59,7 +59,8 @@ public class AdminAuditController {
         // Filtre par type d'utilisateur (role) : le role n'est pas stocke dans
         // audit_log, on restreint donc aux user_id des utilisateurs de ce role.
         if (role != null && !role.isBlank()) {
-            where.append(" AND user_id IN (SELECT id FROM users WHERE role = ?)");
+            // Lot L0 (E13b) : users est sous RLS ; fonction SECURITY DEFINER (auth V34).
+            where.append(" AND user_id IN (SELECT * FROM admin_utilisateurs_par_role(?))");
             args.add(role.trim());
         }
         if (action != null && !action.isBlank()) {

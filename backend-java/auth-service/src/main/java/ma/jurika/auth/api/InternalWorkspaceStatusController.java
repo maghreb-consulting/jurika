@@ -66,7 +66,10 @@ public class InternalWorkspaceStatusController {
             Instant subscriptionEndsAt
     ) {}
 
+    // Lot L0 (E13b) : en transaction, pour que le workspace du chemin (pose par
+    // ContexteWorkspaceCheminConfig) atteigne la RLS.
     @GetMapping("/{workspaceId}/status")
+    @Transactional(readOnly = true)
     public ResponseEntity<WorkspaceStatusDto> getStatus(@PathVariable UUID workspaceId) {
         WorkspaceEntity ws = workspaceRepo.findById(workspaceId)
                 .orElseThrow(() -> new NotFoundException("Workspace inconnu: " + workspaceId));
@@ -168,6 +171,7 @@ public class InternalWorkspaceStatusController {
      * desactive (property {@code jurika.plan-limits.enabled=false}).
      */
     @GetMapping("/{workspaceId}/usage")
+    @Transactional(readOnly = true)
     public ResponseEntity<UsageSnapshot> getUsage(@PathVariable UUID workspaceId) {
         if (!workspaceRepo.existsById(workspaceId)) {
             throw new NotFoundException("Workspace inconnu: " + workspaceId);

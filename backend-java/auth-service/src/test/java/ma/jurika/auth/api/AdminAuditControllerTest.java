@@ -72,7 +72,9 @@ class AdminAuditControllerTest {
                 .contains("user_id = ?")
                 // Le role n'est PAS stocke dans audit_log : le filtre passe par une
                 // sous-requete sur `users`, pas par une colonne `role = ?`.
-                .contains("user_id IN (SELECT id FROM users WHERE role = ?)")
+                // Lot L0 (E13b) : users est sous RLS ; le filtre passe par la fonction
+                // SECURITY DEFINER admin_utilisateurs_par_role (auth V34).
+                .contains("user_id IN (SELECT * FROM admin_utilisateurs_par_role(?))")
                 .contains("action = ?")
                 .contains("source_service = ?")
                 .contains("created_at >= ?")

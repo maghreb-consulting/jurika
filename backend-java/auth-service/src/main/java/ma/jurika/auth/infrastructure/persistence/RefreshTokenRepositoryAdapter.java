@@ -68,7 +68,9 @@ public class RefreshTokenRepositoryAdapter implements RefreshTokenRepository {
     @Override
     @Transactional
     public int deleteExpired(Instant cutoff) {
-        return jpa.deleteExpiredBefore(cutoff);
+        // Lot L0 (E13b) : entretien sans workspace, transverse par nature ;
+        // fonction SECURITY DEFINER auth_purge_jetons_refresh (auth V34).
+        return jpa.purgerExpires(cutoff);
     }
 
     @Override

@@ -168,6 +168,7 @@ public class AuthController {
      */
     @PostMapping("/invite-client")
     @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR')")
+    @org.springframework.transaction.annotation.Transactional // Lot L0 (E13b) : lecture prealable sous RLS
     public InviteClientResponse inviteClient(@AuthenticationPrincipal AuthenticatedUser user,
                                               @Valid @RequestBody InviteClientRequest req,
                                               HttpServletRequest http) {
@@ -680,6 +681,7 @@ public class AuthController {
 
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true) // Lot L0 (E13b) : lecture sous RLS
     public java.util.Map<String, Object> me(@AuthenticationPrincipal AuthenticatedUser user) {
         // BUG 7 (2026-06-08) — la reponse expose loginEmail (identifiant @jurika.ma,
         // lecture seule cote front) ET contactEmail (modifiable plus tard via un
