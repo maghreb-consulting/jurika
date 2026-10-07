@@ -19,7 +19,9 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
 
 ## Methode de travail (lecons payees — a respecter)
 
-1. **Pas de commit sans feu vert** de l'utilisateur. Une branche par lot. Rapports factuels
+1. **Commits locaux** : les commits locaux sur une branche de lot sont autorises pendant
+   `/lot-executer`, a raison d'un commit par etape validee par les tests. Le push et la fusion
+   restent soumis au feu vert. Aucun commit sur `main`. Une branche par lot. Rapports factuels
    (ce qui est vert, ce qui est rouge, ce qui est saute — sans arrondir).
 2. **Cloture d'un lot** : `mvn -o clean verify -Pit` (le `clean` est obligatoire — un vert
    incremental ne prouve rien sur une suppression) + suite frontend + **lecture des documents
