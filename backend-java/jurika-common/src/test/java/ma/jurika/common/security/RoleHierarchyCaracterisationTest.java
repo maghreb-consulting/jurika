@@ -16,16 +16,14 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Caracterisation (lot L0, etape E2) : constate l'effet REEL de
- * {@link RoleHierarchyAutoConfiguration} sur les gardes {@code @PreAuthorize}
- * telles qu'elles sont ecrites dans les services.
+ * Effet REEL de {@link RoleHierarchyAutoConfiguration} sur les gardes
+ * {@code @PreAuthorize} telles qu'elles sont ecrites dans les services.
  *
- * <p>Etat constate avant L0 : la hierarchie SUPERVISEUR > EMPLOYE ouvre au
- * superviseur toute garde ecrite pour l'employe, y compris sous la forme
- * {@code hasAuthority('ROLE_EMPLOYE')}. Seule la forme
- * {@code hasRole('EMPLOYE') and !hasRole('SUPERVISEUR')} (ticket, workflow)
- * le refuse. Le CDC (section 3.2) veut l'inverse : le superviseur observe
- * sans agir. Ce test sera inverse a l'etape E5 (retrait de l'heritage).
+ * <p>Lot L0, etape E2 : caracterisation de l'etat d'avant (la hierarchie
+ * SUPERVISEUR > EMPLOYE ouvrait au superviseur toute garde ecrite pour
+ * l'employe). Etape E5 : l'heritage est retire, le test est inverse. Le
+ * superviseur observe sans agir (CDC section 3.2) ; le SUPER_ADMIN n'herite
+ * plus des actions de l'employe (section 3.1).
  */
 class RoleHierarchyCaracterisationTest {
 
@@ -39,31 +37,31 @@ class RoleHierarchyCaracterisationTest {
     }
 
     @Test
-    void superviseur_passe_hasAuthority_ROLE_EMPLOYE_par_heritage() {
+    void superviseur_refuse_sur_hasAuthority_ROLE_EMPLOYE() {
         runner.run(ctx -> {
             authentifier("ROLE_SUPERVISEUR");
             GardesEmploye gardes = ctx.getBean(GardesEmploye.class);
-            assertThatCode(gardes::hasAuthorityEmploye).doesNotThrowAnyException();
+            assertThatThrownBy(gardes::hasAuthorityEmploye).isInstanceOf(AccessDeniedException.class);
         });
     }
 
     @Test
-    void superviseur_passe_hasRole_EMPLOYE_par_heritage() {
+    void superviseur_refuse_sur_hasRole_EMPLOYE() {
         runner.run(ctx -> {
             authentifier("ROLE_SUPERVISEUR");
             GardesEmploye gardes = ctx.getBean(GardesEmploye.class);
-            assertThatCode(gardes::hasRoleEmploye).doesNotThrowAnyException();
+            assertThatThrownBy(gardes::hasRoleEmploye).isInstanceOf(AccessDeniedException.class);
         });
     }
 
     @Test
-    void superviseur_passe_hasAnyAuthority_EMPLOYE_SUPER_ADMIN_par_heritage() {
+    void superviseur_refuse_sur_hasAnyAuthority_EMPLOYE_SUPER_ADMIN() {
         // Forme de WorkflowDocumentController:163, DocumentController:60,
         // DocumentRenderController:70,107 (generation d'actes).
         runner.run(ctx -> {
             authentifier("ROLE_SUPERVISEUR");
             GardesEmploye gardes = ctx.getBean(GardesEmploye.class);
-            assertThatCode(gardes::hasAnyAuthorityEmployeOuSuperAdmin).doesNotThrowAnyException();
+            assertThatThrownBy(gardes::hasAnyAuthorityEmployeOuSuperAdmin).isInstanceOf(AccessDeniedException.class);
         });
     }
 
@@ -74,6 +72,25 @@ class RoleHierarchyCaracterisationTest {
             authentifier("ROLE_SUPERVISEUR");
             GardesEmploye gardes = ctx.getBean(GardesEmploye.class);
             assertThatThrownBy(gardes::employeSaufSuperviseur).isInstanceOf(AccessDeniedException.class);
+        });
+    }
+
+    @Test
+    void super_admin_n_herite_plus_des_gardes_employe() {
+        runner.run(ctx -> {
+            authentifier("ROLE_SUPER_ADMIN");
+            GardesEmploye gardes = ctx.getBean(GardesEmploye.class);
+            assertThatThrownBy(gardes::hasAuthorityEmploye).isInstanceOf(AccessDeniedException.class);
+        });
+    }
+
+    @Test
+    void employe_passe_sa_garde_et_herite_du_client() {
+        runner.run(ctx -> {
+            authentifier("ROLE_EMPLOYE");
+            GardesEmploye gardes = ctx.getBean(GardesEmploye.class);
+            assertThatCode(gardes::hasAuthorityEmploye).doesNotThrowAnyException();
+            assertThatCode(gardes::hasAuthorityClient).doesNotThrowAnyException();
         });
     }
 
@@ -112,5 +129,8 @@ class RoleHierarchyCaracterisationTest {
 
         @PreAuthorize("hasRole('EMPLOYE') and !hasRole('SUPERVISEUR')")
         public void employeSaufSuperviseur() { }
+
+        @PreAuthorize("hasAuthority('ROLE_CLIENT')")
+        public void hasAuthorityClient() { }
     }
 }

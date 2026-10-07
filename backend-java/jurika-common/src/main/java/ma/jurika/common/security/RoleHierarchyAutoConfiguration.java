@@ -13,24 +13,21 @@ import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
  * Auto-configuration de la hierarchie de roles pour tous les services
  * qui dependent de jurika-common.
  *
- * <h2>Pourquoi</h2>
- *
- * <p>Avant ce fix, chaque endpoint utilisait {@code hasRole('EMPLOYE')},
- * {@code hasRole('SUPERVISEUR')}, {@code hasRole('ADMIN_CABINET')} etc.
- * sans hierarchie -- un SUPERVISEUR ne pouvait pas creer de ticket
- * (endpoint reserve a EMPLOYE) ni faire d'action client. C'est inadapte :
- * l'admin d'un cabinet (SUPERVISEUR) doit forcement avoir acces a tout
- * ce que ses employes font, et un SUPER_ADMIN doit forcement avoir acces
- * a tout ce qu'un SUPERVISEUR fait.
- *
  * <h2>Hierarchie</h2>
  *
  * <pre>
- *   SUPER_ADMIN > SUPERVISEUR > EMPLOYE > CLIENT
+ *   SUPER_ADMIN > SUPERVISEUR
+ *   EMPLOYE > CLIENT
  * </pre>
  *
- * Effet : {@code hasRole('EMPLOYE')} autorise aussi SUPERVISEUR et SUPER_ADMIN.
- * {@code hasAuthority('ROLE_EMPLOYE')} aussi.
+ * <p>Lot L0 (E5) : l'heritage {@code SUPERVISEUR > EMPLOYE} est RETIRE.
+ * Le superviseur observe sans agir (CDC section 3.2 : il « ne cree pas de
+ * ticket, n'execute pas de workflow, ne genere pas d'acte ») ; avec
+ * l'heritage, toute garde ecrite pour l'employe lui etait ouverte (constat
+ * prouve par RoleHierarchyCaracterisationTest). Ses lectures et les actions
+ * que le CDC lui accorde sont autorisees EXPLICITEMENT par chaque garde.
+ * Consequence voulue : le SUPER_ADMIN n'herite plus non plus des actions de
+ * l'employe (CDC section 3.1 : il gere la plateforme, pas les dossiers).
  *
  * <h2>Note Spring Security 6</h2>
  *
@@ -46,7 +43,6 @@ public class RoleHierarchyAutoConfiguration {
     static RoleHierarchy roleHierarchy() {
         return RoleHierarchyImpl.fromHierarchy("""
                 ROLE_SUPER_ADMIN > ROLE_SUPERVISEUR
-                ROLE_SUPERVISEUR > ROLE_EMPLOYE
                 ROLE_EMPLOYE > ROLE_CLIENT
                 """);
     }
