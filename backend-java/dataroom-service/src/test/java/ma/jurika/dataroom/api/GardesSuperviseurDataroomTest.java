@@ -47,6 +47,50 @@ class GardesSuperviseurDataroomTest {
         );
     }
 
+    /**
+     * Lot L0, etape E5b : actions accordees EXPLICITEMENT au superviseur (et
+     * au SUPER_ADMIN) que le CDC reserve a l'employe (sections 3.2 et 3.3) :
+     * edition Collabora, requetes et validation des demandes, depots,
+     * extraction de pieces, visibilite document par document.
+     */
+    static Stream<Method> actionsExplicites() {
+        return Stream.of(
+                methode(WopiController.class, "ouvrirSeance"),
+                methode(WopiController.class, "fermerSeance"),
+                methode(DemandesController.class, "createRequete"),
+                methode(DemandesController.class, "valider"),
+                methode(DemandesController.class, "complement"),
+                methode(DepotController.class, "upload"),
+                methode(DepotController.class, "delete"),
+                methode(IdentityController.class, "extract"),
+                methode(JuridiqueController.class, "changerVisibilite")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("actionsExplicites")
+    void superviseur_refuse_sur_les_actions_explicites(Method action) {
+        assertThat(autorise("ROLE_SUPERVISEUR", action)).isFalse();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("actionsExplicites")
+    void super_admin_refuse_sur_les_actions_explicites(Method action) {
+        assertThat(autorise("ROLE_SUPER_ADMIN", action)).isFalse();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("actionsExplicites")
+    void employe_autorise_sur_les_actions_explicites(Method action) {
+        assertThat(autorise("ROLE_EMPLOYE", action)).isTrue();
+    }
+
+    @org.junit.jupiter.api.Test
+    void client_garde_le_depot_et_sa_suppression() {
+        assertThat(autorise("ROLE_CLIENT", methode(DepotController.class, "upload"))).isTrue();
+        assertThat(autorise("ROLE_CLIENT", methode(DepotController.class, "delete"))).isTrue();
+    }
+
     /** Actions du CLIENT (creer une demande, repondre a une requete). */
     static Stream<Method> actionsClient() {
         return Stream.of(

@@ -57,7 +57,7 @@ public class DocumentController {
      * Si le template n'existe pas, un placeholder est genere (utile en dev).
      */
     @PostMapping("/generate/{templateCode}")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     public ResponseEntity<byte[]> generate(@PathVariable @NotBlank String templateCode,
                                             @Valid @RequestBody Map<String, Object> variables) {
         if (!DocumentTypes.ALL.contains(templateCode)) {

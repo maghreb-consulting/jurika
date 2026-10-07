@@ -42,7 +42,7 @@ public class DocumentEditController {
     public record EditRequest(String html, String filename, String title) {}
 
     @PostMapping("/html-to-docx")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     public ResponseEntity<byte[]> htmlToDocx(@RequestBody EditRequest req) {
         if (req == null || req.html() == null) return ResponseEntity.badRequest().build();
         byte[] bytes = docxConverter.convert(req.html());
@@ -55,7 +55,7 @@ public class DocumentEditController {
     }
 
     @PostMapping("/html-to-pdf")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     public ResponseEntity<byte[]> htmlToPdf(@RequestBody EditRequest req) {
         if (req == null || req.html() == null) return ResponseEntity.badRequest().build();
         byte[] bytes;

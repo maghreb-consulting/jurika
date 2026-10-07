@@ -50,6 +50,17 @@ class GardesSuperviseurAiTest {
         assertThat(autorise("ROLE_SUPERVISEUR", action)).isFalse();
     }
 
+    /**
+     * Lot L0, etape E5b : le SUPER_ADMIN gere la plateforme et ne travaille
+     * pas dans les dossiers (CDC section 3.1) : la generation et l'edition
+     * d'actes ne lui sont plus ouvertes.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("actions")
+    void super_admin_refuse(Method action) {
+        assertThat(autorise("ROLE_SUPER_ADMIN", action)).isFalse();
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("actions")
     void employe_autorise(Method action) {

@@ -112,7 +112,7 @@ public class WorkflowDocumentController {
      * liste vide (200) — le frontend affiche alors "Aucun document disponible".
      */
     @GetMapping("/{workflowCode}/templates")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     public ResponseEntity<List<TemplateInfo>> listTemplates(@PathVariable String workflowCode) {
         if (!mappingService.hasMapper(workflowCode)) {
             log.debug("listTemplates : workflow {} sans mapper → liste vide", workflowCode);
@@ -160,7 +160,7 @@ public class WorkflowDocumentController {
     }
 
     @PostMapping("/{workflowCode}/documents/{templateCode}")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     public ResponseEntity<byte[]> generate(@PathVariable String workflowCode,
                                             @PathVariable String templateCode,
                                             @AuthenticationPrincipal AuthenticatedUser user,

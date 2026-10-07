@@ -51,7 +51,7 @@ public class DepotController {
 
     @PostMapping(value = "/dossiers/{dossierId}/depots/upload",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyAuthority('ROLE_CLIENT','ROLE_EMPLOYE','ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_CLIENT','ROLE_EMPLOYE')")
     @Operation(summary = "Deposer un fichier libre (CLIENT gate par perm_depot ; EMPLOYE/superviseur non gates)")
     public DepotSummary upload(@AuthenticationPrincipal AuthenticatedUser user,
                                @PathVariable UUID dossierId,
@@ -108,7 +108,7 @@ public class DepotController {
     }
 
     @DeleteMapping("/depots/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_CLIENT','ROLE_EMPLOYE','ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_CLIENT','ROLE_EMPLOYE')")
     @Operation(summary = "Supprimer (soft-delete) un depot : CLIENT sur SON dossier, EMPLOYE responsable, superviseur")
     public ResponseEntity<Void> delete(@AuthenticationPrincipal AuthenticatedUser user,
                                        @PathVariable UUID id) {

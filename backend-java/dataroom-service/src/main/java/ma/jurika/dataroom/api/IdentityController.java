@@ -31,7 +31,9 @@ import java.util.UUID;
  * (défaut true). RBAC :
  * <ul>
  *   <li>{@code EMPLOYE} : tout permis (extraction + archivage).</li>
- *   <li>{@code SUPERVISEUR} : extraction lecture seule — archivage refusé (403).</li>
+ *   <li>{@code SUPERVISEUR} : refusé par la garde depuis le lot L0 (E5b) — l'extraction
+ *       de pièces est un travail de saisie de l'employé (RG-VAR-09, CDC § 3.2). Le contrôle
+ *       « archivage refusé » ci-dessous est conservé en défense en profondeur.</li>
  *   <li>{@code CLIENT}, {@code SUPER_ADMIN} : refusé.</li>
  * </ul>
  */
@@ -47,7 +49,7 @@ public class IdentityController {
     }
 
     @PostMapping(value = "/extract", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR')")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     @Operation(summary = "Extraire l'identite (CIN/CN) — appelle kie-service par face + fusion + archivage optionnel")
     @ApiResponse(responseCode = "200", description = "Extraction reussie")
     @ApiResponse(responseCode = "400", description = "Parametres invalides (recto manquant, etc.)")

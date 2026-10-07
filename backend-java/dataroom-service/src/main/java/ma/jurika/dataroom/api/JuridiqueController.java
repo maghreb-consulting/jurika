@@ -316,7 +316,7 @@ public class JuridiqueController {
      * piece qu'on a choisi de ne pas lui remettre.
      */
     @PatchMapping("/documents/{documentId}/visibilite")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     @Operation(summary = "Montrer ou masquer un document au client")
     public DocumentSummary changerVisibilite(@AuthenticationPrincipal AuthenticatedUser user,
                                               @PathVariable UUID documentId,
