@@ -8,10 +8,10 @@
       "Bash(mvn -B -o *)",
       "Bash(git status *)",
       "Bash(git diff *)",
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "Bash(git commit *)"
     ],
     "ask": [
-      "Bash(git commit *)",
       "Bash(git push *)",
       "Bash(docker *)",
       "Bash(rm *)",
