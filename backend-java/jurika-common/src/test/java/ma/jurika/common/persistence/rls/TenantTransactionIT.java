@@ -3,7 +3,6 @@ package ma.jurika.common.persistence.rls;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import ma.jurika.common.persistence.RlsAspect;
 import ma.jurika.common.security.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -34,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Lot L0, etape E10a (G1) : le workspace du {@link TenantContext} doit atteindre
  * la transaction REELLE, connexion en role non superutilisateur (la RLS
- * s'applique). Avant L0, {@link RlsAspect} posait {@code set_config(..., true)}
+ * s'applique). Avant L0, {@code RlsAspect} (supprime) posait {@code set_config(..., true)}
  * AVANT l'ouverture de la transaction (ordre AOP) : le reglage etait perdu et
  * toute lecture renvoyait zero ligne, sans erreur.
  *
@@ -148,9 +147,6 @@ class TenantTransactionIT {
     @EntityScan(basePackageClasses = Sonde.class)
     @EnableJpaRepositories(basePackageClasses = SondeRepository.class, considerNestedRepositories = true)
     static class TestApp {
-        // Declare comme dans les services (JpaConfig) : prouve que l'aspect
-        // seul ne suffit pas, puis qu'il ne gene pas le correctif.
-        @Bean RlsAspect rlsAspect() { return new RlsAspect(); }
         @Bean SondeService sondeService(SondeRepository r, JdbcTemplate j) { return new SondeService(r, j); }
         @Bean SondeExterne sondeExterne(SondeService s) { return new SondeExterne(s); }
     }

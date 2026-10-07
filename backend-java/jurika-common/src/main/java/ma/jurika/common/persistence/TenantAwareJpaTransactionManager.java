@@ -19,7 +19,8 @@ import java.util.UUID;
  * transaction : il disparait au commit ou au rollback et ne fuit jamais sur une
  * connexion rendue au pool.
  *
- * <p>Pourquoi ici et pas dans un aspect : l'ancien {@link RlsAspect} s'executait
+ * <p>Pourquoi ici et pas dans un aspect : l'ancien {@code RlsAspect} (supprime au
+ * lot L0) s'executait
  * AVANT l'intercepteur de transaction (ordre AOP), le reglage etait donc perdu.
  * Le gestionnaire couvre en outre {@code REQUIRES_NEW}, les auto-invocations,
  * les transactions ouvertes par Spring Data lui-meme et le {@code JdbcTemplate}

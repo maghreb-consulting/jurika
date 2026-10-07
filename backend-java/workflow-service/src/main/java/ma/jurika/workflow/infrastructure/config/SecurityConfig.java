@@ -2,7 +2,6 @@ package ma.jurika.workflow.infrastructure.config;
 
 import ma.jurika.common.audit.AuditEventEmitter;
 import ma.jurika.common.audit.JdbcAuditEventEmitter;
-import ma.jurika.common.persistence.RlsAspect;
 import ma.jurika.common.security.JwtAuthFilter;
 import ma.jurika.common.security.JwtProperties;
 import ma.jurika.common.security.JwtPublicKeyProvider;
@@ -31,11 +30,6 @@ public class SecurityConfig {
     @Bean
     public JwtAuthFilter jwtAuthFilter(JwtPublicKeyProvider provider) {
         return new JwtAuthFilter(provider);
-    }
-
-    @Bean
-    public RlsAspect rlsAspect() {
-        return new RlsAspect();
     }
 
     @Bean

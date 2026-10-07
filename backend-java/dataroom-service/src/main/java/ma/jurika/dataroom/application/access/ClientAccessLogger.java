@@ -29,7 +29,8 @@ import java.util.UUID;
  * le userId et l'IP/UA SUR LE THREAD DE LA REQUETE (ou ces donnees sont fiables)
  * puis delegue le seul INSERT au {@link ClientAccessLogDispatcher} {@code @Async}
  * (pool borne). Le dispatcher re-pose {@link TenantContext} a partir du
- * workspaceId porte par l'entite -> le {@code RlsAspect} positionne
+ * workspaceId porte par l'entite -> le gestionnaire de transactions
+ * (TenantAwareJpaTransactionManager, jurika-common) positionne
  * {@code app.current_workspace_id} et l'insert reste fiable meme sous RLS
  * stricte (prod). Best-effort conserve : toute exception est avalee, le tracage
  * ne casse jamais la requete.

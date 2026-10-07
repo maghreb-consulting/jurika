@@ -19,7 +19,8 @@ import java.util.UUID;
  *
  * <p>Role unique : re-poser le {@link TenantContext} a partir du workspaceId
  * DEJA porte par l'entite (capture sur le thread requete par le logger) AVANT
- * d'appeler le writer {@code @Transactional}. Le {@code RlsAspect} lit
+ * d'appeler le writer {@code @Transactional}. Le gestionnaire de transactions
+ * (TenantAwareJpaTransactionManager, jurika-common) lit
  * {@code TenantContext.get()} a l'entree de {@code writer.persist(...)} et emet
  * {@code set_config('app.current_workspace_id', ...)} -> insert fiable sous RLS.
  *
