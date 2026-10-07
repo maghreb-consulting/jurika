@@ -32,10 +32,28 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         this.keyProvider = keyProvider;
     }
 
+    /**
+     * Lot L0 (G2) : {@link TenantContext} est vide a l'entree et vide en sortie
+     * de CHAQUE requete, y compris sans jeton. Avant, la sortie anticipee
+     * « pas de Bearer » ne passait pas par le {@code finally} : un workspace
+     * pose pendant une requete publique (connexion, inscription) restait sur le
+     * fil et etait vu par la requete suivante servie par ce fil.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
+        TenantContext.clear();
+        try {
+            filtrer(request, response, chain);
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
+    private void filtrer(HttpServletRequest request,
+                         HttpServletResponse response,
+                         FilterChain chain) throws ServletException, IOException {
         String header = request.getHeader("Authorization");
         if (header == null || !header.startsWith(BEARER)) {
             chain.doFilter(request, response);
