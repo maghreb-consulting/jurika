@@ -25,6 +25,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.UUID;
 
 @Service
@@ -158,7 +159,10 @@ public class Setup2faUseCase {
             throw new ValidationException("Aucun setup 2FA en cours, appelez d'abord /setup-2fa");
         }
         String secret = encryptionService.decrypt(user.totpSecretEncrypted());
-        if (!totpService.verifyCode(secret, totpCode)) {
+        // Lot L0 (E10d), anti-rejeu : meme regle que la connexion, le pas du code
+        // de confirmation est consomme de facon atomique.
+        OptionalLong pas = totpService.pasDuCode(secret, totpCode);
+        if (pas.isEmpty() || !userRepository.consommerPasTotp(user.id(), pas.getAsLong())) {
             throw new ValidationException("Code 2FA invalide");
         }
         userRepository.updateTotpSecret(user.id(), user.totpSecretEncrypted(), true);

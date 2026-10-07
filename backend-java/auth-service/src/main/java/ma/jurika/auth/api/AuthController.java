@@ -62,6 +62,7 @@ import ma.jurika.auth.domain.port.UserRepository;
 import ma.jurika.auth.domain.port.WorkspaceRepository;
 import ma.jurika.auth.domain.model.AuthTokens;
 import ma.jurika.common.security.AuthenticatedUser;
+import ma.jurika.common.security.TenantContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -552,6 +553,11 @@ public class AuthController {
 
     @PostMapping("/verify-2fa")
     public TokenResponse verify2fa(@Valid @RequestBody Verify2faRequest req, HttpServletRequest http) {
+        // Lot L0 (E10d, meme mecanisme qu'E13a/P8) : route publique, le workspace
+        // vient de la requete et doit etre pose AVANT la transaction pour que la
+        // RLS s'applique sous jurika_app. La RLS limite alors la recherche de
+        // l'utilisateur a ce workspace. JwtAuthFilter vide le contexte en sortie.
+        TenantContext.set(req.workspaceId());
         AuthTokens t = verify2faUseCase.execute(new Verify2faUseCase.Command(
                 req.userId(), req.workspaceId(), req.code(),
                 http.getRemoteAddr(), http.getHeader("User-Agent")));

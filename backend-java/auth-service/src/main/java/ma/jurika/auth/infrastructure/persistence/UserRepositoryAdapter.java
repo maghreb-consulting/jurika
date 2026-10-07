@@ -143,6 +143,11 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
+    public boolean consommerPasTotp(UUID userId, long pas) {
+        return jpa.consommerPasTotp(userId, pas) == 1;
+    }
+
+    @Override
     public void registerSuccessfulLogin(UUID userId, Instant when) {
         jpa.registerSuccessfulLogin(userId, when);
     }
