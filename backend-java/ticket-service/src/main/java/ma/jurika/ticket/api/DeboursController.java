@@ -97,6 +97,10 @@ public class DeboursController {
      * Genere l'etat des debours du ticket en PDF (RG-T14).
      * Telechargeable + imprimable.
      */
+    // Lot L0 (E14, inventaire T2) : lectures directes des depots (ticket,
+    // commentaires, dossiers, responsables) en UNE transaction en lecture seule,
+    // pour que le workspace courant atteigne la RLS sous jurika_app.
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     @GetMapping(value = "/export-pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> exportPdf(@AuthenticationPrincipal AuthenticatedUser actor,

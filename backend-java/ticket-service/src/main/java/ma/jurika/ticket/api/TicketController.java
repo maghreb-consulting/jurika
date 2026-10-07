@@ -119,6 +119,10 @@ public class TicketController {
         return TicketDto.from(t);
     }
 
+    // Lot L0 (E14, inventaire T2) : lectures directes des depots (ticket,
+    // commentaires, dossiers, responsables) en UNE transaction en lecture seule,
+    // pour que le workspace courant atteigne la RLS sous jurika_app.
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPERVISEUR','ROLE_EMPLOYE')")
     public TicketDto get(@AuthenticationPrincipal AuthenticatedUser actor, @PathVariable UUID id) {
@@ -171,6 +175,10 @@ public class TicketController {
                 .orElse(false);
     }
 
+    // Lot L0 (E14, inventaire T2) : lectures directes des depots (ticket,
+    // commentaires, dossiers, responsables) en UNE transaction en lecture seule,
+    // pour que le workspace courant atteigne la RLS sous jurika_app.
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_SUPERVISEUR','ROLE_EMPLOYE')")
     public PageResponse<TicketDto> search(@AuthenticationPrincipal AuthenticatedUser actor,
