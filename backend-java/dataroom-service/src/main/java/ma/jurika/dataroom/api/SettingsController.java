@@ -69,22 +69,25 @@ public class SettingsController {
                 s.isPermDownload(), s.isPermPrint(), s.isPermDepot());
     }
 
+    // Lot L0 (E4) : gestion de l'acces client ouverte EXPLICITEMENT au
+    // superviseur (RG-CLI-01, CDC section 3.2), independamment de la
+    // hierarchie de roles.
     @PatchMapping("/dossiers/{dossierId}/settings/permissions")
-    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR')")
     public SettingsView updatePermissions(@PathVariable UUID dossierId,
                                            @Valid @RequestBody UpdatePermissionsRequest req) {
         return toView(settings.updatePermissions(dossierId, req.permDownload(), req.permPrint(), req.permDepot()));
     }
 
     @PatchMapping("/dossiers/{dossierId}/settings/suspension")
-    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR')")
     public SettingsView toggleSuspension(@PathVariable UUID dossierId,
                                           @Valid @RequestBody ToggleSuspensionRequest req) {
         return toView(settings.toggleSuspension(dossierId, req.suspended()));
     }
 
     @PostMapping("/dossiers/{dossierId}/settings/regenerate-link")
-    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR')")
     public ClientLinkResponse regenerateLink(@PathVariable UUID dossierId) {
         SettingsEntity s = settings.regenerateLinkToken(dossierId);
         return new ClientLinkResponse(clientLinkBaseUrl + "?token=" + s.getClientLinkToken(),
