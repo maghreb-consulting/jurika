@@ -323,11 +323,16 @@ class OnboardingFlowE2ETest {
         String wsId = l3.get("workspaceId").asText();
 
         // 13. POST /verify-2fa
-        int verifyCode = new GoogleAuthenticator().getTotpPassword(totpSecret);
+        // Le code TOTP est une CHAINE de 6 chiffres (Verify2faRequest : ^[0-9 ]{6,8}$).
+        // Envoye en nombre JSON (%d), un code commencant par 0 (1 cas sur 10)
+        // perdait son zero initial, partait sur 5 chiffres et etait refuse en
+        // validation (400) : echec intermittent du lot L0. Formate sur 6 chiffres,
+        // comme le saisit l'utilisateur.
+        String verifyCode = String.format("%06d", new GoogleAuthenticator().getTotpPassword(totpSecret));
         MvcResult v2fa = mvc.perform(post("/api/v1/auth/verify-2fa")
                         .contentType("application/json")
                         .content("""
-                                {"userId":"%s","workspaceId":"%s","code":%d}
+                                {"userId":"%s","workspaceId":"%s","code":"%s"}
                                 """.formatted(userId, wsId, verifyCode)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isString())
