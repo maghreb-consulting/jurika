@@ -13,6 +13,9 @@ public interface SettingsJpaRepository extends JpaRepository<SettingsEntity, UUI
 
     Optional<SettingsEntity> findByClientLinkToken(UUID token);
 
+    /** Lot L0 (E20, P9) : lecture filtree explicitement par workspace. */
+    Optional<SettingsEntity> findByDossierIdAndWorkspaceId(UUID dossierId, UUID workspaceId);
+
     @Modifying
     @Query("""
         UPDATE SettingsEntity s

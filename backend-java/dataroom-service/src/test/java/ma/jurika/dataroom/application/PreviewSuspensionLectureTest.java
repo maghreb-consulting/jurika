@@ -55,11 +55,18 @@ class PreviewSuspensionLectureTest {
         DocumentEntity doc = mock(DocumentEntity.class);
         when(doc.getDossierId()).thenReturn(dossierId);
         when(doc.getFilename()).thenReturn("acte.pdf");
-        when(documents.findById(documentId)).thenReturn(Optional.of(doc));
+        // Lot L0 (E20) : lecture filtree par le workspace courant.
+        ma.jurika.common.security.TenantContext.set(client.workspaceId());
+        when(documents.findByWorkspaceIdAndId(client.workspaceId(), documentId)).thenReturn(Optional.of(doc));
         when(office.render(any(), any(), any())).thenReturn(new OfficePreviewSupport.Rendered(
                 new ByteArrayInputStream(new byte[] {1}), 1, "application/pdf", "acte.pdf"));
         useCase = new PreviewDocumentUseCase(documents, dossiers, settings, office,
                 mock(PdfWatermarkService.class), mock(ClientAccessLogger.class), false);
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void tearDown() {
+        ma.jurika.common.security.TenantContext.clear();
     }
 
     @Test

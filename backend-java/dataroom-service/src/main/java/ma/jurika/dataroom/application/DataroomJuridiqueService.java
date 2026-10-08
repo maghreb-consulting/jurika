@@ -741,7 +741,8 @@ public class DataroomJuridiqueService {
     @Transactional(readOnly = true)
     @Auditable(action = "DOCUMENT_DOWNLOADED", resourceType = "document", resourceIdExpr = "#documentId")
     public DocumentEntity loadForDownload(UUID documentId) {
-        return documents.findById(documentId)
+        // Lot L0 (E20, P9) : lecture filtree par le workspace courant.
+        return documents.findByWorkspaceIdAndId(TenantContext.get(), documentId)
                 .orElseThrow(() -> new NotFoundException("Document inconnu"));
     }
 
@@ -995,8 +996,10 @@ public class DataroomJuridiqueService {
         java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
         int included = 0;
         try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(baos)) {
+            UUID ws = TenantContext.get();
             for (UUID id : documentIds) {
-                DocumentEntity doc = documents.findById(id).orElse(null);
+                // Lot L0 (E20, P9) : document du workspace courant seulement.
+                DocumentEntity doc = ws == null ? null : documents.findByWorkspaceIdAndId(ws, id).orElse(null);
                 if (doc == null) {
                     log.warn("exportSelectionAsZip : doc {} introuvable, skip", id);
                     continue;

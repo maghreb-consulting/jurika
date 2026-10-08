@@ -23,6 +23,11 @@ public final class DocumentSpecifications {
 
     private DocumentSpecifications() {}
 
+    /** Lot L0 (E20, P9) : filtre workspace explicite, en plus de la RLS. */
+    public static Specification<DocumentEntity> byWorkspace(UUID workspaceId) {
+        return (root, q, cb) -> cb.equal(root.get("workspaceId"), workspaceId);
+    }
+
     public static Specification<DocumentEntity> byDossier(UUID dossierId) {
         return (root, q, cb) -> cb.equal(root.get("dossierId"), dossierId);
     }

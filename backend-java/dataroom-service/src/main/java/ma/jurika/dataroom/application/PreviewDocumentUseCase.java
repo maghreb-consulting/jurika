@@ -1,5 +1,6 @@
 package ma.jurika.dataroom.application;
 
+import ma.jurika.common.security.TenantContext;
 import ma.jurika.common.audit.Auditable;
 import ma.jurika.common.exception.NotFoundException;
 import ma.jurika.common.exception.ValidationException;
@@ -73,7 +74,8 @@ public class PreviewDocumentUseCase {
     @Transactional(readOnly = true)
     @Auditable(action = "DOCUMENT_PREVIEWED", resourceType = "document", resourceIdExpr = "#documentId")
     public PreviewPayload execute(UUID documentId, AuthenticatedUser user) {
-        DocumentEntity doc = documents.findById(documentId)
+        // Lot L0 (E20, P9) : lecture filtree par le workspace courant.
+        DocumentEntity doc = documents.findByWorkspaceIdAndId(TenantContext.get(), documentId)
                 .orElseThrow(() -> new NotFoundException("Document inconnu : " + documentId));
 
         // RG-DR03 : si CLIENT et dossier SUSPENDED -> 403 (ValidationException → 400 du

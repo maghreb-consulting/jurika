@@ -1,5 +1,6 @@
 package ma.jurika.dataroom.application;
 
+import ma.jurika.common.security.TenantContext;
 import ma.jurika.dataroom.api.dto.DataroomDtos.DocumentSummary;
 import ma.jurika.dataroom.api.dto.DataroomDtos.SearchJuridiqueInput;
 import ma.jurika.dataroom.api.dto.DataroomDtos.SearchJuridiqueOutput;
@@ -57,8 +58,14 @@ public class SearchJuridiqueDocumentsUseCase {
      */
     @Transactional(readOnly = true)
     public SearchJuridiqueOutput execute(SearchJuridiqueInput in, boolean pourClient) {
+        // Lot L0 (E20, P9) : workspace courant explicite (la RLS ne suffit pas seule).
+        UUID ws = TenantContext.get();
+        if (ws == null) {
+            return new SearchJuridiqueOutput(List.of(), 0L);
+        }
         Specification<DocumentEntity> spec = Specification
-                .where(DocumentSpecifications.byDossier(in.dossierId()))
+                .where(DocumentSpecifications.byWorkspace(ws))
+                .and(DocumentSpecifications.byDossier(in.dossierId()))
                 .and(DocumentSpecifications.horsBrouillons());
         if (pourClient) {
             spec = spec.and(DocumentSpecifications.visiblesClient());
