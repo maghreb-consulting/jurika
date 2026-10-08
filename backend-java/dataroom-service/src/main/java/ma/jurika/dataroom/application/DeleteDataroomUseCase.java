@@ -5,7 +5,6 @@ import jakarta.persistence.PersistenceContext;
 import ma.jurika.common.audit.Auditable;
 import ma.jurika.common.exception.ConflictException;
 import ma.jurika.common.exception.NotFoundException;
-import ma.jurika.common.security.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -66,7 +65,10 @@ public class DeleteDataroomUseCase {
     @Transactional
     @Auditable(action = "DATAROOM_DELETED", resourceType = "dossier", resourceIdExpr = "#cmd.dossierId()")
     public Result execute(Command cmd) {
-        TenantContext.set(cmd.workspaceId());
+        // Lot L0 (E15, W3) : le workspace courant n'est plus pose ici. Pose dans
+        // le corps, il arrivait apres l'ouverture de la transaction (trop tard
+        // pour la RLS) et restait sur le fil. L'appelant le pose avant :
+        // JwtAuthFilter en HTTP, l'ecouteur d'annulation (W2) sinon.
 
         // 1) Verifier l'existence du dossier dans le workspace.
         @SuppressWarnings("unchecked")
