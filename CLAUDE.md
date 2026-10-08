@@ -132,6 +132,13 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L0 (securite serveur, 2026-10-08) -- dette relevee
 
+- **PRIORITE HAUTE -- chantier separe, juste apres la fusion de L0 et avant L2 (decision du
+  2026-10-08) : identifiants du Z440 egaux aux replis publies.** Les vrais mots de passe
+  proprietaire de Postgres, RabbitMQ et MinIO du Z440 sont egaux aux valeurs de repli codees
+  en dur dans les `application.yml` et les fichiers compose (verifie sans affichage) ; la pile
+  ne fonctionnait que par cette coincidence. A faire : sauvegarde, puis changement des trois
+  mots de passe sur le Z440 (`.env`, roles et conteneurs), puis suppression de TOUS les replis
+  publies (Postgres, RabbitMQ, MinIO, Redis, JWT), demarrage en echec si une valeur manque.
 - **PRIORITE HAUTE : 8 `application.yml` et `backend-node` utilisent un secret JWT de
   developpement quand `JWT_SECRET` manque** (`${JWT_SECRET:dev-only-jwt-secret-...}`) :
   supprimer ce repli, demarrage en echec si le secret est absent (au plus tard L9).

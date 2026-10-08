@@ -129,5 +129,21 @@ jobs:
       - name: Etat de la pile en cas d'echec
         if: failure()
         run: |
-          docker compose $COMPOSE_ARGS ps || true
+          docker compose $COMPOSE_ARGS ps -a || true
+          # Chaque conteneur qui n'est ni sain ni sans controle de sante : ses
+          # journaux en clair, puis un resume en ANNOTATION (lisible par l'API
+          # publique des check-runs, sans authentification). Les secrets du run sont
+          # aleatoires et jetables ; les valeurs de .env ne sont jamais affichees.
+          for c in $(docker ps -a --format '{{.Names}}' | grep '^jurika-' | sort); do
+            etat=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$c")
+            case "$etat" in healthy|running) continue ;; esac
+            echo "::group::$c ($etat)"
+            docker logs --tail=300 "$c" 2>&1 || true
+            echo "::endgroup::"
+            resume=$(docker logs --tail=400 "$c" 2>&1 \
+              | grep -E 'Caused by|FATAL|ERROR|Exception|refused|denied|failed|Error' \
+              | grep -vE 'DEBUG' | tail -25 | cut -c1-300 \
+              | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=$c ($etat)::${resume:-aucune ligne en erreur parmi les 400 dernieres}"
+          done
           docker compose $COMPOSE_ARGS logs --no-color --tail=200 || true
