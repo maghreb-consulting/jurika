@@ -122,6 +122,7 @@ public class JuridiqueController {
     @Operation(summary = "Recherche FTS PostgreSQL (titre + filename) avec filtres types/dates/scope versions",
             description = "RG-DR-FTS : websearch_to_tsquery('french') sur la colonne tsvector GENERATED de V10")
     public SearchJuridiqueOutput searchJuridique(
+            @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable UUID dossierId,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) List<String> types,
@@ -130,9 +131,15 @@ public class JuridiqueController {
             @RequestParam(required = false, defaultValue = "CURRENT") VersionScope versionScope,
             @RequestParam(required = false, defaultValue = "20") int limit,
             @RequestParam(required = false, defaultValue = "0") int offset) {
+        // Lot L0 (E19, RG-DR-07) : un CLIENT ne cherche que dans SON dossier, et
+        // parmi ses documents visibles.
+        boolean pourClient = estClient(user);
+        if (pourClient) {
+            juridique.assertClientAccess(dossierId, user.userId());
+        }
         SearchJuridiqueInput in = new SearchJuridiqueInput(
                 dossierId, q, types, from, to, versionScope, limit, offset);
-        return searchJuridique.execute(in);
+        return searchJuridique.execute(in, pourClient);
     }
 
     // ============================================================
@@ -377,9 +384,14 @@ public class JuridiqueController {
                                                        @PathVariable UUID dossierId,
                                                        @Valid @RequestBody BulkExportZipRequest req) {
         // Export ZIP = telechargement groupe -> meme garde perm_download pour le CLIENT.
+        // Lot L0 (E19, RG-DR-07) : et seulement SON dossier, ses documents visibles.
+        boolean pourClient = estClient(user);
+        if (pourClient) {
+            juridique.assertClientAccess(dossierId, user.userId());
+        }
         permissionGuard.assertCanDownload(dossierId, user);
         byte[] zip = juridique.exportSelectionAsZip(
-                dossierId, req.documentIds(), req.includeOldVersions());
+                dossierId, req.documentIds(), req.includeOldVersions(), pourClient);
         String filename = "juridique_" + dossierId + "_" + java.time.LocalDate.now() + ".zip";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")

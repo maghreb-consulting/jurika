@@ -48,9 +48,21 @@ public class SearchJuridiqueDocumentsUseCase {
 
     @Transactional(readOnly = true)
     public SearchJuridiqueOutput execute(SearchJuridiqueInput in) {
+        return execute(in, false);
+    }
+
+    /**
+     * Lot L0 (E19, RG-DR-07) : {@code pourClient} restreint aux documents visibles
+     * client. L'appartenance du dossier au client est verifiee par l'appelant.
+     */
+    @Transactional(readOnly = true)
+    public SearchJuridiqueOutput execute(SearchJuridiqueInput in, boolean pourClient) {
         Specification<DocumentEntity> spec = Specification
                 .where(DocumentSpecifications.byDossier(in.dossierId()))
                 .and(DocumentSpecifications.horsBrouillons());
+        if (pourClient) {
+            spec = spec.and(DocumentSpecifications.visiblesClient());
+        }
 
         if (in.types() != null && !in.types().isEmpty()) {
             spec = spec.and(DocumentSpecifications.ofTypes(in.types()));

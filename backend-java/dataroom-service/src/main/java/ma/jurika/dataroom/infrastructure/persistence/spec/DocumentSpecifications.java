@@ -36,6 +36,11 @@ public final class DocumentSpecifications {
         return (root, q, cb) -> cb.isFalse(root.get("brouillon"));
     }
 
+    /** Lot L0 (E19) : documents marques visibles pour le client (RG-DR-07). */
+    public static Specification<DocumentEntity> visiblesClient() {
+        return (root, q, cb) -> cb.isTrue(root.get("visibleClient"));
+    }
+
     public static Specification<DocumentEntity> ofTypes(List<String> types) {
         if (types == null || types.isEmpty()) return null;
         return (root, q, cb) -> root.get("documentType").in(types);

@@ -977,6 +977,15 @@ public class DataroomJuridiqueService {
     public byte[] exportSelectionAsZip(UUID dossierId,
                                         List<UUID> documentIds,
                                         boolean includeOldVersions) {
+        return exportSelectionAsZip(dossierId, documentIds, includeOldVersions, false);
+    }
+
+    /** Lot L0 (E19) : {@code pourClient} exclut les documents non visibles client. */
+    @Transactional(readOnly = true)
+    public byte[] exportSelectionAsZip(UUID dossierId,
+                                        List<UUID> documentIds,
+                                        boolean includeOldVersions,
+                                        boolean pourClient) {
         if (documentIds == null || documentIds.isEmpty()) {
             throw new ma.jurika.common.exception.ValidationException(
                     "Aucun document selectionne");
@@ -998,6 +1007,10 @@ public class DataroomJuridiqueService {
                 }
                 if (!includeOldVersions && !doc.isCurrent()) {
                     log.debug("exportSelectionAsZip : doc {} non current, skip", id);
+                    continue;
+                }
+                if (pourClient && !doc.isVisibleClient()) {
+                    log.debug("exportSelectionAsZip : doc {} non visible client, skip", id);
                     continue;
                 }
                 String entryName = doc.getDocumentType() + "/" + doc.getFilename();
