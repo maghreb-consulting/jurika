@@ -56,6 +56,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-jurika_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       RABBITMQ_HOST: rabbitmq
+      # Lot L0 (CI base-vierge) : memes expressions que le conteneur rabbitmq
+      # (sinon repli code en dur d'application.yml, faux sur une base neuve).
+      RABBITMQ_USER: ${RABBITMQ_USER:-jurika}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-JurikaRabbit2026}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-RS256}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
       # Stripe (les 4 price IDs sont injectes depuis .env.local par compose).
@@ -114,6 +118,10 @@ services:
       REDIS_HOST: redis
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       RABBITMQ_HOST: rabbitmq
+      # Lot L0 (CI base-vierge) : memes expressions que le conteneur rabbitmq
+      # (sinon repli code en dur d'application.yml, faux sur une base neuve).
+      RABBITMQ_USER: ${RABBITMQ_USER:-jurika}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-JurikaRabbit2026}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-RS256}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
       JURIKA_PLAN_LIMITS_ENABLED: "true"
