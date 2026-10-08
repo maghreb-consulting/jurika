@@ -178,6 +178,10 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   a passer en `127.0.0.1` (fait pour `smoke-test.mjs`).
 - **Octet NUL litteral** dans `DataroomJuridiqueService.java` (separateur de cle) : `file` classe
   le source en donnees binaires.
+- **Le seed de demonstration ne rattache ni client ni responsable aux dossiers**
+  (`scripts/seed-demo.mjs`, cabinet JUR-DEMO2) : client et employes n'y voient aucun dossier.
+  Complete a la main sur le Z440 le 2026-10-08 pour la verification du lot L0 (client2,
+  rattachements de 4 dossiers).
 - **Liste des conteneurs attendus dupliquee** entre `start-local.sh` et
   `.github/workflows/base-vierge.yml` : a factoriser.
 - **Messages de commit du lot L0 non ASCII** (24 commits, guillemets francais, signe
