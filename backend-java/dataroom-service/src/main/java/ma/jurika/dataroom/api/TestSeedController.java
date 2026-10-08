@@ -94,6 +94,11 @@ public class TestSeedController {
         String email = "demo-" + code.toLowerCase().replace("-", "") + "@jurika.test";
         String passwordHash = bcrypt.encode(DEFAULT_PASSWORD);
 
+        // Lot L0 (E15, W5) : route sans JWT, donc sans workspace courant ; sous
+        // jurika_app la RLS refuserait chaque INSERT. Le seed pose le workspace
+        // qu'il cree, local a sa transaction.
+        poserWorkspace(workspaceId);
+
         // 1. Workspace.
         jdbc.update("""
                 INSERT INTO workspaces(id, code, name, contact_email, status, created_at, updated_at)
@@ -232,6 +237,9 @@ public class TestSeedController {
         // Le ON DELETE CASCADE sur les FK workspaces -> users -> dossiers ->
         // documents fait tout le menage. Les tables comptable / fiscal /
         // exercices / alertes ont ete supprimees par la migration V25.
+        // Lot L0 (E15, W5) : comme seedWorkspace, sans JWT ; sans ce reglage la
+        // RLS ne laisserait voir aucune ligne a supprimer.
+        poserWorkspace(workspaceId);
         int ws = jdbc.update("DELETE FROM workspaces WHERE id = ?", workspaceId);
         log.info("TestSeed cleanup workspace={} workspaces={}", workspaceId, ws);
         return ResponseEntity.ok(Map.of(
@@ -243,6 +251,12 @@ public class TestSeedController {
     // -----------------------------------------------------------------
     // Internals
     // -----------------------------------------------------------------
+
+    /** set_config(..., true) : local a la transaction en cours (@Transactional). */
+    private void poserWorkspace(UUID workspaceId) {
+        jdbc.queryForObject("SELECT set_config('app.current_workspace_id', ?, true)",
+                String.class, workspaceId.toString());
+    }
 
     private String generateWorkspaceCode() {
         String alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sans 0/O/1/I pour lisibilite
