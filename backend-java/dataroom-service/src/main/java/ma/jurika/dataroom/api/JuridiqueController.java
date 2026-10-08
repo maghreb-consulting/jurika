@@ -342,10 +342,13 @@ public class JuridiqueController {
      * donc etre posee document par document. Un 404 plutot qu'un 403 : dire
      * « ce document existe mais ne vous est pas montre » serait deja en dire trop.
      */
+    /**
+     * Lot L0 (E18, RG-DR-07) : pour un CLIENT, document visible ET de son dossier
+     * (auparavant : visible seulement, quel que soit le dossier du workspace).
+     */
     private void assertVisiblePourClient(UUID documentId, AuthenticatedUser user) {
         if (!estClient(user)) return;
-        if (juridique.estVisiblePour(documentId, true)) return;
-        throw new ma.jurika.common.exception.NotFoundException("Document inconnu");
+        juridique.assertDocumentPourClient(documentId, user.userId());
     }
 
     @DeleteMapping("/documents/{documentId}")
@@ -549,6 +552,10 @@ public class JuridiqueController {
             @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable UUID documentId,
             @PathVariable UUID versionId) {
+        // Lot L0 (E18) : le CLIENT ne lit une version que si elle et son document
+        // sont visibles et de son dossier (aucun controle auparavant).
+        assertVisiblePourClient(documentId, user);
+        assertVisiblePourClient(versionId, user);
         DocumentEntity doc = juridique.loadVersionForDownload(documentId, versionId);
         permissionGuard.assertCanDownload(doc.getDossierId(), user);
         var r = storage.download(doc.getObjectKey());
@@ -589,6 +596,10 @@ public class JuridiqueController {
             @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable UUID documentId,
             @PathVariable UUID versionId) {
+        // Lot L0 (E18) : le CLIENT ne lit une version que si elle et son document
+        // sont visibles et de son dossier (aucun controle auparavant).
+        assertVisiblePourClient(documentId, user);
+        assertVisiblePourClient(versionId, user);
         DocumentEntity doc = juridique.loadVersionForDownload(documentId, versionId);
         permissionGuard.assertCanDownload(doc.getDossierId(), user);
         OfficePreviewSupport.Rendered rd =

@@ -1143,6 +1143,23 @@ public class DataroomJuridiqueService {
     }
 
     /**
+     * Lot L0 (E18, RG-DR-07) : un CLIENT n'accede au contenu d'un document
+     * (apercu, telechargement, version) que s'il est VISIBLE client ET rattache
+     * a SON dossier. Document illisible ou masque : 404 ; dossier d'un autre
+     * client : 403 ({@link #assertClientAccess}).
+     */
+    @Transactional(readOnly = true)
+    public void assertDocumentPourClient(UUID documentId, UUID clientUserId) {
+        UUID ws = TenantContext.get();
+        DocumentEntity d = ws == null ? null
+                : documents.findByWorkspaceIdAndId(ws, documentId).orElse(null);
+        if (d == null || !d.isVisibleClient()) {
+            throw new NotFoundException("Document inconnu");
+        }
+        assertClientAccess(d.getDossierId(), clientUserId);
+    }
+
+    /**
      * Ce document est-il montrable a cet utilisateur ? Utilise aux acces
      * UNITAIRES — apercu, telechargement, versions — ou aucune liste ne filtre.
      */
