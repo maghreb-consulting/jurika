@@ -1,0 +1,133 @@
+name: base-vierge
+
+# Lot L0, etape E25 -- controle "une base vierge demarre" (backlog CLAUDE.md).
+#
+# Les IT de chaque service ont leur propre base Testcontainers : ni le schema
+# partage jurika_db, ni l'ordre de demarrage inter-services (auth cree le schema
+# racine, les autres migrent apres ; role d'execution jurika_app) ne sont
+# couverts. Ce job demarre la pile COMPLETE sur des volumes neufs (runner
+# ephemere : aucun volume preexistant) et attend que tous les conteneurs soient
+# sains. Il ne supprime jamais de volume.
+#
+# Lourd (construction de toutes les images) : reserve aux PR vers main, aux push
+# sur main et au declenchement manuel.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: base-vierge-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  premier-demarrage:
+    name: Premier demarrage (volumes neufs)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      COMPOSE_ARGS: >-
+        -f infrastructure/docker-compose.yml
+        -f infrastructure/docker-compose.services.yml
+        -f infrastructure/docker-compose.local.yml
+        --env-file .env
+        --env-file .env.local
+      # MailHog est derriere un profil compose ; la pile attendue l'inclut.
+      COMPOSE_PROFILES: mailhog
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fichiers d'environnement (valeurs d'exemple, secrets aleatoires)
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+          cp .env.local.server.example .env.local
+          # Chaque valeur CHANGE_ME recoit un secret aleatoire propre au run
+          # (jamais affiche) ; l'hote LAN devient localhost.
+          for f in .env .env.local; do
+            while IFS= read -r cle; do
+              valeur="$(openssl rand -hex 24)"
+              sed -i "s|^${cle}=.*|${cle}=${valeur}|" "$f"
+            done < <(grep -oE '^[A-Z0-9_]+=CHANGE_ME[^[:space:]]*' "$f" | cut -d= -f1)
+          done
+          sed -i 's|^JURIKA_LAN_HOST=.*|JURIKA_LAN_HOST=localhost|' .env.local
+          # JURIKA_APP_PASSWORD est obligatoire (aucun repli) : il doit exister.
+          grep -q '^JURIKA_APP_PASSWORD=' .env.local
+          if grep -qE '^[A-Z0-9_]+=CHANGE_ME' .env .env.local; then
+            echo "Valeur CHANGE_ME restante" >&2
+            exit 1
+          fi
+
+      - name: Cles JWT RS256 (comme start-local.sh)
+        run: |
+          set -euo pipefail
+          mkdir -p infrastructure/secrets/jwt
+          openssl genrsa -out infrastructure/secrets/jwt/jwt-private.pem 2048
+          openssl pkcs8 -topk8 -inform PEM -in infrastructure/secrets/jwt/jwt-private.pem \
+            -out infrastructure/secrets/jwt/jwt-private-pkcs8.pem -nocrypt
+          openssl rsa -in infrastructure/secrets/jwt/jwt-private.pem -pubout \
+            -out infrastructure/secrets/jwt/jwt-public.pem
+
+      - name: Rendu compose valide
+        run: docker compose $COMPOSE_ARGS config --quiet
+
+      - name: Construction des images
+        run: docker compose $COMPOSE_ARGS build --parallel
+
+      - name: Demarrage
+        run: docker compose $COMPOSE_ARGS up -d
+
+      - name: Attente de tous les conteneurs sains
+        run: |
+          set -euo pipefail
+          # Meme liste que scripts/start-local.sh (18 conteneurs).
+          ATTENDUS=(
+            jurika-postgres jurika-redis jurika-rabbitmq jurika-mailhog
+            jurika-discovery jurika-gateway jurika-auth jurika-ticket
+            jurika-workflow jurika-dataroom jurika-ai jurika-supervision
+            jurika-dashboard jurika-billing
+            jurika-realtime jurika-ocr jurika-kie
+            jurika-frontend
+          )
+          limite=$(( $(date +%s) + 1200 ))
+          while true; do
+            sains=0
+            for c in "${ATTENDUS[@]}"; do
+              etat=$(docker inspect --format='{{.State.Health.Status}}' "$c" 2>/dev/null || echo "absent")
+              [[ "$etat" == "healthy" ]] && sains=$((sains + 1))
+            done
+            echo "$sains/${#ATTENDUS[@]} conteneurs sains"
+            if [[ $sains -eq ${#ATTENDUS[@]} ]]; then
+              break
+            fi
+            if [[ $(date +%s) -gt $limite ]]; then
+              echo "Delai depasse" >&2
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Migration fondatrice appliquee par chaque service
+        run: |
+          set -euo pipefail
+          # baseline-on-migrate peut SAUTER la migration fondatrice d'un service
+          # quand un autre a deja peuple le schema partage (CLAUDE.md) : chacune
+          # doit figurer, reussie, dans l'historique Flyway de son service.
+          u=$(grep -h '^POSTGRES_USER=' .env .env.local | tail -1 | cut -d= -f2 || true)
+          u=${u:-jurika_user}
+          for paire in auth:1 ticket:3 workflow:4 dataroom:5; do
+            t=${paire%%:*}; v=${paire##*:}
+            n=$(docker exec jurika-postgres psql -U "$u" -d jurika_db -tAc \
+                  "SELECT COUNT(*) FROM flyway_history_${t} WHERE success AND version = '${v}'")
+            echo "flyway_history_${t} : V${v} appliquee = ${n}"
+            [[ "$n" == "1" ]]
+          done
+
+      - name: Etat de la pile en cas d'echec
+        if: failure()
+        run: |
+          docker compose $COMPOSE_ARGS ps || true
+          docker compose $COMPOSE_ARGS logs --no-color --tail=200 || true
