@@ -7,7 +7,7 @@ services:
     container_name: jurika-postgres
     restart: unless-stopped
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-jurika_db}
       POSTGRES_USER: ${POSTGRES_USER:-jurika_user}
@@ -36,7 +36,7 @@ services:
     container_name: jurika-redis
     restart: unless-stopped
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     command: redis-server --requirepass ${REDIS_PASSWORD:-JurikaRedis2026}
     volumes:
       - redis_data:/data
@@ -56,8 +56,8 @@ services:
     container_name: jurika-rabbitmq
     restart: unless-stopped
     ports:
-      - "${RABBITMQ_PORT:-5672}:5672"
-      - "${RABBITMQ_MGMT_PORT:-15672}:15672"
+      - "127.0.0.1:${RABBITMQ_PORT:-5672}:5672"
+      - "127.0.0.1:${RABBITMQ_MGMT_PORT:-15672}:15672"
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-jurika}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-JurikaRabbit2026}
@@ -87,8 +87,8 @@ services:
     restart: unless-stopped
     profiles: ["mailhog"]
     ports:
-      - "${MAILHOG_SMTP_PORT:-1025}:1025"
-      - "${MAILHOG_UI_PORT:-8025}:8025"
+      - "127.0.0.1:${MAILHOG_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILHOG_UI_PORT:-8025}:8025"
     networks:
       - jurika-network
 
@@ -102,8 +102,8 @@ services:
     container_name: jurika-minio
     restart: unless-stopped
     ports:
-      - "${MINIO_API_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+      - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-jurika-admin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-JurikaMinIO2026}

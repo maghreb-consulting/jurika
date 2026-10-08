@@ -42,12 +42,10 @@ services:
     container_name: jurika-billing
     restart: unless-stopped
     ports:
-      # Pas de prefixe `0.0.0.0:` : il publiait le port en IPv4 SEULE.
-      # Les clients qui resolvent `localhost` en ::1 d abord (fetch de
-      # Node >=17, ordre DNS verbatim) recevaient ECONNREFUSED alors que
-      # le service repondait en IPv4 -> smoke test en echec sur billing.
-      # Sans prefixe, Docker publie sur les deux piles, LAN inclus.
-      - "${BILLING_SERVICE_PORT:-8090}:8090"
+      # Lot L0 (E16e) : publie sur 127.0.0.1 seulement (IPv4), plus sur le LAN.
+      # Les clients Node qui resolvent `localhost` en ::1 d abord (fetch de
+      # Node >=17) visent donc 127.0.0.1 explicitement (smoke-test.mjs).
+      - "127.0.0.1:${BILLING_SERVICE_PORT:-8090}:8090"
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod-local}
       JURIKA_ENV: ${JURIKA_ENV:-local}
@@ -107,7 +105,7 @@ services:
     container_name: jurika-dashboard
     restart: unless-stopped
     ports:
-      - "${DASHBOARD_SERVICE_PORT:-8087}:8087"
+      - "127.0.0.1:${DASHBOARD_SERVICE_PORT:-8087}:8087"
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod-local}
       JURIKA_ENV: ${JURIKA_ENV:-local}

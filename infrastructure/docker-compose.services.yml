@@ -35,7 +35,7 @@ services:
     container_name: jurika-discovery
     restart: unless-stopped
     ports:
-      - "${DISCOVERY_PORT:-8761}:8761"
+      - "127.0.0.1:${DISCOVERY_PORT:-8761}:8761"
     environment:
       <<: *otel-env
       OTEL_SERVICE_NAME: discovery-service
@@ -96,7 +96,7 @@ services:
     container_name: jurika-auth
     restart: unless-stopped
     ports:
-      - "${AUTH_SERVICE_PORT:-8081}:8081"
+      - "127.0.0.1:${AUTH_SERVICE_PORT:-8081}:8081"
     environment:
       <<: *otel-env
       OTEL_SERVICE_NAME: auth-service
@@ -143,7 +143,7 @@ services:
     container_name: jurika-ticket
     restart: unless-stopped
     ports:
-      - "${TICKET_SERVICE_PORT:-8082}:8082"
+      - "127.0.0.1:${TICKET_SERVICE_PORT:-8082}:8082"
     environment:
       <<: *otel-env
       OTEL_SERVICE_NAME: ticket-service
@@ -183,7 +183,7 @@ services:
     container_name: jurika-workflow
     restart: unless-stopped
     ports:
-      - "${WORKFLOW_SERVICE_PORT:-8083}:8083"
+      - "127.0.0.1:${WORKFLOW_SERVICE_PORT:-8083}:8083"
     environment:
       <<: *otel-env
       OTEL_SERVICE_NAME: workflow-service
@@ -221,7 +221,7 @@ services:
     container_name: jurika-dataroom
     restart: unless-stopped
     ports:
-      - "${DATAROOM_SERVICE_PORT:-8084}:8084"
+      - "127.0.0.1:${DATAROOM_SERVICE_PORT:-8084}:8084"
     environment:
       # Edition bureautique (lot 3) — cf. commentaires dans application.yml.
       WOPI_BASE_URL: ${WOPI_BASE_URL:-http://dataroom-service:8084}
@@ -272,7 +272,7 @@ services:
     container_name: jurika-ai
     restart: unless-stopped
     ports:
-      - "${AI_SERVICE_PORT:-8085}:8085"
+      - "127.0.0.1:${AI_SERVICE_PORT:-8085}:8085"
     environment:
       <<: *otel-env
       OTEL_SERVICE_NAME: ai-service
@@ -325,7 +325,7 @@ services:
     container_name: jurika-ocr
     restart: unless-stopped
     ports:
-      - "${OCR_PORT:-8089}:8089"
+      - "127.0.0.1:${OCR_PORT:-8089}:8089"
     environment:
       OCR_ENGINE: ${OCR_ENGINE:-doctr}
       OCR_DEFAULT_LANG: ${OCR_DEFAULT_LANG:-latin}
@@ -355,7 +355,7 @@ services:
     container_name: jurika-kie
     restart: unless-stopped
     ports:
-      - "${KIE_PORT:-8088}:8088"
+      - "127.0.0.1:${KIE_PORT:-8088}:8088"
     environment:
       DONUT_MODEL_DIR: ${DONUT_MODEL_DIR:-/models/donut-jurika-final}
       MAX_FILE_MB: ${KIE_MAX_FILE_MB:-15}
@@ -384,7 +384,7 @@ services:
     container_name: jurika-supervision
     restart: unless-stopped
     ports:
-      - "${SUPERVISION_SERVICE_PORT:-8086}:8086"
+      - "127.0.0.1:${SUPERVISION_SERVICE_PORT:-8086}:8086"
     environment:
       <<: *otel-env
       OTEL_SERVICE_NAME: supervision-service
