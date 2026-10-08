@@ -39,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Lot J3 (2026-06-27) — verifie l'ouverture du parcours d'upgrade a l'EMPLOYE.
+ * Lot L0 (E17) : la validation des paiements est reservee au SUPER_ADMIN.
  *
  * <p>On teste l'AUTORISATION uniquement (le corps metier est mock) :
  * <ul>
@@ -151,11 +152,24 @@ class BillingRoleSecurityTest {
                 .andExpect(status().isForbidden());
     }
 
+    // Lot L0 (E17, RG-PAY-02) : la validation d'un paiement hors ligne est
+    // reservee au super-admin (JURIKA), jamais au cabinet lui-meme.
     @Test
-    void validatePayment_superviseur_estAutorise() throws Exception {
+    void validatePayment_superviseur_estRefuse_403() throws Exception {
         mvc.perform(patch("/api/v1/billing/payments/{id}/validate", 1L).with(as(Role.SUPERVISEUR)).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void validatePayment_superAdmin_estAutorise() throws Exception {
+        mvc.perform(patch("/api/v1/billing/payments/{id}/validate", 1L).with(as(Role.SUPER_ADMIN)).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(notForbidden());
+        // Le paiement est designe par son identifiant seul : le workspace du
+        // super-admin n'est pas celui du cabinet qui a paye.
+        org.mockito.Mockito.verify(validatePaymentUseCase).execute(org.mockito.ArgumentMatchers.eq(1L),
+                org.mockito.ArgumentMatchers.any());
     }
 
     @Test

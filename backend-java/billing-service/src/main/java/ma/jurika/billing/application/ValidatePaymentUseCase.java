@@ -27,7 +27,8 @@ import java.util.UUID;
  *
  * <p>Pipeline :
  * <ol>
- *   <li>Charge le payment (scope workspace strict)</li>
+ *   <li>Charge le payment par son identifiant (appel SUPER_ADMIN, lot L0 E17) ;
+ *       le workspace active est celui du paiement</li>
  *   <li>Verifie status == PENDING (idempotent : skip si deja COMPLETED)</li>
  *   <li>Marque COMPLETED + completed_at + validated_by (email du caller)</li>
  *   <li>Si pas de subscription active, cree un "shadow row" SubscriptionEntity
@@ -56,9 +57,13 @@ public class ValidatePaymentUseCase {
 
     @Transactional
     @Auditable(action = "BILLING_PAYMENT_VALIDATED", resourceType = "payment")
-    public PaymentDto execute(UUID workspaceId, Long paymentId, ValidatePaymentRequest req) {
-        PaymentEntity p = paymentRepo.findByIdAndWorkspaceId(paymentId, workspaceId)
+    public PaymentDto execute(Long paymentId, ValidatePaymentRequest req) {
+        // Lot L0 (E17, RG-PAY-02) : appele par le SUPER_ADMIN, dont le workspace
+        // n'est pas celui du cabinet qui a paye. Le paiement est retrouve par son
+        // identifiant, et c'est SON workspace qui est active.
+        PaymentEntity p = paymentRepo.findById(paymentId)
                 .orElseThrow(() -> new NotFoundException("Paiement introuvable : " + paymentId));
+        UUID workspaceId = p.getWorkspaceId();
 
         if ("COMPLETED".equals(p.getStatus())) {
             log.info("Payment {} deja COMPLETED — idempotent return", paymentId);
