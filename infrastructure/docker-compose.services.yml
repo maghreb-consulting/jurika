@@ -154,6 +154,9 @@ services:
       RABBITMQ_HOST: rabbitmq
       MINIO_ENDPOINT: http://minio:9000
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
+      # Lot L0 (E14b) : role d'execution jurika_app (la RLS s'applique). Mot de
+      # passe dedie, obligatoire : Compose echoue bruyamment s'il manque.
+      JURIKA_APP_PASSWORD: "${JURIKA_APP_PASSWORD:?JURIKA_APP_PASSWORD absent, .env.local doit le definir}"
     volumes:
       - ./secrets/jwt:/run/secrets/jwt:ro
     depends_on:
