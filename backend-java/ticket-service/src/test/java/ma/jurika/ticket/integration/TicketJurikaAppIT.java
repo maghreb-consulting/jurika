@@ -68,15 +68,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 // sous jurika_app par AuditConsommateurRlsIT.
                 "jurika.audit.async-enabled=false",
                 "jurika.demo-seed=false",
-                "jurika.jwt.algorithm=HS256",
-                "jurika.jwt.hmac-secret=" + TicketJurikaAppIT.SECRET
+                "jurika.jwt.algorithm=HS256"
         }
 )
 @AutoConfigureMockMvc
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class TicketJurikaAppIT {
 
-    static final String SECRET = "secret-de-test-L0-ticket-au-moins-32-caracteres";
+    /**
+     * Secret HMAC des jetons de test, tire au hasard a chaque execution (aucune
+     * valeur ecrite dans le depot) ; transmis par @DynamicPropertySource.
+     */
+    static final String SECRET = java.util.UUID.randomUUID() + "-" + java.util.UUID.randomUUID();
     static final UUID WS_A = UUID.fromString("11111111-1111-1111-1111-111111111111");
     static final UUID KARIM = UUID.fromString("33333333-3333-3333-3333-333333333333");
     static final UUID COLLEGUE = UUID.fromString("33333333-3333-3333-3333-0000000000c2");
@@ -95,6 +98,7 @@ class TicketJurikaAppIT {
     @DynamicPropertySource
     static void proprietes(DynamicPropertyRegistry registry) {
         migrerChaineAmont();
+        registry.add("jurika.jwt.hmac-secret", () -> SECRET);
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", () -> "jurika_app");
         registry.add("spring.datasource.password", () -> "jurika_app_it");
