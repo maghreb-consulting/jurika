@@ -70,6 +70,10 @@ jobs:
             -out infrastructure/secrets/jwt/jwt-private-pkcs8.pem -nocrypt
           openssl rsa -in infrastructure/secrets/jwt/jwt-private.pem -pubout \
             -out infrastructure/secrets/jwt/jwt-public.pem
+          # Les images Java tournent en uid 1000 et montent ces cles en lecture :
+          # elles doivent leur appartenir (cle privee en 600), comme sur le Z440. Le
+          # runner GitHub n'est pas l'uid 1000.
+          sudo chown -R 1000:1000 infrastructure/secrets/jwt
 
       - name: Rendu compose valide
         run: docker compose $COMPOSE_ARGS config --quiet

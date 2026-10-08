@@ -115,6 +115,10 @@ services:
       JURIKA_ENV: ${JURIKA_ENV:-local}
       EUREKA_SERVER_URL: http://discovery-service:8761/eureka
       POSTGRES_HOST: postgres
+      # Lot L0 (CI base-vierge) : identifiants du proprietaire (sans eux, repli
+      # code en dur d'application.yml : faux sur une base neuve).
+      POSTGRES_USER: ${POSTGRES_USER:-jurika_user}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent, .env doit le definir}"
       REDIS_HOST: redis
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       RABBITMQ_HOST: rabbitmq

@@ -195,6 +195,10 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **minio tourne en root** (`user: "0:0"`) pour rester compatible avec le volume existant
   (ecrit en root par l'ancienne image `minio/minio`) ; a durcir en changeant le proprietaire
   du volume (image Chainguard prevue pour l'uid 65532).
+- **Cles JWT et uid des images** : les images Java tournent en uid 1000 et lisent
+  `infrastructure/secrets/jwt/*.pem` (cle privee en 600). Sur le Z440 cela marche parce que
+  l'utilisateur de l'hote est aussi l'uid 1000 ; `start-local.sh` ne garantit pas ce contrat
+  (installation par un autre uid : auth ne demarre pas, vu en CI le 2026-10-08).
 - **Liste des conteneurs attendus dupliquee** entre `start-local.sh` et
   `.github/workflows/base-vierge.yml` : a factoriser.
 - **Messages de commit du lot L0 non ASCII** (24 commits, guillemets francais, signe
