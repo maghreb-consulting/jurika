@@ -82,7 +82,10 @@ jobs:
         run: docker compose $COMPOSE_ARGS build --parallel
 
       - name: Demarrage
-        run: docker compose $COMPOSE_ARGS up -d
+        run: |
+          set -o pipefail
+          # Sortie conservee : en cas d'echec, sa fin est publiee en annotation.
+          docker compose $COMPOSE_ARGS up -d 2>&1 | tee /tmp/compose-up.log
 
       - name: Attente de tous les conteneurs sains
         run: |
@@ -134,6 +137,11 @@ jobs:
         if: failure()
         run: |
           docker compose $COMPOSE_ARGS ps -a || true
+          if [ -s /tmp/compose-up.log ]; then
+            fin=$(grep -vE ' (Creating|Created|Starting|Started|Waiting|Healthy|Running)\s*$' /tmp/compose-up.log \
+              | tail -20 | cut -c1-300 | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=docker compose up -d::${fin:-sortie vide}"
+          fi
           # Chaque conteneur qui n'est ni sain ni sans controle de sante : ses
           # journaux en clair, puis un resume en ANNOTATION (lisible par l'API
           # publique des check-runs, sans authentification). Les secrets du run sont
@@ -149,5 +157,8 @@ jobs:
               | grep -vE 'DEBUG' | tail -25 | cut -c1-300 \
               | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
             echo "::error title=$c ($etat)::${resume:-aucune ligne en erreur parmi les 400 dernieres}"
+            sante=$(docker inspect --format '{{json .Config.Healthcheck}} | redemarrages={{.RestartCount}} | demarre={{.State.StartedAt}} | {{if .State.Health}}{{range .State.Health.Log}}[{{.ExitCode}}] {{.Output}} {{end}}{{end}}' "$c" 2>&1 \
+              | tr '\n' ' ' | cut -c1-1500 | sed -e 's/%/%25/g')
+            echo "::error title=$c (sante)::${sante:-indisponible}"
           done
           docker compose $COMPOSE_ARGS logs --no-color --tail=200 || true
