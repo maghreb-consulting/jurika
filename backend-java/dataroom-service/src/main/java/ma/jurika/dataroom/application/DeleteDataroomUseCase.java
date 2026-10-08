@@ -67,8 +67,9 @@ public class DeleteDataroomUseCase {
     public Result execute(Command cmd) {
         // Lot L0 (E15, W3) : le workspace courant n'est plus pose ici. Pose dans
         // le corps, il arrivait apres l'ouverture de la transaction (trop tard
-        // pour la RLS) et restait sur le fil. L'appelant le pose avant :
-        // JwtAuthFilter en HTTP, l'ecouteur d'annulation (W2) sinon.
+        // pour la RLS) et restait sur le fil. L'appelant le pose avant
+        // (JwtAuthFilter, seul appelant depuis le retrait de l'ecouteur
+        // d'annulation en E16a).
 
         // 1) Verifier l'existence du dossier dans le workspace.
         @SuppressWarnings("unchecked")

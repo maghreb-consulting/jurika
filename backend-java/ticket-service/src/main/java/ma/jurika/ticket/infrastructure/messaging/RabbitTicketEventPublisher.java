@@ -52,8 +52,8 @@ public class RabbitTicketEventPublisher implements TicketEventPublisher {
         map.put("type", t.type().name());
         map.put("statut", t.statut().name());
         map.put("assigneId", t.assigneId() == null ? null : t.assigneId().toString());
-        // Fix 2026-06-07 (BUG 2) — Indispensable au TicketAnnulationListener
-        // cote dataroom-service pour decider de la suppression auto du dataroom.
+        // Dossier du ticket, publie pour les consommateurs de l'evenement. Lot L0
+        // (E16a) : dataroom ne supprime plus la Data Room a l'annulation (RG-TKT-05).
         map.put("dossierId", t.dossierId() == null ? null : t.dossierId().toString());
         map.put("at", Instant.now().toString());
         return map;
