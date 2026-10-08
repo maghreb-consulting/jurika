@@ -107,13 +107,11 @@ spring:
           uri: lb://supervision-service
           predicates:
             - Path=/api/v1/supervision/**, /api/v1/dashboard/**, /api/v1/admin/funnel/**
-        # Sprint 11 TASK 6 -- business_events ingestion endpoint interne (cross-
-        # service via X-Internal-Token). La variante publique a ete deplacee
-        # AVANT auth-public plus haut dans le fichier pour priorite de match.
-        - id: supervision-internal-events
-          uri: lb://supervision-service
-          predicates:
-            - Path=/internal/events
+        # Lot L0 (E16d) : plus aucune route /internal/** (ex-route
+        # supervision-internal-events). Les services appellent supervision en
+        # direct (BusinessEventPublisher, Feign par l'annuaire) ; le front passe
+        # par /api/v1/public/events (plus haut). InternalPathBlockingFilter
+        # refuse tout /internal/** a l'entree.
         # Sprint 10 -- dashboards multi-roles (in-app KPIs)
         # Lot IA-1 -- agent copilote de l'employe (/api/v1/agent/**)
         - id: dashboard-service
