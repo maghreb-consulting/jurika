@@ -81,7 +81,14 @@ public class PreviewDocumentUseCase {
         // EMPLOYE / SUPERVISEUR / SUPER_ADMIN ne sont pas bloques.
         if (user != null && user.role() == Role.CLIENT) {
             SettingsEntity s = settings.findById(doc.getDossierId()).orElse(null);
-            if (s != null && "SUSPENDED".equals(s.getAccessStatus())) {
+            if (s == null) {
+                // Lot L0 (E16b) : sans reglages, la Data Room est ACTIVE par defaut
+                // (ils naissent a la demande, cf. DataroomSettingsService#getOrCreate)
+                // -- mais seulement si le dossier lui-meme est lisible. Rien de
+                // lisible : refus, au lieu de servir l'apercu en silence.
+                dossiers.findById(doc.getDossierId())
+                        .orElseThrow(() -> new NotFoundException("Dossier introuvable : " + doc.getDossierId()));
+            } else if ("SUSPENDED".equals(s.getAccessStatus())) {
                 throw new ValidationException("Data Room suspendu : apercu indisponible");
             }
         }
