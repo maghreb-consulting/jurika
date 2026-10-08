@@ -7,7 +7,6 @@ import ma.jurika.common.persistence.TenantAwareJpaTransactionManager;
 import ma.jurika.common.security.TenantContext;
 import ma.jurika.dataroom.infrastructure.persistence.SettingsEntity;
 import ma.jurika.dataroom.infrastructure.persistence.SettingsJpaRepository;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -21,9 +20,6 @@ import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -34,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Lot L0, etape E11 : preuve de la RLS de dataroom en role d'execution
  * {@code jurika_app} (non proprietaire, NOSUPERUSER, NOBYPASSRLS), sur le schema
- * reel (Flyway jusqu'a V33) et avec le mecanisme de production : gestionnaire
+ * reel (vraies migrations amont, SchemaJurikaDb) et avec le mecanisme de production : gestionnaire
  * de transactions de jurika-common (workspace pose a l'ouverture) et garde
  * « hors transaction ». Les autres IT de dataroom restent en proprietaire
  * jusqu'a la bascule du service (E15).
@@ -62,26 +58,15 @@ class RlsRoleApplicatifIT {
     @BeforeAll
     void demarrer() throws Exception {
         pg.start();
-        Flyway.configure()
-                .dataSource(pg.getJdbcUrl(), pg.getUsername(), pg.getPassword())
-                .locations("classpath:db/migration")
-                .table("flyway_history_dataroom")
-                // Comme application.yml : le schema contient deja les tables amont
-                // (stubs de testcontainers-init.sql). Les migrations commencent a V5,
-                // une baseline en V1 n'en saute aucune.
-                .baselineOnMigrate(true)
-                .load()
-                .migrate();
-        try (Connection owner = DriverManager.getConnection(pg.getJdbcUrl(), pg.getUsername(), pg.getPassword());
-             Statement st = owner.createStatement()) {
-            st.execute("INSERT INTO workspaces (id, name, code_workspace) VALUES "
-                    + "('" + WS_A + "', 'Cabinet A', 'RLS-A'), ('" + WS_B + "', 'Cabinet B', 'RLS-B')");
-            st.execute("INSERT INTO entreprise_dossiers (id, workspace_id, raison_sociale) VALUES "
-                    + "('" + DOSSIER_A + "', '" + WS_A + "', 'Societe A'), "
-                    + "('" + DOSSIER_B + "', '" + WS_B + "', 'Societe B')");
-            st.execute("INSERT INTO dataroom_settings (dossier_id, workspace_id) VALUES "
-                    + "('" + DOSSIER_A + "', '" + WS_A + "'), ('" + DOSSIER_B + "', '" + WS_B + "')");
-        }
+        // Lot L0 (E15) : vraies migrations amont (SchemaJurikaDb), plus de tables simulees.
+        SchemaJurikaDb.migrer(pg);
+        JdbcTemplate owner = SchemaJurikaDb.proprietaire(pg);
+        SchemaJurikaDb.workspace(owner, WS_A, "Cabinet A", "JUR-RLSAA");
+        SchemaJurikaDb.workspace(owner, WS_B, "Cabinet B", "JUR-RLSBB");
+        owner.update("INSERT INTO entreprise_dossiers (id, workspace_id, raison_sociale, forme_juridique) VALUES "
+                + "(?, ?, 'Societe A', 'SARL'), (?, ?, 'Societe B', 'SARL')", DOSSIER_A, WS_A, DOSSIER_B, WS_B);
+        owner.update("INSERT INTO dataroom_settings (dossier_id, workspace_id) VALUES (?, ?), (?, ?)",
+                DOSSIER_A, WS_A, DOSSIER_B, WS_B);
 
         app = new HikariDataSource();
         app.setJdbcUrl(pg.getJdbcUrl());

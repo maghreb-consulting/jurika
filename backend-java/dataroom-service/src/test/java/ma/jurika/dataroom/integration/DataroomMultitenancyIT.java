@@ -57,9 +57,14 @@ class DataroomMultitenancyIT {
 
     @DynamicPropertySource
     static void registerProps(DynamicPropertyRegistry registry) {
+        SchemaJurikaDb.migrer(POSTGRES);
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
+        // Lot L0 (E15) : l'application tourne en role d'execution jurika_app (la
+        // RLS s'applique) ; Flyway migre avec le proprietaire.
+        registry.add("spring.datasource.username", () -> "jurika_app");
+        registry.add("spring.datasource.password", () -> "jurika_app_it");
+        registry.add("spring.flyway.user", POSTGRES::getUsername);
+        registry.add("spring.flyway.password", POSTGRES::getPassword);
         // Pas de MinIO ni de Redis dans cet IT : on neutralise via env factices,
         // les beans ne sont pas reellement appeles dans ces tests SQL.
         registry.add("jurika.minio.endpoint", () -> "http://localhost:9099");
@@ -68,7 +73,9 @@ class DataroomMultitenancyIT {
         registry.add("jurika.minio.bucket", () -> "jurika-it");
     }
 
-    @Autowired private JdbcTemplate jdbc;
+    /** Preparation et assertions en PROPRIETAIRE, hors RLS (lot L0). */
+    private final JdbcTemplate jdbc = new JdbcTemplate(new org.springframework.jdbc.datasource.DriverManagerDataSource(
+            POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
 
     private UUID workspaceA;
     private UUID workspaceB;
@@ -93,15 +100,13 @@ class DataroomMultitenancyIT {
         dossierB = UUID.randomUUID();
 
         // Workspaces
-        jdbc.update("INSERT INTO workspaces(id, name, code_workspace) VALUES (?, ?, ?)",
-                workspaceA, "Cabinet A", "JUR-AAAAA");
-        jdbc.update("INSERT INTO workspaces(id, name, code_workspace) VALUES (?, ?, ?)",
-                workspaceB, "Cabinet B", "JUR-BBBBB");
+        SchemaJurikaDb.workspace(jdbc, workspaceA, "Cabinet A", "JUR-AAAAA");
+        SchemaJurikaDb.workspace(jdbc, workspaceB, "Cabinet B", "JUR-BBBBB");
 
         // Dossiers
-        jdbc.update("INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale) VALUES (?, ?, ?)",
+        jdbc.update("INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale, forme_juridique) VALUES (?, ?, ?, 'SARL')",
                 dossierA, workspaceA, "SARL Test A");
-        jdbc.update("INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale) VALUES (?, ?, ?)",
+        jdbc.update("INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale, forme_juridique) VALUES (?, ?, ?, 'SARL')",
                 dossierB, workspaceB, "SARL Test B");
 
         // Documents -- 3 pour A, 2 pour B (avec bypass RLS via DISABLE)
