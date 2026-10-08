@@ -97,10 +97,18 @@ services:
   # ══════════════════════════════════════════════════
   minio:
     # Image epinglee par digest (deterministe, reproductible, pas de pull de :latest qui derive).
-    # Digest de l'image validee localement sur le serveur.
-    image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    # Lot L0 (2026-10-08) : minio/minio n'est plus servi en anonyme (Docker Hub,
+    # Quay) depuis l'arret de l'edition communautaire. Source retenue : Chainguard,
+    # fork maintenu (chainguard-forks/minio), RELEASE.2026-09-22T19-25-18Z,
+    # telechargement anonyme verifie. L'ancienne image (RELEASE.2025-09-07) reste
+    # en cache sur le Z440 jusqu'a la recreation du conteneur.
+    image: cgr.dev/chainguard/minio@sha256:2684b2534b83793f4cf6d04c54340ddbde8fb364552154d7a582d37b4fd6bb58
     container_name: jurika-minio
     restart: unless-stopped
+    # L'image Chainguard tourne en uid 65532 ; le volume existant a ete ecrit en
+    # root par l'ancienne image. root pour rester compatible (backlog : durcir en
+    # changeant le proprietaire du volume).
+    user: "0:0"
     ports:
       - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
       - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"

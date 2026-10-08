@@ -132,6 +132,9 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L0 (securite serveur, 2026-10-08) -- dette relevee
 
+- **PRIORITE HAUTE : 8 `application.yml` et `backend-node` utilisent un secret JWT de
+  developpement quand `JWT_SECRET` manque** (`${JWT_SECRET:dev-only-jwt-secret-...}`) :
+  supprimer ce repli, demarrage en echec si le secret est absent (au plus tard L9).
 - **PRIORITE HAUTE : le consommateur RabbitMQ de l'audit (`AuditEventConsumer`) avale toute
   exception** : une trace refusee est perdue sans bruit. Il faut la rejeter vers une file
   d'erreurs (dead-letter) ou la rejouer.
@@ -182,6 +185,9 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   (`scripts/seed-demo.mjs`, cabinet JUR-DEMO2) : client et employes n'y voient aucun dossier.
   Complete a la main sur le Z440 le 2026-10-08 pour la verification du lot L0 (client2,
   rattachements de 4 dossiers).
+- **minio tourne en root** (`user: "0:0"`) pour rester compatible avec le volume existant
+  (ecrit en root par l'ancienne image `minio/minio`) ; a durcir en changeant le proprietaire
+  du volume (image Chainguard prevue pour l'uid 65532).
 - **Liste des conteneurs attendus dupliquee** entre `start-local.sh` et
   `.github/workflows/base-vierge.yml` : a factoriser.
 - **Messages de commit du lot L0 non ASCII** (24 commits, guillemets francais, signe
