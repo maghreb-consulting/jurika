@@ -33,6 +33,7 @@ jobs:
         -f infrastructure/docker-compose.yml
         -f infrastructure/docker-compose.services.yml
         -f infrastructure/docker-compose.local.yml
+        -f infrastructure/docker-compose.ci-sans-ports.yml
         --env-file .env
         --env-file .env.local
       # MailHog est derriere un profil compose ; la pile attendue l'inclut.
@@ -74,6 +75,25 @@ jobs:
           # elles doivent leur appartenir (cle privee en 600), comme sur le Z440. Le
           # runner GitHub n'est pas l'uid 1000.
           sudo chown -R 1000:1000 infrastructure/secrets/jwt
+
+      - name: Aucun port publie sur le runner
+        run: |
+          set -euo pipefail
+          # Le controle passe par docker inspect / docker exec, jamais par les ports
+          # de l'hote. Le runner GitHub occupe deja certains ports (8084 vu le
+          # 2026-10-08 : "address already in use") : en CI, aucun service ne publie
+          # de port. Liste des services lue dans le rendu reel de compose.
+          BASE="-f infrastructure/docker-compose.yml -f infrastructure/docker-compose.services.yml -f infrastructure/docker-compose.local.yml --env-file .env --env-file .env.local"
+          {
+            echo "services:"
+            for s in $(docker compose $BASE config --services); do
+              printf '  %s:\n    ports: !reset []\n' "$s"
+            done
+          } > infrastructure/docker-compose.ci-sans-ports.yml
+          cat infrastructure/docker-compose.ci-sans-ports.yml
+          publies=$(docker compose $COMPOSE_ARGS config --format json \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print(' '.join(k for k,v in d['services'].items() if v.get('ports')))")
+          if [ -n "$publies" ]; then echo "Ports encore publies : $publies" >&2; exit 1; fi
 
       - name: Rendu compose valide
         run: docker compose $COMPOSE_ARGS config --quiet
@@ -137,6 +157,7 @@ jobs:
         if: failure()
         run: |
           docker compose $COMPOSE_ARGS ps -a || true
+          echo "--- ports en ecoute sur le runner :"; sudo ss -ltnp || true
           if [ -s /tmp/compose-up.log ]; then
             fin=$(grep -vE ' (Creating|Created|Starting|Started|Waiting|Healthy|Running)\s*$' /tmp/compose-up.log \
               | tail -20 | cut -c1-300 | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
