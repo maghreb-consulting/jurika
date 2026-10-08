@@ -58,11 +58,18 @@ public class ChatbotController {
             "hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')";
 
     /**
+     * Lot L0 (E24, CDC § 3.1, RG-ADM-03) : AJOUT et RETRAIT des sources reserves
+     * au super-admin (JURIKA « depose et gere les sources fiables du chatbot »).
+     * La liste reste lisible par le cabinet.
+     */
+    private static final String ADMIN_SOURCES = "hasAuthority('ROLE_SUPER_ADMIN')";
+
+    /**
      * Ingere une source : soit un fichier (pdf/docx/txt) via {@code file}, soit
      * du texte colle via {@code text} (+ {@code title} optionnel).
      */
     @PostMapping(value = "/sources", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize(MANAGE_SOURCES)
+    @PreAuthorize(ADMIN_SOURCES)
     @Auditable(action = "CHATBOT_SOURCE_ADDED", resourceType = "RAG_SOURCE")
     public Map<String, Object> addSource(
             @AuthenticationPrincipal AuthenticatedUser user,
@@ -106,7 +113,7 @@ public class ChatbotController {
 
     /** Supprime un document source (tous ses chunks) du workspace courant. */
     @DeleteMapping("/sources/{docId}")
-    @PreAuthorize(MANAGE_SOURCES)
+    @PreAuthorize(ADMIN_SOURCES)
     @Auditable(action = "CHATBOT_SOURCE_DELETED", resourceType = "RAG_SOURCE")
     public Map<String, Object> deleteSource(@AuthenticationPrincipal AuthenticatedUser user,
                                             @PathVariable UUID docId) {
