@@ -13,7 +13,8 @@ import java.util.UUID;
 
 /**
  * Seed idempotent de donnees demo (dossiers + tickets) pour le workspace JUR-DEMO1.
- * Execute au demarrage seulement si {@code jurika.demo-seed=true} (default true en dev).
+ * Execute au demarrage seulement si {@code jurika.demo-seed=true}. Lot L0 (E16c) :
+ * false par defaut, true en profil {@code dev} (application.yml).
  */
 @Component
 public class DemoDataSeeder implements CommandLineRunner {
@@ -26,7 +27,7 @@ public class DemoDataSeeder implements CommandLineRunner {
     @PersistenceContext
     private EntityManager em;
 
-    @Value("${jurika.demo-seed:true}")
+    @Value("${jurika.demo-seed:false}")
     private boolean enabled;
 
     @Override

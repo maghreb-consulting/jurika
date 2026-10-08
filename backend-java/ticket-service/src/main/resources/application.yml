@@ -56,6 +56,9 @@ jurika:
     issuer: ${JWT_ISSUER:jurika.ma}
   env: ${JURIKA_ENV:dev}
   release: ${JURIKA_RELEASE:dev}
+  # Lot L0 (E16c) : seeder de demonstration INACTIF par defaut ; actif
+  # seulement en profil dev (document de profil en fin de fichier).
+  demo-seed: false
   # 2026-07-02 — cible de WorkspaceStatusFeignClient (lookup role membre pour le
   # transfert de dossier). En mode local (services lances sur l'hote), auth-service
   # ecoute sur localhost:8081 ; le defaut du @FeignClient (http://auth-service) ne
@@ -105,3 +108,12 @@ management:
 logging:
   level:
     ma.jurika: INFO
+
+---
+# Lot L0 (E16c) : profil dev -- donnees de demonstration (DemoDataSeeder).
+spring:
+  config:
+    activate:
+      on-profile: dev
+jurika:
+  demo-seed: true
