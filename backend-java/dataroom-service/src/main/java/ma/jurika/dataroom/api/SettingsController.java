@@ -2,7 +2,6 @@ package ma.jurika.dataroom.api;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import ma.jurika.common.security.AuthenticatedUser;
 import ma.jurika.dataroom.api.dto.DataroomDtos.AccessLogPage;
@@ -12,7 +11,6 @@ import ma.jurika.dataroom.api.dto.DataroomDtos.SettingsView;
 import ma.jurika.dataroom.api.dto.DataroomDtos.ToggleSuspensionRequest;
 import ma.jurika.dataroom.api.dto.DataroomDtos.UpdatePermissionsRequest;
 import ma.jurika.dataroom.application.DataroomSettingsService;
-import ma.jurika.dataroom.application.DeleteDataroomUseCase;
 import ma.jurika.dataroom.application.access.ClientAccessLogQueryService;
 import ma.jurika.dataroom.infrastructure.persistence.SettingsEntity;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,17 +34,14 @@ public class SettingsController {
 
     private final DataroomSettingsService settings;
     private final ClientAccessLogQueryService accessLogQuery;
-    private final DeleteDataroomUseCase deleteDataroom;
 
     @Value("${jurika.dataroom.client-link-base-url:http://localhost:5173/client/dataroom}")
     private String clientLinkBaseUrl;
 
     public SettingsController(DataroomSettingsService settings,
-                              ClientAccessLogQueryService accessLogQuery,
-                              DeleteDataroomUseCase deleteDataroom) {
+                              ClientAccessLogQueryService accessLogQuery) {
         this.settings = settings;
         this.accessLogQuery = accessLogQuery;
-        this.deleteDataroom = deleteDataroom;
     }
 
     @GetMapping("/dossiers/{dossierId}/settings")
@@ -117,31 +112,9 @@ public class SettingsController {
         return accessLogQuery.findByDossier(dossierId, limit, offset);
     }
 
-    /**
-     * Fix 2026-06-07 (BUG 3) -- Suppression complete d'un dataroom.
-     *
-     * <p>RBAC EMPLOYE / SUPERVISEUR du workspace courant. Idempotent (204
-     * meme si deja supprime). Refus 409 si un ticket actif (NOUVEAU/EN_COURS)
-     * reference encore le dossier.
-     */
-    @DeleteMapping("/dossiers/{dossierId}")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR')")
-    @Operation(summary = "Supprime un dataroom (destructif, idempotent)",
-            description = "Supprime dataroom_settings + tous les documents / depots / demandes / "
-                    + "snapshots / access-log "
-                    + "rattaches. Le dossier passe en RADIE si des tickets historiques le referencent, "
-                    + "sinon il est DELETE physique. Refuse 409 si un ticket actif "
-                    + "est encore rattache.")
-    public ResponseEntity<Void> deleteDataroom(@AuthenticationPrincipal AuthenticatedUser user,
-                                                @PathVariable UUID dossierId,
-                                                HttpServletRequest req) {
-        String ip = req.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isBlank()) ip = req.getRemoteAddr();
-        String ua = req.getHeader("User-Agent");
-        deleteDataroom.execute(new DeleteDataroomUseCase.Command(
-                user.workspaceId(), dossierId, user.userId(), ip, ua));
-        return ResponseEntity.noContent().build();
-    }
+    // Lot L1 : la suppression d'une Data Room (DELETE /dossiers/{dossierId}, destruction
+    // physique des documents et du dossier) est retiree : absente du CDC (3.2), contraire a
+    // la conservation de dix ans (RG-DP-03), et bloquee par les cles RESTRICT de V28.
 
     private SettingsView toView(SettingsEntity s) {
         // 2026-07-04 -- "Acces client" = NOMBRE DE CLIENTS ayant acces au dossier

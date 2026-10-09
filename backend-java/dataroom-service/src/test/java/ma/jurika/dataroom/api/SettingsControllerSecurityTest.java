@@ -4,7 +4,6 @@ import ma.jurika.common.security.RoleHierarchyAutoConfiguration;
 import ma.jurika.dataroom.api.dto.DataroomDtos.ToggleSuspensionRequest;
 import ma.jurika.dataroom.api.dto.DataroomDtos.UpdatePermissionsRequest;
 import ma.jurika.dataroom.application.DataroomSettingsService;
-import ma.jurika.dataroom.application.DeleteDataroomUseCase;
 import ma.jurika.dataroom.application.access.ClientAccessLogQueryService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -95,7 +94,7 @@ class SettingsControllerSecurityTest {
         @Bean
         SettingsController settingsController() {
             return new SettingsController(mock(DataroomSettingsService.class),
-                    mock(ClientAccessLogQueryService.class), mock(DeleteDataroomUseCase.class));
+                    mock(ClientAccessLogQueryService.class));
         }
     }
 }

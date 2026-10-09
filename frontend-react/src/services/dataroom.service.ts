@@ -693,16 +693,6 @@ export const dataroomService = {
     return data;
   },
 
-  /**
-   * Fix 2026-06-07 (BUG 3) -- Suppression complete du dataroom.
-   * EMPLOYE / SUPERVISEUR uniquement. 204 No Content (idempotent : meme
-   * code si le dataroom etait deja supprime). 409 si un ticket actif
-   * (NOUVEAU/EN_COURS) est encore rattache au dossier.
-   */
-  async deleteDataroom(dossierId: string): Promise<void> {
-    await api.delete(`/dataroom/dossiers/${dossierId}`);
-  },
-
   // ---- Access log (Sprint 7 / TASK 5) ----
   /**
    * Liste paginee des acces client a un dossier (drawer "Activite client").

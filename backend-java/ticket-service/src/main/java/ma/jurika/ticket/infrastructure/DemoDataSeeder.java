@@ -76,19 +76,22 @@ public class DemoDataSeeder implements CommandLineRunner {
             em.createNativeQuery("""
                 INSERT INTO entreprise_dossiers
                     (id, workspace_id, raison_sociale, forme_juridique, ice, rc_numero, rc_tribunal,
-                     adresse_siege, ville, capital_social_mad, date_constitution, statut)
+                     adresse_siege, ville, capital_social_mad, date_constitution, statut, responsable_id)
                 VALUES
                     ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1'::uuid, CAST(?1 AS uuid),
                      'ATLAS TRADING SARL', 'SARL', '002345678000089', 'RC-CASA-12345', 'Casablanca',
-                     '12 Avenue Hassan II, Casablanca', 'Casablanca', 100000.00, '2026-01-14', 'ACTIVE'),
+                     '12 Avenue Hassan II, Casablanca', 'Casablanca', 100000.00, '2026-01-14', 'ACTIVE', CAST(?2 AS uuid)),
                     ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2'::uuid, CAST(?1 AS uuid),
                      'CASA SERVICES SARL AU', 'SARL_AU', '002345678000090', 'RC-CASA-12346', 'Casablanca',
-                     '45 Boulevard Mohammed V, Casablanca', 'Casablanca', 50000.00, '2026-01-05', 'ACTIVE'),
+                     '45 Boulevard Mohammed V, Casablanca', 'Casablanca', 50000.00, '2026-01-05', 'ACTIVE', CAST(?2 AS uuid)),
                     ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3'::uuid, CAST(?1 AS uuid),
                      'MAROC EXPORT PLUS SARL', 'SARL', '002345678000091', 'RC-RABAT-7891', 'Rabat',
-                     '8 Rue Allal Ben Abdellah, Rabat', 'Rabat', 200000.00, '2026-03-08', 'ACTIVE')
+                     '8 Rue Allal Ben Abdellah, Rabat', 'Rabat', 200000.00, '2026-03-08', 'ACTIVE', CAST(?2 AS uuid))
                 """)
                     .setParameter(1, WORKSPACE_ID)
+                    // Lot L1 (V28) : responsable obligatoire ; l'employe de demonstration,
+                    // assigne de tous les tickets ci-dessous (les tickets suivent leur dossier).
+                    .setParameter(2, EMPLOYE_ID)
                     .executeUpdate();
 
             // 5 tickets (refs uniques timestamp)

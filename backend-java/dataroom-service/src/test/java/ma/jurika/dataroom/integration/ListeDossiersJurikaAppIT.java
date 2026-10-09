@@ -105,7 +105,7 @@ class ListeDossiersJurikaAppIT {
         employeId = UUID.randomUUID();
 
         SchemaJurikaDb.workspace(jdbc, workspaceId, "Cabinet Liste", "JUR-L0001");
-        jdbc.update("INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale, forme_juridique) VALUES (?, ?, ?, 'SARL')",
+        jdbc.update("INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale, forme_juridique, responsable_id) VALUES (?, ?, ?, 'SARL', '33333333-3333-3333-3333-333333333333')",
                 dossierId, workspaceId, "PARACOSME");
         jdbc.update("""
                 INSERT INTO tickets(id, workspace_id, reference, titre, type, statut,
@@ -127,7 +127,7 @@ class ListeDossiersJurikaAppIT {
     @Test
     void l_etat_suspendu_de_la_data_room_est_lu_sous_jurika_app() {
         UUID dossierActif = UUID.randomUUID();
-        jdbc.update("INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale, forme_juridique) VALUES (?, ?, ?, 'SARL')",
+        jdbc.update("INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale, forme_juridique, responsable_id) VALUES (?, ?, ?, 'SARL', '33333333-3333-3333-3333-333333333333')",
                 dossierActif, workspaceId, "ACTIVA");
         jdbc.update("INSERT INTO dataroom_settings(dossier_id, workspace_id, access_status) VALUES (?, ?, 'SUSPENDED')",
                 dossierId, workspaceId);

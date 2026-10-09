@@ -16,7 +16,6 @@ import {
   PlayCircle,
   Printer,
   Search,
-  Trash2,
   Upload,
   Send,
   UserCheck,
@@ -27,7 +26,6 @@ import { Card } from '../../components/ui/Card';
 import { TextField } from '../../components/ui/TextField';
 import { Button } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { PromptDialog } from '../../components/ui/PromptDialog';
 import { dataroomService } from '../../services/dataroom.service';
 import { extractError } from '../../lib/api';
 import {
@@ -170,12 +168,6 @@ function DataroomManagementView() {
           if (deepLinkDossier || deepLinkTab) setSearchParams({}, { replace: true });
         }}
         canEdit={!!isEmploye}
-        // Fix 2026-06-07 (BUG 3) — bouton "Supprimer le dataroom" visible
-        // EMPLOYE ET SUPERVISEUR (aligne avec @PreAuthorize backend
-        // hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR')).
-        canDeleteDataroom={
-          user?.role === 'EMPLOYE' || user?.role === 'SUPERVISEUR'
-        }
       />
     );
   }
@@ -453,13 +445,11 @@ function DataroomDetail({
   dossier,
   onBack,
   canEdit,
-  canDeleteDataroom,
   initialTab,
 }: {
   dossier: DossierBrief;
   onBack: () => void;
   canEdit: boolean;
-  canDeleteDataroom: boolean;
   initialTab?: string | null;
 }) {
   const user = useCurrentUser();
@@ -477,10 +467,8 @@ function DataroomDetail({
   const [loadingClient, setLoadingClient] = useState(true);
   // Sprint 7 / TASK 5 -- drawer "Activite client"
   const [accessLogOpen, setAccessLogOpen] = useState(false);
-  // Suppression definitive du dataroom : PromptDialog anti-misclick (saisie de
-  // la raison sociale exacte) remplace le couple window.prompt + window.confirm.
-  const [deleteDataroomOpen, setDeleteDataroomOpen] = useState(false);
-  const [deletingDataroom, setDeletingDataroom] = useState(false);
+  // Lot L1 : plus de suppression d'une Data Room (absente du CDC, contraire a la
+  // conservation de dix ans RG-DP-03) : bouton et dialogue retires.
   // Retrait de l'acces client : ConfirmDialog nominatif (remplace window.confirm).
   const [removeClientOpen, setRemoveClientOpen] = useState(false);
   const [removingClient, setRemovingClient] = useState(false);
@@ -534,35 +522,6 @@ function DataroomDetail({
    * Le compte user du client n'est pas supprime (autres dossiers,
    * historique). Mais il perd l'acces a CE dossier jusqu'a re-invitation.
    */
-  /**
-   * Fix 2026-06-07 (BUG 3) — Suppression COMPLETE du dataroom.
-   *
-   * Action DESTRUCTIVE (vs. suspension reversible / retrait client qui
-   * detache juste le compte). Supprime tout : documents juridiques /
-   * comptables / fiscaux, demandes, snapshots, access-log, exercices,
-   * echeances. Le dossier passe en RADIE si des tickets historiques le
-   * referencent (preserve l'audit), sinon DELETE physique.
-   *
-   * Sécurité anti-misclick : saisie de la raison sociale exacte via
-   * <PromptDialog> (validate = correspondance stricte), qui remplace le couple
-   * window.prompt + window.confirm en collapsant la double-confirmation en un
-   * seul garde-fou. 409 si un ticket actif (NOUVEAU / EN_COURS) bloque la
-   * suppression -> message clair.
-   */
-  async function confirmDeleteDataroom() {
-    setDeletingDataroom(true);
-    try {
-      await dataroomService.deleteDataroom(dossier.id);
-      setDeleteDataroomOpen(false);
-      onBack();
-    } catch (err) {
-      // Le backend renvoie 409 ConflictException si un ticket actif est rattache.
-      setError(extractError(err).message);
-      setDeleteDataroomOpen(false);
-    } finally {
-      setDeletingDataroom(false);
-    }
-  }
 
   async function confirmRemoveClientAccess() {
     setRemovingClient(true);
@@ -687,17 +646,6 @@ function DataroomDetail({
                   <PauseCircle className="mr-2 h-4 w-4" /> Suspendre
                 </>
               )}
-            </Button>
-          )}
-          {canDeleteDataroom && (
-            <Button
-              variant="secondary"
-              onClick={() => setDeleteDataroomOpen(true)}
-              disabled={loadingSettings}
-              className="border-2 border-danger bg-danger/10 text-danger font-semibold hover:bg-danger hover:text-bg-raised"
-              title="SUPPRIMER le dataroom (documents, demandes, historique). IRREVERSIBLE."
-            >
-              <Trash2 className="mr-2 h-4 w-4" /> Supprimer le dataroom
             </Button>
           )}
         </div>
@@ -913,33 +861,6 @@ function DataroomDetail({
         dossierId={dossier.id}
         raisonSociale={dossier.raisonSociale}
         onClose={() => setAccessLogOpen(false)}
-      />
-
-      {/* Suppression definitive : anti-misclick par saisie exacte de la raison sociale. */}
-      <PromptDialog
-        open={deleteDataroomOpen}
-        onOpenChange={(o) => !o && setDeleteDataroomOpen(false)}
-        title="SUPPRESSION DEFINITIVE du dataroom"
-        description={
-          <>
-            Tous les documents du dossier juridique et des dépôts client, les
-            requêtes, les demandes, snapshots et l'historique d'acces seront
-            DETRUITS. Si des tickets
-            historiques existent, le dossier passe en RADIE ; sinon il est
-            supprime physiquement. Cette action est IRREVERSIBLE.
-          </>
-        }
-        label={`Pour confirmer, tapez EXACTEMENT la raison sociale : ${dossier.raisonSociale.trim()}`}
-        placeholder={dossier.raisonSociale.trim()}
-        variant="danger"
-        confirmLabel="Supprimer definitivement"
-        loading={deletingDataroom}
-        validate={(v) =>
-          v.trim() !== dossier.raisonSociale.trim()
-            ? `La raison sociale tapee ne correspond pas a "${dossier.raisonSociale.trim()}". Suppression annulee.`
-            : null
-        }
-        onConfirm={confirmDeleteDataroom}
       />
 
       {/* Retrait de l'acces client : confirmation NOMINATIVE. */}

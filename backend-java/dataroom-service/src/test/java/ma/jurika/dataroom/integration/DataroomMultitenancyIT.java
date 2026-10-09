@@ -104,9 +104,9 @@ class DataroomMultitenancyIT {
         SchemaJurikaDb.workspace(jdbc, workspaceB, "Cabinet B", "JUR-BBBBB");
 
         // Dossiers
-        jdbc.update("INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale, forme_juridique) VALUES (?, ?, ?, 'SARL')",
+        jdbc.update("INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale, forme_juridique, responsable_id) VALUES (?, ?, ?, 'SARL', '33333333-3333-3333-3333-333333333333')",
                 dossierA, workspaceA, "SARL Test A");
-        jdbc.update("INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale, forme_juridique) VALUES (?, ?, ?, 'SARL')",
+        jdbc.update("INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale, forme_juridique, responsable_id) VALUES (?, ?, ?, 'SARL', '33333333-3333-3333-3333-333333333333')",
                 dossierB, workspaceB, "SARL Test B");
 
         // Documents -- 3 pour A, 2 pour B (avec bypass RLS via DISABLE)

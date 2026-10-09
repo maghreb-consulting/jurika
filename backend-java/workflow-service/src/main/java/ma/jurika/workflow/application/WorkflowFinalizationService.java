@@ -93,7 +93,8 @@ public class WorkflowFinalizationService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public UUID createOrReuseDossierMereEtrangereInNewTransaction(UUID workspaceId,
-                                                                  Map<String, Object> step1Data) {
-        return workflowUseCases.resolveOrCreateDossierMereEtrangere(workspaceId, step1Data);
+                                                                  Map<String, Object> step1Data,
+                                                                  UUID responsableId) {
+        return workflowUseCases.resolveOrCreateDossierMereEtrangere(workspaceId, step1Data, responsableId);
     }
 }

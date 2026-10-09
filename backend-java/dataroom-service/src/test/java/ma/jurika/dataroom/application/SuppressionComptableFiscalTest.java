@@ -167,7 +167,7 @@ class SuppressionComptableFiscalTest {
         List<String> fichiers = List.of(
                 "auth-service/src/main/java/ma/jurika/auth/api/AdminWorkspaceController.java",
                 "dataroom-service/src/main/java/ma/jurika/dataroom/application/DataroomDepotService.java",
-                "dataroom-service/src/main/java/ma/jurika/dataroom/application/DeleteDataroomUseCase.java",
+                // DeleteDataroomUseCase : retire au lot L1 (suppression de Data Room abandonnee).
                 "jurika-common/src/main/java/ma/jurika/common/billing/PlanLimitsService.java",
                 "ticket-service/src/main/java/ma/jurika/ticket/infrastructure/DemoDataSeeder.java");
 

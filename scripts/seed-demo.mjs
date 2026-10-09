@@ -207,8 +207,13 @@ const TICKETS = [
 
         // 3. Dossiers ──────────────────────────────────────────────────
         const dossierIds = [];
+        // Lot L1 (V28) : chaque dossier nait avec son employe responsable ; les tickets
+        // suivent leur dossier (meme regle de parite que l'assigne des tickets ci-dessous).
+        const employe1 = userIds['employe1@demo.jurika.ma'];
+        const employe2 = userIds['employe2@demo.jurika.ma'];
         for (let i = 0; i < DOSSIERS.length; i++) {
             const d = DOSSIERS[i];
+            const responsable = i % 2 === 0 ? employe1 : employe2;
             const existing = await client.query(
                 'SELECT id FROM entreprise_dossiers WHERE workspace_id = $1 AND ice = $2',
                 [workspaceId, d.ice]);
@@ -218,27 +223,25 @@ const TICKETS = [
                 await client.query(`
                     UPDATE entreprise_dossiers SET
                         raison_sociale = $1, forme_juridique = $2, ville = $3,
-                        capital_social_mad = $4, statut = $5, updated_at = NOW()
+                        capital_social_mad = $4, statut = $5, responsable_id = $7, updated_at = NOW()
                     WHERE id = $6
-                `, [d.raison, d.forme, d.ville, d.capital, d.statut, id]);
+                `, [d.raison, d.forme, d.ville, d.capital, d.statut, id, responsable]);
             } else {
                 id = randomUUID();
                 await client.query(`
                     INSERT INTO entreprise_dossiers
                         (id, workspace_id, raison_sociale, forme_juridique, ice, ville,
-                         capital_social_mad, date_constitution, statut, created_at, updated_at)
+                         capital_social_mad, date_constitution, statut, responsable_id, created_at, updated_at)
                     VALUES
                         ($1, $2, $3, $4, $5, $6, $7, NOW() - (random() * 365)::int * INTERVAL '1 day',
-                         $8, NOW(), NOW())
-                `, [id, workspaceId, d.raison, d.forme, d.ice, d.ville, d.capital, d.statut]);
+                         $8, $9, NOW(), NOW())
+                `, [id, workspaceId, d.raison, d.forme, d.ice, d.ville, d.capital, d.statut, responsable]);
             }
             dossierIds.push(id);
         }
         console.log(`✓ ${DOSSIERS.length} dossiers seedes`);
 
         // 4. Tickets ───────────────────────────────────────────────────
-        const employe1 = userIds['employe1@demo.jurika.ma'];
-        const employe2 = userIds['employe2@demo.jurika.ma'];
         for (const t of TICKETS) {
             const existing = await client.query(
                 'SELECT id FROM tickets WHERE workspace_id = $1 AND reference = $2',

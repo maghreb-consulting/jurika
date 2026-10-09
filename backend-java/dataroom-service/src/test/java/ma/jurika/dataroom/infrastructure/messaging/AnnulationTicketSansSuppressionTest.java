@@ -1,6 +1,5 @@
 package ma.jurika.dataroom.infrastructure.messaging;
 
-import ma.jurika.dataroom.application.DeleteDataroomUseCase;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -54,19 +53,12 @@ class AnnulationTicketSansSuppressionTest {
     }
 
     @Test
-    void la_messagerie_ne_depend_pas_de_la_suppression_de_data_room() throws Exception {
-        List<String> dependants = new ArrayList<>();
-        for (Class<?> c : composants()) {
-            if (!c.getPackageName().contains(".messaging")) continue;
-            for (Field f : c.getDeclaredFields()) {
-                if (f.getType() == DeleteDataroomUseCase.class) dependants.add(c.getSimpleName());
-            }
-            for (Constructor<?> k : c.getDeclaredConstructors()) {
-                if (Arrays.asList(k.getParameterTypes()).contains(DeleteDataroomUseCase.class)) {
-                    dependants.add(c.getSimpleName());
-                }
-            }
-        }
-        assertThat(dependants).isEmpty();
+    void la_suppression_de_data_room_n_existe_plus() throws Exception {
+        // Lot L1 : DeleteDataroomUseCase est retire ; ni la messagerie ni aucun autre
+        // composant ne peut plus detruire une Data Room.
+        assertThat(composants()).extracting(Class::getSimpleName).doesNotContain("DeleteDataroomUseCase");
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                () -> Class.forName("ma.jurika.dataroom.application.DeleteDataroomUseCase"))
+                .isInstanceOf(ClassNotFoundException.class);
     }
 }

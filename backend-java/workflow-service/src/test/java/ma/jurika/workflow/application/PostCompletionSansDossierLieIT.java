@@ -271,10 +271,10 @@ class PostCompletionSansDossierLieIT {
         owner.update("""
                         INSERT INTO entreprise_dossiers
                           (id, workspace_id, raison_sociale, forme_juridique, rc_numero,
-                           rc_tribunal, capital_social_mad, adresse_siege, ville, statut)
+                           rc_tribunal, capital_social_mad, adresse_siege, ville, statut, responsable_id)
                         VALUES (?, ?, ?, 'SARL', '123456', 'CASABLANCA', 100000,
-                                '12 RUE DES FOULES', 'CASABLANCA', ?)
-                        """, id, ws, raisonSociale, statut);
+                                '12 RUE DES FOULES', 'CASABLANCA', ?, ?)
+                        """, id, ws, raisonSociale, statut, SchemaJurikaDb.EMPLOYE_SEME);
     }
 
     private Object colonne(String name) {

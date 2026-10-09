@@ -104,7 +104,7 @@ class DocumentVersioningIT {
         dossierId = UUID.randomUUID();
         uploaderId = UUID.randomUUID();
         SchemaJurikaDb.workspace(jdbc, workspaceId, "Cabinet Versioning", "JUR-V0001");
-        jdbc.update("INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale, forme_juridique) VALUES (?, ?, ?, 'SARL')",
+        jdbc.update("INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale, forme_juridique, responsable_id) VALUES (?, ?, ?, 'SARL', '33333333-3333-3333-3333-333333333333')",
                 dossierId, workspaceId, "SARL Versioning");
 
         TenantContext.set(workspaceId);

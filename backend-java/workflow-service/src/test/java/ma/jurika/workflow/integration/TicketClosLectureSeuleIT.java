@@ -100,9 +100,10 @@ class TicketClosLectureSeuleIT {
         SchemaJurikaDb.workspace(jdbc, workspaceId, "Cabinet Clos", "JUR-K0001");
         jdbc.update("""
                 INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale, forme_juridique,
-                                                rc_numero, rc_tribunal, capital_social_mad, ville)
-                VALUES (?, ?, 'NOVA INDUSTRIE', 'SARL', '123456', 'CASABLANCA', 100000, 'CASABLANCA')
-                """, dossierId, workspaceId);
+                                                rc_numero, rc_tribunal, capital_social_mad, ville,
+                                                responsable_id)
+                VALUES (?, ?, 'NOVA INDUSTRIE', 'SARL', '123456', 'CASABLANCA', 100000, 'CASABLANCA', ?)
+                """, dossierId, workspaceId, EMPLOYE);
         jdbc.update("""
                 INSERT INTO tickets(id, workspace_id, reference, titre, type, statut, cree_par_id)
                 VALUES (?, ?, 'T-2026-00901', 'Creation SARL', 'CREATION', 'CREATION_TICKET', ?)
