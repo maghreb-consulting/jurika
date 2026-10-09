@@ -92,6 +92,19 @@ public class TicketRepositoryAdapter implements TicketRepository {
     }
 
     @Override
+    public int realignerSurResponsable(UUID workspaceId, UUID dossierId, UUID responsableId) {
+        return em.createNativeQuery("""
+                UPDATE tickets SET assigne_id = ?1, updated_at = NOW()
+                 WHERE workspace_id = ?2 AND dossier_id = ?3
+                   AND assigne_id IS DISTINCT FROM ?1
+                """)
+                .setParameter(1, responsableId)
+                .setParameter(2, workspaceId)
+                .setParameter(3, dossierId)
+                .executeUpdate();
+    }
+
+    @Override
     public Ticket markTransferred(UUID ticketId, UUID assigneId, Instant transferredAt) {
         TicketEntity e = duWorkspaceCourant(ticketId);
         // Reassignation + marquage transfert. Le statut reste inchange (un dossier

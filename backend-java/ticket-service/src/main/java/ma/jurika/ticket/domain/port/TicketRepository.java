@@ -35,4 +35,10 @@ public interface TicketRepository {
     long count(TicketFilter filter);
 
     String generateReference();
+
+    /**
+     * Lot L1 (RG-TKT-08) : les tickets suivent leur dossier. Aligne l'assigne de tous
+     * les tickets du dossier sur son responsable. Retourne le nombre de tickets modifies.
+     */
+    int realignerSurResponsable(UUID workspaceId, UUID dossierId, UUID responsableId);
 }

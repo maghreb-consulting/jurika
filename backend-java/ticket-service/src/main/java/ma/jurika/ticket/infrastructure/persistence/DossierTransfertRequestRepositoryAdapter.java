@@ -57,6 +57,11 @@ public class DossierTransfertRequestRepositoryAdapter implements DossierTransfer
     }
 
     @Override
+    public java.util.Optional<DossierTransfertRequest> findPendingForDossier(UUID workspaceId, UUID dossierId) {
+        return jpa.findFirstByWorkspaceIdAndDossierIdAndStatut(workspaceId, dossierId, PENDING).map(this::toDomain);
+    }
+
+    @Override
     public List<DossierTransfertRequestView> listInbox(UUID workspaceId, UUID toUserId) {
         return enrich(jpa.findByWorkspaceIdAndToUserIdAndStatutOrderByCreatedAtDesc(
                 workspaceId, toUserId, PENDING));

@@ -6,10 +6,13 @@ import ma.jurika.common.exception.NotFoundException;
 import ma.jurika.common.exception.ValidationException;
 import ma.jurika.common.notification.NotificationPublisher;
 import ma.jurika.common.security.TenantContext;
+import ma.jurika.ticket.domain.model.DossierReaffectation;
 import ma.jurika.ticket.domain.model.DossierTransfertRequest;
 import ma.jurika.ticket.domain.model.DossierTransfertRequestView;
 import ma.jurika.ticket.domain.model.EntrepriseDossier;
+import ma.jurika.ticket.domain.model.NatureReaffectation;
 import ma.jurika.ticket.domain.model.TransfertStatut;
+import ma.jurika.ticket.domain.port.DossierReaffectationRepository;
 import ma.jurika.ticket.domain.port.DossierRepository;
 import ma.jurika.ticket.domain.port.DossierTransfertRequestRepository;
 import ma.jurika.ticket.domain.port.MemberDirectory;
@@ -28,33 +31,24 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Transfert d'un dossier d'un employe a un autre (V9).
+ * Changement de responsable d'un dossier (V9, lot L1).
  *
- * <p>Le transfert est reserve aux EMPLOYES (operation de production). Une seule
- * voie, par consentement :
  * <ul>
- *   <li><b>VOIE A</b> (entre employes, par consentement) : le responsable courant
- *       cree une DEMANDE EN_ATTENTE ; la cible accepte (le transfert s'applique)
- *       ou refuse. L'initiateur peut annuler tant que non resolue.</li>
+ *   <li><b>Transfert</b> (RG-DOS-02) : le responsable courant cree une DEMANDE
+ *       EN_ATTENTE ; la cible accepte (le transfert s'applique) ou refuse ;
+ *       l'initiateur peut annuler tant que non resolue.</li>
+ *   <li><b>Reaffectation d'office</b> (RG-DOS-03) : le superviseur reaffecte un
+ *       dossier quand l'employe responsable est absent ou a quitte le cabinet ;
+ *       motif obligatoire ; la reaffectation est tracee et notifiee aux deux
+ *       employes. Une demande de transfert en attente devient sans objet (annulee).</li>
  * </ul>
  *
- * <p>Le SUPERVISEUR (oversight only) n'a aucune voie de transfert : la voie B
- * directe a ete retiree. Il garde uniquement la lecture des listes inbox/outbox.
- *
- * <p>L'application d'un transfert ({@link #applyTransfer}) — Lot Y (2026-07-04),
- * <b>« seuls les datarooms se transferent, pas les tickets »</b> :
- * <ol>
- *   <li>met a jour {@code entreprise_dossiers.responsable_id} (owner durable) :
- *       le dataroom (dossier) change de responsable ;</li>
- *   <li>ecrit un evenement d'audit {@code DOSSIER_TRANSFERE} (ancien -> nouveau
- *       responsable) pour la tracabilite.</li>
- * </ol>
- *
- * <p>Les tickets NE sont PLUS reassignes : ils gardent leur {@code assigne_id}
- * d'origine (et un eventuel badge « Transfere » du Lot R deja pose reste
- * historique). Le nouvel employe responsable les voit malgre tout via le scoping
- * par {@code responsable_id} (Lot S2) — retirer la reassignation ne lui cache donc
- * pas les tickets, ca change seulement le fait qu'on ne touche plus leur assignation.
+ * <p>Application ({@link #applyTransfer}) : le responsable du dossier change ET
+ * tous ses tickets suivent (RG-DOS-02 "le transfert porte sur le dossier et tous
+ * ses tickets", RG-TKT-08). Le Lot Y (2026-07-04, "seuls les datarooms se
+ * transferent") contredisait le cahier des charges, qui fait foi. Chaque
+ * changement est trace dans {@code dossier_reaffectations} (auteur, date, ancien
+ * et nouveau responsable, nature) et dans l'audit.
  */
 @Service
 public class DossierTransferService {
@@ -71,6 +65,7 @@ public class DossierTransferService {
     private final AuditEventEmitter auditEmitter;
     private final NotificationPublisher notificationPublisher;
     private final MemberDirectory memberDirectory;
+    private final DossierReaffectationRepository reaffectations;
 
     public DossierTransferService(TicketRepository ticketRepository,
                                   DossierRepository dossierRepository,
@@ -78,7 +73,8 @@ public class DossierTransferService {
                                   TicketEventPublisher eventPublisher,
                                   AuditEventEmitter auditEmitter,
                                   NotificationPublisher notificationPublisher,
-                                  MemberDirectory memberDirectory) {
+                                  MemberDirectory memberDirectory,
+                                  DossierReaffectationRepository reaffectations) {
         this.ticketRepository = ticketRepository;
         this.dossierRepository = dossierRepository;
         this.requestRepository = requestRepository;
@@ -86,6 +82,7 @@ public class DossierTransferService {
         this.auditEmitter = auditEmitter;
         this.notificationPublisher = notificationPublisher;
         this.memberDirectory = memberDirectory;
+        this.reaffectations = reaffectations;
     }
 
     // -----------------------------------------------------------------
@@ -132,7 +129,8 @@ public class DossierTransferService {
         TenantContext.set(workspaceId);
         DossierTransfertRequest req = loadPendingForTarget(workspaceId, actorId, requestId);
         EntrepriseDossier dossier = loadDossier(workspaceId, req.dossierId());
-        applyTransfer(workspaceId, dossier, req.toUserId(), actorId, req.motif(), false);
+        applyTransfer(workspaceId, dossier, req.toUserId(), actorId, req.motif(),
+                NatureReaffectation.ACCEPTEE, req.id());
         DossierTransfertRequest resolved = requestRepository.save(new DossierTransfertRequest(
                 req.id(), req.workspaceId(), req.dossierId(), req.fromUserId(), req.toUserId(),
                 TransfertStatut.ACCEPTE, req.direct(), req.motif(), req.createdAt(), Instant.now()));
@@ -170,6 +168,52 @@ public class DossierTransferService {
     }
 
     // -----------------------------------------------------------------
+    // Reaffectation d'office par le superviseur (RG-DOS-03)
+    // -----------------------------------------------------------------
+
+    /**
+     * Le superviseur reaffecte d'office le dossier a un autre employe (absence
+     * prolongee, depart). Motif obligatoire ; la cible doit etre un EMPLOYE.
+     */
+    @Transactional
+    public DossierReaffectation reaffecterDOffice(UUID workspaceId, UUID superviseurId,
+                                                  UUID dossierId, UUID toUserId, String motif) {
+        if (motif == null || motif.isBlank()) {
+            throw new ValidationException("Le motif de la reaffectation est obligatoire");
+        }
+        TenantContext.set(workspaceId);
+        EntrepriseDossier dossier = loadDossier(workspaceId, dossierId);
+        if (toUserId == null || toUserId.equals(dossier.responsableId())) {
+            throw new ValidationException("Cet employe est deja responsable du dossier");
+        }
+        String targetRole = memberDirectory.roleOf(workspaceId, toUserId).orElse(null);
+        if (!"EMPLOYE".equals(targetRole)) {
+            throw new ValidationException("Le nouveau responsable doit etre un employe");
+        }
+        requestRepository.findPendingForDossier(workspaceId, dossierId).ifPresent(req ->
+                requestRepository.save(new DossierTransfertRequest(
+                        req.id(), req.workspaceId(), req.dossierId(), req.fromUserId(), req.toUserId(),
+                        TransfertStatut.ANNULE, req.direct(), req.motif(), req.createdAt(), Instant.now())));
+        return applyTransfer(workspaceId, dossier, toUserId, superviseurId, motif.trim(),
+                NatureReaffectation.FORCEE, null);
+    }
+
+    /**
+     * Historique des changements de responsable du dossier : le superviseur (en
+     * observation) ou l'employe responsable ; tout autre employe recoit 404.
+     */
+    @Transactional(readOnly = true)
+    public List<DossierReaffectation> historique(UUID workspaceId, UUID actorId, boolean superviseur,
+                                                 UUID dossierId) {
+        TenantContext.set(workspaceId);
+        EntrepriseDossier dossier = loadDossier(workspaceId, dossierId);
+        if (!superviseur && !actorId.equals(dossier.responsableId())) {
+            throw new NotFoundException("Dossier introuvable");
+        }
+        return reaffectations.lister(workspaceId, dossierId);
+    }
+
+    // -----------------------------------------------------------------
     // Lectures (panneau "Transferts en attente")
     // -----------------------------------------------------------------
 
@@ -190,43 +234,58 @@ public class DossierTransferService {
     // -----------------------------------------------------------------
 
     /**
-     * Applique le transfert — Lot Y : owner durable (le dataroom se deplace) + audit
-     * {@code DOSSIER_TRANSFERE}. Les tickets ne sont plus reassignes (ils gardent leur
-     * {@code assigne_id} d'origine ; le nouveau responsable les voit via le scoping
-     * {@code responsable_id} du Lot S2).
+     * Applique le changement de responsable : dossier, tous ses tickets (RG-TKT-08),
+     * trace {@code dossier_reaffectations}, audit et notifications.
      */
-    void applyTransfer(UUID workspaceId, EntrepriseDossier dossier, UUID newResponsable,
-                       UUID actorId, String motif, boolean direct) {
+    DossierReaffectation applyTransfer(UUID workspaceId, EntrepriseDossier dossier, UUID newResponsable,
+                                       UUID actorId, String motif, NatureReaffectation nature,
+                                       UUID transfertId) {
         UUID dossierId = dossier.id();
         UUID ancienResponsable = dossier.responsableId();
 
-        // 1. Owner durable : le dataroom (dossier) change de responsable.
+        // 1. Le dossier change de responsable, et tous ses tickets le suivent.
         dossierRepository.updateResponsable(workspaceId, dossierId, newResponsable);
+        int tickets = ticketRepository.realignerSurResponsable(workspaceId, dossierId, newResponsable);
 
-        // 2. Audit DOSSIER_TRANSFERE (tracabilite E2). Plus aucun ticket n'est reassigne.
+        // 2. Trace (auteur, date, ancien et nouveau responsable, nature).
+        DossierReaffectation trace = reaffectations.enregistrer(new DossierReaffectation(
+                null, workspaceId, dossierId, ancienResponsable, newResponsable, nature, actorId,
+                transfertId, motif, null));
+
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("dossierId", dossierId.toString());
         meta.put("ancienResponsable", ancienResponsable == null ? null : ancienResponsable.toString());
         meta.put("nouveauResponsable", newResponsable.toString());
-        meta.put("direct", direct);
+        meta.put("nature", nature.name());
+        meta.put("ticketsReaffectes", tickets);
         if (motif != null && !motif.isBlank()) meta.put("motif", motif);
-        auditEmitter.emit(workspaceId, actorId, "DOSSIER_TRANSFERE", "dossier", dossierId, meta);
+        auditEmitter.emit(workspaceId, actorId,
+                nature == NatureReaffectation.FORCEE ? "DOSSIER_REAFFECTE" : "DOSSIER_TRANSFERE",
+                "dossier", dossierId, meta);
 
-        // 3. Notification persistante au nouveau responsable — SAUF quand il est lui-meme
-        //    l'acteur (cas VOIE A : la cible accepte, inutile de la notifier de sa propre
-        //    action). On notifie des qu'il y a un nouveau responsable (plus de compteur
-        //    de tickets, ceux-ci ne bougent plus).
+        // 3. Notifications : le nouveau responsable (sauf s'il est l'acteur) ; en cas de
+        //    reaffectation d'office, l'ancien responsable aussi (RG-DOS-03).
+        Map<String, Object> notifMeta = new LinkedHashMap<>();
+        notifMeta.put("dossierId", dossierId.toString());
         if (!newResponsable.equals(actorId)) {
-            Map<String, Object> notifMeta = new LinkedHashMap<>();
-            notifMeta.put("dossierId", dossierId.toString());
             notificationPublisher.notifyUser(newResponsable, workspaceId, "DOSSIER_TRANSFER",
-                    "Dossier transfere",
-                    "Le dossier « " + dossier.raisonSociale() + " » vous a ete transfere.",
+                    nature == NatureReaffectation.FORCEE ? "Dossier reaffecte" : "Dossier transfere",
+                    "Le dossier « " + dossier.raisonSociale() + " » vous a ete "
+                            + (nature == NatureReaffectation.FORCEE ? "reaffecte par le superviseur." : "transfere."),
+                    "/data-rooms", notifMeta);
+        }
+        if (nature == NatureReaffectation.FORCEE && ancienResponsable != null
+                && !ancienResponsable.equals(actorId)) {
+            notificationPublisher.notifyUser(ancienResponsable, workspaceId, "DOSSIER_TRANSFER",
+                    "Dossier reaffecte",
+                    "Le superviseur a reaffecte le dossier « " + dossier.raisonSociale()
+                            + " » a un autre employe. Motif : " + motif,
                     "/data-rooms", notifMeta);
         }
 
-        log.info("Transfert dossier {} : {} -> {} (dataroom uniquement, direct={})",
-                dossierId, ancienResponsable, newResponsable, direct);
+        log.info("Changement de responsable {} dossier {} : {} -> {} ({} ticket(s) realigne(s))",
+                nature, dossierId, ancienResponsable, newResponsable, tickets);
+        return trace;
     }
 
     // -----------------------------------------------------------------

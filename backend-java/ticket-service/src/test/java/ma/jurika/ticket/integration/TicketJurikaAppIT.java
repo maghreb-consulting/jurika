@@ -302,4 +302,83 @@ class TicketJurikaAppIT {
         assertThat(owner.queryForObject("SELECT statut FROM tickets WHERE id = ?", String.class, ticketId))
                 .isEqualTo("ANNULE");
     }
+
+    // ------------------------------------------------------------------
+    // Lot L1, etape E4 : reaffectation d'office (RG-DOS-03) et transfert accepte
+    // (RG-DOS-02) : le dossier ET ses tickets changent de responsable, trace en base.
+    // ------------------------------------------------------------------
+
+    static final UUID SUPERVISEUR_A = UUID.fromString("33333333-3333-3333-3333-0000000005a1");
+
+    @Test
+    @Order(20)
+    void reaffectation_d_office_par_le_superviseur() throws Exception {
+        owner.execute("CREATE TABLE IF NOT EXISTS u_l1 AS SELECT * FROM users WHERE id = '" + KARIM + "'");
+        owner.update("UPDATE u_l1 SET id = ?, role = 'SUPERVISEUR', email = 'sup@rls.test', login_email = 'sup@rls.test'",
+                SUPERVISEUR_A);
+        owner.update("INSERT INTO users SELECT * FROM u_l1 WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = ?)", SUPERVISEUR_A);
+        owner.execute("DROP TABLE u_l1");
+        String superviseur = jeton(SUPERVISEUR_A, WS_A, "SUPERVISEUR");
+        assertThat(owner.queryForObject("SELECT responsable_id FROM entreprise_dossiers WHERE id = ?", UUID.class,
+                dossierId)).isEqualTo(KARIM);
+
+        // Sans motif : refus. Par un employe : refus.
+        mvc.perform(post("/api/v1/dossiers/" + dossierId + "/reaffectation").header("Authorization", superviseur)
+                        .contentType("application/json")
+                        .content("{\"nouveauResponsableId\":\"" + COLLEGUE + "\",\"motif\":\"\"}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/dossiers/" + dossierId + "/reaffectation").header("Authorization", karim())
+                        .contentType("application/json")
+                        .content("{\"nouveauResponsableId\":\"" + COLLEGUE + "\",\"motif\":\"Absence\"}"))
+                .andExpect(status().isForbidden());
+
+        mvc.perform(post("/api/v1/dossiers/" + dossierId + "/reaffectation").header("Authorization", superviseur)
+                        .contentType("application/json")
+                        .content("{\"nouveauResponsableId\":\"" + COLLEGUE + "\",\"motif\":\"Absence prolongee\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.nature").value("FORCEE"));
+
+        assertThat(owner.queryForObject("SELECT responsable_id FROM entreprise_dossiers WHERE id = ?", UUID.class,
+                dossierId)).isEqualTo(COLLEGUE);
+        assertThat(owner.queryForObject("SELECT count(*) FROM tickets WHERE dossier_id = ? "
+                + "AND assigne_id IS DISTINCT FROM ?", Integer.class, dossierId, COLLEGUE)).isZero();
+        assertThat(owner.queryForMap("SELECT nature, auteur_id, ancien_responsable_id, motif "
+                + "FROM dossier_reaffectations WHERE dossier_id = ? ORDER BY created_at DESC LIMIT 1", dossierId))
+                .containsEntry("nature", "FORCEE")
+                .containsEntry("auteur_id", SUPERVISEUR_A)
+                .containsEntry("ancien_responsable_id", KARIM)
+                .containsEntry("motif", "Absence prolongee");
+
+        // Historique : le nouveau responsable le lit ; l'ancien ne voit plus le dossier.
+        mvc.perform(get("/api/v1/dossiers/" + dossierId + "/reaffectations")
+                        .header("Authorization", jeton(COLLEGUE, WS_A, "EMPLOYE")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].nature").value("FORCEE"));
+        mvc.perform(get("/api/v1/dossiers/" + dossierId + "/reaffectations").header("Authorization", karim()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @Order(21)
+    void transfert_accepte_deplace_dossier_et_tickets() throws Exception {
+        String collegue = jeton(COLLEGUE, WS_A, "EMPLOYE");
+        MvcResult demande = mvc.perform(post("/api/v1/dossiers/" + dossierId + "/transfer-requests")
+                        .header("Authorization", collegue).contentType("application/json")
+                        .content("{\"toUserId\":\"" + KARIM + "\",\"motif\":\"Retour\"}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String demandeId = json.readTree(demande.getResponse().getContentAsString()).get("id").asText();
+        mvc.perform(post("/api/v1/dossier-transfer-requests/" + demandeId + "/accept").header("Authorization", karim()))
+                .andExpect(status().is2xxSuccessful());
+
+        assertThat(owner.queryForObject("SELECT responsable_id FROM entreprise_dossiers WHERE id = ?", UUID.class,
+                dossierId)).isEqualTo(KARIM);
+        assertThat(owner.queryForObject("SELECT count(*) FROM tickets WHERE dossier_id = ? "
+                + "AND assigne_id IS DISTINCT FROM ?", Integer.class, dossierId, KARIM)).isZero();
+        assertThat(owner.queryForMap("SELECT nature, auteur_id, transfert_id::text AS transfert "
+                + "FROM dossier_reaffectations WHERE dossier_id = ? ORDER BY created_at DESC LIMIT 1", dossierId))
+                .containsEntry("nature", "ACCEPTEE")
+                .containsEntry("auteur_id", KARIM)
+                .containsEntry("transfert", demandeId);
+    }
 }
