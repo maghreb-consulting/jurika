@@ -66,7 +66,8 @@ class ResponsableObligatoireIT {
         ticket(4, D_DEUX_ASSIGNES, E2, E1, "2026-02-03");
         ticket(5, D_SUPERVISEUR, E2, E2, "2026-02-01");
         ticket(6, D_CORRECT, E1, E2, "2026-02-01");
-        migrer(pg.getJdbcUrl(), "classpath:db/migration", "flyway_history_ticket", "28");
+        db.update("UPDATE entreprise_dossiers SET taxe_professionnelle = 'TP-REPRISE' WHERE id = ?", D_CORRECT);
+        migrer(pg.getJdbcUrl(), "classpath:db/migration", "flyway_history_ticket", "30");
     }
 
     @AfterAll
@@ -121,6 +122,19 @@ class ResponsableObligatoireIT {
                 + "WHERE conname = 'tickets_dossier_id_fkey'", String.class)).isEqualTo("r");
         assertThatThrownBy(() -> db.update("UPDATE entreprise_dossiers SET responsable_id = NULL WHERE id = ?",
                 D_CORRECT)).hasMessageContaining("responsable_id");
+    }
+
+    @Test
+    void v30_reprend_la_taxe_professionnelle_en_premiere_version_sans_date_inventee() {
+        List<Map<String, Object>> versions = db.queryForList(
+                "SELECT dossier_id, numero, date_effet, saisi_par, origine FROM dossier_tp_versions");
+        assertThat(versions).hasSize(1);
+        assertThat(versions.get(0))
+                .containsEntry("dossier_id", D_CORRECT)
+                .containsEntry("numero", "TP-REPRISE")
+                .containsEntry("saisi_par", E2)
+                .containsEntry("origine", "REPRISE_V30");
+        assertThat(versions.get(0).get("date_effet")).isNull();
     }
 
     @Test

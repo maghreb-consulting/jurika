@@ -416,5 +416,42 @@ class TicketJurikaAppIT {
                         .header("Authorization", jeton(EMPLOYE_B, WS_B, "EMPLOYE")))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    @Order(23)
+    void versions_datees_de_la_taxe_professionnelle() throws Exception {
+        String corps = "{\"taxeProfessionnelle\":\"%s\",\"taxeProfessionnelleDateEffet\":%s}";
+        mvc.perform(patch("/api/v1/dossiers/" + dossierId + "/identifiants").header("Authorization", karim())
+                        .contentType("application/json").content(String.format(corps, "TP-2025", "\"2025-01-01\"")))
+                .andExpect(status().isOk());
+        // Nouvelle patente sans date d'effet : version creee, date vide (jamais inventee).
+        mvc.perform(patch("/api/v1/dossiers/" + dossierId + "/identifiants").header("Authorization", karim())
+                        .contentType("application/json").content(String.format(corps, "TP-2026", "null")))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/dossiers/" + dossierId + "/taxe-professionnelle/versions")
+                        .header("Authorization", karim()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].numero").value("TP-2025"))
+                .andExpect(jsonPath("$[0].dateEffet").value("2025-01-01"))
+                .andExpect(jsonPath("$[0].enVigueur").value(false))
+                .andExpect(jsonPath("$[1].numero").value("TP-2026"))
+                .andExpect(jsonPath("$[1].dateEffet").doesNotExist())
+                .andExpect(jsonPath("$[1].enVigueur").value(true));
+        // La date se complete plus tard sur la version en vigueur.
+        mvc.perform(patch("/api/v1/dossiers/" + dossierId + "/identifiants").header("Authorization", karim())
+                        .contentType("application/json").content(String.format(corps, "TP-2026", "\"2026-02-01\"")))
+                .andExpect(status().isOk());
+        assertThat(owner.queryForObject("SELECT count(*) FROM dossier_tp_versions WHERE dossier_id = ?",
+                Integer.class, dossierId)).isEqualTo(2);
+        assertThat(owner.queryForObject("SELECT date_effet::text FROM dossier_tp_versions WHERE numero = 'TP-2026'",
+                String.class)).isEqualTo("2026-02-01");
+        mvc.perform(get("/api/v1/dossiers/" + dossierId + "/taxe-professionnelle/versions")
+                        .header("Authorization", jeton(SUPERVISEUR_A, WS_A, "SUPERVISEUR")))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/dossiers/" + dossierId + "/taxe-professionnelle/versions")
+                        .header("Authorization", jeton(COLLEGUE, WS_A, "EMPLOYE")))
+                .andExpect(status().isNotFound());
+    }
 }
 

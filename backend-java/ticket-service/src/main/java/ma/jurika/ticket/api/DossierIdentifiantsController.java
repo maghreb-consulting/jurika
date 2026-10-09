@@ -2,6 +2,9 @@ package ma.jurika.ticket.api;
 
 import jakarta.validation.Valid;
 import ma.jurika.common.security.AuthenticatedUser;
+import ma.jurika.common.security.Role;
+import ma.jurika.ticket.domain.model.TaxeProfessionnelleVersion;
+import org.springframework.web.bind.annotation.GetMapping;
 import ma.jurika.ticket.api.dto.DossierIdentifiantsDtos.DossierIdentifiantsView;
 import ma.jurika.ticket.api.dto.DossierIdentifiantsDtos.UpdateIdentifiantsRequest;
 import ma.jurika.ticket.application.DossierIdentifiantsService;
@@ -12,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -37,5 +41,17 @@ public class DossierIdentifiantsController {
                                           @PathVariable UUID dossierId,
                                           @Valid @RequestBody UpdateIdentifiantsRequest req) {
         return service.update(actor.workspaceId(), actor.role(), actor.userId(), dossierId, req);
+    }
+
+    /**
+     * Lot L1 (RG-FIC-02) : versions successives de la taxe professionnelle (la derniere en
+     * vigueur). Employe responsable ou superviseur ; jamais le client.
+     */
+    @GetMapping("/api/v1/dossiers/{dossierId}/taxe-professionnelle/versions")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR') and !hasAuthority('ROLE_SUPER_ADMIN')")
+    public List<TaxeProfessionnelleVersion> versionsTp(@AuthenticationPrincipal AuthenticatedUser actor,
+                                                       @PathVariable UUID dossierId) {
+        return service.versionsTp(actor.workspaceId(), actor.userId(),
+                actor.role() == Role.SUPERVISEUR, dossierId);
     }
 }

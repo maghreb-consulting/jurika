@@ -29,7 +29,10 @@ public final class DossierIdentifiantsDtos {
             @Size(max = 4000) String adresseSiege,
             @Size(max = 100) String ville,
             BigDecimal capitalSocialMad,
-            LocalDate dateConstitution) {}
+            LocalDate dateConstitution,
+            // Lot L1 (RG-FIC-02) : date de prise d'effet de la taxe professionnelle ;
+            // absente, elle reste vide (jamais inventee) et peut etre completee plus tard.
+            LocalDate taxeProfessionnelleDateEffet) {}
 
     /** Etat des identifiants apres mise a jour (renvoye au front). */
     public record DossierIdentifiantsView(
