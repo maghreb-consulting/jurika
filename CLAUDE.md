@@ -19,10 +19,11 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
 
 ## Methode de travail (lecons payees — a respecter)
 
-1. **Commits locaux** : les commits locaux sur une branche de lot sont autorises pendant
-   `/lot-executer`, a raison d'un commit par etape validee par les tests. Le push et la fusion
-   restent soumis au feu vert. Aucun commit sur `main`. Une branche par lot. Rapports factuels
-   (ce qui est vert, ce qui est rouge, ce qui est saute — sans arrondir).
+1. **Commits et push** : commits locaux sur une branche de lot, un par etape validee par les
+   tests. Push autorise uniquement sur `lot/*` et `outillage/*` (`git push -u origin <branche>`,
+   regle `allow` de `.claude/settings.json`), apres un verify complet vert. Jamais de push sur
+   `main`, jamais de fusion par Claude, jamais de reecriture d'historique. Une branche par lot.
+   Rapports factuels (ce qui est vert, ce qui est rouge, ce qui est saute -- sans arrondir).
 2. **Cloture d'un lot** : `mvn -o clean verify -Pit` (le `clean` est obligatoire — un vert
    incremental ne prouve rien sur une suppression) + suite frontend + **lecture des documents
    produits**. Chaque defaut grave a ete trouve en ouvrant un fichier, jamais par un compteur.
@@ -56,6 +57,31 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
     Le 2026-09-25, un correctif pousse sans avoir lance le verify a casse la CI (tests unitaires
     de contenu des migrations qui affirmaient l'etat d'avant). Verify complet et vert AVANT tout
     push, sans exception.
+
+## Mode autonome des lots (`/lot-complet`, depuis le 2026-10-09)
+
+- `/lot-complet <lot>` enchaine demarrage, decoupage, execution, verification et push de la
+  branche du lot **sans arret ni question**. Il reprend a la premiere etape non cochee du
+  journal s'il est interrompu. Resultat : `~/docs/rapports/<lot>_rapport_final.md` (perimetre et
+  decoupage, fait, **Decisions a revoir**, non resolus, verify, points a l'ecran, plan Docker,
+  lien de PR).
+- Le perimetre reprend d'office les entrees du backlog ci-dessous qui concernent le lot.
+- Face a un choix : option la plus sure, la plus conforme au cahier des charges, la plus
+  petite en cas de doute ; inscrite dans **Decisions a revoir** avec l'alternative ecartee.
+- Decision du directeur (envoi des courriels, CMI, CNDP, duree de conservation, clauses
+  particulieres des statuts...) : jamais inventee ; emplacement marque `A_DECIDER`, inscrit
+  dans **Decisions a revoir**.
+- Nouvelles migrations permises sur la branche du lot ; une migration presente dans `main`
+  ne se modifie jamais.
+- Test rouge du fait du test ou du harnais : corrige. Defaut hors perimetre : backlog. Defaut du
+  lot rouge apres 3 tentatives : **non resolu** au rapport, etape mise de cote, lot poursuivi.
+- **Aucune commande Docker sur la pile du Z440 pendant un lot** : le plan Docker est ecrit dans
+  le rapport (sauvegarde `pg_dump -Fc` de toutes les bases et `pg_dumpall --globals-only`
+  verifiees par `pg_restore --list`, `-p jurika-local` sur chaque commande compose, jamais
+  `down -v` ni `prune`, jamais de secret en argument de commande) et execute apres fusion par
+  `/lot-activer <lot>`, une commande a la fois, chacune soumise a l'accord de l'utilisateur.
+- Les commandes `/lot-demarrer`, `/lot-executer`, `/lot-verifier` et `/lot-cloturer` (mode
+  pas a pas, avec points d'arret) restent disponibles.
 
 ## Corpus documentaires (source de verite metier)
 
