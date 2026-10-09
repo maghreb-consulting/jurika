@@ -36,7 +36,9 @@ class EmployeDataroomGuardTest {
     private final DocumentJpaRepository documents = mock(DocumentJpaRepository.class);
     private final DossierViewJpaRepository dossiers = mock(DossierViewJpaRepository.class);
     private final DroitSuppressionLookup droits = mock(DroitSuppressionLookup.class);
-    private final EmployeDataroomGuard guard = new EmployeDataroomGuard(documents, dossiers, droits);
+    private final ma.jurika.dataroom.infrastructure.persistence.TicketViewJpaRepository tickets =
+            mock(ma.jurika.dataroom.infrastructure.persistence.TicketViewJpaRepository.class);
+    private final EmployeDataroomGuard guard = new EmployeDataroomGuard(documents, dossiers, droits, tickets);
 
     @BeforeEach
     void setUp() {
@@ -93,5 +95,29 @@ class EmployeDataroomGuardTest {
         assertThatThrownBy(() -> guard.assertPeutSupprimerDocument(DOC,
                 new AuthenticatedUser(RESPONSABLE, WS, "s@x.ma", Role.SUPERVISEUR)))
                 .isInstanceOf(AccessDeniedException.class);
+    }
+
+    // ---- Lot L1, etape E9 : acces directs (RG-DOS-01) ----
+
+    @Test
+    void acces_direct_au_dossier_d_un_autre_employe_404_superviseur_et_client_non_concernes() {
+        assertThatCode(() -> guard.assertResponsable(DOSSIER, employe(RESPONSABLE))).doesNotThrowAnyException();
+        assertThatThrownBy(() -> guard.assertResponsable(DOSSIER, employe(UUID.randomUUID())))
+                .isInstanceOf(NotFoundException.class);
+        assertThatCode(() -> guard.assertResponsable(DOSSIER,
+                new AuthenticatedUser(UUID.randomUUID(), WS, "s@x.ma", Role.SUPERVISEUR))).doesNotThrowAnyException();
+    }
+
+    @Test
+    void acces_direct_par_ticket() {
+        UUID ticket = UUID.randomUUID();
+        var t = mock(ma.jurika.dataroom.infrastructure.persistence.TicketViewEntity.class);
+        when(t.getDossierId()).thenReturn(DOSSIER);
+        when(tickets.findByWorkspaceIdAndId(WS, ticket)).thenReturn(Optional.of(t));
+        assertThatCode(() -> guard.assertResponsableDuTicket(ticket, employe(RESPONSABLE))).doesNotThrowAnyException();
+        assertThatThrownBy(() -> guard.assertResponsableDuTicket(ticket, employe(UUID.randomUUID())))
+                .isInstanceOf(NotFoundException.class);
+        assertThatThrownBy(() -> guard.assertResponsableDuTicket(UUID.randomUUID(), employe(RESPONSABLE)))
+                .isInstanceOf(NotFoundException.class);
     }
 }

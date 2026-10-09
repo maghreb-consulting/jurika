@@ -146,4 +146,37 @@ class DroitSuppressionDataroomIT {
         assertThatThrownBy(() -> supprimer(autre)).isInstanceOf(NotFoundException.class);
         assertThat(enVigueur()).isTrue();
     }
+
+    // ---- Lot L1, etape E9 (RG-DOS-01) : acces directs par UUID ----
+
+    private Object enEmploye(UUID employe, java.util.function.Function<AuthenticatedUser, Object> appel) {
+        AuthenticatedUser principal = new AuthenticatedUser(employe, workspaceId, employe + "@rls.test", Role.EMPLOYE);
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                principal, null, List.of(new SimpleGrantedAuthority("ROLE_EMPLOYE"))));
+        TenantContext.set(workspaceId);
+        try {
+            return appel.apply(principal);
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
+    @Test
+    void un_employe_non_responsable_n_accede_a_rien_par_uuid() {
+        org.mockito.Mockito.when(storage.download(org.mockito.ArgumentMatchers.any())).thenAnswer(inv ->
+                new ObjectStorage.DownloadResult(new java.io.ByteArrayInputStream("%PDF".getBytes()), 4, "application/pdf"));
+        List<java.util.function.Function<AuthenticatedUser, Object>> acces = List.of(
+                u -> controleur.juridiqueView(u, dossierId, null, null, null),
+                u -> controleur.previewJuridique(u, document),
+                u -> controleur.downloadJuridique(u, document),
+                u -> controleur.listVersions(u, document),
+                u -> controleur.listBrouillons(u, ticketId));
+        for (var a : acces) {
+            assertThatThrownBy(() -> enEmploye(autre, a)).isInstanceOf(NotFoundException.class);
+        }
+        // Le responsable, lui, y accede.
+        for (var a : acces) {
+            enEmploye(responsable, a);
+        }
+    }
 }

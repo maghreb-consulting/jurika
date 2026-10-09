@@ -7,6 +7,7 @@ import ma.jurika.common.security.TenantContext;
 import ma.jurika.dataroom.infrastructure.persistence.DocumentEntity;
 import ma.jurika.dataroom.infrastructure.persistence.DocumentJpaRepository;
 import ma.jurika.dataroom.infrastructure.persistence.DossierViewJpaRepository;
+import ma.jurika.dataroom.infrastructure.persistence.TicketViewJpaRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,12 +30,29 @@ public class EmployeDataroomGuard {
     private final DocumentJpaRepository documents;
     private final DossierViewJpaRepository dossiers;
     private final DroitSuppressionLookup droits;
+    private final TicketViewJpaRepository tickets;
 
     public EmployeDataroomGuard(DocumentJpaRepository documents, DossierViewJpaRepository dossiers,
-                                DroitSuppressionLookup droits) {
+                                DroitSuppressionLookup droits, TicketViewJpaRepository tickets) {
         this.documents = documents;
         this.dossiers = dossiers;
         this.droits = droits;
+        this.tickets = tickets;
+    }
+
+    /** RG-DOS-01 applique a un ticket : son dossier doit etre celui de l'employe (404 sinon). */
+    @Transactional(readOnly = true)
+    public void assertResponsableDuTicket(UUID ticketId, AuthenticatedUser user) {
+        if (user == null || user.role() != Role.EMPLOYE) {
+            return;
+        }
+        UUID ws = TenantContext.get();
+        UUID dossierId = ws == null ? null : tickets.findByWorkspaceIdAndId(ws, ticketId)
+                .map(t -> t.getDossierId()).orElse(null);
+        if (dossierId == null) {
+            throw new NotFoundException("Ticket inconnu");
+        }
+        assertResponsable(dossierId, user);
     }
 
     /** Suppression d'un document : employe responsable du dossier, titulaire du droit. */

@@ -102,6 +102,7 @@ public class JuridiqueController {
             @RequestParam(required = false) List<String> types,
             @RequestParam(required = false) java.time.Instant from,
             @RequestParam(required = false) java.time.Instant to) {
+        employeGuard.assertResponsable(dossierId, user); // Lot L1, RG-DOS-01
         // 2026-06-04 (fix P1) : un CLIENT n'a acces qu'A SON dossier. Avant ce
         // fix, n'importe quel CLIENT pouvait deviner un UUID dossier et lire
         // ses documents (RLS workspace seul ne suffit pas, cf RG-DR15).
@@ -135,6 +136,7 @@ public class JuridiqueController {
             @RequestParam(required = false, defaultValue = "CURRENT") VersionScope versionScope,
             @RequestParam(required = false, defaultValue = "20") int limit,
             @RequestParam(required = false, defaultValue = "0") int offset) {
+        employeGuard.assertResponsable(dossierId, user); // Lot L1, RG-DOS-01
         // Lot L0 (E19, RG-DR-07) : un CLIENT ne cherche que dans SON dossier, et
         // parmi ses documents visibles.
         boolean pourClient = estClient(user);
@@ -156,6 +158,7 @@ public class JuridiqueController {
     public DocumentSummary uploadJuridique(@AuthenticationPrincipal AuthenticatedUser user,
                                             @PathVariable UUID dossierId,
                                             MultipartHttpServletRequest req) {
+        employeGuard.assertResponsable(dossierId, user); // Lot L1, RG-DOS-01
         log.info("uploadJuridique dossier={} user={} role={} contentType={} fileMapKeys={} paramNames={}",
                 dossierId, user == null ? "null" : user.userId(),
                 user == null ? "null" : user.role(),
@@ -214,6 +217,7 @@ public class JuridiqueController {
                                                        @RequestParam(value = "documentType", required = false) String documentType,
                                                        @RequestParam(value = "title", required = false) String title,
                                                        @RequestParam(value = "ticketId", required = false) UUID ticketId) {
+        employeGuard.assertResponsable(dossierId, user); // Lot L1, RG-DOS-01
         String type = (documentType == null || documentType.isBlank()) ? "AUTRE" : documentType;
         String t = (title == null || title.isBlank())
                 ? files.size() + " documents - " + java.time.LocalDate.now()
@@ -253,6 +257,7 @@ public class JuridiqueController {
     public DocumentSummary enregistrerBrouillon(@AuthenticationPrincipal AuthenticatedUser user,
                                                  @PathVariable UUID dossierId,
                                                  MultipartHttpServletRequest req) {
+        employeGuard.assertResponsable(dossierId, user); // Lot L1, RG-DOS-01
         MultipartFile file = req.getFile("file");
         if (file == null && !req.getFileMap().isEmpty()) {
             file = req.getFileMap().values().iterator().next();
@@ -277,7 +282,8 @@ public class JuridiqueController {
     @GetMapping("/tickets/{ticketId}/juridique/brouillons")
     @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
     @Operation(summary = "Brouillons d'une operation (ré-hydratation de l'etape de generation)")
-    public List<DocumentSummary> listBrouillons(@PathVariable UUID ticketId) {
+    public List<DocumentSummary> listBrouillons(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID ticketId) {
+        employeGuard.assertResponsableDuTicket(ticketId, user); // Lot L1, RG-DOS-01
         return juridique.listBrouillons(ticketId);
     }
 
@@ -289,13 +295,15 @@ public class JuridiqueController {
     public DocumentSummary validerBrouillon(@AuthenticationPrincipal AuthenticatedUser user,
                                              @PathVariable UUID documentId,
                                              @RequestBody(required = false) ValiderBrouillonRequest req) {
+        employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
         return juridique.validerBrouillon(documentId, req == null ? null : req.motif(), user.userId());
     }
 
     @DeleteMapping("/documents/{documentId}/brouillon")
     @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     @Operation(summary = "Abandonne un brouillon non valide")
-    public ResponseEntity<Void> supprimerBrouillon(@PathVariable UUID documentId) {
+    public ResponseEntity<Void> supprimerBrouillon(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID documentId) {
+        employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
         juridique.supprimerBrouillon(documentId);
         return ResponseEntity.noContent().build();
     }
@@ -332,6 +340,7 @@ public class JuridiqueController {
     public DocumentSummary changerVisibilite(@AuthenticationPrincipal AuthenticatedUser user,
                                               @PathVariable UUID documentId,
                                               @Valid @RequestBody VisibiliteRequest req) {
+        employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
         return juridique.changerVisibilite(documentId, req.visible(),
                 req.origine() == null ? "DATAROOM" : req.origine(),
                 user == null ? null : user.userId());
@@ -395,6 +404,7 @@ public class JuridiqueController {
     public ResponseEntity<byte[]> exportJuridiqueZip(@AuthenticationPrincipal AuthenticatedUser user,
                                                        @PathVariable UUID dossierId,
                                                        @Valid @RequestBody BulkExportZipRequest req) {
+        employeGuard.assertResponsable(dossierId, user); // Lot L1, RG-DOS-01
         // Export ZIP = telechargement groupe -> meme garde perm_download pour le CLIENT.
         // Lot L0 (E19, RG-DR-07) : et seulement SON dossier, ses documents visibles.
         boolean pourClient = estClient(user);
@@ -428,6 +438,7 @@ public class JuridiqueController {
     @ApiResponse(responseCode = "404", description = "Dossier inconnu ou hors workspace")
     public ResponseEntity<byte[]> ficheClientPdf(@AuthenticationPrincipal AuthenticatedUser user,
                                                  @PathVariable UUID dossierId) {
+        employeGuard.assertResponsable(dossierId, user); // Lot L1, RG-DOS-01
         var view = ficheClient.assemble(dossierId, user.role(), user.userId());
         byte[] pdf = ficheClient.renderPdf(view);
         String safe = view.identity().raisonSociale() == null ? "dossier"
@@ -455,6 +466,7 @@ public class JuridiqueController {
     public ResponseEntity<InputStreamResource> previewJuridique(
             @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable UUID documentId) {
+        employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
         assertVisiblePourClient(documentId, user);
         PreviewDocumentUseCase.PreviewPayload p = previewDocument.execute(documentId, user);
         return ResponseEntity.ok()
@@ -470,6 +482,7 @@ public class JuridiqueController {
     public ResponseEntity<InputStreamResource> downloadJuridique(
             @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable UUID documentId) {
+        employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
         assertVisiblePourClient(documentId, user);
         DocumentEntity doc = juridique.loadForDownload(documentId);
         // Defense en profondeur : un CLIENT sans perm_download -> 403.
@@ -505,6 +518,7 @@ public class JuridiqueController {
     public ResponseEntity<Void> logPrint(
             @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable UUID documentId) {
+        employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
         try {
             DocumentEntity doc = juridique.loadForDownload(documentId);
             if (user != null) {
@@ -535,6 +549,7 @@ public class JuridiqueController {
     public DocumentSummary replaceAsNewVersion(@AuthenticationPrincipal AuthenticatedUser user,
                                                 @PathVariable UUID documentId,
                                                 MultipartHttpServletRequest req) {
+        employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
         MultipartFile file = req.getFile("file");
         if (file == null && !req.getFileMap().isEmpty()) {
             file = req.getFileMap().values().iterator().next();
@@ -551,7 +566,8 @@ public class JuridiqueController {
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN','ROLE_SUPERVISEUR','ROLE_EMPLOYE','ROLE_CLIENT')")
     @Operation(summary = "Lignage complet d'un Document logique (active + historique)",
             description = "Trié de la version la plus récente à la plus ancienne. Toutes les versions partagent (dossier+type+title).")
-    public List<DocumentSummary> listVersions(@PathVariable UUID documentId) {
+    public List<DocumentSummary> listVersions(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID documentId) {
+        employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
         return juridique.listVersions(documentId);
     }
 
@@ -561,9 +577,10 @@ public class JuridiqueController {
             description = "Pas d'INSERT — swap des flags is_current sur 2 lignes. La version actuelle bascule en historique avec un motif explicite.")
     @ApiResponse(responseCode = "200", description = "Version restaurée")
     @ApiResponse(responseCode = "404", description = "Document ou version inconnu(e)")
-    public DocumentSummary restoreVersion(@PathVariable UUID documentId,
+    public DocumentSummary restoreVersion(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID documentId,
                                            @PathVariable UUID versionId,
                                            @RequestBody(required = false) RestoreVersionRequest body) {
+        employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
         String motif = body == null ? null : body.motif();
         return juridique.restoreVersion(documentId, versionId, motif);
     }
@@ -576,6 +593,7 @@ public class JuridiqueController {
             @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable UUID documentId,
             @PathVariable UUID versionId) {
+        employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
         // Lot L0 (E18) : le CLIENT ne lit une version que si elle et son document
         // sont visibles et de son dossier (aucun controle auparavant).
         assertVisiblePourClient(documentId, user);
@@ -620,6 +638,7 @@ public class JuridiqueController {
             @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable UUID documentId,
             @PathVariable UUID versionId) {
+        employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
         // Lot L0 (E18) : le CLIENT ne lit une version que si elle et son document
         // sont visibles et de son dossier (aucun controle auparavant).
         assertVisiblePourClient(documentId, user);
