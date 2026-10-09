@@ -98,10 +98,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ## Backlog / dette connue
 
-- **Controle CI "une base vierge demarre" : ecrit, jamais execute.** Lot L0 (E25) :
-  `.github/workflows/base-vierge.yml` (pile complete sur volumes neufs, 18 conteneurs sains,
-  migration fondatrice de chaque service). Valide localement sans Docker seulement. Retirer
-  cette entree quand le job est vert en CI.
 - **Bump des actions CI** : `setup-java@v5`, et les versions d'actions ciblant Node 24 (les
   actions actuelles s'appuient sur des runtimes en fin de vie).
 - **Nettoyage du lint frontend herite** : `frontend-react` porte des avertissements de lint
@@ -132,16 +128,14 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L0 (securite serveur, 2026-10-08) -- dette relevee
 
-- **PRIORITE HAUTE -- chantier separe, juste apres la fusion de L0 et avant L2 (decision du
-  2026-10-08) : identifiants du Z440 egaux aux replis publies.** Les vrais mots de passe
-  proprietaire de Postgres, RabbitMQ et MinIO du Z440 sont egaux aux valeurs de repli codees
-  en dur dans les `application.yml` et les fichiers compose (verifie sans affichage) ; la pile
-  ne fonctionnait que par cette coincidence. A faire : sauvegarde, puis changement des trois
-  mots de passe sur le Z440 (`.env`, roles et conteneurs), puis suppression de TOUS les replis
-  publies (Postgres, RabbitMQ, MinIO, Redis, JWT), demarrage en echec si une valeur manque.
-- **PRIORITE HAUTE : 8 `application.yml` et `backend-node` utilisent un secret JWT de
-  developpement quand `JWT_SECRET` manque** (`${JWT_SECRET:dev-only-jwt-secret-...}`) :
-  supprimer ce repli, demarrage en echec si le secret est absent (au plus tard L9).
+- **PRIORITE HAUTE -- chantier outillage/secrets-z440 (avant L2), en cours.** Les mots de
+  passe Postgres, RabbitMQ et MinIO du Z440 etaient egaux aux replis publies dans le depot.
+  Fait sur la branche : plus aucun repli de secret publie (application*.yml, compose,
+  backend-node ; garde-fou `ReplisSecretsPubliesTest` dans jurika-common) ; un service refuse
+  de demarrer si son secret manque ; Redis recoit son mot de passe par l'environnement (plus en
+  argument de processus). Reste, apres fusion : sur le Z440, sauvegarde, nouveaux mots de passe
+  aleatoires (Postgres, RabbitMQ, MinIO, JWT) dans `.env.local` seulement, changement cote
+  serveurs, recreation des conteneurs.
 - **PRIORITE HAUTE : le consommateur RabbitMQ de l'audit (`AuditEventConsumer`) avale toute
   exception** : une trace refusee est perdue sans bruit. Il faut la rejeter vers une file
   d'erreurs (dead-letter) ou la rejouer.
