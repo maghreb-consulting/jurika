@@ -189,6 +189,30 @@ class WorkflowJurikaAppIT {
         assertThat(charge).isNotEmpty();
     }
 
+    /**
+     * Lot L1, etape E12 (RG-VAR-02) : la provenance distingue la saisie, le calcul, la
+     * valeur EXTRAITE d'une piece (confirmee par un employe, RG-VAR-09 : auteur
+     * obligatoire) et la valeur reprise de la FICHE societe (sans auteur).
+     */
+    @Test
+    void provenances_extraite_et_fiche() {
+        dansLeWorkspace(() -> {
+            magasin.poser(workspaceId, ticketId, "ASSOCIE_CIN", "AB123456",
+                    VariableDuDossier.Origine.valueOf("EXTRAITE"), EMPLOYE, "extraction-cin");
+            magasin.poser(workspaceId, ticketId, "RC_NUMERO", "123456",
+                    VariableDuDossier.Origine.valueOf("FICHE"), null, "fiche-societe");
+            return null;
+        });
+        List<VariableDuDossier> lues = dansLeWorkspace(() -> magasin.lire(workspaceId, ticketId));
+        assertThat(lues).extracting(v -> v.variable() + "=" + v.origine())
+                .contains("ASSOCIE_CIN=EXTRAITE", "RC_NUMERO=FICHE");
+        // Une valeur extraite sans employe qui l'a confirmee est refusee par la base.
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> jdbc.update(
+                "INSERT INTO dossier_variables (workspace_id, ticket_id, variable, valeur, origine, saisie_le) "
+                        + "VALUES (?, ?, 'X', 'v', 'EXTRAITE', NOW())", workspaceId, ticketId))
+                .hasMessageContaining("ck_dossier_variables_saisie_auteur");
+    }
+
     @Test
     void fin_de_parcours_creation_cree_le_dossier_dans_le_workspace() {
         UUID cree = dansLeWorkspace(() -> finalisation.createEntrepriseDossierInNewTransaction(

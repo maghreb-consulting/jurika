@@ -37,7 +37,14 @@ public record VariableDuDossier(
         /** La plateforme la détenait déjà — dossier, ticket, société. */
         BASE,
         /** Calculée depuis d'autres variables. Jamais demandée à personne. */
-        DERIVEE;
+        DERIVEE,
+        /**
+         * Lot L1 (RG-VAR-02, RG-VAR-09) : lue sur une piece (CIN, certificat negatif) et
+         * confirmee par l'employe avant d'entrer au magasin. Porte toujours son auteur.
+         */
+        EXTRAITE,
+        /** Lot L1 (RG-VAR-02) : reprise de la fiche societe (identifiants obtenus, import). */
+        FICHE;
 
         public static Origine of(String raw) {
             return raw == null ? SAISIE : valueOf(raw);
