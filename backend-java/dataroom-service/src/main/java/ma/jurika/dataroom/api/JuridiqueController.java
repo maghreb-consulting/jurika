@@ -108,6 +108,7 @@ public class JuridiqueController {
         // ses documents (RLS workspace seul ne suffit pas, cf RG-DR15).
         if (user != null && user.role() == ma.jurika.common.security.Role.CLIENT) {
             juridique.assertClientAccess(dossierId, user.userId());
+            permissionGuard.assertCanConsult(dossierId, user); // Lot L1, RG-CLI-01
         }
         // Lot B — un CLIENT ne voit que les documents marques « visible pour le
         // client ». Le filtre est applique cote SERVEUR, sur la liste issue de la
@@ -142,6 +143,7 @@ public class JuridiqueController {
         boolean pourClient = estClient(user);
         if (pourClient) {
             juridique.assertClientAccess(dossierId, user.userId());
+            permissionGuard.assertCanConsult(dossierId, user); // Lot L1, RG-CLI-01
         }
         SearchJuridiqueInput in = new SearchJuridiqueInput(
                 dossierId, q, types, from, to, versionScope, limit, offset);

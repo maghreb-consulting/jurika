@@ -134,4 +134,41 @@ class ClientDataroomPermissionGuardTest {
         }).doesNotThrowAnyException();
         verify(settings, never()).getOrCreate(any());
     }
+
+    // ---- Lot L1, etape E10 (RG-CLI-01) : consultation et envoi de demandes ----
+
+    @Test
+    void par_defaut_le_client_consulte_et_envoie_des_demandes() {
+        settingsWith(true, false);
+        assertThatCode(() -> guard.assertCanConsult(dossierId, user(Role.CLIENT))).doesNotThrowAnyException();
+        assertThatCode(() -> guard.assertCanDemande(dossierId, user(Role.CLIENT))).doesNotThrowAnyException();
+    }
+
+    @Test
+    void client_sans_perm_consultation_ne_voit_ni_n_ouvre_ni_ne_telecharge() {
+        settingsWith(true, false).setPermConsultation(false);
+        assertThatThrownBy(() -> guard.assertCanConsult(dossierId, user(Role.CLIENT)))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> guard.assertCanPreview(dossierId, user(Role.CLIENT)))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> guard.assertCanDownload(dossierId, user(Role.CLIENT)))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void client_sans_perm_demandes_ne_soumet_pas_de_demande() {
+        settingsWith(true, false).setPermDemandes(false);
+        assertThatThrownBy(() -> guard.assertCanDemande(dossierId, user(Role.CLIENT)))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void permissions_client_sans_effet_sur_l_employe() {
+        SettingsEntity s = settingsWith(false, false);
+        s.setPermConsultation(false);
+        s.setPermDemandes(false);
+        assertThatCode(() -> guard.assertCanConsult(dossierId, user(Role.EMPLOYE))).doesNotThrowAnyException();
+        assertThatCode(() -> guard.assertCanDemande(dossierId, user(Role.EMPLOYE))).doesNotThrowAnyException();
+    }
 }
+

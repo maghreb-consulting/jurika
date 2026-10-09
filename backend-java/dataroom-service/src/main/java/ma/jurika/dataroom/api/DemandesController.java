@@ -28,15 +28,25 @@ import java.util.UUID;
 public class DemandesController {
 
     private final DemandesClientService demandes;
+    private final ma.jurika.dataroom.application.DataroomJuridiqueService juridique;
+    private final ma.jurika.dataroom.application.ClientDataroomPermissionGuard permissionGuard;
 
-    public DemandesController(DemandesClientService demandes) {
+    public DemandesController(DemandesClientService demandes,
+                              ma.jurika.dataroom.application.DataroomJuridiqueService juridique,
+                              ma.jurika.dataroom.application.ClientDataroomPermissionGuard permissionGuard) {
         this.demandes = demandes;
+        this.juridique = juridique;
+        this.permissionGuard = permissionGuard;
     }
 
+    // Lot L1 (RG-CLI-01) : le CLIENT seul (la hierarchie EMPLOYE > CLIENT ouvrait l'envoi
+    // aux employes), sur SON dossier, s'il en a la permission (perm_demandes).
     @PostMapping("/demandes")
-    @PreAuthorize("hasAuthority('ROLE_CLIENT')")
+    @PreAuthorize("hasRole('CLIENT') and !hasRole('EMPLOYE')")
     public DemandeSummary createDemande(@AuthenticationPrincipal AuthenticatedUser user,
                                           @Valid @RequestBody CreateDemandeRequest req) {
+        juridique.assertClientAccess(req.dossierId(), user.userId());
+        permissionGuard.assertCanDemande(req.dossierId(), user);
         return demandes.create(req, user.userId());
     }
 

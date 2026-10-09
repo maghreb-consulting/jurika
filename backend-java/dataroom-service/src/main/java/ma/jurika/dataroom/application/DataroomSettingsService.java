@@ -23,8 +23,11 @@ public class DataroomSettingsService {
     @PersistenceContext
     private EntityManager em;
 
-    public DataroomSettingsService(SettingsJpaRepository repo) {
+    private final ma.jurika.common.audit.AuditEventEmitter audit;
+
+    public DataroomSettingsService(SettingsJpaRepository repo, ma.jurika.common.audit.AuditEventEmitter audit) {
         this.repo = repo;
+        this.audit = audit;
     }
 
     @Transactional
@@ -67,15 +70,40 @@ public class DataroomSettingsService {
         });
     }
 
+    /**
+     * Lot L1 (RG-CLI-01) : reglage des permissions du client. Une valeur null laisse la
+     * permission inchangee. Chaque modification est tracee (acteur, avant, apres).
+     */
     @Transactional
-    @Auditable(action = "PERMISSIONS_CHANGED", resourceType = "dossier", resourceIdExpr = "#dossierId")
-    public SettingsEntity updatePermissions(UUID dossierId, boolean permDownload, boolean permPrint,
-                                            boolean permDepot) {
+    public SettingsEntity updatePermissions(UUID dossierId, UUID acteurId, Boolean permDownload,
+                                            Boolean permPrint, Boolean permDepot,
+                                            Boolean permConsultation, Boolean permDemandes) {
         SettingsEntity s = getOrCreate(dossierId);
-        s.setPermDownload(permDownload);
-        s.setPermPrint(permPrint);
-        s.setPermDepot(permDepot);
-        return repo.save(s);
+        java.util.Map<String, Object> avant = permissions(s);
+        if (permDownload != null) s.setPermDownload(permDownload);
+        if (permPrint != null) s.setPermPrint(permPrint);
+        if (permDepot != null) s.setPermDepot(permDepot);
+        if (permConsultation != null) s.setPermConsultation(permConsultation);
+        if (permDemandes != null) s.setPermDemandes(permDemandes);
+        SettingsEntity saved = repo.save(s);
+        java.util.Map<String, Object> apres = permissions(saved);
+        if (!avant.equals(apres)) {
+            java.util.Map<String, Object> meta = new java.util.LinkedHashMap<>();
+            meta.put("avant", avant);
+            meta.put("apres", apres);
+            audit.emit(TenantContext.get(), acteurId, "PERMISSIONS_CLIENT_MODIFIEES", "dossier", dossierId, meta);
+        }
+        return saved;
+    }
+
+    private static java.util.Map<String, Object> permissions(SettingsEntity s) {
+        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("consultation", s.isPermConsultation());
+        m.put("telechargement", s.isPermDownload());
+        m.put("impression", s.isPermPrint());
+        m.put("depot", s.isPermDepot());
+        m.put("demandes", s.isPermDemandes());
+        return m;
     }
 
     @Transactional

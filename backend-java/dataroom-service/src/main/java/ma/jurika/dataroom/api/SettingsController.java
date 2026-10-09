@@ -11,6 +11,7 @@ import ma.jurika.dataroom.api.dto.DataroomDtos.SettingsView;
 import ma.jurika.dataroom.api.dto.DataroomDtos.ToggleSuspensionRequest;
 import ma.jurika.dataroom.api.dto.DataroomDtos.UpdatePermissionsRequest;
 import ma.jurika.dataroom.application.DataroomSettingsService;
+import ma.jurika.dataroom.application.EmployeDataroomGuard;
 import ma.jurika.dataroom.application.access.ClientAccessLogQueryService;
 import ma.jurika.dataroom.infrastructure.persistence.SettingsEntity;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,10 +39,14 @@ public class SettingsController {
     @Value("${jurika.dataroom.client-link-base-url:http://localhost:5173/client/dataroom}")
     private String clientLinkBaseUrl;
 
+    private final EmployeDataroomGuard employeGuard;
+
     public SettingsController(DataroomSettingsService settings,
-                              ClientAccessLogQueryService accessLogQuery) {
+                              ClientAccessLogQueryService accessLogQuery,
+                              EmployeDataroomGuard employeGuard) {
         this.settings = settings;
         this.accessLogQuery = accessLogQuery;
+        this.employeGuard = employeGuard;
     }
 
     @GetMapping("/dossiers/{dossierId}/settings")
@@ -61,7 +66,8 @@ public class SettingsController {
     public ClientPermissionsView myPermissions(@PathVariable UUID dossierId) {
         SettingsEntity s = settings.getOrCreate(dossierId);
         return new ClientPermissionsView(s.getDossierId(), s.getAccessStatus(),
-                s.isPermDownload(), s.isPermPrint(), s.isPermDepot());
+                s.isPermDownload(), s.isPermPrint(), s.isPermDepot(),
+                s.isPermConsultation(), s.isPermDemandes());
     }
 
     // Lot L0 (E4) : gestion de l'acces client ouverte EXPLICITEMENT au
@@ -69,21 +75,29 @@ public class SettingsController {
     // hierarchie de roles.
     @PatchMapping("/dossiers/{dossierId}/settings/permissions")
     @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR')")
-    public SettingsView updatePermissions(@PathVariable UUID dossierId,
+    public SettingsView updatePermissions(@AuthenticationPrincipal AuthenticatedUser user,
+                                           @PathVariable UUID dossierId,
                                            @Valid @RequestBody UpdatePermissionsRequest req) {
-        return toView(settings.updatePermissions(dossierId, req.permDownload(), req.permPrint(), req.permDepot()));
+        // Lot L1 (RG-CLI-01) : l'employe responsable du dossier, ou le superviseur.
+        employeGuard.assertResponsable(dossierId, user);
+        return toView(settings.updatePermissions(dossierId, user.userId(), req.permDownload(), req.permPrint(),
+                req.permDepot(), req.permConsultation(), req.permDemandes()));
     }
 
     @PatchMapping("/dossiers/{dossierId}/settings/suspension")
     @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR')")
-    public SettingsView toggleSuspension(@PathVariable UUID dossierId,
+    public SettingsView toggleSuspension(@AuthenticationPrincipal AuthenticatedUser user,
+                                          @PathVariable UUID dossierId,
                                           @Valid @RequestBody ToggleSuspensionRequest req) {
+        employeGuard.assertResponsable(dossierId, user); // Lot L1, RG-DOS-01
         return toView(settings.toggleSuspension(dossierId, req.suspended()));
     }
 
     @PostMapping("/dossiers/{dossierId}/settings/regenerate-link")
     @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR')")
-    public ClientLinkResponse regenerateLink(@PathVariable UUID dossierId) {
+    public ClientLinkResponse regenerateLink(@AuthenticationPrincipal AuthenticatedUser user,
+                                             @PathVariable UUID dossierId) {
+        employeGuard.assertResponsable(dossierId, user); // Lot L1, RG-DOS-01
         SettingsEntity s = settings.regenerateLinkToken(dossierId);
         return new ClientLinkResponse(clientLinkBaseUrl + "?token=" + s.getClientLinkToken(),
                 s.getClientLinkToken());
@@ -124,6 +138,6 @@ public class SettingsController {
         var stats = accessLogQuery.clientAccessStats(s.getDossierId());
         return new SettingsView(s.getDossierId(), s.getAccessStatus(),
                 s.isPermDownload(), s.isPermPrint(), s.isPermDepot(), s.getClientLinkToken(),
-                clientsWithAccess, stats.lastAt());
+                clientsWithAccess, stats.lastAt(), s.isPermConsultation(), s.isPermDemandes());
     }
 }

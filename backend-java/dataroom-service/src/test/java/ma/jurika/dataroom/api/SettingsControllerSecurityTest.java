@@ -65,12 +65,12 @@ class SettingsControllerSecurityTest {
             SecurityContextHolder.getContext().setAuthentication(
                     new TestingAuthenticationToken("u", "p", role));
             SettingsController c = ctx.getBean(SettingsController.class);
-            assertThat(franchit(() -> c.updatePermissions(DOSSIER,
-                    new UpdatePermissionsRequest(true, true, true))))
+            assertThat(franchit(() -> c.updatePermissions(null, DOSSIER,
+                    new UpdatePermissionsRequest(true, true, true, null, null))))
                     .as("PATCH permissions pour %s", role).isEqualTo(garderFranchie);
-            assertThat(franchit(() -> c.toggleSuspension(DOSSIER, new ToggleSuspensionRequest(true))))
+            assertThat(franchit(() -> c.toggleSuspension(null, DOSSIER, new ToggleSuspensionRequest(true))))
                     .as("PATCH suspension pour %s", role).isEqualTo(garderFranchie);
-            assertThat(franchit(() -> c.regenerateLink(DOSSIER)))
+            assertThat(franchit(() -> c.regenerateLink(null, DOSSIER)))
                     .as("POST regenerate-link pour %s", role).isEqualTo(garderFranchie);
         });
     }
@@ -94,7 +94,8 @@ class SettingsControllerSecurityTest {
         @Bean
         SettingsController settingsController() {
             return new SettingsController(mock(DataroomSettingsService.class),
-                    mock(ClientAccessLogQueryService.class));
+                    mock(ClientAccessLogQueryService.class),
+                    mock(ma.jurika.dataroom.application.EmployeDataroomGuard.class));
         }
     }
 }

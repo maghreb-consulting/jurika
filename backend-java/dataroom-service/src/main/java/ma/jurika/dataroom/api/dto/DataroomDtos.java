@@ -153,9 +153,14 @@ public final class DataroomDtos {
 
     public record SettingsView(UUID dossierId, String accessStatus, boolean permDownload,
                                 boolean permPrint, boolean permDepot, UUID clientLinkToken, int accessCount,
-                                Instant lastAccessedAt) {}
+                                Instant lastAccessedAt, boolean permConsultation, boolean permDemandes) {}
 
-    public record UpdatePermissionsRequest(boolean permDownload, boolean permPrint, boolean permDepot) {}
+    /**
+     * Lot L1 (RG-CLI-01) : chaque permission est facultative ; absente (ecran anterieur),
+     * elle reste inchangee.
+     */
+    public record UpdatePermissionsRequest(Boolean permDownload, Boolean permPrint, Boolean permDepot,
+                                           Boolean permConsultation, Boolean permDemandes) {}
 
     /**
      * Vue allegee des permissions exposee AU CLIENT (lecture seule). Ne contient
@@ -165,7 +170,8 @@ public final class DataroomDtos {
      */
     public record ClientPermissionsView(UUID dossierId, String accessStatus,
                                         boolean permDownload, boolean permPrint,
-                                        boolean permDepot) {}
+                                        boolean permDepot, boolean permConsultation,
+                                        boolean permDemandes) {}
 
     public record ToggleSuspensionRequest(boolean suspended) {}
 

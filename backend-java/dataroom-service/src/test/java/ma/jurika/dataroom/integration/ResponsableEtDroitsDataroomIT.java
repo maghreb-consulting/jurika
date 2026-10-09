@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Lot L1, etape E8 (RG-DR-06, CDC 3.2, RG-DOS-01) : en role d'execution jurika_app
+ * Lot L1, etapes E8 a E10 (RG-DR-06, CDC 3.2, RG-DOS-01, RG-CLI-01) : en role d'execution jurika_app
  * (RLS), un employe ne supprime un document que s'il est responsable du dossier ET
  * que le superviseur lui a accorde le droit (auth V35) ; la suppression est logique
  * (le document reste en base, marque remplace) et tracee.
@@ -43,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK, properties = {
         "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration"})
 @ActiveProfiles("it")
-class DroitSuppressionDataroomIT {
+class ResponsableEtDroitsDataroomIT {
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")
@@ -70,6 +70,8 @@ class DroitSuppressionDataroomIT {
             POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
     @Autowired private DataroomJuridiqueService juridique;
     @Autowired private JuridiqueController controleur;
+    @Autowired private ma.jurika.dataroom.api.DemandesController demandes;
+    @Autowired private ma.jurika.dataroom.api.SettingsController reglages;
     @MockBean private ObjectStorage storage;
 
     private final UUID workspaceId = UUID.randomUUID();
@@ -179,4 +181,66 @@ class DroitSuppressionDataroomIT {
             enEmploye(responsable, a);
         }
     }
+
+    // ---- Lot L1, etape E10 (RG-CLI-01) : permissions du client ----
+
+    private Object enClient(UUID client, java.util.function.Function<AuthenticatedUser, Object> appel) {
+        AuthenticatedUser principal = new AuthenticatedUser(client, workspaceId, client + "@rls.test", Role.CLIENT);
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                principal, null, List.of(new SimpleGrantedAuthority("ROLE_CLIENT"))));
+        TenantContext.set(workspaceId);
+        try {
+            return appel.apply(principal);
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
+    private ma.jurika.dataroom.api.dto.DataroomDtos.CreateDemandeRequest demande(UUID dossier) {
+        return new ma.jurika.dataroom.api.dto.DataroomDtos.CreateDemandeRequest("Question", "Texte", dossier);
+    }
+
+    @Test
+    void permissions_du_client_consultation_et_demandes() {
+        UUID client = UUID.randomUUID();
+        SchemaJurikaDb.utilisateur(jdbc, client, workspaceId);
+        jdbc.update("UPDATE users SET role = 'CLIENT' WHERE id = ?", client);
+        jdbc.update("UPDATE entreprise_dossiers SET client_id = ? WHERE id = ?", client, dossierId);
+
+        // Par defaut : consultation et demandes permises.
+        enClient(client, u -> controleur.juridiqueView(u, dossierId, null, null, null));
+        enClient(client, u -> demandes.createDemande(u, demande(dossierId)));
+
+        // Le responsable restreint les deux ; la modification est tracee (avant / apres).
+        enEmploye(responsable, u -> reglages.updatePermissions(u, dossierId,
+                new ma.jurika.dataroom.api.dto.DataroomDtos.UpdatePermissionsRequest(null, null, null, false, false)));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_log WHERE action = 'PERMISSIONS_CLIENT_MODIFIEES' "
+                + "AND entity_id = ? AND user_id = ?", Integer.class, dossierId, responsable)).isEqualTo(1);
+        assertThatThrownBy(() -> enClient(client, u -> controleur.juridiqueView(u, dossierId, null, null, null)))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> enClient(client, u -> demandes.createDemande(u, demande(dossierId))))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void un_client_n_envoie_pas_de_demande_sur_le_dossier_d_un_autre() {
+        UUID client = UUID.randomUUID();
+        SchemaJurikaDb.utilisateur(jdbc, client, workspaceId);
+        jdbc.update("UPDATE users SET role = 'CLIENT' WHERE id = ?", client);
+        assertThatThrownBy(() -> enClient(client, u -> demandes.createDemande(u, demande(dossierId))))
+                .isInstanceOfAny(NotFoundException.class, AccessDeniedException.class);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM dataroom_demandes_client WHERE dossier_id = ?",
+                Integer.class, dossierId)).isZero();
+    }
+
+    @Test
+    void seul_le_responsable_ou_le_superviseur_regle_les_permissions() {
+        var req = new ma.jurika.dataroom.api.dto.DataroomDtos.UpdatePermissionsRequest(null, null, null, false, null);
+        assertThatThrownBy(() -> enEmploye(autre, u -> reglages.updatePermissions(u, dossierId, req)))
+                .isInstanceOf(NotFoundException.class);
+        // Un employe ne soumet pas de demande "client" (hierarchie EMPLOYE > CLIENT fermee).
+        assertThatThrownBy(() -> enEmploye(responsable, u -> demandes.createDemande(u, demande(dossierId))))
+                .isInstanceOf(AccessDeniedException.class);
+    }
 }
+
