@@ -34,6 +34,11 @@ public final class ControlesIntegration {
             + "|\u25c7\\s*SI\\b"
             + "|\u25c6\\s*FIN SI\\b");
     static final Pattern VARIABLE = Pattern.compile("\\$[A-Z][A-Z0-9_]*");
+    /**
+     * Section de documentation finale de certains gabarits (92 dans CORPUS_2026-10-03) :
+     * elle n'est pas rendue (DocxTemplateEngine la retire) ; signalee, non controlee.
+     */
+    public static final Pattern DICTIONNAIRE_DES_VARIABLES = Pattern.compile("^\\s*DICTIONNAIRE DES VARIABLES\\b");
     static final Pattern RESIDUEL = Pattern.compile(
             "\\$\\{|\\{\\{|\\}\\}|\\[\\[|\\]\\]|<<|>>|\\bTODO\\b|\\bXXX\\b");
 
@@ -52,6 +57,10 @@ public final class ControlesIntegration {
         int numero = 0;
         for (String p : paragraphes) {
             numero++;
+            if (DICTIONNAIRE_DES_VARIABLES.matcher(p).find()) {
+                avertissements.add("section DICTIONNAIRE DES VARIABLES presente (documentation, retiree au rendu)");
+                break;
+            }
             Matcher m = MARQUEUR.matcher(p);
             while (m.find()) {
                 String s = m.group();

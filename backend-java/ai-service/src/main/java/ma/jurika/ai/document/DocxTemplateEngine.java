@@ -336,6 +336,11 @@ public class DocxTemplateEngine {
             // ne participent ni aux conditions ni aux boucles.
             retirerAnnotations(doc);
 
+            // Lot L2 : section de documentation finale « DICTIONNAIRE DES VARIABLES —
+            // <CODE> » (92 gabarits du corpus 2026-10-03) : retiree, du titre a la fin
+            // du corps. Le gabarit n'est pas modifie (corpus en lecture seule).
+            retirerDictionnaireDesVariables(doc);
+
             // PRE-PASS V5 (2026-09 — formulaires DGI / greffe) : cases a cocher
             // ◈ CASE À COCHER … / ☐ option. Doit tourner AVANT l'evaluateur
             // conditionnel : une option cochee peut se trouver dans une branche
@@ -1226,6 +1231,24 @@ public class DocxTemplateEngine {
      * Retire les paragraphes d'annotation. Retourne leur nombre (journalise : ces
      * lignes disparaissent du rendu, l'employe doit pouvoir le constater).
      */
+    private void retirerDictionnaireDesVariables(XWPFDocument doc) {
+        List<IBodyElement> elements = doc.getBodyElements();
+        int debut = -1;
+        for (int i = 0; i < elements.size(); i++) {
+            if (elements.get(i) instanceof XWPFParagraph p
+                    && ma.jurika.ai.document.corpus.ControlesIntegration.DICTIONNAIRE_DES_VARIABLES
+                    .matcher(p.getText()).find()) {
+                debut = i;
+                break;
+            }
+        }
+        if (debut < 0) return;
+        for (int i = doc.getBodyElements().size() - 1; i >= debut; i--) {
+            doc.removeBodyElement(i);
+        }
+        log.debug("Section DICTIONNAIRE DES VARIABLES retiree du rendu ({} elements)", elements.size() - debut);
+    }
+
     private int retirerAnnotations(XWPFDocument doc) {
         java.util.Set<XWPFParagraph> toRemove = new java.util.LinkedHashSet<>();
         for (XWPFParagraph p : new ArrayList<>(doc.getParagraphs())) {
@@ -1932,8 +1955,8 @@ public class DocxTemplateEngine {
     }
 
     /**
-     * Lot L2 : un alias du dictionnaire unique recoit la meme valeur que son nom
-     * canonique, dans les deux sens (00_LISEZ_MOI du corpus, Conventions), au
+     * Lot L2 : un alias du dictionnaire unique recoit la meme valeur (renseignee)
+     * que son nom canonique, dans les deux sens (00_LISEZ_MOI du corpus, Conventions), au
      * niveau racine et dans chaque element de liste (boucles).
      */
     @SuppressWarnings("unchecked")
@@ -1952,13 +1975,19 @@ public class DocxTemplateEngine {
         for (Map.Entry<String, String> a : dictionnaire.alias().entrySet()) {
             String alias = a.getKey().substring(1);
             String canonique = a.getValue().substring(1);
-            if (out.containsKey(canonique) && !out.containsKey(alias)) {
+            // Seule une valeur RENSEIGNEE se recopie : une valeur vide recopiee masquerait
+            // le marqueur de valeur manquante (vu au temoin L2 : $VILLE_GREFFE -> $RC_VILLE).
+            if (renseignee(out.get(canonique)) && !renseignee(out.get(alias))) {
                 out.put(alias, out.get(canonique));
-            } else if (out.containsKey(alias) && !out.containsKey(canonique)) {
+            } else if (renseignee(out.get(alias)) && !renseignee(out.get(canonique))) {
                 out.put(canonique, out.get(alias));
             }
         }
         return out;
+    }
+
+    private static boolean renseignee(Object valeur) {
+        return valeur != null && !(valeur instanceof String s && s.isBlank());
     }
 
     @SuppressWarnings("unchecked")
