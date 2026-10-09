@@ -51,8 +51,8 @@ import java.util.UUID;
  * <ul>
  *   <li><b>422 Unprocessable Entity</b> — {@link IllegalArgumentException}
  *       (workflow ou template inconnu côté mapper).</li>
- *   <li><b>404 Not Found</b> — template absent du manifest L3 + aucun fichier
- *       fallback (détecté via {@code DocumentResult.templateFound() == false}).</li>
+ *   <li><b>404 Not Found</b> — gabarit introuvable dans le corpus et le
+ *       classpath ({@code GabaritIntrouvableException}, lot L2).</li>
  *   <li><b>500 Internal Server Error</b> — autres exceptions (gérées par
  *       le handler Spring par défaut).</li>
  * </ul>
@@ -179,11 +179,8 @@ public class WorkflowDocumentController {
 
         DocumentResult result = docxTemplateEngine.generate(templateCode, variables);
 
-        if (!result.templateFound()) {
-            // Manifest L3 inconnu + pas de fichier classpath direct : 404.
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                    "Template inconnu (manifest L3 + classpath) : " + templateCode);
-        }
+        // Lot L2 : gabarit introuvable (corpus et classpath) -> GabaritIntrouvableException,
+        // rendue en 404 ; il n'y a plus de document de remplacement a detecter ici.
 
         refuserSiTrouGrammatical(workflowCode, templateCode, result);
 
