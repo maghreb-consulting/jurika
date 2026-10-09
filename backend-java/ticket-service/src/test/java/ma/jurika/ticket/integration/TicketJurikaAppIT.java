@@ -43,6 +43,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -381,4 +382,39 @@ class TicketJurikaAppIT {
                 .containsEntry("auteur_id", KARIM)
                 .containsEntry("transfert", demandeId);
     }
+
+    @Test
+    @Order(22)
+    void note_de_ticket_interne() throws Exception {
+        // Ouverte des la creation : vide sans enregistrement.
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note").header("Authorization", karim()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenu").value(""));
+        // Validable meme vide, puis modifiable.
+        mvc.perform(put("/api/v1/tickets/" + ticketId + "/note").header("Authorization", karim())
+                        .contentType("application/json").content("{\"contenu\":\"\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(put("/api/v1/tickets/" + ticketId + "/note").header("Authorization", karim())
+                        .contentType("application/json").content("{\"contenu\":\"Rappeler le greffe\"}"))
+                .andExpect(status().isOk());
+        assertThat(owner.queryForMap("SELECT contenu, modifie_par FROM ticket_notes WHERE ticket_id = ?", ticketId))
+                .containsEntry("contenu", "Rappeler le greffe")
+                .containsEntry("modifie_par", KARIM);
+        // Superviseur : lecture en observation ; autre employe : 404 ; client : jamais.
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note")
+                        .header("Authorization", jeton(SUPERVISEUR_A, WS_A, "SUPERVISEUR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenu").value("Rappeler le greffe"));
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note")
+                        .header("Authorization", jeton(COLLEGUE, WS_A, "EMPLOYE")))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note")
+                        .header("Authorization", jeton(UUID.randomUUID(), WS_A, "CLIENT")))
+                .andExpect(status().isForbidden());
+        // Autre cabinet : rien.
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note")
+                        .header("Authorization", jeton(EMPLOYE_B, WS_B, "EMPLOYE")))
+                .andExpect(status().isNotFound());
+    }
 }
+
