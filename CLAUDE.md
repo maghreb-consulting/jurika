@@ -142,6 +142,10 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   c'est le motif recurrent — un ecart reel que rien ne signale. La DONNEE, elle, est correcte
   (V26 a bien cable taxe pro / CNSS). A resorber en rejouant ticket sur une base vierge, ou a
   accepter en connaissance de cause tant que le Z440 reste une base de developpement.
+- **Staging : ai-service ne demarrera plus sans corpus (lot L2).** `jurika.corpus.root` est
+  obligatoire sans repli ; `infrastructure/deployment/docker-compose.staging.yml` (deploiement
+  manuel, secrets non configures) ne monte aucun corpus et ne definit pas `JURIKA_CORPUS_ROOT`.
+  A traiter avant tout deploiement staging : montage en lecture seule d'un dossier date.
 - FicheClientPdfTest et DeboursPdfGeneratorTest avalent les erreurs d'écriture (catch (Exception ignore)) : à remplacer par un échec ou un journal explicite.
 - **4 tests ai-service ignores faute de LibreOffice sur le serveur Z440** :
   `DocxToPdfConverterTest.real_conversion_produces_valid_pdf_when_libreoffice_installed`

@@ -55,6 +55,12 @@ jobs:
             done < <(grep -oE '^[A-Z0-9_]+=CHANGE_ME[^[:space:]]*' "$f" | cut -d= -f1)
           done
           sed -i 's|^JURIKA_LAN_HOST=.*|JURIKA_LAN_HOST=localhost|' .env.local
+          # Lot L2 : le runner n'a pas le corpus reel (non publie) ; ai-service monte
+          # le corpus FICTIF de test, genere par scripts/l2/fixture_corpus_test.py.
+          corpus="$GITHUB_WORKSPACE/backend-java/ai-service/src/test/resources/corpus-test/CORPUS_TEST"
+          test -f "$corpus/INDEX_CORPUS.xlsx"
+          sed -i "s|^JURIKA_CORPUS_DIR=.*|JURIKA_CORPUS_DIR=${corpus}|" .env.local
+          grep -q "^JURIKA_CORPUS_DIR=${corpus}\$" .env.local
           # JURIKA_APP_PASSWORD est obligatoire (aucun repli) : il doit exister.
           grep -q '^JURIKA_APP_PASSWORD=' .env.local
           if grep -qE '^[A-Z0-9_]+=CHANGE_ME' .env .env.local; then
