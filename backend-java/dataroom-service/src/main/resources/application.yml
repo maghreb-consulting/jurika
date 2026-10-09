@@ -37,14 +37,14 @@ spring:
     table: flyway_history_dataroom
     # Lot L0 (E15b) : DDL, politiques et droits exigent le proprietaire.
     user: ${POSTGRES_USER:jurika_user}
-    password: ${POSTGRES_PASSWORD:JurikaDevPass2026}
+    password: ${POSTGRES_PASSWORD}
     validate-on-migrate: false
     ignore-migration-patterns: "*:missing,*:future"
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:jurika}
-    password: ${RABBITMQ_PASSWORD:JurikaRabbit2026}
+    password: ${RABBITMQ_PASSWORD}
     virtual-host: ${RABBITMQ_VHOST:jurika}
 
 eureka:
@@ -80,12 +80,12 @@ jurika:
   jwt:
     algorithm: ${JWT_ALGORITHM:RS256}
     public-key-path: ${JWT_PUBLIC_KEY_PATH:/run/secrets/jwt/jwt-public.pem}
-    hmac-secret: ${JWT_SECRET:dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345}
+    hmac-secret: ${JWT_SECRET:}
     issuer: ${JWT_ISSUER:jurika.ma}
   minio:
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
     access-key: ${MINIO_ACCESS_KEY:${MINIO_ROOT_USER:jurika-admin}}
-    secret-key: ${MINIO_SECRET_KEY:${MINIO_ROOT_PASSWORD:JurikaMinIO2026}}
+    secret-key: ${MINIO_SECRET_KEY:${MINIO_ROOT_PASSWORD}}
     bucket: ${MINIO_BUCKET:jurika-dataroom}
   # Sprint 7 / TASK 3.2 -- watermark PDF feature flag.
   # OFF par defaut. Bascule a true ajoute un overlay JURIKA + raison sociale +

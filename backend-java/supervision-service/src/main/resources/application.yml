@@ -9,7 +9,7 @@ spring:
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:jurika_db}
     username: ${POSTGRES_USER:jurika_user}
-    password: ${POSTGRES_PASSWORD:JurikaDevPass2026}
+    password: ${POSTGRES_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -36,7 +36,7 @@ jurika:
   jwt:
     algorithm: ${JWT_ALGORITHM:RS256}
     public-key-path: ${JWT_PUBLIC_KEY_PATH:/run/secrets/jwt/jwt-public.pem}
-    hmac-secret: ${JWT_SECRET:dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345}
+    hmac-secret: ${JWT_SECRET:}
     issuer: ${JWT_ISSUER:jurika.ma}
   env: ${JURIKA_ENV:dev}
   release: ${JURIKA_RELEASE:dev}

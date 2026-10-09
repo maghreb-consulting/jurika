@@ -21,11 +21,12 @@ class ConnexionRoleApplicatifConfigTest {
 
     @Test
     void application_en_jurika_app_et_flyway_en_proprietaire() throws Exception {
-        StandardEnvironment env = environnement(Map.of("JURIKA_APP_PASSWORD", "mdp-app"));
+        StandardEnvironment env = environnement(Map.of("JURIKA_APP_PASSWORD", "mdp-app",
+                "POSTGRES_PASSWORD", "mdp-proprietaire-test"));
         assertThat(env.getProperty("spring.datasource.username")).isEqualTo("jurika_app");
         assertThat(env.getProperty("spring.datasource.password")).isEqualTo("mdp-app");
         assertThat(env.getProperty("spring.flyway.user")).isEqualTo("jurika_user");
-        assertThat(env.getProperty("spring.flyway.password")).isNotBlank();
+        assertThat(env.getProperty("spring.flyway.password")).isEqualTo("mdp-proprietaire-test");
         assertThat(env.getProperty("spring.flyway.user"))
                 .isNotEqualTo(env.getProperty("spring.datasource.username"));
     }
@@ -35,6 +36,17 @@ class ConnexionRoleApplicatifConfigTest {
         StandardEnvironment env = environnement(Map.of());
         assertThatThrownBy(() -> env.getProperty("spring.datasource.password"))
                 .hasMessageContaining("JURIKA_APP_PASSWORD");
+    }
+
+    /**
+     * Chantier secrets-z440 : le mot de passe du proprietaire (Flyway) n'a plus de
+     * valeur de repli publiee ; absent, la configuration ne se resout pas.
+     */
+    @Test
+    void sans_mot_de_passe_proprietaire_la_configuration_ne_se_resout_pas() throws Exception {
+        StandardEnvironment env = environnement(Map.of("JURIKA_APP_PASSWORD", "mdp-app"));
+        assertThatThrownBy(() -> env.getProperty("spring.flyway.password"))
+                .hasMessageContaining("POSTGRES_PASSWORD");
     }
 
     private static StandardEnvironment environnement(Map<String, Object> variables) throws Exception {

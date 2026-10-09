@@ -14,7 +14,7 @@ spring:
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${BILLING_DB_NAME:jurika_billing}
     username: ${POSTGRES_USER:jurika_user}
-    password: ${POSTGRES_PASSWORD:JurikaDevPass2026}
+    password: ${POSTGRES_PASSWORD}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
@@ -67,7 +67,7 @@ jurika:
   jwt:
     algorithm: ${JWT_ALGORITHM:RS256}
     public-key-path: ${JWT_PUBLIC_KEY_PATH:classpath:keys/jwt-public.pem}
-    hmac-secret: ${JWT_SECRET:dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345}
+    hmac-secret: ${JWT_SECRET:}
 
   # BUG 14 (2026-06-09) fix — URL directe auth-service pour le Feign client
   # WorkspaceStatusFeignClient. Sans cette property explicite le defaut etait

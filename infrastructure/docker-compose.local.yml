@@ -59,7 +59,7 @@ services:
       # Lot L0 (CI base-vierge) : memes expressions que le conteneur rabbitmq
       # (sinon repli code en dur d'application.yml, faux sur une base neuve).
       RABBITMQ_USER: ${RABBITMQ_USER:-jurika}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-JurikaRabbit2026}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD absent, .env doit le definir}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-RS256}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
       # Stripe (les 4 price IDs sont injectes depuis .env.local par compose).
@@ -125,7 +125,7 @@ services:
       # Lot L0 (CI base-vierge) : memes expressions que le conteneur rabbitmq
       # (sinon repli code en dur d'application.yml, faux sur une base neuve).
       RABBITMQ_USER: ${RABBITMQ_USER:-jurika}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-JurikaRabbit2026}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD absent, .env doit le definir}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-RS256}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
       JURIKA_PLAN_LIMITS_ENABLED: "true"
