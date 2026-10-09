@@ -32,6 +32,10 @@ eureka:
     prefer-ip-address: true
 
 jurika:
+  # Lot L2 : corpus date des modeles du cabinet, monte en LECTURE SEULE. Obligatoire,
+  # sans repli : sans lui (ou sur erreur bloquante du corpus), le service ne demarre pas.
+  corpus:
+    root: ${JURIKA_CORPUS_ROOT}
   # BLOC C 2026-06-21 — PDF fidele via LibreOffice headless re-active.
   # Active par defaut : DocxToPdfConverter detecte soffice au demarrage et,
   # si absent, isAvailable() retourne false -> DocumentRenderController renvoie

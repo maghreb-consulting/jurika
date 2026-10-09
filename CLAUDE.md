@@ -142,6 +142,10 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   c'est le motif recurrent — un ecart reel que rien ne signale. La DONNEE, elle, est correcte
   (V26 a bien cable taxe pro / CNSS). A resorber en rejouant ticket sur une base vierge, ou a
   accepter en connaissance de cause tant que le Z440 reste une base de developpement.
+- **Staging : ai-service ne demarrera plus sans corpus (lot L2).** `jurika.corpus.root` est
+  obligatoire sans repli ; `infrastructure/deployment/docker-compose.staging.yml` (deploiement
+  manuel, secrets non configures) ne monte aucun corpus et ne definit pas `JURIKA_CORPUS_ROOT`.
+  A traiter avant tout deploiement staging : montage en lecture seule d'un dossier date.
 - FicheClientPdfTest et DeboursPdfGeneratorTest avalent les erreurs d'écriture (catch (Exception ignore)) : à remplacer par un échec ou un journal explicite.
 - **4 tests ai-service ignores faute de LibreOffice sur le serveur Z440** :
   `DocxToPdfConverterTest.real_conversion_produces_valid_pdf_when_libreoffice_installed`
@@ -154,14 +158,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L0 (securite serveur, 2026-10-08) -- dette relevee
 
-- **PRIORITE HAUTE -- chantier outillage/secrets-z440 (avant L2), en cours.** Les mots de
-  passe Postgres, RabbitMQ et MinIO du Z440 etaient egaux aux replis publies dans le depot.
-  Fait sur la branche : plus aucun repli de secret publie (application*.yml, compose,
-  backend-node ; garde-fou `ReplisSecretsPubliesTest` dans jurika-common) ; un service refuse
-  de demarrer si son secret manque ; Redis recoit son mot de passe par l'environnement (plus en
-  argument de processus). Reste, apres fusion : sur le Z440, sauvegarde, nouveaux mots de passe
-  aleatoires (Postgres, RabbitMQ, MinIO, JWT) dans `.env.local` seulement, changement cote
-  serveurs, recreation des conteneurs.
 - **PRIORITE HAUTE : le consommateur RabbitMQ de l'audit (`AuditEventConsumer`) avale toute
   exception** : une trace refusee est perdue sans bruit. Il faut la rejeter vers une file
   d'erreurs (dead-letter) ou la rejouer.
@@ -222,6 +218,11 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **`start-local.sh` attend `jurika-mailhog` "healthy"** alors que mailhog n'a aucun controle
   de sante (ni compose ni image) : l'attente ne peut pas aboutir quand mailhog tourne
   (corrige dans `base-vierge.yml` le 2026-10-08 : "running" suffit sans controle de sante).
+- **Le test de fumee affiche un prefixe de la cle Stripe** (`scripts/smoke-test.mjs`,
+  controle "Stripe env vars" : `sk_test_51...`) : ne plus afficher aucune partie d'une cle.
+- **Images du Z440 a reconstruire** : les images en service datent du deploiement de L0 (le code
+  du chantier secrets-z440 n'y est pas) ; a inclure dans le plan Docker de L2 (reconstruction et
+  recreation de toutes les images).
 - **Liste des conteneurs attendus dupliquee** entre `start-local.sh` et
   `.github/workflows/base-vierge.yml` : a factoriser.
 - **Messages de commit du lot L0 non ASCII** (24 commits, guillemets francais, signe

@@ -1,5 +1,7 @@
 package ma.jurika.ai.document;
 
+import ma.jurika.ai.document.corpus.CorpusCharge;
+import ma.jurika.ai.document.corpus.DictionnaireUnique;
 import ma.jurika.ai.document.format.CasseEnTete;
 import ma.jurika.ai.document.format.FrenchContraction;
 import ma.jurika.ai.document.manifest.TemplateDefaultsApplier;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -147,15 +150,41 @@ public class DocxTemplateEngine {
      */
     private final TemplateDefaultsApplier defaultsApplier;
 
-    /** Constructeur Spring : injecte le loader manifest L3 + defaultsApplier. */
+    /**
+     * Lot L2 : corpus date charge en lecture seule, resolu AVANT le classpath
+     * (empreinte verifiee a chaque rendu). Null en test pur sans corpus.
+     */
+    private final CorpusCharge corpus;
+
+    /**
+     * Lot L2 : codes servis depuis le classpath faute d'equivalent dans le corpus
+     * (signales au rapport de chargement ; sort a decider par le directeur).
+     */
+    private final java.util.Set<String> codesServisHorsCorpus =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /** Constructeur Spring : manifest L3, defaultsApplier et corpus (lot L2). */
     @Autowired
     public DocxTemplateEngine(
             @org.springframework.beans.factory.annotation.Autowired(required = false)
             TemplateManifestLoader manifestLoader,
             @org.springframework.beans.factory.annotation.Autowired(required = false)
-            TemplateDefaultsApplier defaultsApplier) {
+            TemplateDefaultsApplier defaultsApplier,
+            @org.springframework.beans.factory.annotation.Autowired(required = false)
+            CorpusCharge corpus) {
         this.manifestLoader = manifestLoader;
         this.defaultsApplier = defaultsApplier;
+        this.corpus = corpus;
+    }
+
+    /** Sans corpus (tests anterieurs au lot L2). */
+    public DocxTemplateEngine(TemplateManifestLoader manifestLoader, TemplateDefaultsApplier defaultsApplier) {
+        this(manifestLoader, defaultsApplier, null);
+    }
+
+    /** Lot L2 : codes rendus depuis le classpath alors qu'un corpus est charge. */
+    public java.util.Set<String> codesServisHorsCorpus() {
+        return java.util.Set.copyOf(codesServisHorsCorpus);
     }
 
     /** Constructeur sans manifest (legacy, réservé aux tests L1 non-Spring). */
@@ -177,18 +206,18 @@ public class DocxTemplateEngine {
         Map<String, Object> withDefaults = defaultsApplier == null
                 ? variables
                 : defaultsApplier.withDefaults(templateCode, variables);
-
-        Resource templateResource = resolveTemplate(templateCode, withDefaults);
-        if (templateResource == null) {
-            return new DocumentResult(
-                    generatePlaceholder(templateCode, withDefaults),
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    templateCode + "_placeholder.docx",
-                    false,
-                    Collections.emptyList());
+        if (corpus != null) {
+            withDefaults = avecAlias(withDefaults, corpus.dictionnaire());
         }
 
-        try (InputStream in = templateResource.getInputStream()) {
+        // Lot L2 : plus de document de remplacement. Gabarit introuvable = erreur
+        // explicite ; gabarit du corpus modifie ou non rendable = CorpusException.
+        byte[] gabarit = resolveTemplate(templateCode, withDefaults);
+        if (gabarit == null) {
+            throw new GabaritIntrouvableException(templateCode);
+        }
+
+        try (InputStream in = new ByteArrayInputStream(gabarit)) {
             RenderOutcome outcome = renderInternal(in, withDefaults,
                     isStatutsTemplate(templateCode), estImprimeAdministratif(templateCode));
             return new DocumentResult(
@@ -306,6 +335,11 @@ public class DocxTemplateEngine {
             // Doit tourner EN PREMIER : ces lignes sont des reperes de lecture, elles
             // ne participent ni aux conditions ni aux boucles.
             retirerAnnotations(doc);
+
+            // Lot L2 : section de documentation finale « DICTIONNAIRE DES VARIABLES —
+            // <CODE> » (92 gabarits du corpus 2026-10-03) : retiree, du titre a la fin
+            // du corps. Le gabarit n'est pas modifie (corpus en lecture seule).
+            retirerDictionnaireDesVariables(doc);
 
             // PRE-PASS V5 (2026-09 — formulaires DGI / greffe) : cases a cocher
             // ◈ CASE À COCHER … / ☐ option. Doit tourner AVANT l'evaluateur
@@ -1197,6 +1231,24 @@ public class DocxTemplateEngine {
      * Retire les paragraphes d'annotation. Retourne leur nombre (journalise : ces
      * lignes disparaissent du rendu, l'employe doit pouvoir le constater).
      */
+    private void retirerDictionnaireDesVariables(XWPFDocument doc) {
+        List<IBodyElement> elements = doc.getBodyElements();
+        int debut = -1;
+        for (int i = 0; i < elements.size(); i++) {
+            if (elements.get(i) instanceof XWPFParagraph p
+                    && ma.jurika.ai.document.corpus.ControlesIntegration.DICTIONNAIRE_DES_VARIABLES
+                    .matcher(p.getText()).find()) {
+                debut = i;
+                break;
+            }
+        }
+        if (debut < 0) return;
+        for (int i = doc.getBodyElements().size() - 1; i >= debut; i--) {
+            doc.removeBodyElement(i);
+        }
+        log.debug("Section DICTIONNAIRE DES VARIABLES retiree du rendu ({} elements)", elements.size() - debut);
+    }
+
     private int retirerAnnotations(XWPFDocument doc) {
         java.util.Set<XWPFParagraph> toRemove = new java.util.LinkedHashSet<>();
         for (XWPFParagraph p : new ArrayList<>(doc.getParagraphs())) {
@@ -1848,7 +1900,98 @@ public class DocxTemplateEngine {
      * </ol>
      */
     @SuppressWarnings("unchecked")
-    private Resource resolveTemplate(String templateCode, Map<String, Object> variables) {
+    private byte[] resolveTemplate(String templateCode, Map<String, Object> variables) {
+        if (corpus != null) {
+            for (String code : candidatsCorpus(templateCode, variables)) {
+                if (corpus.gabarit(code).isPresent()) {
+                    return corpus.lireVerifie(code);
+                }
+            }
+        }
+        Resource res = resolveClasspath(templateCode, variables);
+        if (res == null) {
+            return null;
+        }
+        if (corpus != null) {
+            codesServisHorsCorpus.add(templateCode);
+            log.warn("Gabarit {} absent du corpus {} : servi depuis le classpath", templateCode, corpus.version());
+        }
+        try (InputStream in = res.getInputStream()) {
+            return in.readAllBytes();
+        } catch (IOException ex) {
+            throw new IllegalStateException("Gabarit classpath illisible : " + templateCode, ex);
+        }
+    }
+
+    /**
+     * Lot L2 : codes a chercher dans le corpus, dans l'ordre : variante de forme
+     * ({@code <code>_<forme>}), code demande, puis code canonique du manifest L3
+     * (alias de code) et sa variante.
+     */
+    private List<String> candidatsCorpus(String templateCode, Map<String, Object> variables) {
+        List<String> codes = new ArrayList<>();
+        Object forme = formeJuridique(variables);
+        java.util.function.Consumer<String> ajouter = code -> {
+            if (forme != null && !code.endsWith("_SARL") && !code.endsWith("_SARL_AU")) {
+                codes.add(code + "_" + forme);
+            }
+            codes.add(code);
+        };
+        ajouter.accept(templateCode);
+        if (manifestLoader != null) {
+            manifestLoader.resolve(templateCode).map(TemplateManifest.TemplateEntry::code)
+                    .filter(c -> !c.equals(templateCode)).ifPresent(ajouter);
+        }
+        return codes;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object formeJuridique(Map<String, Object> variables) {
+        Object forme = variables.get("formeJuridique");
+        if (forme == null && variables.get("societe") instanceof Map<?, ?> m) {
+            forme = ((Map<String, Object>) m).get("formeJuridique");
+        }
+        return forme;
+    }
+
+    /**
+     * Lot L2 : un alias du dictionnaire unique recoit la meme valeur (renseignee)
+     * que son nom canonique, dans les deux sens (00_LISEZ_MOI du corpus, Conventions), au
+     * niveau racine et dans chaque element de liste (boucles).
+     */
+    @SuppressWarnings("unchecked")
+    static Map<String, Object> avecAlias(Map<String, Object> variables, DictionnaireUnique dictionnaire) {
+        if (dictionnaire.alias().isEmpty()) {
+            return variables;
+        }
+        Map<String, Object> out = new java.util.LinkedHashMap<>(variables);
+        for (Map.Entry<String, Object> e : out.entrySet()) {
+            if (e.getValue() instanceof List<?> l && l.stream().allMatch(i -> i instanceof Map)) {
+                List<Object> items = new ArrayList<>();
+                for (Object i : l) items.add(avecAlias((Map<String, Object>) i, dictionnaire));
+                e.setValue(items);
+            }
+        }
+        for (Map.Entry<String, String> a : dictionnaire.alias().entrySet()) {
+            String alias = a.getKey().substring(1);
+            String canonique = a.getValue().substring(1);
+            // Seule une valeur RENSEIGNEE se recopie : une valeur vide recopiee masquerait
+            // le marqueur de valeur manquante (vu au temoin L2 : $VILLE_GREFFE -> $RC_VILLE).
+            if (renseignee(out.get(canonique)) && !renseignee(out.get(alias))) {
+                out.put(alias, out.get(canonique));
+            } else if (renseignee(out.get(alias)) && !renseignee(out.get(canonique))) {
+                out.put(canonique, out.get(alias));
+            }
+        }
+        return out;
+    }
+
+    private static boolean renseignee(Object valeur) {
+        return valeur != null && !(valeur instanceof String s && s.isBlank());
+    }
+
+    @SuppressWarnings("unchecked")
+    private Resource resolveClasspath(String templateCode, Map<String, Object> variables) {
         // 1. Manifest L3 (priorité — gère les aliases).
         if (manifestLoader != null) {
             var resolved = manifestLoader.resolve(templateCode);
@@ -1868,10 +2011,7 @@ public class DocxTemplateEngine {
         }
 
         // 2. Fallback legacy : variante par forme juridique.
-        Object forme = variables.get("formeJuridique");
-        if (forme == null && variables.get("societe") instanceof Map<?, ?> m) {
-            forme = ((Map<String, Object>) m).get("formeJuridique");
-        }
+        Object forme = formeJuridique(variables);
         if (forme != null && !templateCode.endsWith("_SARL") && !templateCode.endsWith("_SARL_AU")) {
             String variantCode = templateCode + "_" + String.valueOf(forme);
             Resource variant = new ClassPathResource("templates/docx/" + variantCode + ".docx");
@@ -2105,58 +2245,16 @@ public class DocxTemplateEngine {
         map.put(normalize(key), value);
     }
 
-    private byte[] generatePlaceholder(String templateCode, Map<String, Object> variables) {
-        try (XWPFDocument doc = new XWPFDocument();
-             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-
-            XWPFParagraph title = doc.createParagraph();
-            title.setAlignment(ParagraphAlignment.CENTER);
-            XWPFRun titleRun = title.createRun();
-            titleRun.setBold(true);
-            titleRun.setFontSize(16);
-            titleRun.setText("DOCUMENT : " + templateCode);
-
-            XWPFParagraph note = doc.createParagraph();
-            XWPFRun noteRun = note.createRun();
-            noteRun.setItalic(true);
-            noteRun.setText("[Modele a fournir par le directeur. Variables substituees ci-dessous.]");
-
-            Map<String, String> flat = flatten(variables, "");
-            java.util.Set<String> seen = new java.util.HashSet<>();
-            for (Map.Entry<String, String> e : flat.entrySet()) {
-                if (!seen.add(e.getValue() + "::" + e.getKey().toLowerCase())) continue;
-                if (e.getKey().equals(e.getKey().toLowerCase())
-                        && !e.getKey().contains(".")) continue;
-                XWPFParagraph p = doc.createParagraph();
-                XWPFRun key = p.createRun();
-                key.setBold(true);
-                key.setText(e.getKey() + " : ");
-                XWPFRun val = p.createRun();
-                val.setText(e.getValue());
-            }
-
-            XWPFParagraph footer = doc.createParagraph();
-            footer.setAlignment(ParagraphAlignment.CENTER);
-            XWPFRun footerRun = footer.createRun();
-            footerRun.setItalic(true);
-            footerRun.setFontSize(9);
-            footerRun.setText("Document genere par JURIKA - Maghreb Consulting - Conforme Loi 5-96");
-
-            doc.write(out);
-            return ZipHorodatage.figer(out.toByteArray());
-        } catch (Exception ex) {
-            throw new RuntimeException("Echec generation placeholder : " + ex.getMessage(), ex);
-        }
-    }
-
     /**
      * Resultat d'une generation de document.
      *
      * @param missingVariables liste ordonnee, dedupliquee, des noms de variables
      *                         non renseignees (et donc rendues en marqueur rouge
      *                         "‹ VALEUR MANQUANTE : ... ›" dans le .docx).
-     *                         Vide pour le placeholder fallback ou si toutes les
-     *                         variables ont ete resolues.
+     *                         Vide si toutes les variables ont ete resolues.
+     * @param templateFound    toujours vrai depuis le lot L2 (un gabarit introuvable
+     *                         leve GabaritIntrouvableException) ; conserve pour
+     *                         l'en-tete X-Template-Found lu par le front.
      * @param manquantes       Lot 5 (2026-09-07) — meme liste, mais qualifiee : pour
      *                         chaque variable, l'endroit du document ou elle apparait
      *                         et si son vide se lit DANS UNE PHRASE. C'est ce qui

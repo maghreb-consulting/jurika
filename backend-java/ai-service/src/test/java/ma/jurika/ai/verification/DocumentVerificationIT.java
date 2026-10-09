@@ -74,7 +74,7 @@ class DocumentVerificationIT {
     record MapperBinding(String name, WorkflowDocumentMapper mapper, String fixtureFile,
                          boolean fixtureKeyedByTemplate) {}
 
-    private List<MapperBinding> buildBindings() {
+    List<MapperBinding> buildBindings() {
         return List.of(
                 new MapperBinding("ApprobationComptesMapper",
                         new ApprobationComptesMapper(new AnnualReportMapper()),
@@ -244,13 +244,13 @@ class DocumentVerificationIT {
     // Helpers
     // ─────────────────────────────────────────────────────────────────────
 
-    private void invokeLoad(TemplateManifestLoader loader) throws Exception {
+    void invokeLoad(TemplateManifestLoader loader) throws Exception {
         Method m = TemplateManifestLoader.class.getMethod("load");
         m.invoke(loader);
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Object> loadFixture(String classpathRes) throws Exception {
+    Map<String, Object> loadFixture(String classpathRes) throws Exception {
         try (InputStream is = getClass().getResourceAsStream(classpathRes)) {
             if (is == null) {
                 throw new IllegalStateException("Fixture introuvable : " + classpathRes);
@@ -328,7 +328,7 @@ class DocumentVerificationIT {
      * <p>La résolution reflète donc le contrat réel : clé exacte, sinon alias de
      * renommage, sinon le PV frère de la même forme juridique.
      */
-    private static Object resoudreFixture(Map<String, Object> fixtureRoot, String templateCode) {
+    static Object resoudreFixture(Map<String, Object> fixtureRoot, String templateCode) {
         Object exact = fixtureRoot.get(templateCode);
         if (exact instanceof Map<?, ?>) return exact;
 

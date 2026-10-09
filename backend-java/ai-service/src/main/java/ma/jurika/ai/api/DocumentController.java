@@ -54,7 +54,8 @@ public class DocumentController {
 
     /**
      * Genere un document a partir d'un template DOCX + variables.
-     * Si le template n'existe pas, un placeholder est genere (utile en dev).
+     * Lot L2 : gabarit introuvable -> 404 (GabaritIntrouvableException) ; plus de
+     * document de remplacement.
      */
     @PostMapping("/generate/{templateCode}")
     @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
