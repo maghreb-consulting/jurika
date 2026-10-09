@@ -47,7 +47,7 @@ spring:
     table: flyway_history_auth
     # Lot L0 (E13c) : DDL, politiques et droits exigent le proprietaire.
     user: ${POSTGRES_USER:jurika_user}
-    password: ${POSTGRES_PASSWORD:JurikaDevPass2026}
+    password: ${POSTGRES_PASSWORD}
     validate-on-migrate: false
     ignore-migration-patterns: "*:missing,*:future"
   data:
@@ -59,7 +59,7 @@ spring:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:jurika}
-    password: ${RABBITMQ_PASSWORD:JurikaRabbit2026}
+    password: ${RABBITMQ_PASSWORD}
     virtual-host: ${RABBITMQ_VHOST:jurika}
   mail:
     host: ${SMTP_HOST:localhost}
@@ -96,13 +96,13 @@ jurika:
     # private-key-path n'est lu que par auth-service (signature).
     private-key-path: ${JWT_PRIVATE_KEY_PATH:/run/secrets/jwt/jwt-private-pkcs8.pem}
     # Fallback HS256 (dev legacy) — laisser vide en production.
-    hmac-secret: ${JWT_SECRET:dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345}
+    hmac-secret: ${JWT_SECRET:}
     access-ttl-ms: ${JWT_ACCESS_TTL_MS:${JWT_ACCESS_EXPIRATION:900000}}
     refresh-ttl-ms: ${JWT_REFRESH_TTL_MS:${JWT_REFRESH_EXPIRATION:604800000}}
     issuer: ${JWT_ISSUER:jurika.ma}
   encryption:
     # En production, AES_SECRET_KEY DOIT etre defini dans .env (min 32 caracteres).
-    aes-secret: ${AES_SECRET_KEY:dev-only-aes-secret-min-32-chars-not-for-prod-CHANGE-ME}
+    aes-secret: ${AES_SECRET_KEY}
   auth:
     bcrypt-strength: 12
     max-failed-attempts: 5

@@ -11,7 +11,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-jurika_db}
       POSTGRES_USER: ${POSTGRES_USER:-jurika_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-JurikaDevPass2026}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent, .env doit le definir}
       # Passe a scripts/init-db.sh pour creer la BDD billing-service (Sprint 12)
       BILLING_DB_NAME: ${BILLING_DB_NAME:-jurika_billing}
       # Role applicatif jurika_app cree par init-db.sh (lot L0) : mot de passe
@@ -37,11 +37,15 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:${REDIS_PORT:-6379}:6379"
-    command: redis-server --requirepass ${REDIS_PASSWORD:-JurikaRedis2026}
+    # Chantier secrets-z440 : mot de passe passe par l'environnement (jamais en
+    # argument de processus) ; configuration lue sur l'entree standard.
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD:?REDIS_PASSWORD absent, .env doit le definir}"
+    command: ["sh", "-c", "printf 'requirepass %s\\n' \"$$REDIS_PASSWORD\" | exec redis-server -"]
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-JurikaRedis2026}", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -60,7 +64,7 @@ services:
       - "127.0.0.1:${RABBITMQ_MGMT_PORT:-15672}:15672"
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-jurika}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-JurikaRabbit2026}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD absent, .env doit le definir}
       RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-jurika}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
@@ -114,7 +118,7 @@ services:
       - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-jurika-admin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-JurikaMinIO2026}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD absent, .env doit le definir}
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data

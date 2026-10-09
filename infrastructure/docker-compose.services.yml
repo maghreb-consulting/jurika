@@ -73,7 +73,7 @@ services:
       # 403 pendant ce laps de temps.
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost,http://localhost:5173}"
       REDIS_HOST: redis
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-JurikaRedis2026}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD absent, .env doit le definir}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
     volumes:
       - ./secrets/jwt:/run/secrets/jwt:ro
@@ -110,12 +110,12 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-jurika_user}
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent, .env doit le definir}"
       REDIS_HOST: redis
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-JurikaRedis2026}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD absent, .env doit le definir}
       RABBITMQ_HOST: rabbitmq
       # Lot L0 (CI base-vierge) : memes expressions que le conteneur rabbitmq
       # (sinon repli code en dur d'application.yml, faux sur une base neuve).
       RABBITMQ_USER: ${RABBITMQ_USER:-jurika}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-JurikaRabbit2026}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD absent, .env doit le definir}
       JWT_PRIVATE_KEY_PATH: /run/secrets/jwt/jwt-private-pkcs8.pem
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
       # Cle AES qui chiffre les secrets TOTP en base. SANS cette ligne, le
@@ -169,11 +169,11 @@ services:
       # Lot L0 (CI base-vierge) : memes expressions que le conteneur rabbitmq
       # (sinon repli code en dur d'application.yml, faux sur une base neuve).
       RABBITMQ_USER: ${RABBITMQ_USER:-jurika}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-JurikaRabbit2026}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD absent, .env doit le definir}
       MINIO_ENDPOINT: http://minio:9000
       # Lot L0 (CI base-vierge) : memes expressions que le conteneur minio.
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-jurika-admin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-JurikaMinIO2026}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD absent, .env doit le definir}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
       # Lot L0 (E14b) : role d'execution jurika_app (la RLS s'applique). Mot de
       # passe dedie, obligatoire : Compose echoue bruyamment s'il manque.
@@ -221,7 +221,7 @@ services:
       # Lot L0 (CI base-vierge) : memes expressions que le conteneur rabbitmq
       # (sinon repli code en dur d'application.yml, faux sur une base neuve).
       RABBITMQ_USER: ${RABBITMQ_USER:-jurika}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-JurikaRabbit2026}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD absent, .env doit le definir}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
       # Lot L0 (E16) : role d'execution jurika_app (la RLS s'applique). Mot de
       # passe dedie, obligatoire : Compose echoue bruyamment s'il manque.
@@ -273,11 +273,11 @@ services:
       # Lot L0 (CI base-vierge) : memes expressions que le conteneur rabbitmq
       # (sinon repli code en dur d'application.yml, faux sur une base neuve).
       RABBITMQ_USER: ${RABBITMQ_USER:-jurika}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-JurikaRabbit2026}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD absent, .env doit le definir}
       MINIO_ENDPOINT: http://minio:9000
       # Lot L0 (CI base-vierge) : memes expressions que le conteneur minio.
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-jurika-admin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-JurikaMinIO2026}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD absent, .env doit le definir}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
       # Lot L0 (E15b) : role d'execution jurika_app (la RLS s'applique). Mot de
       # passe dedie, obligatoire : Compose echoue bruyamment s'il manque.
@@ -445,7 +445,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-jurika_user}
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent, .env doit le definir}"
       REDIS_HOST: redis
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-JurikaRedis2026}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD absent, .env doit le definir}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
     volumes:
       - ./secrets/jwt:/run/secrets/jwt:ro

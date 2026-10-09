@@ -24,31 +24,32 @@ const fs = require('fs');
 // ----------------------------------------------------------------------
 const JWT_ALGO = (process.env.JWT_ALGORITHM || 'HS256').toUpperCase();
 const VERIFICATION_ALGOS = JWT_ALGO === 'RS256' ? ['RS256'] : ['HS256'];
+// Chantier secrets-z440 : aucun repli de secret publie. Le service refuse de
+// demarrer si sa cle manque. En RS256, une cle publique absente ou illisible
+// arretait le service en HS256 avec un secret de developpement PUBLIE (jetons
+// forgeables) : c'est desormais un arret.
+function arret(message) {
+  console.error(`[realtime] ${message}`);
+  process.exit(1);
+}
 let verificationKey;
 if (JWT_ALGO === 'RS256') {
   const pubPath = process.env.JWT_PUBLIC_KEY_PATH;
   if (!pubPath) {
-    console.warn('[realtime] JWT_ALGORITHM=RS256 mais JWT_PUBLIC_KEY_PATH absent — fallback HS256');
-    verificationKey = process.env.JWT_SECRET
-      || 'dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345';
-    VERIFICATION_ALGOS.length = 0;
-    VERIFICATION_ALGOS.push('HS256');
-  } else {
-    try {
-      verificationKey = fs.readFileSync(pubPath, 'utf8');
-      console.log(`[realtime] JWT verification RS256 (public key ${pubPath})`);
-    } catch (err) {
-      console.error(`[realtime] echec lecture cle publique ${pubPath} : ${err.message}`);
-      verificationKey = process.env.JWT_SECRET
-        || 'dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345';
-      VERIFICATION_ALGOS.length = 0;
-      VERIFICATION_ALGOS.push('HS256');
-    }
+    arret('JWT_ALGORITHM=RS256 mais JWT_PUBLIC_KEY_PATH absent : demarrage refuse');
+  }
+  try {
+    verificationKey = fs.readFileSync(pubPath, 'utf8');
+    console.log(`[realtime] JWT verification RS256 (public key ${pubPath})`);
+  } catch (err) {
+    arret(`echec lecture cle publique ${pubPath} : ${err.message} : demarrage refuse`);
   }
 } else {
-  verificationKey = process.env.JWT_SECRET
-    || 'dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345';
-  console.log(`[realtime] JWT verification HS256 (secret ${verificationKey.slice(0, 6)}…)`);
+  verificationKey = process.env.JWT_SECRET;
+  if (!verificationKey || verificationKey.length < 32) {
+    arret('JWT_ALGORITHM=HS256 mais JWT_SECRET absent ou trop court (32 caracteres minimum) : demarrage refuse');
+  }
+  console.log('[realtime] JWT verification HS256');
 }
 
 // ----------------------------------------------------------------------
@@ -81,12 +82,16 @@ const io = new Server(httpServer, {
 // ----------------------------------------------------------------------
 // PostgreSQL pool — persistance des messages chat
 // ----------------------------------------------------------------------
+if (!process.env.POSTGRES_PASSWORD) {
+  arret('POSTGRES_PASSWORD absent : demarrage refuse');
+}
 const pgPool = new Pool({
   host: process.env.POSTGRES_HOST || 'localhost',
   port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
   database: process.env.POSTGRES_DB || 'jurika_db',
   user: process.env.POSTGRES_USER || 'jurika_user',
-  password: process.env.POSTGRES_PASSWORD || 'JurikaDevPass2026',
+  // Chantier secrets-z440 : obligatoire (verifie au demarrage, plus bas).
+  password: process.env.POSTGRES_PASSWORD,
   max: 5,
 });
 
