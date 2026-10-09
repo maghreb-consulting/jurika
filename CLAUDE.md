@@ -199,6 +199,9 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   `infrastructure/secrets/jwt/*.pem` (cle privee en 600). Sur le Z440 cela marche parce que
   l'utilisateur de l'hote est aussi l'uid 1000 ; `start-local.sh` ne garantit pas ce contrat
   (installation par un autre uid : auth ne demarre pas, vu en CI le 2026-10-08).
+- **`start-local.sh` attend `jurika-mailhog` "healthy"** alors que mailhog n'a aucun controle
+  de sante (ni compose ni image) : l'attente ne peut pas aboutir quand mailhog tourne
+  (corrige dans `base-vierge.yml` le 2026-10-08 : "running" suffit sans controle de sante).
 - **Liste des conteneurs attendus dupliquee** entre `start-local.sh` et
   `.github/workflows/base-vierge.yml` : a factoriser.
 - **Messages de commit du lot L0 non ASCII** (24 commits, guillemets francais, signe

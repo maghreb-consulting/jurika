@@ -120,18 +120,25 @@ jobs:
             jurika-frontend
           )
           limite=$(( $(date +%s) + 1200 ))
+          # Un conteneur AVEC controle de sante doit etre "healthy" ; un conteneur
+          # SANS controle de sante (mailhog : ni dans compose ni dans son image)
+          # doit etre "running". Exiger "healthy" de tous ne pouvait pas aboutir.
           while true; do
-            sains=0
+            sains=0; attente=""
             for c in "${ATTENDUS[@]}"; do
-              etat=$(docker inspect --format='{{.State.Health.Status}}' "$c" 2>/dev/null || echo "absent")
-              [[ "$etat" == "healthy" ]] && sains=$((sains + 1))
+              etat=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}sans-controle:{{.State.Status}}{{end}}' "$c" 2>/dev/null || echo "absent")
+              if [[ "$etat" == "healthy" || "$etat" == "sans-controle:running" ]]; then
+                sains=$((sains + 1))
+              else
+                attente="$attente $c=$etat"
+              fi
             done
-            echo "$sains/${#ATTENDUS[@]} conteneurs sains"
+            echo "$sains/${#ATTENDUS[@]} conteneurs prets${attente:+ ; en attente :$attente}"
             if [[ $sains -eq ${#ATTENDUS[@]} ]]; then
               break
             fi
             if [[ $(date +%s) -gt $limite ]]; then
-              echo "Delai depasse" >&2
+              echo "::error title=Delai depasse::Non prets :$attente"
               exit 1
             fi
             sleep 10
