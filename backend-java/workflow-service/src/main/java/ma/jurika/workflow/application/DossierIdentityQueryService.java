@@ -3,7 +3,6 @@ package ma.jurika.workflow.application;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import ma.jurika.common.security.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -27,8 +26,8 @@ import java.util.UUID;
  *
  * <p>Best-effort : toute erreur SQL / de parse renvoie une map vide — la génération
  * reste possible en mode dégradé (l'appelant retombe sur ce que porte déjà le payload).
- * Filtre {@code workspace_id} explicite (défense en profondeur multi-tenant, RLS non
- * fiable car {@code jurika_user} a BYPASSRLS).
+ * Filtre {@code workspace_id} explicite, en plus de la RLS (rôle {@code jurika_app},
+ * lot L0) : les deux sont toujours exigés.
  */
 @Service
 public class DossierIdentityQueryService {
@@ -47,7 +46,9 @@ public class DossierIdentityQueryService {
     @Transactional(readOnly = true)
     public Map<String, Object> identity(UUID workspaceId, UUID dossierId) {
         if (workspaceId == null || dossierId == null) return Map.of();
-        TenantContext.set(workspaceId);
+        // Lot L0 (E16, WF1) : le workspace courant est pose par l'appelant AVANT
+        // la transaction (InternalDossierController) ; pose ici, il arrivait trop
+        // tard pour la RLS, et le clear() final effacait le contexte de l'appelant.
         try {
             Object[] row = (Object[]) em.createNativeQuery("""
                     SELECT raison_sociale, forme_juridique, ice, identifiant_fiscal,
@@ -109,8 +110,6 @@ public class DossierIdentityQueryService {
             log.warn("dossierIdentity SQL/parse failed dossier={} : {}", dossierId, ex.getMessage());
             try { em.clear(); } catch (Exception ignore) { /* defensive */ }
             return Map.of();
-        } finally {
-            TenantContext.clear();
         }
     }
 

@@ -92,8 +92,13 @@ class AuthAuditableIT {
     @DynamicPropertySource
     static void registerProps(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
+        // Lot L0 : l'application tourne en role d'execution jurika_app (non
+        // proprietaire, NOSUPERUSER, NOBYPASSRLS : la RLS s'applique) ; Flyway
+        // migre avec le proprietaire. Comme en production apres la bascule.
+        registry.add("spring.datasource.username", () -> "jurika_app");
+        registry.add("spring.datasource.password", () -> "jurika_app_it");
+        registry.add("spring.flyway.user", POSTGRES::getUsername);
+        registry.add("spring.flyway.password", POSTGRES::getPassword);
         registry.add("spring.data.redis.host", () -> "localhost");
         registry.add("spring.data.redis.port", () -> "16379");
     }
@@ -108,7 +113,12 @@ class AuthAuditableIT {
 
     @Autowired private MockMvc mvc;
     @Autowired private ObjectMapper json;
-    @Autowired private JdbcTemplate jdbc;
+    /**
+     * Preparation et assertions en PROPRIETAIRE, hors RLS : le test lit l'etat
+     * reel de la base, quel que soit le workspace (lot L0).
+     */
+    private final JdbcTemplate jdbc = new JdbcTemplate(new org.springframework.jdbc.datasource.DriverManagerDataSource(
+            POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
 
     @MockBean private EmailSender emailSender;
     @MockBean private SmsSender smsSender;

@@ -34,7 +34,7 @@ public class PasswordResetTokenRepositoryAdapter implements PasswordResetTokenRe
     }
 
     @Override
-    public void markUsed(String tokenHash, Instant when) {
-        jpa.markUsed(tokenHash, when);
+    public boolean markUsed(String tokenHash, Instant when) {
+        return jpa.markUsed(tokenHash, when) == 1;
     }
 }

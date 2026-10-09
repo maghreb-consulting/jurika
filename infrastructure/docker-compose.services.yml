@@ -35,7 +35,7 @@ services:
     container_name: jurika-discovery
     restart: unless-stopped
     ports:
-      - "${DISCOVERY_PORT:-8761}:8761"
+      - "127.0.0.1:${DISCOVERY_PORT:-8761}:8761"
     environment:
       <<: *otel-env
       OTEL_SERVICE_NAME: discovery-service
@@ -96,7 +96,7 @@ services:
     container_name: jurika-auth
     restart: unless-stopped
     ports:
-      - "${AUTH_SERVICE_PORT:-8081}:8081"
+      - "127.0.0.1:${AUTH_SERVICE_PORT:-8081}:8081"
     environment:
       <<: *otel-env
       OTEL_SERVICE_NAME: auth-service
@@ -104,9 +104,18 @@ services:
       JURIKA_ENV: ${JURIKA_ENV:-dev}
       EUREKA_SERVER_URL: http://discovery-service:8761/eureka
       POSTGRES_HOST: postgres
+      # Lot L0 (CI base-vierge) : identifiants du proprietaire (Flyway ; datasource des
+      # services non bascules). Sans eux, le repli code en dur d'application.yml
+      # etait utilise : invisible sur le Z440, echec sur une base neuve.
+      POSTGRES_USER: ${POSTGRES_USER:-jurika_user}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent, .env doit le definir}"
       REDIS_HOST: redis
       REDIS_PASSWORD: ${REDIS_PASSWORD:-JurikaRedis2026}
       RABBITMQ_HOST: rabbitmq
+      # Lot L0 (CI base-vierge) : memes expressions que le conteneur rabbitmq
+      # (sinon repli code en dur d'application.yml, faux sur une base neuve).
+      RABBITMQ_USER: ${RABBITMQ_USER:-jurika}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-JurikaRabbit2026}
       JWT_PRIVATE_KEY_PATH: /run/secrets/jwt/jwt-private-pkcs8.pem
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
       # Cle AES qui chiffre les secrets TOTP en base. SANS cette ligne, le
@@ -117,6 +126,9 @@ services:
       # `:?` fait echouer Compose bruyamment plutot que de repartir en silence
       # sur une mauvaise cle -- une divergence de cle ne doit jamais etre muette.
       AES_SECRET_KEY: "${AES_SECRET_KEY:?AES_SECRET_KEY absent, .env doit etre passe en --env-file}"
+      # Lot L0 (E13c) : role d'execution jurika_app (la RLS s'applique). Mot de
+      # passe dedie, obligatoire : Compose echoue bruyamment s'il manque.
+      JURIKA_APP_PASSWORD: "${JURIKA_APP_PASSWORD:?JURIKA_APP_PASSWORD absent, .env.local doit le definir}"
     volumes:
       - ./secrets/jwt:/run/secrets/jwt:ro
     depends_on:
@@ -140,7 +152,7 @@ services:
     container_name: jurika-ticket
     restart: unless-stopped
     ports:
-      - "${TICKET_SERVICE_PORT:-8082}:8082"
+      - "127.0.0.1:${TICKET_SERVICE_PORT:-8082}:8082"
     environment:
       <<: *otel-env
       OTEL_SERVICE_NAME: ticket-service
@@ -148,9 +160,24 @@ services:
       JURIKA_ENV: ${JURIKA_ENV:-dev}
       EUREKA_SERVER_URL: http://discovery-service:8761/eureka
       POSTGRES_HOST: postgres
+      # Lot L0 (CI base-vierge) : identifiants du proprietaire (Flyway ; datasource des
+      # services non bascules). Sans eux, le repli code en dur d'application.yml
+      # etait utilise : invisible sur le Z440, echec sur une base neuve.
+      POSTGRES_USER: ${POSTGRES_USER:-jurika_user}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent, .env doit le definir}"
       RABBITMQ_HOST: rabbitmq
+      # Lot L0 (CI base-vierge) : memes expressions que le conteneur rabbitmq
+      # (sinon repli code en dur d'application.yml, faux sur une base neuve).
+      RABBITMQ_USER: ${RABBITMQ_USER:-jurika}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-JurikaRabbit2026}
       MINIO_ENDPOINT: http://minio:9000
+      # Lot L0 (CI base-vierge) : memes expressions que le conteneur minio.
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-jurika-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-JurikaMinIO2026}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
+      # Lot L0 (E14b) : role d'execution jurika_app (la RLS s'applique). Mot de
+      # passe dedie, obligatoire : Compose echoue bruyamment s'il manque.
+      JURIKA_APP_PASSWORD: "${JURIKA_APP_PASSWORD:?JURIKA_APP_PASSWORD absent, .env.local doit le definir}"
     volumes:
       - ./secrets/jwt:/run/secrets/jwt:ro
     depends_on:
@@ -177,7 +204,7 @@ services:
     container_name: jurika-workflow
     restart: unless-stopped
     ports:
-      - "${WORKFLOW_SERVICE_PORT:-8083}:8083"
+      - "127.0.0.1:${WORKFLOW_SERVICE_PORT:-8083}:8083"
     environment:
       <<: *otel-env
       OTEL_SERVICE_NAME: workflow-service
@@ -185,8 +212,20 @@ services:
       JURIKA_ENV: ${JURIKA_ENV:-dev}
       EUREKA_SERVER_URL: http://discovery-service:8761/eureka
       POSTGRES_HOST: postgres
+      # Lot L0 (CI base-vierge) : identifiants du proprietaire (Flyway ; datasource des
+      # services non bascules). Sans eux, le repli code en dur d'application.yml
+      # etait utilise : invisible sur le Z440, echec sur une base neuve.
+      POSTGRES_USER: ${POSTGRES_USER:-jurika_user}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent, .env doit le definir}"
       RABBITMQ_HOST: rabbitmq
+      # Lot L0 (CI base-vierge) : memes expressions que le conteneur rabbitmq
+      # (sinon repli code en dur d'application.yml, faux sur une base neuve).
+      RABBITMQ_USER: ${RABBITMQ_USER:-jurika}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-JurikaRabbit2026}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
+      # Lot L0 (E16) : role d'execution jurika_app (la RLS s'applique). Mot de
+      # passe dedie, obligatoire : Compose echoue bruyamment s'il manque.
+      JURIKA_APP_PASSWORD: "${JURIKA_APP_PASSWORD:?JURIKA_APP_PASSWORD absent, .env.local doit le definir}"
     volumes:
       - ./secrets/jwt:/run/secrets/jwt:ro
     depends_on:
@@ -212,7 +251,7 @@ services:
     container_name: jurika-dataroom
     restart: unless-stopped
     ports:
-      - "${DATAROOM_SERVICE_PORT:-8084}:8084"
+      - "127.0.0.1:${DATAROOM_SERVICE_PORT:-8084}:8084"
     environment:
       # Edition bureautique (lot 3) — cf. commentaires dans application.yml.
       WOPI_BASE_URL: ${WOPI_BASE_URL:-http://dataroom-service:8084}
@@ -225,9 +264,24 @@ services:
       JURIKA_ENV: ${JURIKA_ENV:-dev}
       EUREKA_SERVER_URL: http://discovery-service:8761/eureka
       POSTGRES_HOST: postgres
+      # Lot L0 (CI base-vierge) : identifiants du proprietaire (Flyway ; datasource des
+      # services non bascules). Sans eux, le repli code en dur d'application.yml
+      # etait utilise : invisible sur le Z440, echec sur une base neuve.
+      POSTGRES_USER: ${POSTGRES_USER:-jurika_user}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent, .env doit le definir}"
       RABBITMQ_HOST: rabbitmq
+      # Lot L0 (CI base-vierge) : memes expressions que le conteneur rabbitmq
+      # (sinon repli code en dur d'application.yml, faux sur une base neuve).
+      RABBITMQ_USER: ${RABBITMQ_USER:-jurika}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-JurikaRabbit2026}
       MINIO_ENDPOINT: http://minio:9000
+      # Lot L0 (CI base-vierge) : memes expressions que le conteneur minio.
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-jurika-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-JurikaMinIO2026}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
+      # Lot L0 (E15b) : role d'execution jurika_app (la RLS s'applique). Mot de
+      # passe dedie, obligatoire : Compose echoue bruyamment s'il manque.
+      JURIKA_APP_PASSWORD: "${JURIKA_APP_PASSWORD:?JURIKA_APP_PASSWORD absent, .env.local doit le definir}"
       # Microservice kie-service (Donut KIE pour CIN / CN).
       KIE_BASE_URL: ${KIE_BASE_URL:-http://kie-service:8088}
       KIE_TIMEOUT: ${KIE_TIMEOUT:-30s}
@@ -260,7 +314,7 @@ services:
     container_name: jurika-ai
     restart: unless-stopped
     ports:
-      - "${AI_SERVICE_PORT:-8085}:8085"
+      - "127.0.0.1:${AI_SERVICE_PORT:-8085}:8085"
     environment:
       <<: *otel-env
       OTEL_SERVICE_NAME: ai-service
@@ -268,6 +322,11 @@ services:
       JURIKA_ENV: ${JURIKA_ENV:-dev}
       EUREKA_SERVER_URL: http://discovery-service:8761/eureka
       POSTGRES_HOST: postgres
+      # Lot L0 (CI base-vierge) : identifiants du proprietaire (Flyway ; datasource des
+      # services non bascules). Sans eux, le repli code en dur d'application.yml
+      # etait utilise : invisible sur le Z440, echec sur une base neuve.
+      POSTGRES_USER: ${POSTGRES_USER:-jurika_user}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent, .env doit le definir}"
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
       # Voie OCR rapide CPU (2026-06-09 — branche feat/ocr-paddle-cpu).
       OCR_FAST_ENABLED: ${OCR_FAST_ENABLED:-true}
@@ -313,7 +372,7 @@ services:
     container_name: jurika-ocr
     restart: unless-stopped
     ports:
-      - "${OCR_PORT:-8089}:8089"
+      - "127.0.0.1:${OCR_PORT:-8089}:8089"
     environment:
       OCR_ENGINE: ${OCR_ENGINE:-doctr}
       OCR_DEFAULT_LANG: ${OCR_DEFAULT_LANG:-latin}
@@ -343,7 +402,7 @@ services:
     container_name: jurika-kie
     restart: unless-stopped
     ports:
-      - "${KIE_PORT:-8088}:8088"
+      - "127.0.0.1:${KIE_PORT:-8088}:8088"
     environment:
       DONUT_MODEL_DIR: ${DONUT_MODEL_DIR:-/models/donut-jurika-final}
       MAX_FILE_MB: ${KIE_MAX_FILE_MB:-15}
@@ -372,7 +431,7 @@ services:
     container_name: jurika-supervision
     restart: unless-stopped
     ports:
-      - "${SUPERVISION_SERVICE_PORT:-8086}:8086"
+      - "127.0.0.1:${SUPERVISION_SERVICE_PORT:-8086}:8086"
     environment:
       <<: *otel-env
       OTEL_SERVICE_NAME: supervision-service
@@ -380,6 +439,11 @@ services:
       JURIKA_ENV: ${JURIKA_ENV:-dev}
       EUREKA_SERVER_URL: http://discovery-service:8761/eureka
       POSTGRES_HOST: postgres
+      # Lot L0 (CI base-vierge) : identifiants du proprietaire (Flyway ; datasource des
+      # services non bascules). Sans eux, le repli code en dur d'application.yml
+      # etait utilise : invisible sur le Z440, echec sur une base neuve.
+      POSTGRES_USER: ${POSTGRES_USER:-jurika_user}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent, .env doit le definir}"
       REDIS_HOST: redis
       REDIS_PASSWORD: ${REDIS_PASSWORD:-JurikaRedis2026}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem

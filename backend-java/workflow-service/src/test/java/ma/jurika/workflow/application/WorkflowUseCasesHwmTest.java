@@ -42,6 +42,7 @@ class WorkflowUseCasesHwmTest {
                 WorkflowStatut.EN_COURS, user, null, Instant.now());
         FakeRepo repo = new FakeRepo(initialState);
         WorkflowUseCases uc = new WorkflowUseCases(repo, new WorkflowOrchestrator(java.util.List.of()), null, null, null, null);
+        ticketEnCours(uc);
 
         // L'utilisateur revient a step 1 et sauve un brouillon.
         WorkflowProgress after = uc.save(ws, ticket, 1, Map.of("step1", "data1-modifiee"), null);
@@ -62,6 +63,7 @@ class WorkflowUseCasesHwmTest {
                 2, 9, new HashMap<>(), WorkflowStatut.EN_COURS, user, null, Instant.now());
         FakeRepo repo = new FakeRepo(initialState);
         WorkflowUseCases uc = new WorkflowUseCases(repo, new WorkflowOrchestrator(java.util.List.of()), null, null, null, null);
+        ticketEnCours(uc);
 
         WorkflowProgress after = uc.save(ws, ticket, 4, Map.of("step3", "X"), null);
 
@@ -93,5 +95,18 @@ class WorkflowUseCasesHwmTest {
                     state.startedById(), completedAt, Instant.now());
             return this.state;
         }
+    }
+
+    /**
+     * Lot L0 (E23) : save() verifie d'abord que le ticket n'est pas clos
+     * (RG-TKT-11) ; le ticket du test est en cours.
+     */
+    private static void ticketEnCours(WorkflowUseCases uc) {
+        jakarta.persistence.EntityManager em = org.mockito.Mockito.mock(jakarta.persistence.EntityManager.class);
+        jakarta.persistence.Query q = org.mockito.Mockito.mock(jakarta.persistence.Query.class,
+                org.mockito.Mockito.RETURNS_SELF);
+        org.mockito.Mockito.when(q.getResultList()).thenReturn(java.util.List.of("DEROULEMENT_DEMARCHE"));
+        org.mockito.Mockito.when(em.createNativeQuery(org.mockito.ArgumentMatchers.anyString())).thenReturn(q);
+        org.springframework.test.util.ReflectionTestUtils.setField(uc, "em", em);
     }
 }

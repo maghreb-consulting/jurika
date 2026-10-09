@@ -1,5 +1,6 @@
 package ma.jurika.workflow.api;
 
+import ma.jurika.common.security.TenantContext;
 import ma.jurika.workflow.application.DossierIdentityQueryService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,8 +21,9 @@ import java.util.UUID;
  * (même schéma que les endpoints internes d'ai-service / supervision / dataroom).
  *
  * <p>Le {@code workspaceId} est fourni par l'appelant (ai-service le dérive de son
- * JWT vérifié) et refiltré en SQL ({@code WHERE workspace_id = ?}) — défense en
- * profondeur multi-tenant, la RLS n'étant pas fiable ({@code jurika_user} BYPASSRLS).
+ * JWT vérifié) et refiltré en SQL ({@code WHERE workspace_id = ?}). Lot L0 : il
+ * devient aussi le workspace courant, sous lequel la RLS s'applique (rôle
+ * {@code jurika_app}) ; le filtre SQL reste, les deux sont toujours exigés.
  */
 @RestController
 @RequestMapping("/internal/dossiers")
@@ -40,6 +42,14 @@ public class InternalDossierController {
     @GetMapping("/{dossierId}/identite")
     public Map<String, Object> identity(@PathVariable UUID dossierId,
                                         @RequestParam UUID workspaceId) {
-        return identityService.identity(workspaceId, dossierId);
+        // Lot L0 (E16, WF1) : route sans JWT. Le workspace fourni est pose AVANT
+        // le proxy transactionnel du service (la RLS le lit a l'ouverture de la
+        // transaction), et retire en fin d'appel.
+        TenantContext.set(workspaceId);
+        try {
+            return identityService.identity(workspaceId, dossierId);
+        } finally {
+            TenantContext.clear();
+        }
     }
 }

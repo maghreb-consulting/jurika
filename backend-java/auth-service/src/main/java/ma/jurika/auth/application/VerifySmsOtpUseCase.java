@@ -112,7 +112,11 @@ public class VerifySmsOtpUseCase {
                     : "Code SMS invalide");
         }
 
-        otpRepository.markUsed(otp.id(), Instant.now());
+        // Lot L0 (E12b) : consommation ATOMIQUE avant les effets metier ; une
+        // requete concurrente qui a deja consomme ce code fait echouer celle-ci.
+        if (!otpRepository.markUsed(otp.id(), Instant.now())) {
+            throw new ValidationException("SMS_OTP_ALREADY_USED");
+        }
         userRepository.resetFailedLogin(cmd.userId());
 
         // Effets metier selon purpose

@@ -67,7 +67,7 @@ public class DocumentRenderController {
      * "Telecharger PDF" (remplace l'ancien chemin Mammoth + html-to-pdf).
      */
     @PostMapping("/template-to-pdf/{templateCode}")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     public ResponseEntity<byte[]> templateToPdf(
             @PathVariable @NotBlank String templateCode,
             @Valid @RequestBody Map<String, Object> variables) {
@@ -104,7 +104,7 @@ public class DocumentRenderController {
      * du .docx style, ou pour tout outil tiers qui poste un .docx.
      */
     @PostMapping(value = "/docx-to-pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     public ResponseEntity<byte[]> docxToPdf(@RequestPart("file") MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().build();

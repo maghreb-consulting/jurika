@@ -154,7 +154,15 @@ public class VerifyRecoveryCodeUseCase {
 
         // 3. Code valide : marque used (single-use), audit, emet les tokens.
         Instant now = Instant.now();
-        recoveryCodeRepository.markUsed(hit.id(), now);
+        // Lot L0 (E10d) : usage unique ATOMIQUE. Deux requetes simultanees avec le
+        // meme code trouvent toutes deux le code actif ; une seule le consomme.
+        if (!recoveryCodeRepository.markUsed(hit.id(), now)) {
+            rateLimiter.recordFailure(rateKey);
+            auditLogger.log(workspace.id(), user.id(), "RECOVERY_CODE_FAILED", "user", user.id(),
+                    cmd.ipAddress(), cmd.userAgent(), Map.of("reason", "ALREADY_USED"));
+            businessMetrics.loginFailed("recovery_code_reused");
+            throw new UnauthorizedException(GENERIC_AUTH_ERROR);
+        }
         rateLimiter.reset(rateKey);
 
         sessionLimitEnforcer.enforceBeforeIssuing(user.id(), now);

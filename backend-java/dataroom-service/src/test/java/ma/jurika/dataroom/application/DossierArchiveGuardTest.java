@@ -98,11 +98,16 @@ class DossierArchiveGuardTest {
     }
 
     @Test
-    void dossierInconnu_neBloquePas() {
+    void dossierIllisible_refuse() {
+        // Lot L0 (E16b, reponse E1 n° 5) : un dossier qu'on ne peut pas lire
+        // (inexistant, ou hors du workspace courant sous RLS) ne laisse plus
+        // passer l'ecriture en silence : la garde se ferme.
         when(dossiers.findById(DOSSIER)).thenReturn(Optional.empty());
 
-        // Le garde ne doit pas prendre de vitesse les 404 / scoping de l'appelant.
-        assertThatCode(() -> guard.assertWritable(DOSSIER)).doesNotThrowAnyException();
+        assertThatThrownBy(() -> guard.assertWritable(DOSSIER))
+                .isInstanceOf(ma.jurika.common.exception.NotFoundException.class);
+        assertThatThrownBy(() -> guard.assertWritableForLiquidationCapableWrite(DOSSIER))
+                .isInstanceOf(ma.jurika.common.exception.NotFoundException.class);
     }
 
     // ------------------------------------------------------------------

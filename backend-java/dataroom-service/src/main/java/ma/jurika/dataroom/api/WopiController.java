@@ -69,7 +69,7 @@ public class WopiController {
     // =================================================================
 
     @PostMapping("/documents/{documentId}/edition-session")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     @Operation(summary = "Ouvre une séance d'édition bureautique",
             description = "Rend l'URL de l'éditeur, le WOPISrc et un jeton d'accès à durée de vie "
                     + "courte, propre à ce document et à cet utilisateur. Le jeton n'est rendu "
@@ -81,7 +81,7 @@ public class WopiController {
     }
 
     @DeleteMapping("/edition-session/{sessionId}")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     @Operation(summary = "Ferme une séance d'édition",
             description = "La lecture est coupée immédiatement. L'écriture reste acceptée le temps "
                     + "de la fenêtre de grâce : Collabora enregistre de façon asynchrone et appelle "

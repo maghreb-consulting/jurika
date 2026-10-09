@@ -37,6 +37,10 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
    que le contourner. Ne jamais rien inventer (delai, cout, variable) : laisser vide et signaler.
 6. **ASCII pur** pour identifiants, fichiers, scripts, commits (l'encodage Windows a deja casse
    des scripts). Francais soigne et accentue uniquement pour les contenus utilisateurs.
+   La regle s'applique aux fichiers du depot (noms et contenu : code, scripts, configuration,
+   CI) et aux messages de commit : ni guillemets francais, ni signe paragraphe, ni symbole
+   degre. Seuls les contenus destines aux utilisateurs (gabarits, textes affiches,
+   documentation d'exploitation en francais) font exception.
 7. **Migrations Flyway appliquees : intouchables** (meme un commentaire) — `validate-on-migrate`
    est desactive, un ecart serait avale en silence. La regle s'apprecie par rapport a la base
    courante et aux installations futures, pas par rapport a l'ancienne base du portable (archive).
@@ -82,19 +86,22 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 ## Commandes utiles
 
 - Demarrer la pile locale (serveur) : `./scripts/start-local.sh` (build + up + attente des
-  healthchecks). `--no-build`, `--logs`, `--reset` disponibles.
+  healthchecks). `--no-build`, `--logs`, `--reset` disponibles. ATTENTION : `--reset` fait
+  `down -v` (volumes effaces) : ne jamais l'utiliser sur le Z440 (regle 8).
+- **Sur le Z440, toute commande docker compose porte -p jurika-local.** Sans lui, compose prend
+  le projet `infrastructure` (nom du dossier des fichiers) : il cree des volumes vides et des
+  images `infrastructure-*` a cote de la pile en place (incident du 2026-10-08, lot L0).
+- Controle des ports publies (lot L0) : `python3 scripts/controle-ports-publies.py`.
 - Seed de demonstration : `node scripts/seed-demo.mjs`.
 - Smoke test : `./scripts/smoke-test.sh`.
 - Verification d'un lot backend : `mvn -o clean verify -Pit` (depuis `backend-java/`).
 
 ## Backlog / dette connue
 
-- **Aucune protection CI contre la regression « une base vierge demarre ».** Les tests
-  d'integration par service utilisent chacun leur base Testcontainers isolee : ni le schema
-  partage `jurika_db`, ni l'ordre de demarrage inter-services ne sont couverts. Le premier
-  demarrage sur base vierge (auth cree le schema racine, les autres migrent apres, buckets et
-  seeds crees) n'est verifie par rien aujourd'hui. A prevoir : un controle CI de premier
-  demarrage (up complet sur volumes neufs + attente 18/18 sain), independant de ce lot.
+- **Controle CI "une base vierge demarre" : ecrit, jamais execute.** Lot L0 (E25) :
+  `.github/workflows/base-vierge.yml` (pile complete sur volumes neufs, 18 conteneurs sains,
+  migration fondatrice de chaque service). Valide localement sans Docker seulement. Retirer
+  cette entree quand le job est vert en CI.
 - **Bump des actions CI** : `setup-java@v5`, et les versions d'actions ciblant Node 24 (les
   actions actuelles s'appuient sur des runtimes en fin de vie).
 - **Nettoyage du lint frontend herite** : `frontend-react` porte des avertissements de lint
@@ -122,6 +129,83 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   ApprobationComptesMapper), `PV_DISSOLUTION_LIQUIDATION_SARL` et
   `PV_DISSOLUTION_LIQUIDATION_SARL_AU` (DissolutionMapper et LiquidationMapper). Doublon a
   resorber au lot qui unifie les parcours.
+
+### Lot L0 (securite serveur, 2026-10-08) -- dette relevee
+
+- **PRIORITE HAUTE -- chantier separe, juste apres la fusion de L0 et avant L2 (decision du
+  2026-10-08) : identifiants du Z440 egaux aux replis publies.** Les vrais mots de passe
+  proprietaire de Postgres, RabbitMQ et MinIO du Z440 sont egaux aux valeurs de repli codees
+  en dur dans les `application.yml` et les fichiers compose (verifie sans affichage) ; la pile
+  ne fonctionnait que par cette coincidence. A faire : sauvegarde, puis changement des trois
+  mots de passe sur le Z440 (`.env`, roles et conteneurs), puis suppression de TOUS les replis
+  publies (Postgres, RabbitMQ, MinIO, Redis, JWT), demarrage en echec si une valeur manque.
+- **PRIORITE HAUTE : 8 `application.yml` et `backend-node` utilisent un secret JWT de
+  developpement quand `JWT_SECRET` manque** (`${JWT_SECRET:dev-only-jwt-secret-...}`) :
+  supprimer ce repli, demarrage en echec si le secret est absent (au plus tard L9).
+- **PRIORITE HAUTE : le consommateur RabbitMQ de l'audit (`AuditEventConsumer`) avale toute
+  exception** : une trace refusee est perdue sans bruit. Il faut la rejeter vers une file
+  d'erreurs (dead-letter) ou la rejouer.
+- **Bascule `jurika_app` restante** : supervision, dashboard, ai et billing se connectent encore
+  en proprietaire (superutilisateur sur le Z440), donc hors RLS.
+- **Seed e2e expose** : la passerelle route `/api/v1/test/**` (route `test-seed`) vers le seed
+  de dataroom, actif sur le Z440 (`JURIKA_TEST_SEED_ENABLED=true`) : creation de workspaces et
+  mots de passe en clair par un appel anonyme. A fermer (route hors profil de test, ou seed
+  desactive sur le Z440).
+- **`/internal/**` sans authentification entre services** : bloque a la passerelle et ports
+  lies a 127.0.0.1 (L0), mais tout conteneur du reseau Docker peut les appeler.
+- **Transitions de ticket par UPDATE direct** depuis workflow
+  (`WorkflowUseCases#autoTransitionTicket`) : au lot des parcours.
+- **Dependance circulaire des migrations ticket V21 / dataroom** : ticket V21 reference
+  `dataroom_documents`, que dataroom V5 cree en referencant `tickets`. Les tests passent par
+  l'ordre auth, ticket jusqu'a V20, dataroom, fin de ticket. A demeler au lot des parcours.
+- **`JwtAuthFilter`** : si la suite de la chaine leve une exception dans le `try`, le
+  `catch (Exception)` relance `chain.doFilter` une seconde fois (double execution).
+- **`AuditLogJpaRepository` (auth)** inutilise depuis E10b : code mort a retirer (test d'abord).
+- **Debours, permission client (RG-DEB-03)** : lot L1 (aucun acces client en L0).
+- **`DELETE /dossiers/{id}`** (suppression d'une Data Room, non prevue au CDC 3.2) : lot L1.
+- **Annulation d'un ticket** : action de remplacement pour la Data Room (RG-TKT-04), au lot des
+  parcours (la suppression automatique a ete retiree en E16a).
+- **Objets MinIO orphelins** quand l'ecriture en base echoue, et suppression de l'ancien objet
+  avant validation (dataroom).
+- **Front : boutons d'action encore visibles au superviseur** alors que le serveur les refuse
+  (E5, E5b, E6) ; 46 fichiers du front citent `SUPERVISEUR`.
+- **Chatbot (lot L5)** : corpus RAG range par workspace (`CorpusRetriever`, `WHERE workspace_id
+  = ?`). Les sources du super-admin (seul autorise depuis E24) restent dans son workspace et
+  n'atteignent pas les cabinets : corpus commun a concevoir (migration probable).
+- **Export ZIP du Dossier Juridique** : echec complet (`duplicate entry`) quand deux documents
+  d'un meme type portent le meme nom de fichier (`exportSelectionAsZip`).
+- **Erreurs avalees (motif 9)** : `DossierIdentityQueryService#identity` (workflow) rend une map
+  vide sur toute exception ; `WorkflowUseCases#executeStep` avale l'echec de
+  `loadDossierFactsByTicket` en DEBUG.
+- **Dockerfile de dashboard** : ignore une erreur Maven pendant le telechargement des
+  dependances (`dependency:go-offline ... || true`, vu en E26 sur une collision du cache
+  partage entre constructions paralleles).
+- **Exemple d'environnement serveur** : `.env.local.server.example` n'active pas le profil
+  compose `mailhog` (`COMPOSE_PROFILES`) alors que `start-local.sh` attend `jurika-mailhog` :
+  une installation faite depuis l'exemple n'atteint jamais 18/18.
+- **Scripts e2e ad hoc** de `scripts/` qui visent `http://localhost:<port interne>` (8025, 8085,
+  8089, 8090) : ports desormais lies a 127.0.0.1 et Node peut resoudre `localhost` en `::1` ;
+  a passer en `127.0.0.1` (fait pour `smoke-test.mjs`).
+- **Octet NUL litteral** dans `DataroomJuridiqueService.java` (separateur de cle) : `file` classe
+  le source en donnees binaires.
+- **Le seed de demonstration ne rattache ni client ni responsable aux dossiers**
+  (`scripts/seed-demo.mjs`, cabinet JUR-DEMO2) : client et employes n'y voient aucun dossier.
+  Complete a la main sur le Z440 le 2026-10-08 pour la verification du lot L0 (client2,
+  rattachements de 4 dossiers).
+- **minio tourne en root** (`user: "0:0"`) pour rester compatible avec le volume existant
+  (ecrit en root par l'ancienne image `minio/minio`) ; a durcir en changeant le proprietaire
+  du volume (image Chainguard prevue pour l'uid 65532).
+- **Cles JWT et uid des images** : les images Java tournent en uid 1000 et lisent
+  `infrastructure/secrets/jwt/*.pem` (cle privee en 600). Sur le Z440 cela marche parce que
+  l'utilisateur de l'hote est aussi l'uid 1000 ; `start-local.sh` ne garantit pas ce contrat
+  (installation par un autre uid : auth ne demarre pas, vu en CI le 2026-10-08).
+- **`start-local.sh` attend `jurika-mailhog` "healthy"** alors que mailhog n'a aucun controle
+  de sante (ni compose ni image) : l'attente ne peut pas aboutir quand mailhog tourne
+  (corrige dans `base-vierge.yml` le 2026-10-08 : "running" suffit sans controle de sante).
+- **Liste des conteneurs attendus dupliquee** entre `start-local.sh` et
+  `.github/workflows/base-vierge.yml` : a factoriser.
+- **Messages de commit du lot L0 non ASCII** (24 commits, guillemets francais, signe
+  paragraphe, degre) : historique conserve tel quel par decision du 2026-10-08.
 
 ## Documents de reference
 

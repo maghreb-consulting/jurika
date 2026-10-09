@@ -2,7 +2,6 @@ package ma.jurika.ticket.infrastructure.config;
 
 import ma.jurika.common.audit.AuditEventEmitter;
 import ma.jurika.common.audit.JdbcAuditEventEmitter;
-import ma.jurika.common.persistence.RlsAspect;
 import ma.jurika.ticket.domain.service.DeadlineComputer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,11 +13,6 @@ import java.time.Clock;
 @Configuration
 @EnableAsync
 public class JpaConfig {
-
-    @Bean
-    public RlsAspect rlsAspect() {
-        return new RlsAspect();
-    }
 
     @Bean
     public Clock systemClock() {

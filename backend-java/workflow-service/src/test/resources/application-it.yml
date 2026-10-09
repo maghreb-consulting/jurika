@@ -1,0 +1,31 @@
+# Lot L0 (E16) -- profil "it" des IT Spring de workflow-service (Testcontainers).
+# HS256 (pas de PEM RSA requis), pas d'annuaire Eureka, audit en JDBC direct.
+jurika:
+  jwt:
+    algorithm: HS256
+    hmac-secret: dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345
+    public-key-path: ""
+    issuer: jurika.ma
+  audit:
+    async-enabled: false
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  cloud:
+    discovery:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: readinessState,db

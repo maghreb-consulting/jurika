@@ -22,9 +22,12 @@ public interface RecoveryCodeRepository {
     List<StoredRecoveryCode> findActive(UUID userId);
 
     /**
-     * Marque un code comme utilise.
+     * Marque un code comme utilise, de facon ATOMIQUE (lot L0, E10d) : la ligne
+     * n'est modifiee que si le code n'est pas deja utilise. Renvoie {@code true}
+     * si le code vient d'etre consomme par cet appel ; {@code false} s'il l'etait
+     * deja (deux requetes simultanees avec le meme code : une seule gagne).
      */
-    void markUsed(UUID id, Instant usedAt);
+    boolean markUsed(UUID id, Instant usedAt);
 
     /**
      * Supprime tous les codes d'un user (lors d'un reset 2FA par exemple).

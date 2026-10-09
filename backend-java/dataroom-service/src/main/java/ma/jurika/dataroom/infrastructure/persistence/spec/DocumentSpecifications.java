@@ -23,6 +23,11 @@ public final class DocumentSpecifications {
 
     private DocumentSpecifications() {}
 
+    /** Lot L0 (E20, P9) : filtre workspace explicite, en plus de la RLS. */
+    public static Specification<DocumentEntity> byWorkspace(UUID workspaceId) {
+        return (root, q, cb) -> cb.equal(root.get("workspaceId"), workspaceId);
+    }
+
     public static Specification<DocumentEntity> byDossier(UUID dossierId) {
         return (root, q, cb) -> cb.equal(root.get("dossierId"), dossierId);
     }
@@ -34,6 +39,11 @@ public final class DocumentSpecifications {
      */
     public static Specification<DocumentEntity> horsBrouillons() {
         return (root, q, cb) -> cb.isFalse(root.get("brouillon"));
+    }
+
+    /** Lot L0 (E19) : documents marques visibles pour le client (RG-DR-07). */
+    public static Specification<DocumentEntity> visiblesClient() {
+        return (root, q, cb) -> cb.isTrue(root.get("visibleClient"));
     }
 
     public static Specification<DocumentEntity> ofTypes(List<String> types) {

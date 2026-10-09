@@ -21,7 +21,8 @@ import java.util.UUID;
  * SUPER_ADMIN plateforme de auth-service). Double garde :
  * <ol>
  *   <li>filtre SQL explicite {@code WHERE workspace_id = ?} ;</li>
- *   <li>methodes {@code @Transactional} -> {@code RlsAspect} positionne
+ *   <li>methodes {@code @Transactional} -> le gestionnaire de transactions de jurika-common
+ *       (TenantAwareJpaTransactionManager) positionne
  *       {@code app.current_workspace_id}, donc la policy RLS de {@code audit_log}
  *       restreint deja les lignes au workspace courant.</li>
  * </ol>

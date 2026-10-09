@@ -77,16 +77,23 @@ class VisibiliteClientIT {
 
     @DynamicPropertySource
     static void registerProps(DynamicPropertyRegistry registry) {
+        SchemaJurikaDb.migrer(POSTGRES);
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
+        // Lot L0 (E15) : l'application tourne en role d'execution jurika_app (la
+        // RLS s'applique) ; Flyway migre avec le proprietaire.
+        registry.add("spring.datasource.username", () -> "jurika_app");
+        registry.add("spring.datasource.password", () -> "jurika_app_it");
+        registry.add("spring.flyway.user", POSTGRES::getUsername);
+        registry.add("spring.flyway.password", POSTGRES::getPassword);
         registry.add("jurika.minio.endpoint", () -> "http://localhost:9099");
         registry.add("jurika.minio.access-key", () -> "test");
         registry.add("jurika.minio.secret-key", () -> "test-secret");
         registry.add("jurika.minio.bucket", () -> "jurika-it");
     }
 
-    @Autowired private JdbcTemplate jdbc;
+    /** Preparation et assertions en PROPRIETAIRE, hors RLS (lot L0). */
+    private final JdbcTemplate jdbc = new JdbcTemplate(new org.springframework.jdbc.datasource.DriverManagerDataSource(
+            POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
     @Autowired private DataroomJuridiqueService juridique;
     @MockBean private ObjectStorage storage;
 
@@ -115,14 +122,13 @@ class VisibiliteClientIT {
         ticketId = UUID.randomUUID();
         employeId = UUID.randomUUID();
 
-        jdbc.update("INSERT INTO workspaces(id, name, code_workspace) VALUES (?, ?, ?)",
-                workspaceId, "Cabinet Visibilite", "JUR-V0001");
-        jdbc.update("INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale) VALUES (?, ?, ?)",
+        SchemaJurikaDb.workspace(jdbc, workspaceId, "Cabinet Visibilite", "JUR-V0001");
+        jdbc.update("INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale, forme_juridique) VALUES (?, ?, ?, 'SARL')",
                 dossierId, workspaceId, "PARACOSME");
         jdbc.update("""
                 INSERT INTO tickets(id, workspace_id, reference, titre, type, statut,
-                                    dossier_id, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                    dossier_id, created_at, cree_par_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, '33333333-3333-3333-3333-333333333333')
                 """, ticketId, workspaceId, "T-2026-00841", "Creation SARL PARACOSME",
                 "CREATION", "DEROULEMENT_DEMARCHE", dossierId,
                 OffsetDateTime.parse("2026-09-01T09:00:00Z"));

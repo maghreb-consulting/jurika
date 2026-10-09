@@ -51,9 +51,10 @@ import java.util.UUID;
  *       customer-portal, contact-sales, change-plan, change-plan/preview,
  *       prepare-payment.</li>
  *   <li><b>SUPERVISEUR seul</b> (operations sensibles / financieres) :
- *       invoices (+download) = historique financier ; payments (liste) ;
+ *       invoices (+download) = historique financier ; payments (liste).</li>
+ *   <li><b>SUPER_ADMIN seul</b> (lot L0, RG-PAY-02) :
  *       <b>payments/{id}/validate</b> = mutation critique (active le workspace +
- *       emet les identifiants) — a terme back-office SUPER_ADMIN.</li>
+ *       emet les identifiants).</li>
  * </ul>
  * L'annotation au niveau METHODE prime sur celle de la CLASSE (Spring Security).
  * Le {@code @PreAuthorize} de classe est conserve comme garde-fou par defaut :
@@ -238,22 +239,20 @@ public class BillingController {
 
     /**
      * PATCH /api/v1/billing/payments/{id}/validate — passe PENDING -> COMPLETED,
-     * declenche l'activation du workspace + envoi des identifiants. RBAC
-     * SUPERVISEUR/SUPER_ADMIN (cabinet self-validation pour cheque/cash
-     * encaisses) — pour un SaaS multi-tenant, en prod il faudrait deplacer
-     * cet endpoint cote back-office SUPER_ADMIN exclusivement. V1 : on
-     * accepte le SUPERVISEUR pour permettre la demo bout-en-bout.
+     * declenche l'activation du workspace du paiement + envoi des identifiants.
      *
-     * <p><b>Lot J3</b> : operation SENSIBLE (active le workspace + emet les
-     * identifiants) — reste SUPERVISEUR, JAMAIS ouverte a l'EMPLOYE.
+     * <p><b>Lot L0 (E17, RG-PAY-02)</b> : operation SENSIBLE reservee au
+     * SUPER_ADMIN (JURIKA confirme la reception d'un virement, cheque ou
+     * especes). Le cabinet ne valide jamais son propre paiement. Le paiement est
+     * designe par son identifiant seul (le workspace du super-admin n'est pas
+     * celui du cabinet).
      */
     @PatchMapping("/payments/{id}/validate")
-    @PreAuthorize("hasRole('SUPERVISEUR')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<BillingDtos.PaymentDto> validatePayment(
             @PathVariable Long id,
             @RequestBody(required = false) BillingDtos.ValidatePaymentRequest req) {
-        UUID workspaceId = requireWorkspace();
-        return ResponseEntity.ok(validatePaymentUseCase.execute(workspaceId, id, req));
+        return ResponseEntity.ok(validatePaymentUseCase.execute(id, req));
     }
 
     // ─── helpers ───────────────────────────────────────────────────────

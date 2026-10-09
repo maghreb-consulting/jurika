@@ -13,6 +13,11 @@ public interface RecoveryCodeJpaRepository extends JpaRepository<RecoveryCodeEnt
     @Query("SELECT r FROM RecoveryCodeEntity r WHERE r.userId = :userId AND r.usedAt IS NULL ORDER BY r.createdAt")
     List<RecoveryCodeEntity> findActive(@Param("userId") UUID userId);
 
+    /** Lot L0 (E10d) : usage unique atomique ; 1 si consomme par cet appel, 0 sinon. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE RecoveryCodeEntity r SET r.usedAt = :when WHERE r.id = :id AND r.usedAt IS NULL")
+    int consommer(@Param("id") UUID id, @Param("when") java.time.Instant when);
+
     @Modifying
     @Query("DELETE FROM RecoveryCodeEntity r WHERE r.userId = :userId")
     void deleteByUserId(@Param("userId") UUID userId);

@@ -74,17 +74,13 @@ public class AdminWorkspaceController {
     public List<WorkspaceRow> list() {
         jdbc.execute("SET LOCAL app.audit_bypass = 'true'");
 
+        // Lot L0 (E13b) : vue transverse par nature ; sous jurika_app, la RLS ne
+        // laisserait voir que le workspace de l'administrateur. Fonctions
+        // SECURITY DEFINER d'auth V34 (lecture seule, colonnes minimales).
         List<WorkspaceRow> rows = jdbc.query("""
-                SELECT w.id, w.code, w.name, w.contact_email, w.status,
-                       w.trial_status, w.selected_plan, w.created_at,
-                       (SELECT COUNT(*) FROM users u
-                          WHERE u.workspace_id = w.id
-                            AND u.role IN ('EMPLOYE','SUPERVISEUR')) AS employes,
-                       (SELECT COUNT(*) FROM users u
-                          WHERE u.workspace_id = w.id
-                            AND u.role = 'CLIENT') AS clients
-                FROM workspaces w
-                ORDER BY w.created_at DESC
+                SELECT id, code, name, contact_email, status, trial_status,
+                       selected_plan, created_at, employes, clients
+                FROM admin_liste_workspaces()
                 """, (rs, i) -> new WorkspaceRow(
                         (UUID) rs.getObject("id"),
                         rs.getString("code"),
@@ -102,14 +98,8 @@ public class AdminWorkspaceController {
         Map<UUID, long[]> storage = new HashMap<>();
         try {
             jdbc.query("""
-                    SELECT workspace_id, SUM(size_bytes) AS bytes, COUNT(*) AS n
-                    FROM (
-                        SELECT workspace_id, size_bytes FROM dataroom_documents WHERE is_current = true
-                        UNION ALL
-                        SELECT workspace_id, size_bytes FROM dataroom_depots WHERE deleted_at IS NULL
-                    ) t
-                    WHERE workspace_id IS NOT NULL
-                    GROUP BY workspace_id
+                    SELECT workspace_id, octets AS bytes, documents AS n
+                    FROM admin_stockage_par_workspace()
                     """, rs -> {
                 storage.put((UUID) rs.getObject("workspace_id"),
                         new long[]{rs.getLong("bytes"), rs.getLong("n")});
@@ -127,8 +117,11 @@ public class AdminWorkspaceController {
                 .toList();
     }
 
+    // Lot L0 (E13b) : en transaction, pour que le workspace du chemin (pose par
+    // ContexteWorkspaceCheminConfig) atteigne la RLS.
     @PostMapping("/{workspaceId}/activate")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Transactional
     public ResponseEntity<Map<String, Object>> activate(
             @PathVariable UUID workspaceId,
             @AuthenticationPrincipal AuthenticatedUser admin,
@@ -138,6 +131,7 @@ public class AdminWorkspaceController {
 
     @PostMapping("/{workspaceId}/suspend")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Transactional
     public ResponseEntity<Map<String, Object>> suspend(
             @PathVariable UUID workspaceId,
             @AuthenticationPrincipal AuthenticatedUser admin,
@@ -147,6 +141,7 @@ public class AdminWorkspaceController {
 
     @PostMapping("/{workspaceId}/deactivate")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Transactional
     public ResponseEntity<Map<String, Object>> deactivate(
             @PathVariable UUID workspaceId,
             @AuthenticationPrincipal AuthenticatedUser admin,

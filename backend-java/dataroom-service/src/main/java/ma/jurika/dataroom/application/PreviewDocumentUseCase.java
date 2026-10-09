@@ -1,5 +1,6 @@
 package ma.jurika.dataroom.application;
 
+import ma.jurika.common.security.TenantContext;
 import ma.jurika.common.audit.Auditable;
 import ma.jurika.common.exception.NotFoundException;
 import ma.jurika.common.exception.ValidationException;
@@ -73,7 +74,8 @@ public class PreviewDocumentUseCase {
     @Transactional(readOnly = true)
     @Auditable(action = "DOCUMENT_PREVIEWED", resourceType = "document", resourceIdExpr = "#documentId")
     public PreviewPayload execute(UUID documentId, AuthenticatedUser user) {
-        DocumentEntity doc = documents.findById(documentId)
+        // Lot L0 (E20, P9) : lecture filtree par le workspace courant.
+        DocumentEntity doc = documents.findByWorkspaceIdAndId(TenantContext.get(), documentId)
                 .orElseThrow(() -> new NotFoundException("Document inconnu : " + documentId));
 
         // RG-DR03 : si CLIENT et dossier SUSPENDED -> 403 (ValidationException → 400 du
@@ -81,7 +83,14 @@ public class PreviewDocumentUseCase {
         // EMPLOYE / SUPERVISEUR / SUPER_ADMIN ne sont pas bloques.
         if (user != null && user.role() == Role.CLIENT) {
             SettingsEntity s = settings.findById(doc.getDossierId()).orElse(null);
-            if (s != null && "SUSPENDED".equals(s.getAccessStatus())) {
+            if (s == null) {
+                // Lot L0 (E16b) : sans reglages, la Data Room est ACTIVE par defaut
+                // (ils naissent a la demande, cf. DataroomSettingsService#getOrCreate)
+                // -- mais seulement si le dossier lui-meme est lisible. Rien de
+                // lisible : refus, au lieu de servir l'apercu en silence.
+                dossiers.findById(doc.getDossierId())
+                        .orElseThrow(() -> new NotFoundException("Dossier introuvable : " + doc.getDossierId()));
+            } else if ("SUSPENDED".equals(s.getAccessStatus())) {
                 throw new ValidationException("Data Room suspendu : apercu indisponible");
             }
         }

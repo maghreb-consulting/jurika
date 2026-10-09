@@ -48,10 +48,15 @@ public class DeboursController {
         this.workspaces = workspaces;
     }
 
+    // Lot L0 (E22, arb. 8) : lecture reservee aux roles du cabinet (EMPLOYE,
+    // SUPERVISEUR), dans leur workspace ; aucun acces client en L0 (RG-DEB-03 :
+    // lot L1). Ticket d'un autre workspace : 404 (et non une liste vide).
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('EMPLOYE','SUPERVISEUR')")
     public Map<String, Object> list(@AuthenticationPrincipal AuthenticatedUser actor,
                                      @PathVariable UUID ticketId) {
+        ticketRepository.findById(actor.workspaceId(), ticketId)
+                .orElseThrow(() -> new NotFoundException("Ticket inconnu"));
         var summary = deboursUseCase.listForTicket(actor.workspaceId(), ticketId);
         List<DeboursDto> items = summary.items().stream().map(DeboursDto::from).toList();
         BigDecimal total = summary.total();
@@ -97,8 +102,13 @@ public class DeboursController {
      * Genere l'etat des debours du ticket en PDF (RG-T14).
      * Telechargeable + imprimable.
      */
+    // Lot L0 (E14, inventaire T2) : lectures directes des depots (ticket,
+    // commentaires, dossiers, responsables) en UNE transaction en lecture seule,
+    // pour que le workspace courant atteigne la RLS sous jurika_app.
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     @GetMapping(value = "/export-pdf", produces = MediaType.APPLICATION_PDF_VALUE)
-    @PreAuthorize("isAuthenticated()")
+    // Lot L0 (E22) : comme la liste, roles du cabinet seulement.
+    @PreAuthorize("hasAnyRole('EMPLOYE','SUPERVISEUR')")
     public ResponseEntity<byte[]> exportPdf(@AuthenticationPrincipal AuthenticatedUser actor,
                                               @PathVariable UUID ticketId) {
         var ticket = ticketRepository.findById(actor.workspaceId(), ticketId)

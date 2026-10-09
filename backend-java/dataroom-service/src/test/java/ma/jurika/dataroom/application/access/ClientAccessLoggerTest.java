@@ -100,7 +100,8 @@ class ClientAccessLoggerTest {
         e.setUserId(UUID.randomUUID());
         e.setAction("DOWNLOAD_DOC");
 
-        // Capture le TenantContext AU MOMENT de l'insert : le RlsAspect en depend.
+        // Capture le TenantContext AU MOMENT de l'insert : le gestionnaire de
+        // transactions (TenantAwareJpaTransactionManager) en depend.
         final UUID[] tenantAtInsert = new UUID[1];
         doAnswer(inv -> {
             tenantAtInsert[0] = TenantContext.get();

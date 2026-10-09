@@ -95,8 +95,13 @@ class RecoveryCodeVerificationIT {
     @DynamicPropertySource
     static void registerProps(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
+        // Lot L0 : l'application tourne en role d'execution jurika_app (non
+        // proprietaire, NOSUPERUSER, NOBYPASSRLS : la RLS s'applique) ; Flyway
+        // migre avec le proprietaire. Comme en production apres la bascule.
+        registry.add("spring.datasource.username", () -> "jurika_app");
+        registry.add("spring.datasource.password", () -> "jurika_app_it");
+        registry.add("spring.flyway.user", POSTGRES::getUsername);
+        registry.add("spring.flyway.password", POSTGRES::getPassword);
         registry.add("spring.data.redis.host", () -> "localhost");
         registry.add("spring.data.redis.port", () -> "16379");
     }
@@ -111,7 +116,12 @@ class RecoveryCodeVerificationIT {
 
     @Autowired private MockMvc mvc;
     @Autowired private ObjectMapper json;
-    @Autowired private JdbcTemplate jdbc;
+    /**
+     * Preparation et assertions en PROPRIETAIRE, hors RLS : le test lit l'etat
+     * reel de la base, quel que soit le workspace (lot L0).
+     */
+    private final JdbcTemplate jdbc = new JdbcTemplate(new org.springframework.jdbc.datasource.DriverManagerDataSource(
+            POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
     @Autowired private GenerateRecoveryCodesUseCase generateRecoveryCodesUseCase;
 
     @MockBean private EmailSender emailSender;
@@ -277,9 +287,18 @@ class RecoveryCodeVerificationIT {
     private ActiveUser createActiveUserWithRecoveryCodes() throws Exception {
         ActiveBase b = createActiveBase();
 
-        GenerateRecoveryCodesUseCase.Result r = generateRecoveryCodesUseCase.execute(
-                new GenerateRecoveryCodesUseCase.Command(b.userId, b.workspaceId,
-                        "127.0.0.1", "junit-test"));
+        // Appel direct du cas d'usage (sans HTTP) : on pose le workspace comme le
+        // ferait JwtAuthFilter pour une requete authentifiee (lot L0 : sous
+        // jurika_app, la RLS exige le workspace courant).
+        ma.jurika.common.security.TenantContext.set(b.workspaceId);
+        GenerateRecoveryCodesUseCase.Result r;
+        try {
+            r = generateRecoveryCodesUseCase.execute(
+                    new GenerateRecoveryCodesUseCase.Command(b.userId, b.workspaceId,
+                            "127.0.0.1", "junit-test"));
+        } finally {
+            ma.jurika.common.security.TenantContext.clear();
+        }
         assertThat(r.plainCodes()).hasSize(10);
 
         return new ActiveUser(b.userId, b.workspaceId, b.workspaceCode, b.email, b.accessToken,

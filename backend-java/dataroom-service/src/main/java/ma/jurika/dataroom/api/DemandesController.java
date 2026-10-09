@@ -95,7 +95,7 @@ public class DemandesController {
 
     /** L'employe responsable (ou superviseur) cree une requete au client. */
     @PostMapping("/requetes")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     public DemandeSummary createRequete(@AuthenticationPrincipal AuthenticatedUser user,
                                         @Valid @RequestBody CreateRequeteRequest req) {
         return demandes.createRequete(req, user.userId(), user.role());
@@ -112,7 +112,7 @@ public class DemandesController {
 
     /** L'employe responsable (ou superviseur) valide -> CLOTUREE. */
     @PostMapping("/demandes/{id}/valider")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     public DemandeSummary valider(@AuthenticationPrincipal AuthenticatedUser user,
                                   @PathVariable UUID id) {
         return demandes.valider(id, user.userId(), user.role());
@@ -120,7 +120,7 @@ public class DemandesController {
 
     /** L'employe responsable (ou superviseur) demande un complement -> A_COMPLETER. */
     @PostMapping("/demandes/{id}/complement")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     public DemandeSummary complement(@AuthenticationPrincipal AuthenticatedUser user,
                                      @PathVariable UUID id,
                                      @Valid @RequestBody ComplementRequest req) {

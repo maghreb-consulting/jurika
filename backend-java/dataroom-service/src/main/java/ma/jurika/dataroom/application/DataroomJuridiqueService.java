@@ -741,7 +741,8 @@ public class DataroomJuridiqueService {
     @Transactional(readOnly = true)
     @Auditable(action = "DOCUMENT_DOWNLOADED", resourceType = "document", resourceIdExpr = "#documentId")
     public DocumentEntity loadForDownload(UUID documentId) {
-        return documents.findById(documentId)
+        // Lot L0 (E20, P9) : lecture filtree par le workspace courant.
+        return documents.findByWorkspaceIdAndId(TenantContext.get(), documentId)
                 .orElseThrow(() -> new NotFoundException("Document inconnu"));
     }
 
@@ -977,6 +978,15 @@ public class DataroomJuridiqueService {
     public byte[] exportSelectionAsZip(UUID dossierId,
                                         List<UUID> documentIds,
                                         boolean includeOldVersions) {
+        return exportSelectionAsZip(dossierId, documentIds, includeOldVersions, false);
+    }
+
+    /** Lot L0 (E19) : {@code pourClient} exclut les documents non visibles client. */
+    @Transactional(readOnly = true)
+    public byte[] exportSelectionAsZip(UUID dossierId,
+                                        List<UUID> documentIds,
+                                        boolean includeOldVersions,
+                                        boolean pourClient) {
         if (documentIds == null || documentIds.isEmpty()) {
             throw new ma.jurika.common.exception.ValidationException(
                     "Aucun document selectionne");
@@ -986,8 +996,10 @@ public class DataroomJuridiqueService {
         java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
         int included = 0;
         try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(baos)) {
+            UUID ws = TenantContext.get();
             for (UUID id : documentIds) {
-                DocumentEntity doc = documents.findById(id).orElse(null);
+                // Lot L0 (E20, P9) : document du workspace courant seulement.
+                DocumentEntity doc = ws == null ? null : documents.findByWorkspaceIdAndId(ws, id).orElse(null);
                 if (doc == null) {
                     log.warn("exportSelectionAsZip : doc {} introuvable, skip", id);
                     continue;
@@ -998,6 +1010,10 @@ public class DataroomJuridiqueService {
                 }
                 if (!includeOldVersions && !doc.isCurrent()) {
                     log.debug("exportSelectionAsZip : doc {} non current, skip", id);
+                    continue;
+                }
+                if (pourClient && !doc.isVisibleClient()) {
+                    log.debug("exportSelectionAsZip : doc {} non visible client, skip", id);
                     continue;
                 }
                 String entryName = doc.getDocumentType() + "/" + doc.getFilename();
@@ -1140,6 +1156,23 @@ public class DataroomJuridiqueService {
     static List<DocumentEntity> visiblesPour(List<DocumentEntity> docs, boolean pourClient) {
         if (!pourClient) return docs;
         return docs.stream().filter(DocumentEntity::isVisibleClient).toList();
+    }
+
+    /**
+     * Lot L0 (E18, RG-DR-07) : un CLIENT n'accede au contenu d'un document
+     * (apercu, telechargement, version) que s'il est VISIBLE client ET rattache
+     * a SON dossier. Document illisible ou masque : 404 ; dossier d'un autre
+     * client : 403 ({@link #assertClientAccess}).
+     */
+    @Transactional(readOnly = true)
+    public void assertDocumentPourClient(UUID documentId, UUID clientUserId) {
+        UUID ws = TenantContext.get();
+        DocumentEntity d = ws == null ? null
+                : documents.findByWorkspaceIdAndId(ws, documentId).orElse(null);
+        if (d == null || !d.isVisibleClient()) {
+            throw new NotFoundException("Document inconnu");
+        }
+        assertClientAccess(d.getDossierId(), clientUserId);
     }
 
     /**

@@ -95,6 +95,15 @@ public interface UserRepository {
     void updateTotpSecret(UUID userId, String encryptedSecret, boolean enabled);
 
     /**
+     * Lot L0 (E10d), anti-rejeu TOTP : enregistre le pas de temps du code accepte
+     * en UNE requete atomique, et seulement s'il est strictement superieur au
+     * dernier pas accepte. Renvoie {@code true} si une ligne a ete modifiee : le
+     * code est alors accepte ; {@code false} : code deja consomme (rejeu, ou
+     * requete concurrente gagnee par une autre).
+     */
+    boolean consommerPasTotp(UUID userId, long pas);
+
+    /**
      * Marque l'email comme verifie (set email_verified_at = NOW).
      */
     void markEmailVerified(UUID userId, Instant verifiedAt);

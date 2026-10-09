@@ -14,6 +14,11 @@ public interface SmsOtpCodeJpaRepository extends JpaRepository<SmsOtpCodeEntity,
            "AND s.usedAt IS NULL ORDER BY s.createdAt DESC LIMIT 1")
     Optional<SmsOtpCodeEntity> findLatestActive(@Param("userId") UUID userId, @Param("purpose") String purpose);
 
+    /** Lot L0 (E12b) : usage unique atomique ; 1 si consomme par cet appel, 0 sinon. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE SmsOtpCodeEntity t SET t.usedAt = :when WHERE t.id = :id AND t.usedAt IS NULL")
+    int consommer(@Param("id") UUID id, @Param("when") java.time.Instant when);
+
     @Modifying
     @Query("UPDATE SmsOtpCodeEntity s SET s.attempts = s.attempts + 1 WHERE s.id = :id")
     void incrementAttempts(@Param("id") UUID id);

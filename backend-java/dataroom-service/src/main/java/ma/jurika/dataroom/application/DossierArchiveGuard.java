@@ -1,5 +1,6 @@
 package ma.jurika.dataroom.application;
 
+import ma.jurika.common.exception.NotFoundException;
 import ma.jurika.common.exception.ValidationException;
 import ma.jurika.common.security.TenantContext;
 import ma.jurika.dataroom.infrastructure.persistence.DossierViewEntity;
@@ -40,9 +41,8 @@ import java.util.UUID;
  * {@code entreprise_dossiers.statut} : aucun drapeau n'est persiste. Si le dossier
  * repasse ACTIVE, la Data Room redevient ecrivable sans action corrective.
  *
- * <p><b>Defense-in-depth multi-tenant.</b> Toutes les lectures passent par
- * {@code workspace_id} explicite : la RLS n'est pas fiable (le role applicatif a
- * BYPASSRLS sous le conteneur Postgres officiel).
+ * <p><b>Multi-tenant.</b> Les lectures sont soumises a la RLS (role
+ * {@code jurika_app}, lot L0) ; un dossier illisible ferme la garde.
  */
 @Component
 public class DossierArchiveGuard {
@@ -80,15 +80,17 @@ public class DossierArchiveGuard {
 
     /**
      * @return le statut archivant du dossier ({@code DISSOUTE}, {@code LIQUIDEE}…)
-     *         ou {@code null} si la Data Room est ecrivable. Renvoie {@code null}
-     *         quand le dossier est inconnu : l'appelant a ses propres 404 / scoping,
-     *         ce garde ne doit pas les prendre de vitesse.
+     *         ou {@code null} si la Data Room est ecrivable.
+     * @throws NotFoundException si le dossier est illisible (inexistant, ou hors du
+     *         workspace courant sous RLS). Lot L0 (E16b) : la garde se ferme quand
+     *         elle ne lit rien, au lieu de laisser passer l'ecriture en silence.
      */
     public String archivedStatusOf(UUID dossierId) {
         if (dossierId == null) return null;
         String statut = dossiers.findById(dossierId)
-                .map(DossierViewEntity::getStatut).orElse(null);
-        return statut != null && ARCHIVED_STATUS.contains(statut) ? statut : null;
+                .map(DossierViewEntity::getStatut)
+                .orElseThrow(() -> new NotFoundException("Dossier introuvable : " + dossierId));
+        return ARCHIVED_STATUS.contains(statut) ? statut : null;
     }
 
     /** {@code true} si la Data Room du dossier est en lecture seule. */

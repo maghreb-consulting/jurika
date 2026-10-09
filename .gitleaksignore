@@ -1,0 +1,6 @@
+# Lot L0 (2026-10-08) : secret HMAC de TEST (jetons JWT des IT de ticket),
+# jamais utilise hors des tests (absent de .env, .env.local et des conteneurs du
+# Z440 : verifie). Present dans l'historique de ces deux commits, conserve sans
+# reecriture ; desormais tire au hasard a chaque execution des tests.
+c388a5e55e597405182aa0886c7e6e054873d718:backend-java/ticket-service/src/test/java/ma/jurika/ticket/integration/TicketJurikaAppIT.java:generic-api-key:79
+3346898cedccfbbac717591c86c75c804a3923db:backend-java/ticket-service/src/test/java/ma/jurika/ticket/integration/FiltreWorkspaceTicketIT.java:generic-api-key:74

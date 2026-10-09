@@ -13,7 +13,8 @@ public interface PasswordResetTokenJpaRepository extends JpaRepository<PasswordR
 
     Optional<PasswordResetTokenEntity> findByTokenHash(String tokenHash);
 
-    @Modifying
-    @Query("UPDATE PasswordResetTokenEntity p SET p.usedAt = :when WHERE p.tokenHash = :hash")
-    void markUsed(@Param("hash") String hash, @Param("when") Instant when);
+    /** Lot L0 (E12b) : usage unique atomique ; 1 si consomme par cet appel, 0 sinon. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE PasswordResetTokenEntity p SET p.usedAt = :when WHERE p.tokenHash = :hash AND p.usedAt IS NULL")
+    int markUsed(@Param("hash") String hash, @Param("when") Instant when);
 }

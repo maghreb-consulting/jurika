@@ -43,8 +43,12 @@ public class AdminUsersController {
 
     private final JdbcTemplate jdbc;
     private final AuditLogger auditLogger;
+    /** Lot L0 (E13b) : transaction ouverte APRES avoir pose le workspace de l'utilisateur cible. */
+    private final org.springframework.transaction.support.TransactionTemplate transaction;
 
-    public AdminUsersController(JdbcTemplate jdbc, AuditLogger auditLogger) {
+    public AdminUsersController(JdbcTemplate jdbc, AuditLogger auditLogger,
+                                org.springframework.transaction.PlatformTransactionManager transactionManager) {
+        this.transaction = new org.springframework.transaction.support.TransactionTemplate(transactionManager);
         this.jdbc = jdbc;
         this.auditLogger = auditLogger;
     }
@@ -62,35 +66,17 @@ public class AdminUsersController {
         int safeLimit = Math.min(Math.max(limit, 1), MAX_LIMIT);
         int safeOffset = Math.max(offset, 0);
 
-        StringBuilder where = new StringBuilder(" WHERE 1=1");
-        List<Object> args = new ArrayList<>();
-        if (search != null && !search.isBlank()) {
-            where.append(" AND (u.first_name ILIKE ? OR u.last_name ILIKE ?"
-                    + " OR u.login_email ILIKE ? OR u.contact_email ILIKE ?)");
-            String like = "%" + search.trim() + "%";
-            args.add(like); args.add(like); args.add(like); args.add(like);
-        }
-        if (role != null && !role.isBlank()) {
-            where.append(" AND u.role = ?"); args.add(role.trim());
-        }
-        if (workspaceId != null) {
-            where.append(" AND u.workspace_id = ?"); args.add(workspaceId);
-        }
-
-        Long total = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM users u" + where, Long.class, args.toArray());
-
-        List<Object> pageArgs = new ArrayList<>(args);
-        pageArgs.add(safeLimit);
-        pageArgs.add(safeOffset);
+        // Lot L0 (E13b) : vue transverse par nature, par la fonction SECURITY
+        // DEFINER admin_liste_utilisateurs (auth V34) : filtres optionnels
+        // (NULL = sans filtre), sans SQL dynamique, total en colonne.
+        String recherche = (search == null || search.isBlank()) ? null : search.trim();
+        String roleFiltre = (role == null || role.isBlank()) ? null : role.trim();
+        long[] total = {0L};
         List<UserRow> rows = jdbc.query(
-                "SELECT u.id, u.first_name, u.last_name, u.login_email, u.contact_email,"
-                        + " u.role, u.status, u.totp_enabled, u.created_at, u.last_login_at,"
-                        + " u.workspace_id, w.code AS ws_code, w.name AS ws_name "
-                        + "FROM users u LEFT JOIN workspaces w ON w.id = u.workspace_id"
-                        + where
-                        + " ORDER BY u.created_at DESC LIMIT ? OFFSET ?",
-                (rs, i) -> new UserRow(
+                "SELECT id, first_name, last_name, login_email, contact_email, role, status,"
+                        + " totp_enabled, created_at, last_login_at, workspace_id, ws_code, ws_name, total"
+                        + " FROM admin_liste_utilisateurs(?, ?, ?, ?, ?)",
+                (rs, i) -> { total[0] = rs.getLong("total"); return new UserRow(
                         (UUID) rs.getObject("id"),
                         rs.getString("first_name"),
                         rs.getString("last_name"),
@@ -104,10 +90,16 @@ public class AdminUsersController {
                         rs.getString("ws_name"),
                         rs.getTimestamp("created_at").toInstant(),
                         rs.getTimestamp("last_login_at") == null
-                                ? null : rs.getTimestamp("last_login_at").toInstant()),
-                pageArgs.toArray());
+                                ? null : rs.getTimestamp("last_login_at").toInstant()); },
+                recherche, roleFiltre, workspaceId, safeLimit, safeOffset);
+        if (rows.isEmpty() && safeOffset > 0) {
+            // Page au-dela de la fin : le total vient d'une requete sans decalage.
+            List<Long> t = jdbc.query("SELECT total FROM admin_liste_utilisateurs(?, ?, ?, 1, 0)",
+                    (rs, i) -> rs.getLong(1), recherche, roleFiltre, workspaceId);
+            total[0] = t.isEmpty() ? 0L : t.get(0);
+        }
 
-        return new PageResponse(rows, total == null ? 0L : total, safeOffset, safeLimit);
+        return new PageResponse(rows, total[0], safeOffset, safeLimit);
     }
 
     @PostMapping("/api/v1/admin/users/{userId}/suspend")
@@ -131,21 +123,29 @@ public class AdminUsersController {
     private ResponseEntity<Map<String, Object>> changeStatus(
             UUID userId, String newStatus, String auditAction,
             AuthenticatedUser admin, HttpServletRequest http) {
-        Map<String, Object> row;
-        try {
-            row = jdbc.queryForMap(
-                    "SELECT workspace_id, role FROM users WHERE id = ?", userId);
-        } catch (EmptyResultDataAccessException e) {
+        // Lot L0 (E13b) : seul l'identifiant de l'utilisateur est connu. Son
+        // workspace est trouve par la fonction SECURITY DEFINER
+        // admin_workspace_de_utilisateur (auth V34), pose comme workspace courant,
+        // puis lecture et mise a jour se font en transaction, sous la RLS.
+        UUID wsId = jdbc.queryForObject("SELECT admin_workspace_de_utilisateur(?)", UUID.class, userId);
+        if (wsId == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur introuvable");
         }
-        if ("SUPER_ADMIN".equals(row.get("role"))) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Un compte SUPER_ADMIN ne peut pas etre suspendu ici.");
-        }
-        UUID wsId = (UUID) row.get("workspace_id");
-
-        jdbc.update("UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?",
-                newStatus, userId);
+        ma.jurika.common.security.TenantContext.set(wsId);
+        transaction.executeWithoutResult(s -> {
+            Map<String, Object> row;
+            try {
+                row = jdbc.queryForMap("SELECT role FROM users WHERE id = ?", userId);
+            } catch (EmptyResultDataAccessException e) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur introuvable");
+            }
+            if ("SUPER_ADMIN".equals(row.get("role"))) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Un compte SUPER_ADMIN ne peut pas etre suspendu ici.");
+            }
+            jdbc.update("UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?",
+                    newStatus, userId);
+        });
 
         Map<String, Object> meta = new HashMap<>();
         meta.put("newStatus", newStatus);

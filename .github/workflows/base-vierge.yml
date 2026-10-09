@@ -1,0 +1,192 @@
+name: base-vierge
+
+# Lot L0, etape E25 -- controle "une base vierge demarre" (backlog CLAUDE.md).
+#
+# Les IT de chaque service ont leur propre base Testcontainers : ni le schema
+# partage jurika_db, ni l'ordre de demarrage inter-services (auth cree le schema
+# racine, les autres migrent apres ; role d'execution jurika_app) ne sont
+# couverts. Ce job demarre la pile COMPLETE sur des volumes neufs (runner
+# ephemere : aucun volume preexistant) et attend que tous les conteneurs soient
+# sains. Il ne supprime jamais de volume.
+#
+# Lourd (construction de toutes les images) : reserve aux PR vers main, aux push
+# sur main et au declenchement manuel.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: base-vierge-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  premier-demarrage:
+    name: Premier demarrage (volumes neufs)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      COMPOSE_ARGS: >-
+        -f infrastructure/docker-compose.yml
+        -f infrastructure/docker-compose.services.yml
+        -f infrastructure/docker-compose.local.yml
+        -f infrastructure/docker-compose.ci-sans-ports.yml
+        --env-file .env
+        --env-file .env.local
+      # MailHog est derriere un profil compose ; la pile attendue l'inclut.
+      COMPOSE_PROFILES: mailhog
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fichiers d'environnement (valeurs d'exemple, secrets aleatoires)
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+          cp .env.local.server.example .env.local
+          # Chaque valeur CHANGE_ME recoit un secret aleatoire propre au run
+          # (jamais affiche) ; l'hote LAN devient localhost.
+          for f in .env .env.local; do
+            while IFS= read -r cle; do
+              valeur="$(openssl rand -hex 24)"
+              sed -i "s|^${cle}=.*|${cle}=${valeur}|" "$f"
+            done < <(grep -oE '^[A-Z0-9_]+=CHANGE_ME[^[:space:]]*' "$f" | cut -d= -f1)
+          done
+          sed -i 's|^JURIKA_LAN_HOST=.*|JURIKA_LAN_HOST=localhost|' .env.local
+          # JURIKA_APP_PASSWORD est obligatoire (aucun repli) : il doit exister.
+          grep -q '^JURIKA_APP_PASSWORD=' .env.local
+          if grep -qE '^[A-Z0-9_]+=CHANGE_ME' .env .env.local; then
+            echo "Valeur CHANGE_ME restante" >&2
+            exit 1
+          fi
+
+      - name: Cles JWT RS256 (comme start-local.sh)
+        run: |
+          set -euo pipefail
+          mkdir -p infrastructure/secrets/jwt
+          openssl genrsa -out infrastructure/secrets/jwt/jwt-private.pem 2048
+          openssl pkcs8 -topk8 -inform PEM -in infrastructure/secrets/jwt/jwt-private.pem \
+            -out infrastructure/secrets/jwt/jwt-private-pkcs8.pem -nocrypt
+          openssl rsa -in infrastructure/secrets/jwt/jwt-private.pem -pubout \
+            -out infrastructure/secrets/jwt/jwt-public.pem
+          # Les images Java tournent en uid 1000 et montent ces cles en lecture :
+          # elles doivent leur appartenir (cle privee en 600), comme sur le Z440. Le
+          # runner GitHub n'est pas l'uid 1000.
+          sudo chown -R 1000:1000 infrastructure/secrets/jwt
+
+      - name: Aucun port publie sur le runner
+        run: |
+          set -euo pipefail
+          # Le controle passe par docker inspect / docker exec, jamais par les ports
+          # de l'hote. Le runner GitHub occupe deja certains ports (8084 vu le
+          # 2026-10-08 : "address already in use") : en CI, aucun service ne publie
+          # de port. Liste des services lue dans le rendu reel de compose.
+          BASE="-f infrastructure/docker-compose.yml -f infrastructure/docker-compose.services.yml -f infrastructure/docker-compose.local.yml --env-file .env --env-file .env.local"
+          {
+            echo "services:"
+            for s in $(docker compose $BASE config --services); do
+              printf '  %s:\n    ports: !reset []\n' "$s"
+            done
+          } > infrastructure/docker-compose.ci-sans-ports.yml
+          cat infrastructure/docker-compose.ci-sans-ports.yml
+          publies=$(docker compose $COMPOSE_ARGS config --format json \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print(' '.join(k for k,v in d['services'].items() if v.get('ports')))")
+          if [ -n "$publies" ]; then echo "Ports encore publies : $publies" >&2; exit 1; fi
+
+      - name: Rendu compose valide
+        run: docker compose $COMPOSE_ARGS config --quiet
+
+      - name: Construction des images
+        run: docker compose $COMPOSE_ARGS build --parallel
+
+      - name: Demarrage
+        run: |
+          set -o pipefail
+          # Sortie conservee : en cas d'echec, sa fin est publiee en annotation.
+          docker compose $COMPOSE_ARGS up -d 2>&1 | tee /tmp/compose-up.log
+
+      - name: Attente de tous les conteneurs sains
+        run: |
+          set -euo pipefail
+          # Meme liste que scripts/start-local.sh (18 conteneurs).
+          ATTENDUS=(
+            jurika-postgres jurika-redis jurika-rabbitmq jurika-mailhog
+            jurika-discovery jurika-gateway jurika-auth jurika-ticket
+            jurika-workflow jurika-dataroom jurika-ai jurika-supervision
+            jurika-dashboard jurika-billing
+            jurika-realtime jurika-ocr jurika-kie
+            jurika-frontend
+          )
+          limite=$(( $(date +%s) + 1200 ))
+          # Un conteneur AVEC controle de sante doit etre "healthy" ; un conteneur
+          # SANS controle de sante (mailhog : ni dans compose ni dans son image)
+          # doit etre "running". Exiger "healthy" de tous ne pouvait pas aboutir.
+          while true; do
+            sains=0; attente=""
+            for c in "${ATTENDUS[@]}"; do
+              etat=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}sans-controle:{{.State.Status}}{{end}}' "$c" 2>/dev/null || echo "absent")
+              if [[ "$etat" == "healthy" || "$etat" == "sans-controle:running" ]]; then
+                sains=$((sains + 1))
+              else
+                attente="$attente $c=$etat"
+              fi
+            done
+            echo "$sains/${#ATTENDUS[@]} conteneurs prets${attente:+ ; en attente :$attente}"
+            if [[ $sains -eq ${#ATTENDUS[@]} ]]; then
+              break
+            fi
+            if [[ $(date +%s) -gt $limite ]]; then
+              echo "::error title=Delai depasse::Non prets :$attente"
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Migration fondatrice appliquee par chaque service
+        run: |
+          set -euo pipefail
+          # baseline-on-migrate peut SAUTER la migration fondatrice d'un service
+          # quand un autre a deja peuple le schema partage (CLAUDE.md) : chacune
+          # doit figurer, reussie, dans l'historique Flyway de son service.
+          u=$(grep -h '^POSTGRES_USER=' .env .env.local | tail -1 | cut -d= -f2 || true)
+          u=${u:-jurika_user}
+          for paire in auth:1 ticket:3 workflow:4 dataroom:5; do
+            t=${paire%%:*}; v=${paire##*:}
+            n=$(docker exec jurika-postgres psql -U "$u" -d jurika_db -tAc \
+                  "SELECT COUNT(*) FROM flyway_history_${t} WHERE success AND version = '${v}'")
+            echo "flyway_history_${t} : V${v} appliquee = ${n}"
+            [[ "$n" == "1" ]]
+          done
+
+      - name: Etat de la pile en cas d'echec
+        if: failure()
+        run: |
+          docker compose $COMPOSE_ARGS ps -a || true
+          echo "--- ports en ecoute sur le runner :"; sudo ss -ltnp || true
+          if [ -s /tmp/compose-up.log ]; then
+            fin=$(grep -vE ' (Creating|Created|Starting|Started|Waiting|Healthy|Running)\s*$' /tmp/compose-up.log \
+              | tail -20 | cut -c1-300 | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=docker compose up -d::${fin:-sortie vide}"
+          fi
+          # Chaque conteneur qui n'est ni sain ni sans controle de sante : ses
+          # journaux en clair, puis un resume en ANNOTATION (lisible par l'API
+          # publique des check-runs, sans authentification). Les secrets du run sont
+          # aleatoires et jetables ; les valeurs de .env ne sont jamais affichees.
+          for c in $(docker ps -a --format '{{.Names}}' | grep '^jurika-' | sort); do
+            etat=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$c")
+            case "$etat" in healthy|running) continue ;; esac
+            echo "::group::$c ($etat)"
+            docker logs --tail=300 "$c" 2>&1 || true
+            echo "::endgroup::"
+            resume=$(docker logs --tail=400 "$c" 2>&1 \
+              | grep -E 'Caused by|FATAL|ERROR|Exception|refused|denied|failed|Error' \
+              | grep -vE 'DEBUG' | tail -25 | cut -c1-300 \
+              | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=$c ($etat)::${resume:-aucune ligne en erreur parmi les 400 dernieres}"
+            sante=$(docker inspect --format '{{json .Config.Healthcheck}} | redemarrages={{.RestartCount}} | demarre={{.State.StartedAt}} | {{if .State.Health}}{{range .State.Health.Log}}[{{.ExitCode}}] {{.Output}} {{end}}{{end}}' "$c" 2>&1 \
+              | tr '\n' ' ' | cut -c1-1500 | sed -e 's/%/%25/g')
+            echo "::error title=$c (sante)::${sante:-indisponible}"
+          done
+          docker compose $COMPOSE_ARGS logs --no-color --tail=200 || true

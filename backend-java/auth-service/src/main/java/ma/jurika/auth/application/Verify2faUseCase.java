@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.UUID;
 
 @Service
@@ -110,7 +111,12 @@ public class Verify2faUseCase {
                 throw new UnauthorizedException("Code 2FA invalide");
             }
             String secret = encryptionService.decrypt(user.totpSecretEncrypted());
-            if (!totpService.verifyCode(secret, totpCode)) {
+            // Lot L0 (E10d), anti-rejeu (RFC 6238, section 5.2) : le code n'est
+            // accepte que si son pas de temps est enregistre ici, de facon
+            // atomique, comme strictement posterieur au dernier pas accepte.
+            OptionalLong pas = totpService.pasDuCode(secret, totpCode);
+            boolean rejeu = pas.isPresent() && !userRepository.consommerPasTotp(user.id(), pas.getAsLong());
+            if (pas.isEmpty() || rejeu) {
                 // HIGH-5 (audit 2026-06-02) : incrementer failed_login_attempts pour
                 // bloquer le brute-force online sur 10^6 codes TOTP. Apres N echecs,
                 // lock le compte pour lock-duration-minutes (RG-AU37).
@@ -122,7 +128,7 @@ public class Verify2faUseCase {
                 auditLogger.log(workspace.id(), user.id(), "LOGIN_2FA_FAILED", "user", user.id(),
                         cmd.ipAddress(), cmd.userAgent(),
                         Map.of("method", "TOTP", "attempts", newAttempts,
-                                "locked", lockUntil != null));
+                                "locked", lockUntil != null, "rejeu", rejeu));
                 throw new UnauthorizedException(lockUntil != null
                         ? "Compte verrouille temporairement (trop d'echecs 2FA)"
                         : "Code 2FA invalide");

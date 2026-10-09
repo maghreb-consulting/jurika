@@ -22,6 +22,12 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
     boolean existsByWorkspaceIdAndLoginEmail(UUID workspaceId, String loginEmail);
 
     /** BUG 7 (2026-06-08) — Mise a jour ciblee du contact_email seul. */
+    /** Lot L0 (E10d) : anti-rejeu TOTP, verification et enregistrement atomiques (auth V33). */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE users SET totp_dernier_pas = :pas WHERE id = :id "
+            + "AND (totp_dernier_pas IS NULL OR totp_dernier_pas < :pas)", nativeQuery = true)
+    int consommerPasTotp(@Param("id") UUID id, @Param("pas") long pas);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE UserEntity u SET u.contactEmail = :contactEmail WHERE u.id = :id")
     void updateContactEmail(@Param("id") UUID id, @Param("contactEmail") String contactEmail);

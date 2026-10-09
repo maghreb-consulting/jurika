@@ -145,6 +145,21 @@ public class WopiService {
                                  Instant editeManuellementAt,
                                  String verrouPar, Instant verrouDepuis) {}
 
+    /**
+     * Lot L0 (E15, inventaire W1) : workspace de la seance WOPI designee par le
+     * jeton. Collabora appelle les routes WOPI SANS jeton JWT : le jeton opaque
+     * de la seance est leur seule autorite, et la seance porte le workspace. La
+     * table des seances n'est pas sous RLS : la recherche fonctionne avant tout
+     * workspace courant. Utilise par ContexteWopiConfig pour poser le workspace
+     * AVANT la transaction.
+     */
+    public java.util.Optional<UUID> workspaceDuJeton(String token) {
+        if (token == null || token.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        return sessions.findByTokenHash(empreinte(token)).map(WopiSessionEntity::getWorkspaceId);
+    }
+
     @Transactional
     public SeanceEdition ouvrir(UUID documentId, UUID userId, String userDisplayName, Role role) {
         UUID ws = TenantContext.get();
@@ -584,7 +599,10 @@ public class WopiService {
         Instant now = Instant.now();
 
         // Le TenantContext n'est pas posé par le filtre JWT ici (Collabora
-        // n'en présente aucun) : les services appelés en dépendent, on le pose.
+        // n'en présente aucun). Lot L0 (E15) : il est posé AVANT la transaction
+        // par ContexteWopiConfig, à partir du jeton ; la ligne ci-dessous, dans le
+        // corps de la méthode, arriverait trop tard pour la RLS et ne fait que
+        // confirmer la même valeur pour les services appelés.
         TenantContext.set(s.getWorkspaceId());
         try {
             archiveGuard.assertWritable(d.getDossierId(), d.getTicketId());

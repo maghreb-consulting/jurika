@@ -62,6 +62,7 @@ import ma.jurika.auth.domain.port.UserRepository;
 import ma.jurika.auth.domain.port.WorkspaceRepository;
 import ma.jurika.auth.domain.model.AuthTokens;
 import ma.jurika.common.security.AuthenticatedUser;
+import ma.jurika.common.security.TenantContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -104,6 +105,8 @@ public class AuthController {
     private final UpdateContactEmailUseCase updateContactEmailUseCase;
     private final WorkspaceRepository workspaceRepository;
     private final UserRepository userRepository;
+    /** Lot L0 (E13a) : workspace des routes publiques, pose avant la transaction. */
+    private final ma.jurika.auth.application.ContexteWorkspacePublic contextePublic;
 
     public AuthController(RegisterWorkspaceUseCase registerWorkspaceUseCase,
                           CheckWorkspaceUseCase checkWorkspaceUseCase,
@@ -129,7 +132,8 @@ public class AuthController {
                           ListWorkspaceUsersUseCase listWorkspaceUsersUseCase,
                           UpdateContactEmailUseCase updateContactEmailUseCase,
                           WorkspaceRepository workspaceRepository,
-                          UserRepository userRepository) {
+                          UserRepository userRepository,
+                          ma.jurika.auth.application.ContexteWorkspacePublic contextePublic) {
         this.registerWorkspaceUseCase = registerWorkspaceUseCase;
         this.checkWorkspaceUseCase = checkWorkspaceUseCase;
         this.loginUseCase = loginUseCase;
@@ -155,6 +159,7 @@ public class AuthController {
         this.updateContactEmailUseCase = updateContactEmailUseCase;
         this.workspaceRepository = workspaceRepository;
         this.userRepository = userRepository;
+        this.contextePublic = contextePublic;
     }
 
     /**
@@ -163,6 +168,7 @@ public class AuthController {
      */
     @PostMapping("/invite-client")
     @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR')")
+    @org.springframework.transaction.annotation.Transactional // Lot L0 (E13b) : lecture prealable sous RLS
     public InviteClientResponse inviteClient(@AuthenticationPrincipal AuthenticatedUser user,
                                               @Valid @RequestBody InviteClientRequest req,
                                               HttpServletRequest http) {
@@ -366,6 +372,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest req,
                                                       HttpServletRequest http) {
+        contextePublic.poserNouveauWorkspace();
         var result = registerWorkspaceUseCase.execute(new RegisterWorkspaceUseCase.Command(
                 req.workspaceName(), req.contactEmail(), req.subscriptionId(),
                 req.firstName(), req.lastName(), req.phone(),
@@ -380,12 +387,14 @@ public class AuthController {
 
     @PostMapping("/workspace-check")
     public WorkspaceCheckResponse workspaceCheck(@Valid @RequestBody WorkspaceCheckRequest req) {
+        contextePublic.poserParCode(req.workspaceCode());
         var r = checkWorkspaceUseCase.execute(req.workspaceCode());
         return new WorkspaceCheckResponse(r.workspaceId(), r.name());
     }
 
     @PostMapping("/verify-email")
     public VerifyEmailResponse verifyEmail(@Valid @RequestBody VerifyEmailRequest req, HttpServletRequest http) {
+        contextePublic.poserParJetonVerification(req.token());
         var r = verifyEmailUseCase.execute(new VerifyEmailUseCase.Command(
                 req.token(), http.getRemoteAddr(), http.getHeader("User-Agent")));
         return new VerifyEmailResponse(r.workspaceId(), r.userId(), r.email(),
@@ -395,6 +404,7 @@ public class AuthController {
     @PostMapping("/resend-verification")
     public ResponseEntity<Void> resendVerification(@Valid @RequestBody ResendVerificationRequest req,
                                                     HttpServletRequest http) {
+        contextePublic.poserParCode(req.workspaceCode());
         resendVerificationUseCase.execute(new ResendVerificationUseCase.Command(
                 req.workspaceCode(), req.email(),
                 http.getRemoteAddr(), http.getHeader("User-Agent")));
@@ -500,6 +510,7 @@ public class AuthController {
     @PostMapping("/verify-recovery-code")
     public TokenResponse verifyRecoveryCode(@Valid @RequestBody VerifyRecoveryCodeRequest req,
                                              HttpServletRequest http) {
+        contextePublic.poserParCode(req.workspaceCode());
         AuthTokens t = verifyRecoveryCodeUseCase.execute(new VerifyRecoveryCodeUseCase.Command(
                 req.workspaceCode(), req.email(), req.code(),
                 http.getRemoteAddr(), http.getHeader("User-Agent")));
@@ -509,6 +520,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest req, HttpServletRequest http) {
+        contextePublic.poserParCode(req.workspaceCode());
         var r = loginUseCase.execute(new LoginUseCase.Command(
                 req.workspaceCode(), req.email(), req.password(),
                 http.getRemoteAddr(), http.getHeader("User-Agent")));
@@ -539,6 +551,7 @@ public class AuthController {
     public org.springframework.http.ResponseEntity<Void> loginSmsChallenge(
             @Valid @RequestBody LoginSmsChallengeRequest req,
             HttpServletRequest http) {
+        contextePublic.poserWorkspace(req.workspaceId());
         try {
             sendSmsOtpUseCase.execute(new SendSmsOtpUseCase.Command(
                     req.userId(), req.workspaceId(), "2FA_LOGIN",
@@ -552,6 +565,11 @@ public class AuthController {
 
     @PostMapping("/verify-2fa")
     public TokenResponse verify2fa(@Valid @RequestBody Verify2faRequest req, HttpServletRequest http) {
+        // Lot L0 (E10d, meme mecanisme qu'E13a/P8) : route publique, le workspace
+        // vient de la requete et doit etre pose AVANT la transaction pour que la
+        // RLS s'applique sous jurika_app. La RLS limite alors la recherche de
+        // l'utilisateur a ce workspace. JwtAuthFilter vide le contexte en sortie.
+        contextePublic.poserWorkspace(req.workspaceId());
         AuthTokens t = verify2faUseCase.execute(new Verify2faUseCase.Command(
                 req.userId(), req.workspaceId(), req.code(),
                 http.getRemoteAddr(), http.getHeader("User-Agent")));
@@ -600,6 +618,7 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public TokenResponse refresh(@Valid @RequestBody RefreshRequest req, HttpServletRequest http) {
+        contextePublic.poserParJetonRefresh(req.refreshToken());
         AuthTokens t = refreshTokenUseCase.execute(req.refreshToken(),
                 http.getHeader("User-Agent"), http.getRemoteAddr());
         return new TokenResponse(t.userId(), t.workspaceId(),
@@ -620,6 +639,7 @@ public class AuthController {
     @PostMapping("/password-reset/request")
     public ResponseEntity<Void> resetRequest(@Valid @RequestBody PasswordResetRequest req,
                                               HttpServletRequest http) {
+        contextePublic.poserParCode(req.workspaceCode());
         resetPasswordUseCase.request(req.workspaceCode(), req.email(),
                 http.getRemoteAddr(), http.getHeader("User-Agent"));
         return ResponseEntity.accepted().build();
@@ -628,6 +648,7 @@ public class AuthController {
     @PostMapping("/password-reset/confirm")
     public ResponseEntity<Void> resetConfirm(@Valid @RequestBody PasswordResetConfirm req,
                                               HttpServletRequest http) {
+        contextePublic.poserParJetonReset(req.token());
         resetPasswordUseCase.confirm(req.token(), req.newPassword(),
                 http.getRemoteAddr(), http.getHeader("User-Agent"));
         return ResponseEntity.noContent().build();
@@ -660,6 +681,7 @@ public class AuthController {
 
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true) // Lot L0 (E13b) : lecture sous RLS
     public java.util.Map<String, Object> me(@AuthenticationPrincipal AuthenticatedUser user) {
         // BUG 7 (2026-06-08) — la reponse expose loginEmail (identifiant @jurika.ma,
         // lecture seule cote front) ET contactEmail (modifiable plus tard via un

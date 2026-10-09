@@ -29,12 +29,16 @@ public class DataroomSettingsService {
 
     @Transactional
     public SettingsEntity getOrCreate(UUID dossierId) {
-        return repo.findById(dossierId).orElseGet(() -> {
+        // Lot L0 (E20, P9) : filtre workspace explicite, en plus de la RLS.
+        UUID ws = TenantContext.get();
+        if (ws == null) {
+            throw new NotFoundException("Dossier introuvable");
+        }
+        return repo.findByDossierIdAndWorkspaceId(dossierId, ws).orElseGet(() -> {
             // Fix 2026-06-07 (BUG 3 finition) — Ne JAMAIS recreer les settings
             // d'un dossier RADIE (deja supprime). Sinon le user qui clique sur
             // un dossier-fantome relance un dataroom_settings ACTIVE et a
             // l'impression que la suppression a juste "reactive" le dataroom.
-            UUID ws = TenantContext.get();
             @SuppressWarnings("unchecked")
             List<Object> rows = em.createNativeQuery(
                     "SELECT statut FROM entreprise_dossiers WHERE id = ?1 AND workspace_id = ?2")

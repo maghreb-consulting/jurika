@@ -1,5 +1,7 @@
 package ma.jurika.ticket.infrastructure.persistence;
 
+import ma.jurika.common.exception.NotFoundException;
+import ma.jurika.common.security.TenantContext;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import ma.jurika.ticket.domain.model.Ticket;
@@ -31,11 +33,20 @@ public class TicketRepositoryAdapter implements TicketRepository {
         this.jpa = jpa;
     }
 
+    /**
+     * Lot L0 (E21, P9) : ticket relu dans le workspace courant (filtre applicatif
+     * explicite, en plus de la RLS). Absent, ou d'un autre cabinet : 404.
+     */
+    private TicketEntity duWorkspaceCourant(UUID ticketId) {
+        UUID ws = TenantContext.get();
+        return (ws == null ? Optional.<TicketEntity>empty() : jpa.findByIdAndWorkspaceId(ticketId, ws))
+                .orElseThrow(() -> new NotFoundException("Ticket introuvable : " + ticketId));
+    }
+
     @Override
     public Optional<Ticket> findById(UUID workspaceId, UUID ticketId) {
-        return jpa.findById(ticketId)
-                .filter(e -> e.getWorkspaceId().equals(workspaceId))
-                .map(this::toDomain);
+        // Lot L0 (E21) : filtre dans la requete plutot qu'apres lecture.
+        return jpa.findByIdAndWorkspaceId(ticketId, workspaceId).map(this::toDomain);
     }
 
     @Override
@@ -60,7 +71,7 @@ public class TicketRepositoryAdapter implements TicketRepository {
     @Override
     public Ticket updateStatut(UUID ticketId, TicketStatut statut, String motif,
                                 Instant clotureAt, Instant annuleAt) {
-        TicketEntity e = jpa.findById(ticketId).orElseThrow();
+        TicketEntity e = duWorkspaceCourant(ticketId);
         e.setStatut(statut.name());
         e.setAnnulationMotif(motif);
         e.setClotureAt(clotureAt);
@@ -71,7 +82,7 @@ public class TicketRepositoryAdapter implements TicketRepository {
     @Override
     public Ticket updateAssignment(UUID ticketId, UUID assigneId, TicketPriorite priorite,
                                     Instant deadline, String titre, String description) {
-        TicketEntity e = jpa.findById(ticketId).orElseThrow();
+        TicketEntity e = duWorkspaceCourant(ticketId);
         if (assigneId != null) e.setAssigneId(assigneId);
         if (priorite != null) e.setPriorite(priorite.name());
         if (deadline != null) e.setDeadline(deadline);
@@ -82,7 +93,7 @@ public class TicketRepositoryAdapter implements TicketRepository {
 
     @Override
     public Ticket markTransferred(UUID ticketId, UUID assigneId, Instant transferredAt) {
-        TicketEntity e = jpa.findById(ticketId).orElseThrow();
+        TicketEntity e = duWorkspaceCourant(ticketId);
         // Reassignation + marquage transfert. Le statut reste inchange (un dossier
         // transfere garde son etat NOUVEAU/EN_COURS, cf. applyTransfer).
         e.setAssigneId(assigneId);

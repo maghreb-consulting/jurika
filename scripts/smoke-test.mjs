@@ -87,16 +87,19 @@ async function check10Healthy() {
     const dockerOnly = [
         'jurika-postgres', 'jurika-redis', 'jurika-rabbitmq',
     ];
+    // Lot L0 (E16e) : les ports des services ne sont publies que sur 127.0.0.1
+    // (IPv4). `localhost` peut se resoudre en ::1 d'abord (fetch de Node >= 17) :
+    // on vise 127.0.0.1 explicitement. Passerelle et front restent publies partout.
     const services = [
-        { name: 'discovery',   url: `http://localhost:${process.env.DISCOVERY_PORT || 8761}/actuator/health` },
+        { name: 'discovery',   url: `http://127.0.0.1:${process.env.DISCOVERY_PORT || 8761}/actuator/health` },
         { name: 'gateway',     url: `http://localhost:${process.env.GATEWAY_PORT   || 8080}/actuator/health` },
-        { name: 'auth',        url: `http://localhost:${process.env.AUTH_SERVICE_PORT        || 8081}/actuator/health` },
-        { name: 'ticket',      url: `http://localhost:${process.env.TICKET_SERVICE_PORT      || 8082}/actuator/health` },
-        { name: 'workflow',    url: `http://localhost:${process.env.WORKFLOW_SERVICE_PORT    || 8083}/actuator/health` },
-        { name: 'dataroom',    url: `http://localhost:${process.env.DATAROOM_SERVICE_PORT    || 8084}/actuator/health` },
-        { name: 'supervision', url: `http://localhost:${process.env.SUPERVISION_SERVICE_PORT || 8086}/actuator/health` },
-        { name: 'dashboard',   url: `http://localhost:${process.env.DASHBOARD_SERVICE_PORT   || 8087}/actuator/health` },
-        { name: 'billing',     url: `http://localhost:${process.env.BILLING_SERVICE_PORT     || 8090}/actuator/health` },
+        { name: 'auth',        url: `http://127.0.0.1:${process.env.AUTH_SERVICE_PORT        || 8081}/actuator/health` },
+        { name: 'ticket',      url: `http://127.0.0.1:${process.env.TICKET_SERVICE_PORT      || 8082}/actuator/health` },
+        { name: 'workflow',    url: `http://127.0.0.1:${process.env.WORKFLOW_SERVICE_PORT    || 8083}/actuator/health` },
+        { name: 'dataroom',    url: `http://127.0.0.1:${process.env.DATAROOM_SERVICE_PORT    || 8084}/actuator/health` },
+        { name: 'supervision', url: `http://127.0.0.1:${process.env.SUPERVISION_SERVICE_PORT || 8086}/actuator/health` },
+        { name: 'dashboard',   url: `http://127.0.0.1:${process.env.DASHBOARD_SERVICE_PORT   || 8087}/actuator/health` },
+        { name: 'billing',     url: `http://127.0.0.1:${process.env.BILLING_SERVICE_PORT     || 8090}/actuator/health` },
         // FRONTEND_PORT vaut 80 en prod nginx mais 5173 sur Vite dev — on accepte les deux.
         { name: 'frontend',    url: `http://localhost:5173/`, fallbackUrl: `http://localhost:${process.env.FRONTEND_PORT || 80}/`, expectStatus: 200 },
     ];
@@ -264,13 +267,11 @@ async function checkStripe() {
     record('Stripe env vars (sk + 4 prices configures)', 'PASS',
         sk.slice(0, 12) + '... + 4 price IDs');
 
-    // Test que billing-service repond en healthcheck (derive du BASE_URL si --base
-    // est fourni, sinon JURIKA_LAN_HOST, sinon localhost).
-    const baseHost = (() => {
-        try { return new URL(BASE_URL).hostname; } catch { return process.env.JURIKA_LAN_HOST || 'localhost'; }
-    })();
+    // Test que billing-service repond en healthcheck. Lot L0 (E16e) : son port
+    // n'est publie que sur 127.0.0.1 (comme les autres services, cf. checkHealth) :
+    // le controle se fait depuis la machine, sur 127.0.0.1.
     const health = await http('GET', '/actuator/health',
-        { base: process.env.BILLING_HEALTH_URL || `http://${baseHost}:${process.env.BILLING_SERVICE_PORT || 8090}` });
+        { base: process.env.BILLING_HEALTH_URL || `http://127.0.0.1:${process.env.BILLING_SERVICE_PORT || 8090}` });
     passOrFail(health.ok && health.body?.status === 'UP',
         'billing-service /actuator/health UP',
         '', `status=${health.status}`);
@@ -280,11 +281,8 @@ async function checkStripe() {
 async function checkEmail() {
     const smtpHost = process.env.SMTP_HOST || 'mailhog';
     if (smtpHost === 'mailhog' || smtpHost === 'localhost') {
-        // Tente l'UI MailHog
-        const mhHost = (() => {
-            try { return new URL(BASE_URL).hostname; } catch { return process.env.JURIKA_LAN_HOST || 'localhost'; }
-        })();
-        const mhBase = `http://${mhHost}:${process.env.MAILHOG_UI_PORT || 8025}`;
+        // Tente l'UI MailHog. Lot L0 (E16e) : port publie sur 127.0.0.1 seulement.
+        const mhBase = `http://127.0.0.1:${process.env.MAILHOG_UI_PORT || 8025}`;
         const res = await http('GET', '/api/v2/messages?limit=5', { base: mhBase });
         if (res.ok && res.body?.items?.length >= 0) {
             const count = res.body.items.length;

@@ -7,3 +7,4 @@ ma.jurika.common.security.JwtAutoConfiguration
 ma.jurika.common.security.RoleHierarchyAutoConfiguration
 ma.jurika.common.trial.TrialRemoteAutoConfiguration
 ma.jurika.common.events.BusinessEventsAutoConfiguration
+ma.jurika.common.persistence.TenantTransactionAutoConfiguration

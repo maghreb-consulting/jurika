@@ -9,8 +9,11 @@ spring:
     timeout-per-shutdown-phase: 30s
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:jurika_db}
-    username: ${POSTGRES_USER:jurika_user}
-    password: ${POSTGRES_PASSWORD:JurikaDevPass2026}
+    # Lot L0 (E16) : role d'execution jurika_app (non proprietaire,
+    # NOSUPERUSER, NOBYPASSRLS) pour que la RLS s'applique. Mot de passe DEDIE
+    # et OBLIGATOIRE, sans valeur de repli. Flyway migre avec le proprietaire.
+    username: ${JURIKA_APP_DB_USER:jurika_app}
+    password: ${JURIKA_APP_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -25,6 +28,9 @@ spring:
     out-of-order: true
     locations: classpath:db/migration
     table: flyway_history_workflow
+    # Lot L0 (E16) : DDL, politiques et droits exigent le proprietaire.
+    user: ${POSTGRES_USER:jurika_user}
+    password: ${POSTGRES_PASSWORD:JurikaDevPass2026}
     validate-on-migrate: false
     ignore-migration-patterns: "*:missing,*:future"
   rabbitmq:

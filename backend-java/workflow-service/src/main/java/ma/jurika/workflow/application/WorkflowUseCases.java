@@ -164,6 +164,7 @@ public class WorkflowUseCases {
     public WorkflowProgress save(UUID workspaceId, UUID ticketId, int currentStep,
                                   Map<String, Object> data, UUID userId) {
         TenantContext.set(workspaceId);
+        assertTicketOuvert(workspaceId, ticketId);
         WorkflowProgress p = progressRepository.findByTicket(workspaceId, ticketId)
                 .orElseThrow(() -> new NotFoundException("Aucun workflow en cours"));
         Map<String, Object> merged = new HashMap<>(p.data());
@@ -209,6 +210,7 @@ public class WorkflowUseCases {
     public StepExecutionResult executeStep(UUID workspaceId, UUID ticketId, int step,
                                             Map<String, Object> payload, UUID userId) {
         TenantContext.set(workspaceId);
+        assertTicketOuvert(workspaceId, ticketId);
         WorkflowProgress p = progressRepository.findByTicket(workspaceId, ticketId)
                 .orElseThrow(() -> new NotFoundException("Aucun workflow en cours"));
         WorkflowStrategy strategy = orchestrator.strategyFor(p.type());
@@ -2040,6 +2042,26 @@ public class WorkflowUseCases {
 
     public record StepExecutionResult(WorkflowProgress progress, StepResult result) {}
 
+    /**
+     * Lot L0 (E23, RG-TKT-11) : un ticket clos s'ouvre en lecture seule, sans
+     * aucune action possible ; garde cote serveur sur toute ecriture du parcours.
+     * Ticket illisible dans le workspace : 404 (la garde se ferme).
+     */
+    private void assertTicketOuvert(UUID workspaceId, UUID ticketId) {
+        List<?> rows = em.createNativeQuery(
+                        "SELECT statut FROM tickets WHERE id = ?1 AND workspace_id = ?2")
+                .setParameter(1, ticketId)
+                .setParameter(2, workspaceId)
+                .getResultList();
+        if (rows.isEmpty()) {
+            throw new NotFoundException("Ticket inconnu");
+        }
+        if ("CLOTURE_DOSSIER".equals(String.valueOf(rows.get(0)))) {
+            throw new ConflictException("TICKET_CLOS_LECTURE_SEULE : le ticket est clos, "
+                    + "son parcours ne peut plus etre modifie (RG-TKT-11).");
+        }
+    }
+
     // ========================================================================
     //  P2 2026-06-04 — Pieces jointes persistantes cross-step
     //  Registry stocke dans workflow_progress.data.pieces[code] = { ... metadata }
@@ -2053,6 +2075,7 @@ public class WorkflowUseCases {
     public WorkflowProgress registerPiece(UUID workspaceId, UUID ticketId,
                                            ma.jurika.workflow.api.WorkflowController.RegisterPieceRequest req) {
         TenantContext.set(workspaceId);
+        assertTicketOuvert(workspaceId, ticketId);
         WorkflowProgress p = progressRepository.findByTicket(workspaceId, ticketId)
                 .orElseThrow(() -> new NotFoundException("Aucun workflow en cours"));
         Map<String, Object> merged = new HashMap<>(p.data());
@@ -2079,6 +2102,7 @@ public class WorkflowUseCases {
     @SuppressWarnings("unchecked")
     public WorkflowProgress unregisterPiece(UUID workspaceId, UUID ticketId, String code) {
         TenantContext.set(workspaceId);
+        assertTicketOuvert(workspaceId, ticketId);
         WorkflowProgress p = progressRepository.findByTicket(workspaceId, ticketId)
                 .orElseThrow(() -> new NotFoundException("Aucun workflow en cours"));
         Map<String, Object> merged = new HashMap<>(p.data());

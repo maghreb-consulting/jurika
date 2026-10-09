@@ -42,12 +42,10 @@ services:
     container_name: jurika-billing
     restart: unless-stopped
     ports:
-      # Pas de prefixe `0.0.0.0:` : il publiait le port en IPv4 SEULE.
-      # Les clients qui resolvent `localhost` en ::1 d abord (fetch de
-      # Node >=17, ordre DNS verbatim) recevaient ECONNREFUSED alors que
-      # le service repondait en IPv4 -> smoke test en echec sur billing.
-      # Sans prefixe, Docker publie sur les deux piles, LAN inclus.
-      - "${BILLING_SERVICE_PORT:-8090}:8090"
+      # Lot L0 (E16e) : publie sur 127.0.0.1 seulement (IPv4), plus sur le LAN.
+      # Les clients Node qui resolvent `localhost` en ::1 d abord (fetch de
+      # Node >=17) visent donc 127.0.0.1 explicitement (smoke-test.mjs).
+      - "127.0.0.1:${BILLING_SERVICE_PORT:-8090}:8090"
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod-local}
       JURIKA_ENV: ${JURIKA_ENV:-local}
@@ -58,6 +56,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-jurika_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       RABBITMQ_HOST: rabbitmq
+      # Lot L0 (CI base-vierge) : memes expressions que le conteneur rabbitmq
+      # (sinon repli code en dur d'application.yml, faux sur une base neuve).
+      RABBITMQ_USER: ${RABBITMQ_USER:-jurika}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-JurikaRabbit2026}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-RS256}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
       # Stripe (les 4 price IDs sont injectes depuis .env.local par compose).
@@ -107,15 +109,23 @@ services:
     container_name: jurika-dashboard
     restart: unless-stopped
     ports:
-      - "${DASHBOARD_SERVICE_PORT:-8087}:8087"
+      - "127.0.0.1:${DASHBOARD_SERVICE_PORT:-8087}:8087"
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod-local}
       JURIKA_ENV: ${JURIKA_ENV:-local}
       EUREKA_SERVER_URL: http://discovery-service:8761/eureka
       POSTGRES_HOST: postgres
+      # Lot L0 (CI base-vierge) : identifiants du proprietaire (sans eux, repli
+      # code en dur d'application.yml : faux sur une base neuve).
+      POSTGRES_USER: ${POSTGRES_USER:-jurika_user}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD absent, .env doit le definir}"
       REDIS_HOST: redis
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       RABBITMQ_HOST: rabbitmq
+      # Lot L0 (CI base-vierge) : memes expressions que le conteneur rabbitmq
+      # (sinon repli code en dur d'application.yml, faux sur une base neuve).
+      RABBITMQ_USER: ${RABBITMQ_USER:-jurika}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-JurikaRabbit2026}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-RS256}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
       JURIKA_PLAN_LIMITS_ENABLED: "true"

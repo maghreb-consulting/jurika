@@ -33,7 +33,12 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.Map;
 import java.util.UUID;
 
@@ -96,8 +101,13 @@ class OnboardingFlowE2ETest {
     @DynamicPropertySource
     static void registerProps(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
+        // Lot L0 : l'application tourne en role d'execution jurika_app (non
+        // proprietaire, NOSUPERUSER, NOBYPASSRLS : la RLS s'applique) ; Flyway
+        // migre avec le proprietaire. Comme en production apres la bascule.
+        registry.add("spring.datasource.username", () -> "jurika_app");
+        registry.add("spring.datasource.password", () -> "jurika_app_it");
+        registry.add("spring.flyway.user", POSTGRES::getUsername);
+        registry.add("spring.flyway.password", POSTGRES::getPassword);
         // Pas de Redis utilise par auth-service en code, mais l'autoconfig le pique. On laisse.
         registry.add("spring.data.redis.host", () -> "localhost");
         registry.add("spring.data.redis.port", () -> "16379");
@@ -107,12 +117,38 @@ class OnboardingFlowE2ETest {
      * Rend l'@Async audit synchrone -> les compteurs audit_log sont lisibles
      * juste apres la requete HTTP.
      */
+    /**
+     * Lot L0 (E10d) : horloge maitrisee pour la verification TOTP. Avec
+     * l'anti-rejeu, un code ne vaut qu'une fois : le test avance l'horloge d'un
+     * pas (30 s) entre la confirmation (etape 9) et la connexion (etape 13), au
+     * lieu de dependre du hasard des fenetres de 30 s.
+     */
+    static final HorlogeReglable HORLOGE = new HorlogeReglable(Instant.now());
+
+    static final class HorlogeReglable extends Clock {
+        private final AtomicReference<Instant> instant;
+
+        HorlogeReglable(Instant depart) { this.instant = new AtomicReference<>(depart); }
+
+        void avancer(Duration duree) { instant.updateAndGet(i -> i.plus(duree)); }
+
+        @Override public ZoneId getZone() { return ZoneOffset.UTC; }
+        @Override public Clock withZone(ZoneId zone) { return this; }
+        @Override public Instant instant() { return instant.get(); }
+    }
+
     @TestConfiguration
     static class SyncTaskExecutorConfig {
         @Bean
         @Primary
         public TaskExecutor taskExecutor() {
             return new SyncTaskExecutor();
+        }
+
+        @Bean
+        @Primary
+        public Clock horlogeTest() {
+            return HORLOGE;
         }
 
         // MeterRegistry + BusinessMetrics : depuis Sprint 14 ter, jurika-common
@@ -132,7 +168,12 @@ class OnboardingFlowE2ETest {
 
     @Autowired private MockMvc mvc;
     @Autowired private ObjectMapper json;
-    @Autowired private JdbcTemplate jdbc;
+    /**
+     * Preparation et assertions en PROPRIETAIRE, hors RLS : le test lit l'etat
+     * reel de la base, quel que soit le workspace (lot L0).
+     */
+    private final JdbcTemplate jdbc = new JdbcTemplate(new org.springframework.jdbc.datasource.DriverManagerDataSource(
+            POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
 
     @MockBean private EmailSender emailSender;
     @MockBean private SmsSender smsSender;
@@ -275,7 +316,7 @@ class OnboardingFlowE2ETest {
         // 9. POST /setup-2fa/confirm — hotfix 2026-06-04 : renvoie 200 OK + nouveau
         // couple de tokens (r2s=false dans le claim) pour debloquer immediatement
         // tous les endpoints metier non whitelistes par Setup2faRequiredEnforcer.
-        int currentCode = new GoogleAuthenticator().getTotpPassword(totpSecret);
+        int currentCode = new GoogleAuthenticator().getTotpPassword(totpSecret, HORLOGE.millis());
         MvcResult conf2fa = mvc.perform(post("/api/v1/auth/setup-2fa/confirm")
                         .header("Authorization", "Bearer " + cleanAccessToken)
                         .contentType("application/json")
@@ -323,16 +364,33 @@ class OnboardingFlowE2ETest {
         String wsId = l3.get("workspaceId").asText();
 
         // 13. POST /verify-2fa
-        int verifyCode = new GoogleAuthenticator().getTotpPassword(totpSecret);
+        // Le code TOTP est une CHAINE de 6 chiffres (Verify2faRequest : ^[0-9 ]{6,8}$).
+        // Envoye en nombre JSON (%d), un code commencant par 0 (1 cas sur 10)
+        // perdait son zero initial, partait sur 5 chiffres et etait refuse en
+        // validation (400) : echec intermittent du lot L0. Formate sur 6 chiffres,
+        // comme le saisit l'utilisateur.
+        // Lot L0 (E10d) : le code de l'etape 9 est consomme (anti-rejeu). On avance
+        // d'un pas : le code de connexion est celui du pas suivant, jamais le meme.
+        HORLOGE.avancer(Duration.ofSeconds(30));
+        String verifyCode = String.format("%06d",
+                new GoogleAuthenticator().getTotpPassword(totpSecret, HORLOGE.millis()));
         MvcResult v2fa = mvc.perform(post("/api/v1/auth/verify-2fa")
                         .contentType("application/json")
                         .content("""
-                                {"userId":"%s","workspaceId":"%s","code":%d}
+                                {"userId":"%s","workspaceId":"%s","code":"%s"}
                                 """.formatted(userId, wsId, verifyCode)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isString())
                 .andReturn();
         String finalAccess = readField(v2fa, "accessToken");
+
+        // 13b. Lot L0 (E10d) : le meme code, rejoue, est refuse (RFC 6238, 5.2).
+        mvc.perform(post("/api/v1/auth/verify-2fa")
+                        .contentType("application/json")
+                        .content("""
+                                {"userId":"%s","workspaceId":"%s","code":"%s"}
+                                """.formatted(userId, wsId, verifyCode)))
+                .andExpect(status().isUnauthorized());
 
         // 14. GET /me OK
         mvc.perform(get("/api/v1/auth/me")

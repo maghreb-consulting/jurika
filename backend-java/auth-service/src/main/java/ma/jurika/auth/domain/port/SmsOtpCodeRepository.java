@@ -19,7 +19,12 @@ public interface SmsOtpCodeRepository {
      */
     Optional<StoredOtp> findLatestActive(UUID userId, String purpose);
 
-    void markUsed(UUID id, Instant usedAt);
+    /**
+     * Lot L0 (E12b) : usage unique ATOMIQUE. Ne modifie la ligne que si le jeton
+     * n'est pas deja utilise ; renvoie {@code true} si cet appel l'a consomme,
+     * {@code false} sinon (rejeu, ou requete concurrente gagnee par une autre).
+     */
+    boolean markUsed(UUID id, Instant usedAt);
 
     void incrementAttempts(UUID id);
 

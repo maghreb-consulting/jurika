@@ -16,7 +16,9 @@ jurika:
 spring:
   jpa:
     hibernate:
-      ddl-auto: update
+      # Lot L0 (E15) : comme en production. `update` completait en silence le
+      # schema de test (tables amont simulees) ; le schema vient des migrations.
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: false

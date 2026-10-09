@@ -15,6 +15,9 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import ma.jurika.workflow.integration.SchemaJurikaDb;
+import org.springframework.jdbc.core.JdbcTemplate;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -57,7 +60,8 @@ class PostCompletionSansDossierLieIT {
             new PostgreSQLContainer<>("postgres:16-alpine")
                     .withDatabaseName("jurika_wf_d2")
                     .withUsername("jurika_it")
-                    .withPassword("jurika_it");
+                    .withPassword("jurika_it")
+                    .withInitScript("testcontainers-init.sql");
 
     private static EntityManagerFactory emf;
     private EntityManager em;
@@ -71,46 +75,26 @@ class PostCompletionSansDossierLieIT {
     /** La societe reellement visee, choisie a l'etape 1 du wizard. */
     private UUID dossier;
 
+    /** Preparation et relectures de controle en PROPRIETAIRE, hors RLS (lot L0). */
+    private JdbcTemplate owner;
+
     @BeforeAll
     void bootstrap() {
         POSTGRES.start();
+        // Lot L0 (E16) : vraies migrations dans l'ordre de jurika_db (dont
+        // tickets.dossier_id, nullable), puis le code teste tourne en role
+        // d'execution jurika_app (la RLS s'applique).
+        SchemaJurikaDb.migrer(POSTGRES);
+        owner = SchemaJurikaDb.proprietaire(POSTGRES);
+        SchemaJurikaDb.workspace(owner, workspace, "Cabinet D2", "JUR-D2001");
+        SchemaJurikaDb.workspace(owner, autreWorkspace, "Autre cabinet", "JUR-D2002");
         Map<String, Object> props = new HashMap<>();
         props.put("jakarta.persistence.jdbc.url", POSTGRES.getJdbcUrl());
-        props.put("jakarta.persistence.jdbc.user", POSTGRES.getUsername());
-        props.put("jakarta.persistence.jdbc.password", POSTGRES.getPassword());
+        props.put("jakarta.persistence.jdbc.user", "jurika_app");
+        props.put("jakarta.persistence.jdbc.password", "jurika_app_it");
         props.put("jakarta.persistence.jdbc.driver", "org.postgresql.Driver");
         emf = Persistence.createEntityManagerFactory("workflow-it", props);
         em = emf.createEntityManager();
-
-        // Schema minimal : les colonnes lues/ecrites par le code de production.
-        inTx(() -> em.createNativeQuery("""
-                CREATE TABLE IF NOT EXISTS entreprise_dossiers (
-                    id                 UUID PRIMARY KEY,
-                    workspace_id       UUID NOT NULL,
-                    raison_sociale     TEXT,
-                    forme_juridique    TEXT,
-                    ice                TEXT,
-                    identifiant_fiscal TEXT,
-                    rc_numero          TEXT,
-                    rc_tribunal        TEXT,
-                    capital_social_mad NUMERIC(18,2),
-                    adresse_siege      TEXT,
-                    ville              TEXT,
-                    statut             TEXT,
-                    date_dissolution   DATE,
-                    fiche_structuree   JSONB,
-                    updated_at         TIMESTAMPTZ DEFAULT NOW()
-                )
-                """).executeUpdate());
-        // `tickets` est possedee par ticket-service ; workflow-service la lit en natif.
-        // Le point crucial du test : `dossier_id` est NULLABLE et vaut NULL ici.
-        inTx(() -> em.createNativeQuery("""
-                CREATE TABLE IF NOT EXISTS tickets (
-                    id           UUID PRIMARY KEY,
-                    workspace_id UUID NOT NULL,
-                    dossier_id   UUID
-                )
-                """).executeUpdate());
     }
 
     @AfterAll
@@ -124,10 +108,8 @@ class PostCompletionSansDossierLieIT {
         useCases = newUseCases();
         ticketSansDossier = UUID.randomUUID();
         dossier = UUID.randomUUID();
-        inTx(() -> {
-            em.createNativeQuery("DELETE FROM tickets").executeUpdate();
-            em.createNativeQuery("DELETE FROM entreprise_dossiers").executeUpdate();
-        });
+        owner.update("DELETE FROM tickets");
+        owner.update("DELETE FROM entreprise_dossiers");
         insertTicket(ticketSansDossier, workspace, null);
         insertDossier(dossier, workspace, "NOVA INDUSTRIE", "ACTIVE");
     }
@@ -139,15 +121,13 @@ class PostCompletionSansDossierLieIT {
     void fetchDossierId_surColonneNulle_renvoieNullSansNpe() {
         // Avant le correctif : NullPointerException levee par Optional.findFirst().
         assertThatCode(() -> {
-            UUID scoped = ReflectionTestUtils.invokeMethod(
-                    useCases, "fetchDossierId", workspace, ticketSansDossier);
+            UUID scoped = dansTx(workspace, () -> ReflectionTestUtils.<UUID>invokeMethod(useCases, "fetchDossierId", workspace, ticketSansDossier));
             assertThat(scoped).isNull();
         }).doesNotThrowAnyException();
 
         // La surcharge deprecated (mono-argument) porte le meme piege.
         assertThatCode(() -> {
-            UUID legacy = ReflectionTestUtils.invokeMethod(
-                    useCases, "fetchDossierId", ticketSansDossier);
+            UUID legacy = dansTx(workspace, () -> ReflectionTestUtils.<UUID>invokeMethod(useCases, "fetchDossierId", ticketSansDossier));
             assertThat(legacy).isNull();
         }).doesNotThrowAnyException();
     }
@@ -155,8 +135,7 @@ class PostCompletionSansDossierLieIT {
     @Test
     @DisplayName("D2/a — ticket inexistant : null egalement (aucune ligne, pas d'element nul)")
     void fetchDossierId_ticketInexistant_renvoieNull() {
-        UUID absent = ReflectionTestUtils.invokeMethod(
-                useCases, "fetchDossierId", workspace, UUID.randomUUID());
+        UUID absent = dansTx(workspace, () -> ReflectionTestUtils.<UUID>invokeMethod(useCases, "fetchDossierId", workspace, UUID.randomUUID()));
         assertThat(absent).isNull();
     }
 
@@ -165,7 +144,7 @@ class PostCompletionSansDossierLieIT {
     void fetchDossierId_ticketLie_remonteLaValeur() {
         UUID ticketLie = UUID.randomUUID();
         insertTicket(ticketLie, workspace, dossier);
-        UUID lu = ReflectionTestUtils.invokeMethod(useCases, "fetchDossierId", workspace, ticketLie);
+        UUID lu = dansTx(workspace, () -> ReflectionTestUtils.<UUID>invokeMethod(useCases, "fetchDossierId", workspace, ticketLie));
         assertThat(lu).isEqualTo(dossier);
     }
 
@@ -186,7 +165,7 @@ class PostCompletionSansDossierLieIT {
         step1.put("liquidateur", liquidateur);
         step1.put("siegeLiquidation", "12 RUE DES FOULES, CASABLANCA");
 
-        inTx(() -> applyPostCompletion(WorkflowType.DISSOLUTION, Map.of("step1", step1)));
+        inTx(workspace, () -> applyPostCompletion(WorkflowType.DISSOLUTION, Map.of("step1", step1)));
 
         assertThat(colonne("statut")).isEqualTo("DISSOUTE");
         assertThat(colonne("date_dissolution")).hasToString("2026-05-15");
@@ -202,7 +181,7 @@ class PostCompletionSansDossierLieIT {
         Map<String, Object> step1 = new HashMap<>();
         step1.put("dossierId", dossier.toString());
 
-        inTx(() -> applyPostCompletion(WorkflowType.LIQUIDATION, Map.of("step1", step1)));
+        inTx(workspace, () -> applyPostCompletion(WorkflowType.LIQUIDATION, Map.of("step1", step1)));
 
         assertThat(colonne("statut")).isEqualTo("LIQUIDEE");
     }
@@ -216,7 +195,7 @@ class PostCompletionSansDossierLieIT {
                 "CHANGEMENT_DENOMINATION", Map.of("nouvelleDenomination", "NOVA INDUSTRIE MAROC"),
                 "AUGMENTATION_CAPITAL", Map.of("nouveauCapital", 500000)));
 
-        inTx(() -> applyPostCompletion(WorkflowType.MODIFICATION,
+        inTx(workspace, () -> applyPostCompletion(WorkflowType.MODIFICATION,
                 Map.of("step1", step1, "step2", step2)));
 
         assertThat(colonne("raison_sociale")).isEqualTo("NOVA INDUSTRIE MAROC");
@@ -235,7 +214,7 @@ class PostCompletionSansDossierLieIT {
         Map<String, Object> step1 = new HashMap<>();
         step1.put("dossierId", dossierAutreTenant.toString());
         // Le workflow tourne dans `workspace`, mais vise un dossier de `autreWorkspace`.
-        inTx(() -> applyPostCompletion(WorkflowType.DISSOLUTION, Map.of("step1", step1)));
+        inTx(workspace, () -> applyPostCompletion(WorkflowType.DISSOLUTION, Map.of("step1", step1)));
 
         // Les UPDATE portent tous « AND workspace_id = ?» : aucune ligne touchee.
         assertThat(colonne(dossierAutreTenant, "statut")).isEqualTo("ACTIVE");
@@ -245,7 +224,7 @@ class PostCompletionSansDossierLieIT {
     @Test
     @DisplayName("D2 — ni dossier lie ni step1.dossierId : sortie propre, aucune mutation")
     void aucuneCible_sortieSilencieuse() {
-        assertThatCode(() -> inTx(() ->
+        assertThatCode(() -> inTx(workspace, () ->
                 applyPostCompletion(WorkflowType.DISSOLUTION, Map.of("step1", Map.of()))))
                 .doesNotThrowAnyException();
         assertThat(colonne("statut")).isEqualTo("ACTIVE");
@@ -261,7 +240,7 @@ class PostCompletionSansDossierLieIT {
 
         Map<String, Object> step1 = new HashMap<>();
         step1.put("dossierId", leurre.toString());
-        inTx(() -> ReflectionTestUtils.invokeMethod(useCases, "applyPostCompletion",
+        inTx(workspace, () -> ReflectionTestUtils.invokeMethod(useCases, "applyPostCompletion",
                 WorkflowType.LIQUIDATION, workspace, ticketLie, Map.of("step1", step1)));
 
         assertThat(colonne(dossier, "statut")).isEqualTo("LIQUIDEE");
@@ -282,27 +261,20 @@ class PostCompletionSansDossierLieIT {
     }
 
     private void insertTicket(UUID id, UUID ws, UUID dossierId) {
-        inTx(() -> em.createNativeQuery(
-                        "INSERT INTO tickets (id, workspace_id, dossier_id) VALUES (?1, ?2, ?3)")
-                .setParameter(1, id)
-                .setParameter(2, ws)
-                .setParameter(3, dossierId)
-                .executeUpdate());
+        owner.update("""
+                        INSERT INTO tickets (id, workspace_id, reference, titre, type, cree_par_id, dossier_id)
+                        VALUES (?, ?, ?, 'Ticket D2', 'MODIFICATION', ?, ?)
+                        """, id, ws, "D2-" + id.toString().substring(0, 8), SchemaJurikaDb.EMPLOYE_SEME, dossierId);
     }
 
     private void insertDossier(UUID id, UUID ws, String raisonSociale, String statut) {
-        inTx(() -> em.createNativeQuery("""
+        owner.update("""
                         INSERT INTO entreprise_dossiers
                           (id, workspace_id, raison_sociale, forme_juridique, rc_numero,
                            rc_tribunal, capital_social_mad, adresse_siege, ville, statut)
-                        VALUES (?1, ?2, ?3, 'SARL', '123456', 'CASABLANCA', 100000,
-                                '12 RUE DES FOULES', 'CASABLANCA', ?4)
-                        """)
-                .setParameter(1, id)
-                .setParameter(2, ws)
-                .setParameter(3, raisonSociale)
-                .setParameter(4, statut)
-                .executeUpdate());
+                        VALUES (?, ?, ?, 'SARL', '123456', 'CASABLANCA', 100000,
+                                '12 RUE DES FOULES', 'CASABLANCA', ?)
+                        """, id, ws, raisonSociale, statut);
     }
 
     private Object colonne(String name) {
@@ -310,17 +282,27 @@ class PostCompletionSansDossierLieIT {
     }
 
     private Object colonne(UUID dossierId, String name) {
-        em.clear();
-        List<?> rows = em.createNativeQuery(
-                        "SELECT " + name + " FROM entreprise_dossiers WHERE id = ?1")
-                .setParameter(1, dossierId)
-                .getResultList();
+        List<Object> rows = owner.queryForList(
+                "SELECT " + name + " FROM entreprise_dossiers WHERE id = ?", Object.class, dossierId);
         return rows.isEmpty() ? null : rows.get(0);
     }
 
-    private void inTx(Runnable action) {
+    private <T> T dansTx(UUID ws, java.util.function.Supplier<T> action) {
+        List<T> lu = new java.util.ArrayList<>();
+        inTx(ws, () -> lu.add(action.get()));
+        return lu.get(0);
+    }
+
+    /**
+     * Transaction du workspace {@code ws} : comme TenantAwareJpaTransactionManager
+     * en production, le workspace est pose a l'ouverture, local a la transaction.
+     */
+    private void inTx(UUID ws, Runnable action) {
         em.getTransaction().begin();
         try {
+            em.createNativeQuery("SELECT set_config('app.current_workspace_id', ?1, true)")
+                    .setParameter(1, ws.toString())
+                    .getSingleResult();
             action.run();
             em.getTransaction().commit();
         } catch (RuntimeException ex) {

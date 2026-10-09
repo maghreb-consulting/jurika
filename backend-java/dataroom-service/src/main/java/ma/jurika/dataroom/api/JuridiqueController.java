@@ -122,6 +122,7 @@ public class JuridiqueController {
     @Operation(summary = "Recherche FTS PostgreSQL (titre + filename) avec filtres types/dates/scope versions",
             description = "RG-DR-FTS : websearch_to_tsquery('french') sur la colonne tsvector GENERATED de V10")
     public SearchJuridiqueOutput searchJuridique(
+            @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable UUID dossierId,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) List<String> types,
@@ -130,9 +131,15 @@ public class JuridiqueController {
             @RequestParam(required = false, defaultValue = "CURRENT") VersionScope versionScope,
             @RequestParam(required = false, defaultValue = "20") int limit,
             @RequestParam(required = false, defaultValue = "0") int offset) {
+        // Lot L0 (E19, RG-DR-07) : un CLIENT ne cherche que dans SON dossier, et
+        // parmi ses documents visibles.
+        boolean pourClient = estClient(user);
+        if (pourClient) {
+            juridique.assertClientAccess(dossierId, user.userId());
+        }
         SearchJuridiqueInput in = new SearchJuridiqueInput(
                 dossierId, q, types, from, to, versionScope, limit, offset);
-        return searchJuridique.execute(in);
+        return searchJuridique.execute(in, pourClient);
     }
 
     // ============================================================
@@ -316,7 +323,7 @@ public class JuridiqueController {
      * piece qu'on a choisi de ne pas lui remettre.
      */
     @PatchMapping("/documents/{documentId}/visibilite")
-    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     @Operation(summary = "Montrer ou masquer un document au client")
     public DocumentSummary changerVisibilite(@AuthenticationPrincipal AuthenticatedUser user,
                                               @PathVariable UUID documentId,
@@ -342,10 +349,13 @@ public class JuridiqueController {
      * donc etre posee document par document. Un 404 plutot qu'un 403 : dire
      * « ce document existe mais ne vous est pas montre » serait deja en dire trop.
      */
+    /**
+     * Lot L0 (E18, RG-DR-07) : pour un CLIENT, document visible ET de son dossier
+     * (auparavant : visible seulement, quel que soit le dossier du workspace).
+     */
     private void assertVisiblePourClient(UUID documentId, AuthenticatedUser user) {
         if (!estClient(user)) return;
-        if (juridique.estVisiblePour(documentId, true)) return;
-        throw new ma.jurika.common.exception.NotFoundException("Document inconnu");
+        juridique.assertDocumentPourClient(documentId, user.userId());
     }
 
     @DeleteMapping("/documents/{documentId}")
@@ -374,9 +384,14 @@ public class JuridiqueController {
                                                        @PathVariable UUID dossierId,
                                                        @Valid @RequestBody BulkExportZipRequest req) {
         // Export ZIP = telechargement groupe -> meme garde perm_download pour le CLIENT.
+        // Lot L0 (E19, RG-DR-07) : et seulement SON dossier, ses documents visibles.
+        boolean pourClient = estClient(user);
+        if (pourClient) {
+            juridique.assertClientAccess(dossierId, user.userId());
+        }
         permissionGuard.assertCanDownload(dossierId, user);
         byte[] zip = juridique.exportSelectionAsZip(
-                dossierId, req.documentIds(), req.includeOldVersions());
+                dossierId, req.documentIds(), req.includeOldVersions(), pourClient);
         String filename = "juridique_" + dossierId + "_" + java.time.LocalDate.now() + ".zip";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
@@ -549,6 +564,10 @@ public class JuridiqueController {
             @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable UUID documentId,
             @PathVariable UUID versionId) {
+        // Lot L0 (E18) : le CLIENT ne lit une version que si elle et son document
+        // sont visibles et de son dossier (aucun controle auparavant).
+        assertVisiblePourClient(documentId, user);
+        assertVisiblePourClient(versionId, user);
         DocumentEntity doc = juridique.loadVersionForDownload(documentId, versionId);
         permissionGuard.assertCanDownload(doc.getDossierId(), user);
         var r = storage.download(doc.getObjectKey());
@@ -589,6 +608,10 @@ public class JuridiqueController {
             @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable UUID documentId,
             @PathVariable UUID versionId) {
+        // Lot L0 (E18) : le CLIENT ne lit une version que si elle et son document
+        // sont visibles et de son dossier (aucun controle auparavant).
+        assertVisiblePourClient(documentId, user);
+        assertVisiblePourClient(versionId, user);
         DocumentEntity doc = juridique.loadVersionForDownload(documentId, versionId);
         permissionGuard.assertCanDownload(doc.getDossierId(), user);
         OfficePreviewSupport.Rendered rd =

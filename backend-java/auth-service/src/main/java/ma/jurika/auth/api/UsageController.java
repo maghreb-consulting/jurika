@@ -34,6 +34,7 @@ public class UsageController {
     }
 
     @GetMapping
+    @org.springframework.transaction.annotation.Transactional(readOnly = true) // Lot L0 (E13b) : compteurs sous RLS
     public ResponseEntity<UsageSnapshot> getUsage(@AuthenticationPrincipal AuthenticatedUser user) {
         if (user == null) {
             return ResponseEntity.status(401).build();

@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * sur un Postgres testcontainer, sans contexte Spring (le dashboard-service
  * exige Redis pour son contexte complet, inutile ici). Le scoping repose sur
  * le filtre SQL explicite {@code WHERE workspace_id = ?} ; la RLS (defense en
- * profondeur, active en prod via RlsAspect) n'est pas requise pour la preuve
+ * profondeur, posee en prod par TenantAwareJpaTransactionManager) n'est pas requise pour la preuve
  * d'isolation testee ici.
  */
 @Testcontainers
