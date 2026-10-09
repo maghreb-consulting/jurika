@@ -46,6 +46,9 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
    est desactive, un ecart serait avale en silence. La regle s'apprecie par rapport a la base
    courante et aux installations futures, pas par rapport a l'ancienne base du portable (archive).
    Une migration en echec (annulee par Flyway, absente de `flyway_history_*`) n'est pas appliquee.
+   **Une migration appliquee au Z440 ne se modifie plus, meme avant la fusion** (l'activation de
+   fin de lot l'applique depuis la branche du lot) : toute correction passe par une nouvelle
+   migration.
 8. **Deux piles ne tournent jamais en meme temps** (memes noms de conteneurs, memes ports).
    **Jamais `docker compose down -v`** : les volumes sont la base.
 9. **Motif recurrent a chercher partout : la configuration ou le controle silencieusement
@@ -75,13 +78,33 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
   ne se modifie jamais.
 - Test rouge du fait du test ou du harnais : corrige. Defaut hors perimetre : backlog. Defaut du
   lot rouge apres 3 tentatives : **non resolu** au rapport, etape mise de cote, lot poursuivi.
-- **Aucune commande Docker sur la pile du Z440 pendant un lot** : le plan Docker est ecrit dans
-  le rapport (sauvegarde `pg_dump -Fc` de toutes les bases et `pg_dumpall --globals-only`
-  verifiees par `pg_restore --list`, `-p jurika-local` sur chaque commande compose, jamais
-  `down -v` ni `prune`, jamais de secret en argument de commande) et execute apres fusion par
-  `/lot-activer <lot>`, une commande a la fois, chacune soumise a l'accord de l'utilisateur.
+- **Docker autonome (depuis le 2026-10-09 : la plateforme n'est pas en production).** Permis
+  sans demande : `docker ps`, `logs`, `inspect`, `exec`, et `docker compose -p jurika-local` avec
+  `build`, `up -d`, `stop`, `start`, `restart`, `ps`. Toujours refuses : `down -v`, toute
+  commande contenant `prune`, `docker volume rm`, `docker rm -v`. Toute autre commande Docker
+  demande l'accord de l'utilisateur.
+- **Activation en fin de lot** : apres le verify vert et le push, `/lot-complet` active lui-meme
+  la branche du lot sur le Z440 : sauvegarde controlee d'abord (`pg_dump -Fc` de toutes les
+  bases, `pg_dumpall --globals-only`, verifies par `pg_restore --list` ; volume MinIO par
+  `scripts/sauvegarde-volume-par-exec.py`), reconstruction et recreation, etat sain, test de
+  fumee ; resultat dans le rapport final. Echec : retour arriere du code (depuis `main`), jamais
+  de restauration de donnees automatique. `/lot-activer <lot>` reste disponible (pas a pas).
 - Les commandes `/lot-demarrer`, `/lot-executer`, `/lot-verifier` et `/lot-cloturer` (mode
   pas a pas, avec points d'arret) restent disponibles.
+
+## Regle des variables d'un acte (2026-10-09 ; a reprendre dans le perimetre de L3)
+
+- Chaque variable du dictionnaire est classee **interne** ou **externe**. Externe : donnee
+  attendue d'un organisme (numero RC, ICE, IF, date d'immatriculation, ou toute donnee produite
+  par une administration ou un tiers). Interne : tout le reste (donnees du client, du dossier,
+  des decisions).
+- Une variable **interne** manquante **bloque** la generation, et la donnee manquante est
+  **nommee** a l'utilisateur.
+- Seule une variable **externe** peut manquer : l'acte sort avec un **marqueur visible**, la
+  plateforme **reclame** la donnee, puis l'acte se **regenere** quand elle arrive.
+- Les 17 gabarits du corpus dont le texte a change au lot L2 (decision D3,
+  `~/docs/rapports/L2_comparaison_temoin.md`) suivent cette regle : leurs marqueurs "VALEUR
+  MANQUANTE" actuels sont a reclasser (interne : blocage nomme ; externe : marqueur et relance).
 
 ## Corpus documentaires (source de verite metier)
 
@@ -156,6 +179,21 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   `PV_DISSOLUTION_LIQUIDATION_SARL_AU` (DissolutionMapper et LiquidationMapper). Doublon a
   resorber au lot qui unifie les parcours.
 
+### Lot L2 (chargeur du corpus, 2026-10-09) -- dette relevee
+
+- **Parcours a basculer sur les modeles du corpus (L4).** 12 des 15 gabarits du classpath
+  absents du corpus ont un equivalent dans `CORPUS_2026-10-03` (STATUTS deterministes,
+  CONVOCATION_AG, FEUILLE_PRESENCE_AG, RAPPORT_GESTION, RAPPORT_LIQUIDATION_DIRECTEUR,
+  PV_DISSOLUTION_LIQUIDATION, PV_MODIFICATION, ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE) :
+  les parcours basculeront sur ces equivalents en L4 (correspondances parfois reparties sur
+  plusieurs modeles, choix selon la donnee du parcours). Restent :
+  PV_DEFAUT_QUORUM_SARL_AU et PV_IRREGULARITE_CONVOCATION_SARL_AU (sans objet) ;
+  PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU (A_DECIDER directeur : manque, ou doublon de
+  PV_CREATION_SUCCURSALE_ETRANGERE_SARL qui vise une societe etrangere sans forme).
+  Tableau : `~/docs/rapports/L2_correspondance_gabarits.md`.
+- **D8 : afficher un message clair a l'utilisateur au lieu d'une erreur 500 quand un modele est
+  refuse** (gabarit du corpus modifie depuis le chargement ou non rendable : `CorpusException`).
+
 ### Lot L0 (securite serveur, 2026-10-08) -- dette relevee
 
 - **PRIORITE HAUTE : le consommateur RabbitMQ de l'audit (`AuditEventConsumer`) avale toute
@@ -220,9 +258,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   (corrige dans `base-vierge.yml` le 2026-10-08 : "running" suffit sans controle de sante).
 - **Le test de fumee affiche un prefixe de la cle Stripe** (`scripts/smoke-test.mjs`,
   controle "Stripe env vars" : `sk_test_51...`) : ne plus afficher aucune partie d'une cle.
-- **Images du Z440 a reconstruire** : les images en service datent du deploiement de L0 (le code
-  du chantier secrets-z440 n'y est pas) ; a inclure dans le plan Docker de L2 (reconstruction et
-  recreation de toutes les images).
 - **Liste des conteneurs attendus dupliquee** entre `start-local.sh` et
   `.github/workflows/base-vierge.yml` : a factoriser.
 - **Messages de commit du lot L0 non ASCII** (24 commits, guillemets francais, signe
