@@ -23,17 +23,19 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Lot L0, etape E22 (perimetre § E, arb. 8) : la lecture des debours (liste et
- * export PDF) est reservee aux roles du cabinet, EMPLOYE et SUPERVISEUR, dans
- * leur workspace. Aucun acces client en L0 (RG-DEB-03 : lot L1). Gardes evaluees
- * avec le gestionnaire d'expressions reel (GardesSuperviseurTicketTest).
+ * Lot L0 (E22) puis lot L1 (E11, RG-DEB-03) : la lecture des debours (liste et
+ * export PDF) est ouverte a l'employe, au superviseur et au client ; le controle
+ * fin (dossier de l'employe, dossier et permission de consultation du client) est
+ * fait par AccesDeboursTicket (AccesDeboursTicketTest). L'equipe JURIKA
+ * (SUPER_ADMIN) n'y a pas acces. Gardes evaluees avec le gestionnaire reel.
  */
 class DeboursControllerSecurityTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"list", "exportPdf"})
-    void client_refuse(String action) {
-        assertThat(GardesSuperviseurTicketTest.autorise("ROLE_CLIENT", methode(action))).isFalse();
+    void client_autorise_par_la_garde_super_admin_refuse(String action) {
+        assertThat(GardesSuperviseurTicketTest.autorise("ROLE_CLIENT", methode(action))).isTrue();
+        assertThat(GardesSuperviseurTicketTest.autorise("ROLE_SUPER_ADMIN", methode(action))).isFalse();
     }
 
     @ParameterizedTest
@@ -49,7 +51,10 @@ class DeboursControllerSecurityTest {
         DeboursUseCase debours = mock(DeboursUseCase.class);
         when(tickets.findById(any(), any())).thenReturn(Optional.empty());
         when(debours.listForTicket(any(), any())).thenReturn(new DeboursUseCase.Summary(List.of(), BigDecimal.ZERO));
-        DeboursController controleur = new DeboursController(debours, tickets, null, null);
+        DeboursController controleur = new DeboursController(debours, tickets, null, null,
+                new ma.jurika.ticket.application.AccesDeboursTicket(tickets,
+                        mock(ma.jurika.ticket.domain.port.DossierRepository.class),
+                        mock(ma.jurika.ticket.domain.port.PermissionsClientLookup.class)));
         AuthenticatedUser employe = new AuthenticatedUser(UUID.randomUUID(), UUID.randomUUID(), "e@a.test", Role.EMPLOYE);
 
         assertThatThrownBy(() -> controleur.list(employe, UUID.randomUUID())).isInstanceOf(NotFoundException.class);

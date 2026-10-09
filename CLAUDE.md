@@ -215,8 +215,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **`JwtAuthFilter`** : si la suite de la chaine leve une exception dans le `try`, le
   `catch (Exception)` relance `chain.doFilter` une seconde fois (double execution).
 - **`AuditLogJpaRepository` (auth)** inutilise depuis E10b : code mort a retirer (test d'abord).
-- **Debours, permission client (RG-DEB-03)** : lot L1 (aucun acces client en L0).
-- **`DELETE /dossiers/{id}`** (suppression d'une Data Room, non prevue au CDC 3.2) : lot L1.
 - **Annulation d'un ticket** : action de remplacement pour la Data Room (RG-TKT-04), au lot des
   parcours (la suppression automatique a ete retiree en E16a).
 - **Objets MinIO orphelins** quand l'ecriture en base echoue, et suppression de l'ancien objet

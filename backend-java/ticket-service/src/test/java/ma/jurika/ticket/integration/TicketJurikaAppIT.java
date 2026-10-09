@@ -453,5 +453,39 @@ class TicketJurikaAppIT {
                         .header("Authorization", jeton(COLLEGUE, WS_A, "EMPLOYE")))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    @Order(24)
+    void debours_visibles_par_le_client_selon_sa_permission() throws Exception {
+        UUID client = UUID.fromString("33333333-3333-3333-3333-0000000c11e1");
+        owner.execute("CREATE TABLE IF NOT EXISTS u_l1c AS SELECT * FROM users WHERE id = '" + KARIM + "'");
+        owner.update("UPDATE u_l1c SET id = ?, role = 'CLIENT', email = 'client@rls.test', login_email = 'client@rls.test'",
+                client);
+        owner.update("INSERT INTO users SELECT * FROM u_l1c WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = ?)", client);
+        owner.execute("DROP TABLE u_l1c");
+        owner.update("UPDATE entreprise_dossiers SET client_id = ? WHERE id = ?", client, dossierId);
+        String jetonClient = jeton(client, WS_A, "CLIENT");
+
+        // Sans reglage : consultation permise (valeur par defaut) -> le client lit.
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours").header("Authorization", jetonClient))
+                .andExpect(status().isOk());
+        // Un autre client du cabinet : rien.
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours")
+                        .header("Authorization", jeton(UUID.randomUUID(), WS_A, "CLIENT")))
+                .andExpect(status().isNotFound());
+        // Consultation retiree : refus.
+        owner.update("INSERT INTO dataroom_settings (dossier_id, workspace_id, perm_consultation) VALUES (?, ?, FALSE) "
+                + "ON CONFLICT (dossier_id) DO UPDATE SET perm_consultation = FALSE", dossierId, WS_A);
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours").header("Authorization", jetonClient))
+                .andExpect(status().isForbidden());
+        // Le client n'ecrit jamais ; un employe non responsable non plus.
+        mvc.perform(post("/api/v1/tickets/" + ticketId + "/debours").header("Authorization", jetonClient)
+                        .contentType("application/json").content("{\"libelle\":\"x\",\"categorie\":\"FRAIS_TRIBUNAL\","
+                                + "\"montant\":10,\"dateEngagement\":\"2026-10-01\"}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours")
+                        .header("Authorization", jeton(COLLEGUE, WS_A, "EMPLOYE")))
+                .andExpect(status().isNotFound());
+    }
 }
 
