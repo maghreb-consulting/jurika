@@ -154,14 +154,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L0 (securite serveur, 2026-10-08) -- dette relevee
 
-- **PRIORITE HAUTE -- chantier outillage/secrets-z440 (avant L2), en cours.** Les mots de
-  passe Postgres, RabbitMQ et MinIO du Z440 etaient egaux aux replis publies dans le depot.
-  Fait sur la branche : plus aucun repli de secret publie (application*.yml, compose,
-  backend-node ; garde-fou `ReplisSecretsPubliesTest` dans jurika-common) ; un service refuse
-  de demarrer si son secret manque ; Redis recoit son mot de passe par l'environnement (plus en
-  argument de processus). Reste, apres fusion : sur le Z440, sauvegarde, nouveaux mots de passe
-  aleatoires (Postgres, RabbitMQ, MinIO, JWT) dans `.env.local` seulement, changement cote
-  serveurs, recreation des conteneurs.
 - **PRIORITE HAUTE : le consommateur RabbitMQ de l'audit (`AuditEventConsumer`) avale toute
   exception** : une trace refusee est perdue sans bruit. Il faut la rejeter vers une file
   d'erreurs (dead-letter) ou la rejouer.
@@ -222,6 +214,11 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **`start-local.sh` attend `jurika-mailhog` "healthy"** alors que mailhog n'a aucun controle
   de sante (ni compose ni image) : l'attente ne peut pas aboutir quand mailhog tourne
   (corrige dans `base-vierge.yml` le 2026-10-08 : "running" suffit sans controle de sante).
+- **Le test de fumee affiche un prefixe de la cle Stripe** (`scripts/smoke-test.mjs`,
+  controle "Stripe env vars" : `sk_test_51...`) : ne plus afficher aucune partie d'une cle.
+- **Images du Z440 a reconstruire** : les images en service datent du deploiement de L0 (le code
+  du chantier secrets-z440 n'y est pas) ; a inclure dans le plan Docker de L2 (reconstruction et
+  recreation de toutes les images).
 - **Liste des conteneurs attendus dupliquee** entre `start-local.sh` et
   `.github/workflows/base-vierge.yml` : a factoriser.
 - **Messages de commit du lot L0 non ASCII** (24 commits, guillemets francais, signe
