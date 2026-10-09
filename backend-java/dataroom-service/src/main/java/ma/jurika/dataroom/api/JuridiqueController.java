@@ -15,6 +15,7 @@ import ma.jurika.dataroom.api.dto.DataroomDtos.VersionScope;
 import ma.jurika.dataroom.application.OfficePreviewSupport;
 import ma.jurika.dataroom.application.ClientDataroomPermissionGuard;
 import ma.jurika.dataroom.application.DataroomJuridiqueService;
+import ma.jurika.dataroom.application.EmployeDataroomGuard;
 import ma.jurika.dataroom.application.DocumentTypeCatalogue;
 import ma.jurika.dataroom.application.FicheClientService;
 import ma.jurika.dataroom.application.PreviewDocumentUseCase;
@@ -64,6 +65,7 @@ public class JuridiqueController {
     private final ObjectStorage storage;
     /** Fix DR4 — conversion Office → PDF pour l'aperçu des versions (.docx directeur). */
     private final OfficePreviewSupport officePreview;
+    private final EmployeDataroomGuard employeGuard;
 
     public JuridiqueController(DataroomJuridiqueService juridique,
                                 FicheClientService ficheClient,
@@ -72,7 +74,8 @@ public class JuridiqueController {
                                 ClientAccessLogger accessLogger,
                                 ClientDataroomPermissionGuard permissionGuard,
                                 ObjectStorage storage,
-                                OfficePreviewSupport officePreview) {
+                                OfficePreviewSupport officePreview,
+                                EmployeDataroomGuard employeGuard) {
         this.juridique = juridique;
         this.ficheClient = ficheClient;
         this.searchJuridique = searchJuridique;
@@ -81,6 +84,7 @@ public class JuridiqueController {
         this.permissionGuard = permissionGuard;
         this.storage = storage;
         this.officePreview = officePreview;
+        this.employeGuard = employeGuard;
     }
 
     // ============================================================
@@ -358,17 +362,25 @@ public class JuridiqueController {
         juridique.assertDocumentPourClient(documentId, user.userId());
     }
 
+    // Lot L1 (RG-DR-06, RG-DOS-01) : suppression reservee a l'employe responsable du
+    // dossier qui a recu du superviseur le droit de suppression ; tracee (@Auditable).
     @DeleteMapping("/documents/{documentId}")
-    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
-    public ResponseEntity<Void> deleteJuridique(@PathVariable UUID documentId) {
+    @PreAuthorize("hasRole('EMPLOYE') and !hasRole('SUPERVISEUR')")
+    public ResponseEntity<Void> deleteJuridique(@AuthenticationPrincipal AuthenticatedUser user,
+                                                @PathVariable UUID documentId) {
+        employeGuard.assertPeutSupprimerDocument(documentId, user);
         juridique.delete(documentId);
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/juridique/documents")
-    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
+    @PreAuthorize("hasRole('EMPLOYE') and !hasRole('SUPERVISEUR')")
     @Operation(summary = "Suppression bulk (transaction unique, rollback complet si erreur)")
-    public ResponseEntity<Void> deleteJuridiqueBulk(@Valid @RequestBody BulkDeleteRequest req) {
+    public ResponseEntity<Void> deleteJuridiqueBulk(@AuthenticationPrincipal AuthenticatedUser user,
+                                                    @Valid @RequestBody BulkDeleteRequest req) {
+        if (req.documentIds() != null) {
+            req.documentIds().forEach(id -> employeGuard.assertPeutSupprimerDocument(id, user));
+        }
         juridique.deleteBulk(req.documentIds());
         return ResponseEntity.noContent().build();
     }
