@@ -16,6 +16,7 @@ import { BlocageValidation } from '../../../components/workflow/BlocageValidatio
 import { IdentityExtractor } from '../../../components/identity/IdentityExtractor';
 import { toIsoDate } from '../../../types/identity';
 import { useStepAutosave } from '../useStepAutosave';
+import { InfoBulle } from '../../../components/ui/Aide';
 import { ajouterExtraits, retirerExtraits } from '../provenance';
 import {
   computeDistributedAmounts,
@@ -219,6 +220,16 @@ interface Associe {
   representeParMandataire?: boolean;
   mandataire?: string;
   procurationDate?: string;
+  /**
+   * Lot L4a (E1c) : l'apport en nature ou en industrie de CET associe. Avant, ni la
+   * description ni l'evaluation n'etaient saisies par associe : le rapport du commissaire
+   * aux apports et les statuts sortaient refuses.
+   */
+  apportNatureDescription?: string;
+  apportNatureMethode?: string;
+  apportNatureOriginePropriete?: string;
+  apportNatureCharges?: string;
+  apportIndustrieDescription?: string;
 }
 
 function newAssocie(): Associe {
@@ -746,6 +757,17 @@ export function Step6Associes({
         if (!importMode && !a.cinUploaded) {
           manques.push('CIN extraite — joindre le fichier ne suffit pas, cliquez « Extraire »');
         }
+      }
+      // Lot L4a (E1c) : apport en nature ou en industrie, decrit par l'associe qui le fait.
+      if (!importMode && a.apports.some((l) => l.type === 'NATURE' && Number(l.parts) > 0)) {
+        if (!a.apportNatureDescription?.trim()) manques.push('description de l’apport en nature');
+        if (!a.apportNatureMethode?.trim()) manques.push('méthode d’évaluation de l’apport en nature');
+        if (!a.apportNatureOriginePropriete?.trim()) manques.push('origine de propriété du bien apporté');
+        if (!a.apportNatureCharges?.trim()) manques.push('charges grevant le bien apporté');
+      }
+      if (!importMode && a.apports.some((l) => l.type === 'INDUSTRIE' && Number(l.parts) > 0)
+          && !a.apportIndustrieDescription?.trim()) {
+        manques.push('description de l’apport en industrie');
       }
       if (manques.length) out.push(`${qui} : ${manques.join(', ')}.`);
     });
@@ -1486,6 +1508,21 @@ export function Step6Associes({
                     >
                       <UserPlus className="h-3.5 w-3.5" /> Ajouter une ligne d'apport
                     </button>
+
+                    {a.apports.some((l) => l.type === 'NATURE' && Number(l.parts) > 0) && (
+                      <ApportNatureFields associe={a} onChange={(patch) => update(a.id, patch)} />
+                    )}
+                    {a.apports.some((l) => l.type === 'INDUSTRIE' && Number(l.parts) > 0) && (
+                      <label className="block text-xs font-medium text-fg">
+                        Description de l’apport en industrie *
+                        <textarea
+                          className="mt-1 w-full rounded-lg border border-border bg-bg-raised p-2 text-sm"
+                          rows={2}
+                          value={a.apportIndustrieDescription ?? ''}
+                          onChange={(e) => update(a.id, { apportIndustrieDescription: e.target.value })}
+                        />
+                      </label>
+                    )}
 
                     {/* Totaux derives (parts + montant + %) — synthese visible */}
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -2296,5 +2333,52 @@ function AssocUploadCard({
         className="hidden"
       />
     </label>
+  );
+}
+
+/**
+ * Lot L4a (E1c) : description et evaluation de l'apport en nature d'un associe, lues par
+ * les statuts et le rapport du commissaire aux apports (boucle des apports en nature).
+ */
+function ApportNatureFields({
+  associe,
+  onChange,
+}: {
+  associe: Associe;
+  onChange: (patch: Partial<Associe>) => void;
+}) {
+  const champ = 'mt-1 w-full rounded-lg border border-border bg-bg-raised p-2 text-sm';
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-bg-overlay p-3" data-testid="apport-nature">
+      <p className="flex items-center gap-1 text-xs font-semibold text-fg">
+        Apport en nature de cet associé
+        <InfoBulle
+          libelle="Pourquoi ces informations ?"
+          texte="Les statuts décrivent chaque apport en nature, et le commissaire aux apports en rend compte : bien apporté, méthode d’évaluation, origine de propriété et charges qui le grèvent. Sans elles, ces actes ne sont pas générés."
+        />
+      </p>
+      <label className="block text-xs font-medium text-fg">
+        Description du bien apporté *
+        <textarea className={champ} rows={2} value={associe.apportNatureDescription ?? ''}
+          onChange={(e) => onChange({ apportNatureDescription: e.target.value })} />
+      </label>
+      <div className="grid gap-2 md:grid-cols-2">
+        <label className="block text-xs font-medium text-fg">
+          Méthode d’évaluation *
+          <input className={champ} value={associe.apportNatureMethode ?? ''}
+            onChange={(e) => onChange({ apportNatureMethode: e.target.value })} />
+        </label>
+        <label className="block text-xs font-medium text-fg">
+          Origine de propriété *
+          <input className={champ} value={associe.apportNatureOriginePropriete ?? ''}
+            onChange={(e) => onChange({ apportNatureOriginePropriete: e.target.value })} />
+        </label>
+      </div>
+      <label className="block text-xs font-medium text-fg">
+        Charges grevant le bien (indiquez « aucune » s’il n’y en a pas) *
+        <input className={champ} value={associe.apportNatureCharges ?? ''}
+          onChange={(e) => onChange({ apportNatureCharges: e.target.value })} />
+      </label>
+    </div>
   );
 }

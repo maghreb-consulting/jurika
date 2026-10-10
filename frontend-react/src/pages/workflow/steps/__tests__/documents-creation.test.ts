@@ -43,8 +43,8 @@ describe('Le catalogue — ce que le parcours du 9 septembre déclare', () => {
     // part à la DGI sans régime fiscal déclaré. Résolvable n'est pas renseigné.
     const heritees = CHAMPS_CREATION.filter((c) => c.heritee);
 
-    // L4a (E1b) : 180 + 46 champs des variables sans source.
-    expect(CHAMPS_CREATION).toHaveLength(226);
+    // L4a (E1b) : 180 + 46 champs des variables sans source + PIECE_DESIGNATION (boucle).
+    expect(CHAMPS_CREATION).toHaveLength(227);
     expect(heritees).toHaveLength(20);
   });
 

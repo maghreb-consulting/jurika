@@ -103,8 +103,6 @@ class DocumentVerificationIT {
             "A_DECIDER cabinet : $ASSOCIE_UNIQUE (oui/non) imprime sous la signature de l'associe unique";
 
     static final Map<String, String> EN_ATTENTE = Map.ofEntries(
-            // Creation : apport en nature par associe, jamais saisi a l'ecran (etape 6).
-            Map.entry("RAPPORT_COMMISSAIRE_APPORTS", "L4a E1c : apport en nature saisi par associe"),
             // Ecart du CORPUS : la fiche n'imprime que $BAILLEUR_NOM, vide pour un bailleur societe.
             Map.entry("FICHE_RENSEIGNEMENTS_CREATION",
                     "A_DECIDER cabinet : $BAILLEUR_NOM seul imprime, vide quand le bailleur est une societe"),

@@ -277,6 +277,10 @@ public final class CreationDirecteurVarsBuilder {
             it.put("APPORT_NATURE_VALEUR_CHIFFRES", natVal == null ? "" : formatAmount(natVal));
             it.put("APPORT_NATURE_VALEUR_LETTRES", natVal == null ? "" : FrenchNumberToLetters.numberToLetters(natVal));
             it.put("APPORT_INDUSTRIE_DESCRIPTION", strOr(a.get("apportIndustrieDescription"), ""));
+            // Lot L4a (E1c) : evaluation de l'apport en nature (rapport du commissaire aux apports).
+            it.put("APPORT_NATURE_METHODE", strOr(a.get("apportNatureMethode"), ""));
+            it.put("APPORT_NATURE_ORIGINE_PROPRIETE", strOr(a.get("apportNatureOriginePropriete"), ""));
+            it.put("APPORT_NATURE_CHARGES", strOr(a.get("apportNatureCharges"), ""));
             out.add(it);
         }
         return out;

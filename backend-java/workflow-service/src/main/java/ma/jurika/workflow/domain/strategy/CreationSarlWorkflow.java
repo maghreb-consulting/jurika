@@ -229,7 +229,11 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
         }
         // 2026-08 (Phase 3) — mode de designation de la gerance (voie directeur).
         // Non bloquant si absent (defaut « statutaire ») ; libelles exacts sinon.
-        String modeDesig = normLabel(p.get("gerantModeDesignation"));
+        // Lot L4a (E1c) : l'ecran l'ecrit sous `gerance` ; le controle au premier niveau ne
+        // voyait jamais la valeur (controle silencieusement inoperant).
+        Object gerance = p.get("gerance");
+        String modeDesig = normLabel(gerance instanceof Map<?, ?> g && g.get("gerantModeDesignation") != null
+                ? g.get("gerantModeDesignation") : p.get("gerantModeDesignation"));
         if (!modeDesig.isEmpty()
                 && !java.util.Set.of("statutaire", "non statutaire").contains(modeDesig)) {
             return StepResult.blocked(

@@ -1,0 +1,347 @@
+{
+  "_commentaire": "Lot L4a (E1c) : saisie complete de la creation SARL, au format EXACT des ecrans (stepData step1..step9). Source du test de chaine ChaineEcranMagasinCreationTest.",
+  "step1": {
+    "denomination": "PARACOSME",
+    "sigle": "PCM",
+    "formeJuridique": "SARL",
+    "ice": "001234567000089",
+    "ifFiscal": "40221188",
+    "rcNumero": "445221",
+    "cnNumero": "CN2026/114532",
+    "cnDate": "2026-09-02",
+    "activiteCn": "Conseil en systèmes d'information",
+    "tribunal": "Casablanca",
+    "_extraits": []
+  },
+  "step2": {
+    "adresse": "101 boulevard Zerktouni, Casablanca",
+    "province": "Casablanca",
+    "commune": "Casablanca",
+    "codePostal": "20000",
+    "villeGreffe": "Casablanca",
+    "justificatifType": "BAIL",
+    "dateDebut": "2026-10-01",
+    "dateFin": "2029-09-30"
+  },
+  "step3": {
+    "capitalSocialMad": 100000,
+    "nombreParts": 1000,
+    "valeurNominale": 100,
+    "dureeAnnees": 99,
+    "apportNumeraire": 60000,
+    "apportNumeraireLibere": 60000,
+    "apportNature": 40000,
+    "apportIndustrie": 0,
+    "capitalLibere": 100000,
+    "hasNumeraire": true,
+    "hasNature": true,
+    "hasIndustrie": false,
+    "descriptionNature": "Matériel informatique",
+    "descriptionIndustrie": "",
+    "dateCommencement": "2026-11-01",
+    "depotBanqueNom": "Banque Populaire",
+    "depotNumero": "190 780 2111 2233 4455 6677 01",
+    "depot": {
+      "banque": "Banque Populaire",
+      "numero": "190 780 2111 2233 4455 6677 01"
+    },
+    "commissaireApportsNom": "Cabinet AUDIT CONSEIL",
+    "modeLiberation": "intégrale",
+    "depotFondsBloque": "oui",
+    "modeSignature": "séparée",
+    "signaturePlafond": 0
+  },
+  "step4": {
+    "description": "le conseil en systèmes d'information",
+    "activites": [
+      "le conseil en systèmes d'information"
+    ],
+    "activiteReglementee": false,
+    "categorieOna": "",
+    "secteur": "Services"
+  },
+  "step5": {
+    "dirigeants": [
+      {
+        "id": "d1",
+        "typePersonne": "PHYSIQUE",
+        "civilite": "M",
+        "nom": "BENANI",
+        "prenom": "Yassine",
+        "cinNumero": "BK188421",
+        "nationalite": "marocaine",
+        "dateNaissance": "1988-04-12",
+        "lieuNaissance": "Fès",
+        "pieceValidite": "2031-04-12",
+        "adresse": "14 rue Ibn Batouta, Casablanca",
+        "fonction": "Gérant",
+        "isStatutaire": true,
+        "isAssociate": true,
+        "dureeMandatType": "DETERMINEE",
+        "dureeAnnees": 3,
+        "_extraits": []
+      }
+    ],
+    "cacNomme": false,
+    "cacNom": "",
+    "gerance": {
+      "dureeMandat": "3 année(s)",
+      "dureeGerance": "3 année(s)",
+      "remunerationMode": "exercées à titre gratuit",
+      "remunerationModeKey": "GRATUIT",
+      "remunerationMontant": "",
+      "gerantModeDesignation": "statutaire",
+      "limitationPouvoirs": "Les actes de disposition excédant 100 000 dirhams requièrent l'accord des associés.",
+      "modeSignature": "séparée",
+      "signaturePlafond": "",
+      "signatureMandataire": "non",
+      "mandataireNom": "",
+      "mandataireActeDelegation": "",
+      "modeSignatureAdmin": "séparée"
+    },
+    "signataires": [
+      {
+        "id": "s1",
+        "nom": "Yassine BENANI",
+        "qualite": "Gérant"
+      }
+    ]
+  },
+  "step6": {
+    "formeJuridique": "SARL",
+    "totalParts": 1000,
+    "totalApport": 100000,
+    "associes": [
+      {
+        "id": "a1",
+        "fromDirigeantId": "d1",
+        "typePersonne": "PHYSIQUE",
+        "civilite": "M",
+        "nom": "BENANI",
+        "prenom": "Yassine",
+        "cin": "BK188421",
+        "adresse": "14 rue Ibn Batouta, Casablanca",
+        "nationalite": "marocaine",
+        "dateNaissance": "1988-04-12",
+        "lieuNaissance": "Fès",
+        "pieceValidite": "2031-04-12",
+        "genre": "masculin",
+        "estGerant": true,
+        "nombreParts": 600,
+        "montantApport": 60000,
+        "typeApport": "NUMERAIRE",
+        "apports": [
+          {
+            "id": "p1",
+            "type": "NUMERAIRE",
+            "parts": 600
+          }
+        ],
+        "_extraits": []
+      },
+      {
+        "id": "a2",
+        "typePersonne": "PHYSIQUE",
+        "civilite": "M",
+        "nom": "ALAMI",
+        "prenom": "Nour",
+        "cin": "BE774512",
+        "adresse": "14 rue Ibn Batouta, Casablanca",
+        "nationalite": "marocaine",
+        "dateNaissance": "1988-04-12",
+        "lieuNaissance": "Fès",
+        "pieceValidite": "2030-01-01",
+        "genre": "masculin",
+        "estGerant": false,
+        "nombreParts": 400,
+        "montantApport": 40000,
+        "typeApport": "NATURE",
+        "apports": [
+          {
+            "id": "p2",
+            "type": "NATURE",
+            "parts": 400
+          }
+        ],
+        "_extraits": [],
+        "apportNatureDescription": "Matériel informatique (dix postes de travail et un serveur)",
+        "apportNatureMethode": "valeur de marché, sur factures d'acquisition",
+        "apportNatureOriginePropriete": "acquis par l'apporteur le 3 janvier 2025",
+        "apportNatureCharges": "aucune"
+      }
+    ]
+  },
+  "step7": {
+    "complements": {
+      "tpCommune": "Casablanca-Anfa",
+      "effectifPrevisionnel": "4",
+      "declarantPieceType": "CIN",
+      "declarantPieceNumero": "BK188421",
+      "bailDateEffet": "2026-10-01",
+      "bailDuree": "3",
+      "bailLoyerChiffres": "8500",
+      "bailLoyerPeriodicite": "mensuelle",
+      "cnssDatePremierSalarie": "2026-11-02",
+      "simplContactNom": "Salma IDRISSI",
+      "pouvoirMandataireNom": "Salma IDRISSI",
+      "clientSignataireNom": "Yassine BENANI",
+      "bordereauObjet": "remise",
+      "bailleurDenomination": "IMMOBILIERE ANFA",
+      "bailleurForme": "SARL",
+      "bailleurCapital": "500 000",
+      "bailleurSiege": "12 rue de Fès, Casablanca",
+      "bailleurRcVille": "Casablanca",
+      "bailleurRcNumero": "198765",
+      "bailleurRepresentantNom": "M. Karim TAZI",
+      "bailleurRepresentantQualite": "gérant",
+      "bailDestination": "bureaux de conseil",
+      "bailLoyerModalites": "d'avance, le premier jour de chaque mois",
+      "bailTribunal": "Casablanca",
+      "bailFraisCharge": "du preneur",
+      "domiciliataireDenomination": "CENTRE AFFAIRES ANFA",
+      "domiciliataireForme": "SARL",
+      "domiciliataireCapital": "100 000",
+      "domiciliataireSiege": "20 boulevard Anfa, Casablanca",
+      "domiciliataireRcVille": "Casablanca",
+      "domiciliataireRcNumero": "301245",
+      "domiciliataireIce": "002345678000012",
+      "domiciliataireRepresentantNom": "Mme Leila FASSI",
+      "domiciliataireRepresentantQualite": "gérante",
+      "domiciliationAdresse": "20 boulevard Anfa, Casablanca",
+      "domiciliationDuree": "un an",
+      "domiciliationDateEffet": "2026-10-01",
+      "domiciliationRedevanceChiffres": "1500",
+      "domiciliationPeriodicite": "mensuellement",
+      "domiciliationModalitesPaiement": "d'avance",
+      "domiciliationTribunal": "Casablanca",
+      "domiciliationFraisCharge": "la société domiciliée",
+      "beCivilite": "M.",
+      "bePieceType": "CIN",
+      "bePieceNumero": "BK188421",
+      "bePieceDateDelivrance": "2020-03-15",
+      "bePourcentageVote": "60",
+      "beAdresse": "14 rue Ibn Batouta, Casablanca",
+      "rbeDeclarantNom": "M. Yassine BENANI",
+      "rbeDeclarantQualite": "gérant",
+      "rbeDeclarantPieceType": "CIN",
+      "rbeDeclarantPieceNumero": "BK188421",
+      "cndpResponsableNom": "M. Yassine BENANI",
+      "cndpResponsableQualite": "gérant",
+      "cndpContactDroits": "la gérance, au siège social",
+      "simplContactPieceType": "CIN",
+      "simplContactPieceNumero": "BE556677",
+      "simplContactQualite": "juriste du cabinet",
+      "banqueDepositaire": "Banque Populaire",
+      "banqueAgence": "Zerktouni",
+      "banqueAdresse": "90 boulevard Zerktouni, Casablanca",
+      "compteBancaireNumero": "190 780 2111 2233 4455 6677 01",
+      "dateSouscription": "2026-09-20",
+      "dateAttestationBlocage": "2026-09-21",
+      "actesEnFormationTotal": "4 500",
+      "cnProposition1": "PARACOSME",
+      "cnProposition2": "PARACOSME CONSEIL",
+      "cnProposition3": "PCM CONSULTING",
+      "dateDebutActivite": "2026-11-01",
+      "siegeTitrePropriete": "12345/C",
+      "pouvoirMandataireDenomination": "MAGHREB CONSULTING",
+      "pouvoirMandataireForme": "SARL",
+      "pouvoirMandataireSiege": "45 boulevard Anfa, Casablanca",
+      "pouvoirMandataireRcVille": "Casablanca",
+      "pouvoirMandataireRcNumero": "402211",
+      "pouvoirMandataireRepresentantNom": "Mme Salma IDRISSI",
+      "commissaireApportsDateDesignation": "2026-09-10",
+      "apportNatureOriginePropriete": "acquis par l'apporteur le 3 janvier 2025",
+      "apportNatureMethode": "valeur de marché",
+      "commissaireApportsDiligencesComplementaires": "examen des factures d'acquisition",
+      "commissaireApportsLieu": "Casablanca",
+      "commissaireApportsDateRapport": "2026-09-18",
+      "commissaireApportsQualite": "expert-comptable inscrit à l'Ordre",
+      "commissaireApportsAdresse": "7 rue Moulay Youssef, Casablanca",
+      "bailleurType": "personne morale",
+      "commissaireApportsModeDesignation": "unanimité",
+      "commissaireComptesAdresse": "3 rue Allal Ben Abdellah, Casablanca",
+      "lieuSignature": "Casablanca",
+      "dateSignature": "2026-10-01",
+      "nombreOriginaux": "six",
+      "heureActe": "10 heures",
+      "exerciceDebut": "1er janvier",
+      "exerciceFin": "31 décembre",
+      "commissaireComptesNom": "",
+      "regimeResultat": "Impôt sur les sociétés — régime du résultat net réel",
+      "activiteNature": "Prestation de services",
+      "tvaAssujettissement": "Assujetti à titre obligatoire",
+      "tvaFaitGenerateur": "Régime de l'encaissement",
+      "tvaPeriodicite": "Déclaration mensuelle",
+      "tpObjet": "Personne morale",
+      "directionRegionale": "Direction régionale de Casablanca",
+      "subdivision": "Subdivision Anfa"
+    },
+    "boucles": {
+      "beneficiairesEffectifs": [
+        {
+          "beNom": "BENANI",
+          "bePrenom": "Yassine",
+          "beCivilite": "M.",
+          "beGenre": "Masculin",
+          "beNationalite": "marocaine",
+          "beModeDetention": "Directe",
+          "beAdresse": "14 rue Ibn Batouta, Casablanca",
+          "bePieceType": "CIN",
+          "bePieceNumero": "BK188421",
+          "bePieceDateDelivrance": "2020-03-15",
+          "bePourcentageVote": "60",
+          "beDateNaissance": "12/04/1988",
+          "beLieuNaissance": "Fès",
+          "beCritere": "Détention directe de plus de 25 % du capital",
+          "bePaysResidence": "Maroc",
+          "beDateAcquisition": "2026-10-01",
+          "beFonction": "gérant"
+        }
+      ],
+      "traitementsDonnees": [
+        {
+          "traitementDenomination": "Fichier clients",
+          "traitementFinalite": "gestion de la relation commerciale"
+        }
+      ],
+      "piecesRemises": [
+        {
+          "pieceDesignation": "Statuts enregistrés",
+          "pieceForme": "original",
+          "pieceNombre": "3"
+        }
+      ],
+      "actesEnFormation": [
+        {
+          "acteFormationAuteur": "M. Yassine BENANI",
+          "acteFormationCocontractant": "IMMOBILIERE ANFA",
+          "acteFormationDate": "2026-09-15",
+          "acteFormationEcheance": "2026-10-15",
+          "acteFormationMontant": "4500",
+          "acteFormationNature": "Réservation de locaux",
+          "acteFormationObjet": "dépôt de garantie du bail"
+        }
+      ]
+    },
+    "lignesRetenues": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ]
+  },
+  "step9": {
+    "acteParams": {
+      "premierExerciceCloture": "31 décembre 2026",
+      "engagementsMandat": "",
+      "articleDesignationStatuts": "36"
+    }
+  }
+}
