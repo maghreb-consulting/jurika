@@ -33,8 +33,6 @@ public final class CreationDirecteurVarsBuilder {
     private static final DateTimeFormatter DATE_FR =
             DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.FRANCE);
 
-    /** Marqueur neutre pour les données connues seulement après immatriculation. */
-    private static final String POST_IMMAT = "[à compléter après immatriculation]";
 
     private CreationDirecteurVarsBuilder() {}
 
@@ -159,10 +157,10 @@ public final class CreationDirecteurVarsBuilder {
         LocalDate dateActe = toDate(societe.get("dateActe"));
         put(v, "DATE_ACTE", dateActe != null ? dateActe.format(DATE_FR)
                 : first(str(societe.get("dateActe")), dateConstit != null ? dateConstit.format(DATE_FR) : ""));
-        put(v, "RC_NUMERO", first(str(societe.get("rcNumero")), POST_IMMAT));
+        put(v, "RC_NUMERO", str(societe.get("rcNumero")));
         LocalDate dateDepot = toDate(societe.get("dateDepotLegal"));
         put(v, "DATE_DEPOT_LEGAL", dateDepot != null ? dateDepot.format(DATE_FR)
-                : first(str(societe.get("dateDepotLegal")), POST_IMMAT));
+                : str(societe.get("dateDepotLegal")));
 
         // ---- Boucles ----
         List<Map<String, Object>> associesLoop = buildAssociesLoop(associes, gerants, isAnnonce(templateCode));
@@ -266,7 +264,9 @@ public final class CreationDirecteurVarsBuilder {
             it.put("APPORT_NUMERAIRE_CHIFFRES", num == null ? "" : formatAmount(num));
             it.put("APPORT_NUMERAIRE_LETTRES", num == null ? "" : FrenchNumberToLetters.numberToLetters(num));
             it.put("APPORT_NATURE_DESCRIPTION", strOr(a.get("apportNatureDescription"), ""));
-            Long natVal = toLong(first0(a.get("apportNatureValeur"), a.get("apportNatureValeurChiffres")));
+            // Lot L3 : la charge utile du serveur (ConstructeurChargeUtileCreation) porte la
+            // valeur sous `apportNature` ; ce nom n'etait pas lu : blanc silencieux aux statuts.
+            Long natVal = toLong(first0(a.get("apportNatureValeur"), a.get("apportNatureValeurChiffres"), a.get("apportNature")));
             it.put("APPORT_NATURE_VALEUR_CHIFFRES", natVal == null ? "" : formatAmount(natVal));
             it.put("APPORT_NATURE_VALEUR_LETTRES", natVal == null ? "" : FrenchNumberToLetters.numberToLetters(natVal));
             it.put("APPORT_INDUSTRIE_DESCRIPTION", strOr(a.get("apportIndustrieDescription"), ""));
@@ -355,7 +355,7 @@ public final class CreationDirecteurVarsBuilder {
         if (s.startsWith("indus")) return "industrie";
         if (s.startsWith("numer") || s.startsWith("numér")) return "numéraire";
         // Dérivation par présence de champs.
-        if (toLong(first0(a.get("apportNatureValeur"), a.get("apportNatureValeurChiffres"))) != null
+        if (toLong(first0(a.get("apportNatureValeur"), a.get("apportNatureValeurChiffres"), a.get("apportNature"))) != null
                 || strOr(a.get("apportNatureDescription"), "").length() > 0) return "nature";
         if (strOr(a.get("apportIndustrieDescription"), "").length() > 0) return "industrie";
         return "numéraire";

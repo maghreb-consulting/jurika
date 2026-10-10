@@ -87,6 +87,17 @@ public final class RefonteStatutsVarsBuilder {
         putFirst(societe, "valeurPart", fiche.get("valeurNominale"), societeIn.get("valeurPart"));
         putFirst(societe, "nombreParts", fiche.get("nombreParts"), societeIn.get("nombreParts"));
         putFirst(societe, "dureeAnnees", fiche.get("dureeAnnees"), societeIn.get("dureeAnnees"));
+        // Lot L3 : « Fait a ..., le ... » des statuts refondus. Ces deux variables n'etaient
+        // fournies par personne : le blanc s'imprimait en silence. Les statuts mis a jour
+        // portent la date de l'assemblee qui les adopte et le lieu de signature du PV ;
+        // absents, ils sont nommes (regle des variables), jamais devines.
+        Map<String, Object> seance = asMap(payload.get("seance"));
+        Map<String, Object> assemblee = asMap(payload.get("assemblee"));
+        Map<String, Object> convocation = asMap(payload.get("convocation"));
+        putFirst(societe, "dateSignature", seance == null ? null : seance.get("date"),
+                assemblee == null ? null : assemblee.get("dateAge"));
+        putFirst(societe, "lieuSignature", convocation == null ? null : convocation.get("lieuSignature"),
+                payload.get("lieuSignature"));
 
         List<Map<String, Object>> gerants =
                 new ArrayList<>(asListOfMaps(firstNonNull(fiche.get("gerants"), fiche.get("dirigeants"))));
@@ -356,6 +367,8 @@ public final class RefonteStatutsVarsBuilder {
         if (!hasIdentity(na)) return;
         Map<String, Object> a = new HashMap<>();
         a.put("typePersonne", "PHYSIQUE");
+        // Lot L3 : la civilite de l'associe entrant etait perdue (blanc silencieux).
+        putStr(a, "civilite", na.get("civilite"));
         putStr(a, "prenom", na.get("prenom"));
         putStr(a, "nom", na.get("nom"));
         putStr(a, "cinNumero", firstNonNull(na.get("cin"), na.get("cinNumero")));

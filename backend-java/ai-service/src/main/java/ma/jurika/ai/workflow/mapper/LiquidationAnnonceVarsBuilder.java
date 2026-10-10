@@ -45,12 +45,6 @@ import java.util.Map;
  */
 public final class LiquidationAnnonceVarsBuilder {
 
-    /**
-     * Marqueur neutre des données attribuées par le greffe APRÈS le dépôt.
-     * Même valeur que {@code CreationDirecteurVarsBuilder.POST_IMMAT} : un avis
-     * dit ce qui reste à compléter plutôt que de laisser un blanc dans la phrase.
-     */
-    private static final String POST_IMMAT = "[à compléter après immatriculation]";
 
     static final String TPL_SARL = "ANNONCE_LEGALE_LIQUIDATION_SARL";
     static final String TPL_SARL_AU = "ANNONCE_LEGALE_LIQUIDATION_SARL_AU";
@@ -105,14 +99,15 @@ public final class LiquidationAnnonceVarsBuilder {
         // qu'APRÈS le dépôt : au moment de rédiger l'avis, elles sont normalement
         // inconnues. On les rendait vides, d'où « … le  sous le numéro  RC N° 123456 »
         // — une phrase trouée que rien ne signalait. On reprend le marqueur déjà
-        // employé par la CRÉATION (CreationDirecteurVarsBuilder.POST_IMMAT) : l'avis
-        // dit explicitement ce qui reste à compléter au lieu de laisser un blanc.
+        // Lot L3 : plus de bouche-trou « [a completer apres immatriculation] ». Date et
+        // numero du depot legal sont des donnees EXTERNES (greffe) : absentes, l'acte
+        // porte le marqueur « A OBTENIR » et la donnee est reclamee (regle des variables).
         String dateDepotLegal = dateStr(first0(depot.get("date"), safe.get("dateDepotLegal")));
         String numeroDepotLegal = str(first0(depot.get("numero"), safe.get("depotLegalNumero")));
         put(v, "DATE_DEPOT_LEGAL",
-                dateDepotLegal == null || dateDepotLegal.isBlank() ? POST_IMMAT : dateDepotLegal);
+                dateDepotLegal);
         put(v, "DEPOT_LEGAL_NUMERO",
-                numeroDepotLegal == null || numeroDepotLegal.isBlank() ? POST_IMMAT : numeroDepotLegal);
+                numeroDepotLegal);
 
         return v;
     }

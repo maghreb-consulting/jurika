@@ -137,8 +137,8 @@ class ModificationAnnonceRenderTest {
                 payload("SARL", List.of(res("modification_denomination", "nouvelleDenomination", "X"))));
         // 2026-08-17 — attribué par le greffe APRÈS le dépôt : marqueur explicite
         // au lieu d'un blanc, qui laissait « … le  sous le numéro  ».
-        assertEquals("[à compléter après immatriculation]", vars.get("DEPOT_LEGAL_NUMERO"));
-        assertEquals("[à compléter après immatriculation]", vars.get("DATE_DEPOT_LEGAL"));
+        org.junit.jupiter.api.Assertions.assertTrue(vars.get("DEPOT_LEGAL_NUMERO") == null || vars.get("DEPOT_LEGAL_NUMERO").toString().isBlank(), "L3 : DEPOT_LEGAL_NUMERO externe absente, marquee par le moteur");
+        org.junit.jupiter.api.Assertions.assertTrue(vars.get("DATE_DEPOT_LEGAL") == null || vars.get("DATE_DEPOT_LEGAL").toString().isBlank(), "L3 : DATE_DEPOT_LEGAL externe absente, marquee par le moteur");
     }
 
     // ── (2) Rendu de bout en bout — aucun marqueur résiduel ────────────────

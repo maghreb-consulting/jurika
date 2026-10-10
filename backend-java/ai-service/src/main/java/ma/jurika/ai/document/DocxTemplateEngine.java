@@ -163,6 +163,13 @@ public class DocxTemplateEngine {
     private final java.util.Set<String> codesServisHorsCorpus =
             java.util.concurrent.ConcurrentHashMap.newKeySet();
 
+    /**
+     * Lot L3 : classement interne / externe des variables (regle des variables). Liste
+     * versionnee du classpath ; son controle contre le dictionnaire du corpus est fait
+     * au demarrage (CorpusConfiguration#classementVariables).
+     */
+    private final ClassementVariables classement = ClassementVariables.charger();
+
     /** Constructeur Spring : manifest L3, defaultsApplier et corpus (lot L2). */
     @Autowired
     public DocxTemplateEngine(
@@ -412,13 +419,12 @@ public class DocxTemplateEngine {
             // "fill later" (post-immatriculation) au marker -> rendu "[a completer]"
             // rouge au lieu du "VALEUR MANQUANTE" generique. Les autres variables
             // manquantes restent en rouge "VALEUR MANQUANTE" (vrai bug / oubli).
-            java.util.Set<String> fillLaterKeys = java.util.Collections.emptySet();
-            if (manifestLoader != null && manifestLoader.dictionary() != null
-                    && manifestLoader.dictionary().fillLater() != null) {
-                fillLaterKeys = new java.util.HashSet<>(manifestLoader.dictionary().fillLater());
-            }
+            // Lot L3 : la liste fill_later est remplacee par le classement des variables :
+            // une externe manquante est marquee « A OBTENIR » (jamais bloquante), une
+            // interne manquante est bloquante (sauf case d'imprime administratif).
+            ma.jurika.ai.document.corpus.DictionnaireUnique dico = corpus == null ? null : corpus.dictionnaire();
             List<MissingVariableMarker.Manquante> detail =
-                    MissingVariableMarker.applyDetailed(doc, fillLaterKeys, imprimeAdministratif);
+                    MissingVariableMarker.applyDetailed(doc, n -> classement.estExterne(n, dico), imprimeAdministratif);
             // Lot 5 — une case a cocher restee vide est une variable non renseignee,
             // meme si son nom ne figure nulle part dans le texte rendu (le marqueur ◈
             // a ete consomme). Elle n'est jamais bloquante : c'est une case.
@@ -2142,6 +2148,19 @@ public class DocxTemplateEngine {
 
     private String resolveUpper(String name, Map<String, String> variables,
                                  Map<String, String> scopedVars, String literal) {
+        String trouvee = trouverUpper(name, variables, scopedVars);
+        // Lot L3 (motif 9) : une valeur VIDE est une donnee manquante. Elle s'imprimait
+        // en silence (« registre du commerce de , numero ») : elle est desormais marquee
+        // et classee comme une variable absente.
+        if (trouvee != null && !trouvee.isBlank()) return trouvee;
+        String upper = normalizeUpperKey(name);
+        if (log.isTraceEnabled()) {
+            log.trace("Placeholder UPPERCASE non resolu ou vide, sentinel injecte : {}", literal);
+        }
+        return MissingVariableMarker.sentinel(upper.isEmpty() ? name : upper);
+    }
+
+    private String trouverUpper(String name, Map<String, String> variables, Map<String, String> scopedVars) {
         // 1. Resolution directe (placeholder deja en snake-case strict, ex. ${ASSOCIE_NOM}).
         if (scopedVars.containsKey(name)) return scopedVars.get(name);
         if (variables.containsKey(name)) return variables.get(name);
@@ -2159,16 +2178,12 @@ public class DocxTemplateEngine {
         if (variables.containsKey(norm)) return variables.get(norm);
         String normUpper = normalize(upper);
         if (variables.containsKey(normUpper)) return variables.get(normUpper);
-        // 2026-06-19 (PARTIE A) — Variable non fournie : on insere un sentinel
+        // 2026-06-19 (PARTIE A) — Variable non fournie : l'appelant insere un sentinel
         // {@link MissingVariableMarker#SENTINEL_OPEN}NOM_NORMALISE
-        // {@link MissingVariableMarker#SENTINEL_CLOSE} qui sera converti en run
-        // gras+rouge "‹ VALEUR MANQUANTE : NOM ›" par la passe universelle
-        // {@link MissingVariableMarker#apply(XWPFDocument)}. Le nom utilise est
+        // {@link MissingVariableMarker#SENTINEL_CLOSE}, converti en run gras+rouge
+        // par la passe universelle {@link MissingVariableMarker}. Le nom utilise est
         // la forme normalisee (UPPERCASE_SNAKE) pour rester lisible cote employe.
-        if (log.isTraceEnabled()) {
-            log.trace("Placeholder UPPERCASE non resolu, sentinel injecte : {}", literal);
-        }
-        return MissingVariableMarker.sentinel(upper.isEmpty() ? name : upper);
+        return null;
     }
 
     /**
@@ -2189,14 +2204,17 @@ public class DocxTemplateEngine {
 
     private String resolveLower(String key, Map<String, String> variables,
                                  Map<String, String> scopedVars, String literal) {
-        // scoped d'abord (rare pour legacy mais coherent).
-        if (scopedVars.containsKey(key)) return scopedVars.get(key);
-        if (variables.containsKey(key)) return variables.get(key);
+        // scoped d'abord (rare pour legacy mais coherent). Lot L3 : une valeur vide est
+        // une donnee manquante, comme dans resolveUpper.
+        String trouvee = null;
         String lc = key.toLowerCase(Locale.ROOT);
-        if (scopedVars.containsKey(lc)) return scopedVars.get(lc);
-        if (variables.containsKey(lc)) return variables.get(lc);
         String norm = normalize(key);
-        if (variables.containsKey(norm)) return variables.get(norm);
+        if (scopedVars.containsKey(key)) trouvee = scopedVars.get(key);
+        else if (variables.containsKey(key)) trouvee = variables.get(key);
+        else if (scopedVars.containsKey(lc)) trouvee = scopedVars.get(lc);
+        else if (variables.containsKey(lc)) trouvee = variables.get(lc);
+        else if (variables.containsKey(norm)) trouvee = variables.get(norm);
+        if (trouvee != null && !trouvee.isBlank()) return trouvee;
         // 2026-06-19 (PARTIE A) — Coherence avec resolveUpper : sentinel pour
         // materialiser la variable absente, normalisee en UPPERCASE_SNAKE pour
         // la lisibilite cote employe.

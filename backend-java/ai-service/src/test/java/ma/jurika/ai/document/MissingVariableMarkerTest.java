@@ -178,4 +178,55 @@ class MissingVariableMarkerTest {
             assertEquals(List.of(), second);
         }
     }
+
+    // ---------------------------------------------------------------------
+    // Lot L3 : regle des variables (interne bloquante, externe marquee)
+    // ---------------------------------------------------------------------
+
+    private MissingVariableMarker.Manquante detail(DocxTemplateEngine.DocumentResult r, String nom) {
+        return r.manquantes().stream().filter(m -> m.nom().equals(nom)).findFirst().orElseThrow();
+    }
+
+    @Test
+    void l3_externe_manquante_marquee_a_obtenir_et_jamais_bloquante() throws Exception {
+        byte[] docx = buildDocxWithParagraph("Immatriculee au registre du commerce sous le numero $RC_NUMERO, a Rabat.");
+        var r = engine.render(docx, "test.docx", Map.of());
+        String text = fullText(r.bytes());
+        assertTrue(text.contains("\u2039 \u00c0 OBTENIR : RC_NUMERO \u203a"), text);
+        assertFalse(detail(r, "RC_NUMERO").bloquante());
+        assertTrue(detail(r, "RC_NUMERO").externe());
+        assertTrue(r.manquantesBloquantes().isEmpty());
+    }
+
+    @Test
+    void l3_interne_manquante_bloquante_meme_seule_apres_un_libelle() throws Exception {
+        // Avant L3, « Ville : $X » seul sur sa ligne passait pour une case : le blanc sortait.
+        byte[] docx = buildDocxWithParagraphs("Lieu de signature : $LIEU_SIGNATURE",
+                "Fait le $DATE_SIGNATURE en six exemplaires.");
+        var r = engine.render(docx, "PV_TEST.docx", Map.of());
+        assertTrue(detail(r, "LIEU_SIGNATURE").bloquante());
+        assertTrue(detail(r, "DATE_SIGNATURE").bloquante());
+        assertFalse(detail(r, "LIEU_SIGNATURE").externe());
+    }
+
+    @Test
+    void l3_case_d_imprime_administratif_reste_blanche_externe_comprise() throws Exception {
+        byte[] docx = buildDocxWithParagraphs("Telephone : $TELEPHONE", "ICE : $ICE");
+        var r = engine.render(docx, "DEMANDE_TAXE_PROFESSIONNELLE.docx", Map.of());
+        String text = fullText(r.bytes());
+        assertFalse(text.contains("MANQUANTE"), text);
+        assertFalse(text.contains("OBTENIR"), text);
+        assertFalse(detail(r, "TELEPHONE").bloquante());
+        assertTrue(detail(r, "ICE").externe(), "la donnee externe reste remontee, donc reclamee");
+    }
+
+    @Test
+    void l3_valeur_vide_est_une_donnee_manquante() throws Exception {
+        // Avant L3 : « registre du commerce de , numero » -- le vide s'imprimait en silence.
+        byte[] docx = buildDocxWithParagraph("Siege a $SIEGE_VILLE, objet : $OBJET.");
+        var r = engine.render(docx, "test.docx", Map.of("SIEGE_VILLE", "  ", "OBJET", "conseil"));
+        String text = fullText(r.bytes());
+        assertTrue(text.contains("VALEUR MANQUANTE : SIEGE_VILLE"), text);
+        assertTrue(detail(r, "SIEGE_VILLE").bloquante());
+    }
 }

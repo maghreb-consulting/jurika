@@ -61,11 +61,21 @@ class StatutsRefondusTest {
 
     private static Map<String, Object> payload(Map<String, Object> fiche,
                                                List<Map<String, Object>> modifications) {
+        // Lot L3 : fiche complete (une donnee interne absente bloque la generation) :
+        // nombre de parts et apport en numeraire de l'associe, en plus de l'etat civil.
+        Map<String, Object> complete = FichesCompletes.completer(fiche);
+        complete.putIfAbsent("nombreParts", 1000L);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> associes = (List<Map<String, Object>>) complete.get("associes");
+        associes.forEach(a -> a.putIfAbsent("apportNumeraire", 100_000L));
         return Map.of(
-                "ficheStructuree", fiche,
+                "ficheStructuree", complete,
                 "societe", Map.of("denomination", fiche.get("denomination"),
                         "formeJuridique", fiche.get("formeJuridique")),
-                "modifications", modifications);
+                "modifications", modifications,
+                // Lot L3 : date de l'assemblee et lieu de signature (« Fait a ..., le ... »).
+                "seance", Map.of("date", "2026-06-15"),
+                "convocation", Map.of("lieuSignature", "Casablanca"));
     }
 
     private static String text(byte[] bytes) throws IOException {

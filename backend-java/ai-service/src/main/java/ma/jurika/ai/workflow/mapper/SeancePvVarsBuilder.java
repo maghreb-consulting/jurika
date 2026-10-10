@@ -153,7 +153,11 @@ public final class SeancePvVarsBuilder {
                         a.get("representantLegal")), ""));
                 String presence = normPresence(a.get("presence"));
                 it.put("ASSOCIE_PRESENCE", presence);
-                it.put("ASSOCIE_MANDATAIRE_NOM", strOr(a.get("mandataireNom"), ""));
+                // Lot L3 : la colonne « mandataire » ne se lit que pour un associe represente.
+                // Present ou absent, il n'y a pas de mandataire : « — » le dit (donnee derivee
+                // de la presence) au lieu d'un blanc, desormais traite comme une donnee manquante.
+                it.put("ASSOCIE_MANDATAIRE_NOM", "repr\u00e9sent\u00e9".equals(presence)
+                        ? strOr(a.get("mandataireNom"), "") : "\u2014");
                 Long parts = toLong(first0(a.get("nombreParts"), a.get("partsChiffres")));
                 it.put("ASSOCIE_NOMBRE_PARTS", parts == null ? "" : String.valueOf(parts));
                 // 1 part = 1 voix (art. 5-96) sauf override explicite.

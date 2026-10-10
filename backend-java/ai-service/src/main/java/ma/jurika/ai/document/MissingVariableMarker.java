@@ -10,10 +10,7 @@ import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -58,12 +55,11 @@ public final class MissingVariableMarker {
     private static final String MISSING_SUFFIX = " ›";
 
     /**
-     * Sprint Cowork 2026-06-21 (C3) — Libelle affiche pour les variables connues
-     * POST-immatriculation (declarees dans {@code dictionary.json#fill_later}).
-     * Volontairement court et neutre, mais TOUJOURS en ROUGE pour signaler que
-     * l'employe doit revenir remplir la valeur reelle apres immatriculation.
+     * Lot L3 (regle des variables) : libelle d'une variable EXTERNE manquante -- une
+     * donnee attendue d'un organisme (RC, ICE, IF...). L'acte sort avec ce marqueur
+     * visible, la plateforme reclame la donnee, et l'acte se regenere quand elle arrive.
      */
-    private static final String FILL_LATER_LABEL = "[à compléter]";
+    private static final String EXTERNE_PREFIX = "\u2039 \u00c0 OBTENIR : ";
 
     /** Rouge sombre lisible sur fond blanc (Word color code). */
     private static final String MISSING_COLOR = "C00000";
@@ -78,38 +74,13 @@ public final class MissingVariableMarker {
     }
 
     /**
-     * Applique la passe sur le document. Doit etre appelee APRES la substitution
-     * scalaire de {@link DocxTemplateEngine}.
-     *
-     * <p>Compat : appelle {@link #apply(XWPFDocument, Set)} avec un set fillLater
-     * vide -> toutes les variables manquantes ressortent en "‹ VALEUR MANQUANTE ›".
+     * Applique la passe sur le document (toutes les variables traitees comme internes).
+     * Doit etre appelee APRES la substitution scalaire de {@link DocxTemplateEngine}.
      *
      * @return liste ordonnee et dedupliquee des noms de variables manquantes.
      */
     public static List<String> apply(XWPFDocument doc) {
-        return apply(doc, Collections.emptySet());
-    }
-
-    /**
-     * Sprint Cowork 2026-06-21 (C3) — Variante avec set des variables
-     * "fill later" (post-immatriculation). Pour chaque sentinel rencontre :
-     * <ul>
-     *   <li>Si la variable est dans {@code fillLaterKeys} -> rendu rouge
-     *       {@value #FILL_LATER_LABEL} (libelle court neutre).</li>
-     *   <li>Sinon -> rendu rouge
-     *       {@code "‹ VALEUR MANQUANTE : NOM ›"} (signal de bug / champ
-     *       oublie a saisir).</li>
-     * </ul>
-     *
-     * @param doc document a annoter.
-     * @param fillLaterKeys ensemble (UPPERCASE_SNAKE) des variables
-     *        post-immatriculation. Comparison casse-insensible (uppercase
-     *        applique avant lookup).
-     * @return liste ordonnee et dedupliquee des noms de variables manquantes
-     *         (toutes, fillLater incluses).
-     */
-    public static List<String> apply(XWPFDocument doc, Set<String> fillLaterKeys) {
-        List<Manquante> detail = applyDetailed(doc, fillLaterKeys);
+        List<Manquante> detail = applyDetailed(doc, n -> false, false);
         List<String> noms = new ArrayList<>(detail.size());
         for (Manquante m : detail) noms.add(m.nom());
         return noms;
@@ -127,7 +98,13 @@ public final class MissingVariableMarker {
      *                  variable est seule sur sa ligne apres un libelle, cas d'une
      *                  case de formulaire administratif, qu'un blanc laisse recevable
      */
-    public record Manquante(String nom, String endroit, boolean bloquante) {}
+    public record Manquante(String nom, String endroit, boolean bloquante, boolean externe) {
+
+        /** Variable interne (lot L3 : seule une variable externe peut manquer sans bloquer). */
+        public Manquante(String nom, String endroit, boolean bloquante) {
+            this(nom, endroit, bloquante, false);
+        }
+    }
 
     /**
      * Lot 5 (2026-09-07) — variante detaillee : meme passe de rendu, mais elle dit
@@ -149,9 +126,6 @@ public final class MissingVariableMarker {
      * <p>Une variable {@code fill_later} n'est JAMAIS bloquante : sa valeur n'existe
      * pas encore a la generation, par construction.
      */
-    public static List<Manquante> applyDetailed(XWPFDocument doc, Set<String> fillLaterKeys) {
-        return applyDetailed(doc, fillLaterKeys, false);
-    }
 
     /**
      * Lot 5 (2026-09-07) — VARIANTE POUR LES IMPRIMES ADMINISTRATIFS.
@@ -168,20 +142,17 @@ public final class MissingVariableMarker {
      * imprime rempli a la main qu'on laisse en blanc. Elle reste remontee dans le
      * resultat, donc ni perdue ni masquee.
      *
-     * <p>Deux exceptions gardent leur marque, a dessein :
-     * <ul>
-     *   <li>une variable {@code fill_later} rend « [a completer] » — l'employe doit
-     *       revenir la remplir apres immatriculation, l'imprime le lui rappelle ;</li>
-     *   <li>une variable classee PHRASE garde le rouge : son vide se lit dans le
-     *       texte. Sur le workflow CREATION la generation est de toute facon
-     *       refusee ; ailleurs, le marqueur reste le seul signal.</li>
-     * </ul>
+     * <p>Lot L3 (regle des variables) : {@code estExterne} classe chaque variable.
+     * Une variable externe manquante n'est jamais bloquante et porte le marqueur
+     * « ‹ À OBTENIR : NOM › » ; une variable interne manquante est bloquante, sauf une
+     * case d'imprime administratif. La liste {@code fill_later} et son libelle
+     * « [a completer] » sont retires : ils laissaient passer des donnees internes.
      */
-    public static List<Manquante> applyDetailed(XWPFDocument doc, Set<String> fillLaterKeys,
+    public static List<Manquante> applyDetailed(XWPFDocument doc, java.util.function.Predicate<String> estExterne,
                                                  boolean casesEnBlanc) {
         CASES_EN_BLANC.set(casesEnBlanc);
         try {
-            return applyDetailedInterne(doc, fillLaterKeys);
+            return applyDetailedInterne(doc, estExterne);
         } finally {
             CASES_EN_BLANC.remove();
         }
@@ -194,15 +165,8 @@ public final class MissingVariableMarker {
      */
     private static final ThreadLocal<Boolean> CASES_EN_BLANC = ThreadLocal.withInitial(() -> false);
 
-    private static List<Manquante> applyDetailedInterne(XWPFDocument doc, Set<String> fillLaterKeys) {
-        Set<String> normalized = new LinkedHashSet<>();
-        if (fillLaterKeys != null) {
-            for (String k : fillLaterKeys) {
-                if (k != null && !k.isBlank()) {
-                    normalized.add(k.toUpperCase(java.util.Locale.ROOT));
-                }
-            }
-        }
+    private static List<Manquante> applyDetailedInterne(XWPFDocument doc,
+                                                        java.util.function.Predicate<String> normalized) {
         java.util.Map<String, Manquante> missing = new java.util.LinkedHashMap<>();
         for (XWPFParagraph p : new ArrayList<>(doc.getParagraphs())) {
             renderMissingMarkers(p, missing, normalized);
@@ -234,13 +198,13 @@ public final class MissingVariableMarker {
      * segments rouges+gras a la place. Preserve la police et la taille des autres
      * segments en clonant depuis le 1er run.
      *
-     * <p>Sprint Cowork 2026-06-21 (C3) — Si la variable manquante est dans
-     * {@code fillLaterUpper}, le libelle affiche est {@value #FILL_LATER_LABEL}
-     * (rouge, court) au lieu de "‹ VALEUR MANQUANTE : NOM ›".
+     * <p>Lot L3 : une variable EXTERNE manquante s'affiche « ‹ À OBTENIR : NOM › » (rouge),
+     * une variable interne « ‹ VALEUR MANQUANTE : NOM › » ; une case d'imprime
+     * administratif reste blanche.
      */
     private static void renderMissingMarkers(XWPFParagraph p,
                                               java.util.Map<String, Manquante> missing,
-                                              Set<String> fillLaterUpper) {
+                                              java.util.function.Predicate<String> estExterne) {
         List<XWPFRun> runs = p.getRuns();
         if (runs.isEmpty()) {
             // Lot 5 — un paragraphe CLONE par l'expansion de boucle porte un CTP
@@ -275,23 +239,28 @@ public final class MissingVariableMarker {
         while (m.find()) {
             String prefix = full.substring(cursor, m.start());
             String varName = m.group(1);
-            boolean bloquante = !fillLaterUpper.contains(varName.toUpperCase(java.util.Locale.ROOT))
-                    && dansUnePhrase(full, m.start(), m.end());
+            // Lot L3, regle des variables :
+            //  - EXTERNE (donnee d'un organisme) : jamais bloquante ; marqueur visible
+            //    « A OBTENIR », la donnee est reclamee et l'acte se regenerera ;
+            //  - INTERNE : bloquante, et nommee a l'employe. Seule exception, une CASE
+            //    d'un imprime administratif, qui peut rester vide (RG-VAR-10, RG-GEN-03).
+            boolean externe = estExterne != null && estExterne.test(varName);
+            boolean caseAdministrative = CASES_EN_BLANC.get() && !dansUnePhrase(full, m.start(), m.end());
+            boolean bloquante = !externe && !caseAdministrative;
             Manquante deja = missing.get(varName);
             if (deja == null || (bloquante && !deja.bloquante())) {
-                missing.put(varName, new Manquante(varName, endroit, bloquante));
+                missing.put(varName, new Manquante(varName, endroit, bloquante, externe));
             }
             if (!prefix.isEmpty()) {
                 addRun(p, prefix, baseFamily, baseSize, baseBold, baseItalic, null);
             }
-            boolean fillLater = fillLaterUpper.contains(varName.toUpperCase(java.util.Locale.ROOT));
-            // Imprime administratif : une CASE laissee blanche sort blanche. Crier
-            // « VALEUR MANQUANTE » en rouge sur un formulaire remis a la DGI
-            // contredirait la regle qui l'a laisse passer.
-            boolean enBlanc = CASES_EN_BLANC.get() && !fillLater && !bloquante;
+            // Imprime administratif : une CASE laissee blanche sort blanche, externe
+            // comprise (RG-GEN-03 : « sans aucune marque d'erreur ») ; la donnee externe
+            // reste remontee, donc reclamee.
+            boolean enBlanc = caseAdministrative;
             if (!enBlanc) {
-                String label = fillLater
-                        ? FILL_LATER_LABEL
+                String label = externe
+                        ? EXTERNE_PREFIX + varName + MISSING_SUFFIX
                         : MISSING_PREFIX + varName + MISSING_SUFFIX;
                 addRun(p,
                         label,

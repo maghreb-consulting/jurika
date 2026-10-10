@@ -76,7 +76,7 @@ class RefonteStatutsDirecteurOverlayTest {
     @DisplayName("Refonte directeur : dénomination + siège + augmentation avec NOUVEL associé (OCR)")
     void refonte_directeur_augmentation_nouvel_associe() throws Exception {
         Map<String, Object> p = new LinkedHashMap<>();
-        p.put("ficheStructuree", fiche());
+        p.put("ficheStructuree", ma.jurika.ai.workflow.FichesCompletes.completer(fiche()));
         p.put("resolutions", List.of(
                 Map.of("type", "modification_denomination", "nouvelleDenomination", "PARACOSME HOLDING"),
                 Map.of("type", "transfert_siege", "nouveauSiege", "45 BOULEVARD ANFA, CASABLANCA"),
@@ -85,10 +85,13 @@ class RefonteStatutsDirecteurOverlayTest {
                         "augcapNouveauCapital", 300000L,
                         "augcapNbPartsNouvelles", 2000L,
                         "valeurNominalePart", 100L,
-                        "nouvelAssocie", Map.of(
+                        "nouvelAssocie", ma.jurika.ai.workflow.FichesCompletes.personne(Map.of(
                                 "nom", "TAZI", "prenom", "Nadia", "cin", "T998877",
-                                "nationalite", "marocaine", "adresse", "Casablanca")))));
+                                "nationalite", "marocaine", "adresse", "Casablanca"))))));
 
+        // Lot L3 : date de l'assemblee et lieu de signature (« Fait a ..., le ... »).
+        p.put("seance", Map.of("date", "2026-06-15"));
+        p.put("convocation", Map.of("lieuSignature", "Casablanca"));
         Map<String, Object> vars = mapper.map("STATUTS_REFONDUS_SARL", p);
         String text = render("STATUTS_REFONDUS_SARL", vars);
         String digits = text.replaceAll("[\\s\\u00A0\\u202F]", "");
@@ -110,16 +113,19 @@ class RefonteStatutsDirecteurOverlayTest {
     @DisplayName("Refonte directeur : cession — cédant débité, cessionnaire (OCR) inséré, total cohérent")
     void refonte_directeur_cession_nouvel_associe() throws Exception {
         Map<String, Object> p = new LinkedHashMap<>();
-        p.put("ficheStructuree", fiche());
+        p.put("ficheStructuree", ma.jurika.ai.workflow.FichesCompletes.completer(fiche()));
         p.put("resolutions", List.of(new LinkedHashMap<>(Map.of(
                 "type", "agrement_cession",
                 "cedantNom", "IDRISSI",
                 "cessionnaireNom", "TAZI",
                 "cessionNbParts", 400L,
-                "nouvelAssocie", Map.of(
+                "nouvelAssocie", ma.jurika.ai.workflow.FichesCompletes.personne(Map.of(
                         "nom", "TAZI", "prenom", "Nadia", "cin", "T998877",
-                        "nationalite", "marocaine")))));
+                        "nationalite", "marocaine"))))));
 
+        // Lot L3 : date de l'assemblee et lieu de signature (« Fait a ..., le ... »).
+        p.put("seance", Map.of("date", "2026-06-15"));
+        p.put("convocation", Map.of("lieuSignature", "Casablanca"));
         Map<String, Object> vars = mapper.map("STATUTS_REFONDUS_SARL", p);
         String text = render("STATUTS_REFONDUS_SARL", vars);
         String digits = text.replaceAll("[\\s\\u00A0\\u202F]", "");

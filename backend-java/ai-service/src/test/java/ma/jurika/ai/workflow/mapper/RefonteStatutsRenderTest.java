@@ -112,10 +112,13 @@ class RefonteStatutsRenderTest {
 
     private static Map<String, Object> payload(Map<String, Object> fiche) {
         Map<String, Object> p = new LinkedHashMap<>();
-        p.put("ficheStructuree", fiche);
+        p.put("ficheStructuree", ma.jurika.ai.workflow.FichesCompletes.completer(fiche));
         p.put("societe", Map.of("denomination", fiche.get("denomination"),
                 "formeJuridique", fiche.get("formeJuridique")));
         p.put("modifications", modifications());
+        // Lot L3 : date de l'assemblee et lieu de signature (« Fait a ..., le ... »).
+        p.put("seance", Map.of("date", "2026-06-15"));
+        p.put("convocation", Map.of("lieuSignature", "Casablanca"));
         return p;
     }
 

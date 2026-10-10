@@ -94,8 +94,8 @@ class FermetureAnnonceRenderTest {
         assertEquals("20/09/2026", v.get("ASSEMBLEE_DATE"));
         // 2026-08-17 — attribué par le greffe APRÈS le dépôt : marqueur explicite
         // au lieu d'un blanc, qui laissait « … le  sous le numéro  ».
-        assertEquals("[à compléter après immatriculation]", v.get("DATE_DEPOT_LEGAL"));
-        assertEquals("[à compléter après immatriculation]", v.get("DEPOT_LEGAL_NUMERO"));
+        org.junit.jupiter.api.Assertions.assertTrue(v.get("DATE_DEPOT_LEGAL") == null || v.get("DATE_DEPOT_LEGAL").toString().isBlank(), "L3 : DATE_DEPOT_LEGAL externe absente, marquee par le moteur");
+        org.junit.jupiter.api.Assertions.assertTrue(v.get("DEPOT_LEGAL_NUMERO") == null || v.get("DEPOT_LEGAL_NUMERO").toString().isBlank(), "L3 : DEPOT_LEGAL_NUMERO externe absente, marquee par le moteur");
     }
 
     @Test
