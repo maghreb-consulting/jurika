@@ -487,5 +487,53 @@ class TicketJurikaAppIT {
                         .header("Authorization", jeton(COLLEGUE, WS_A, "EMPLOYE")))
                 .andExpect(status().isNotFound());
     }
+
+    /**
+     * RG-TKT-07 (cahier des charges mis a jour le 2026-10-10), point par point, apres
+     * les scenarios precedents (note "Rappeler le greffe" posee par KARIM, responsable).
+     */
+    @Test
+    @Order(25)
+    void note_rg_tkt_07_suit_le_ticket_lecture_seule_apres_cloture_conservee_interne() throws Exception {
+        String collegue = jeton(COLLEGUE, WS_A, "EMPLOYE");
+        // 1. Elle suit le ticket a la reaffectation : le nouveau responsable la lit et
+        //    l'ecrit ; l'ancien ne la voit plus.
+        mvc.perform(post("/api/v1/dossiers/" + dossierId + "/reaffectation")
+                        .header("Authorization", jeton(SUPERVISEUR_A, WS_A, "SUPERVISEUR"))
+                        .contentType("application/json")
+                        .content("{\"nouveauResponsableId\":\"" + COLLEGUE + "\",\"motif\":\"Conges\"}"))
+                .andExpect(status().isCreated());
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note").header("Authorization", collegue))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenu").value("Rappeler le greffe"));
+        mvc.perform(put("/api/v1/tickets/" + ticketId + "/note").header("Authorization", collegue)
+                        .contentType("application/json").content("{\"contenu\":\"Rappeler le greffe ; fait le 10\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note").header("Authorization", karim()))
+                .andExpect(status().isNotFound());
+
+        // 2. Lecture seule apres la cloture : lisible, plus modifiable.
+        owner.update("UPDATE tickets SET statut = 'CLOTURE_DOSSIER' WHERE id = ?", ticketId);
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note").header("Authorization", collegue))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenu").value("Rappeler le greffe ; fait le 10"));
+        mvc.perform(put("/api/v1/tickets/" + ticketId + "/note").header("Authorization", collegue)
+                        .contentType("application/json").content("{\"contenu\":\"apres cloture\"}"))
+                .andExpect(status().isConflict());
+
+        // 3. Conservee avec le dossier : la base refuse de la perdre avec son ticket.
+        assertThat(owner.queryForObject("SELECT confdeltype FROM pg_constraint "
+                + "WHERE conname = 'ticket_notes_ticket_id_fkey'", String.class)).isEqualTo("r");
+        assertThat(owner.queryForObject("SELECT contenu FROM ticket_notes WHERE ticket_id = ?", String.class,
+                ticketId)).isEqualTo("Rappeler le greffe ; fait le 10");
+
+        // 4. Jamais visible du client : ni par sa route, ni dans la fiche du ticket.
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note")
+                        .header("Authorization", jeton(UUID.randomUUID(), WS_A, "CLIENT")))
+                .andExpect(status().isForbidden());
+        String fiche = mvc.perform(get("/api/v1/tickets/" + ticketId).header("Authorization", collegue))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(fiche).doesNotContain("Rappeler le greffe");
+    }
 }
 
