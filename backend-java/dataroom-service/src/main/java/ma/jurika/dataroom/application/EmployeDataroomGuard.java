@@ -59,14 +59,29 @@ public class EmployeDataroomGuard {
     @Transactional(readOnly = true)
     public void assertPeutSupprimerDocument(UUID documentId, AuthenticatedUser user) {
         if (user == null || user.role() != Role.EMPLOYE) {
-            throw new AccessDeniedException("Seul un employe supprime un document en Data Room");
+            throw new AccessDeniedException("Seul l’employé responsable du dossier supprime un document.");
         }
         UUID dossierId = dossierDuDocument(documentId);
         assertResponsable(dossierId, user);
         if (!droits.aLeDroit(TenantContext.get(), user.userId())) {
-            throw new AccessDeniedException("Suppression refusee : le droit de suppression en Data Room "
-                    + "ne vous a pas ete accorde par le superviseur.");
+            throw new AccessDeniedException("Suppression refusée : le droit de supprimer des documents ne vous a pas été accordé "
+                    + "par le superviseur.");
         }
+    }
+
+    /** Lot L1 : droits de l'utilisateur sur un dossier, pour l'ecran (bouton de suppression ou message). */
+    public record DroitsDossier(boolean peutSupprimerDocuments, String motif) {}
+
+    @Transactional(readOnly = true)
+    public DroitsDossier droitsSurDossier(UUID dossierId, AuthenticatedUser user) {
+        if (user == null || user.role() != Role.EMPLOYE) {
+            return new DroitsDossier(false, "Seul l’employé responsable du dossier supprime des documents.");
+        }
+        assertResponsable(dossierId, user);
+        return droits.aLeDroit(TenantContext.get(), user.userId())
+                ? new DroitsDossier(true, null)
+                : new DroitsDossier(false, "Le droit de supprimer des documents ne vous a pas été accordé : "
+                        + "demandez-le à votre superviseur.");
     }
 
     /** RG-DOS-01 : l'employe doit etre responsable du dossier (404 sinon). Autres roles : sans effet. */

@@ -72,7 +72,7 @@ class EmployeDataroomGuardTest {
         when(droits.aLeDroit(WS, RESPONSABLE)).thenReturn(false);
         assertThatThrownBy(() -> guard.assertPeutSupprimerDocument(DOC, employe(RESPONSABLE)))
                 .isInstanceOf(AccessDeniedException.class)
-                .hasMessageContaining("droit de suppression");
+                .hasMessageContaining("droit de supprimer des documents");
     }
 
     @Test
@@ -120,4 +120,25 @@ class EmployeDataroomGuardTest {
         assertThatThrownBy(() -> guard.assertResponsableDuTicket(UUID.randomUUID(), employe(RESPONSABLE)))
                 .isInstanceOf(NotFoundException.class);
     }
+
+    // ---- Ecrans L1 : l'ecran sait si l'employe peut supprimer (bouton visible ou message) ----
+
+    @Test
+    void droits_affiches_a_l_ecran() {
+        when(droits.aLeDroit(WS, RESPONSABLE)).thenReturn(false);
+        var sans = guard.droitsSurDossier(DOSSIER, employe(RESPONSABLE));
+        org.assertj.core.api.Assertions.assertThat(sans.peutSupprimerDocuments()).isFalse();
+        org.assertj.core.api.Assertions.assertThat(sans.motif()).contains("superviseur");
+
+        when(droits.aLeDroit(WS, RESPONSABLE)).thenReturn(true);
+        var avec = guard.droitsSurDossier(DOSSIER, employe(RESPONSABLE));
+        org.assertj.core.api.Assertions.assertThat(avec.peutSupprimerDocuments()).isTrue();
+        org.assertj.core.api.Assertions.assertThat(avec.motif()).isNull();
+
+        var sup = guard.droitsSurDossier(DOSSIER, new AuthenticatedUser(UUID.randomUUID(), WS, "s@x.ma", Role.SUPERVISEUR));
+        org.assertj.core.api.Assertions.assertThat(sup.peutSupprimerDocuments()).isFalse();
+        assertThatThrownBy(() -> guard.droitsSurDossier(DOSSIER, employe(UUID.randomUUID())))
+                .isInstanceOf(NotFoundException.class);
+    }
 }
+

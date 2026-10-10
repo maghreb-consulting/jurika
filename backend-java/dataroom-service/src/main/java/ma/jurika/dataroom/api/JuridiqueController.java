@@ -373,6 +373,14 @@ public class JuridiqueController {
         juridique.assertDocumentPourClient(documentId, user.userId());
     }
 
+    /** Lot L1 : droits de l'utilisateur sur le dossier (affichage du bouton de suppression). */
+    @GetMapping("/dossiers/{dossierId}/mes-droits")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR') and !hasAuthority('ROLE_SUPER_ADMIN')")
+    public EmployeDataroomGuard.DroitsDossier mesDroits(@AuthenticationPrincipal AuthenticatedUser user,
+                                                        @PathVariable UUID dossierId) {
+        return employeGuard.droitsSurDossier(dossierId, user);
+    }
+
     // Lot L1 (RG-DR-06, RG-DOS-01) : suppression reservee a l'employe responsable du
     // dossier qui a recu du superviseur le droit de suppression ; tracee (@Auditable).
     @DeleteMapping("/documents/{documentId}")
