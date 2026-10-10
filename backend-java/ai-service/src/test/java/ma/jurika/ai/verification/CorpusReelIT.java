@@ -70,6 +70,8 @@ class CorpusReelIT {
 
         // 1. Chargement complet.
         CorpusCharge corpus = ChargeurCorpus.charger(RACINE);
+        // Lot L3 : chaque variable externe de la liste versionnee existe dans le vrai dictionnaire.
+        ma.jurika.ai.document.ClassementVariables.charger().verifierContre(corpus.dictionnaire());
         List<String> classpath = codesClasspath();
         List<String> horsCorpus = classpath.stream().filter(c -> corpus.gabarit(c).isEmpty()).sorted().toList();
         RapportChargement rapport = corpus.rapport(horsCorpus);

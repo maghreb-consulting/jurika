@@ -33,4 +33,17 @@ public class CorpusConfiguration {
                 log.warn("Corpus {} : modele {} NON RENDABLE : {}", r.version(), code, erreurs));
         return corpus;
     }
+
+    /**
+     * Lot L3 : classement interne / externe des variables, controle contre le dictionnaire
+     * du corpus charge (un nom inconnu empeche le demarrage, comme les autres controles).
+     */
+    @Bean
+    public ma.jurika.ai.document.ClassementVariables classementVariables(CorpusCharge corpus) {
+        ma.jurika.ai.document.ClassementVariables c = ma.jurika.ai.document.ClassementVariables.charger();
+        c.verifierContre(corpus.dictionnaire());
+        log.info("Classement des variables : {} externes du corpus, {} hors corpus ; toutes les autres sont internes",
+                c.externesCorpus().size(), c.externesHorsCorpus().size());
+        return c;
+    }
 }

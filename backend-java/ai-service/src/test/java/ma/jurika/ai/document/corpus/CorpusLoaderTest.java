@@ -36,7 +36,7 @@ class CorpusLoaderTest {
         RapportChargement r = corpus.rapport(List.of("CODE_HORS_CORPUS"));
         assertThat(r.version()).isEqualTo("CORPUS_TEST");
         assertThat(r.modeles()).isEqualTo(3);
-        assertThat(r.variables()).isEqualTo(8);
+        assertThat(r.variables()).isEqualTo(8 + ma.jurika.ai.document.ClassementVariables.charger().externesCorpus().size()); // L3 : + externes
         assertThat(r.alias()).isEqualTo(1);
         assertThat(r.nonRendables()).isEmpty();
         assertThat(r.avertissements()).isEmpty();

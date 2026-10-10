@@ -38,7 +38,7 @@ class CorpusLecturesTest {
     @Test
     void lit_le_dictionnaire_et_ses_alias() {
         DictionnaireUnique d = LecteurCorpus.lireDictionnaire(CORPUS_TEST);
-        assertThat(d.variables()).contains("$DENOMINATION", "$ASSOCIE_NOM").hasSize(8);
+        assertThat(d.variables()).contains("$DENOMINATION", "$ASSOCIE_NOM").hasSize(8 + ma.jurika.ai.document.ClassementVariables.charger().externesCorpus().size()); // L3 : + externes
         assertThat(d.alias()).containsEntry("$DENOMINATION_SOCIALE", "$DENOMINATION");
         assertThat(d.connue("$DENOMINATION_SOCIALE")).isTrue();
         assertThat(d.connue("$INCONNUE")).isFalse();
@@ -75,7 +75,7 @@ class CorpusLecturesTest {
         Path f = racine.resolve(LecteurCorpus.DICTIONNAIRE);
         Files.createDirectories(f.getParent());
         try (XSSFWorkbook wb = new XSSFWorkbook()) {
-            onglet(wb, "Variables", List.of("Variable"), List.of(List.of("$A")));
+            onglet(wb, "Variables", List.of("Variable", LecteurCorpus.COL_LIBELLE), List.of(List.of("$A", "A")));
             onglet(wb, "Alias", List.of("Alias (nom employ\u00e9 par un mod\u00e8le)", "Nom canonique retenu"),
                     List.of(List.of("$B", "$C")));
             try (OutputStream o = Files.newOutputStream(f)) {

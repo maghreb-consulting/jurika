@@ -40,6 +40,8 @@ public final class LecteurCorpus {
 
     static final String ONGLET_VARIABLES = "Variables";
     static final String COL_VARIABLE = "Variable";
+    /** Lot L3 : libelle a l'ecran, pour nommer la donnee manquante. */
+    static final String COL_LIBELLE = "Libell\u00e9 du champ \u00e0 l'\u00e9cran (propos\u00e9, \u00e0 valider)";
     static final String ONGLET_ALIAS = "Alias";
     static final String COL_ALIAS = "Alias (nom employ\u00e9 par un mod\u00e8le)";
     static final String COL_CANONIQUE = "Nom canonique retenu";
@@ -79,9 +81,13 @@ public final class LecteurCorpus {
     public static DictionnaireUnique lireDictionnaire(Path racine) {
         Path fichier = racine.resolve(DICTIONNAIRE);
         Set<String> variables = new HashSet<>();
-        for (Map<String, String> l : lireOnglet(fichier, ONGLET_VARIABLES, List.of(COL_VARIABLE))) {
+        Map<String, String> libelles = new HashMap<>();
+        for (Map<String, String> l : lireOnglet(fichier, ONGLET_VARIABLES, List.of(COL_VARIABLE, COL_LIBELLE))) {
             if (!l.get(COL_VARIABLE).isEmpty()) {
                 variables.add(l.get(COL_VARIABLE));
+                if (!l.get(COL_LIBELLE).isBlank()) {
+                    libelles.put(l.get(COL_VARIABLE), l.get(COL_LIBELLE).trim());
+                }
             }
         }
         if (variables.isEmpty()) {
@@ -102,7 +108,7 @@ public final class LecteurCorpus {
                 throw new CorpusException(DICTIONNAIRE + " : alias en double : " + a);
             }
         }
-        return new DictionnaireUnique(variables, alias);
+        return new DictionnaireUnique(variables, alias, libelles);
     }
 
     /** Lignes d'un onglet (en-tete exclu), colonnes requises reperees par leur libelle. */

@@ -133,6 +133,28 @@ MODELES = [
 VARIABLES = ['$DENOMINATION', '$CAPITAL_SOCIAL', '$SIEGE_SOCIAL', '$ASSOCIE_NOM',
              '$ASSOCIE_PARTS', '$GERANT_UNIQUE', '$GERANT_NOM', '$LIEU_SIGNATURE']
 ALIAS = [('$DENOMINATION_SOCIALE', '$DENOMINATION', 'PV_TEST_SARL_AU')]
+# Lot L3 : les variables externes de la liste versionnee doivent etre connues du
+# dictionnaire charge (controle bloquant au demarrage d'ai-service) : le dictionnaire
+# fictif les reprend, sans autre contenu.
+EXTERNES = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'backend-java', 'ai-service',
+                        'src', 'main', 'resources', 'templates', 'v2', 'variables-externes.txt')
+
+
+def variables_externes():
+    noms, section = [], None
+    with open(EXTERNES, encoding='ascii') as f:
+        for ligne in f:
+            l = ligne.strip()
+            if not l or l.startswith('#'):
+                continue
+            if l.startswith('['):
+                section = l
+            elif section == '[corpus]':
+                noms.append('$' + l)
+    return noms
+
+
+LIBELLES = {'$DENOMINATION': 'D\u00e9nomination de la soci\u00e9t\u00e9', '$LIEU_SIGNATURE': 'Lieu de signature'}
 
 
 def main():
@@ -143,8 +165,12 @@ def main():
                        '01_TEST/MODELES_MD/%s.md' % code, chemin])
         gabarit(os.path.join(RACINE, chemin), paras)
     classeur(os.path.join(RACINE, 'INDEX_CORPUS.xlsx'), {'Mod\u00e8les': lignes})
-    entete_var = ['Variable', 'Signification (texte du cabinet)'] + [None] * 10 + ['Nom canonique retenu par la plateforme']
-    var_lignes = [entete_var] + [[v, 'variable de test'] + [None] * 10 + [v] for v in VARIABLES]
+    # Lot L3 : colonne L, libelle du champ a l'ecran (nomme la donnee manquante).
+    entete_var = (['Variable', 'Signification (texte du cabinet)'] + [None] * 9
+                  + ["Libell\u00e9 du champ \u00e0 l'\u00e9cran (propos\u00e9, \u00e0 valider)",
+                     'Nom canonique retenu par la plateforme'])
+    var_lignes = [entete_var] + [[v, 'variable de test'] + [None] * 9 + [LIBELLES.get(v, v[1:]), v]
+                                 for v in VARIABLES + [e for e in variables_externes() if e not in VARIABLES]]
     alias_lignes = [['Alias (nom employ\u00e9 par un mod\u00e8le)', 'Nom canonique retenu', "Mod\u00e8les employant l'alias"]] + [list(a) for a in ALIAS]
     classeur(os.path.join(RACINE, '00_COMMUN', 'DICTIONNAIRE_UNIQUE_VARIABLES.xlsx'),
              {'Variables': var_lignes, 'Alias': alias_lignes})
