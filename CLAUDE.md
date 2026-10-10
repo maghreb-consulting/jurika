@@ -202,6 +202,10 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   place de son identite (PV_CREATION_SUCCURSALE_MAROC_SARL_AU, PV_FERMETURE_SUCCURSALE_SARL_AU,
   PV_APPROBATION_COMPTES_SARL_AU, PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU...). Le document produit porte
   "oui" sous la signature. Gabarits intouchables : A_DECIDER cabinet (correction du modele).
+- **Ecart du corpus (L4a)** : `FICHE_RENSEIGNEMENTS_CREATION` imprime "Bail commercial consenti par
+  $BAILLEUR_NOM" ; quand le bailleur est une societe, `$BAILLEUR_NOM` est vide (le contrat de bail, lui,
+  distingue $BAILLEUR_TYPE et imprime $BAILLEUR_DENOMINATION). La fiche est alors refusee, donnee nommee.
+  A_DECIDER cabinet (correction du modele).
 - **Parcours a basculer sur les modeles du corpus (L4).** 12 des 15 gabarits du classpath
   absents du corpus ont un equivalent dans `CORPUS_2026-10-03` (STATUTS deterministes,
   CONVOCATION_AG, FEUILLE_PRESENCE_AG, RAPPORT_GESTION, RAPPORT_LIQUIDATION_DIRECTEUR,

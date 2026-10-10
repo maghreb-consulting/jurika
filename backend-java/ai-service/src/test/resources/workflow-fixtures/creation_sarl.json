@@ -223,7 +223,10 @@
         "acteFormationNature": "Réservation de locaux",
         "acteFormationObjet": "dépôt de garantie du bail"
       }
-    ]
+    ],
+    "bailleurType": "personne morale",
+    "commissaireApportsModeDesignation": "unanimité",
+    "commissaireComptesAdresse": "3 rue Allal Ben Abdellah, Casablanca"
   },
   "formulaires": {
     "regimeResultat": "Impôt sur les sociétés — régime du résultat net réel",

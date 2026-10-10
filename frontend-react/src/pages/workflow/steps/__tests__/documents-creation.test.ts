@@ -43,7 +43,8 @@ describe('Le catalogue — ce que le parcours du 9 septembre déclare', () => {
     // part à la DGI sans régime fiscal déclaré. Résolvable n'est pas renseigné.
     const heritees = CHAMPS_CREATION.filter((c) => c.heritee);
 
-    expect(CHAMPS_CREATION).toHaveLength(180);
+    // L4a (E1b) : 180 + 46 champs des variables sans source.
+    expect(CHAMPS_CREATION).toHaveLength(226);
     expect(heritees).toHaveLength(20);
   });
 
@@ -78,7 +79,9 @@ describe('Le catalogue — ce que le parcours du 9 septembre déclare', () => {
     const toutes = new Set(CHOIX_STATUT_2.map((c) => c.ligne));
     const tousCodes = codesRetenus(toutes, 'SARL', 'BAIL');
     const simples = champsParDocument(tousCodes).reduce((n, g) => n + g.champs.length, 0);
-    expect(simples).toBe(65);
+    // L4a (E1b) : + 26 champs ouverts pour les variables sans source des documents
+    // du statut 2 (bailleur, commissaire aux apports...), saisis une seule fois.
+    expect(simples).toBe(91);
     expect(bouclesParDocument(tousCodes)).toHaveLength(4);
   });
 
@@ -93,8 +96,11 @@ describe('Le catalogue — ce que le parcours du 9 septembre déclare', () => {
     expect(regime?.type).toBe('select');
   });
 
-  it('n’ouvre AUCUN champ pour les 55 variables sans source', () => {
-    expect(VARIABLES_SANS_SOURCE).toHaveLength(55);
+  it('n’ouvre à l’étape 7 aucun champ pour les 9 variables saisies ailleurs', () => {
+    // L4a (E1b) : 46 des 55 variables sans source reçoivent leur champ (provenance
+    // « Saisie » proposée au dictionnaire du 2026-10-03) ; 9 se saisissent ailleurs
+    // (apport en nature à l'étape 6, annulation du ticket).
+    expect(VARIABLES_SANS_SOURCE).toHaveLength(9);
     const ouverts = new Set(CHAMPS_CREATION.map((c) => c.variable));
     for (const sansSource of VARIABLES_SANS_SOURCE) {
       expect(ouverts.has(sansSource)).toBe(false);

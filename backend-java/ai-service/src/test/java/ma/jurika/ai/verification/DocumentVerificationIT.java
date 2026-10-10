@@ -97,19 +97,17 @@ class DocumentVerificationIT {
      * Lot L4a (E1) : documents dont la non-conformite est CONNUE et traitee dans une passe
      * nommee. Un document liste ici qui devient conforme fait echouer le test (a retirer).
      */
-    private static final String E1B = "L4a E1b : champs a l'ecran des variables sans source";
     private static final String L4B = "L4b : variables des modeles du corpus (D5, bascule)";
 
     private static final String ECART_CORPUS =
             "A_DECIDER cabinet : $ASSOCIE_UNIQUE (oui/non) imprime sous la signature de l'associe unique";
 
     static final Map<String, String> EN_ATTENTE = Map.ofEntries(
-            // Creation : variables "sans source" du catalogue (aucun champ a l'ecran).
-            Map.entry("BORDEREAU_REMISE_DOSSIER", E1B),
-            Map.entry("CONTRAT_BAIL", E1B),
-            Map.entry("CONTRAT_DOMICILIATION", E1B),
-            Map.entry("FICHE_RENSEIGNEMENTS_CREATION", E1B),
-            Map.entry("RAPPORT_COMMISSAIRE_APPORTS", E1B),
+            // Creation : apport en nature par associe, jamais saisi a l'ecran (etape 6).
+            Map.entry("RAPPORT_COMMISSAIRE_APPORTS", "L4a E1c : apport en nature saisi par associe"),
+            // Ecart du CORPUS : la fiche n'imprime que $BAILLEUR_NOM, vide pour un bailleur societe.
+            Map.entry("FICHE_RENSEIGNEMENTS_CREATION",
+                    "A_DECIDER cabinet : $BAILLEUR_NOM seul imprime, vide quand le bailleur est une societe"),
             // Documents d'annulation : donnees servies par le ticket (statut atteint, date, depots).
             Map.entry("NOTE_ANNULATION_DOSSIER", "L4a E5 : donnees d'annulation servies par le ticket"),
             Map.entry("LETTRE_RETRAIT_DEPOT", "L4a E5 : donnees d'annulation servies par le ticket"),
