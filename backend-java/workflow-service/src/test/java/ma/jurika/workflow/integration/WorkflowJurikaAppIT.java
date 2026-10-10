@@ -397,4 +397,42 @@ class WorkflowJurikaAppIT {
                         workspaceId, ticketId, EMPLOYE, List.of(clause(" ", "texte")))))
                 .hasMessageContaining("titre");
     }
+
+    @Test
+    void l3_le_projecteur_lit_les_cles_que_les_ecrans_ecrivent_reellement() {
+        // Cles des ecrans (Step3Capital, Step6Associes, Step5Dirigeants) : avant L3, le projecteur
+        // lisait d'autres noms (banqueDepot, cinNumero, formeJuridique, representantLegal) et ces
+        // donnees n'atteignaient jamais le magasin -- donc plus la charge utile du serveur.
+        Map<String, Object> associe = new java.util.LinkedHashMap<>();
+        associe.put("typePersonne", "MORALE");
+        associe.put("denomination", "HOLDING ATLAS");
+        associe.put("formeJuridiqueEntite", "SA");
+        associe.put("repPrenom", "Salma");
+        associe.put("repNom", "IDRISSI");
+        Map<String, Object> physique = new java.util.LinkedHashMap<>();
+        physique.put("nom", "BENALI");
+        physique.put("cin", "BK123456");
+        physique.put("_extraits", List.of("cin"));
+        Map<String, Object> dirigeant = new java.util.LinkedHashMap<>();
+        dirigeant.put("typePersonne", "MORALE");
+        dirigeant.put("denomination", "GESTION SA");
+        dirigeant.put("repPrenom", "Omar");
+        dirigeant.put("repNom", "ALAMI");
+        Map<String, Object> data = new java.util.LinkedHashMap<>();
+        data.put("step3", Map.of("capital", Map.of("depotBanqueNom", "Banque Populaire")));
+        data.put("step5", Map.of("dirigeants", List.of(dirigeant)));
+        data.put("step6", Map.of("associes", List.of(associe, physique)));
+
+        dansLeWorkspace(() -> projecteur.projeter(workspaceId, ticketId, data, EMPLOYE));
+
+        List<VariableDuDossier> lues = dansLeWorkspace(() -> magasin.lire(workspaceId, ticketId));
+        assertThat(lues).extracting(v -> v.boucle() + ":" + v.rang() + ":" + v.variable() + "=" + v.valeur())
+                .contains("null:null:BANQUE_DEPOSITAIRE=Banque Populaire",
+                        "ASSOCIES:0:ASSOCIE_FORME=SA",
+                        "ASSOCIES:0:ASSOCIE_REPRESENTANT_NOM=Salma IDRISSI",
+                        "ASSOCIES:1:ASSOCIE_PIECE_NUMERO=BK123456",
+                        "DIRIGEANTS_PM:0:DIRIGEANT_PM_REPRESENTANT=Omar ALAMI");
+        assertThat(lues).filteredOn(v -> "ASSOCIE_PIECE_NUMERO".equals(v.variable()))
+                .extracting(v -> String.valueOf(v.origine())).containsExactly("EXTRAITE");
+    }
 }

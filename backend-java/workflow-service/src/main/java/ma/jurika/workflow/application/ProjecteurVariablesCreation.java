@@ -109,7 +109,9 @@ public class ProjecteurVariablesCreation {
         poser(workspaceId, ticketId, auteur, "etape-3", n, "NOMBRE_PARTS", s3.get("nombreParts"));
         poser(workspaceId, ticketId, auteur, "etape-3", n, "VALEUR_NOMINALE_PART", s3.get("valeurNominale"));
         poser(workspaceId, ticketId, auteur, "etape-3", n, "DUREE_SOCIETE", s3.get("dureeAnnees"));
-        poser(workspaceId, ticketId, auteur, "etape-3", n, "BANQUE_DEPOSITAIRE", s3.get("banqueDepot"));
+        // Lot L3 : l'ecran ecrit `depotBanqueNom` ; `banqueDepot` n'est ecrit par personne.
+        poser(workspaceId, ticketId, auteur, "etape-3", n, "BANQUE_DEPOSITAIRE",
+                premier(s3.get("banqueDepot"), s3.get("depotBanqueNom")));
 
         // ---- étape 4 — activité --------------------------------------------
         poser(workspaceId, ticketId, auteur, "etape-4", n, "OBJET_SOCIAL", objetSocial(s4));
@@ -183,7 +185,7 @@ public class ProjecteurVariablesCreation {
             "civilite", "ASSOCIE_CIVILITE", "nom", "ASSOCIE_NOM", "prenom", "ASSOCIE_PRENOM",
             "adresse", "ASSOCIE_ADRESSE", "nationalite", "ASSOCIE_NATIONALITE",
             "dateNaissance", "ASSOCIE_DATE_NAISSANCE", "lieuNaissance", "ASSOCIE_LIEU_NAISSANCE",
-            "pieceNumero", "ASSOCIE_PIECE_NUMERO", "cinNumero", "ASSOCIE_PIECE_NUMERO");
+            "pieceNumero", "ASSOCIE_PIECE_NUMERO", "cinNumero", "ASSOCIE_PIECE_NUMERO", "cin", "ASSOCIE_PIECE_NUMERO");
 
     private void marquerExtraits(UUID ws, UUID ticket, UUID auteur, Map<String, Object> objet,
                                   String boucle, Short rang, Map<String, String> champs) {
@@ -223,7 +225,7 @@ public class ProjecteurVariablesCreation {
                 e.put("DIRIGEANT_PM_FORME", txt(d.get("formeJuridiqueEntite")));
                 e.put("DIRIGEANT_PM_SIEGE", txt(d.get("siege")));
                 e.put("DIRIGEANT_PM_RC", txt(d.get("rc")));
-                e.put("DIRIGEANT_PM_REPRESENTANT", txt(d.get("representantLegal")));
+                e.put("DIRIGEANT_PM_REPRESENTANT", txt(premier(d.get("representantLegal"), nomComplet(d))));
             }
             pm.add(e);
         }
@@ -275,17 +277,18 @@ public class ProjecteurVariablesCreation {
             it.put("ASSOCIE_DATE_NAISSANCE", txt(a.get("dateNaissance")));
             it.put("ASSOCIE_LIEU_NAISSANCE", txt(a.get("lieuNaissance")));
             it.put("ASSOCIE_PIECE_TYPE", txt(premier(a.get("pieceType"), "CIN")));
-            it.put("ASSOCIE_PIECE_NUMERO", txt(premier(a.get("pieceNumero"), a.get("cinNumero"))));
+            // Lot L3 : l'ecran des associes ecrit `cin` (le projecteur ne lisait que pieceNumero/cinNumero).
+            it.put("ASSOCIE_PIECE_NUMERO", txt(premier(a.get("pieceNumero"), a.get("cinNumero"), a.get("cin"))));
             it.put("ASSOCIE_NOMBRE_PARTS", txt(a.get("nombreParts")));
             it.put("ASSOCIE_EST_GERANT", ouiNon(a.get("estGerant")));
             if (morale) {
                 it.put("ASSOCIE_DENOMINATION", txt(a.get("denomination")));
-                it.put("ASSOCIE_FORME", txt(a.get("formeJuridique")));
+                it.put("ASSOCIE_FORME", txt(premier(a.get("formeJuridique"), a.get("formeJuridiqueEntite"))));
                 it.put("ASSOCIE_CAPITAL", txt(a.get("capitalEntite")));
                 it.put("ASSOCIE_SIEGE", txt(a.get("siege")));
                 it.put("ASSOCIE_RC_NUMERO", txt(a.get("rc")));
                 it.put("ASSOCIE_RC_VILLE", txt(a.get("rcVille")));
-                it.put("ASSOCIE_REPRESENTANT_NOM", txt(a.get("representantLegal")));
+                it.put("ASSOCIE_REPRESENTANT_NOM", txt(premier(a.get("representantLegal"), nomComplet(a))));
                 it.put("ASSOCIE_REPRESENTANT_QUALITE", txt(a.get("repQualite")));
             }
             base.add(it);
@@ -377,6 +380,12 @@ public class ProjecteurVariablesCreation {
             return sb.toString();
         }
         return txt(s4.get("description"));
+    }
+
+    /** Lot L3 : representant d'une personne morale saisi en prenom / nom (repPrenom, repNom). */
+    private static Object nomComplet(Map<String, Object> o) {
+        String n = (txt(o.get("repPrenom")) + " " + txt(o.get("repNom"))).trim();
+        return n.isEmpty() ? null : n;
     }
 
     private static Object premier(Object... candidats) {

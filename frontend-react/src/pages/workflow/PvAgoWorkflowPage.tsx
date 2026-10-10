@@ -243,7 +243,8 @@ function PvAgoWorkflowPageBody() {
   const [exercice, setExercice] = useState(
     (stepData.step1?.exerciceClos as string) ??
       (stepData.step1?.exercice as string) ??
-      `${currentYear - 1}`,
+      // Lot L3 (P4) : plus d'exercice deduit de la date du jour ; l'employe le choisit.
+      '',
   );
   const [dateAgo, setDateAgo] = useState(
     (stepData.step1?.dateAGO as string) ?? (stepData.step1?.dateAgo as string) ?? '',
@@ -332,7 +333,7 @@ function PvAgoWorkflowPageBody() {
   });
 
   // -------- Step 2 — Approbation des comptes --------
-  const exerciceClosDefault = `${exercice}-12-31`;
+  const exerciceClosDefault = exercice ? `${exercice}-12-31` : '';
   const [exerciceClosDate, setExerciceClosDate] = useState(
     (stepData.step2?.exerciceClosDate as string) ?? exerciceClosDefault,
   );

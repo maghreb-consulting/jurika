@@ -24,7 +24,9 @@ import {
   type DonneeNommee,
   type TemplateInfo,
 } from '../../../services/workflowDocumentService';
-import { workflowService, type DonneeAttendue } from '../../../services/workflow.service';
+import { workflowService, type DonneeAttendue, type VariableDuMagasin } from '../../../services/workflow.service';
+import { ProvenanceDonnees } from '../../../components/workflow/ProvenanceDonnees';
+import { ChampConnu } from '../../../components/workflow/ChampConnu';
 import { DonneesAttendues } from '../../../components/workflow/DonneesAttendues';
 import { ClausesLibresPanel } from '../../../components/workflow/ClausesLibresPanel';
 import { RetourGeneration } from '../../../components/workflow/RetourGeneration';
@@ -524,6 +526,26 @@ export function Step7Generation({
   );
 
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
+  /** Lot L3 (RG-VAR-02/03) : magasin du ticket, avec la provenance de chaque donnee. */
+  const [magasin, setMagasin] = useState<VariableDuMagasin[]>([]);
+  useEffect(() => {
+    if (!ticketId) return undefined;
+    let actif = true;
+    workflowService
+      .variables(ticketId)
+      .then((l) => actif && setMagasin(l))
+      .catch(() => actif && setMagasin([]));
+    return () => {
+      actif = false;
+    };
+  }, [ticketId]);
+  /**
+   * Une donnee deja connue d'ailleurs (fiche, extraction, autre etape) n'est jamais
+   * redemandee ici (RG-VAR-03) : elle s'affiche en lecture, avec sa provenance.
+   */
+  const connueAilleurs = (variable: string): VariableDuMagasin | undefined =>
+    magasin.find((v) => !v.boucle && v.variable === variable && v.valeur && v.occasion !== 'etape-7');
+
   /** Lot L3 : donnees externes reclamees pour les documents du ticket (regle des variables). */
   const [attendues, setAttendues] = useState<DonneeAttendue[]>([]);
   useEffect(() => {
@@ -1002,7 +1024,10 @@ export function Step7Generation({
       // le document est PERSISTE comme brouillon, sans quoi il ne survivrait pas
       // a un rechargement (lot 2).
       await persistBrouillon(tpl, blob, cleanDocFilename(tpl, denomination, forme, nextVersion));
-      if (ticketId) setAttendues(await workflowService.donneesAttendues(ticketId));
+      if (ticketId) {
+        setAttendues(await workflowService.donneesAttendues(ticketId));
+        setMagasin(await workflowService.variables(ticketId));
+      }
     } catch (err) {
       updateDoc(tpl.code, {
         generating: false,
@@ -1394,7 +1419,9 @@ export function Step7Generation({
                 {libelleDocument(groupe.code)}
               </p>
               <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {groupe.champs.map((champ) => (
+                {groupe.champs.map((champ) => connueAilleurs(champ.variable) ? (
+                  <ChampConnu key={champ.cle} label={champ.label} variable={connueAilleurs(champ.variable)!} />
+                ) : (
                   <div key={champ.cle}>
                     <label
                       htmlFor={`complement-${champ.cle}`}
@@ -1482,6 +1509,9 @@ export function Step7Generation({
             </div>
           )}
 
+          <div className="mt-5">
+            <ProvenanceDonnees variables={magasin} />
+          </div>
           <div className="mt-5 rounded-lg border border-border bg-bg-overlay p-3">
             <p className="text-xs font-semibold text-fg">
               Repris automatiquement &mdash; rien a ressaisir

@@ -16,6 +16,7 @@ import { BlocageValidation } from '../../../components/workflow/BlocageValidatio
 import { IdentityExtractor } from '../../../components/identity/IdentityExtractor';
 import { toIsoDate } from '../../../types/identity';
 import { useStepAutosave } from '../useStepAutosave';
+import { ajouterExtraits, retirerExtraits } from '../provenance';
 import {
   computeDistributedAmounts,
   distributeEvenly,
@@ -145,6 +146,8 @@ interface Apport {
 
 interface Associe {
   id: string;
+  /** Lot L3 : champs remplis par extraction d'une piece et confirmes (provenance EXTRAITE). */
+  _extraits?: string[];
   /**
    * Si renseigne, l'associe a ete propage depuis Step5 (dirigeant marque
    * isAssociate). Le user ne peut PAS modifier l'identite ni le CIN (source
@@ -479,9 +482,20 @@ export function Step6Associes({
     });
   }, [propagatedFromDirigeants, isUnique]);
 
-  function update(id: string, patch: Partial<Associe>) {
+  /**
+   * Lot L3 : `extraction` vrai quand le patch vient de la lecture d'une piece confirmee
+   * (provenance EXTRAITE) ; sinon, les champs touches redeviennent des saisies.
+   */
+  function update(id: string, patch: Partial<Associe>, extraction = false) {
     setAssocies((arr) =>
-      arr.map((a) => (a.id === id ? { ...a, ...patch } : a)),
+      arr.map((a) => {
+        if (a.id !== id) return a;
+        const champs = Object.keys(patch);
+        const extraits = extraction
+          ? ajouterExtraits(a._extraits, champs)
+          : retirerExtraits(a._extraits, champs);
+        return { ...a, ...patch, ...(extraits ? { _extraits: extraits } : {}) };
+      }),
     );
   }
 
@@ -1157,11 +1171,13 @@ export function Step6Associes({
                         if (values.sexe) {
                           patch.civilite = values.sexe.toUpperCase() === 'F' ? 'Mme' : 'M';
                         }
+                        if (Object.keys(patch).length > 0) update(a.id, patch, true);
                         if (meta?.archivedDocumentId) {
-                          patch.cinUploaded = true;
-                          patch.cinFileName = `Archive Data Room ${meta.archivedDocumentId.slice(0, 8)}`;
+                          update(a.id, {
+                            cinUploaded: true,
+                            cinFileName: `Archive Data Room ${meta.archivedDocumentId.slice(0, 8)}`,
+                          });
                         }
-                        if (Object.keys(patch).length > 0) update(a.id, patch);
                         // Sortir du mode "remplacement" — l'archive est mise a jour.
                         setReplacingCinIds((s) => {
                           const next = new Set(s); next.delete(a.id); return next;

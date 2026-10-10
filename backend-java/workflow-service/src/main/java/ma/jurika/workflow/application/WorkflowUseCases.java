@@ -196,21 +196,16 @@ public class WorkflowUseCases {
      * devient une variable : c'est ce qui permet d'affirmer qu'il n'existe pas
      * deux chemins pour la même valeur.
      *
-     * <p><b>Best-effort volontaire.</b> Un échec de projection ne doit pas faire
-     * perdre à l'employé la saisie qu'il vient de valider : la donnée est déjà
-     * persistée dans {@code data}, et la projection est idempotente — la
-     * sauvegarde suivante la rattrape. On journalise en WARN plutôt que de
-     * remonter, et le défaut se voit au contrôle de complétude, pas par une
-     * perte de travail.
+     * <p><b>Lot L3 (motif 9) : plus de « best-effort ».</b> La charge utile de la
+     * creation est desormais construite depuis le magasin : une projection echouee en
+     * silence ferait generer l'acte sur une valeur perimee, que le controle de
+     * completude ne voit pas. L'echec remonte ; l'etape n'est pas enregistree et
+     * l'employe le voit, sa saisie restant a l'ecran.
      */
     private void projeterAuMagasin(UUID workspaceId, UUID ticketId, WorkflowType type,
                                     Map<String, Object> data, UUID userId) {
         if (projecteurCreation == null || type != WorkflowType.CREATION || userId == null) return;
-        try {
-            projecteurCreation.projeter(workspaceId, ticketId, data, userId);
-        } catch (Exception ex) {
-            log.warn("magasin.projection.echouee ticket={} : {}", ticketId, ex.getMessage());
-        }
+        projecteurCreation.projeter(workspaceId, ticketId, data, userId);
     }
 
     /** Lot L3 (RG-VAR-03) : la fiche societe alimente le magasin du ticket, tous parcours. */

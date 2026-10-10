@@ -48,7 +48,7 @@ vi.mock('../../../../services/workflowDocumentService', async () => {
   };
 });
 vi.mock('../../../../services/workflow.service', () => ({
-  workflowService: { save: vi.fn(async () => ({})), donneesAttendues: vi.fn(async () => []), clausesLibres: vi.fn(async () => []) },
+  workflowService: { save: vi.fn(async () => ({})), donneesAttendues: vi.fn(async () => []), clausesLibres: vi.fn(async () => []), variables: vi.fn(async () => []) },
 }));
 
 vi.mock('../../../../services/dataroom.service', () => ({
@@ -320,5 +320,24 @@ describe('Étape 7 — la charge utile est construite par le serveur (lot L3, P2
     fireEvent.click(boutons[0]);
     expect(await screen.findByText(/rattaché à aucun ticket/)).toBeInTheDocument();
     expect(generateDocument).not.toHaveBeenCalled();
+  });
+});
+
+describe('Étape 7 — une donnée connue n’est jamais redemandée (lot L3, RG-VAR-03)', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('affiche en lecture, avec sa provenance, une donnée venue d’ailleurs', async () => {
+    const { workflowService } = await import('../../../../services/workflow.service');
+    (workflowService.variables as unknown as { mockResolvedValue: (v: unknown) => void }).mockResolvedValue([
+      { variable: 'TP_COMMUNE', boucle: null, rang: null, valeur: 'Rabat-Hassan', origine: 'FICHE', saisiePar: null, saisieLe: null, occasion: 'fiche-societe' },
+    ]);
+    render(<Step7Generation existing={{}} data={data} saving={false} onSubmit={vi.fn(async () => undefined)} ticketId="t-1" />);
+    await screen.findByTestId('choix-document-8');
+    fireEvent.click(caseDuDocument(8));
+    const connu = await screen.findByTestId('champ-connu-TP_COMMUNE');
+    expect(connu).toHaveTextContent('Rabat-Hassan');
+    expect(connu).toHaveTextContent('Reprise de la fiche de la société');
+    expect(screen.queryByLabelText(/Taxe professionnelle commune/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'D’où viennent ces données ?' })).toBeInTheDocument();
   });
 });

@@ -10,6 +10,7 @@ import { IdentityExtractor } from '../../../components/identity/IdentityExtracto
 import { toIsoDate } from '../../../types/identity';
 import { useStepAutosave } from '../useStepAutosave';
 import type { DirtyGetter } from '../useWorkflow';
+import { ajouterExtraits, retirerExtraits } from '../provenance';
 
 /**
  * UI Polish 2026-06-05 — Helper : formate ICE en groupes "XXX XXX XXX XXX XXX"
@@ -193,7 +194,8 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
 
   function bind<K extends keyof Form>(k: K) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
-      setForm((p) => ({ ...p, [k]: e.target.value }));
+      // Lot L3 : un champ modifie a la main redevient une saisie (provenance).
+      setForm((p) => ({ ...p, [k]: e.target.value, _extraits: retirerExtraits(p._extraits, [k as string]) ?? [] }));
   }
 
   /**
@@ -223,9 +225,11 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
         ['activite', 'activiteCn'],
         ['date_delivrance', 'cnDate'],
       ];
+      const extraits: string[] = [];
       for (const [src, dst] of mapping) {
         const v = values[src];
         if (typeof v === 'string' && v.trim() && !(next[dst] as string).trim()) {
+          extraits.push(dst as string);
           // 2026-06-19 — `cnDate` est un <input type="date"> qui exige
           // YYYY-MM-DD ; l'extracteur rend du FR (JJ.MM.AAAA) -> conversion
           // via toIsoDate sinon le champ reste vide bien que pre-rempli.
@@ -235,7 +239,8 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
             :                    v;
         }
       }
-      return next;
+      // Lot L3 (D14 de L1) : valeurs lues sur le certificat negatif et confirmees : EXTRAITES.
+      return { ...next, _extraits: ajouterExtraits(next._extraits, extraits) };
     });
     if (meta?.archivedDocumentId) {
       setCnArchivedId(meta.archivedDocumentId);

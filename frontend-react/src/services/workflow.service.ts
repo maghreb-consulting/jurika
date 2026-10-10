@@ -102,6 +102,19 @@ export interface ClauseLibre {
   saisieLe?: string | null;
 }
 
+
+/** Lot L3 : une variable du magasin, avec sa provenance (RG-VAR-02). */
+export interface VariableDuMagasin {
+  variable: string;
+  boucle: string | null;
+  rang: number | null;
+  valeur: string | null;
+  origine: 'SAISIE' | 'BASE' | 'DERIVEE' | 'EXTRAITE' | 'FICHE';
+  saisiePar: string | null;
+  saisieLe: string | null;
+  occasion: string | null;
+}
+
 export const workflowService = {
   async start(ticketId: string, type: WorkflowType): Promise<WorkflowProgress> {
     const { data } = await api.post<WorkflowProgress>(`/workflows/${ticketId}/start`, { type });
@@ -132,6 +145,12 @@ export const workflowService = {
    */
   async donneesAttendues(ticketId: string): Promise<DonneeAttendue[]> {
     const { data } = await api.get<DonneeAttendue[]>(`/workflows/${ticketId}/donnees-attendues`);
+    return data;
+  },
+
+  /** Lot L3 (RG-VAR-02/03) : variables du magasin du ticket, avec leur provenance. */
+  async variables(ticketId: string): Promise<VariableDuMagasin[]> {
+    const { data } = await api.get<VariableDuMagasin[]>(`/workflows/${ticketId}/variables`);
     return data;
   },
 
