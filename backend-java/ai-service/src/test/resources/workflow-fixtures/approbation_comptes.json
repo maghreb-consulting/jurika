@@ -1,6 +1,12 @@
 {
   "PV_APPROBATION_COMPTES_SARL": {
-    "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
     "quorumAtteint": "oui",
     "societe": {
       "denomination": "ACME SARL",
@@ -9,7 +15,13 @@
       "siegeSocial": "12 Rue des Hôpitaux, 20000 Casablanca",
       "nombreParts": 1000,
       "rcNumero": "123456",
-      "villeGreffe": "Casablanca"
+      "villeGreffe": "Casablanca",
+      "ice": "001122334000055",
+      "ifNumero": "40998877",
+      "ville": "Casablanca",
+      "rcVille": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
     },
     "seance": {
       "type": "ordinaire",
@@ -77,9 +89,18 @@
       "resultatType": "bénéfice",
       "resultatNet": 250000,
       "affectations": [
-        { "libelle": "Réserve légale", "montant": 12500 },
-        { "libelle": "Dividendes", "montant": 150000 },
-        { "libelle": "Report à nouveau", "montant": 87500 }
+        {
+          "libelle": "Réserve légale",
+          "montant": 12500
+        },
+        {
+          "libelle": "Dividendes",
+          "montant": 150000
+        },
+        {
+          "libelle": "Report à nouveau",
+          "montant": 87500
+        }
       ],
       "dividendeDistribue": "oui",
       "dividendeParPart": 150,
@@ -87,7 +108,13 @@
     }
   },
   "PV_APPROBATION_COMPTES_SARL_AU": {
-    "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
     "quorumAtteint": "oui",
     "societe": {
       "denomination": "ACME SARL AU",
@@ -96,7 +123,13 @@
       "siegeSocial": "12 Rue des Hôpitaux, 20000 Casablanca",
       "nombreParts": 1000,
       "rcNumero": "654321",
-      "villeGreffe": "Casablanca"
+      "villeGreffe": "Casablanca",
+      "ice": "001122334000055",
+      "ifNumero": "40998877",
+      "ville": "Casablanca",
+      "rcVille": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
     },
     "associeUnique": true,
     "seance": {
@@ -132,7 +165,11 @@
       }
     ],
     "gerants": [
-      { "civilite": "M", "prenom": "Karim", "nom": "BENALI" }
+      {
+        "civilite": "M",
+        "prenom": "Karim",
+        "nom": "BENALI"
+      }
     ],
     "resolutions": [
       {
@@ -152,8 +189,14 @@
       "resultatType": "bénéfice",
       "resultatNet": 180000,
       "affectations": [
-        { "libelle": "Réserve légale", "montant": 9000 },
-        { "libelle": "Report à nouveau", "montant": 171000 }
+        {
+          "libelle": "Réserve légale",
+          "montant": 9000
+        },
+        {
+          "libelle": "Report à nouveau",
+          "montant": 171000
+        }
       ],
       "dividendeDistribue": "non"
     }
@@ -168,7 +211,11 @@
       "rcVille": "Casablanca",
       "ifNumero": "40123456",
       "iceNumero": "001234567000099",
-      "activiteSociete": "Conseil juridique et fiscal aux entreprises"
+      "activiteSociete": "Conseil juridique et fiscal aux entreprises",
+      "ice": "001122334000055",
+      "ville": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
     },
     "exercice": {
       "dateCloture": "2025-12-31",

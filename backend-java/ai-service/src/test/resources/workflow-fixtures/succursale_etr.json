@@ -1,6 +1,12 @@
 {
   "PV_CREATION_SUCCURSALE_ETRANGERE_SARL": {
-    "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
     "quorumAtteint": "oui",
     "societeMere": {
       "denomination": "GLOBAL TRADING LTD",
@@ -14,15 +20,23 @@
     },
     "organe": {
       "competent": "le conseil d'administration",
-      "date": "2026-09-10", "heure": "14H00", "lieu": "Londres",
+      "date": "2026-09-10",
+      "heure": "14H00",
+      "lieu": "Londres",
       "voixPour": "5"
     },
     "seance": {
-      "presidentNom": "Mr. John SMITH", "presidentQualite": "Chairman",
-      "secretairePresent": "oui", "secretaireNom": "Ms. Jane DOE", "heureCloture": "15H30"
+      "presidentNom": "Mr. John SMITH",
+      "presidentQualite": "Chairman",
+      "secretairePresent": "oui",
+      "secretaireNom": "Ms. Jane DOE",
+      "heureCloture": "15H30"
     },
-    "ordreDuJour": ["Ouverture d'une succursale au Maroc", "Désignation du représentant résident",
-                    "Pouvoirs pour formalités"],
+    "ordreDuJour": [
+      "Ouverture d'une succursale au Maroc",
+      "Désignation du représentant résident",
+      "Pouvoirs pour formalités"
+    ],
     "succursale": {
       "enseigne": "GLOBAL TRADING — Succursale Maroc",
       "adresse": "30 Boulevard d'Anfa",
@@ -34,14 +48,26 @@
       "dotationMontant": 200000
     },
     "representant": {
-      "civilite": "M.", "prenom": "Rachid", "nom": "EL FASSI", "nationalite": "marocaine",
-      "adresse": "15 Rue de la Liberté, Casablanca", "pieceType": "CIN", "pieceNumero": "BE778899",
+      "civilite": "M.",
+      "prenom": "Rachid",
+      "nom": "EL FASSI",
+      "nationalite": "marocaine",
+      "adresse": "15 Rue de la Liberté, Casablanca",
+      "pieceType": "CIN",
+      "pieceNumero": "BE778899",
       "pouvoirs": "diriger la succursale et représenter la société auprès des tiers et des administrations marocaines"
     },
-    "formalitesMandataireNom": "M. Rachid EL FASSI"
+    "formalitesMandataireNom": "M. Rachid EL FASSI",
+    "nombreOriginaux": "quatre"
   },
   "PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU": {
-    "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
     "quorumAtteint": "oui",
     "societeMere": {
       "denomination": "MEDITERRANEA GMBH",
@@ -55,10 +81,17 @@
     },
     "organe": {
       "competent": "le gérant unique",
-      "date": "2026-09-12", "heure": "09H00", "lieu": "Munich"
+      "date": "2026-09-12",
+      "heure": "09H00",
+      "lieu": "Munich"
     },
-    "seance": {"presidentNom": "Herr Klaus MÜLLER"},
-    "ordreDuJour": ["Ouverture d'une succursale au Maroc", "Désignation du représentant résident"],
+    "seance": {
+      "presidentNom": "Herr Klaus MÜLLER"
+    },
+    "ordreDuJour": [
+      "Ouverture d'une succursale au Maroc",
+      "Désignation du représentant résident"
+    ],
     "succursale": {
       "enseigne": "MEDITERRANEA — Succursale Rabat",
       "adresse": "22 Avenue Fal Ould Oumeir",
@@ -69,9 +102,15 @@
       "dotationPresente": "non"
     },
     "representant": {
-      "civilite": "Mme", "prenom": "Amina", "nom": "BERRADA", "nationalite": "marocaine",
-      "adresse": "3 Rue Oukaimeden, Rabat", "pieceType": "CIN", "pieceNumero": "A123456"
+      "civilite": "Mme",
+      "prenom": "Amina",
+      "nom": "BERRADA",
+      "nationalite": "marocaine",
+      "adresse": "3 Rue Oukaimeden, Rabat",
+      "pieceType": "CIN",
+      "pieceNumero": "A123456"
     },
-    "formalitesMandataireNom": "Mme Amina BERRADA"
+    "formalitesMandataireNom": "Mme Amina BERRADA",
+    "nombreOriginaux": "quatre"
   }
 }

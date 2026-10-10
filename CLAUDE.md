@@ -197,6 +197,11 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L2 (chargeur du corpus, 2026-10-09) -- dette relevee
 
+- **Ecart du corpus a rapporter au cabinet (L4a, 2026-10-11)** : 13 modeles SARL AU impriment
+  `$ASSOCIE_UNIQUE` (drapeau "oui" / "non", pilote SARL / SARL AU) sous "L'associe unique", a la
+  place de son identite (PV_CREATION_SUCCURSALE_MAROC_SARL_AU, PV_FERMETURE_SUCCURSALE_SARL_AU,
+  PV_APPROBATION_COMPTES_SARL_AU, PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU...). Le document produit porte
+  "oui" sous la signature. Gabarits intouchables : A_DECIDER cabinet (correction du modele).
 - **Parcours a basculer sur les modeles du corpus (L4).** 12 des 15 gabarits du classpath
   absents du corpus ont un equivalent dans `CORPUS_2026-10-03` (STATUTS deterministes,
   CONVOCATION_AG, FEUILLE_PRESENCE_AG, RAPPORT_GESTION, RAPPORT_LIQUIDATION_DIRECTEUR,
@@ -219,11 +224,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L3 (saisie unique, 2026-10-10) -- dette relevee
 
-- **`DocumentVerificationIT` ne voit pas les marqueurs de donnee manquante** : il declare OK un
-  `PV_MODIFICATION_SARL` (`target/sample_outputs/`) qui porte "VALEUR MANQUANTE" a la date, l'heure,
-  le lieu et le president de seance (fixture `modification.json` a l'ancienne forme `assemblee`,
-  sans `seance`). Le controle ne cherche que les variables residuelles : controle silencieusement
-  inoperant (motif 9). A corriger avec la fixture (L4, bascule des parcours).
 - **Usages a confirmer par le directeur** (D6, 2026-10-10) : nombre d'originaux et heure de l'acte
   sont desormais des valeurs proposees a l'ecran (composant `ValeurProposee`), confirmees par
   l'employe ; les propositions ("6", "quatre", "10 heures") restent a valider comme usages du cabinet.

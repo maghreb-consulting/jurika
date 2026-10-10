@@ -25,7 +25,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
-import { TypePieceProposee } from './ValeurProposee';
+import { TypePieceProposee, ValeurProposee } from './ValeurProposee';
 import {
   WorkflowDocumentBlock,
   freshDocState,
@@ -288,6 +288,8 @@ export function SuccursaleOperationForm({
   const [respPouvoirs, setRespPouvoirs] = useState(succursaleSeed?.responsablePouvoirs ?? '');
 
   const [mandataire, setMandataire] = useState('');
+  // L4a (E1) : nombre d'originaux du PV, valeur proposee puis confirmee (modele du corpus).
+  const [nombreOriginaux, setNombreOriginaux] = useState<string | undefined>(undefined);
 
   // Société mère étrangère (ETR)
   const [mereDenomination, setMereDenomination] = useState(mereSeed?.denomination ?? '');
@@ -419,6 +421,7 @@ export function SuccursaleOperationForm({
       succursale,
       ordreDuJour,
       formalitesMandataireNom: mandataire,
+      nombreOriginaux: nombreOriginaux ?? '',
     };
 
     if (isEtr) {
@@ -652,12 +655,21 @@ export function SuccursaleOperationForm({
       )}
 
       <Section title="Formalités">
-        <TextField
-          label="Mandataire chargé des formalités"
-          value={mandataire}
-          onChange={(e) => setMandataire(e.target.value)}
-          placeholder="Laisser vide = le président de séance"
-        />
+        <div className="grid gap-3 md:grid-cols-2">
+          <TextField
+            label="Mandataire chargé des formalités *"
+            value={mandataire}
+            onChange={(e) => setMandataire(e.target.value)}
+            hint="La résolution des pouvoirs le nomme : sans lui, le procès-verbal n’est pas généré."
+          />
+          <ValeurProposee
+            id="succursale-nombre-originaux"
+            label="Nombre d’exemplaires originaux"
+            proposition="quatre"
+            valeur={nombreOriginaux}
+            onChange={setNombreOriginaux}
+          />
+        </div>
       </Section>
 
       {/* Génération du PV */}

@@ -85,7 +85,7 @@ public final class SuccursaleVarsBuilder {
         putSuccursaleCommun(v, succ);
         putDotation(v, succ);
         String respPresent = putResponsable(v, succ, false);
-        String mandataire = mandataireNom(safe);
+        String mandataire = mandataireNom(safe, v, templateCode);
 
         // Boucle RESOLUTIONS : ouverture + (désignation responsable) + pouvoirs formalités.
         List<Map<String, Object>> res = new ArrayList<>();
@@ -157,7 +157,7 @@ public final class SuccursaleVarsBuilder {
                 "diriger la succursale et représenter la société auprès des tiers et des"
                         + " administrations marocaines"));
 
-        String mandataire = mandataireNom(safe);
+        String mandataire = mandataireNom(safe, v, templateCode);
         String villeGreffe = str(v.get("SUCCURSALE_VILLE_GREFFE"));
         VoteSaisi voixPour = VoteSaisi.de(safe).avecVoixPour(str(organe.get("voixPour")));
 
@@ -211,7 +211,7 @@ public final class SuccursaleVarsBuilder {
                 "cessation de l'activité exercée dans la succursale"));
         // Responsable dont les fonctions cessent (identité réduite : civilité / prénom / nom).
         String respPresent = putResponsable(v, succ, true);
-        String mandataire = mandataireNom(safe);
+        String mandataire = mandataireNom(safe, v, templateCode);
         String villeGreffe = str(v.get("SUCCURSALE_VILLE_GREFFE"));
         VoteSaisi voixPour = VoteSaisi.de(safe);
 
@@ -499,10 +499,27 @@ public final class SuccursaleVarsBuilder {
                 str(v.get("REPRESENTANT_SUCCURSALE_PRENOM")), str(v.get("REPRESENTANT_SUCCURSALE_NOM")));
     }
 
-    private static String mandataireNom(Map<String, Object> safe) {
-        return first(str(safe.get("formalitesMandataireNom")),
-                str(asMap(safe.get("formalites")).get("mandataireNom")),
-                str(asMap(safe.get("seance")).get("presidentNom")), "le président de séance");
+    /**
+     * Lot L4a (E1) : le mandataire des formalites est SAISI. Avant, il etait remplace en
+     * silence par le president de seance, puis par le texte "le president de seance" ; et
+     * il n'atteignait pas $FORMALITES_MANDATAIRE_NOM des modeles du corpus. Absent, la
+     * generation est refusee et la donnee nommee (la resolution des pouvoirs le cite).
+     * Pose aussi $NOMBRE_ORIGINAUX, valeur proposee puis confirmee a l'ecran.
+     */
+    private static String mandataireNom(Map<String, Object> safe, Map<String, Object> v, String templateCode) {
+        String m = first(str(safe.get("formalitesMandataireNom")),
+                str(asMap(safe.get("formalites")).get("mandataireNom")));
+        if (m.isBlank()) {
+            throw new ma.jurika.ai.document.GenerationRefuseeException(templateCode,
+                    "Mandataire des formalit\u00e9s non indiqu\u00e9",
+                    List.of(new ma.jurika.ai.document.GenerationRefuseeException.DonneeManquante(
+                            "FORMALITES_MANDATAIRE_NOM", "Mandataire charg\u00e9 des formalit\u00e9s",
+                            "Tous pouvoirs sont donn\u00e9s \u00e0 ...")));
+        }
+        put(v, "FORMALITES_MANDATAIRE_NOM", m);
+        put(v, "NOMBRE_ORIGINAUX", first(str(safe.get("nombreOriginaux")),
+                str(asMap(safe.get("signature")).get("nombreOriginaux"))));
+        return m;
     }
 
     // ------------------------------------------------------------------

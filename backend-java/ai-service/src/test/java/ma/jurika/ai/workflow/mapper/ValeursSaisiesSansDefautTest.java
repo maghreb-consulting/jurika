@@ -45,7 +45,7 @@ class ValeursSaisiesSansDefautTest {
         p.put("formeJuridique", "SARL");
         p.put("societe", societe());
         p.put("seance", seance());
-        p.put("associes", List.of(associe("présent")));
+        p.put("associes", List.of(associe("pr\u00e9sent")));
         p.put("resolutions", List.of(Map.of("type", "modification_denomination", "nouvelleDenomination", "NOVA")));
 
         assertThatThrownBy(() -> ModificationDirecteurMapper.pvVars("PV_MODIFICATION_SARL", p))
@@ -88,8 +88,8 @@ class ValeursSaisiesSansDefautTest {
         Map<String, Object> p = new LinkedHashMap<>();
         p.put("societe", societe());
         p.put("seance", seance());
-        p.put("associes", List.of(associe("présent")));
-        p.put("approbation", Map.of("exerciceClosDate", "2025-12-31", "resultatType", "bénéfice",
+        p.put("associes", List.of(associe("pr\u00e9sent")));
+        p.put("approbation", Map.of("exerciceClosDate", "2025-12-31", "resultatType", "b\u00e9n\u00e9fice",
                 "resultatNet", 1000L));
 
         Map<String, Object> v = new ApprobationComptesMapper(new AnnualReportMapper())
