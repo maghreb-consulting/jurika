@@ -214,16 +214,13 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L1 (dossiers et employes, 2026-10-09) -- dette relevee
 
-- **Ecrans manquants du lot L1** (API livrees et testees, aucun ecran) : reaffectation d'office
-  par le superviseur et historique des responsables ; permissions client
-  "consulter" et "envoyer des demandes" ; droit de suppression en Data Room (sans ecran, aucun
-  employe ne peut plus supprimer de document tant que le superviseur ne l'a pas accorde par
-  l'API) ; versions de la taxe professionnelle et date d'effet ; debours cote client.
-  Necessaires a la demonstration B.
+- **Ecrans encore manquants du lot L1** (API livrees et testees) : reaffectation d'office d'un
+  dossier quelconque par le superviseur (seuls les dossiers rattrapes ont leur ecran,
+  "Dossiers a verifier") ; reglage des permissions client "consulter" et "envoyer des
+  demandes" ; octroi du droit de suppression en Data Room par le superviseur (sans lui, aucun
+  employe ne peut supprimer de document ; l'ecran l'explique a l'employe).
 - **Logique "employe en charge d'un ticket" dupliquee** (responsable du dossier, sinon assigne
   ou createur) : `UpdateTicketUseCase`, `TicketNoteService`, `AccesDeboursTicket` : a factoriser.
-- **Test frontend sensible a la charge** : `SupervisorDashboard > rend les TicketsPerEmploye`
-  a echoue une fois pendant un build Maven parallele, puis passe 3 fois sur 3 seul.
 - **Le test de fumee affirme "SMTP Brevo configure (envoi reel)"** (lecture de variables)
   alors qu'auth envoie vers `localhost:1025` (MailHog absent du Z440 : "Connection refused" a
   chaque inscription) : controle silencieusement inoperant (motif 9).

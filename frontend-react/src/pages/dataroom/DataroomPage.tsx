@@ -26,6 +26,7 @@ import { Card } from '../../components/ui/Card';
 import { TextField } from '../../components/ui/TextField';
 import { Button } from '../../components/ui/Button';
 import { TexteAide } from '../../components/ui/Aide';
+import { HistoriqueResponsablesPanel } from './components/HistoriqueResponsablesPanel';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { dataroomService } from '../../services/dataroom.service';
 import { extractError } from '../../lib/api';
@@ -856,6 +857,13 @@ function DataroomDetail({
       <div className="rounded-xl border border-border bg-bg-raised p-4">
         <EntityActivityPanel entityType="dossier" entityId={dossier.id} title="Activite du dossier" />
       </div>
+
+      {/* Lot L1 : historique des responsables du dossier (employe responsable, superviseur). */}
+      {user?.role !== 'CLIENT' && (
+        <div className="rounded-xl border border-border bg-bg-raised p-4">
+          <HistoriqueResponsablesPanel dossierId={dossier.id} />
+        </div>
+      )}
 
       <InviteClientDrawer
         open={inviteOpen}
