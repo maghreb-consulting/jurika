@@ -256,7 +256,7 @@ export function DossierJuridiqueTab({
     dataroomService
       .mesDroits(dossierId)
       .then((d) => actif && setDroits(d))
-      .catch(() => actif && setDroits({ peutSupprimerDocuments: false, motif: null }));
+      .catch(() => actif && setDroits({ peutSupprimerDocuments: false, motif: null, peutReglerAccesClient: false }));
     return () => {
       actif = false;
     };

@@ -463,6 +463,29 @@ export interface DataroomSettings {
   clientLinkToken: string;
   accessCount: number;
   lastAccessedAt: string | null;
+  /** Lot L1 (V34, RG-CLI-01) : consultation des documents et envoi de demandes. */
+  permConsultation: boolean;
+  permDemandes: boolean;
+}
+
+/** Lot L1 (RG-CLI-01) : reglage partiel des permissions du client (null = inchange). */
+export interface PermissionsClientPatch {
+  permDownload?: boolean;
+  permPrint?: boolean;
+  permDepot?: boolean;
+  permConsultation?: boolean;
+  permDemandes?: boolean;
+}
+
+/** Lot L1 (V35 dataroom) : une ligne de l'historique de l'acces client. */
+export interface HistoriqueAccesClient {
+  id: string;
+  nature: 'PERMISSIONS' | 'SUSPENSION' | 'REACTIVATION';
+  acteurId: string;
+  acteurNom: string | null;
+  avant: Record<string, boolean | string> | null;
+  apres: Record<string, boolean | string> | null;
+  createdAt: string;
 }
 
 /**
@@ -631,4 +654,6 @@ export interface VersionTaxeProfessionnelle {
 export interface DroitsDossier {
   peutSupprimerDocuments: boolean;
   motif: string | null;
+  /** RG-CLI-01 : responsable du dossier ou superviseur. */
+  peutReglerAccesClient: boolean;
 }

@@ -4,9 +4,6 @@ import {
   Activity,
   ArrowLeft,
   Building2,
-  Check,
-  Download,
-  Eye,
   FileText,
   FolderOpen,
   Loader2,
@@ -14,7 +11,6 @@ import {
   MessageSquare,
   PauseCircle,
   PlayCircle,
-  Printer,
   Search,
   Upload,
   Send,
@@ -27,6 +23,7 @@ import { TextField } from '../../components/ui/TextField';
 import { Button } from '../../components/ui/Button';
 import { TexteAide } from '../../components/ui/Aide';
 import { HistoriqueResponsablesPanel } from './components/HistoriqueResponsablesPanel';
+import { AccesClientPanel } from './components/AccesClientPanel';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { dataroomService } from '../../services/dataroom.service';
 import { extractError } from '../../lib/api';
@@ -35,7 +32,7 @@ import {
   isDossierArchived,
 } from '../../lib/dossierArchive';
 import { useCurrentUser } from '../../store/authStore';
-import type { DataroomSettings, DossierBrief } from '../../types/dataroom';
+import type { DataroomSettings, DossierBrief, DroitsDossier } from '../../types/dataroom';
 import { displayFormeJuridique } from '../../types/dataroom';
 import type { DossierClient } from '../../types/auth';
 import { DossierJuridiqueTab } from './DossierJuridiqueTab';
@@ -460,9 +457,9 @@ function DataroomDetail({
     initialTab && VALID_TABS.includes(initialTab as Tab) ? (initialTab as Tab) : 'juridique',
   );
   const [settings, setSettings] = useState<DataroomSettings | null>(null);
-  const [loadingSettings, setLoadingSettings] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [savingPerms, setSavingPerms] = useState(false);
+  // Lot L1 : le responsable du dossier et le superviseur reglent l'acces du client.
+  const [droits, setDroits] = useState<DroitsDossier | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   // 2026-07-01 -- identite du CLIENT lie (section "Acces client")
   const [client, setClient] = useState<DossierClient | null>(null);
@@ -476,14 +473,11 @@ function DataroomDetail({
   const [removingClient, setRemovingClient] = useState(false);
 
   const loadSettings = useCallback(async () => {
-    setLoadingSettings(true);
     try {
       const s = await dataroomService.getSettings(dossier.id);
       setSettings(s);
     } catch (err) {
       setError(extractError(err).message);
-    } finally {
-      setLoadingSettings(false);
     }
   }, [dossier.id]);
 
@@ -505,16 +499,17 @@ function DataroomDetail({
     loadClient();
   }, [loadSettings, loadClient]);
 
-  async function handleToggleSuspend() {
-    if (!settings) return;
-    const next = settings.accessStatus !== 'SUSPENDED';
-    try {
-      const updated = await dataroomService.toggleSuspension(dossier.id, next);
-      setSettings(updated);
-    } catch (err) {
-      setError(extractError(err).message);
-    }
-  }
+  useEffect(() => {
+    if (user?.role !== 'EMPLOYE' && user?.role !== 'SUPERVISEUR') return undefined;
+    let actif = true;
+    dataroomService
+      .mesDroits(dossier.id)
+      .then((d) => actif && setDroits(d))
+      .catch(() => actif && setDroits(null));
+    return () => {
+      actif = false;
+    };
+  }, [dossier.id, user?.role]);
 
   /**
    * Fix 2026-06-07 (BUG 6) — Retire DEFINITIVEMENT l'acces du client
@@ -537,27 +532,6 @@ function DataroomDetail({
       setRemoveClientOpen(false);
     } finally {
       setRemovingClient(false);
-    }
-  }
-
-  async function handlePermissionChange(
-    perm: 'download' | 'print' | 'depot',
-    value: boolean,
-  ) {
-    if (!settings) return;
-    setSavingPerms(true);
-    try {
-      const updated = await dataroomService.updatePermissions(
-        dossier.id,
-        perm === 'download' ? value : settings.permDownload,
-        perm === 'print' ? value : settings.permPrint,
-        perm === 'depot' ? value : settings.permDepot,
-      );
-      setSettings(updated);
-    } catch (err) {
-      setError(extractError(err).message);
-    } finally {
-      setSavingPerms(false);
     }
   }
 
@@ -628,28 +602,6 @@ function DataroomDetail({
             raisonSociale={dossier.raisonSociale}
             className="border border-accent/30 text-accent hover:bg-accent/10 bg-bg-raised"
           />
-          {canEdit && (
-            <Button
-              variant="secondary"
-              onClick={handleToggleSuspend}
-              disabled={loadingSettings}
-              className={
-                suspended
-                  ? 'border border-success/30 text-success hover:bg-success/10 bg-bg-raised'
-                  : 'border border-danger/30 text-danger hover:bg-danger/10 bg-bg-raised'
-              }
-            >
-              {suspended ? (
-                <>
-                  <PlayCircle className="mr-2 h-4 w-4" /> Reactiver
-                </>
-              ) : (
-                <>
-                  <PauseCircle className="mr-2 h-4 w-4" /> Suspendre
-                </>
-              )}
-            </Button>
-          )}
         </div>
       </div>
 
@@ -693,60 +645,21 @@ function DataroomDetail({
         </div>
       )}
 
+      {/* Lot L1 (RG-CLI-01) : acces du client, regle par le responsable ou le superviseur. */}
       {settings && (
-        <div className="bg-bg-overlay border border-border rounded-xl p-3 md:p-4">
-          <div className="flex flex-wrap items-center gap-3 md:gap-4">
-            <span className="text-xs font-bold text-fg">
-              Permissions client :
-            </span>
-            {/* 2026-06-30 — "Consultation" n'est plus une pill cosmetique
-                cochee/desactivee : c'est l'info non editable du socle (toujours
-                active). Les vraies permissions assignables sont les 3 toggles. */}
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs font-medium text-success"
-              title="Le client peut toujours consulter ses documents"
-            >
-              <Eye className="h-3.5 w-3.5" /> Consultation (toujours active)
-            </span>
-            <PermPill
-              icon={Download}
-              label="Telecharger"
-              checked={settings.permDownload}
-              disabled={!canEdit || savingPerms}
-              onChange={(v) => handlePermissionChange('download', v)}
-            />
-            <PermPill
-              icon={Printer}
-              label="Imprimer"
-              checked={settings.permPrint}
-              disabled={!canEdit || savingPerms}
-              onChange={(v) => handlePermissionChange('print', v)}
-            />
-            <PermPill
-              icon={Upload}
-              label="Depot"
-              checked={settings.permDepot}
-              disabled={!canEdit || savingPerms}
-              onChange={(v) => handlePermissionChange('depot', v)}
-            />
-            <div className="ml-auto flex items-center gap-2 text-xs text-fg-subtle">
-              <span>
-                Client avec acces :{' '}
-                <strong className="text-fg">
-                  {settings.accessCount}
-                </strong>
-              </span>
-              {settings.lastAccessedAt && (
-                <span className="text-fg-subtle">
-                  Dernier le{' '}
-                  {new Date(settings.lastAccessedAt).toLocaleDateString(
-                    'fr-FR',
-                  )}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+        <AccesClientPanel
+          dossierId={dossier.id}
+          settings={settings}
+          peutRegler={droits?.peutReglerAccesClient === true}
+          onSettings={setSettings}
+        />
+      )}
+      {settings && (
+        <p className="text-xs text-fg-subtle">
+          Client avec accès : <strong className="text-fg">{settings.accessCount}</strong>
+          {settings.lastAccessedAt &&
+            ` · dernière consultation le ${new Date(settings.lastAccessedAt).toLocaleDateString('fr-FR')}`}
+        </p>
       )}
 
       {/* 2026-07-01 — Acces client : identite du CLIENT lie (ou aucun) */}
@@ -861,7 +774,11 @@ function DataroomDetail({
       {/* Lot L1 : historique des responsables du dossier (employe responsable, superviseur). */}
       {user?.role !== 'CLIENT' && (
         <div className="rounded-xl border border-border bg-bg-raised p-4">
-          <HistoriqueResponsablesPanel dossierId={dossier.id} />
+          <HistoriqueResponsablesPanel
+            dossierId={dossier.id}
+            raisonSociale={dossier.raisonSociale}
+            peutReaffecter={user?.role === 'SUPERVISEUR'}
+          />
         </div>
       )}
 
@@ -900,39 +817,6 @@ function DataroomDetail({
         onConfirm={confirmRemoveClientAccess}
       />
     </div>
-  );
-}
-
-function PermPill({
-  icon: Icon,
-  label,
-  checked,
-  disabled,
-  onChange,
-}: {
-  icon: typeof Eye;
-  label: string;
-  checked: boolean;
-  disabled?: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-        checked
-          ? 'border-success/30 bg-success/10 text-success'
-          : 'border-border bg-bg-raised text-fg-subtle hover:border-border-hi'
-      } ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-    >
-      <span className="flex h-4 w-4 items-center justify-center rounded border border-current/30">
-        {checked ? <Check className="h-3 w-3" /> : null}
-      </span>
-      <Icon className="h-3.5 w-3.5" />
-      {label}
-    </button>
   );
 }
 

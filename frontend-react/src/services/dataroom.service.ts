@@ -24,6 +24,8 @@ import type {
   SearchJuridiqueParams,
   SearchJuridiqueResult,
   SeanceEdition,
+  HistoriqueAccesClient,
+  PermissionsClientPatch,
 } from '../types/dataroom';
 
 export interface UploadJuridiqueParams {
@@ -713,15 +715,19 @@ export const dataroomService = {
     return data;
   },
 
-  async updatePermissions(
-    dossierId: string,
-    permDownload: boolean,
-    permPrint: boolean,
-    permDepot: boolean,
-  ): Promise<DataroomSettings> {
+  /** Lot L1 (RG-CLI-01) : seules les permissions passees changent ; chaque changement est trace. */
+  async updatePermissions(dossierId: string, patch: PermissionsClientPatch): Promise<DataroomSettings> {
     const { data } = await api.patch<DataroomSettings>(
       `/dataroom/dossiers/${dossierId}/settings/permissions`,
-      { permDownload, permPrint, permDepot },
+      patch,
+    );
+    return data;
+  },
+
+  /** Lot L1 (RG-CLI-01) : historique des permissions et des suspensions du client. */
+  async historiqueAccesClient(dossierId: string): Promise<HistoriqueAccesClient[]> {
+    const { data } = await api.get<HistoriqueAccesClient[]>(
+      `/dataroom/dossiers/${dossierId}/settings/historique`,
     );
     return data;
   },

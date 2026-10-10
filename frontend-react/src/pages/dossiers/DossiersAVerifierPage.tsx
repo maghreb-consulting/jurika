@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button';
 import type { ReaffectationVue } from '../../types/dataroom';
 import type { WorkspaceUser } from '../../types/auth';
 import { dateFr } from '../dataroom/components/responsables';
+import { ReaffectationForm } from '../dataroom/components/ReaffectationForm';
 
 /**
  * Lot L1 (decision D1) : la mise a niveau des donnees (migration V28) a designe un
@@ -23,7 +24,7 @@ export function DossiersAVerifierPage() {
   const [employes, setEmployes] = useState<WorkspaceUser[]>([]);
   const [erreur, setErreur] = useState<string | null>(null);
   const [enCours, setEnCours] = useState<string | null>(null);
-  const [reaffectation, setReaffectation] = useState<{ ligne: ReaffectationVue; employe: string; motif: string } | null>(null);
+  const [reaffectation, setReaffectation] = useState<ReaffectationVue | null>(null);
 
   const charger = useCallback(async () => {
     try {
@@ -61,13 +62,13 @@ export function DossiersAVerifierPage() {
     }
   }
 
-  async function reaffecter() {
+  async function reaffecter(employe: string, motif: string) {
     if (!reaffectation) return;
-    const { ligne, employe, motif } = reaffectation;
+    const ligne = reaffectation;
     setEnCours(ligne.id);
     setErreur(null);
     try {
-      await dataroomService.reaffecter(ligne.dossierId, employe, motif.trim());
+      await dataroomService.reaffecter(ligne.dossierId, employe, motif);
       await dataroomService.verifierRattrapage(ligne.id);
       setReaffectation(null);
       await charger();
@@ -146,7 +147,7 @@ export function DossiersAVerifierPage() {
                       <Button
                         size="sm"
                         variant="secondary"
-                        onClick={() => setReaffectation({ ligne: l, employe: '', motif: '' })}
+                        onClick={() => setReaffectation(l)}
                       >
                         Réaffecter
                       </Button>
@@ -160,53 +161,15 @@ export function DossiersAVerifierPage() {
       )}
 
       {reaffectation && (
-        <section aria-labelledby="reaffecter-titre" className="space-y-3 rounded-lg border border-border bg-bg-raised p-4">
-          <h2 id="reaffecter-titre" className="text-sm font-semibold text-fg">
-            Réaffecter « {reaffectation.ligne.raisonSociale} »
-          </h2>
-          <p className="text-xs text-fg-subtle">
-            Le dossier et tous ses tickets passent au nouvel employé, qui est prévenu, ainsi que l’ancien.
-          </p>
-          <label className="block text-sm text-fg-muted">
-            Nouvel employé responsable
-            <select
-              className="mt-1 block w-full rounded-md border border-border bg-bg-raised p-2 text-sm text-fg"
-              value={reaffectation.employe}
-              onChange={(e) => setReaffectation({ ...reaffectation, employe: e.target.value })}
-            >
-              <option value="">Choisir un employé…</option>
-              {employes
-                .filter((e) => e.userId !== reaffectation.ligne.responsableActuelId)
-                .map((e) => (
-                  <option key={e.userId} value={e.userId}>
-                    {e.firstName} {e.lastName}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <label className="block text-sm text-fg-muted">
-            Motif (obligatoire)
-            <input
-              className="mt-1 block w-full rounded-md border border-border bg-bg-raised p-2 text-sm text-fg"
-              value={reaffectation.motif}
-              onChange={(e) => setReaffectation({ ...reaffectation, motif: e.target.value })}
-              placeholder="Par exemple : dossier suivi par Mme X depuis la constitution"
-            />
-          </label>
-          <div className="flex justify-end gap-2">
-            <Button size="sm" variant="ghost" onClick={() => setReaffectation(null)}>
-              Annuler
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => void reaffecter()}
-              disabled={!reaffectation.employe || !reaffectation.motif.trim()}
-              loading={enCours === reaffectation.ligne.id}
-            >
-              Réaffecter le dossier
-            </Button>
-          </div>
-        </section>
+        <ReaffectationForm
+          key={reaffectation.id}
+          raisonSociale={reaffectation.raisonSociale}
+          responsableActuelId={reaffectation.responsableActuelId}
+          employes={employes}
+          enCours={enCours === reaffectation.id}
+          onValider={(employe, motif) => void reaffecter(employe, motif)}
+          onAnnuler={() => setReaffectation(null)}
+        />
       )}
     </div>
   );

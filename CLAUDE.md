@@ -214,11 +214,12 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L1 (dossiers et employes, 2026-10-09) -- dette relevee
 
-- **Ecrans encore manquants du lot L1** (API livrees et testees) : reaffectation d'office d'un
-  dossier quelconque par le superviseur (seuls les dossiers rattrapes ont leur ecran,
-  "Dossiers a verifier") ; reglage des permissions client "consulter" et "envoyer des
-  demandes" ; octroi du droit de suppression en Data Room par le superviseur (sans lui, aucun
-  employe ne peut supprimer de document ; l'ecran l'explique a l'employe).
+- **Lien d'acces par jeton jamais lu** (dataroom) : `client_link_token`, `POST .../settings/regenerate-link`,
+  `GET .../settings/client-link` et `DataroomSettingsService#findByToken` ne sont appeles par
+  aucune route ni aucun ecran (controle silencieusement inoperant, motif 9). En outre
+  `GET .../settings` et `GET .../settings/client-link` rendent le jeton a tout employe, sans
+  controle du responsable. A retirer, ou a concevoir si un acces par lien est voulu (absent du
+  CDC). L'ecran "Acces du client" affiche l'adresse de l'espace client, pas ce jeton (D21).
 - **Logique "employe en charge d'un ticket" dupliquee** (responsable du dossier, sinon assigne
   ou createur) : `UpdateTicketUseCase`, `TicketNoteService`, `AccesDeboursTicket` : a factoriser.
 - **Le test de fumee affirme "SMTP Brevo configure (envoi reel)"** (lecture de variables)
