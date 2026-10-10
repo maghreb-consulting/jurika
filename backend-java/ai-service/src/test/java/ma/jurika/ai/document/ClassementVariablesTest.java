@@ -29,12 +29,17 @@ class ClassementVariablesTest {
     @Test
     void identifiants_d_un_organisme_externes_le_reste_interne() {
         for (String externe : new String[]{"ICE", "$RC_NUMERO", "IDENTIFIANT_FISCAL", "IDENTIFIANT_TP",
-                "CNSS_NUMERO", "DATE_IMMATRICULATION", "CERTIFICAT_NEGATIF_NUMERO", "DEPOT_LEGAL_NUMERO",
-                "DEPOT_ACTES_REFERENCE"}) {
+                "CNSS_NUMERO", "DATE_IMMATRICULATION", "DEPOT_LEGAL_NUMERO", "DATE_DEPOT_LEGAL",
+                "CNDP_RECEPISSE_NUMERO", "SUCCURSALE_RC_NUMERO", "DEPOT_ACTES_REFERENCE"}) {
             assertThat(classement.estExterne(externe)).as(externe).isTrue();
         }
         for (String interne : new String[]{"SIEGE_VILLE", "DATE_ACTE", "DENOMINATION", "CAPITAL_CHIFFRES",
-                "RC_VILLE", "DEPOT_GREFFE_DATE_LIMITE", "TRIBUNAL_VILLE", "ASSOCIE_NOM"}) {
+                "RC_VILLE", "DEPOT_GREFFE_DATE_LIMITE", "TRIBUNAL_VILLE", "ASSOCIE_NOM",
+                // D2 revue (2026-10-10) : les identifiants des TIERS sont internes...
+                "BAILLEUR_RC_NUMERO", "DOMICILIATAIRE_ICE", "ASSOCIE_RC_NUMERO", "LIQUIDATEUR_RC_NUMERO",
+                "ASSOCIE_PRINCIPAL_IF",
+                // ... comme les donnees hors des categories retenues.
+                "CERTIFICAT_NEGATIF_NUMERO", "BULLETIN_OFFICIEL_NUMERO", "ENREGISTREMENT_ACTE_DATE"}) {
             assertThat(classement.estExterne(interne)).as(interne).isFalse();
         }
     }
