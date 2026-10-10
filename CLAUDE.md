@@ -219,6 +219,11 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L3 (saisie unique, 2026-10-10) -- dette relevee
 
+- **`DocumentVerificationIT` ne voit pas les marqueurs de donnee manquante** : il declare OK un
+  `PV_MODIFICATION_SARL` (`target/sample_outputs/`) qui porte "VALEUR MANQUANTE" a la date, l'heure,
+  le lieu et le president de seance (fixture `modification.json` a l'ancienne forme `assemblee`,
+  sans `seance`). Le controle ne cherche que les variables residuelles : controle silencieusement
+  inoperant (motif 9). A corriger avec la fixture (L4, bascule des parcours).
 - **Usages a confirmer par le directeur** (D6, 2026-10-10) : nombre d'originaux et heure de l'acte
   sont desormais des valeurs proposees a l'ecran (composant `ValeurProposee`), confirmees par
   l'employe ; les propositions ("6", "quatre", "10 heures") restent a valider comme usages du cabinet.

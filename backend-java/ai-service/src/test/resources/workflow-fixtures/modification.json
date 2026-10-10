@@ -47,13 +47,15 @@
         "nom": "Karim BENALI",
         "adresse": "5 Boulevard Zerktouni, Casablanca",
         "partsChiffres": 600,
-        "pourcentage": 60
+        "pourcentage": 60,
+        "presence": "présent"
       },
       {
         "nom": "Sofia ALAOUI",
         "adresse": "22 Avenue Hassan II, Rabat",
         "partsChiffres": 400,
-        "pourcentage": 40
+        "pourcentage": 40,
+        "presence": "présent"
       }
     ]
   },
@@ -169,13 +171,15 @@
         "nom": "Karim BENALI",
         "adresse": "5 Boulevard Zerktouni, Casablanca",
         "partsChiffres": 600,
-        "pourcentage": 60
+        "pourcentage": 60,
+        "presence": "présent"
       },
       {
         "nom": "Sofia ALAOUI",
         "adresse": "22 Avenue Hassan II, Rabat",
         "partsChiffres": 400,
-        "pourcentage": 40
+        "pourcentage": 40,
+        "presence": "présent"
       }
     ]
   },
