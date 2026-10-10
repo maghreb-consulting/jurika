@@ -150,8 +150,49 @@ public class ProjecteurVariablesCreation {
                 acte.get("articleDesignationStatuts"));
         poser(workspaceId, ticketId, auteur, "etape-9", n, "DATE_DEPOT_LEGAL", postImmat.get("dateDepotLegal"));
 
+        // ---- Lot L3 (RG-VAR-09, D14 de L1) : provenance EXTRAITE -------------
+        // L'ecran d'extraction liste, sur l'objet saisi, les champs remplis par la lecture
+        // d'une piece et confirmes par l'employe (`_extraits`) ; il retire un champ de la
+        // liste des que l'employe le modifie. Ces valeurs sont EXTRAITES, pas SAISIES.
+        marquerExtraits(workspaceId, ticketId, auteur, s1, null, null, CHAMPS_ETAPE_1);
+        List<Map<String, Object>> dirigeants = liste(data, "step5", "dirigeants");
+        for (int i = 0; i < dirigeants.size(); i++) {
+            marquerExtraits(workspaceId, ticketId, auteur, dirigeants.get(i), "GERANTS", (short) i, CHAMPS_GERANT);
+        }
+        List<Map<String, Object>> associes = liste(data, "step6", "associes");
+        for (int i = 0; i < associes.size(); i++) {
+            marquerExtraits(workspaceId, ticketId, auteur, associes.get(i), "ASSOCIES", (short) i, CHAMPS_ASSOCIE);
+        }
+
         log.debug("magasin.projection ticket={} variables={}", ticketId, n.valeur);
         return n.valeur;
+    }
+
+    /** Champ d'ecran -> variable, pour les champs qu'une extraction de piece peut remplir. */
+    static final Map<String, String> CHAMPS_ETAPE_1 = Map.of(
+            "denomination", "DENOMINATION",
+            "cnNumero", "CERTIFICAT_NEGATIF_NUMERO",
+            "cnDate", "CERTIFICAT_NEGATIF_DATE");
+    static final Map<String, String> CHAMPS_GERANT = Map.of(
+            "civilite", "GERANT_CIVILITE", "nom", "GERANT_NOM", "prenom", "GERANT_PRENOM",
+            "adresse", "GERANT_ADRESSE", "nationalite", "GERANT_NATIONALITE",
+            "dateNaissance", "GERANT_DATE_NAISSANCE", "lieuNaissance", "GERANT_LIEU_NAISSANCE",
+            "pieceNumero", "GERANT_PIECE_NUMERO", "cinNumero", "GERANT_PIECE_NUMERO");
+    static final Map<String, String> CHAMPS_ASSOCIE = Map.of(
+            "civilite", "ASSOCIE_CIVILITE", "nom", "ASSOCIE_NOM", "prenom", "ASSOCIE_PRENOM",
+            "adresse", "ASSOCIE_ADRESSE", "nationalite", "ASSOCIE_NATIONALITE",
+            "dateNaissance", "ASSOCIE_DATE_NAISSANCE", "lieuNaissance", "ASSOCIE_LIEU_NAISSANCE",
+            "pieceNumero", "ASSOCIE_PIECE_NUMERO", "cinNumero", "ASSOCIE_PIECE_NUMERO");
+
+    private void marquerExtraits(UUID ws, UUID ticket, UUID auteur, Map<String, Object> objet,
+                                  String boucle, Short rang, Map<String, String> champs) {
+        if (auteur == null || objet == null || !(objet.get("_extraits") instanceof List<?> extraits)) return;
+        for (Object champ : extraits) {
+            String variable = champs.get(String.valueOf(champ));
+            if (variable != null) {
+                magasin.marquerOrigine(ws, ticket, boucle, rang, variable, Origine.EXTRAITE, auteur);
+            }
+        }
     }
 
     // ------------------------------------------------------------------

@@ -60,6 +60,14 @@ public class WorkflowUseCases {
     @PersistenceContext
     private EntityManager em;
 
+    /** Lot L3 : magasin initialise depuis la fiche societe (provenance FICHE). Optionnel en test unitaire. */
+    private ProjecteurFicheSociete projecteurFiche;
+
+    @Autowired(required = false)
+    void setProjecteurFiche(ProjecteurFicheSociete projecteurFiche) {
+        this.projecteurFiche = projecteurFiche;
+    }
+
     public WorkflowUseCases(WorkflowProgressRepository progressRepository,
                             WorkflowOrchestrator orchestrator,
                             WorkflowProgressLookup progressLookup,
@@ -205,6 +213,13 @@ public class WorkflowUseCases {
         }
     }
 
+    /** Lot L3 (RG-VAR-03) : la fiche societe alimente le magasin du ticket, tous parcours. */
+    private void projeterFiche(UUID workspaceId, UUID ticketId, Map<String, Object> faits) {
+        if (projecteurFiche != null) {
+            projecteurFiche.projeter(workspaceId, ticketId, faits);
+        }
+    }
+
     @Transactional
     @Auditable(action = "WORKFLOW_STEP_EXECUTED", resourceType = "ticket", resourceIdExpr = "#ticketId")
     public StepExecutionResult executeStep(UUID workspaceId, UUID ticketId, int step,
@@ -224,6 +239,7 @@ public class WorkflowUseCases {
         Map<String, Object> dossierFacts = loadDossierFactsByTicket(workspaceId, ticketId);
         if (!dossierFacts.isEmpty()) {
             existingWithDossier.put("dossier", dossierFacts);
+            projeterFiche(workspaceId, ticketId, dossierFacts);
         }
         // PROMPT F (2026-06-23) — surcharge par le dossier CHOISI à l'étape 1
         // du workflow MODIFICATION (et workflows similaires) : l'employé peut
@@ -238,6 +254,7 @@ public class WorkflowUseCases {
                 Map<String, Object> chosenFacts = loadDossierFactsById(workspaceId, chosen);
                 if (!chosenFacts.isEmpty()) {
                     existingWithDossier.put("dossier", chosenFacts);
+                    projeterFiche(workspaceId, ticketId, chosenFacts);
                 }
             }
         } catch (IllegalArgumentException ignore) {
@@ -1336,7 +1353,8 @@ public class WorkflowUseCases {
             Object[] row = (Object[]) em.createNativeQuery("""
                     SELECT raison_sociale, forme_juridique, ice, rc_numero, rc_tribunal,
                            capital_social_mad, adresse_siege, ville, statut,
-                           fiche_structuree, date_dissolution
+                           fiche_structuree, date_dissolution,
+                           identifiant_fiscal, taxe_professionnelle, cnss
                     FROM entreprise_dossiers
                     WHERE id = ?1 AND workspace_id = ?2
                     """)
@@ -1392,6 +1410,12 @@ public class WorkflowUseCases {
         if (row.length > 10 && row[10] != null) {
             facts.put("dateDissolution", String.valueOf(row[10]));
         }
+        // Lot L3 (RG-VAR-08) : identifiants de fin de parcours, servis aux actes suivants.
+        if (row.length > 13) {
+            if (row[11] != null) facts.put("identifiantFiscal", row[11].toString());
+            if (row[12] != null) facts.put("identifiantTp", row[12].toString());
+            if (row[13] != null) facts.put("cnssNumero", row[13].toString());
+        }
         return facts;
     }
 
@@ -1413,7 +1437,8 @@ public class WorkflowUseCases {
             Object[] row = (Object[]) em.createNativeQuery("""
                     SELECT raison_sociale, forme_juridique, ice, rc_numero, rc_tribunal,
                            capital_social_mad, adresse_siege, ville, statut,
-                           fiche_structuree, date_dissolution
+                           fiche_structuree, date_dissolution,
+                           identifiant_fiscal, taxe_professionnelle, cnss
                     FROM entreprise_dossiers
                     WHERE id = ?1 AND workspace_id = ?2
                     """)

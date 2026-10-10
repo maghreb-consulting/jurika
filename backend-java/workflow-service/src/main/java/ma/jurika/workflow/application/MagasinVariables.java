@@ -164,6 +164,51 @@ public class MagasinVariables {
         }
     }
 
+    /**
+     * Lot L3 (RG-VAR-02/03/05) : pose une donnee de la FICHE SOCIETE. Elle remplit une
+     * place vide, et se met a jour quand la fiche change (une correction de la fiche se
+     * repercute) ; elle ne recouvre jamais une donnee saisie, extraite ou calculee.
+     *
+     * @return {@code true} si la valeur a ete posee ou mise a jour.
+     */
+    @Transactional
+    public boolean poserFiche(UUID workspaceId, UUID ticketId, String variable, String valeur) {
+        TenantContext.set(workspaceId);
+        if (valeur == null || valeur.isBlank()) return false;
+        String nom = normaliser(variable);
+        Optional<DossierVariableEntity> deja = repository.findSimple(workspaceId, ticketId, nom);
+        if (deja.isPresent()) {
+            DossierVariableEntity e = deja.get();
+            boolean renseignee = e.getValeur() != null && !e.getValeur().isBlank();
+            if (renseignee && !Origine.FICHE.name().equals(e.getOrigine())) return false;
+            if (valeur.equals(e.getValeur())) return false;
+        }
+        DossierVariableEntity e = deja.orElseGet(DossierVariableEntity::new);
+        appliquer(e, workspaceId, ticketId, nom, null, null, valeur, Origine.FICHE, null, "fiche-societe");
+        repository.save(e);
+        return true;
+    }
+
+    /**
+     * Lot L3 (RG-VAR-09, D14 de L1) : marque la provenance d'une valeur deja posee --
+     * une valeur lue sur une piece et confirmee par l'employe est EXTRAITE, non SAISIE.
+     * Sans valeur a cette place, rien n'est marque.
+     */
+    @Transactional
+    public void marquerOrigine(UUID workspaceId, UUID ticketId, String boucle, Short rang, String variable,
+                               Origine origine, UUID auteur) {
+        TenantContext.set(workspaceId);
+        String nom = normaliser(variable);
+        Optional<DossierVariableEntity> e = boucle == null
+                ? repository.findSimple(workspaceId, ticketId, nom)
+                : repository.findEnBoucle(workspaceId, ticketId, boucle, rang, nom);
+        e.filter(x -> x.getValeur() != null && !x.getValeur().isBlank()).ifPresent(x -> {
+            x.setOrigine(origine.name());
+            x.setSaisieParId(auteur);
+            repository.save(x);
+        });
+    }
+
     /** Rattache les variables du ticket au dossier, dès que celui-ci existe. */
     @Transactional
     public int rattacherAuDossier(UUID workspaceId, UUID ticketId, UUID dossierId) {

@@ -87,6 +87,7 @@ class WorkflowJurikaAppIT {
     @Autowired private WorkflowProgressLookup lookup;
     @Autowired private WorkflowFinalizationService finalisation;
     @Autowired private MagasinVariables magasin;
+    @Autowired private ma.jurika.workflow.application.ProjecteurVariablesCreation projecteur;
 
     private UUID workspaceId;
     private UUID dossierId;
@@ -222,5 +223,98 @@ class WorkflowJurikaAppIT {
         assertThat(cree).isNotNull();
         assertThat(jdbc.queryForObject("SELECT raison_sociale FROM entreprise_dossiers WHERE id = ? AND workspace_id = ?",
                 String.class, cree, workspaceId)).isEqualTo("ATLAS CONSEIL");
+    }
+
+    // ---- Lot L3 : magasin initialise depuis la fiche (FICHE), extraction (EXTRAITE) ----
+
+    private String origine(String variable) {
+        return dansLeWorkspace(() -> magasin.lire(workspaceId, ticketId)).stream()
+                .filter(v -> v.variable().equals(variable) && v.boucle() == null)
+                .map(v -> v.valeur() + "/" + v.origine()).findFirst().orElse("absente");
+    }
+
+    /** Etape 1 valide de l'approbation des comptes (societe, exercice clos, date de l'AGO). */
+    private Map<String, Object> etape1PvAgo() {
+        java.time.LocalDate jour = java.time.LocalDate.now();
+        return Map.of("dossierId", dossierId.toString(),
+                "exerciceClos", String.valueOf(jour.getYear() - 1),
+                "dateAGO", jour.minusDays(10).toString());
+    }
+
+    @Test
+    void l3_la_fiche_alimente_le_magasin_a_chaque_etape_sans_recouvrir_la_saisie() {
+        jdbc.update("UPDATE tickets SET type = 'PV_AGO', dossier_id = ? WHERE id = ?", dossierId, ticketId);
+        jdbc.update("UPDATE entreprise_dossiers SET ice = '001234567000089', taxe_professionnelle = 'TP-77' WHERE id = ?",
+                dossierId);
+        dansLeWorkspace(() -> workflows.startOrResume(workspaceId, ticketId, WorkflowType.PV_AGO, EMPLOYE));
+        // Une donnee saisie au ticket n'est jamais recouverte par la fiche.
+        dansLeWorkspace(() -> {
+            magasin.poser(workspaceId, ticketId, "RC_NUMERO", "999999", VariableDuDossier.Origine.SAISIE,
+                    EMPLOYE, "etape-1");
+            return null;
+        });
+
+        dansLeWorkspace(() -> workflows.executeStep(workspaceId, ticketId, 1, etape1PvAgo(), EMPLOYE));
+
+        assertThat(origine("DENOMINATION")).isEqualTo("NOVA INDUSTRIE/FICHE");
+        assertThat(origine("ICE")).isEqualTo("001234567000089/FICHE");
+        assertThat(origine("IDENTIFIANT_TP")).isEqualTo("TP-77/FICHE");
+        assertThat(origine("TRIBUNAL_VILLE")).isEqualTo("CASABLANCA/FICHE");
+        assertThat(origine("RC_NUMERO")).isEqualTo("999999/SAISIE");
+
+        // Une correction de la fiche se repercute (RG-VAR-05).
+        jdbc.update("UPDATE entreprise_dossiers SET raison_sociale = 'NOVA INDUSTRIE MAROC' WHERE id = ?", dossierId);
+        dansLeWorkspace(() -> workflows.executeStep(workspaceId, ticketId, 1, etape1PvAgo(), EMPLOYE));
+        assertThat(origine("DENOMINATION")).isEqualTo("NOVA INDUSTRIE MAROC/FICHE");
+    }
+
+    @Test
+    void l3_valeur_extraite_et_confirmee_marquee_extraite_et_decocher_n_efface_rien() {
+        Map<String, Object> gerant = new java.util.LinkedHashMap<>();
+        gerant.put("nom", "BENALI");
+        gerant.put("prenom", "Karim");
+        gerant.put("adresse", "12 rue de Fes, Rabat");
+        gerant.put("_extraits", List.of("nom", "prenom"));
+        Map<String, Object> data = new java.util.LinkedHashMap<>();
+        data.put("step1", Map.of("denomination", "NOVA", "cnNumero", "CN-2026-1", "_extraits", List.of("cnNumero")));
+        data.put("step5", Map.of("dirigeants", List.of(gerant)));
+        // Le contrat de bail a ete decoche : sa donnee saisie reste au magasin (RG-VAR-04).
+        data.put("step7", Map.of("complements", Map.of("bailleurNom", "IMMO ATLAS"), "lignesRetenues", List.of(1)));
+
+        dansLeWorkspace(() -> projecteur.projeter(workspaceId, ticketId, data, EMPLOYE));
+
+        List<VariableDuDossier> lues = dansLeWorkspace(() -> magasin.lire(workspaceId, ticketId));
+        assertThat(lues).extracting(v -> v.boucle() + ":" + v.variable() + "=" + v.origine())
+                .contains("GERANTS:GERANT_NOM=EXTRAITE", "GERANTS:GERANT_PRENOM=EXTRAITE",
+                        "GERANTS:GERANT_ADRESSE=SAISIE", "null:CERTIFICAT_NEGATIF_NUMERO=EXTRAITE",
+                        "null:DENOMINATION=SAISIE", "null:BAILLEUR_NOM=SAISIE");
+        assertThat(lues).filteredOn(v -> "EXTRAITE".equals(String.valueOf(v.origine())))
+                .allSatisfy(v -> assertThat(v.saisiePar()).as("confirmee par l'employe").isEqualTo(EMPLOYE));
+    }
+
+    @Test
+    void l3_charge_utile_de_la_creation_construite_par_le_serveur_pour_l_employe_en_charge() throws Exception {
+        dansLeWorkspace(() -> {
+            magasin.poser(workspaceId, ticketId, "DENOMINATION", "NOVA INDUSTRIE", VariableDuDossier.Origine.SAISIE,
+                    EMPLOYE, "etape-1");
+            magasin.poser(workspaceId, ticketId, "DATE_SIGNATURE", "2026-10-01", VariableDuDossier.Origine.SAISIE,
+                    EMPLOYE, "etape-7");
+            return null;
+        });
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/internal/tickets/{t}/charge-utile-creation", ticketId)
+                        .param("workspaceId", workspaceId.toString()).param("employeId", EMPLOYE.toString()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.societe.denomination").value("NOVA INDUSTRIE"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.societe.dateSignature").value("2026-10-01"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.ticketId").value(ticketId.toString()));
+        // Un autre employe du cabinet n'obtient pas les donnees d'un ticket qui n'est pas le sien.
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/internal/tickets/{t}/charge-utile-creation", ticketId)
+                        .param("workspaceId", workspaceId.toString()).param("employeId", UUID.randomUUID().toString()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isForbidden());
     }
 }
