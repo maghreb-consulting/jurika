@@ -92,6 +92,15 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
 - Les commandes `/lot-demarrer`, `/lot-executer`, `/lot-verifier` et `/lot-cloturer` (mode
   pas a pas, avec points d'arret) restent disponibles.
 
+## Aide integree (CDC 15.4, regle de tous les lots, 2026-10-10)
+
+- Chaque ecran **nouveau ou modifie** recoit ses aides contextuelles (infobulle ou texte d'aide)
+  qui disent ce qu'il faut faire, ce qui manque et ce qui vient ensuite, dans un francais
+  correct (accents, ponctuation, termes du metier du cabinet). Une aide deja vue peut etre
+  masquee puis reaffichee.
+- Composants : `frontend-react/src/components/ui/Aide.tsx` (`InfoBulle`, `TexteAide`).
+- Le rapport final de chaque lot liste les aides ajoutees (ecran, emplacement, texte).
+
 ## Regle des variables d'un acte (2026-10-09 ; a reprendre dans le perimetre de L3)
 
 - Chaque variable du dictionnaire est classee **interne** ou **externe**. Externe : donnee
@@ -193,6 +202,15 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   Tableau : `~/docs/rapports/L2_correspondance_gabarits.md`.
 - **D8 : afficher un message clair a l'utilisateur au lieu d'une erreur 500 quand un modele est
   refuse** (gabarit du corpus modifie depuis le chargement ou non rendable : `CorpusException`).
+
+### Lot L6 (qualite de la langue, ergonomie) -- a prevoir
+
+- **Passe complete d'ergonomie et d'aide integree** (CDC 15.4) sur tous les ecrans existants,
+  en particulier a chaque statut du ticket : ce qu'il faut faire, ce qui manque, ce qui vient
+  ensuite.
+- **Visite guidee** a la premiere connexion (masquable, reaffichable).
+- **Nouveau logo**, avec sa variante ivoire en mode sombre.
+- **Super-admin affiche "JURIKA"** (et non un nom de cabinet ou de compte).
 
 ### Lot L1 (dossiers et employes, 2026-10-09) -- dette relevee
 
