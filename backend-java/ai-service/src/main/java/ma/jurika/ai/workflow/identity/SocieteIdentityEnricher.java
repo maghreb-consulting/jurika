@@ -28,8 +28,8 @@ import java.util.UUID;
  * <b>amorcer</b> la présence quand le formulaire n'a rien fourni (jamais pour écraser une
  * saisie de séance, qui porte l'état présent/absent/mandataire).
  *
- * <p>Best-effort : sans {@code dossierId} dans le payload, ou si l'identité BD est
- * indisponible, le payload est renvoyé inchangé (mode dégradé — 0 régression).
+ * <p>Sans {@code dossierId} dans le payload, le payload est renvoye inchange. Lot L3 :
+ * une identite illisible fait echouer la generation (IdentiteSocieteIndisponibleException).
  */
 @Component
 public class SocieteIdentityEnricher {
@@ -40,7 +40,9 @@ public class SocieteIdentityEnricher {
     private static final Set<String> SOCIETE_KEYS = Set.of(
             "denomination", "formeJuridique", "ice", "ifNumero", "rcNumero",
             "villeGreffe", "rcVille", "capitalChiffres", "capitalSocial",
-            "siegeSocial", "adresseSiege", "ville", "nombreParts", "valeurNominalePart");
+            "siegeSocial", "adresseSiege", "ville", "nombreParts", "valeurNominalePart",
+            // Lot L3 (RG-VAR-08) : identifiants obtenus en fin de parcours.
+            "identifiantTp", "cnssNumero");
 
     private final SocieteIdentityProvider identityProvider;
 

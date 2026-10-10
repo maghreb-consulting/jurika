@@ -45,6 +45,14 @@ public class GenerationExceptionHandler {
         return reponse(HttpStatus.UNPROCESSABLE_ENTITY, body);
     }
 
+    @ExceptionHandler(ma.jurika.ai.workflow.identity.IdentiteSocieteIndisponibleException.class)
+    public ResponseEntity<Map<String, Object>> identite(ma.jurika.ai.workflow.identity.IdentiteSocieteIndisponibleException ex) {
+        log.error("{}", ex.getMessage());
+        return reponse(HttpStatus.SERVICE_UNAVAILABLE, corps("DONNEES_SOCIETE_INDISPONIBLES",
+                "Les données de la société n'ont pas pu être lues : le document n'a pas été généré. "
+                        + "Réessayez dans un instant ; si le problème persiste, signalez-le à l'administrateur."));
+    }
+
     @ExceptionHandler(GabaritIntrouvableException.class)
     public ResponseEntity<Map<String, Object>> introuvable(GabaritIntrouvableException ex) {
         log.error("{}", ex.getMessage());

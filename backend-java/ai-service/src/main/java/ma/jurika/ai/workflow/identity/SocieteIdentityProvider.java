@@ -9,9 +9,7 @@ import java.util.UUID;
  * valeur nominale, associés, gérants).
  *
  * <p>ai-service ne lit aucune base : l'implémentation par défaut délègue à workflow-service
- * ({@link RemoteSocieteIdentityProvider}). Best-effort par contrat — une indisponibilité
- * renvoie une map vide, jamais une exception, pour que la génération reste possible en
- * mode dégradé. Un stub in-memory est trivial à fournir en test.
+ * ({@link RemoteSocieteIdentityProvider}). Lot L3 : une indisponibilite leve IdentiteSocieteIndisponibleException (plus de mode degrade silencieux). Un stub in-memory est trivial à fournir en test.
  */
 public interface SocieteIdentityProvider {
 

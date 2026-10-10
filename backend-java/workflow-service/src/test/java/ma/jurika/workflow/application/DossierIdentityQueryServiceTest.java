@@ -49,7 +49,7 @@ class DossierIdentityQueryServiceTest {
                 "ACME MAROC SARL", "SARL", "001234567000089", "40012345",
                 "RC 123456", "Casablanca", new BigDecimal("100000.00"),
                 "12 rue de la Liberté, Casablanca", "Casablanca", fiche,
-                "ACTIVE", null
+                "ACTIVE", null, null, null
         };
 
         Map<String, Object> id = withRow(row).identity(WS, DOSSIER);
@@ -91,7 +91,7 @@ class DossierIdentityQueryServiceTest {
                 "ACME MAROC SARL", "SARL", "001234567000089", "40012345",
                 "RC 123456", "Casablanca", new BigDecimal("100000.00"),
                 "12 rue de la Liberté, Casablanca", "Casablanca", fiche,
-                "DISSOUTE", java.time.LocalDate.of(2026, 5, 15)
+                "DISSOUTE", java.time.LocalDate.of(2026, 5, 15), null, null
         };
 
         Map<String, Object> id = withRow(row).identity(WS, DOSSIER);
@@ -115,5 +115,27 @@ class DossierIdentityQueryServiceTest {
         DossierIdentityQueryService svc = new DossierIdentityQueryService();
         assertThat(svc.identity(null, DOSSIER)).isEmpty();
         assertThat(svc.identity(WS, null)).isEmpty();
+    }
+
+    // ---- Lot L3 : reprise de la fiche societe, erreurs non avalees (motif 9) ----
+
+    @Test
+    void l3_expose_taxe_professionnelle_et_cnss() {
+        Object[] row = {"ACME", "SARL", null, null, null, "Rabat", null, null, "Rabat", null, "ACTIVE", null,
+                "TP-2026-77", "CNSS-998877"};
+        Map<String, Object> id = withRow(row).identity(WS, DOSSIER);
+        assertThat(id.get("identifiantTp")).isEqualTo("TP-2026-77");
+        assertThat(id.get("cnssNumero")).isEqualTo("CNSS-998877");
+    }
+
+    @Test
+    void l3_une_erreur_de_lecture_n_est_plus_avalee() {
+        EntityManager em = mock(EntityManager.class);
+        when(em.createNativeQuery(anyString())).thenThrow(new IllegalStateException("colonne absente"));
+        DossierIdentityQueryService svc = new DossierIdentityQueryService();
+        ReflectionTestUtils.setField(svc, "em", em);
+        // Avant L3 : une map vide, et l'acte partait sans les donnees de la societe.
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> svc.identity(WS, DOSSIER))
+                .hasMessageContaining("colonne absente");
     }
 }

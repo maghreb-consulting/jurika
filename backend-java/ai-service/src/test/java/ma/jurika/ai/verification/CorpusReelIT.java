@@ -104,7 +104,10 @@ class CorpusReelIT {
                     @SuppressWarnings("unchecked") Map<String, Object> m = (Map<String, Object>) brut;
                     payload = m;
                 }
-                Map<String, Object> variables = b.mapper().map(code, payload);
+                // Lot L3 : meme chaine que la production (WorkflowDocumentController) :
+                // mapper, puis reprise des variables canoniques de la fiche societe.
+                Map<String, Object> variables = ma.jurika.ai.workflow.identity.RepriseFicheSociete.completer(
+                        b.mapper().map(code, payload), payload);
                 e.put("dans_corpus", corpus.gabarit(code).isPresent());
                 DocumentResult ra = avant.generate(code, variables);
                 Files.write(SORTIE.resolve("temoin/classpath/" + code + ".docx"), ra.bytes());

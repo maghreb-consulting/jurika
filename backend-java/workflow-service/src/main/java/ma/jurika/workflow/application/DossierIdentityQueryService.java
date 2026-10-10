@@ -40,8 +40,9 @@ public class DossierIdentityQueryService {
 
     /**
      * Charge l'identité société d'un dossier, aplatie pour l'objet {@code societe}.
-     * Renvoie {@link Map#of()} si le dossier est introuvable dans le workspace ou en
-     * cas d'erreur (best-effort).
+     * Renvoie {@link Map#of()} si le dossier est introuvable dans le workspace.
+     * Lot L3 (motif 9) : une erreur de lecture n'est plus avalee -- une map vide
+     * faisait partir l'acte sans les donnees de la societe.
      */
     @Transactional(readOnly = true)
     public Map<String, Object> identity(UUID workspaceId, UUID dossierId) {
@@ -49,11 +50,12 @@ public class DossierIdentityQueryService {
         // Lot L0 (E16, WF1) : le workspace courant est pose par l'appelant AVANT
         // la transaction (InternalDossierController) ; pose ici, il arrivait trop
         // tard pour la RLS, et le clear() final effacait le contexte de l'appelant.
-        try {
+        {
             Object[] row = (Object[]) em.createNativeQuery("""
                     SELECT raison_sociale, forme_juridique, ice, identifiant_fiscal,
                            rc_numero, rc_tribunal, capital_social_mad, adresse_siege,
-                           ville, fiche_structuree, statut, date_dissolution
+                           ville, fiche_structuree, statut, date_dissolution,
+                           taxe_professionnelle, cnss
                     FROM entreprise_dossiers
                     WHERE id = ?1 AND workspace_id = ?2
                     """)
@@ -87,6 +89,9 @@ public class DossierIdentityQueryService {
             // (ecrite a la completion du workflow DISSOLUTION) — la liquidation la LIT,
             // elle ne la re-saisit jamais.
             if (row[11] != null) s.put("dateDissolution", String.valueOf(row[11]));
+            // Lot L3 (RG-VAR-08) : identifiants obtenus en fin de parcours, servis aux actes suivants.
+            putIfPresent(s, "identifiantTp", row[12]);
+            putIfPresent(s, "cnssNumero", row[13]);
 
             Map<String, Object> fiche = ficheFromJson(row[9]);
             if (fiche != null) {
@@ -106,10 +111,6 @@ public class DossierIdentityQueryService {
                 putIfPresent(s, "siegeLiquidation", fiche.get("siegeLiquidation"));
             }
             return s;
-        } catch (Exception ex) {
-            log.warn("dossierIdentity SQL/parse failed dossier={} : {}", dossierId, ex.getMessage());
-            try { em.clear(); } catch (Exception ignore) { /* defensive */ }
-            return Map.of();
         }
     }
 
@@ -127,8 +128,9 @@ public class DossierIdentityQueryService {
         try {
             return FICHE_MAPPER.readValue(s, Map.class);
         } catch (Exception e) {
-            log.warn("fiche_structuree parse failed : {}", e.getMessage());
-            return null;
+            // Lot L3 (motif 9) : une fiche illisible n'est plus traitee comme absente
+            // (associes et gerants disparaissaient des actes sans un mot).
+            throw new IllegalStateException("fiche_structuree illisible : " + e.getMessage(), e);
         }
     }
 

@@ -256,9 +256,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   n'atteignent pas les cabinets : corpus commun a concevoir (migration probable).
 - **Export ZIP du Dossier Juridique** : echec complet (`duplicate entry`) quand deux documents
   d'un meme type portent le meme nom de fichier (`exportSelectionAsZip`).
-- **Erreurs avalees (motif 9)** : `DossierIdentityQueryService#identity` (workflow) rend une map
-  vide sur toute exception ; `WorkflowUseCases#executeStep` avale l'echec de
-  `loadDossierFactsByTicket` en DEBUG.
 - **Dockerfile de dashboard** : ignore une erreur Maven pendant le telechargement des
   dependances (`dependency:go-offline ... || true`, vu en E26 sur une collision du cache
   partage entre constructions paralleles).

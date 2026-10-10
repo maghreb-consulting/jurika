@@ -174,6 +174,9 @@ public class WorkflowDocumentController {
 
         Map<String, Object> variables = mappingService.map(
                 workflowCode, templateCode, enriched);
+        // Lot L3 (RG-VAR-03) : variables canoniques de la fiche societe reprises quand le
+        // mapper les laisse vides (jamais ecrasees, jamais inventees).
+        variables = ma.jurika.ai.workflow.identity.RepriseFicheSociete.completer(variables, enriched);
 
         refuserSiControleBloquant(workflowCode, templateCode, variables);
 

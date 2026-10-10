@@ -219,13 +219,11 @@ public class WorkflowUseCases {
         // sous la cle "dossier" pour que les strategies puissent valider RG-M02/M06
         // (coherence decisionType/forme), RG-M08 (capital), RG-DI/LI (statut).
         Map<String, Object> existingWithDossier = new HashMap<>(p.data());
-        try {
-            Map<String, Object> dossierFacts = loadDossierFactsByTicket(workspaceId, ticketId);
-            if (!dossierFacts.isEmpty()) {
-                existingWithDossier.put("dossier", dossierFacts);
-            }
-        } catch (Exception ex) {
-            log.debug("loadDossierFactsByTicket failed ticket={} : {}", ticketId, ex.getMessage());
+        // Lot L3 (motif 9, backlog L0) : un echec de lecture du dossier n'est plus avale
+        // en DEBUG -- l'etape echoue et le dit, au lieu de tourner sans les faits du dossier.
+        Map<String, Object> dossierFacts = loadDossierFactsByTicket(workspaceId, ticketId);
+        if (!dossierFacts.isEmpty()) {
+            existingWithDossier.put("dossier", dossierFacts);
         }
         // PROMPT F (2026-06-23) — surcharge par le dossier CHOISI à l'étape 1
         // du workflow MODIFICATION (et workflows similaires) : l'employé peut
@@ -244,8 +242,6 @@ public class WorkflowUseCases {
             }
         } catch (IllegalArgumentException ignore) {
             // dossierId mal formé → la stratégie le bloquera proprement
-        } catch (Exception ex) {
-            log.debug("loadDossierFactsById failed : {}", ex.getMessage());
         }
 
         // Lot DIVERS (2026-08-13) — LIQUIDATION : la stratégie doit REFUSER la clôture
@@ -258,8 +254,10 @@ public class WorkflowUseCases {
                 if (cible == null) cible = fetchDossierId(workspaceId, ticketId);
                 existingWithDossier.put("succursalesOuvertes",
                         listSuccursalesOuvertes(workspaceId, cible));
-            } catch (Exception ex) {
-                log.debug("listSuccursalesOuvertes failed ticket={} : {}", ticketId, ex.getMessage());
+            } catch (IllegalArgumentException ex) {
+                // Lot L3 (motif 9) : seul un identifiant mal forme est tolere ; une erreur de
+                // lecture n'est plus avalee (la cloture passait sans controle des succursales).
+                log.debug("listSuccursalesOuvertes : identifiant invalide ticket={} : {}", ticketId, ex.getMessage());
             }
         }
 
@@ -1333,7 +1331,8 @@ public class WorkflowUseCases {
      */
     private Map<String, Object> loadDossierFactsById(UUID workspaceId, UUID dossierId) {
         if (dossierId == null) return Map.of();
-        try {
+        // Lot L3 (motif 9) : plus de mode degrade silencieux en cas d'erreur SQL.
+        {
             Object[] row = (Object[]) em.createNativeQuery("""
                     SELECT raison_sociale, forme_juridique, ice, rc_numero, rc_tribunal,
                            capital_social_mad, adresse_siege, ville, statut,
@@ -1348,11 +1347,6 @@ public class WorkflowUseCases {
                     .orElse(null);
             if (row == null) return Map.of();
             return toDossierFacts(dossierId, row);
-        } catch (Exception ex) {
-            log.warn("loadDossierFactsById SQL failed dossier={} : {}",
-                    dossierId, ex.getMessage());
-            try { em.clear(); } catch (Exception ignore) { /* defensive */ }
-            return Map.of();
         }
     }
 
@@ -1408,11 +1402,9 @@ public class WorkflowUseCases {
         // (cf RG-SAAS-01 — la RLS ne couvre pas car jurika_user a BYPASSRLS).
         UUID dossierId = fetchDossierId(workspaceId, ticketId);
         if (dossierId == null) return Map.of();
-        // NB : on isole strictement la SELECT du reste de la transaction. Une erreur
-        // SQL ici (colonne absente, ...) marquerait la transaction outer rollback-only
-        // et casserait le progressRepository.save() qui suit. Le catch retourne un
-        // map vide -- les strategies fonctionnent en mode degrade sans dossier injecte.
-        try {
+        // Lot L3 (motif 9) : une erreur SQL ici n'est plus avalee (mode degrade sans les
+        // faits du dossier, sans un mot) ; elle fait echouer l'etape, qui le dit.
+        {
             // Colonnes alignees sur la table publique entreprise_dossiers
             // (cf migration V*__dossier_schema.sql). rc_ville n'existe pas ;
             // le pendant est rc_tribunal (ville du tribunal de commerce).
@@ -1432,15 +1424,6 @@ public class WorkflowUseCases {
                     .orElse(null);
             if (row == null) return Map.of();
             return toDossierFacts(dossierId, row);
-        } catch (Exception ex) {
-            log.warn("loadDossierFactsByTicket SQL failed dossier={} : {}",
-                    dossierId, ex.getMessage());
-            // L'exception JPA a marque la transaction rollback-only. On force un clear
-            // pour eviter que le `progressRepository.save` suivant ne propage l'etat
-            // casse de la session (-> 500). Le contexte transactionnel reste intact ;
-            // seule la session est videe.
-            try { em.clear(); } catch (Exception ignore) { /* defensive */ }
-            return Map.of();
         }
     }
 
@@ -1947,8 +1930,9 @@ public class WorkflowUseCases {
         try {
             return FICHE_MAPPER.readValue(s, Map.class);
         } catch (Exception e) {
-            log.warn("fiche_structuree parse failed : {}", e.getMessage());
-            return null;
+            // Lot L3 (motif 9) : une fiche illisible n'est plus prise pour une fiche absente
+            // (elle serait reecrite a vide a la consolidation suivante).
+            throw new IllegalStateException("fiche_structuree illisible : " + e.getMessage(), e);
         }
     }
 
