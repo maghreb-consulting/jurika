@@ -203,14 +203,33 @@ public class DossierTransferService {
      * observation) ou l'employe responsable ; tout autre employe recoit 404.
      */
     @Transactional(readOnly = true)
-    public List<DossierReaffectation> historique(UUID workspaceId, UUID actorId, boolean superviseur,
-                                                 UUID dossierId) {
+    public List<ma.jurika.ticket.domain.model.ReaffectationVue> historique(UUID workspaceId, UUID actorId,
+                                                                          boolean superviseur, UUID dossierId) {
         TenantContext.set(workspaceId);
         EntrepriseDossier dossier = loadDossier(workspaceId, dossierId);
         if (!superviseur && !actorId.equals(dossier.responsableId())) {
             throw new NotFoundException("Dossier introuvable");
         }
-        return reaffectations.lister(workspaceId, dossierId);
+        return reaffectations.listerVues(workspaceId, dossierId);
+    }
+
+    /** Lot L1 (D1) : rattrapages de V28 du cabinet, pour verification par le superviseur. */
+    @Transactional(readOnly = true)
+    public List<ma.jurika.ticket.domain.model.ReaffectationVue> rattrapages(UUID workspaceId) {
+        TenantContext.set(workspaceId);
+        return reaffectations.listerRattrapages(workspaceId);
+    }
+
+    /** Lot L1 (V32) : le superviseur marque un rattrapage verifie (trace : qui, quand). */
+    @Transactional
+    public ma.jurika.ticket.domain.model.ReaffectationVue verifierRattrapage(UUID workspaceId, UUID superviseurId,
+                                                                           UUID reaffectationId) {
+        TenantContext.set(workspaceId);
+        var vue = reaffectations.marquerVerifie(workspaceId, reaffectationId, superviseurId)
+                .orElseThrow(() -> new NotFoundException("Rattrapage introuvable"));
+        auditEmitter.emit(workspaceId, superviseurId, "RATTRAPAGE_VERIFIE", "dossier", vue.dossierId(),
+                Map.of("reaffectationId", reaffectationId.toString()));
+        return vue;
     }
 
     // -----------------------------------------------------------------

@@ -535,5 +535,53 @@ class TicketJurikaAppIT {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(fiche).doesNotContain("Rappeler le greffe");
     }
+
+    /**
+     * Ecrans du lot L1 (demande du 2026-10-10) : historique des responsables avec les noms,
+     * et vue du superviseur sur les dossiers rattrapes par V28 (D1), a verifier.
+     */
+    @Test
+    @Order(26)
+    void historique_nomme_et_rattrapages_a_verifier_par_le_superviseur() throws Exception {
+        String superviseur = jeton(SUPERVISEUR_A, WS_A, "SUPERVISEUR");
+        // Historique : noms de l'ancien et du nouveau responsable, et de l'auteur.
+        mvc.perform(get("/api/v1/dossiers/" + dossierId + "/reaffectations").header("Authorization", superviseur))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].nature").value("FORCEE"))
+                .andExpect(jsonPath("$[0].nouveauResponsableNom").isNotEmpty())
+                .andExpect(jsonPath("$[0].auteurNom").isNotEmpty());
+
+        // Un rattrapage comme ceux poses par V28 sur le Z440.
+        UUID rattrapage = UUID.randomUUID();
+        owner.update("INSERT INTO dossier_reaffectations (id, workspace_id, dossier_id, nouveau_responsable_id, nature, motif) "
+                + "VALUES (?, ?, ?, ?, 'RATTRAPAGE', 'Migration V28 (lot L1) : dossier sans responsable')",
+                rattrapage, WS_A, dossierId, COLLEGUE);
+        mvc.perform(get("/api/v1/dossiers/rattrapages").header("Authorization", superviseur))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(rattrapage.toString()))
+                .andExpect(jsonPath("$[0].raisonSociale").value("Societe L0"))
+                .andExpect(jsonPath("$[0].responsableActuelNom").isNotEmpty())
+                .andExpect(jsonPath("$[0].verifieLe").doesNotExist());
+        // Reserve au superviseur.
+        mvc.perform(get("/api/v1/dossiers/rattrapages").header("Authorization", karim()))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/dossiers/reaffectations/" + rattrapage + "/verification").header("Authorization", karim()))
+                .andExpect(status().isForbidden());
+
+        // Le superviseur marque le rattrapage verifie : trace (qui, quand).
+        mvc.perform(post("/api/v1/dossiers/reaffectations/" + rattrapage + "/verification")
+                        .header("Authorization", superviseur))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.verifieLe").isNotEmpty())
+                .andExpect(jsonPath("$.verifieParNom").isNotEmpty());
+        assertThat(owner.queryForObject("SELECT verifie_par FROM dossier_reaffectations WHERE id = ?", UUID.class,
+                rattrapage)).isEqualTo(SUPERVISEUR_A);
+        // Seul un rattrapage se verifie.
+        UUID forcee = owner.queryForObject("SELECT id FROM dossier_reaffectations WHERE nature = 'FORCEE' LIMIT 1",
+                UUID.class);
+        mvc.perform(post("/api/v1/dossiers/reaffectations/" + forcee + "/verification").header("Authorization", superviseur))
+                .andExpect(status().isNotFound());
+    }
 }
 

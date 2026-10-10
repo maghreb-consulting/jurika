@@ -99,10 +99,25 @@ public class DossierTransferController {
     /** Historique des changements de responsable (superviseur, ou employe responsable). */
     @GetMapping("/api/v1/dossiers/{dossierId}/reaffectations")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPERVISEUR','ROLE_EMPLOYE')")
-    public List<DossierReaffectation> historique(@AuthenticationPrincipal AuthenticatedUser actor,
-                                                 @PathVariable UUID dossierId) {
+    public List<ma.jurika.ticket.domain.model.ReaffectationVue> historique(
+            @AuthenticationPrincipal AuthenticatedUser actor, @PathVariable UUID dossierId) {
         return service.historique(actor.workspaceId(), actor.userId(),
                 actor.role() == Role.SUPERVISEUR, dossierId);
+    }
+
+    /** Lot L1 (D1) : dossiers dont V28 a designe le responsable, a verifier par le superviseur. */
+    @GetMapping("/api/v1/dossiers/rattrapages")
+    @PreAuthorize("hasRole('SUPERVISEUR') and !hasRole('SUPER_ADMIN')")
+    public List<ma.jurika.ticket.domain.model.ReaffectationVue> rattrapages(
+            @AuthenticationPrincipal AuthenticatedUser actor) {
+        return service.rattrapages(actor.workspaceId());
+    }
+
+    @PostMapping("/api/v1/dossiers/reaffectations/{reaffectationId}/verification")
+    @PreAuthorize("hasRole('SUPERVISEUR') and !hasRole('SUPER_ADMIN')")
+    public ma.jurika.ticket.domain.model.ReaffectationVue verifierRattrapage(
+            @AuthenticationPrincipal AuthenticatedUser actor, @PathVariable UUID reaffectationId) {
+        return service.verifierRattrapage(actor.workspaceId(), actor.userId(), reaffectationId);
     }
 
     // -------- Listes (panneau "Transferts en attente") --------

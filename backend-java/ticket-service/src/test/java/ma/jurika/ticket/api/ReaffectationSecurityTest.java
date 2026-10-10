@@ -31,4 +31,16 @@ class ReaffectationSecurityTest {
         assertThat(autorise("ROLE_EMPLOYE", m)).isTrue();
         assertThat(autorise("ROLE_CLIENT", m)).isFalse();
     }
+
+    @Test
+    void rattrapages_et_verification_reserves_au_superviseur() {
+        for (String nom : new String[]{"rattrapages", "verifierRattrapage"}) {
+            Method m = methode(DossierTransferController.class, nom);
+            assertThat(autorise("ROLE_SUPERVISEUR", m)).as(nom).isTrue();
+            assertThat(autorise("ROLE_EMPLOYE", m)).as(nom).isFalse();
+            assertThat(autorise("ROLE_CLIENT", m)).as(nom).isFalse();
+            assertThat(autorise("ROLE_SUPER_ADMIN", m)).as(nom).isFalse();
+        }
+    }
 }
+
