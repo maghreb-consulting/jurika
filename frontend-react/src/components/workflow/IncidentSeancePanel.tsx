@@ -104,6 +104,7 @@ const INCIDENT_SECTIONS: SeanceSections = {
   resolutions: true,
   presence: true,
   voix: false,
+  vote: true, // L3 (D6) : quorum et vote saisis
 };
 
 // Les 2 PV « incident » se déposent dans le slot juridique PV_AGE.
@@ -262,6 +263,8 @@ export function IncidentSeancePanel({
                   key={tpl.code}
                   tpl={tpl}
                   state={docs[tpl.code] ?? freshDocState()}
+                  ticketId={ticketId}
+                  workflowCode={WORKFLOW_CODE}
                   onGenerate={() => generateOne(tpl)}
                   onDownload={() => downloadOne(tpl)}
                   onRegenerate={() => generateOne(tpl)}

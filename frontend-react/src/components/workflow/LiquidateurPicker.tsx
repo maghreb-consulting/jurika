@@ -14,6 +14,7 @@ import { UserCheck } from 'lucide-react';
 import { Select } from '../ui/Select';
 import { TextField } from '../ui/TextField';
 import { IdentityExtractor } from '../identity/IdentityExtractor';
+import { TypePieceProposee } from './ValeurProposee';
 import type { DossierPartie, DossierParties } from '../../services/workflow.service';
 
 /** Origine du liquidateur : partie prenante du dossier (BD) ou tiers (EXTERNE). */
@@ -27,6 +28,8 @@ export interface LiquidateurState {
   prenom: string;
   nom: string;
   cin: string;
+  /** L3 (D6) : type de piece, "CIN" propose a l'ecran puis confirme. */
+  pieceType?: string;
   adresse: string;
   remuneration: string;
 }
@@ -238,6 +241,11 @@ export function LiquidateurPicker({
               ? "Absent de la Data Room pour cette personne : saisissez-le."
               : undefined
           }
+        />
+        <TypePieceProposee
+          id="liquidateur-piece-type"
+          valeur={value.pieceType}
+          onChange={(v) => set({ pieceType: v })}
         />
         <TextField
           label="Adresse du liquidateur *"

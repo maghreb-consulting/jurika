@@ -102,6 +102,7 @@ const SEANCE_SECTIONS = {
   resolutions: false,
   presence: true,
   voix: true,
+  vote: true, // L3 (D6) : quorum et vote saisis
 } as const;
 
 interface Affectation {
@@ -219,9 +220,9 @@ function PvAgoWorkflowPageBody() {
             adresse: String(a?.adresse ?? ''),
             nombreParts: parts,
             nombreVoix: parts,
-            presence: 'présent',
+            presence: '', // L3 (D6) : saisie a l'ecran, jamais supposee
             mandataireNom: '',
-            pieceType: 'CIN',
+            pieceType: String(a?.pieceType ?? ''), // L3 (D6)
             pieceNumero: String(a?.cin ?? a?.cinNumero ?? a?.pieceNumero ?? ''),
           };
         })
@@ -243,7 +244,8 @@ function PvAgoWorkflowPageBody() {
   const [exercice, setExercice] = useState(
     (stepData.step1?.exerciceClos as string) ??
       (stepData.step1?.exercice as string) ??
-      `${currentYear - 1}`,
+      // Lot L3 (P4) : plus d'exercice deduit de la date du jour ; l'employe le choisit.
+      '',
   );
   const [dateAgo, setDateAgo] = useState(
     (stepData.step1?.dateAGO as string) ?? (stepData.step1?.dateAgo as string) ?? '',
@@ -332,7 +334,7 @@ function PvAgoWorkflowPageBody() {
   });
 
   // -------- Step 2 — Approbation des comptes --------
-  const exerciceClosDefault = `${exercice}-12-31`;
+  const exerciceClosDefault = exercice ? `${exercice}-12-31` : '';
   const [exerciceClosDate, setExerciceClosDate] = useState(
     (stepData.step2?.exerciceClosDate as string) ?? exerciceClosDefault,
   );
@@ -1314,6 +1316,8 @@ function PvAgoWorkflowPageBody() {
                   key={tpl.code}
                   tpl={tpl}
                   state={docs[tpl.code] ?? freshDocState()}
+                  ticketId={ticket?.id}
+                  workflowCode={'PV_AGO'}
                   onGenerate={() => generateOne(tpl)}
                   onDownload={() => downloadOne(tpl)}
                   onRegenerate={() => generateOne(tpl)}

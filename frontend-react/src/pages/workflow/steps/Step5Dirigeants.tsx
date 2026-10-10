@@ -16,6 +16,7 @@ import { toIsoDate } from '../../../types/identity';
 import { useStepAutosave } from '../useStepAutosave';
 import type { DirtyGetter } from '../useWorkflow';
 import { BlocageValidation } from '../../../components/workflow/BlocageValidation';
+import { ajouterExtraits, retirerExtraits } from '../provenance';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -63,6 +64,8 @@ type TypePersonne = 'PHYSIQUE' | 'MORALE';
 
 interface Dirigeant {
   id: string;
+  /** Lot L3 : champs remplis par extraction d'une piece et confirmes (provenance EXTRAITE). */
+  _extraits?: string[];
   typePersonne: TypePersonne;
   // ---- PHYSIQUE ----
   civilite: 'M' | 'Mme';
@@ -300,9 +303,20 @@ export function Step5Dirigeants({
     fromData.length > 0 ? fromData : [newDirigeant()],
   );
 
-  function update(id: string, patch: Partial<Dirigeant>) {
+  /**
+   * Lot L3 : `extraction` vrai quand le patch vient de la lecture d'une piece confirmee
+   * (provenance EXTRAITE) ; sinon, les champs touches redeviennent des saisies.
+   */
+  function update(id: string, patch: Partial<Dirigeant>, extraction = false) {
     setDirigeants((arr) =>
-      arr.map((d) => (d.id === id ? { ...d, ...patch } : d)),
+      arr.map((d) => {
+        if (d.id !== id) return d;
+        const champs = Object.keys(patch);
+        const extraits = extraction
+          ? ajouterExtraits(d._extraits, champs)
+          : retirerExtraits(d._extraits, champs);
+        return { ...d, ...patch, ...(extraits ? { _extraits: extraits } : {}) };
+      }),
     );
   }
 
@@ -359,11 +373,13 @@ export function Step5Dirigeants({
     if (values.sexe) {
       patch.civilite = values.sexe.toUpperCase() === 'F' ? 'Mme' : 'M';
     }
+    if (Object.keys(patch).length > 0) update(id, patch, true);
     if (meta?.archivedDocumentId) {
-      patch.cinUploaded = true;
-      patch.cinFileName = `Archive Data Room ${meta.archivedDocumentId.slice(0, 8)}`;
+      update(id, {
+        cinUploaded: true,
+        cinFileName: `Archive Data Room ${meta.archivedDocumentId.slice(0, 8)}`,
+      });
     }
-    if (Object.keys(patch).length > 0) update(id, patch);
   }
 
   function removeDirigeant(id: string) {

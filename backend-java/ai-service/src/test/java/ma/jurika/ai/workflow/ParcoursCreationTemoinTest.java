@@ -128,10 +128,23 @@ class ParcoursCreationTemoinTest {
         // Le témoin doit parler exactement le même payload que la production,
         // sans quoi il teste un contrat qui n'existe pas.
         societe.put("iceNumero", "001234567000089");
-        societe.put("identifiantFiscal", "40221188");
+        societe.put("ifNumero", "40221188");
         societe.put("rcNumero", "445221");
         societe.put("telephone", "0522 99 11 22");
         societe.put("email", "contact@paracosme.ma");
+        // Lot L3 : plus aucune date ni ville inventee par le navigateur ; l'employe saisit
+        // le lieu et la date de signature des actes (le front ne les remplit plus avec
+        // "Casablanca" et la date du jour).
+        societe.put("lieuSignature", "Casablanca");
+        societe.put("dateSignature", "2026-10-01");
+        // Apport en nature : le commissaire aux apports est nomme (art. 59, loi 5-96).
+        societe.put("commissaireApportsNom", "Cabinet AUDIT CONSEIL");
+        // Lot L3 (D6) : valeurs d'usage proposees a l'ecran (etape 7) et CONFIRMEES par
+        // l'employe ; le mapper ne les invente plus.
+        societe.put("nombreOriginaux", "six");
+        societe.put("heureActe", "10 heures");
+        societe.put("exerciceDebut", "1er janvier");
+        societe.put("exerciceFin", "31 d\u00e9cembre");
 
         Map<String, Object> gerant = new LinkedHashMap<>();
         gerant.put("civilite", "M");

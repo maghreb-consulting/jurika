@@ -16,13 +16,6 @@ import java.util.List;
 public record DictionaryManifest(
         String version,
         @JsonProperty("generated_at") @JsonAlias("generatedAt") String generatedAt,
-        /**
-         * Sprint P2 2026-06-21 (Cowork) — Variables connues POST-immatriculation
-         * (RC_NUMERO, DEPOT_NUMERO, DATE_DEPOT_AU_TC...). Quand elles n'ont pas
-         * encore de valeur, le moteur rend "............" au lieu du marqueur rouge
-         * "VALEUR MANQUANTE".
-         */
-        @JsonProperty("fill_later") @JsonAlias("fillLater") List<String> fillLater,
         List<VariableDef> variables,
         List<TemplateManifest.BlockDef> blocks) {
 

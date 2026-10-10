@@ -1,4 +1,6 @@
 {
+  "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+  "quorumAtteint": "oui",
   "societe": {
     "denomination": "PARACOSME",
     "capitalChiffres": 100000,

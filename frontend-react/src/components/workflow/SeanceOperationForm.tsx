@@ -17,6 +17,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { TextField } from '../ui/TextField';
+import { TypePieceProposee, ValeurProposee } from './ValeurProposee';
 import {
   WorkflowDocumentBlock,
   freshDocState,
@@ -120,6 +121,7 @@ const SECTIONS: SeanceSections = {
   resolutions: false,
   presence: true,
   voix: false,
+  vote: true, // L3 (D6) : quorum et vote saisis
 };
 
 const PV_SARL = 'PV_DISSOLUTION_LIQUIDATION_SARL';
@@ -179,10 +181,12 @@ export function SeanceOperationForm({
   const [liqPrenom, setLiqPrenom] = useState('');
   const [liqNom, setLiqNom] = useState('');
   const [liqAdresse, setLiqAdresse] = useState('');
-  const [liqPieceType, setLiqPieceType] = useState('CIN');
+  const [liqPieceType, setLiqPieceType] = useState<string | undefined>(undefined); // L3 (D6)
   const [liqPieceNumero, setLiqPieceNumero] = useState('');
   const [liqGenre, setLiqGenre] = useState<'masculin' | 'féminin'>('masculin');
   const [liqRemuneration, setLiqRemuneration] = useState('exercées à titre gratuit');
+  // L3 (D6) : "quatre" originaux est une valeur PROPOSEE, transmise une fois confirmee.
+  const [nombreOriginaux, setNombreOriginaux] = useState<string | undefined>(undefined);
   const [liquidationSiege, setLiquidationSiege] = useState(societe.siegeSocial ?? '');
 
   const [docs, setDocs] = useState<Record<string, DocState>>({});
@@ -197,7 +201,8 @@ export function SeanceOperationForm({
 
   // Résolutions dérivées de l'opération (types pilotant les branches du modèle).
   const derived = useMemo(() => {
-    const R = (objet: string, type: string) => ({ objet, type, resultat: "à l'unanimité" });
+    // L3 (D6) : plus de "a l'unanimite" suppose ; la majorite vient du vote saisi.
+    const R = (objet: string, type: string) => ({ objet, type });
     const resolutions =
       mode === 'dissolution'
         ? [
@@ -224,7 +229,7 @@ export function SeanceOperationForm({
           prenom: liqPrenom,
           nom: liqNom,
           adresse: liqAdresse,
-          pieceType: liqPieceType,
+          pieceType: liqPieceType ?? '',
           pieceNumero: liqPieceNumero,
           genre: liqGenre,
           remuneration: liqRemuneration,
@@ -258,7 +263,7 @@ export function SeanceOperationForm({
       signature: {
         lieu: form.lieuSignature,
         date: clotureBlock?.dateClotureLiquidation ?? defaultDate ?? '',
-        nombreOriginaux: 'quatre',
+        nombreOriginaux: nombreOriginaux ?? '',
       },
     };
   };
@@ -330,6 +335,18 @@ export function SeanceOperationForm({
     <div className="space-y-5">
       <SeanceFormFields form={form} sections={SECTIONS} />
 
+      <section className="rounded-xl border border-border bg-bg-raised p-4">
+        <div className="max-w-xs">
+          <ValeurProposee
+            id="seance-nombre-originaux"
+            label="Nombre d’exemplaires originaux"
+            proposition="quatre"
+            valeur={nombreOriginaux}
+            onChange={setNombreOriginaux}
+          />
+        </div>
+      </section>
+
       {mode === 'dissolution' && !operation && (
         <section className="space-y-4 rounded-xl border border-border bg-bg-raised p-4">
           <div className="flex items-center gap-2">
@@ -355,7 +372,7 @@ export function SeanceOperationForm({
             <TextField label="Prénom" value={liqPrenom} onChange={(e) => setLiqPrenom(e.target.value)} />
             <TextField label="Nom" value={liqNom} onChange={(e) => setLiqNom(e.target.value)} />
             <TextField label="Adresse" value={liqAdresse} onChange={(e) => setLiqAdresse(e.target.value)} />
-            <TextField label="Type de pièce" value={liqPieceType} onChange={(e) => setLiqPieceType(e.target.value)} />
+            <TypePieceProposee id="seance-liquidateur-piece-type" valeur={liqPieceType} onChange={setLiqPieceType} />
             <TextField label="N° de pièce" value={liqPieceNumero} onChange={(e) => setLiqPieceNumero(e.target.value)} />
             <TextField label="Rémunération du liquidateur" value={liqRemuneration} onChange={(e) => setLiqRemuneration(e.target.value)} />
             <TextField label="Siège de la liquidation" value={liquidationSiege} onChange={(e) => setLiquidationSiege(e.target.value)} />

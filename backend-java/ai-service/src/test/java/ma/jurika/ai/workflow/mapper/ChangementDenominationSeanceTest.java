@@ -70,7 +70,10 @@ class ChangementDenominationSeanceTest {
         p.put("societe", societe);
         p.put("seance", Map.of("type", "extraordinaire", "date", "2026-06-01",
                 "heure", "10H00", "lieu", "SIEGE SOCIAL",
-                "presidentNom", "M. Ahmed ALAOUI", "presidentQualite", "gérant"));
+                "presidentNom", "M. Ahmed ALAOUI", "presidentQualite", "gérant",
+                "quorumAtteint", "oui")); // L3 (D6) : quorum saisi
+        p.put("vote", Map.of("resultat", "adopt\u00e9e", "majorite", "\u00e0 l'unanimit\u00e9",
+                "voixPour", "1000", "voixContre", "0", "abstentions", "0"));
         p.put("convocation", Map.of("auteur", "la gérance", "date", "2026-05-10",
                 "mode", "lettre recommandée"));
         p.put("associes", List.of(

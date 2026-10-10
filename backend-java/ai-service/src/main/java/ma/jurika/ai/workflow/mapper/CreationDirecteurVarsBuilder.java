@@ -33,8 +33,6 @@ public final class CreationDirecteurVarsBuilder {
     private static final DateTimeFormatter DATE_FR =
             DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.FRANCE);
 
-    /** Marqueur neutre pour les données connues seulement après immatriculation. */
-    private static final String POST_IMMAT = "[à compléter après immatriculation]";
 
     private CreationDirecteurVarsBuilder() {}
 
@@ -64,7 +62,8 @@ public final class CreationDirecteurVarsBuilder {
         put(v, "DENOMINATION", str(societe.get("denomination")));
         put(v, "OBJET_SOCIAL", first(str(societe.get("objetSocial")), str(societe.get("activiteSociete"))));
         put(v, "SIEGE_SOCIAL", first(str(societe.get("siegeSocial")), str(societe.get("adresseSiege"))));
-        put(v, "DUREE_SOCIETE", first(str(societe.get("dureeSociete")), str(societe.get("dureeAnnees")), "99"));
+        // Lot L3 (D6) : 99 ans est une valeur PROPOSEE a l'ecran, transmise une fois confirmee.
+        put(v, "DUREE_SOCIETE", first(str(societe.get("dureeSociete")), str(societe.get("dureeAnnees"))));
         put(v, "VILLE_GREFFE", first(str(societe.get("villeGreffe")), str(societe.get("tribunalCompetent")),
                 str(societe.get("rcVille"))));
 
@@ -128,12 +127,18 @@ public final class CreationDirecteurVarsBuilder {
 
         // ---- Contrôle / comptes ----
         put(v, "COMMISSAIRE_COMPTES_NOM", str(societe.get("commissaireComptesNom")));
-        put(v, "DUREE_MANDAT_CAC", first(str(societe.get("dureeMandatCac")), "3"));
-        put(v, "EXERCICE_DEBUT", first(str(societe.get("exerciceDebut")), "1er janvier"));
-        put(v, "EXERCICE_FIN", first(str(societe.get("exerciceFin")), "31 décembre"));
+        // Lot L3 (D6) : mandat du commissaire aux comptes et exercice social sont des valeurs
+        // PROPOSEES a l'ecran (etape 7), confirmees par l'employe ; plus de repli silencieux.
+        put(v, "DUREE_MANDAT_CAC", str(societe.get("dureeMandatCac")));
+        String exerciceFin = str(societe.get("exerciceFin"));
+        put(v, "EXERCICE_DEBUT", str(societe.get("exerciceDebut")));
+        put(v, "EXERCICE_FIN", exerciceFin);
         LocalDate dateConstit = toDate(first0(societe.get("dateSignature"), societe.get("dateConstitution")));
+        // Cloture du premier exercice : derivee de la fin d'exercice confirmee et de l'annee de
+        // signature (calcul), sinon absente -- plus de "31 decembre" suppose.
         put(v, "PREMIER_EXERCICE_CLOTURE", first(str(societe.get("premierExerciceCloture")),
-                dateConstit != null ? ("31 décembre " + dateConstit.getYear()) : "31 décembre"));
+                (dateConstit != null && exerciceFin != null && !exerciceFin.isBlank())
+                        ? (exerciceFin + " " + dateConstit.getYear()) : null));
 
         // ---- Apports (agrégats) ----
         boolean hasNature = false;
@@ -148,21 +153,21 @@ public final class CreationDirecteurVarsBuilder {
         put(v, "LIEU_SIGNATURE", first(str(societe.get("lieuSignature")), str(societe.get("villeSignature"))));
         put(v, "DATE_SIGNATURE", dateConstit != null ? dateConstit.format(DATE_FR)
                 : first(str(societe.get("dateSignature")), ""));
-        put(v, "NOMBRE_ORIGINAUX", first(str(societe.get("nombreOriginaux")), str(societe.get("nbExemplaires")), "6"));
+        put(v, "NOMBRE_ORIGINAUX", first(str(societe.get("nombreOriginaux")), str(societe.get("nbExemplaires")))); // L3 (D6)
 
         // ---- Acte de nomination du gérant ----
         put(v, "ARTICLE_DESIGNATION_STATUTS", first(str(societe.get("articleDesignationStatuts")),
                 isAu ? "32" : "36"));
-        put(v, "HEURE_ACTE", first(str(societe.get("heureActe")), "10 heures"));
+        put(v, "HEURE_ACTE", str(societe.get("heureActe"))); // L3 (D6) : valeur proposee, confirmee a l'ecran
 
         // ---- Publication (post-immatriculation) ----
         LocalDate dateActe = toDate(societe.get("dateActe"));
         put(v, "DATE_ACTE", dateActe != null ? dateActe.format(DATE_FR)
                 : first(str(societe.get("dateActe")), dateConstit != null ? dateConstit.format(DATE_FR) : ""));
-        put(v, "RC_NUMERO", first(str(societe.get("rcNumero")), POST_IMMAT));
+        put(v, "RC_NUMERO", str(societe.get("rcNumero")));
         LocalDate dateDepot = toDate(societe.get("dateDepotLegal"));
         put(v, "DATE_DEPOT_LEGAL", dateDepot != null ? dateDepot.format(DATE_FR)
-                : first(str(societe.get("dateDepotLegal")), POST_IMMAT));
+                : str(societe.get("dateDepotLegal")));
 
         // ---- Boucles ----
         List<Map<String, Object>> associesLoop = buildAssociesLoop(associes, gerants, isAnnonce(templateCode));
@@ -238,7 +243,7 @@ public final class CreationDirecteurVarsBuilder {
                 it.put("ASSOCIE_DATE_NAISSANCE", dateStr(first0(a.get("dateNaissance"), a.get("naissance"))));
                 it.put("ASSOCIE_LIEU_NAISSANCE", strOr(a.get("lieuNaissance"), ""));
                 it.put("ASSOCIE_ADRESSE", strOr(a.get("adresse"), ""));
-                it.put("ASSOCIE_PIECE_TYPE", strOr(a.get("pieceType"), "CIN"));
+                it.put("ASSOCIE_PIECE_TYPE", strOr(a.get("pieceType"), "")); // L3 (D6) : "CIN" propose a l'ecran
                 it.put("ASSOCIE_PIECE_NUMERO", strOr(first0(a.get("pieceNumero"), a.get("cin"), a.get("cinNumero")), ""));
                 putEmptyPmFields(it);
             }
@@ -266,7 +271,9 @@ public final class CreationDirecteurVarsBuilder {
             it.put("APPORT_NUMERAIRE_CHIFFRES", num == null ? "" : formatAmount(num));
             it.put("APPORT_NUMERAIRE_LETTRES", num == null ? "" : FrenchNumberToLetters.numberToLetters(num));
             it.put("APPORT_NATURE_DESCRIPTION", strOr(a.get("apportNatureDescription"), ""));
-            Long natVal = toLong(first0(a.get("apportNatureValeur"), a.get("apportNatureValeurChiffres")));
+            // Lot L3 : la charge utile du serveur (ConstructeurChargeUtileCreation) porte la
+            // valeur sous `apportNature` ; ce nom n'etait pas lu : blanc silencieux aux statuts.
+            Long natVal = toLong(first0(a.get("apportNatureValeur"), a.get("apportNatureValeurChiffres"), a.get("apportNature")));
             it.put("APPORT_NATURE_VALEUR_CHIFFRES", natVal == null ? "" : formatAmount(natVal));
             it.put("APPORT_NATURE_VALEUR_LETTRES", natVal == null ? "" : FrenchNumberToLetters.numberToLetters(natVal));
             it.put("APPORT_INDUSTRIE_DESCRIPTION", strOr(a.get("apportIndustrieDescription"), ""));
@@ -285,7 +292,7 @@ public final class CreationDirecteurVarsBuilder {
             it.put("GERANT_NOM", strOr(g.get("nom"), ""));
             it.put("GERANT_NATIONALITE", strOr(g.get("nationalite"), "marocaine"));
             it.put("GERANT_ADRESSE", strOr(g.get("adresse"), ""));
-            it.put("GERANT_PIECE_TYPE", strOr(g.get("pieceType"), "CIN"));
+            it.put("GERANT_PIECE_TYPE", strOr(g.get("pieceType"), "")); // L3 (D6) : "CIN" propose a l'ecran
             it.put("GERANT_PIECE_NUMERO", strOr(first0(g.get("pieceNumero"), g.get("cin"), g.get("cinNumero")), ""));
             it.put("GERANT_DATE_NAISSANCE", dateStr(first0(g.get("dateNaissance"), g.get("naissance"))));
             out.add(it);
@@ -355,7 +362,7 @@ public final class CreationDirecteurVarsBuilder {
         if (s.startsWith("indus")) return "industrie";
         if (s.startsWith("numer") || s.startsWith("numér")) return "numéraire";
         // Dérivation par présence de champs.
-        if (toLong(first0(a.get("apportNatureValeur"), a.get("apportNatureValeurChiffres"))) != null
+        if (toLong(first0(a.get("apportNatureValeur"), a.get("apportNatureValeurChiffres"), a.get("apportNature"))) != null
                 || strOr(a.get("apportNatureDescription"), "").length() > 0) return "nature";
         if (strOr(a.get("apportIndustrieDescription"), "").length() > 0) return "industrie";
         return "numéraire";

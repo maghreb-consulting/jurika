@@ -65,6 +65,8 @@ public class DocumentController {
             return ResponseEntity.badRequest().build();
         }
         DocumentResult result = engine.generate(templateCode, variables);
+        // Lot L3 : meme regle que la generation par parcours (donnee interne manquante : refus nomme).
+        ma.jurika.ai.document.ControleCompletude.verifier(templateCode, result, engine.dictionnaire());
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + result.filename() + "\"")

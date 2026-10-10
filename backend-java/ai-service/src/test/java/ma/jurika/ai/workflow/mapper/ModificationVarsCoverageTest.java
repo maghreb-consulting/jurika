@@ -97,6 +97,7 @@ class ModificationVarsCoverageTest {
         s.put("heureCloture", "12H00");
         s.put("presidentNom", "M. Ahmed Alaoui");
         s.put("presidentQualite", "gérant");
+        s.put("quorumAtteint", "oui"); // L3 (D6) : quorum saisi
         return s;
     }
 
@@ -129,6 +130,8 @@ class ModificationVarsCoverageTest {
         p.put("formeJuridique", "SARL");
         p.put("societe", baseSociete());
         p.put("seance", baseSeance());
+        p.put("vote", Map.of("resultat", "adopt\u00e9e", "majorite", "\u00e0 l'unanimit\u00e9",
+                "voixPour", "1000", "voixContre", "0", "abstentions", "0"));
         p.put("convocation", Map.of("mode", "lettre recommandée", "date", "2026-04-30"));
         p.put("associes", List.of(
                 Map.of("civilite", "M.", "prenom", "Ahmed", "nom", "Alaoui",
@@ -146,6 +149,8 @@ class ModificationVarsCoverageTest {
         p.put("associeUnique", true);
         p.put("societe", baseSociete());
         p.put("seance", baseSeance());
+        p.put("vote", Map.of("resultat", "adopt\u00e9e", "majorite", "\u00e0 l'unanimit\u00e9",
+                "voixPour", "1000", "voixContre", "0", "abstentions", "0"));
         Map<String, Object> unique = new HashMap<>();
         if (morale) {
             unique.put("typePersonne", "MORALE");

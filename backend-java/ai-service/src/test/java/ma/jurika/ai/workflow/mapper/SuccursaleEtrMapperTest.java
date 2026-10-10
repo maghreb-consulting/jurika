@@ -67,8 +67,8 @@ class SuccursaleEtrMapperTest {
         // Dépôt légal : inconnu à la génération -> rendu vide.
         // 2026-08-17 — le greffe attribue ces valeurs APRÈS le dépôt : marqueur
         // explicite au lieu d'un blanc (« … le  sous le numéro  »).
-        assertThat(annonce.get("DATE_DEPOT_LEGAL")).isEqualTo("[à compléter après immatriculation]");
-        assertThat(annonce.get("DEPOT_LEGAL_NUMERO")).isEqualTo("[à compléter après immatriculation]");
+        assertThat(annonce.get("DATE_DEPOT_LEGAL")).as("L3 : donnee externe absente, marquee par le moteur").satisfiesAnyOf(x -> assertThat(x).isNull(), x -> assertThat(x.toString()).isBlank());
+        assertThat(annonce.get("DEPOT_LEGAL_NUMERO")).as("L3 : donnee externe absente, marquee par le moteur").satisfiesAnyOf(x -> assertThat(x).isNull(), x -> assertThat(x.toString()).isBlank());
         // L'avis ne porte aucune résolution.
         assertThat((List<?>) annonce.get("RESOLUTIONS")).isEmpty();
     }

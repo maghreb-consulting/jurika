@@ -119,7 +119,7 @@ public final class SeancePvVarsBuilder {
         // ---- Ordre du jour + résolutions (boucles, double nommage) ----
         v.put("ORDRE_DU_JOUR", buildOrdreDuJour(ordreDuJour));
         v.put("POINTS_ODJ", buildPointsOdj(ordreDuJour));
-        v.put("RESOLUTIONS", buildResolutions(resolutions));
+        v.put("RESOLUTIONS", buildResolutions(resolutions, VoteSaisi.de(safe), templateCode));
 
         if (isAu) {
             // Associé unique hors boucle + gérants.
@@ -141,6 +141,7 @@ public final class SeancePvVarsBuilder {
             long voixPresentes = 0;
             int nbPresents = 0;
             List<Map<String, Object>> rows = new ArrayList<>();
+            List<String> presencesInconnues = new ArrayList<>();
             for (Map<String, Object> a : associes) {
                 if (a == null || a.isEmpty()) continue;
                 Map<String, Object> it = new LinkedHashMap<>();
@@ -152,15 +153,20 @@ public final class SeancePvVarsBuilder {
                 it.put("ASSOCIE_REPRESENTANT_NOM", strOr(first0(a.get("representantNom"),
                         a.get("representantLegal")), ""));
                 String presence = normPresence(a.get("presence"));
+                if (presence.isEmpty()) presencesInconnues.add(associeLabel(a));
                 it.put("ASSOCIE_PRESENCE", presence);
-                it.put("ASSOCIE_MANDATAIRE_NOM", strOr(a.get("mandataireNom"), ""));
+                // Lot L3 : la colonne "mandataire" ne se lit que pour un associe represente.
+                // Present ou absent, il n'y a pas de mandataire : "--" le dit (donnee derivee
+                // de la presence) au lieu d'un blanc, desormais traite comme une donnee manquante.
+                it.put("ASSOCIE_MANDATAIRE_NOM", "repr\u00e9sent\u00e9".equals(presence)
+                        ? strOr(a.get("mandataireNom"), "") : "\u2014");
                 Long parts = toLong(first0(a.get("nombreParts"), a.get("partsChiffres")));
                 it.put("ASSOCIE_NOMBRE_PARTS", parts == null ? "" : String.valueOf(parts));
                 // 1 part = 1 voix (art. 5-96) sauf override explicite.
                 Long voix = toLong(first0(a.get("nombreVoix"), a.get("voix")));
                 if (voix == null) voix = parts;
                 it.put("ASSOCIE_NOMBRE_VOIX", voix == null ? "" : String.valueOf(voix));
-                boolean present = !"absent".equals(presence);
+                boolean present = "pr\u00e9sent".equals(presence) || "repr\u00e9sent\u00e9".equals(presence);
                 if (present) {
                     nbPresents++;
                     if (parts != null) partsPresentes += parts;
@@ -169,6 +175,15 @@ public final class SeancePvVarsBuilder {
                 rows.add(it);
             }
             v.put("ASSOCIES", rows);
+            // Lot L3 (D6) : la presence est SAISIE. Pour un PV ou une feuille de presence, une
+            // presence inconnue faussait le decompte (l'associe passait pour present) : refus nomme.
+            if (!presencesInconnues.isEmpty() && presenceRequise(templateCode)) {
+                throw new ma.jurika.ai.document.GenerationRefuseeException(templateCode,
+                        "Pr\u00e9sence non indiqu\u00e9e : " + String.join(", ", presencesInconnues),
+                        presencesInconnues.stream().map(n -> new ma.jurika.ai.document.GenerationRefuseeException.DonneeManquante(
+                                "ASSOCIE_PRESENCE", "Pr\u00e9sence de " + n + " (pr\u00e9sent, repr\u00e9sent\u00e9 ou absent)",
+                                "Feuille de pr\u00e9sence et d\u00e9compte des voix")).toList());
+            }
             Long override = toLong(safe.get("partsPresentes"));
             long pp = override != null ? override : partsPresentes;
             Long voixOverride = toLong(safe.get("voixPresentes"));
@@ -201,7 +216,8 @@ public final class SeancePvVarsBuilder {
         return out;
     }
 
-    private static List<Map<String, Object>> buildResolutions(List<Map<String, Object>> resolutions) {
+    private static List<Map<String, Object>> buildResolutions(List<Map<String, Object>> resolutions,
+                                                              VoteSaisi vote, String templateCode) {
         List<Map<String, Object>> out = new ArrayList<>();
         long n = 1;
         for (Map<String, Object> r : resolutions) {
@@ -212,10 +228,11 @@ public final class SeancePvVarsBuilder {
             it.put("RESOLUTION_NUMERO", first(str(r.get("numero")), String.valueOf(n)));
             it.put("RESOLUTION_INTITULE", intitule);
             it.put("RESOLUTION_TEXTE", strOr(r.get("texte"), ""));
-            it.put("RESOLUTION_VOIX_POUR", strOr(r.get("voixPour"), ""));
-            it.put("RESOLUTION_VOIX_CONTRE", strOr(r.get("voixContre"), ""));
-            it.put("RESOLUTION_ABSTENTIONS", strOr(r.get("abstentions"), ""));
-            it.put("RESOLUTION_RESULTAT", first(str(r.get("resultat")), "adoptée"));
+            // Lot L3 (D6) : vote saisi (par resolution, sinon le vote de la seance), jamais suppose.
+            it.put("RESOLUTION_VOIX_POUR", first(str(r.get("voixPour")), vote.voixPour));
+            it.put("RESOLUTION_VOIX_CONTRE", first(str(r.get("voixContre")), vote.voixContre));
+            it.put("RESOLUTION_ABSTENTIONS", first(str(r.get("abstentions")), vote.abstentions));
+            it.put("RESOLUTION_RESULTAT", first(str(r.get("resultat")), vote.resultatPour(templateCode)));
             // Schéma « PV AG » (objet / ordinal / type) — double nommage.
             it.put("RESOLUTION_OBJET", first(str(r.get("objet")), intitule));
             it.put("RESOLUTION_ORDINAL", first(str(r.get("ordinal")), ordinalFrFeminine(n)));
@@ -305,7 +322,7 @@ public final class SeancePvVarsBuilder {
             put(v, "ASSOCIE_PRENOM", strOr(a.get("prenom"), ""));
             put(v, "ASSOCIE_NATIONALITE", strOr(a.get("nationalite"), "marocaine"));
             put(v, "ASSOCIE_ADRESSE", strOr(a.get("adresse"), ""));
-            put(v, "ASSOCIE_PIECE_TYPE", strOr(a.get("pieceType"), "CIN"));
+            put(v, "ASSOCIE_PIECE_TYPE", strOr(a.get("pieceType"), "")); // L3 (D6) : plus de "CIN" par defaut
             put(v, "ASSOCIE_PIECE_NUMERO", strOr(first0(a.get("pieceNumero"), a.get("cin"),
                     a.get("cinNumero")), ""));
         }
@@ -322,11 +339,19 @@ public final class SeancePvVarsBuilder {
         return "ordinaire";
     }
 
+    /** Lot L3 (D6) : plus de "present" par defaut ; inconnue, la presence reste vide. */
     private static String normPresence(Object raw) {
         String s = norm(raw);
         if (s.startsWith("repr")) return "représenté";
         if (s.startsWith("abs")) return "absent";
-        return "présent";
+        if (s.startsWith("pr")) return "présent";
+        return "";
+    }
+
+    /** Documents ou la presence se lit ou se compte : proces-verbaux et feuilles de presence. */
+    private static boolean presenceRequise(String templateCode) {
+        String c = templateCode == null ? "" : templateCode;
+        return c.startsWith("PV_") || c.contains("FEUILLE_PRESENCE");
     }
 
     private static String normSuite(Object raw) {

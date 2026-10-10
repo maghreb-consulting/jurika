@@ -37,12 +37,6 @@ import java.util.Map;
  */
 public final class SuccursaleVarsBuilder {
 
-    /**
-     * Marqueur neutre des données attribuées par le greffe APRÈS le dépôt.
-     * Même valeur que {@code CreationDirecteurVarsBuilder.POST_IMMAT} : un avis
-     * dit ce qui reste à compléter plutôt que de laisser un blanc dans la phrase.
-     */
-    private static final String POST_IMMAT = "[à compléter après immatriculation]";
 
     static final String TPL_MA_SARL = "PV_CREATION_SUCCURSALE_MAROC_SARL";
     static final String TPL_MA_SARL_AU = "PV_CREATION_SUCCURSALE_MAROC_SARL_AU";
@@ -96,7 +90,7 @@ public final class SuccursaleVarsBuilder {
         // Boucle RESOLUTIONS : ouverture + (désignation responsable) + pouvoirs formalités.
         List<Map<String, Object>> res = new ArrayList<>();
         String villeGreffe = str(v.get("SUCCURSALE_VILLE_GREFFE"));
-        String voixPour = defaultVoixPour(v);
+        VoteSaisi voixPour = VoteSaisi.de(safe);
         res.add(resolution("Ouverture de la succursale",
                 "Décision est prise d'ouvrir une succursale de la société à "
                         + str(v.get("SUCCURSALE_ADRESSE")) + " (" + str(v.get("SUCCURSALE_VILLE"))
@@ -165,7 +159,7 @@ public final class SuccursaleVarsBuilder {
 
         String mandataire = mandataireNom(safe);
         String villeGreffe = str(v.get("SUCCURSALE_VILLE_GREFFE"));
-        String voixPour = first(str(organe.get("voixPour")), "l'unanimité des membres présents");
+        VoteSaisi voixPour = VoteSaisi.de(safe).avecVoixPour(str(organe.get("voixPour")));
 
         List<Map<String, Object>> res = new ArrayList<>();
         res.add(resolution("Ouverture d'une succursale au Maroc",
@@ -219,7 +213,7 @@ public final class SuccursaleVarsBuilder {
         String respPresent = putResponsable(v, succ, true);
         String mandataire = mandataireNom(safe);
         String villeGreffe = str(v.get("SUCCURSALE_VILLE_GREFFE"));
-        String voixPour = defaultVoixPour(v);
+        VoteSaisi voixPour = VoteSaisi.de(safe);
 
         List<Map<String, Object>> res = new ArrayList<>();
         res.add(resolution("Fermeture de la succursale",
@@ -439,14 +433,15 @@ public final class SuccursaleVarsBuilder {
         // qu'APRÈS le dépôt : au moment de rédiger l'avis, elles sont normalement
         // inconnues. On les rendait vides, d'où « … le  sous le numéro  RC N° 123456 »
         // — une phrase trouée que rien ne signalait. On reprend le marqueur déjà
-        // employé par la CRÉATION (CreationDirecteurVarsBuilder.POST_IMMAT) : l'avis
-        // dit explicitement ce qui reste à compléter au lieu de laisser un blanc.
+        // Lot L3 : plus de bouche-trou "[a completer apres immatriculation]". Date et
+        // numero du depot legal sont des donnees EXTERNES (greffe) : absentes, l'acte
+        // porte le marqueur "A OBTENIR" et la donnee est reclamee (regle des variables).
         String dateDepotLegal = dateStr(first0(depot.get("date"), safe.get("dateDepotLegal")));
         String numeroDepotLegal = str(first0(depot.get("numero"), safe.get("depotLegalNumero")));
         put(v, "DATE_DEPOT_LEGAL",
-                dateDepotLegal == null || dateDepotLegal.isBlank() ? POST_IMMAT : dateDepotLegal);
+                dateDepotLegal);
         put(v, "DEPOT_LEGAL_NUMERO",
-                numeroDepotLegal == null || numeroDepotLegal.isBlank() ? POST_IMMAT : numeroDepotLegal);
+                numeroDepotLegal);
     }
 
     private static void putSuccursaleCommun(Map<String, Object> v, Map<String, Object> succ) {
@@ -484,7 +479,7 @@ public final class SuccursaleVarsBuilder {
         if (!reduced) {
             put(v, "SUCCURSALE_RESPONSABLE_NATIONALITE", first(str(r.get("nationalite")), "marocaine"));
             put(v, "SUCCURSALE_RESPONSABLE_ADRESSE", str(r.get("adresse")));
-            put(v, "SUCCURSALE_RESPONSABLE_PIECE_TYPE", first(str(r.get("pieceType")), "CIN"));
+            put(v, "SUCCURSALE_RESPONSABLE_PIECE_TYPE", str(r.get("pieceType"))); // L3 (D6) : plus de "CIN" par defaut
             put(v, "SUCCURSALE_RESPONSABLE_PIECE_NUMERO", first(str(r.get("pieceNumero")),
                     str(r.get("cin"))));
             put(v, "SUCCURSALE_RESPONSABLE_POUVOIRS", first(str(r.get("pouvoirs")),
@@ -515,14 +510,16 @@ public final class SuccursaleVarsBuilder {
     // ------------------------------------------------------------------
 
     private static Map<String, Object> resolution(String intitule, String texte, boolean isAu,
-                                                  String voixPour) {
+                                                  VoteSaisi vote) {
+        // Lot L3 (D6) : resultat et decompte des voix SAISIS ; plus de "adoptee", de
+        // "l'unanimite" ni de "0" par defaut. Absents, ils sont nommes a la generation.
         Map<String, Object> r = new LinkedHashMap<>();
         r.put("RESOLUTION_INTITULE", intitule);
         r.put("RESOLUTION_TEXTE", texte);
-        r.put("RESOLUTION_RESULTAT", "adoptée");
-        r.put("RESOLUTION_VOIX_POUR", isAu ? "" : voixPour);
-        r.put("RESOLUTION_VOIX_CONTRE", isAu ? "" : "0");
-        r.put("RESOLUTION_ABSTENTIONS", isAu ? "" : "0");
+        r.put("RESOLUTION_RESULTAT", vote.resultat);
+        r.put("RESOLUTION_VOIX_POUR", isAu ? "" : vote.voixPour);
+        r.put("RESOLUTION_VOIX_CONTRE", isAu ? "" : vote.voixContre);
+        r.put("RESOLUTION_ABSTENTIONS", isAu ? "" : vote.abstentions);
         return r;
     }
 
@@ -539,11 +536,6 @@ public final class SuccursaleVarsBuilder {
         return (n >= 1 && n < ORDINALES.length) ? ORDINALES[n] : (n + "E");
     }
 
-    /** Voix « pour » par défaut : parts présentes calculées par le noyau séance, sinon « l'unanimité ». */
-    private static String defaultVoixPour(Map<String, Object> v) {
-        String pp = str(v.get("PARTS_PRESENTES_CHIFFRES"));
-        return pp.isBlank() ? "l'unanimité" : pp;
-    }
 
     // ------------------------------------------------------------------
     // Normalisations / helpers (alignés sur SeancePvVarsBuilder)

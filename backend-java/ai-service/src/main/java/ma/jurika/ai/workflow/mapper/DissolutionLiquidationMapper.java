@@ -136,7 +136,7 @@ public final class DissolutionLiquidationMapper {
         put(v, "LIQUIDATEUR_PRENOM", str(liquidateur.get("prenom")));
         put(v, "LIQUIDATEUR_NOM", str(liquidateur.get("nom")));
         put(v, "LIQUIDATEUR_ADRESSE", str(liquidateur.get("adresse")));
-        put(v, "LIQUIDATEUR_PIECE_TYPE", first(str(liquidateur.get("pieceType")), "CIN"));
+        put(v, "LIQUIDATEUR_PIECE_TYPE", str(liquidateur.get("pieceType"))); // L3 (D6) : plus de "CIN" par defaut
         put(v, "LIQUIDATEUR_PIECE_NUMERO", first(str(liquidateur.get("pieceNumero")),
                 str(liquidateur.get("cin"))));
 
@@ -186,7 +186,7 @@ public final class DissolutionLiquidationMapper {
         put(v, "LIEU_SIGNATURE", first(str(signature.get("lieu")), str(safe.get("lieuSignature")),
                 str(societe.get("villeGreffe")), str(societe.get("rcVille"))));
         put(v, "DATE_SIGNATURE", dateStr(first0(signature.get("date"), safe.get("dateSignature"))));
-        put(v, "NOMBRE_ORIGINAUX", first(str(signature.get("nombreOriginaux")), "quatre"));
+        put(v, "NOMBRE_ORIGINAUX", str(signature.get("nombreOriginaux"))); // L3 (D6) : valeur proposee a l'ecran
 
         return v;
     }

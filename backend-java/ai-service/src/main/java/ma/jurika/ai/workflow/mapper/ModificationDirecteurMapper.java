@@ -68,10 +68,16 @@ public final class ModificationDirecteurMapper {
         Map<String, Object> cac = asMap(safe.get("commissaireComptes"));
 
         // 2) Drapeaux / scalaires globaux référencés HORS boucle RESOLUTIONS.
-        //    Quorum : par défaut atteint (« oui ») — le défaut de quorum est traité par le PV
-        //    d'incident dédié (PV_DEFAUT_QUORUM_*), pas par ce PV de modification.
-        put(v, "QUORUM_ATTEINT",
-                normOuiNon(first0(safe.get("quorumAtteint"), seance.get("quorumAtteint")), "oui"));
+        //    Lot L3 (D6) : le quorum est SAISI. Il pilote une condition du PV : absent, la
+        //    branche "quorum atteint" s'imprimait en silence ; la generation est refusee.
+        String quorum = normOuiNon(first0(safe.get("quorumAtteint"), seance.get("quorumAtteint")), "");
+        //    Le PV de l'associe unique n'a pas de quorum (aucune condition ne le lit).
+        if (quorum.isEmpty() && !isAu) {
+            throw new ma.jurika.ai.document.GenerationRefuseeException(templateCode, "Quorum non indiqu\u00e9",
+                    java.util.List.of(new ma.jurika.ai.document.GenerationRefuseeException.DonneeManquante("QUORUM_ATTEINT",
+                            "Quorum atteint (oui ou non)", "Constat du quorum en t\u00eate du proc\u00e8s-verbal")));
+        }
+        put(v, "QUORUM_ATTEINT", quorum);
         // Commissaire aux comptes (existence / présence / nom) — pilote plusieurs blocs.
         String cacExiste = normOuiNon(first0(cac.get("existe"), safe.get("cacExiste")), "non");
         put(v, "CAC_EXISTE", cacExiste);
@@ -99,6 +105,7 @@ public final class ModificationDirecteurMapper {
         List<Map<String, Object>> affectationsLoop = null;
         List<Map<String, Object>> beneficiairesLoop = null;
 
+        VoteSaisi vote = VoteSaisi.de(safe);
         int n = 1;
         for (Map<String, Object> r : resolutions) {
             if (r == null || r.isEmpty()) continue;
@@ -107,7 +114,8 @@ public final class ModificationDirecteurMapper {
             it.put("RESOLUTION_TYPE", type);
             it.put("RESOLUTION_ORDINAL", first(str(r.get("ordinal")), ordinalF(n)));
             it.put("RESOLUTION_OBJET", first(str(r.get("objet")), defaultObjet(type)));
-            it.put("RESOLUTION_RESULTAT", first(str(r.get("resultat")), "à l'unanimité"));
+            // Lot L3 (D6) : la majorite est saisie ("a l'unanimite" n'est plus suppose).
+            it.put("RESOLUTION_RESULTAT", first(str(r.get("resultat")), vote.majorite));
             fillTypeVars(it, type, r, vnGlobal);
             out.add(it);
             n++;
@@ -191,7 +199,7 @@ public final class ModificationDirecteurMapper {
             case "commissaire_comptes" -> {
                 put(it, "CAC_ACTION", normCacAction(r.get("cacAction")));
                 put(it, "COMMISSAIRE_COMPTES_NOM", str(r.get("commissaireComptesNom")));
-                put(it, "DUREE_MANDAT_CAC", first(str(r.get("dureeMandatCac")), "trois"));
+                put(it, "DUREE_MANDAT_CAC", str(r.get("dureeMandatCac"))); // L3 (D6) : plus de "trois" par defaut
                 putDate(it, "CAC_FIN_MANDAT_DATE", r.get("cacFinMandatDate"));
             }
             case "ratification_actes_formation" ->
@@ -372,7 +380,7 @@ public final class ModificationDirecteurMapper {
             it.put("GERANT_NATIONALITE", first(str(g.get("nationalite")), "marocaine"));
             it.put("GERANT_DATE_NAISSANCE", dateStr(g.get("dateNaissance")));
             it.put("GERANT_ADRESSE", str(g.get("adresse")));
-            it.put("GERANT_PIECE_TYPE", first(str(g.get("pieceType")), "CIN"));
+            it.put("GERANT_PIECE_TYPE", str(g.get("pieceType"))); // L3 (D6) : plus de "CIN" par defaut
             it.put("GERANT_PIECE_NUMERO", first(str(g.get("pieceNumero")), str(g.get("cin"))));
             out.add(it);
         }

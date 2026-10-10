@@ -114,7 +114,10 @@ class ApprobationComptesVarsCoverageTest {
                 if (b.variables() != null) names.addAll(b.variables());
             }
         }
-        if (dict.fillLater() != null) names.addAll(dict.fillLater());
+        // Lot L3 : fill_later retire ; les variables externes (classement) sont connues.
+        ma.jurika.ai.document.ClassementVariables c = ma.jurika.ai.document.ClassementVariables.charger();
+        names.addAll(c.externesCorpus());
+        names.addAll(c.externesHorsCorpus());
         return names;
     }
 

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useStepAutosave } from '../useStepAutosave';
 import type { DirtyGetter } from '../useWorkflow';
+import { ValeurProposee } from '../../../components/workflow/ValeurProposee';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -74,7 +75,11 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
   })();
   const [numeraireLibere, setNumeraireLibere] = useState<number>(initialNumeraireLibere);
   const [nbParts, setNbParts] = useState<number>(Number(e.nombreParts ?? 1000));
-  const [duree, setDuree] = useState<number>(Number(e.dureeAnnees ?? 99));
+  // Lot L3 (D6) : 99 ans est une valeur PROPOSEE, transmise une fois confirmee.
+  const [dureeSaisie, setDureeSaisie] = useState<string | undefined>(
+    e.dureeAnnees != null && e.dureeAnnees !== '' ? String(e.dureeAnnees) : undefined,
+  );
+  const duree = Number(dureeSaisie ?? 0);
   const [dateCommencement, setDateCommencement] = useState<string>(
     (e.dateCommencement as string) ?? '',
   );
@@ -169,7 +174,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
       capitalSocialMad: capitalSocial,
       valeurNominale,
       nombreParts: nbParts,
-      dureeAnnees: duree,
+      dureeAnnees: dureeSaisie ? duree : null,
       dateCommencement,
       dateFin,
       hasNumeraire,
@@ -204,7 +209,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
           capitalSocialMad: capitalSocial,
           valeurNominale,
           nombreParts: nbParts,
-          dureeAnnees: duree,
+          dureeAnnees: dureeSaisie ? duree : null,
           dateCommencement,
           dateFin,
           hasNumeraire,
@@ -577,16 +582,13 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
         </h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Duree (annees)
-            </label>
-            <input aria-label="Duree (annees)"
+            <ValeurProposee
+              id="duree-societe"
+              label="Durée de la société (années)"
+              proposition="99"
               type="number"
-              min={1}
-              max={99}
-              value={duree}
-              onChange={(ev) => setDuree(Number(ev.target.value))}
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm"
+              valeur={dureeSaisie}
+              onChange={setDureeSaisie}
             />
           </div>
           {!importMode && (

@@ -241,11 +241,10 @@ function SuccursaleMaWorkflowPageBody() {
             adresse: String(a?.adresse ?? ''),
             nombreParts: parts,
             nombreVoix: parts,
-            presence: 'présent',
+            presence: '', // L3 (D6) : saisie a l'ecran, jamais supposee
             mandataireNom: '',
-            // Fix M6 (2026-08-16) — la CIN est en base depuis la création : sans
-            // elle, la comparution des PV d'associé unique sortait « CIN n° , ».
-            pieceType: 'CIN',
+            // L3 (D6) : type de piece repris de la fiche, sinon "CIN" propose a l'ecran.
+            pieceType: String(a?.pieceType ?? ''),
             pieceNumero: String(a?.cin ?? a?.cinNumero ?? a?.pieceNumero ?? ''),
           };
         })

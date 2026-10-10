@@ -75,6 +75,46 @@ export interface DossierParties {
   nombreParts?: number | string | null;
 }
 
+
+/** Lot L3 : une donnee externe attendue par un document du ticket. */
+export interface DonneeAttendue {
+  templateCode: string;
+  workflowCode: string;
+  variable: string;
+  libelle: string;
+  reclameeLe: string;
+  /** Presente au magasin du ticket ou a la fiche societe : le document peut etre regenere. */
+  recue: boolean;
+}
+
+
+/** Lot L3 : une clause libre d'un document (RG-GEN-05/06). */
+export interface ClauseLibre {
+  document: string;
+  emplacement?: string | null;
+  titre: string;
+  texte: string;
+  resultat?: string | null;
+  voixPour?: string | null;
+  voixContre?: string | null;
+  abstentions?: string | null;
+  saisiePar?: string | null;
+  saisieLe?: string | null;
+}
+
+
+/** Lot L3 : une variable du magasin, avec sa provenance (RG-VAR-02). */
+export interface VariableDuMagasin {
+  variable: string;
+  boucle: string | null;
+  rang: number | null;
+  valeur: string | null;
+  origine: 'SAISIE' | 'BASE' | 'DERIVEE' | 'EXTRAITE' | 'FICHE';
+  saisiePar: string | null;
+  saisieLe: string | null;
+  occasion: string | null;
+}
+
 export const workflowService = {
   async start(ticketId: string, type: WorkflowType): Promise<WorkflowProgress> {
     const { data } = await api.post<WorkflowProgress>(`/workflows/${ticketId}/start`, { type });
@@ -96,6 +136,33 @@ export const workflowService = {
 
   async executeStep(ticketId: string, step: number, payload: Record<string, unknown>): Promise<ExecuteStepResult> {
     const { data } = await api.post<ExecuteStepResult>(`/workflows/${ticketId}/execute-step`, { step, payload });
+    return data;
+  },
+
+  /**
+   * Lot L3 (regle des variables) : donnees externes (RC, ICE, IF...) que les documents
+   * du ticket attendent d'un organisme, et si elles sont arrivees.
+   */
+  async donneesAttendues(ticketId: string): Promise<DonneeAttendue[]> {
+    const { data } = await api.get<DonneeAttendue[]>(`/workflows/${ticketId}/donnees-attendues`);
+    return data;
+  },
+
+  /** Lot L3 (RG-VAR-02/03) : variables du magasin du ticket, avec leur provenance. */
+  async variables(ticketId: string): Promise<VariableDuMagasin[]> {
+    const { data } = await api.get<VariableDuMagasin[]>(`/workflows/${ticketId}/variables`);
+    return data;
+  },
+
+  /** Lot L3 (RG-GEN-05/06) : clauses libres du ticket (auteur, date). */
+  async clausesLibres(ticketId: string): Promise<ClauseLibre[]> {
+    const { data } = await api.get<ClauseLibre[]>(`/workflows/${ticketId}/clauses-libres`);
+    return data;
+  },
+
+  /** Lot L3 : remplace les clauses libres du ticket (employe en charge seulement). */
+  async remplacerClausesLibres(ticketId: string, clauses: ClauseLibre[]): Promise<ClauseLibre[]> {
+    const { data } = await api.put<ClauseLibre[]>(`/workflows/${ticketId}/clauses-libres`, clauses);
     return data;
   },
 

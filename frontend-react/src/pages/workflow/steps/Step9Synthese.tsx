@@ -73,12 +73,10 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
   const siegeRaw = (data.step2 as Record<string, unknown>) ?? {};
   const capRaw = (data.step3 as Record<string, unknown>) ?? {};
   const actRaw = (data.step4 as Record<string, unknown>) ?? {};
-  // 2026-08 (contrat CREATION) — pré-remplissage : ville du siège pour lieuSignature.
-  const siegeInner = (siege.siege as Record<string, unknown>) ?? siege;
-  const defaultLieu =
-    (siegeInner.villeGreffe as string) ??
-    (siegeInner.province as string) ??
-    'Casablanca';
+  // Lot L3 : le lieu (et la date) de signature se saisissent a l'etape 7, une seule
+  // fois, sans valeur par defaut ("Casablanca" etait invente ici).
+  const complementsEtape7 = (data.step7 as { complements?: Record<string, string> })?.complements ?? {};
+  const lieuSignatureEtape7 = (complementsEtape7.lieuSignature ?? '').trim();
   const acteExisting = ((data.step9 as { acteParams?: Record<string, unknown> })?.acteParams) ?? {};
   const dirs = ((data.step5 as { dirigeants?: Array<{ nom: string; prenom: string; fonction?: string; isStatutaire: boolean }> })?.dirigeants ??
     []) as Array<{ nom: string; prenom: string; fonction?: string; isStatutaire: boolean }>;
@@ -86,35 +84,14 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
     []) as Array<{ nom: string; prenom: string; nombreParts: number; pourcentageDetention?: number }>;
 
   // 2026-08 (contrat CREATION) — Paramètres de l'acte (societe.* voie directeur).
-  const [commissaireComptesNom, setCommissaireComptesNom] = useState<string>(
-    (acteExisting.commissaireComptesNom as string) ?? '',
-  );
-  const [dureeMandatCac, setDureeMandatCac] = useState<number>(
-    Number(acteExisting.dureeMandatCac ?? 3),
-  );
-  const [exerciceDebut, setExerciceDebut] = useState<string>(
-    (acteExisting.exerciceDebut as string) ?? '1er janvier',
-  );
-  const [exerciceFin, setExerciceFin] = useState<string>(
-    (acteExisting.exerciceFin as string) ?? '31 décembre',
-  );
   const [premierExerciceCloture, setPremierExerciceCloture] = useState<string>(
     (acteExisting.premierExerciceCloture as string) ?? '',
   );
   const [engagementsMandat, setEngagementsMandat] = useState<string>(
     (acteExisting.engagementsMandat as string) ?? '',
   );
-  const [lieuSignature, setLieuSignature] = useState<string>(
-    (acteExisting.lieuSignature as string) ?? defaultLieu,
-  );
-  const [nombreOriginaux, setNombreOriginaux] = useState<number>(
-    Number(acteExisting.nombreOriginaux ?? 6),
-  );
   const [articleDesignationStatuts, setArticleDesignationStatuts] = useState<string>(
     (acteExisting.articleDesignationStatuts as string) ?? '',
-  );
-  const [heureActe, setHeureActe] = useState<string>(
-    (acteExisting.heureActe as string) ?? '10 heures',
   );
 
   const [success, setSuccess] = useState(false);
@@ -122,16 +99,9 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
   // 2026-08 (contrat CREATION) — Paramètres de l'acte consommés par le builder
   // (societe.*). Persistés sous step9.acteParams.
   const acteParams = {
-    commissaireComptesNom,
-    dureeMandatCac,
-    exerciceDebut,
-    exerciceFin,
     premierExerciceCloture,
     engagementsMandat,
-    lieuSignature,
-    nombreOriginaux,
     articleDesignationStatuts,
-    heureActe,
   };
 
   // Flush au navigation (persiste step9.acteParams sans clic explicite).
@@ -195,7 +165,7 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
       label: 'Activite',
       value: (pick([act, actRaw], 'description', 'objet') || '—').slice(0, 120),
     },
-    { label: 'Duree', value: `${pick([cap, capRaw], 'dureeAnnees') || 99} ans` },
+    { label: 'Durée', value: pick([cap, capRaw], 'dureeAnnees') ? `${pick([cap, capRaw], 'dureeAnnees')} ans` : 'non confirmée' },
     {
       // Fix A3 — la date de commencement d'exercice a migré à l'étape Capital
       // (dé-dup 2026-08) : on lit les deux étapes plutôt qu'une seule.
@@ -279,59 +249,12 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
         <div className="border-b border-border p-5">
           <h3 className="text-base font-bold text-fg">Parametres de l'acte</h3>
           <p className="mt-1 text-xs text-fg-subtle">
-            Elements de redaction repris dans les statuts et l'acte (exercice social,
-            commissaire aux comptes, lieu et heure de signature…).
+            Éléments de rédaction repris dans les statuts et l’acte. L’exercice social, le
+            commissaire aux comptes, le nombre d’originaux et le lieu, la date et l’heure de
+            signature se saisissent à l’étape 7, avant la génération.
           </p>
         </div>
         <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Commissaire aux comptes (optionnel)
-            </label>
-            <input aria-label="Commissaire aux comptes (optionnel)"
-              type="text"
-              value={commissaireComptesNom}
-              onChange={(e) => setCommissaireComptesNom(e.target.value)}
-              placeholder="Nom du commissaire aux comptes"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Duree du mandat du CAC (annees)
-            </label>
-            <input aria-label="Duree du mandat du CAC (annees)"
-              type="number"
-              min={1}
-              value={dureeMandatCac}
-              onChange={(e) => setDureeMandatCac(Number(e.target.value))}
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Debut de l'exercice social
-            </label>
-            <input aria-label="Debut de l'exercice social"
-              type="text"
-              value={exerciceDebut}
-              onChange={(e) => setExerciceDebut(e.target.value)}
-              placeholder="1er janvier"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Fin de l'exercice social
-            </label>
-            <input aria-label="Fin de l'exercice social"
-              type="text"
-              value={exerciceFin}
-              onChange={(e) => setExerciceFin(e.target.value)}
-              placeholder="31 décembre"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
-            />
-          </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-fg">
               Cloture du premier exercice (optionnel)
@@ -344,41 +267,30 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
               className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
             />
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Lieu de signature
-            </label>
-            <input aria-label="Lieu de signature"
-              type="text"
-              value={lieuSignature}
-              onChange={(e) => setLieuSignature(e.target.value)}
-              placeholder="Ex: Casablanca"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
-            />
+          <div className="md:col-span-2">
+            <p className="mb-1 block text-xs font-medium text-fg">Saisis à l’étape 7, « Signature des actes »</p>
+            <ul className="text-sm text-fg">
+              {[
+                ['Nombre d’exemplaires originaux', complementsEtape7.nombreOriginaux],
+                ['Heure de l’acte', complementsEtape7.heureActe],
+                ['Exercice social', complementsEtape7.exerciceDebut && complementsEtape7.exerciceFin
+                  ? `du ${complementsEtape7.exerciceDebut} au ${complementsEtape7.exerciceFin}` : ''],
+                ['Commissaire aux comptes', complementsEtape7.commissaireComptesNom
+                  ? `${complementsEtape7.commissaireComptesNom}${complementsEtape7.dureeMandatCac ? `, ${complementsEtape7.dureeMandatCac} exercices` : ''}`
+                  : 'aucun'],
+              ].map(([l, v]) => (
+                <li key={l}>
+                  {l} : {v || 'non confirmé'}
+                </li>
+              ))}
+            </ul>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Heure de l'acte
-            </label>
-            <input aria-label="Heure de l'acte"
-              type="text"
-              value={heureActe}
-              onChange={(e) => setHeureActe(e.target.value)}
-              placeholder="10 heures"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Nombre d'originaux
-            </label>
-            <input aria-label="Nombre d'originaux"
-              type="number"
-              min={1}
-              value={nombreOriginaux}
-              onChange={(e) => setNombreOriginaux(Number(e.target.value))}
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
-            />
+            <p className="mb-1 block text-xs font-medium text-fg">Lieu de signature</p>
+            <p className="text-sm text-fg">
+              {lieuSignatureEtape7 || 'Non renseigné'}
+              <span className="ml-1 text-xs text-fg-subtle">(saisi à l’étape 7, « Signature des actes »)</span>
+            </p>
           </div>
           <div className="md:col-span-2">
             <label className="mb-1 block text-xs font-medium text-fg">

@@ -103,8 +103,8 @@ class DissolutionAnnonceRenderTest {
         // attribuées par le greffe APRÈS le dépôt : les rendre VIDES produisait la phrase
         // trouée « … le  sous le numéro  RC N° 123456 », que rien ne signalait. On reprend
         // le marqueur déjà employé par la CRÉATION : l'avis dit ce qui reste à compléter.
-        assertEquals("[à compléter après immatriculation]", v.get("DATE_DEPOT_LEGAL"));
-        assertEquals("[à compléter après immatriculation]", v.get("DEPOT_LEGAL_NUMERO"));
+        org.junit.jupiter.api.Assertions.assertTrue(v.get("DATE_DEPOT_LEGAL") == null || v.get("DATE_DEPOT_LEGAL").toString().isBlank(), "L3 : DATE_DEPOT_LEGAL externe absente, marquee par le moteur");
+        org.junit.jupiter.api.Assertions.assertTrue(v.get("DEPOT_LEGAL_NUMERO") == null || v.get("DEPOT_LEGAL_NUMERO").toString().isBlank(), "L3 : DEPOT_LEGAL_NUMERO externe absente, marquee par le moteur");
     }
 
     @Test

@@ -109,7 +109,9 @@ public class ProjecteurVariablesCreation {
         poser(workspaceId, ticketId, auteur, "etape-3", n, "NOMBRE_PARTS", s3.get("nombreParts"));
         poser(workspaceId, ticketId, auteur, "etape-3", n, "VALEUR_NOMINALE_PART", s3.get("valeurNominale"));
         poser(workspaceId, ticketId, auteur, "etape-3", n, "DUREE_SOCIETE", s3.get("dureeAnnees"));
-        poser(workspaceId, ticketId, auteur, "etape-3", n, "BANQUE_DEPOSITAIRE", s3.get("banqueDepot"));
+        // Lot L3 : l'ecran ecrit `depotBanqueNom` ; `banqueDepot` n'est ecrit par personne.
+        poser(workspaceId, ticketId, auteur, "etape-3", n, "BANQUE_DEPOSITAIRE",
+                premier(s3.get("banqueDepot"), s3.get("depotBanqueNom")));
 
         // ---- étape 4 — activité --------------------------------------------
         poser(workspaceId, ticketId, auteur, "etape-4", n, "OBJET_SOCIAL", objetSocial(s4));
@@ -135,23 +137,61 @@ public class ProjecteurVariablesCreation {
         projeterBoucles(workspaceId, ticketId, auteur, sousCarte(s7, "boucles"), n);
 
         // ---- étape 9 — les dix champs qui n'atteignaient aucun document ------
-        poser(workspaceId, ticketId, auteur, "etape-9", n, "LIEU_SIGNATURE", acte.get("lieuSignature"));
-        poser(workspaceId, ticketId, auteur, "etape-9", n, "NOMBRE_ORIGINAUX", acte.get("nombreOriginaux"));
-        poser(workspaceId, ticketId, auteur, "etape-9", n, "HEURE_ACTE", acte.get("heureActe"));
-        poser(workspaceId, ticketId, auteur, "etape-9", n, "EXERCICE_DEBUT", acte.get("exerciceDebut"));
-        poser(workspaceId, ticketId, auteur, "etape-9", n, "EXERCICE_FIN", acte.get("exerciceFin"));
+        // Lot L3 (D6) : nombre d'originaux, heure, exercice social et commissaire aux comptes
+        // se saisissent a l'etape 7 (valeurs proposees, confirmees), avant la generation ;
+        // l'etape 9 les posait apres, et en recouvrait la saisie.
+        // Lot L3 : LIEU_SIGNATURE se saisit a l'etape 7 ("Signature des actes"), une seule
+        // fois ; l'etape 9 le posait aussi, avec "Casablanca" par defaut, apres la generation.
         poser(workspaceId, ticketId, auteur, "etape-9", n, "PREMIER_EXERCICE_CLOTURE",
                 acte.get("premierExerciceCloture"));
-        poser(workspaceId, ticketId, auteur, "etape-9", n, "COMMISSAIRE_COMPTES_NOM",
-                acte.get("commissaireComptesNom"));
-        poser(workspaceId, ticketId, auteur, "etape-9", n, "DUREE_MANDAT_CAC", acte.get("dureeMandatCac"));
         poser(workspaceId, ticketId, auteur, "etape-9", n, "ENGAGEMENTS_MANDAT", acte.get("engagementsMandat"));
         poser(workspaceId, ticketId, auteur, "etape-9", n, "ARTICLE_DESIGNATION_STATUTS",
                 acte.get("articleDesignationStatuts"));
         poser(workspaceId, ticketId, auteur, "etape-9", n, "DATE_DEPOT_LEGAL", postImmat.get("dateDepotLegal"));
 
+        // ---- Lot L3 (RG-VAR-09, D14 de L1) : provenance EXTRAITE -------------
+        // L'ecran d'extraction liste, sur l'objet saisi, les champs remplis par la lecture
+        // d'une piece et confirmes par l'employe (`_extraits`) ; il retire un champ de la
+        // liste des que l'employe le modifie. Ces valeurs sont EXTRAITES, pas SAISIES.
+        marquerExtraits(workspaceId, ticketId, auteur, s1, null, null, CHAMPS_ETAPE_1);
+        List<Map<String, Object>> dirigeants = liste(data, "step5", "dirigeants");
+        for (int i = 0; i < dirigeants.size(); i++) {
+            marquerExtraits(workspaceId, ticketId, auteur, dirigeants.get(i), "GERANTS", (short) i, CHAMPS_GERANT);
+        }
+        List<Map<String, Object>> associes = liste(data, "step6", "associes");
+        for (int i = 0; i < associes.size(); i++) {
+            marquerExtraits(workspaceId, ticketId, auteur, associes.get(i), "ASSOCIES", (short) i, CHAMPS_ASSOCIE);
+        }
+
         log.debug("magasin.projection ticket={} variables={}", ticketId, n.valeur);
         return n.valeur;
+    }
+
+    /** Champ d'ecran -> variable, pour les champs qu'une extraction de piece peut remplir. */
+    static final Map<String, String> CHAMPS_ETAPE_1 = Map.of(
+            "denomination", "DENOMINATION",
+            "cnNumero", "CERTIFICAT_NEGATIF_NUMERO",
+            "cnDate", "CERTIFICAT_NEGATIF_DATE");
+    static final Map<String, String> CHAMPS_GERANT = Map.of(
+            "civilite", "GERANT_CIVILITE", "nom", "GERANT_NOM", "prenom", "GERANT_PRENOM",
+            "adresse", "GERANT_ADRESSE", "nationalite", "GERANT_NATIONALITE",
+            "dateNaissance", "GERANT_DATE_NAISSANCE", "lieuNaissance", "GERANT_LIEU_NAISSANCE",
+            "pieceNumero", "GERANT_PIECE_NUMERO", "cinNumero", "GERANT_PIECE_NUMERO");
+    static final Map<String, String> CHAMPS_ASSOCIE = Map.of(
+            "civilite", "ASSOCIE_CIVILITE", "nom", "ASSOCIE_NOM", "prenom", "ASSOCIE_PRENOM",
+            "adresse", "ASSOCIE_ADRESSE", "nationalite", "ASSOCIE_NATIONALITE",
+            "dateNaissance", "ASSOCIE_DATE_NAISSANCE", "lieuNaissance", "ASSOCIE_LIEU_NAISSANCE",
+            "pieceNumero", "ASSOCIE_PIECE_NUMERO", "cinNumero", "ASSOCIE_PIECE_NUMERO", "cin", "ASSOCIE_PIECE_NUMERO");
+
+    private void marquerExtraits(UUID ws, UUID ticket, UUID auteur, Map<String, Object> objet,
+                                  String boucle, Short rang, Map<String, String> champs) {
+        if (auteur == null || objet == null || !(objet.get("_extraits") instanceof List<?> extraits)) return;
+        for (Object champ : extraits) {
+            String variable = champs.get(String.valueOf(champ));
+            if (variable != null) {
+                magasin.marquerOrigine(ws, ticket, boucle, rang, variable, Origine.EXTRAITE, auteur);
+            }
+        }
     }
 
     // ------------------------------------------------------------------
@@ -171,7 +211,7 @@ public class ProjecteurVariablesCreation {
             g.put("GERANT_NATIONALITE", txt(d.get("nationalite")));
             g.put("GERANT_DATE_NAISSANCE", txt(d.get("dateNaissance")));
             g.put("GERANT_LIEU_NAISSANCE", txt(d.get("lieuNaissance")));
-            g.put("GERANT_PIECE_TYPE", txt(premier(d.get("pieceType"), "CIN")));
+            g.put("GERANT_PIECE_TYPE", typePiece(d, "MORALE".equalsIgnoreCase(txt(d.get("typePersonne")))));
             g.put("GERANT_PIECE_NUMERO", txt(premier(d.get("pieceNumero"), d.get("cinNumero"))));
             gerants.add(g);
 
@@ -181,7 +221,7 @@ public class ProjecteurVariablesCreation {
                 e.put("DIRIGEANT_PM_FORME", txt(d.get("formeJuridiqueEntite")));
                 e.put("DIRIGEANT_PM_SIEGE", txt(d.get("siege")));
                 e.put("DIRIGEANT_PM_RC", txt(d.get("rc")));
-                e.put("DIRIGEANT_PM_REPRESENTANT", txt(d.get("representantLegal")));
+                e.put("DIRIGEANT_PM_REPRESENTANT", txt(premier(d.get("representantLegal"), nomComplet(d))));
             }
             pm.add(e);
         }
@@ -232,18 +272,19 @@ public class ProjecteurVariablesCreation {
             it.put("ASSOCIE_NATIONALITE", txt(a.get("nationalite")));
             it.put("ASSOCIE_DATE_NAISSANCE", txt(a.get("dateNaissance")));
             it.put("ASSOCIE_LIEU_NAISSANCE", txt(a.get("lieuNaissance")));
-            it.put("ASSOCIE_PIECE_TYPE", txt(premier(a.get("pieceType"), "CIN")));
-            it.put("ASSOCIE_PIECE_NUMERO", txt(premier(a.get("pieceNumero"), a.get("cinNumero"))));
+            it.put("ASSOCIE_PIECE_TYPE", typePiece(a, morale));
+            // Lot L3 : l'ecran des associes ecrit `cin` (le projecteur ne lisait que pieceNumero/cinNumero).
+            it.put("ASSOCIE_PIECE_NUMERO", txt(premier(a.get("pieceNumero"), a.get("cinNumero"), a.get("cin"))));
             it.put("ASSOCIE_NOMBRE_PARTS", txt(a.get("nombreParts")));
             it.put("ASSOCIE_EST_GERANT", ouiNon(a.get("estGerant")));
             if (morale) {
                 it.put("ASSOCIE_DENOMINATION", txt(a.get("denomination")));
-                it.put("ASSOCIE_FORME", txt(a.get("formeJuridique")));
+                it.put("ASSOCIE_FORME", txt(premier(a.get("formeJuridique"), a.get("formeJuridiqueEntite"))));
                 it.put("ASSOCIE_CAPITAL", txt(a.get("capitalEntite")));
                 it.put("ASSOCIE_SIEGE", txt(a.get("siege")));
                 it.put("ASSOCIE_RC_NUMERO", txt(a.get("rc")));
                 it.put("ASSOCIE_RC_VILLE", txt(a.get("rcVille")));
-                it.put("ASSOCIE_REPRESENTANT_NOM", txt(a.get("representantLegal")));
+                it.put("ASSOCIE_REPRESENTANT_NOM", txt(premier(a.get("representantLegal"), nomComplet(a))));
                 it.put("ASSOCIE_REPRESENTANT_QUALITE", txt(a.get("repQualite")));
             }
             base.add(it);
@@ -335,6 +376,25 @@ public class ProjecteurVariablesCreation {
             return sb.toString();
         }
         return txt(s4.get("description"));
+    }
+
+    /** Lot L3 : representant d'une personne morale saisi en prenom / nom (repPrenom, repNom). */
+    private static Object nomComplet(Map<String, Object> o) {
+        String n = (txt(o.get("repPrenom")) + " " + txt(o.get("repNom"))).trim();
+        return n.isEmpty() ? null : n;
+    }
+
+    /**
+     * Lot L3 (D6) : type de piece d'identite, jamais suppose. Le parcours de creation
+     * saisit un "N de CIN" (format controle, scan de la CIN exige) : le type CIN est
+     * DERIVE de ce numero quand il est saisi. Sans numero, ou pour une personne
+     * morale, rien n'est derive : la generation nomme la donnee manquante.
+     */
+    static String typePiece(Map<String, Object> p, boolean morale) {
+        String saisi = txt(p.get("pieceType"));
+        if (!saisi.isEmpty()) return saisi;
+        if (morale) return "";
+        return premier(p.get("cin"), p.get("cinNumero")) == null ? "" : "CIN";
     }
 
     private static Object premier(Object... candidats) {

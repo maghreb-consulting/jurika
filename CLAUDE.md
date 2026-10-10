@@ -101,7 +101,7 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
 - Composants : `frontend-react/src/components/ui/Aide.tsx` (`InfoBulle`, `TexteAide`).
 - Le rapport final de chaque lot liste les aides ajoutees (ecran, emplacement, texte).
 
-## Regle des variables d'un acte (2026-10-09 ; a reprendre dans le perimetre de L3)
+## Regle des variables d'un acte (2026-10-09 ; appliquee au lot L3)
 
 - Chaque variable du dictionnaire est classee **interne** ou **externe**. Externe : donnee
   attendue d'un organisme (numero RC, ICE, IF, date d'immatriculation, ou toute donnee produite
@@ -111,9 +111,16 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
   **nommee** a l'utilisateur.
 - Seule une variable **externe** peut manquer : l'acte sort avec un **marqueur visible**, la
   plateforme **reclame** la donnee, puis l'acte se **regenere** quand elle arrive.
-- Les 17 gabarits du corpus dont le texte a change au lot L2 (decision D3,
-  `~/docs/rapports/L2_comparaison_temoin.md`) suivent cette regle : leurs marqueurs "VALEUR
-  MANQUANTE" actuels sont a reclasser (interne : blocage nomme ; externe : marqueur et relance).
+- Mise en oeuvre (lot L3) : liste explicite des variables externes
+  `ai-service/.../templates/v2/variables-externes.txt` (regles dans
+  `scripts/l3/variables_externes.py`, liste classee : `~/docs/rapports/L3_variables_externes.md`),
+  controlee au demarrage contre le dictionnaire. Decision du 2026-10-10 (D2) : seules les donnees
+  de la SOCIETE TRAITEE attendues d'un organisme sont externes (RC, ICE, IF, TP, CNSS, dates et
+  numeros d'immatriculation, de depot, de recepisse) ; les identifiants des tiers (bailleur,
+  domiciliataire, associe personne morale...) sont internes ;
+  refus structure (422, donnees nommees) a tous les parcours ; marqueur « A OBTENIR » ;
+  reclamation (`donnees_attendues`, workflow V16) et regeneration a l'arrivee. Les 17 gabarits D3
+  de L2 suivent la regle (tableau : `~/docs/rapports/L3_rapport_final.md`).
 
 ## Corpus documentaires (source de verite metier)
 
@@ -200,8 +207,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU (A_DECIDER directeur : manque, ou doublon de
   PV_CREATION_SUCCURSALE_ETRANGERE_SARL qui vise une societe etrangere sans forme).
   Tableau : `~/docs/rapports/L2_correspondance_gabarits.md`.
-- **D8 : afficher un message clair a l'utilisateur au lieu d'une erreur 500 quand un modele est
-  refuse** (gabarit du corpus modifie depuis le chargement ou non rendable : `CorpusException`).
 
 ### Lot L6 (qualite de la langue, ergonomie) -- a prevoir
 
@@ -211,6 +216,37 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **Visite guidee** a la premiere connexion (masquable, reaffichable).
 - **Nouveau logo**, avec sa variante ivoire en mode sombre.
 - **Super-admin affiche "JURIKA"** (et non un nom de cabinet ou de compte).
+
+### Lot L3 (saisie unique, 2026-10-10) -- dette relevee
+
+- **`DocumentVerificationIT` ne voit pas les marqueurs de donnee manquante** : il declare OK un
+  `PV_MODIFICATION_SARL` (`target/sample_outputs/`) qui porte "VALEUR MANQUANTE" a la date, l'heure,
+  le lieu et le president de seance (fixture `modification.json` a l'ancienne forme `assemblee`,
+  sans `seance`). Le controle ne cherche que les variables residuelles : controle silencieusement
+  inoperant (motif 9). A corriger avec la fixture (L4, bascule des parcours).
+- **Usages a confirmer par le directeur** (D6, 2026-10-10) : nombre d'originaux et heure de l'acte
+  sont desormais des valeurs proposees a l'ecran (composant `ValeurProposee`), confirmees par
+  l'employe ; les propositions ("6", "quatre", "10 heures") restent a valider comme usages du cabinet.
+- **Valeurs pre-remplies encore affichees sans confirmation** (hors liste D6) : la liste de choix
+  des resolutions de modification prend sa premiere option d'office (`SelectField`,
+  `modificationResolutions.tsx`) ; remuneration du liquidateur "exercees a titre gratuit", motif de
+  dissolution "volontaire", nationalite "Marocaine" (creation, etape 6). Visibles et modifiables,
+  mais jamais confirmees : a passer en valeurs proposees (L4 ou L6).
+- **Creation : seule la CIN est acceptee comme piece** (format controle, scan de la CIN exige) ;
+  le type de piece est derive du n de CIN saisi (D6). Un associe ou gerant etranger (passeport,
+  carte de sejour) ne peut pas etre saisi : a instruire.
+- **Gabarits D3 de dissolution, liquidation et approbation (SARL AU)** : leurs variables du corpus
+  (liquidateur personne morale, dates de decision et d'effet...) ne sont pas fournies par les
+  mappers ; ces actes sont refuses avec les donnees nommees jusqu'a la reecriture des mappers (L4).
+- **Controle d'acces des endpoints workflow** (`save`, `execute-step`, `variables`, `charge-utile`) :
+  workspace seulement, pas l'employe en charge du ticket (les endpoints L3 l'exigent).
+- **Champ sans ecran** lu par le projecteur : ville du RC d'un associe personne morale
+  (`ASSOCIE_RC_VILLE`).
+- **Clauses libres** : pas d'emplacement dans les PV de modification, de dissolution / liquidation
+  ni dans les PV SARL AU servis ; les modeles du corpus qui le prevoient (`PV_AG_SARL`,
+  `PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU`, `$RESOLUTION_TEXTE_LIBRE`) arrivent avec L4.
+- **Provenance a l'ecran** : etape 7 de la creation et blocs de document ; page de ticket
+  generique en L4.
 
 ### Lot L1 (dossiers et employes, 2026-10-09) -- dette relevee
 
@@ -258,9 +294,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   n'atteignent pas les cabinets : corpus commun a concevoir (migration probable).
 - **Export ZIP du Dossier Juridique** : echec complet (`duplicate entry`) quand deux documents
   d'un meme type portent le meme nom de fichier (`exportSelectionAsZip`).
-- **Erreurs avalees (motif 9)** : `DossierIdentityQueryService#identity` (workflow) rend une map
-  vide sur toute exception ; `WorkflowUseCases#executeStep` avale l'echec de
-  `loadDossierFactsByTicket` en DEBUG.
 - **Dockerfile de dashboard** : ignore une erreur Maven pendant le telechargement des
   dependances (`dependency:go-offline ... || true`, vu en E26 sur une collision du cache
   partage entre constructions paralleles).

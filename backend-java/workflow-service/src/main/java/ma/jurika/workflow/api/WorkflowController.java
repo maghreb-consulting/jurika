@@ -33,13 +33,24 @@ public class WorkflowController {
     private final DossierIdentityQueryService dossierIdentity;
     /** Lot C — le magasin de variables du dossier, source unique de la génération. */
     private final MagasinVariables magasin;
+    /** Lot L3 : donnees attendues d'un organisme (regle des variables). */
+    private final ma.jurika.workflow.application.DonneesAttenduesService donneesAttendues;
+    /** Lot L3 : clauses libres (RG-GEN-05/06). */
+    private final ma.jurika.workflow.application.ClausesLibresService clausesLibres;
+    private final ma.jurika.workflow.application.EmployeEnCharge employeEnCharge;
 
     public WorkflowController(WorkflowUseCases useCases,
                               DossierIdentityQueryService dossierIdentity,
-                              MagasinVariables magasin) {
+                              MagasinVariables magasin,
+                              ma.jurika.workflow.application.DonneesAttenduesService donneesAttendues,
+                              ma.jurika.workflow.application.ClausesLibresService clausesLibres,
+                              ma.jurika.workflow.application.EmployeEnCharge employeEnCharge) {
         this.useCases = useCases;
         this.dossierIdentity = dossierIdentity;
         this.magasin = magasin;
+        this.donneesAttendues = donneesAttendues;
+        this.clausesLibres = clausesLibres;
+        this.employeEnCharge = employeEnCharge;
     }
 
     /**
@@ -153,6 +164,36 @@ public class WorkflowController {
                                             @PathVariable UUID ticketId) {
         return ConstructeurChargeUtileCreation.construire(
                 magasin.lirePourGeneration(actor.workspaceId(), ticketId));
+    }
+
+    /**
+     * Lot L3 : donnees externes (RC, ICE, IF...) que les documents du ticket attendent
+     * d'un organisme, et si elles sont arrivees (l'ecran regenere alors le document).
+     */
+    @GetMapping("/{ticketId}/donnees-attendues")
+    @PreAuthorize("hasAnyRole('EMPLOYE','SUPERVISEUR')")
+    public java.util.List<ma.jurika.workflow.application.DonneesAttenduesService.Attendue> donneesAttendues(
+            @AuthenticationPrincipal AuthenticatedUser actor, @PathVariable UUID ticketId) {
+        return donneesAttendues.lister(actor.workspaceId(), ticketId);
+    }
+
+    /** Lot L3 (RG-GEN-05/06) : clauses libres du ticket (auteur, date). */
+    @GetMapping("/{ticketId}/clauses-libres")
+    @PreAuthorize("hasAnyRole('EMPLOYE','SUPERVISEUR')")
+    public java.util.List<ma.jurika.workflow.application.ClausesLibresService.Clause> clausesLibres(
+            @AuthenticationPrincipal AuthenticatedUser actor, @PathVariable UUID ticketId) {
+        return clausesLibres.lister(actor.workspaceId(), ticketId);
+    }
+
+    /** Lot L3 : remplace les clauses libres du ticket (employe en charge seulement ; trace). */
+    @org.springframework.web.bind.annotation.PutMapping("/{ticketId}/clauses-libres")
+    @PreAuthorize("hasRole('EMPLOYE') and !hasRole('SUPERVISEUR')")
+    public java.util.List<ma.jurika.workflow.application.ClausesLibresService.Clause> remplacerClausesLibres(
+            @AuthenticationPrincipal AuthenticatedUser actor, @PathVariable UUID ticketId,
+            @org.springframework.web.bind.annotation.RequestBody
+            java.util.List<ma.jurika.workflow.application.ClausesLibresService.Clause> clauses) {
+        employeEnCharge.exiger(actor.workspaceId(), ticketId, actor.userId());
+        return clausesLibres.remplacer(actor.workspaceId(), ticketId, actor.userId(), clauses);
     }
 
     /** Les variables du dossier avec leur provenance — affichage « en lecture » de l'étape 7. */

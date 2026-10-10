@@ -71,15 +71,27 @@ public class WorkflowDocumentController {
     private final DocxTemplateEngine docxTemplateEngine;
     private final TemplateManifestLoader manifestLoader;
     private final SocieteIdentityEnricher identityEnricher;
+    /** Lot L3 (P2) : charge utile de la creation construite par le serveur depuis le magasin. */
+    private final ma.jurika.ai.workflow.identity.ChargeUtileCreationProvider chargeUtileCreation;
+    /** Lot L3 : reclamation des donnees externes manquantes (regle des variables). */
+    private final ma.jurika.ai.workflow.identity.ReclamationDonnees reclamation;
+    /** Lot L3 (RG-GEN-05/06) : clauses libres du ticket, au magasin. */
+    private final ma.jurika.ai.workflow.identity.ClausesLibresProvider clausesLibres;
 
     public WorkflowDocumentController(WorkflowDocumentMappingService mappingService,
                                        DocxTemplateEngine docxTemplateEngine,
                                        TemplateManifestLoader manifestLoader,
-                                       SocieteIdentityEnricher identityEnricher) {
+                                       SocieteIdentityEnricher identityEnricher,
+                                       ma.jurika.ai.workflow.identity.ChargeUtileCreationProvider chargeUtileCreation,
+                                       ma.jurika.ai.workflow.identity.ReclamationDonnees reclamation,
+                                       ma.jurika.ai.workflow.identity.ClausesLibresProvider clausesLibres) {
         this.mappingService = mappingService;
         this.docxTemplateEngine = docxTemplateEngine;
         this.manifestLoader = manifestLoader;
         this.identityEnricher = identityEnricher;
+        this.chargeUtileCreation = chargeUtileCreation;
+        this.reclamation = reclamation;
+        this.clausesLibres = clausesLibres;
     }
 
     /**
@@ -170,10 +182,19 @@ public class WorkflowDocumentController {
         // Enrichissement identite societe depuis la BD (point unique, tous workflows PV).
         // Best-effort : si dossierId absent ou identite indisponible, payload inchange.
         UUID workspaceId = user == null ? null : user.workspaceId();
+        // Lot L3 (P2, RG-VAR-05) : la creation est generee depuis le magasin du ticket. Le
+        // navigateur n'envoie que l'identifiant du ticket ; toute autre donnee est ignoree.
+        if ("CREATION_SARL".equals(workflowCode)) {
+            payload = chargeUtileServeur(payload, workspaceId, user == null ? null : user.userId());
+        }
         Map<String, Object> enriched = identityEnricher.enrich(payload, workspaceId);
 
         Map<String, Object> variables = mappingService.map(
                 workflowCode, templateCode, enriched);
+        // Lot L3 (RG-VAR-03) : variables canoniques de la fiche societe reprises quand le
+        // mapper les laisse vides (jamais ecrasees, jamais inventees).
+        variables = ma.jurika.ai.workflow.identity.RepriseFicheSociete.completer(variables, enriched);
+        variables = appliquerClausesLibres(templateCode, variables, enriched, workspaceId);
 
         refuserSiControleBloquant(workflowCode, templateCode, variables);
 
@@ -183,6 +204,7 @@ public class WorkflowDocumentController {
         // rendue en 404 ; il n'y a plus de document de remplacement a detecter ici.
 
         refuserSiTrouGrammatical(workflowCode, templateCode, result);
+        reclamerDonneesExternes(workflowCode, templateCode, enriched, workspaceId, result);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -190,8 +212,101 @@ public class WorkflowDocumentController {
                 .header("X-Workflow-Code", workflowCode)
                 .header("X-Template-Code", templateCode)
                 .header("X-Missing-Variables", String.join(",", result.missingVariables()))
+                // Lot L3 : donnees externes manquantes (marquees "A OBTENIR"), en JSON
+                // encode URL : le front les affiche et la plateforme les reclame.
+                .header("X-Donnees-A-Obtenir",
+                        DocxTemplateEngine.enteteDonneesAObtenir(result, docxTemplateEngine.dictionnaire()))
                 .contentType(MediaType.parseMediaType(result.contentType()))
                 .body(result.bytes());
+    }
+
+    /**
+     * Lot L3 (RG-GEN-05/06) : les clauses libres du ticket pour ce document sont imprimees a
+     * l'emplacement prevu par le modele ; sans emplacement, la generation le refuse au lieu de
+     * les perdre en silence.
+     */
+    private Map<String, Object> appliquerClausesLibres(String templateCode, Map<String, Object> variables,
+                                                       Map<String, Object> payload, UUID workspaceId) {
+        UUID ticketId = ticketDe(payload);
+        if (ticketId == null || workspaceId == null) return variables;
+        java.util.List<Map<String, Object>> clauses = clausesLibres.lister(workspaceId, ticketId).stream()
+                .filter(c -> templateCode.equals(String.valueOf(c.get("document"))))
+                .toList();
+        if (clauses.isEmpty()) return variables;
+        if (!docxTemplateEngine.emplacementClausesPrevu(templateCode)) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Ce modèle ne prévoit pas d'emplacement pour une clause libre : retirez la clause de ce document.");
+        }
+        return ma.jurika.ai.document.ClausesLibres.inserer(variables, clauses);
+    }
+
+    private static UUID ticketDe(Map<String, Object> payload) {
+        Object brut = payload == null ? null : payload.get("ticketId");
+        try {
+            return brut == null ? null : UUID.fromString(String.valueOf(brut));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /** Lot L3 (RG-GEN-05/07) : le document accepte-t-il une clause libre, et ou ? */
+    @GetMapping("/{workflowCode}/templates/{templateCode}/clauses-libres")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR')")
+    public Map<String, Object> emplacementsClausesLibres(@PathVariable String workflowCode,
+                                                         @PathVariable String templateCode) {
+        if (templateCode.startsWith("STATUTS")) {
+            return Map.of("possible", false, "motif", ma.jurika.ai.document.ClausesLibres.A_DECIDER_STATUTS);
+        }
+        boolean possible = docxTemplateEngine.emplacementClausesPrevu(templateCode);
+        return possible
+                ? Map.of("possible", true, "emplacement", ma.jurika.ai.document.ClausesLibres.EMPLACEMENT,
+                        "libelle", ma.jurika.ai.document.ClausesLibres.LIBELLE_EMPLACEMENT)
+                : Map.of("possible", false,
+                        "motif", "Ce modèle ne prévoit pas d'emplacement pour une résolution libre.");
+    }
+
+    /**
+     * Lot L3 (regle des variables) : les donnees EXTERNES manquantes du document produit
+     * sont reclamees sur le ticket ; celles qui ne manquent plus sont closes. Toujours
+     * appele quand le ticket est connu, meme sans manquante, pour clore ce qui est arrive.
+     */
+    private void reclamerDonneesExternes(String workflowCode, String templateCode, Map<String, Object> payload,
+                                         UUID workspaceId, DocumentResult result) {
+        UUID ticketId = null;
+        Object brut = payload == null ? null : payload.get("ticketId");
+        try {
+            ticketId = brut == null ? null : UUID.fromString(String.valueOf(brut));
+        } catch (IllegalArgumentException ignore) {
+            // identifiant invalide : pas de ticket
+        }
+        if (ticketId == null || workspaceId == null) {
+            log.warn("Generation {} / {} sans ticket : donnees a obtenir non reclamees", workflowCode, templateCode);
+            return;
+        }
+        var dico = docxTemplateEngine.dictionnaire();
+        java.util.List<Map<String, String>> donnees = new java.util.ArrayList<>();
+        for (var m : result.manquantes()) {
+            if (m.externe()) {
+                String lib = dico == null ? null : dico.libelle(m.nom());
+                donnees.add(Map.of("variable", m.nom(), "libelle", lib == null ? m.nom() : lib));
+            }
+        }
+        reclamation.enregistrer(workspaceId, ticketId, workflowCode, templateCode, donnees);
+    }
+
+    private Map<String, Object> chargeUtileServeur(Map<String, Object> payload, UUID workspaceId, UUID employeId) {
+        Object brut = payload == null ? null : payload.get("ticketId");
+        UUID ticketId = null;
+        try {
+            ticketId = brut == null ? null : UUID.fromString(String.valueOf(brut));
+        } catch (IllegalArgumentException ignore) {
+            // identifiant invalide : traite comme absent
+        }
+        if (ticketId == null || workspaceId == null || employeId == null) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Les actes de la création se génèrent depuis le ticket : rechargez la page, puis relancez la génération.");
+        }
+        return chargeUtileCreation.charger(workspaceId, ticketId, employeId);
     }
 
     /**
@@ -236,16 +351,14 @@ public class WorkflowDocumentController {
      * un formulaire DGI incomplet reste un formulaire recevable — c'est la
      * classification posée au lot 5.
      *
-     * <p>Portée volontairement limitée au workflow CRÉATION : les huit autres
-     * conservent le comportement historique (marqueur rouge dans le document).
+     * <p>Lot L3 : etendu a tous les parcours (regle des variables) ; refus structure
+     * ({@code GenerationRefuseeException}, 422 avec la liste des donnees manquantes).
      */
     private void refuserSiTrouGrammatical(String workflowCode, String templateCode,
                                            DocumentResult result) {
-        if (!"CREATION_SARL".equals(workflowCode)) return;
-        String motif = ma.jurika.ai.document.ControleCompletude.motifDeRefus(result);
-        if (motif == null) return;
-        log.warn("Refus generation {} / {} : {}", workflowCode, templateCode, motif);
-        throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, motif);
+        // Lot L3 (regle des variables) : TOUS les parcours, et plus seulement la creation.
+        // Une donnee interne manquante bloque la generation et elle est nommee.
+        ma.jurika.ai.document.ControleCompletude.verifier(templateCode, result, docxTemplateEngine.dictionnaire());
     }
 
     /**
