@@ -78,7 +78,7 @@ class RlsRoleApplicatifIT {
             st.execute("UPDATE u SET id = '" + USER_B + "', workspace_id = '" + WS_B
                     + "', email = 'b@rls.test', login_email = 'b@rls.test'");
             st.execute("INSERT INTO users SELECT * FROM u");
-            st.execute("INSERT INTO entreprise_dossiers (id, workspace_id, raison_sociale, forme_juridique) VALUES ('aaaaaaaa-0000-0000-0000-00000000e001', '11111111-1111-1111-1111-111111111111', 'Societe A', 'SARL'), ('bbbbbbbb-0000-0000-0000-00000000e002', 'bbbbbbbb-0000-0000-0000-000000000002', 'Societe B', 'SARL')");
+            st.execute("INSERT INTO entreprise_dossiers (id, workspace_id, raison_sociale, forme_juridique, responsable_id) VALUES ('aaaaaaaa-0000-0000-0000-00000000e001', '11111111-1111-1111-1111-111111111111', 'Societe A', 'SARL', '" + USER_A + "'), ('bbbbbbbb-0000-0000-0000-00000000e002', 'bbbbbbbb-0000-0000-0000-000000000002', 'Societe B', 'SARL', '" + USER_B + "')");
         }
 
         app = new HikariDataSource();

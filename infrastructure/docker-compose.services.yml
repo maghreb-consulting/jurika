@@ -342,14 +342,16 @@ services:
       RAG_EMBED_API_KEY: ${RAG_EMBED_API_KEY:-}
       RAG_EMBED_MODEL: ${RAG_EMBED_MODEL:-text-embedding-004}
       RAG_EMBED_DIMENSIONS: ${RAG_EMBED_DIMENSIONS:-768}
-      # Lot L2 : corpus date des modeles, monte en lecture seule (sans repli).
-      JURIKA_CORPUS_ROOT: /corpus
+      # Lot L2 : corpus date des modeles, monte en lecture seule (sans repli), au MEME
+      # chemin que sur l'hote : le nom du dossier date est la version du corpus (monte sur
+      # /corpus, le rapport annoncait la version "corpus" -- activation L2, 2026-10-09).
+      JURIKA_CORPUS_ROOT: ${JURIKA_CORPUS_DIR}
     volumes:
       - ./secrets/jwt:/run/secrets/jwt:ro
       # Lot L2 : dossier date du corpus (ex. /home/jurika/corpus/CORPUS_2026-10-03),
       # LECTURE SEULE. Obligatoire : aucun repli (un corpus de test servi a la place
       # du vrai serait un controle silencieusement inoperant).
-      - "${JURIKA_CORPUS_DIR:?JURIKA_CORPUS_DIR absent, .env.local doit le definir}:/corpus:ro"
+      - "${JURIKA_CORPUS_DIR:?JURIKA_CORPUS_DIR absent, .env.local doit le definir}:${JURIKA_CORPUS_DIR}:ro"
     depends_on:
       discovery-service: { condition: service_healthy }
       postgres: { condition: service_healthy }

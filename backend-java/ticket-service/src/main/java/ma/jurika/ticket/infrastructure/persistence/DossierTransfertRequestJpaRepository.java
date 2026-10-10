@@ -10,6 +10,9 @@ public interface DossierTransfertRequestJpaRepository
 
     boolean existsByWorkspaceIdAndDossierIdAndStatut(UUID workspaceId, UUID dossierId, String statut);
 
+    java.util.Optional<DossierTransfertRequestEntity> findFirstByWorkspaceIdAndDossierIdAndStatut(
+            UUID workspaceId, UUID dossierId, String statut);
+
     List<DossierTransfertRequestEntity> findByWorkspaceIdAndToUserIdAndStatutOrderByCreatedAtDesc(
             UUID workspaceId, UUID toUserId, String statut);
 

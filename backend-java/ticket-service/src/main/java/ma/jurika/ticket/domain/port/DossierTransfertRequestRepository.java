@@ -19,6 +19,9 @@ public interface DossierTransfertRequestRepository {
     /** Garde-fou anti-doublon : une demande EN_ATTENTE existe-t-elle deja pour ce dossier ? */
     boolean existsPendingForDossier(UUID workspaceId, UUID dossierId);
 
+    /** Lot L1 : la demande EN_ATTENTE du dossier, s'il y en a une. */
+    java.util.Optional<DossierTransfertRequest> findPendingForDossier(UUID workspaceId, UUID dossierId);
+
     /** Demandes EN_ATTENTE recues par {@code toUserId} (la cible accepte/refuse). */
     List<DossierTransfertRequestView> listInbox(UUID workspaceId, UUID toUserId);
 

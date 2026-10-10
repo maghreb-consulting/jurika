@@ -20,4 +20,10 @@ import java.util.UUID;
 public interface MemberDirectory {
 
     Optional<String> roleOf(UUID workspaceId, UUID userId);
+
+    /**
+     * Lot L1 (RG-DOS-03) : le membre interne est-il actif ? Faux pour un compte en
+     * attente, desactive ou inconnu. Meme regle fail-closed que {@link #roleOf}.
+     */
+    boolean estActif(UUID workspaceId, UUID userId);
 }

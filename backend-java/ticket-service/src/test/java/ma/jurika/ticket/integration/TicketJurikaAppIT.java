@@ -43,6 +43,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -168,6 +169,7 @@ class TicketJurikaAppIT {
     @BeforeEach
     void annuaire() {
         when(annuaire.roleOf(any(), any())).thenReturn(Optional.of("EMPLOYE"));
+        when(annuaire.estActif(any(), any())).thenReturn(true);
     }
 
     private static String jeton(UUID userId, UUID workspace, String role) {
@@ -302,4 +304,285 @@ class TicketJurikaAppIT {
         assertThat(owner.queryForObject("SELECT statut FROM tickets WHERE id = ?", String.class, ticketId))
                 .isEqualTo("ANNULE");
     }
+
+    // ------------------------------------------------------------------
+    // Lot L1, etape E4 : reaffectation d'office (RG-DOS-03) et transfert accepte
+    // (RG-DOS-02) : le dossier ET ses tickets changent de responsable, trace en base.
+    // ------------------------------------------------------------------
+
+    static final UUID SUPERVISEUR_A = UUID.fromString("33333333-3333-3333-3333-0000000005a1");
+
+    @Test
+    @Order(20)
+    void reaffectation_d_office_par_le_superviseur() throws Exception {
+        owner.execute("CREATE TABLE IF NOT EXISTS u_l1 AS SELECT * FROM users WHERE id = '" + KARIM + "'");
+        owner.update("UPDATE u_l1 SET id = ?, role = 'SUPERVISEUR', email = 'sup@rls.test', login_email = 'sup@rls.test'",
+                SUPERVISEUR_A);
+        owner.update("INSERT INTO users SELECT * FROM u_l1 WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = ?)", SUPERVISEUR_A);
+        owner.execute("DROP TABLE u_l1");
+        String superviseur = jeton(SUPERVISEUR_A, WS_A, "SUPERVISEUR");
+        assertThat(owner.queryForObject("SELECT responsable_id FROM entreprise_dossiers WHERE id = ?", UUID.class,
+                dossierId)).isEqualTo(KARIM);
+
+        // Sans motif : refus. Par un employe : refus.
+        mvc.perform(post("/api/v1/dossiers/" + dossierId + "/reaffectation").header("Authorization", superviseur)
+                        .contentType("application/json")
+                        .content("{\"nouveauResponsableId\":\"" + COLLEGUE + "\",\"motif\":\"\"}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/dossiers/" + dossierId + "/reaffectation").header("Authorization", karim())
+                        .contentType("application/json")
+                        .content("{\"nouveauResponsableId\":\"" + COLLEGUE + "\",\"motif\":\"Absence\"}"))
+                .andExpect(status().isForbidden());
+
+        mvc.perform(post("/api/v1/dossiers/" + dossierId + "/reaffectation").header("Authorization", superviseur)
+                        .contentType("application/json")
+                        .content("{\"nouveauResponsableId\":\"" + COLLEGUE + "\",\"motif\":\"Absence prolongee\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.nature").value("FORCEE"));
+
+        assertThat(owner.queryForObject("SELECT responsable_id FROM entreprise_dossiers WHERE id = ?", UUID.class,
+                dossierId)).isEqualTo(COLLEGUE);
+        assertThat(owner.queryForObject("SELECT count(*) FROM tickets WHERE dossier_id = ? "
+                + "AND assigne_id IS DISTINCT FROM ?", Integer.class, dossierId, COLLEGUE)).isZero();
+        assertThat(owner.queryForMap("SELECT nature, auteur_id, ancien_responsable_id, motif "
+                + "FROM dossier_reaffectations WHERE dossier_id = ? ORDER BY created_at DESC LIMIT 1", dossierId))
+                .containsEntry("nature", "FORCEE")
+                .containsEntry("auteur_id", SUPERVISEUR_A)
+                .containsEntry("ancien_responsable_id", KARIM)
+                .containsEntry("motif", "Absence prolongee");
+
+        // Historique : le nouveau responsable le lit ; l'ancien ne voit plus le dossier.
+        mvc.perform(get("/api/v1/dossiers/" + dossierId + "/reaffectations")
+                        .header("Authorization", jeton(COLLEGUE, WS_A, "EMPLOYE")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].nature").value("FORCEE"));
+        mvc.perform(get("/api/v1/dossiers/" + dossierId + "/reaffectations").header("Authorization", karim()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @Order(21)
+    void transfert_accepte_deplace_dossier_et_tickets() throws Exception {
+        String collegue = jeton(COLLEGUE, WS_A, "EMPLOYE");
+        MvcResult demande = mvc.perform(post("/api/v1/dossiers/" + dossierId + "/transfer-requests")
+                        .header("Authorization", collegue).contentType("application/json")
+                        .content("{\"toUserId\":\"" + KARIM + "\",\"motif\":\"Retour\"}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String demandeId = json.readTree(demande.getResponse().getContentAsString()).get("id").asText();
+        mvc.perform(post("/api/v1/dossier-transfer-requests/" + demandeId + "/accept").header("Authorization", karim()))
+                .andExpect(status().is2xxSuccessful());
+
+        assertThat(owner.queryForObject("SELECT responsable_id FROM entreprise_dossiers WHERE id = ?", UUID.class,
+                dossierId)).isEqualTo(KARIM);
+        assertThat(owner.queryForObject("SELECT count(*) FROM tickets WHERE dossier_id = ? "
+                + "AND assigne_id IS DISTINCT FROM ?", Integer.class, dossierId, KARIM)).isZero();
+        assertThat(owner.queryForMap("SELECT nature, auteur_id, transfert_id::text AS transfert "
+                + "FROM dossier_reaffectations WHERE dossier_id = ? ORDER BY created_at DESC LIMIT 1", dossierId))
+                .containsEntry("nature", "ACCEPTEE")
+                .containsEntry("auteur_id", KARIM)
+                .containsEntry("transfert", demandeId);
+    }
+
+    @Test
+    @Order(22)
+    void note_de_ticket_interne() throws Exception {
+        // Ouverte des la creation : vide sans enregistrement.
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note").header("Authorization", karim()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenu").value(""));
+        // Validable meme vide, puis modifiable.
+        mvc.perform(put("/api/v1/tickets/" + ticketId + "/note").header("Authorization", karim())
+                        .contentType("application/json").content("{\"contenu\":\"\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(put("/api/v1/tickets/" + ticketId + "/note").header("Authorization", karim())
+                        .contentType("application/json").content("{\"contenu\":\"Rappeler le greffe\"}"))
+                .andExpect(status().isOk());
+        assertThat(owner.queryForMap("SELECT contenu, modifie_par FROM ticket_notes WHERE ticket_id = ?", ticketId))
+                .containsEntry("contenu", "Rappeler le greffe")
+                .containsEntry("modifie_par", KARIM);
+        // Superviseur : lecture en observation ; autre employe : 404 ; client : jamais.
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note")
+                        .header("Authorization", jeton(SUPERVISEUR_A, WS_A, "SUPERVISEUR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenu").value("Rappeler le greffe"));
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note")
+                        .header("Authorization", jeton(COLLEGUE, WS_A, "EMPLOYE")))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note")
+                        .header("Authorization", jeton(UUID.randomUUID(), WS_A, "CLIENT")))
+                .andExpect(status().isForbidden());
+        // Autre cabinet : rien.
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note")
+                        .header("Authorization", jeton(EMPLOYE_B, WS_B, "EMPLOYE")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @Order(23)
+    void versions_datees_de_la_taxe_professionnelle() throws Exception {
+        String corps = "{\"taxeProfessionnelle\":\"%s\",\"taxeProfessionnelleDateEffet\":%s}";
+        mvc.perform(patch("/api/v1/dossiers/" + dossierId + "/identifiants").header("Authorization", karim())
+                        .contentType("application/json").content(String.format(corps, "TP-2025", "\"2025-01-01\"")))
+                .andExpect(status().isOk());
+        // Nouvelle patente sans date d'effet : version creee, date vide (jamais inventee).
+        mvc.perform(patch("/api/v1/dossiers/" + dossierId + "/identifiants").header("Authorization", karim())
+                        .contentType("application/json").content(String.format(corps, "TP-2026", "null")))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/dossiers/" + dossierId + "/taxe-professionnelle/versions")
+                        .header("Authorization", karim()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].numero").value("TP-2025"))
+                .andExpect(jsonPath("$[0].dateEffet").value("2025-01-01"))
+                .andExpect(jsonPath("$[0].enVigueur").value(false))
+                .andExpect(jsonPath("$[1].numero").value("TP-2026"))
+                .andExpect(jsonPath("$[1].dateEffet").doesNotExist())
+                .andExpect(jsonPath("$[1].enVigueur").value(true));
+        // La date se complete plus tard sur la version en vigueur.
+        mvc.perform(patch("/api/v1/dossiers/" + dossierId + "/identifiants").header("Authorization", karim())
+                        .contentType("application/json").content(String.format(corps, "TP-2026", "\"2026-02-01\"")))
+                .andExpect(status().isOk());
+        assertThat(owner.queryForObject("SELECT count(*) FROM dossier_tp_versions WHERE dossier_id = ?",
+                Integer.class, dossierId)).isEqualTo(2);
+        assertThat(owner.queryForObject("SELECT date_effet::text FROM dossier_tp_versions WHERE numero = 'TP-2026'",
+                String.class)).isEqualTo("2026-02-01");
+        mvc.perform(get("/api/v1/dossiers/" + dossierId + "/taxe-professionnelle/versions")
+                        .header("Authorization", jeton(SUPERVISEUR_A, WS_A, "SUPERVISEUR")))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/dossiers/" + dossierId + "/taxe-professionnelle/versions")
+                        .header("Authorization", jeton(COLLEGUE, WS_A, "EMPLOYE")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @Order(24)
+    void debours_visibles_par_le_client_selon_sa_permission() throws Exception {
+        UUID client = UUID.fromString("33333333-3333-3333-3333-0000000c11e1");
+        owner.execute("CREATE TABLE IF NOT EXISTS u_l1c AS SELECT * FROM users WHERE id = '" + KARIM + "'");
+        owner.update("UPDATE u_l1c SET id = ?, role = 'CLIENT', email = 'client@rls.test', login_email = 'client@rls.test'",
+                client);
+        owner.update("INSERT INTO users SELECT * FROM u_l1c WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = ?)", client);
+        owner.execute("DROP TABLE u_l1c");
+        owner.update("UPDATE entreprise_dossiers SET client_id = ? WHERE id = ?", client, dossierId);
+        String jetonClient = jeton(client, WS_A, "CLIENT");
+
+        // Sans reglage : consultation permise (valeur par defaut) -> le client lit.
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours").header("Authorization", jetonClient))
+                .andExpect(status().isOk());
+        // Un autre client du cabinet : rien.
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours")
+                        .header("Authorization", jeton(UUID.randomUUID(), WS_A, "CLIENT")))
+                .andExpect(status().isNotFound());
+        // Consultation retiree : refus.
+        owner.update("INSERT INTO dataroom_settings (dossier_id, workspace_id, perm_consultation) VALUES (?, ?, FALSE) "
+                + "ON CONFLICT (dossier_id) DO UPDATE SET perm_consultation = FALSE", dossierId, WS_A);
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours").header("Authorization", jetonClient))
+                .andExpect(status().isForbidden());
+        // Le client n'ecrit jamais ; un employe non responsable non plus.
+        mvc.perform(post("/api/v1/tickets/" + ticketId + "/debours").header("Authorization", jetonClient)
+                        .contentType("application/json").content("{\"libelle\":\"x\",\"categorie\":\"FRAIS_TRIBUNAL\","
+                                + "\"montant\":10,\"dateEngagement\":\"2026-10-01\"}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours")
+                        .header("Authorization", jeton(COLLEGUE, WS_A, "EMPLOYE")))
+                .andExpect(status().isNotFound());
+    }
+
+    /**
+     * RG-TKT-07 (cahier des charges mis a jour le 2026-10-10), point par point, apres
+     * les scenarios precedents (note "Rappeler le greffe" posee par KARIM, responsable).
+     */
+    @Test
+    @Order(25)
+    void note_rg_tkt_07_suit_le_ticket_lecture_seule_apres_cloture_conservee_interne() throws Exception {
+        String collegue = jeton(COLLEGUE, WS_A, "EMPLOYE");
+        // 1. Elle suit le ticket a la reaffectation : le nouveau responsable la lit et
+        //    l'ecrit ; l'ancien ne la voit plus.
+        mvc.perform(post("/api/v1/dossiers/" + dossierId + "/reaffectation")
+                        .header("Authorization", jeton(SUPERVISEUR_A, WS_A, "SUPERVISEUR"))
+                        .contentType("application/json")
+                        .content("{\"nouveauResponsableId\":\"" + COLLEGUE + "\",\"motif\":\"Conges\"}"))
+                .andExpect(status().isCreated());
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note").header("Authorization", collegue))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenu").value("Rappeler le greffe"));
+        mvc.perform(put("/api/v1/tickets/" + ticketId + "/note").header("Authorization", collegue)
+                        .contentType("application/json").content("{\"contenu\":\"Rappeler le greffe ; fait le 10\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note").header("Authorization", karim()))
+                .andExpect(status().isNotFound());
+
+        // 2. Lecture seule apres la cloture : lisible, plus modifiable.
+        owner.update("UPDATE tickets SET statut = 'CLOTURE_DOSSIER' WHERE id = ?", ticketId);
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note").header("Authorization", collegue))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenu").value("Rappeler le greffe ; fait le 10"));
+        mvc.perform(put("/api/v1/tickets/" + ticketId + "/note").header("Authorization", collegue)
+                        .contentType("application/json").content("{\"contenu\":\"apres cloture\"}"))
+                .andExpect(status().isConflict());
+
+        // 3. Conservee avec le dossier : la base refuse de la perdre avec son ticket.
+        assertThat(owner.queryForObject("SELECT confdeltype FROM pg_constraint "
+                + "WHERE conname = 'ticket_notes_ticket_id_fkey'", String.class)).isEqualTo("r");
+        assertThat(owner.queryForObject("SELECT contenu FROM ticket_notes WHERE ticket_id = ?", String.class,
+                ticketId)).isEqualTo("Rappeler le greffe ; fait le 10");
+
+        // 4. Jamais visible du client : ni par sa route, ni dans la fiche du ticket.
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/note")
+                        .header("Authorization", jeton(UUID.randomUUID(), WS_A, "CLIENT")))
+                .andExpect(status().isForbidden());
+        String fiche = mvc.perform(get("/api/v1/tickets/" + ticketId).header("Authorization", collegue))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(fiche).doesNotContain("Rappeler le greffe");
+    }
+
+    /**
+     * Ecrans du lot L1 (demande du 2026-10-10) : historique des responsables avec les noms,
+     * et vue du superviseur sur les dossiers rattrapes par V28 (D1), a verifier.
+     */
+    @Test
+    @Order(26)
+    void historique_nomme_et_rattrapages_a_verifier_par_le_superviseur() throws Exception {
+        String superviseur = jeton(SUPERVISEUR_A, WS_A, "SUPERVISEUR");
+        // Historique : noms de l'ancien et du nouveau responsable, et de l'auteur.
+        mvc.perform(get("/api/v1/dossiers/" + dossierId + "/reaffectations").header("Authorization", superviseur))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].nature").value("FORCEE"))
+                .andExpect(jsonPath("$[0].nouveauResponsableNom").isNotEmpty())
+                .andExpect(jsonPath("$[0].auteurNom").isNotEmpty());
+
+        // Un rattrapage comme ceux poses par V28 sur le Z440.
+        UUID rattrapage = UUID.randomUUID();
+        owner.update("INSERT INTO dossier_reaffectations (id, workspace_id, dossier_id, nouveau_responsable_id, nature, motif) "
+                + "VALUES (?, ?, ?, ?, 'RATTRAPAGE', 'Migration V28 (lot L1) : dossier sans responsable')",
+                rattrapage, WS_A, dossierId, COLLEGUE);
+        mvc.perform(get("/api/v1/dossiers/rattrapages").header("Authorization", superviseur))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(rattrapage.toString()))
+                .andExpect(jsonPath("$[0].raisonSociale").value("Societe L0"))
+                .andExpect(jsonPath("$[0].responsableActuelNom").isNotEmpty())
+                .andExpect(jsonPath("$[0].verifieLe").doesNotExist());
+        // Reserve au superviseur.
+        mvc.perform(get("/api/v1/dossiers/rattrapages").header("Authorization", karim()))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/dossiers/reaffectations/" + rattrapage + "/verification").header("Authorization", karim()))
+                .andExpect(status().isForbidden());
+
+        // Le superviseur marque le rattrapage verifie : trace (qui, quand).
+        mvc.perform(post("/api/v1/dossiers/reaffectations/" + rattrapage + "/verification")
+                        .header("Authorization", superviseur))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.verifieLe").isNotEmpty())
+                .andExpect(jsonPath("$.verifieParNom").isNotEmpty());
+        assertThat(owner.queryForObject("SELECT verifie_par FROM dossier_reaffectations WHERE id = ?", UUID.class,
+                rattrapage)).isEqualTo(SUPERVISEUR_A);
+        // Seul un rattrapage se verifie.
+        UUID forcee = owner.queryForObject("SELECT id FROM dossier_reaffectations WHERE nature = 'FORCEE' LIMIT 1",
+                UUID.class);
+        mvc.perform(post("/api/v1/dossiers/reaffectations/" + forcee + "/verification").header("Authorization", superviseur))
+                .andExpect(status().isNotFound());
+    }
 }
+

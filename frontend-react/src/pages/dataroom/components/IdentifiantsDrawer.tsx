@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Drawer } from '../../../components/ui/Drawer';
 import { Button } from '../../../components/ui/Button';
 import { TextField } from '../../../components/ui/TextField';
 import { dataroomService } from '../../../services/dataroom.service';
 import { extractError } from '../../../lib/api';
+import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 import type {
   DossierJuridiqueView,
   UpdateIdentifiantsPayload,
+  VersionTaxeProfessionnelle,
 } from '../../../types/dataroom';
 
 interface Props {
@@ -32,6 +34,7 @@ type FormState = {
   ville: string;
   capitalSocialMad: string;
   dateConstitution: string;
+  taxeProfessionnelleDateEffet: string;
 };
 
 function initial(view: DossierJuridiqueView): FormState {
@@ -49,6 +52,7 @@ function initial(view: DossierJuridiqueView): FormState {
         ? ''
         : String(view.capitalSocialMad),
     dateConstitution: view.dateConstitution ?? '',
+    taxeProfessionnelleDateEffet: '',
   };
 }
 
@@ -61,6 +65,20 @@ export function IdentifiantsDrawer({ open, view, onClose, onSaved, readOnly = fa
   const [form, setForm] = useState<FormState>(() => initial(view));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [versions, setVersions] = useState<VersionTaxeProfessionnelle[] | null>(null);
+
+  // Lot L1 (RG-FIC-02) : versions successives de la taxe professionnelle.
+  useEffect(() => {
+    if (!open) return undefined;
+    let actif = true;
+    dataroomService
+      .listVersionsTp(view.dossierId)
+      .then((v) => actif && setVersions(v))
+      .catch(() => actif && setVersions([]));
+    return () => {
+      actif = false;
+    };
+  }, [open, view.dossierId]);
 
   function set<K extends keyof FormState>(key: K, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -93,6 +111,7 @@ export function IdentifiantsDrawer({ open, view, onClose, onSaved, readOnly = fa
         ville: trimOrNull(form.ville),
         capitalSocialMad: capital,
         dateConstitution: trimOrNull(form.dateConstitution),
+        taxeProfessionnelleDateEffet: trimOrNull(form.taxeProfessionnelleDateEffet),
       };
       await dataroomService.updateIdentifiants(view.dossierId, payload);
       await onSaved();
@@ -179,6 +198,13 @@ export function IdentifiantsDrawer({ open, view, onClose, onSaved, readOnly = fa
           mono
         />
         <TextField
+          label="Date d’effet de la taxe professionnelle"
+          type="date"
+          value={form.taxeProfessionnelleDateEffet}
+          onChange={(e) => set('taxeProfessionnelleDateEffet', e.target.value)}
+          hint="Facultative : vous pourrez la compléter plus tard."
+        />
+        <TextField
           label="CNSS"
           value={form.cnss}
           onChange={(e) => set('cnss', e.target.value)}
@@ -211,6 +237,48 @@ export function IdentifiantsDrawer({ open, view, onClose, onSaved, readOnly = fa
           />
         </div>
       </fieldset>
+
+      <section aria-labelledby="versions-tp" className="mt-6 space-y-2">
+        <h3 id="versions-tp" className="flex items-center gap-1 text-sm font-semibold text-fg">
+          Versions de la taxe professionnelle
+          <InfoBulle
+            libelle="Pourquoi plusieurs versions ?"
+            texte="Quand le numéro de taxe professionnelle change, l’ancien est conservé : chaque version garde sa date de prise d’effet, et la plus récente est en vigueur."
+          />
+        </h3>
+        {!readOnly && (
+          <TexteAide cle="versions-tp" titre="Changer ou dater la taxe professionnelle">
+            <p>
+              Saisissez le nouveau numéro et sa date d’effet, puis enregistrez : une nouvelle version
+              est créée et les précédentes restent consultables. Si la date d’effet n’est pas encore
+              connue, laissez-la vide ; vous la compléterez plus tard en saisissant la date avec le
+              même numéro.
+            </p>
+          </TexteAide>
+        )}
+        {versions && versions.length === 0 && (
+          <p className="text-sm text-fg-subtle">Aucune taxe professionnelle enregistrée.</p>
+        )}
+        {versions && versions.length > 0 && (
+          <ol className="divide-y divide-border rounded-md border border-border">
+            {[...versions].reverse().map((v) => (
+              <li key={v.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
+                <span className="font-mono text-fg">{v.numero}</span>
+                <span className="text-fg-muted">
+                  {v.dateEffet
+                    ? `En vigueur à partir du ${new Date(v.dateEffet).toLocaleDateString('fr-MA')}`
+                    : 'Date d’effet à compléter'}
+                </span>
+                {v.enVigueur && (
+                  <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                    En vigueur
+                  </span>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
     </Drawer>
   );
 }

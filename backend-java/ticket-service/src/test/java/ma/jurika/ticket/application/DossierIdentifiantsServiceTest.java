@@ -6,6 +6,7 @@ import ma.jurika.common.security.TenantContext;
 import ma.jurika.ticket.api.dto.DossierIdentifiantsDtos.DossierIdentifiantsView;
 import ma.jurika.ticket.api.dto.DossierIdentifiantsDtos.UpdateIdentifiantsRequest;
 import ma.jurika.ticket.domain.model.DeadlineRule;
+import ma.jurika.ticket.domain.port.TaxeProfessionnelleVersionRepository;
 import ma.jurika.ticket.infrastructure.persistence.DossierEntity;
 import ma.jurika.ticket.infrastructure.persistence.DossierJpaRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -36,6 +37,7 @@ class DossierIdentifiantsServiceTest {
 
     private final DossierJpaRepository dossiers = mock(DossierJpaRepository.class);
     private final DeadlineUseCase deadlineUseCase = mock(DeadlineUseCase.class);
+    private final TaxeProfessionnelleVersionRepository versionsTp = mock(TaxeProfessionnelleVersionRepository.class);
     private DossierIdentifiantsService service;
 
     private final UUID ws = UUID.randomUUID();
@@ -44,7 +46,7 @@ class DossierIdentifiantsServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DossierIdentifiantsService(dossiers, deadlineUseCase);
+        service = new DossierIdentifiantsService(dossiers, deadlineUseCase, versionsTp);
         TenantContext.set(ws);
         when(dossiers.save(any(DossierEntity.class))).thenAnswer(inv -> inv.getArgument(0));
     }
@@ -68,7 +70,71 @@ class DossierIdentifiantsServiceTest {
     private UpdateIdentifiantsRequest req() {
         return new UpdateIdentifiantsRequest("002345", "RC-99", "Tribunal Casa",
                 "IF-77", "TP-55", "CNSS-33", "12 rue X", "Casablanca",
-                new BigDecimal("50000"), LocalDate.of(2024, 2, 1));
+                new BigDecimal("50000"), LocalDate.of(2024, 2, 1), null);
+    }
+
+    private UpdateIdentifiantsRequest reqTp(String tp, LocalDate dateEffet) {
+        return new UpdateIdentifiantsRequest("002345", "RC-99", "Tribunal Casa",
+                "IF-77", tp, "CNSS-33", "12 rue X", "Casablanca",
+                new BigDecimal("50000"), LocalDate.of(2024, 2, 1), dateEffet);
+    }
+
+    // ---- Lot L1, etape E7 : versions datees de la taxe professionnelle (RG-VAR-08, RG-FIC-02) ----
+
+    @Test
+    void nouvelle_tp_cree_une_version_datee_et_conserve_les_precedentes() {
+        DossierEntity d = existing();
+        d.setTaxeProfessionnelle("TP-ANCIENNE");
+        when(dossiers.findByWorkspaceIdAndId(ws, dossierId)).thenReturn(Optional.of(d));
+
+        service.update(ws, Role.EMPLOYE, responsable, dossierId, reqTp("TP-NOUVELLE", LocalDate.of(2026, 1, 1)));
+
+        verify(versionsTp).ajouter(ws, dossierId, "TP-NOUVELLE", LocalDate.of(2026, 1, 1), responsable);
+        // Versions precedentes conservees : le port n'offre aucune suppression.
+    }
+
+    @Test
+    void tp_inchangee_ne_cree_pas_de_version() {
+        DossierEntity d = existing();
+        d.setTaxeProfessionnelle("TP-55");
+        when(dossiers.findByWorkspaceIdAndId(ws, dossierId)).thenReturn(Optional.of(d));
+
+        service.update(ws, Role.EMPLOYE, responsable, dossierId, reqTp("TP-55", null));
+
+        verify(versionsTp, never()).ajouter(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void date_d_effet_absente_jamais_inventee() {
+        when(dossiers.findByWorkspaceIdAndId(ws, dossierId)).thenReturn(Optional.of(existing()));
+
+        service.update(ws, Role.EMPLOYE, responsable, dossierId, reqTp("TP-55", null));
+
+        verify(versionsTp).ajouter(ws, dossierId, "TP-55", null, responsable);
+    }
+
+    @Test
+    void date_d_effet_completee_plus_tard_sur_la_version_en_vigueur() {
+        DossierEntity d = existing();
+        d.setTaxeProfessionnelle("TP-55");
+        when(dossiers.findByWorkspaceIdAndId(ws, dossierId)).thenReturn(Optional.of(d));
+
+        service.update(ws, Role.EMPLOYE, responsable, dossierId, reqTp("TP-55", LocalDate.of(2026, 3, 1)));
+
+        verify(versionsTp).completerDateEffet(ws, dossierId, "TP-55", LocalDate.of(2026, 3, 1));
+        verify(versionsTp, never()).ajouter(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void versions_lisibles_par_le_responsable_et_le_superviseur_seulement() {
+        when(dossiers.findByWorkspaceIdAndId(ws, dossierId)).thenReturn(Optional.of(existing()));
+        when(versionsTp.lister(ws, dossierId)).thenReturn(java.util.List.of());
+
+        service.versionsTp(ws, responsable, false, dossierId);
+        service.versionsTp(ws, UUID.randomUUID(), true, dossierId);
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                () -> service.versionsTp(ws, UUID.randomUUID(), false, dossierId))
+                .isInstanceOf(ma.jurika.common.exception.NotFoundException.class);
     }
 
     @Test
@@ -116,7 +182,7 @@ class DossierIdentifiantsServiceTest {
     void capital_negatif_est_rejete() {
         when(dossiers.findByWorkspaceIdAndId(ws, dossierId)).thenReturn(Optional.of(existing()));
         UpdateIdentifiantsRequest bad = new UpdateIdentifiantsRequest(null, null, null, null,
-                null, null, null, null, new BigDecimal("-1"), null);
+                null, null, null, null, new BigDecimal("-1"), null, null);
         assertThatThrownBy(() -> service.update(ws, Role.EMPLOYE, responsable, dossierId, bad))
                 .isInstanceOf(ValidationException.class);
     }
@@ -125,7 +191,7 @@ class DossierIdentifiantsServiceTest {
     void les_champs_blancs_sont_normalises_en_null() {
         when(dossiers.findByWorkspaceIdAndId(ws, dossierId)).thenReturn(Optional.of(existing()));
         UpdateIdentifiantsRequest blanks = new UpdateIdentifiantsRequest("   ", "", "  ", null,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
         DossierIdentifiantsView v = service.update(ws, Role.EMPLOYE, responsable, dossierId, blanks);
         assertThat(v.ice()).isNull();
         assertThat(v.rcNumero()).isNull();

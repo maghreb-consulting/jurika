@@ -1,7 +1,11 @@
 package ma.jurika.ticket.api;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import ma.jurika.common.security.AuthenticatedUser;
+import ma.jurika.common.security.Role;
+import ma.jurika.ticket.domain.model.DossierReaffectation;
 import ma.jurika.ticket.api.dto.DossierTransferDto;
 import ma.jurika.ticket.api.dto.TransferRequestPayload;
 import ma.jurika.ticket.application.DossierTransferService;
@@ -31,6 +35,8 @@ import java.util.UUID;
  *   <li>VOIE A — demande/acceptation (EMPLOYE) : {@code POST /dossiers/{id}/transfer-requests},
  *       puis {@code accept|reject} (cible) / {@code cancel} (initiateur).</li>
  *   <li>Listes inbox/outbox pour le panneau "Transferts en attente" (EMPLOYE + SUPERVISEUR).</li>
+ *   <li>Lot L1 : reaffectation d'office (SUPERVISEUR seul, RG-DOS-03) et historique des
+ *       changements de responsable.</li>
  * </ul>
  */
 @RestController
@@ -73,6 +79,45 @@ public class DossierTransferController {
     public DossierTransferDto cancel(@AuthenticationPrincipal AuthenticatedUser actor,
                                      @PathVariable UUID id) {
         return DossierTransferDto.from(service.cancelTransfer(actor.workspaceId(), actor.userId(), id));
+    }
+
+    // -------- Lot L1 : reaffectation d'office par le superviseur (RG-DOS-03) --------
+
+    /** Corps de la reaffectation d'office : nouveau responsable (EMPLOYE) et motif obligatoire. */
+    public record ReaffectationPayload(@NotNull UUID nouveauResponsableId, @NotBlank String motif) {}
+
+    @PostMapping("/api/v1/dossiers/{dossierId}/reaffectation")
+    // La hierarchie SUPER_ADMIN > SUPERVISEUR ouvrirait l'acte a l'equipe JURIKA : exclue.
+    @PreAuthorize("hasRole('SUPERVISEUR') and !hasRole('SUPER_ADMIN')")
+    public ResponseEntity<DossierReaffectation> reaffecter(@AuthenticationPrincipal AuthenticatedUser actor,
+                                                           @PathVariable UUID dossierId,
+                                                           @Valid @RequestBody ReaffectationPayload req) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.reaffecterDOffice(
+                actor.workspaceId(), actor.userId(), dossierId, req.nouveauResponsableId(), req.motif()));
+    }
+
+    /** Historique des changements de responsable (superviseur, ou employe responsable). */
+    @GetMapping("/api/v1/dossiers/{dossierId}/reaffectations")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPERVISEUR','ROLE_EMPLOYE')")
+    public List<ma.jurika.ticket.domain.model.ReaffectationVue> historique(
+            @AuthenticationPrincipal AuthenticatedUser actor, @PathVariable UUID dossierId) {
+        return service.historique(actor.workspaceId(), actor.userId(),
+                actor.role() == Role.SUPERVISEUR, dossierId);
+    }
+
+    /** Lot L1 (D1) : dossiers dont V28 a designe le responsable, a verifier par le superviseur. */
+    @GetMapping("/api/v1/dossiers/rattrapages")
+    @PreAuthorize("hasRole('SUPERVISEUR') and !hasRole('SUPER_ADMIN')")
+    public List<ma.jurika.ticket.domain.model.ReaffectationVue> rattrapages(
+            @AuthenticationPrincipal AuthenticatedUser actor) {
+        return service.rattrapages(actor.workspaceId());
+    }
+
+    @PostMapping("/api/v1/dossiers/reaffectations/{reaffectationId}/verification")
+    @PreAuthorize("hasRole('SUPERVISEUR') and !hasRole('SUPER_ADMIN')")
+    public ma.jurika.ticket.domain.model.ReaffectationVue verifierRattrapage(
+            @AuthenticationPrincipal AuthenticatedUser actor, @PathVariable UUID reaffectationId) {
+        return service.verifierRattrapage(actor.workspaceId(), actor.userId(), reaffectationId);
     }
 
     // -------- Listes (panneau "Transferts en attente") --------

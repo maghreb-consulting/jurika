@@ -10,6 +10,8 @@ import ma.jurika.common.security.Role;
 import ma.jurika.common.security.TenantContext;
 import ma.jurika.ticket.api.dto.DossierIdentifiantsDtos.DossierIdentifiantsView;
 import ma.jurika.ticket.api.dto.DossierIdentifiantsDtos.UpdateIdentifiantsRequest;
+import ma.jurika.ticket.domain.model.TaxeProfessionnelleVersion;
+import ma.jurika.ticket.domain.port.TaxeProfessionnelleVersionRepository;
 import ma.jurika.ticket.infrastructure.persistence.DossierEntity;
 import ma.jurika.ticket.infrastructure.persistence.DossierJpaRepository;
 import org.slf4j.Logger;
@@ -23,6 +25,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -48,13 +51,32 @@ public class DossierIdentifiantsService {
 
     private final DossierJpaRepository dossiers;
     private final DeadlineUseCase deadlineUseCase;
+    private final TaxeProfessionnelleVersionRepository versionsTp;
 
     @PersistenceContext
     private EntityManager em;
 
-    public DossierIdentifiantsService(DossierJpaRepository dossiers, DeadlineUseCase deadlineUseCase) {
+    public DossierIdentifiantsService(DossierJpaRepository dossiers, DeadlineUseCase deadlineUseCase,
+                                      TaxeProfessionnelleVersionRepository versionsTp) {
         this.dossiers = dossiers;
         this.deadlineUseCase = deadlineUseCase;
+        this.versionsTp = versionsTp;
+    }
+
+    /**
+     * Lot L1 (RG-FIC-02) : versions successives de la taxe professionnelle, la derniere
+     * en vigueur. Lecture : employe responsable du dossier, ou superviseur ; 404 sinon.
+     */
+    @Transactional(readOnly = true)
+    public List<TaxeProfessionnelleVersion> versionsTp(UUID workspaceId, UUID actorId, boolean superviseur,
+                                                       UUID dossierId) {
+        TenantContext.set(workspaceId);
+        DossierEntity d = dossiers.findByWorkspaceIdAndId(workspaceId, dossierId)
+                .orElseThrow(() -> new NotFoundException("Dossier introuvable"));
+        if (!superviseur && !actorId.equals(d.getResponsableId())) {
+            throw new NotFoundException("Dossier introuvable");
+        }
+        return versionsTp.lister(workspaceId, dossierId);
     }
 
     @Transactional
@@ -87,6 +109,17 @@ public class DossierIdentifiantsService {
         // "RC obtenu" : detection de l'immatriculation (numero RC passant de vide a renseigne).
         // C'est le seul evenement metier disponible ici pour ancrer l'echeance CNSS.
         boolean rcJustObtained = norm(d.getRcNumero()) == null && norm(req.rcNumero()) != null;
+
+        // Lot L1 (RG-VAR-08, RG-FIC-02) : une nouvelle taxe professionnelle cree une version
+        // datee, les precedentes sont conservees ; la meme valeur avec une date d'effet
+        // complete la version en vigueur si sa date etait vide. Aucune date n'est inventee.
+        String tpAvant = norm(d.getTaxeProfessionnelle());
+        String tpApres = norm(req.taxeProfessionnelle());
+        if (tpApres != null && !tpApres.equals(tpAvant)) {
+            versionsTp.ajouter(workspaceId, dossierId, tpApres, req.taxeProfessionnelleDateEffet(), userId);
+        } else if (tpApres != null && req.taxeProfessionnelleDateEffet() != null) {
+            versionsTp.completerDateEffet(workspaceId, dossierId, tpApres, req.taxeProfessionnelleDateEffet());
+        }
 
         d.setIce(norm(req.ice()));
         d.setRcNumero(norm(req.rcNumero()));

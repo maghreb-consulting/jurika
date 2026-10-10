@@ -22,6 +22,13 @@ public class SettingsEntity {
     /** V19 : le client peut-il DEPOSER des documents (depot comptable) ? Defaut false. */
     @Column(name = "perm_depot", nullable = false)
     private boolean permDepot;
+
+    // Lot L1 (V34, RG-CLI-01) : TRUE par defaut, comme en base.
+    @Column(name = "perm_consultation", nullable = false)
+    private boolean permConsultation = true;
+
+    @Column(name = "perm_demandes", nullable = false)
+    private boolean permDemandes = true;
     @Column(name = "client_link_token", nullable = false)
     private UUID clientLinkToken;
     @Column(name = "access_count", nullable = false)
@@ -60,6 +67,10 @@ public class SettingsEntity {
     public void setPermPrint(boolean v) { this.permPrint = v; }
     public boolean isPermDepot() { return permDepot; }
     public void setPermDepot(boolean v) { this.permDepot = v; }
+    public boolean isPermConsultation() { return permConsultation; }
+    public void setPermConsultation(boolean v) { this.permConsultation = v; }
+    public boolean isPermDemandes() { return permDemandes; }
+    public void setPermDemandes(boolean v) { this.permDemandes = v; }
     public UUID getClientLinkToken() { return clientLinkToken; }
     public void setClientLinkToken(UUID v) { this.clientLinkToken = v; }
     public int getAccessCount() { return accessCount; }

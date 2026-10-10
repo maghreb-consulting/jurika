@@ -18,9 +18,14 @@ import type {
   DossierBrief,
   DossierJuridiqueView,
   UpdateIdentifiantsPayload,
+  ReaffectationVue,
+  VersionTaxeProfessionnelle,
+  DroitsDossier,
   SearchJuridiqueParams,
   SearchJuridiqueResult,
   SeanceEdition,
+  HistoriqueAccesClient,
+  PermissionsClientPatch,
 } from '../types/dataroom';
 
 export interface UploadJuridiqueParams {
@@ -522,6 +527,44 @@ export const dataroomService = {
     await api.patch(`/dossiers/${dossierId}/identifiants`, payload);
   },
 
+  /** Lot L1 (RG-FIC-02) : versions successives de la taxe professionnelle. */
+  async listVersionsTp(dossierId: string): Promise<VersionTaxeProfessionnelle[]> {
+    const { data } = await api.get<VersionTaxeProfessionnelle[]>(
+      `/dossiers/${dossierId}/taxe-professionnelle/versions`,
+    );
+    return data;
+  },
+
+  /** Lot L1 : historique des responsables du dossier (transferts, reaffectations, rattrapages). */
+  async historiqueResponsables(dossierId: string): Promise<ReaffectationVue[]> {
+    const { data } = await api.get<ReaffectationVue[]>(`/dossiers/${dossierId}/reaffectations`);
+    return data;
+  },
+
+  /** Lot L1 (D1) : dossiers rattrapes par la migration V28, a verifier par le superviseur. */
+  async listRattrapages(): Promise<ReaffectationVue[]> {
+    const { data } = await api.get<ReaffectationVue[]>('/dossiers/rattrapages');
+    return data;
+  },
+
+  async verifierRattrapage(reaffectationId: string): Promise<ReaffectationVue> {
+    const { data } = await api.post<ReaffectationVue>(
+      `/dossiers/reaffectations/${reaffectationId}/verification`,
+    );
+    return data;
+  },
+
+  /** Lot L1 (RG-DOS-03) : reaffectation d'office par le superviseur. */
+  async reaffecter(dossierId: string, nouveauResponsableId: string, motif: string): Promise<void> {
+    await api.post(`/dossiers/${dossierId}/reaffectation`, { nouveauResponsableId, motif });
+  },
+
+  /** Lot L1 : droits de l'utilisateur sur le dossier (bouton de suppression des documents). */
+  async mesDroits(dossierId: string): Promise<DroitsDossier> {
+    const { data } = await api.get<DroitsDossier>(`/dataroom/dossiers/${dossierId}/mes-droits`);
+    return data;
+  },
+
   // ---- Depots (Lot V : espace « Depots » client) ----
   /** Depot libre d'un fichier (multipart). CLIENT gate par perm_depot cote back. */
   async uploadDepot(dossierId: string, file: File, title?: string): Promise<DepotSummary> {
@@ -672,15 +715,19 @@ export const dataroomService = {
     return data;
   },
 
-  async updatePermissions(
-    dossierId: string,
-    permDownload: boolean,
-    permPrint: boolean,
-    permDepot: boolean,
-  ): Promise<DataroomSettings> {
+  /** Lot L1 (RG-CLI-01) : seules les permissions passees changent ; chaque changement est trace. */
+  async updatePermissions(dossierId: string, patch: PermissionsClientPatch): Promise<DataroomSettings> {
     const { data } = await api.patch<DataroomSettings>(
       `/dataroom/dossiers/${dossierId}/settings/permissions`,
-      { permDownload, permPrint, permDepot },
+      patch,
+    );
+    return data;
+  },
+
+  /** Lot L1 (RG-CLI-01) : historique des permissions et des suspensions du client. */
+  async historiqueAccesClient(dossierId: string): Promise<HistoriqueAccesClient[]> {
+    const { data } = await api.get<HistoriqueAccesClient[]>(
+      `/dataroom/dossiers/${dossierId}/settings/historique`,
     );
     return data;
   },
@@ -691,16 +738,6 @@ export const dataroomService = {
       { suspended },
     );
     return data;
-  },
-
-  /**
-   * Fix 2026-06-07 (BUG 3) -- Suppression complete du dataroom.
-   * EMPLOYE / SUPERVISEUR uniquement. 204 No Content (idempotent : meme
-   * code si le dataroom etait deja supprime). 409 si un ticket actif
-   * (NOUVEAU/EN_COURS) est encore rattache au dossier.
-   */
-  async deleteDataroom(dossierId: string): Promise<void> {
-    await api.delete(`/dataroom/dossiers/${dossierId}`);
   },
 
   // ---- Access log (Sprint 7 / TASK 5) ----

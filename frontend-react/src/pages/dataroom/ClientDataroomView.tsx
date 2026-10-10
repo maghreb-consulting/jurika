@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Plus,
   Printer,
+  Receipt,
   Send,
   Shield,
   Trash2,
@@ -34,8 +35,9 @@ import type {
 } from '../../types/dataroom';
 import { DOCUMENT_TYPE_LABELS } from '../../types/dataroom';
 import { DataroomReadOnlyHint } from './components/DataroomReadOnlyHint';
+import { ClientDebours } from './components/ClientDebours';
 
-type Tab = 'juridique' | 'depots' | 'demandes';
+type Tab = 'juridique' | 'depots' | 'debours' | 'demandes';
 
 const STATUT_LABEL: Record<DemandeStatut, string> = {
   NON_TRAITEE: 'Non traitee',
@@ -376,6 +378,13 @@ export function ClientDataroomView() {
                 label="Depot"
               />
               <TabButton
+                active={tab === 'debours'}
+                onClick={() => setTab('debours')}
+                color="#059669"
+                icon={<Receipt className="w-4 h-4" />}
+                label="Débours"
+              />
+              <TabButton
                 active={tab === 'demandes'}
                 onClick={() => setTab('demandes')}
                 color="#7C3AED"
@@ -396,6 +405,9 @@ export function ClientDataroomView() {
             )}
             {tab === 'depots' && (
               <ClientDepots dossierId={dossier.id} canDepot={canDepot} />
+            )}
+            {tab === 'debours' && (
+              <ClientDebours operations={juridique?.dossiersParTicket ?? []} />
             )}
             {tab === 'demandes' && (
               <ClientDemandes

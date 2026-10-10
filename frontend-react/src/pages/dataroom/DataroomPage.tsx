@@ -4,9 +4,6 @@ import {
   Activity,
   ArrowLeft,
   Building2,
-  Check,
-  Download,
-  Eye,
   FileText,
   FolderOpen,
   Loader2,
@@ -14,9 +11,7 @@ import {
   MessageSquare,
   PauseCircle,
   PlayCircle,
-  Printer,
   Search,
-  Trash2,
   Upload,
   Send,
   UserCheck,
@@ -26,8 +21,10 @@ import {
 import { Card } from '../../components/ui/Card';
 import { TextField } from '../../components/ui/TextField';
 import { Button } from '../../components/ui/Button';
+import { TexteAide } from '../../components/ui/Aide';
+import { HistoriqueResponsablesPanel } from './components/HistoriqueResponsablesPanel';
+import { AccesClientPanel } from './components/AccesClientPanel';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { PromptDialog } from '../../components/ui/PromptDialog';
 import { dataroomService } from '../../services/dataroom.service';
 import { extractError } from '../../lib/api';
 import {
@@ -35,7 +32,7 @@ import {
   isDossierArchived,
 } from '../../lib/dossierArchive';
 import { useCurrentUser } from '../../store/authStore';
-import type { DataroomSettings, DossierBrief } from '../../types/dataroom';
+import type { DataroomSettings, DossierBrief, DroitsDossier } from '../../types/dataroom';
 import { displayFormeJuridique } from '../../types/dataroom';
 import type { DossierClient } from '../../types/auth';
 import { DossierJuridiqueTab } from './DossierJuridiqueTab';
@@ -170,12 +167,6 @@ function DataroomManagementView() {
           if (deepLinkDossier || deepLinkTab) setSearchParams({}, { replace: true });
         }}
         canEdit={!!isEmploye}
-        // Fix 2026-06-07 (BUG 3) — bouton "Supprimer le dataroom" visible
-        // EMPLOYE ET SUPERVISEUR (aligne avec @PreAuthorize backend
-        // hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR')).
-        canDeleteDataroom={
-          user?.role === 'EMPLOYE' || user?.role === 'SUPERVISEUR'
-        }
       />
     );
   }
@@ -453,13 +444,11 @@ function DataroomDetail({
   dossier,
   onBack,
   canEdit,
-  canDeleteDataroom,
   initialTab,
 }: {
   dossier: DossierBrief;
   onBack: () => void;
   canEdit: boolean;
-  canDeleteDataroom: boolean;
   initialTab?: string | null;
 }) {
   const user = useCurrentUser();
@@ -468,32 +457,27 @@ function DataroomDetail({
     initialTab && VALID_TABS.includes(initialTab as Tab) ? (initialTab as Tab) : 'juridique',
   );
   const [settings, setSettings] = useState<DataroomSettings | null>(null);
-  const [loadingSettings, setLoadingSettings] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [savingPerms, setSavingPerms] = useState(false);
+  // Lot L1 : le responsable du dossier et le superviseur reglent l'acces du client.
+  const [droits, setDroits] = useState<DroitsDossier | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   // 2026-07-01 -- identite du CLIENT lie (section "Acces client")
   const [client, setClient] = useState<DossierClient | null>(null);
   const [loadingClient, setLoadingClient] = useState(true);
   // Sprint 7 / TASK 5 -- drawer "Activite client"
   const [accessLogOpen, setAccessLogOpen] = useState(false);
-  // Suppression definitive du dataroom : PromptDialog anti-misclick (saisie de
-  // la raison sociale exacte) remplace le couple window.prompt + window.confirm.
-  const [deleteDataroomOpen, setDeleteDataroomOpen] = useState(false);
-  const [deletingDataroom, setDeletingDataroom] = useState(false);
+  // Lot L1 : plus de suppression d'une Data Room (absente du CDC, contraire a la
+  // conservation de dix ans RG-DP-03) : bouton et dialogue retires.
   // Retrait de l'acces client : ConfirmDialog nominatif (remplace window.confirm).
   const [removeClientOpen, setRemoveClientOpen] = useState(false);
   const [removingClient, setRemovingClient] = useState(false);
 
   const loadSettings = useCallback(async () => {
-    setLoadingSettings(true);
     try {
       const s = await dataroomService.getSettings(dossier.id);
       setSettings(s);
     } catch (err) {
       setError(extractError(err).message);
-    } finally {
-      setLoadingSettings(false);
     }
   }, [dossier.id]);
 
@@ -515,16 +499,17 @@ function DataroomDetail({
     loadClient();
   }, [loadSettings, loadClient]);
 
-  async function handleToggleSuspend() {
-    if (!settings) return;
-    const next = settings.accessStatus !== 'SUSPENDED';
-    try {
-      const updated = await dataroomService.toggleSuspension(dossier.id, next);
-      setSettings(updated);
-    } catch (err) {
-      setError(extractError(err).message);
-    }
-  }
+  useEffect(() => {
+    if (user?.role !== 'EMPLOYE' && user?.role !== 'SUPERVISEUR') return undefined;
+    let actif = true;
+    dataroomService
+      .mesDroits(dossier.id)
+      .then((d) => actif && setDroits(d))
+      .catch(() => actif && setDroits(null));
+    return () => {
+      actif = false;
+    };
+  }, [dossier.id, user?.role]);
 
   /**
    * Fix 2026-06-07 (BUG 6) — Retire DEFINITIVEMENT l'acces du client
@@ -534,35 +519,6 @@ function DataroomDetail({
    * Le compte user du client n'est pas supprime (autres dossiers,
    * historique). Mais il perd l'acces a CE dossier jusqu'a re-invitation.
    */
-  /**
-   * Fix 2026-06-07 (BUG 3) — Suppression COMPLETE du dataroom.
-   *
-   * Action DESTRUCTIVE (vs. suspension reversible / retrait client qui
-   * detache juste le compte). Supprime tout : documents juridiques /
-   * comptables / fiscaux, demandes, snapshots, access-log, exercices,
-   * echeances. Le dossier passe en RADIE si des tickets historiques le
-   * referencent (preserve l'audit), sinon DELETE physique.
-   *
-   * Sécurité anti-misclick : saisie de la raison sociale exacte via
-   * <PromptDialog> (validate = correspondance stricte), qui remplace le couple
-   * window.prompt + window.confirm en collapsant la double-confirmation en un
-   * seul garde-fou. 409 si un ticket actif (NOUVEAU / EN_COURS) bloque la
-   * suppression -> message clair.
-   */
-  async function confirmDeleteDataroom() {
-    setDeletingDataroom(true);
-    try {
-      await dataroomService.deleteDataroom(dossier.id);
-      setDeleteDataroomOpen(false);
-      onBack();
-    } catch (err) {
-      // Le backend renvoie 409 ConflictException si un ticket actif est rattache.
-      setError(extractError(err).message);
-      setDeleteDataroomOpen(false);
-    } finally {
-      setDeletingDataroom(false);
-    }
-  }
 
   async function confirmRemoveClientAccess() {
     setRemovingClient(true);
@@ -576,27 +532,6 @@ function DataroomDetail({
       setRemoveClientOpen(false);
     } finally {
       setRemovingClient(false);
-    }
-  }
-
-  async function handlePermissionChange(
-    perm: 'download' | 'print' | 'depot',
-    value: boolean,
-  ) {
-    if (!settings) return;
-    setSavingPerms(true);
-    try {
-      const updated = await dataroomService.updatePermissions(
-        dossier.id,
-        perm === 'download' ? value : settings.permDownload,
-        perm === 'print' ? value : settings.permPrint,
-        perm === 'depot' ? value : settings.permDepot,
-      );
-      setSettings(updated);
-    } catch (err) {
-      setError(extractError(err).message);
-    } finally {
-      setSavingPerms(false);
     }
   }
 
@@ -667,39 +602,6 @@ function DataroomDetail({
             raisonSociale={dossier.raisonSociale}
             className="border border-accent/30 text-accent hover:bg-accent/10 bg-bg-raised"
           />
-          {canEdit && (
-            <Button
-              variant="secondary"
-              onClick={handleToggleSuspend}
-              disabled={loadingSettings}
-              className={
-                suspended
-                  ? 'border border-success/30 text-success hover:bg-success/10 bg-bg-raised'
-                  : 'border border-danger/30 text-danger hover:bg-danger/10 bg-bg-raised'
-              }
-            >
-              {suspended ? (
-                <>
-                  <PlayCircle className="mr-2 h-4 w-4" /> Reactiver
-                </>
-              ) : (
-                <>
-                  <PauseCircle className="mr-2 h-4 w-4" /> Suspendre
-                </>
-              )}
-            </Button>
-          )}
-          {canDeleteDataroom && (
-            <Button
-              variant="secondary"
-              onClick={() => setDeleteDataroomOpen(true)}
-              disabled={loadingSettings}
-              className="border-2 border-danger bg-danger/10 text-danger font-semibold hover:bg-danger hover:text-bg-raised"
-              title="SUPPRIMER le dataroom (documents, demandes, historique). IRREVERSIBLE."
-            >
-              <Trash2 className="mr-2 h-4 w-4" /> Supprimer le dataroom
-            </Button>
-          )}
         </div>
       </div>
 
@@ -707,6 +609,18 @@ function DataroomDetail({
         <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           {error}
         </div>
+      )}
+
+      {/* Lot L1 : aide de l'ecran modifie (regle de l'aide integree, CDC 15.4). */}
+      {user?.role !== 'CLIENT' && (
+        <TexteAide cle="dataroom-conservation" titre="Ajouter, supprimer, conserver">
+          <p>
+            Les documents de la société sont conservés : une Data Room ne se supprime pas.
+            L’employé responsable du dossier ajoute des documents ; il ne peut en supprimer que si
+            le superviseur lui en a accordé le droit, et toute suppression est tracée. Un document
+            supprimé reste en archive.
+          </p>
+        </TexteAide>
       )}
 
       {/* §A — bandeau explicite : archive legale, lecture seule pour tous. */}
@@ -731,60 +645,21 @@ function DataroomDetail({
         </div>
       )}
 
+      {/* Lot L1 (RG-CLI-01) : acces du client, regle par le responsable ou le superviseur. */}
       {settings && (
-        <div className="bg-bg-overlay border border-border rounded-xl p-3 md:p-4">
-          <div className="flex flex-wrap items-center gap-3 md:gap-4">
-            <span className="text-xs font-bold text-fg">
-              Permissions client :
-            </span>
-            {/* 2026-06-30 — "Consultation" n'est plus une pill cosmetique
-                cochee/desactivee : c'est l'info non editable du socle (toujours
-                active). Les vraies permissions assignables sont les 3 toggles. */}
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs font-medium text-success"
-              title="Le client peut toujours consulter ses documents"
-            >
-              <Eye className="h-3.5 w-3.5" /> Consultation (toujours active)
-            </span>
-            <PermPill
-              icon={Download}
-              label="Telecharger"
-              checked={settings.permDownload}
-              disabled={!canEdit || savingPerms}
-              onChange={(v) => handlePermissionChange('download', v)}
-            />
-            <PermPill
-              icon={Printer}
-              label="Imprimer"
-              checked={settings.permPrint}
-              disabled={!canEdit || savingPerms}
-              onChange={(v) => handlePermissionChange('print', v)}
-            />
-            <PermPill
-              icon={Upload}
-              label="Depot"
-              checked={settings.permDepot}
-              disabled={!canEdit || savingPerms}
-              onChange={(v) => handlePermissionChange('depot', v)}
-            />
-            <div className="ml-auto flex items-center gap-2 text-xs text-fg-subtle">
-              <span>
-                Client avec acces :{' '}
-                <strong className="text-fg">
-                  {settings.accessCount}
-                </strong>
-              </span>
-              {settings.lastAccessedAt && (
-                <span className="text-fg-subtle">
-                  Dernier le{' '}
-                  {new Date(settings.lastAccessedAt).toLocaleDateString(
-                    'fr-FR',
-                  )}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+        <AccesClientPanel
+          dossierId={dossier.id}
+          settings={settings}
+          peutRegler={droits?.peutReglerAccesClient === true}
+          onSettings={setSettings}
+        />
+      )}
+      {settings && (
+        <p className="text-xs text-fg-subtle">
+          Client avec accès : <strong className="text-fg">{settings.accessCount}</strong>
+          {settings.lastAccessedAt &&
+            ` · dernière consultation le ${new Date(settings.lastAccessedAt).toLocaleDateString('fr-FR')}`}
+        </p>
       )}
 
       {/* 2026-07-01 — Acces client : identite du CLIENT lie (ou aucun) */}
@@ -896,6 +771,17 @@ function DataroomDetail({
         <EntityActivityPanel entityType="dossier" entityId={dossier.id} title="Activite du dossier" />
       </div>
 
+      {/* Lot L1 : historique des responsables du dossier (employe responsable, superviseur). */}
+      {user?.role !== 'CLIENT' && (
+        <div className="rounded-xl border border-border bg-bg-raised p-4">
+          <HistoriqueResponsablesPanel
+            dossierId={dossier.id}
+            raisonSociale={dossier.raisonSociale}
+            peutReaffecter={user?.role === 'SUPERVISEUR'}
+          />
+        </div>
+      )}
+
       <InviteClientDrawer
         open={inviteOpen}
         dossierId={dossier.id}
@@ -915,33 +801,6 @@ function DataroomDetail({
         onClose={() => setAccessLogOpen(false)}
       />
 
-      {/* Suppression definitive : anti-misclick par saisie exacte de la raison sociale. */}
-      <PromptDialog
-        open={deleteDataroomOpen}
-        onOpenChange={(o) => !o && setDeleteDataroomOpen(false)}
-        title="SUPPRESSION DEFINITIVE du dataroom"
-        description={
-          <>
-            Tous les documents du dossier juridique et des dépôts client, les
-            requêtes, les demandes, snapshots et l'historique d'acces seront
-            DETRUITS. Si des tickets
-            historiques existent, le dossier passe en RADIE ; sinon il est
-            supprime physiquement. Cette action est IRREVERSIBLE.
-          </>
-        }
-        label={`Pour confirmer, tapez EXACTEMENT la raison sociale : ${dossier.raisonSociale.trim()}`}
-        placeholder={dossier.raisonSociale.trim()}
-        variant="danger"
-        confirmLabel="Supprimer definitivement"
-        loading={deletingDataroom}
-        validate={(v) =>
-          v.trim() !== dossier.raisonSociale.trim()
-            ? `La raison sociale tapee ne correspond pas a "${dossier.raisonSociale.trim()}". Suppression annulee.`
-            : null
-        }
-        onConfirm={confirmDeleteDataroom}
-      />
-
       {/* Retrait de l'acces client : confirmation NOMINATIVE. */}
       <ConfirmDialog
         open={removeClientOpen}
@@ -958,39 +817,6 @@ function DataroomDetail({
         onConfirm={confirmRemoveClientAccess}
       />
     </div>
-  );
-}
-
-function PermPill({
-  icon: Icon,
-  label,
-  checked,
-  disabled,
-  onChange,
-}: {
-  icon: typeof Eye;
-  label: string;
-  checked: boolean;
-  disabled?: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-        checked
-          ? 'border-success/30 bg-success/10 text-success'
-          : 'border-border bg-bg-raised text-fg-subtle hover:border-border-hi'
-      } ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-    >
-      <span className="flex h-4 w-4 items-center justify-center rounded border border-current/30">
-        {checked ? <Check className="h-3 w-3" /> : null}
-      </span>
-      <Icon className="h-3.5 w-3.5" />
-      {label}
-    </button>
   );
 }
 

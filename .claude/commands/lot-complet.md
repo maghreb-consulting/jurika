@@ -1,5 +1,5 @@
 ---
-description: Lot en mode autonome complet -- demarrage, decoupage, execution, verification et push de la branche du lot, sans arret ni question ; rapport final
+description: Lot en mode autonome complet -- demarrage, decoupage, execution, verification, push de la branche du lot et activation sur le Z440, sans arret ni question ; rapport final
 argument-hint: <lot>  (ex. L2)
 ---
 
@@ -28,16 +28,25 @@ appliquees intouchables, test rouge d'abord, motif 9, verify complet avant push.
    ainsi, jamais une valeur inventee), et inscris-le dans **Decisions a revoir**.
 3. **Migrations.** Les nouvelles migrations Flyway sont autorisees sur la branche du lot. Ne
    modifie **jamais** une migration deja presente dans `main` (`git diff main -- '*/db/migration/*'`
-   ne doit montrer que des fichiers ajoutes).
+   ne doit montrer que des fichiers ajoutes), ni une migration deja **appliquee au Z440**, meme
+   avant la fusion (l'activation de fin de lot l'applique : apres elle, toute correction passe
+   par une nouvelle migration).
 4. **Tests rouges.**
    - Cause dans ton test ou ton harnais : corrige-le, continue, note-le au journal.
    - Defaut hors perimetre : inscris-le au backlog de `CLAUDE.md`, continue.
    - Defaut du lot encore rouge apres **3 tentatives** : note-le **non resolu** dans le RAPPORT
      (erreur exacte, pistes), annule les changements de l'etape (`git restore` sur ses seuls
      fichiers), laisse sa case non cochee avec la mention `NON RESOLU`, passe a l'etape suivante.
-5. **Docker.** Aucune commande Docker sur la pile du Z440 (projet `jurika-local`, ses conteneurs,
-   volumes, images) pendant le lot. Les tests Testcontainers de `mvn ... -Pit` sont permis.
-   Tout ce qui doit etre fait sur le Z440 va dans le **plan Docker** du RAPPORT (voir plus bas).
+5. **Docker (autonome depuis le 2026-10-09 : la plateforme n'est pas en production).**
+   - Permis sans demande (`.claude/settings.json`) : `docker ps`, `logs`, `inspect`, `exec`, et
+     `docker compose -p jurika-local ...` avec `build`, `up -d`, `stop`, `start`, `restart`, `ps`.
+   - Toujours refuse : `down -v` / `--volumes`, toute commande contenant `prune`,
+     `docker volume rm`, `docker rm -v`.
+   - Toute autre commande Docker (`run`, `rm`, `stop` hors compose, `down`, `config`...) sort du
+     mode autonome : ne la lance pas ; trouve une voie permise ou inscris le besoin au RAPPORT.
+   - `-p jurika-local` sur **chaque** commande `docker compose` ; jamais de secret en argument.
+   - Pendant les etapes 1 a 6, seules les commandes en lecture (`ps`, `logs`, `inspect`) sont
+     utiles ; la pile n'est modifiee qu'a l'etape 7 (activation). Testcontainers reste permis.
 6. **Git.** Commits locaux sur la branche du lot ; push autorise uniquement sur `lot/*` et
    `outillage/*` (`git push -u origin <branche>`). Jamais de push sur `main`, jamais de fusion,
    jamais de reecriture d'historique.
@@ -85,7 +94,35 @@ appliquees intouchables, test rouge d'abord, motif 9, verify complet avant push.
 - `git push -u origin <branche du lot>` (jamais `main`). Note le lien d'ouverture de la PR affiche
   par le push.
 
-## 7. Rapport final
+## 7. Activation sur le Z440 (executee par toi, apres un push sur verify vert)
+Le code active est celui de la branche du lot (non fusionnee). Journal de chaque commande
+(horodatage, commande, resultat) dans `~/docs/rapports/<lot>_activation.md`.
+1. **Etat initial** : `docker ps` et `docker compose -p jurika-local <fichiers> ps -a` ; une seule
+   pile ; nombre de conteneurs sains note.
+2. **Preconditions du lot** (variables d'environnement nouvelles, corpus, etc.) : ajoutees a
+   `.env.local` apres copie de ce fichier dans le dossier de sauvegarde (mode 600) ; aucune
+   valeur secrete affichee.
+3. **Reconstruction** de toutes les images (`build --parallel`), pile en marche.
+4. **Sauvegarde controlee d'abord** (dossier `~/backups/<lot>-<date>`, mode 700) :
+   - arret des consommateurs (`stop` des services applicatifs ; postgres, redis, rabbitmq et
+     minio restent en marche) ;
+   - `pg_dump -Fc` de **toutes** les bases non modeles (liste lue dans `pg_database`) et
+     `pg_dumpall --globals-only`, par `docker exec jurika-postgres` ; chaque archive controlee :
+     taille non nulle, `pg_restore --list` code 0 et nombre d'entrees, au moins 2 `CREATE ROLE` ;
+   - volume MinIO : `python3 scripts/sauvegarde-volume-par-exec.py jurika-minio /data <archive>`
+     (controle integre : nombre de fichiers et octets) ;
+   - **un controle en echec arrete l'activation** : redemarrer les consommateurs (`start`),
+     noter l'echec au RAPPORT, ne rien recreer.
+5. **Recreation** de tous les conteneurs : `up -d --force-recreate` ; attente de l'etat sain de
+   tous les conteneurs (10 min au plus).
+6. **Controles du lot** (journal, montages, migrations appliquees dans `flyway_history_*`...)
+   puis **test de fumee** `./scripts/smoke-test.sh`.
+7. **Echec apres recreation** (conteneur non sain, test de fumee rouge, controle du lot faux) :
+   reconstruire et recreer depuis `main` (retour arriere du code), verifier l'etat sain, et
+   noter l'echec au RAPPORT. La restauration des donnees n'est jamais automatique : elle est
+   proposee dans le RAPPORT (commandes pretes), a decider par l'utilisateur.
+
+## 8. Rapport final
 Ecris le RAPPORT avec, dans cet ordre :
 1. **Perimetre et decoupage** (lien vers le perimetre et le journal, liste des etapes et statut).
 2. **Ce qui a ete fait** (par etape : changement, fichiers, tests, commit).
@@ -95,17 +132,10 @@ Ecris le RAPPORT avec, dans cet ordre :
    et raisons).
 6. **Points a controler a l'ecran** (par role : superviseur, employe, client ; comptes de
    demonstration si utiles, sans aucun mot de passe reel).
-7. **Plan Docker a executer apres la fusion** (pour `/lot-activer`), en commandes numerotees, une
-   par ligne, chacune avec son controle attendu :
-   - sauvegarde d'abord : `pg_dump -Fc` de **toutes** les bases non modeles et
-     `pg_dumpall --globals-only`, chaque archive verifiee par `pg_restore --list` (et la taille) ;
-     volume MinIO en archive tar si le lot touche aux documents ;
-   - `-p jurika-local` sur **chaque** commande `docker compose` ;
-   - jamais `down -v`, jamais `prune` ; suppressions nom par nom seulement ;
-   - jamais de secret en argument de commande (fichier ou entree standard) ;
-   - reconstruction, recreation des services touches, attente des controles de sante, test de
-     fumee, verifications ;
-   - retour arriere : restauration des sauvegardes (les migrations ne s'annulent pas).
+7. **Activation sur le Z440** (etape 7 executee) : commandes lancees et resultats, sauvegardes
+   (chemins, tailles, controles), etat final de la pile, test de fumee, controles du lot, ecarts ;
+   commandes de retour arriere pretes (restauration des sauvegardes : les migrations ne
+   s'annulent pas).
 8. **Lien de la PR**.
 
 Affiche ensuite le chemin du RAPPORT et sa section **Decisions a revoir**, puis arrete-toi.

@@ -27,6 +27,23 @@ class CorpusConfigurationTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void compose_conserve_le_nom_du_dossier_date_du_corpus() throws Exception {
+        // Defaut vu a l'activation de L2 (2026-10-09) : monte sur /corpus, le corpus perdait
+        // son nom de dossier date et le rapport annoncait la version "corpus". La racine vue
+        // par ai-service doit etre le chemin meme de JURIKA_CORPUS_DIR, monte a l'identique.
+        Map<String, Object> compose = new org.yaml.snakeyaml.Yaml().load(
+                Files.readString(Path.of("../../infrastructure/docker-compose.services.yml")));
+        Map<String, Object> ai = (Map<String, Object>) ((Map<String, Object>) compose.get("services")).get("ai-service");
+        Object racine = ((Map<String, Object>) ai.get("environment")).get("JURIKA_CORPUS_ROOT");
+        String montage = ((java.util.List<String>) ai.get("volumes")).stream()
+                .filter(v -> v.contains("JURIKA_CORPUS_DIR")).findFirst().orElseThrow();
+        String cible = montage.substring(montage.indexOf("}:") + 2, montage.lastIndexOf(":ro"));
+        assertThat(racine).isEqualTo("${JURIKA_CORPUS_DIR}");
+        assertThat(cible).isEqualTo("${JURIKA_CORPUS_DIR}");
+    }
+
+    @Test
     void propriete_absente_refus_de_demarrer() {
         runner.run(ctx -> assertThat(ctx).hasFailed());
     }

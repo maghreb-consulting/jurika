@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Power, RefreshCw, UserPlus, Users } from 'lucide-react';
+import { Loader2, Power, RefreshCw, Trash2, UserPlus, Users } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { authService } from '../../services/auth.service';
 import { billingService } from '../../services/billing.service';
 import { extractError } from '../../lib/api';
@@ -19,6 +20,9 @@ import { Link } from 'react-router-dom';
  *  - de visualiser le quota EMPLOYE du plan en haut + d'upseller vers /app/billing
  *    quand on atteint la limite.
  *
+ * Lot L1 (CDC 3.2, RG-DR-06) : le superviseur y accorde ou retire a chaque employe le
+ * droit de suppression en Data Room ; l'etat de chacun est affiche.
+ *
  * Les CLIENT ne sont PAS listes ici : ils se gerent depuis la Data Room
  * (DELETE /auth/dossiers/{id}/client). Voir memoire fix-workflows-dataroom-2026-06-07.
  */
@@ -31,16 +35,20 @@ export function TeamPage() {
   const [actingOn, setActingOn] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Lot L1 : employes qui ont le droit de suppression en Data Room.
+  const [droitsSuppression, setDroitsSuppression] = useState<Set<string>>(new Set());
 
   async function reload() {
     setError(null);
     try {
-      const [u, usageSnap] = await Promise.all([
+      const [u, usageSnap, droits] = await Promise.all([
         authService.listWorkspaceUsers(),
         billingService.getUsage(),
+        authService.listDroitsSuppressionDataroom(),
       ]);
       setUsers(u);
       setUsage(usageSnap);
+      setDroitsSuppression(new Set(droits));
     } catch (err) {
       setError(extractError(err).message);
     } finally {
@@ -60,6 +68,19 @@ export function TeamPage() {
     try {
       const nextActive = target.status === 'INACTIVE';
       await authService.setUserActive(target.userId, nextActive);
+      await reload();
+    } catch (err) {
+      setActionError(extractError(err).message);
+    } finally {
+      setActingOn(null);
+    }
+  }
+
+  async function handleDroitSuppression(target: WorkspaceUser, accorde: boolean) {
+    setActingOn(`droit-${target.userId}`);
+    setActionError(null);
+    try {
+      await authService.setDroitSuppressionDataroom(target.userId, accorde);
       await reload();
     } catch (err) {
       setActionError(extractError(err).message);
@@ -106,10 +127,11 @@ export function TeamPage() {
         <div>
           <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold text-fg">
             <Users className="h-6 w-6 text-accent" />
-            Equipe
+            Équipe
           </h1>
           <p className="mt-1 text-sm text-fg-muted">
-            Gerez les membres internes de votre cabinet : inviter, activer, desactiver.
+            Gérez les membres internes de votre cabinet : inviter, activer, désactiver, et accorder le
+            droit de supprimer des documents en Data Room.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -119,7 +141,7 @@ export function TeamPage() {
           <Button
             onClick={() => setDrawerOpen(true)}
             disabled={quotaFull}
-            title={quotaFull ? 'Quota EMPLOYE atteint — upgradez le plan' : undefined}
+            title={quotaFull ? 'Quota d’employés atteint : passez à un plan supérieur.' : undefined}
           >
             <UserPlus className="mr-1 h-3.5 w-3.5" /> Inviter un membre
           </Button>
@@ -137,7 +159,7 @@ export function TeamPage() {
               {employeUsage.active}
               <span className="text-fg-subtle"> / {unlimited ? '∞' : max} </span>
               <span className="text-sm font-normal text-fg-muted">
-                employes actifs (SUPERVISEUR hors quota)
+                employés actifs (superviseur hors quota)
               </span>
             </p>
           </div>
@@ -146,11 +168,20 @@ export function TeamPage() {
               to="/app/billing"
               className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
             >
-              Quota atteint — Upgrader le plan
+              Quota atteint : changer de plan
             </Link>
           )}
         </div>
       )}
+
+      <TexteAide cle="equipe-droit-suppression" titre="Le droit de supprimer des documents">
+        <p>
+          Par défaut, un employé ajoute des documents dans la Data Room de ses dossiers mais ne peut
+          pas en supprimer. Cliquez sur « Accorder » pour lui donner ce droit, ou sur « Retirer » pour
+          le lui reprendre : le changement vaut aussitôt pour tous ses dossiers et il est tracé. Un
+          document supprimé reste en archive.
+        </p>
+      </TexteAide>
 
       {(error || actionError) && (
         <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
@@ -167,13 +198,22 @@ export function TeamPage() {
                 Membre
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-fg-subtle">
-                Role
+                Rôle
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-fg-subtle">
                 Statut
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-fg-subtle">
-                Derniere connexion
+                Dernière connexion
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-fg-subtle">
+                <span className="inline-flex items-center gap-1">
+                  Suppression en Data Room
+                  <InfoBulle
+                    libelle="Que permet le droit de suppression ?"
+                    texte="L’employé qui a ce droit peut supprimer des documents dans la Data Room des dossiers dont il est responsable. Sans ce droit, il peut seulement en ajouter. Le superviseur l’accorde ou le retire à tout moment."
+                  />
+                </span>
               </th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-fg-subtle">
                 Action
@@ -183,14 +223,15 @@ export function TeamPage() {
           <tbody className="divide-y divide-border">
             {(users ?? []).length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-sm text-fg-muted">
-                  Aucun membre — invitez votre premier employe.
+                <td colSpan={6} className="px-4 py-12 text-center text-sm text-fg-muted">
+                  Aucun membre : invitez votre premier employé.
                 </td>
               </tr>
             ) : (
               (users ?? []).map((u) => {
                 const isSelf = u.userId === me?.userId;
                 const isInactive = u.status === 'INACTIVE';
+                const aLeDroit = droitsSuppression.has(u.userId);
                 return (
                   <tr key={u.userId} className="hover:bg-bg-overlay/50">
                     <td className="px-4 py-3">
@@ -205,7 +246,7 @@ export function TeamPage() {
                       <div className="text-xs text-fg-muted">{u.email}</div>
                     </td>
                     <td className="px-4 py-3 text-sm text-fg-subtle">
-                      {u.role === 'SUPERVISEUR' ? 'Superviseur' : 'Employe'}
+                      {u.role === 'SUPERVISEUR' ? 'Superviseur' : 'Employé'}
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={u.status} />
@@ -214,6 +255,36 @@ export function TeamPage() {
                       {u.lastLoginAt
                         ? new Date(u.lastLoginAt).toLocaleString('fr-FR')
                         : 'Jamais'}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {u.role === 'EMPLOYE' ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                              aLeDroit
+                                ? 'border-success/30 bg-success/10 text-success'
+                                : 'border-border bg-bg-overlay text-fg-subtle'
+                            }`}
+                          >
+                            {aLeDroit ? 'Accordé' : 'Non accordé'}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={actingOn === `droit-${u.userId}`}
+                            loading={actingOn === `droit-${u.userId}`}
+                            onClick={() => handleDroitSuppression(u, !aLeDroit)}
+                            aria-label={`${aLeDroit ? 'Retirer' : 'Accorder'} le droit de suppression à ${u.firstName} ${u.lastName}`}
+                          >
+                            <Trash2 className="mr-1 h-3.5 w-3.5" />
+                            {aLeDroit ? 'Retirer' : 'Accorder'}
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-fg-subtle" title="Le superviseur ne supprime pas de documents.">
+                          Sans objet
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Button
@@ -229,7 +300,7 @@ export function TeamPage() {
                         }
                       >
                         <Power className="mr-1 h-3.5 w-3.5" />
-                        {isInactive ? 'Reactiver' : 'Desactiver'}
+                        {isInactive ? 'Réactiver' : 'Désactiver'}
                       </Button>
                     </td>
                   </tr>
@@ -261,7 +332,7 @@ function StatusBadge({ status }: { status: UserStatus }) {
       cls: 'border-emerald-300 bg-emerald-50 text-emerald-700',
     },
     INACTIVE: {
-      label: 'Desactive',
+      label: 'Désactivé',
       cls: 'border-border bg-bg-overlay text-fg-subtle',
     },
   };

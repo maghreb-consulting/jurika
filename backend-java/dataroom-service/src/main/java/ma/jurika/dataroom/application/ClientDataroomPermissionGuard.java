@@ -42,6 +42,7 @@ public class ClientDataroomPermissionGuard {
     public void assertCanDownload(UUID dossierId, AuthenticatedUser user) {
         if (!isClient(user)) return; // garde CLIENT-only
         SettingsEntity s = loadActive(dossierId);
+        exigerConsultation(s);
         if (!s.isPermDownload()) {
             throw new AccessDeniedException(
                     "Le telechargement n'est pas autorise pour votre acces (perm_download desactivee).");
@@ -56,7 +57,30 @@ public class ClientDataroomPermissionGuard {
      */
     public void assertCanPreview(UUID dossierId, AuthenticatedUser user) {
         if (!isClient(user)) return; // garde CLIENT-only
-        loadActive(dossierId); // ensureActive -> 400 si SUSPENDED ; AUCUN check perm_download
+        exigerConsultation(loadActive(dossierId)); // AUCUN check perm_download ; consultation (L1)
+    }
+
+    /** Lot L1 (RG-CLI-01) : consultation des documents (vue, recherche, apercu, telechargement). */
+    public void assertCanConsult(UUID dossierId, AuthenticatedUser user) {
+        if (!isClient(user)) return; // garde CLIENT-only
+        exigerConsultation(loadActive(dossierId));
+    }
+
+    /** Lot L1 (RG-CLI-01) : envoi de demandes au cabinet. */
+    public void assertCanDemande(UUID dossierId, AuthenticatedUser user) {
+        if (!isClient(user)) return; // garde CLIENT-only
+        SettingsEntity s = loadActive(dossierId);
+        if (!s.isPermDemandes()) {
+            throw new AccessDeniedException(
+                    "L'envoi de demandes n'est pas autorise pour votre acces (perm_demandes desactivee).");
+        }
+    }
+
+    private static void exigerConsultation(SettingsEntity s) {
+        if (!s.isPermConsultation()) {
+            throw new AccessDeniedException(
+                    "La consultation des documents n'est pas autorisee pour votre acces (perm_consultation desactivee).");
+        }
     }
 
     /** DEPOT (upload) : interdit au client si {@code perm_depot} est faux. */

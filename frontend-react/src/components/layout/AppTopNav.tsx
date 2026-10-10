@@ -14,6 +14,7 @@ import {
   Settings,
   Shield,
   Ticket,
+  UserCheck,
   Users,
   Zap,
 } from 'lucide-react';
@@ -56,6 +57,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'ChatBot IA', to: '/chatbot', icon: Bot, roles: ['SUPER_ADMIN', 'SUPERVISEUR', 'EMPLOYE'] },
   // E2 (2026-06-25) — Tracabilite : SUPERVISEUR
   { label: 'Tracabilite', to: '/tracabilite', icon: History, roles: ['SUPERVISEUR'] },
+  // Lot L1 (D1) : dossiers dont le responsable a ete designe d'office, a verifier.
+  { label: 'Dossiers à vérifier', to: '/dossiers-a-verifier', icon: UserCheck, roles: ['SUPERVISEUR'] },
   // SUPER_ADMIN : gestion plateforme uniquement (RG-U07). ChatBot IA reste
   // autorise (admin des sources fiables du RAG, cf. decision 2026-06-26).
   { label: 'Workspaces', to: '/admin/workspaces', icon: Building2, roles: ['SUPER_ADMIN'] },

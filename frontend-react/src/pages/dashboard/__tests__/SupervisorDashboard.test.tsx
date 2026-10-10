@@ -77,7 +77,9 @@ describe('SupervisorDashboard', () => {
 
     render(<SupervisorDashboard />);
 
-    await waitFor(() => expect(screen.getByText('Employes')).toBeInTheDocument());
-    expect(screen.getByText('3')).toBeInTheDocument();
+    // Attendre la DONNEE (le compte), pas le libelle statique "Employes" present des le
+    // premier rendu : lire le compte juste apres le libelle echouait sous charge.
+    expect(await screen.findByText('3')).toBeInTheDocument();
+    expect(screen.getByText('Employes')).toBeInTheDocument();
   });
 });

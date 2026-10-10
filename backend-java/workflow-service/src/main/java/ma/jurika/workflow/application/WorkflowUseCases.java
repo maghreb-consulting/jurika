@@ -278,7 +278,8 @@ public class WorkflowUseCases {
         // persistance de la succursale le relit a la finalisation (aucune 2e creation).
         Map<String, Object> stepData = result.stepData();
         if (step == 1 && p.type() == WorkflowType.SUCCURSALE_ETR) {
-            stepData = withDossierMereEtrangere(workspaceId, stepData);
+            stepData = withDossierMereEtrangere(workspaceId, stepData,
+                    resolveDossierResponsable(workspaceId, ticketId, userId));
         }
         // Lot DIVERS §D (2026-08-13) — fin de la « fermeture fantome » : une succursale
         // saisie a la main (absente du referentiel) est creee en base des l'etape 1, pour
@@ -584,7 +585,7 @@ public class WorkflowUseCases {
         // (qui sortirait en amont sur dossierId == null).
         switch (type) {
             case SUCCURSALE_MA -> { persistSuccursaleMa(workspaceId, data); return; }
-            case SUCCURSALE_ETR -> { persistSuccursaleEtr(workspaceId, data); return; }
+            case SUCCURSALE_ETR -> { persistSuccursaleEtr(workspaceId, ticketId, data); return; }
             case FERMETURE_SUCCURSALE -> { closeSuccursale(workspaceId, data); return; }
             default -> { /* suite : logique basee sur le dossier du ticket */ }
         }
@@ -697,7 +698,7 @@ public class WorkflowUseCases {
      * ({@code origine = 'ETRANGERE'}, cf. migration V16) : elle porte donc sa Data Room,
      * ses documents et sa tracabilite comme n'importe quel dossier — sans table nouvelle.
      */
-    private void persistSuccursaleEtr(UUID workspaceId, Map<String, Object> data) {
+    private void persistSuccursaleEtr(UUID workspaceId, UUID ticketId, Map<String, Object> data) {
         Map<String, Object> s1 = pickStep(data, "step1");
         Map<String, Object> s2 = pickStep(data, "step2");
         // Cas nominal : le dossier mere a ete cree DES la validation de l'etape 1
@@ -707,7 +708,8 @@ public class WorkflowUseCases {
         UUID parentId = parseUuid(pickString(s1, "dossierMereEtrangereId"));
         if (parentId == null) {
             try {
-                parentId = resolveOrCreateDossierMereEtrangere(workspaceId, s1);
+                parentId = resolveOrCreateDossierMereEtrangere(workspaceId, s1,
+                        resolveDossierResponsable(workspaceId, ticketId, null));
             } catch (Exception ex) {
                 log.warn("SUCCURSALE_ETR : dossier mere etrangere non resolu a la finalisation : {}",
                         ex.getMessage());
@@ -752,7 +754,7 @@ public class WorkflowUseCases {
      * societe marocaine deja au dossier. Sans transaction fille, cet echec marquerait la
      * transaction de l'etape <i>rollback-only</i> (500 au commit) au lieu d'un refus propre.
      */
-    UUID resolveOrCreateDossierMereEtrangere(UUID workspaceId, Map<String, Object> s1) {
+    UUID resolveOrCreateDossierMereEtrangere(UUID workspaceId, Map<String, Object> s1, UUID responsableId) {
         UUID selected = parseUuid(firstNonNull(
                 pickString(s1, "dossierMereEtrangereId"), pickString(s1, "dossierLocalId")));
         if (selected != null) return selected;
@@ -789,8 +791,8 @@ public class WorkflowUseCases {
                   (id, workspace_id, raison_sociale, forme_juridique, statut,
                    origine, pays, forme_juridique_origine, registre_etranger,
                    registre_etranger_numero, loi_applicable, capital_origine,
-                   adresse_siege)
-                VALUES (?1, ?2, ?3, ?4, 'ACTIVE', 'ETRANGERE', ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+                   adresse_siege, responsable_id)
+                VALUES (?1, ?2, ?3, ?4, 'ACTIVE', 'ETRANGERE', ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
                 """)
                 .setParameter(1, id)
                 .setParameter(2, workspaceId)
@@ -803,6 +805,9 @@ public class WorkflowUseCases {
                 .setParameter(9, pickString(mere, "loiApplicable"))
                 .setParameter(10, pickString(mere, "capital"))
                 .setParameter(11, pickString(mere, "siege"))
+                // Lot L1 (V28) : responsable obligatoire = l'employe en charge du ticket
+                // SUCCURSALE_ETR (assigne, a defaut createur, a defaut l'acteur).
+                .setParameter(12, responsableId)
                 .executeUpdate();
         log.info("SUCCURSALE_ETR : Data Room dediee creee pour la mere etrangere « {} » -> dossier {}",
                 denomination, id);
@@ -830,12 +835,13 @@ public class WorkflowUseCases {
      * on n'invente rien et on laisse l'etape passer telle quelle.
      */
     private Map<String, Object> withDossierMereEtrangere(UUID workspaceId,
-                                                          Map<String, Object> stepData) {
+                                                          Map<String, Object> stepData,
+                                                          UUID responsableId) {
         if (finalizationService == null) return stepData; // contexte de test sans proxy
         UUID mereId;
         try {
             mereId = finalizationService
-                    .createOrReuseDossierMereEtrangereInNewTransaction(workspaceId, stepData);
+                    .createOrReuseDossierMereEtrangereInNewTransaction(workspaceId, stepData, responsableId);
         } catch (DataIntegrityViolationException | ConstraintViolationException ex) {
             // On ne DEDUIT PAS la cause : toute violation d'integrite n'est pas un
             // doublon de denomination. La version precedente l'affirmait pour n'importe

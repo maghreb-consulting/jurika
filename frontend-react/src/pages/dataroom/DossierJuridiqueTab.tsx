@@ -37,6 +37,8 @@ import type {
 import { DOCUMENT_TYPE_LABELS } from '../../types/dataroom';
 
 import type { Role } from '../../types/auth';
+import type { DroitsDossier } from '../../types/dataroom';
+import { InfoBulle } from '../../components/ui/Aide';
 import { STATUT_LABELS_COURTS } from '../../types/ticket';
 import type { TicketStatut } from '../../types/ticket';
 import {
@@ -245,9 +247,25 @@ export function DossierJuridiqueTab({
     };
   }, [dossierId, filters, isSearchActive]);
 
+  // Lot L1 (RG-DR-06) : la suppression d'un document exige le droit accorde par le
+  // superviseur ; sans lui, le bouton est masque et l'ecran dit pourquoi.
+  const [droits, setDroits] = useState<DroitsDossier | null>(null);
+  useEffect(() => {
+    if (role !== 'EMPLOYE') return undefined;
+    let actif = true;
+    dataroomService
+      .mesDroits(dossierId)
+      .then((d) => actif && setDroits(d))
+      .catch(() => actif && setDroits({ peutSupprimerDocuments: false, motif: null, peutReglerAccesClient: false }));
+    return () => {
+      actif = false;
+    };
+  }, [dossierId, role]);
+
   // §A — la lecture seule prime sur le role : meme un EMPLOYE ne peut plus
   // deposer, versionner ni supprimer sur une societe archivee.
   const canUpload = role === 'EMPLOYE' && !readOnly;
+  const canRemove = canUpload && droits?.peutSupprimerDocuments === true;
 
   if (loading && !view) {
     return (
@@ -299,7 +317,7 @@ export function DossierJuridiqueTab({
               <Download className="mr-1 h-4 w-4" />
               Telecharger ZIP
             </Button>
-            {canUpload && (
+            {canRemove && (
               <Button
                 size="sm"
                 variant="secondary"
@@ -347,6 +365,7 @@ export function DossierJuridiqueTab({
                   key={doc.id}
                   doc={doc}
                   canDelete={canUpload}
+                  canRemove={canRemove}
                   onDeleted={load}
                   highlightQuery={filters.q}
                   selectable
@@ -358,6 +377,14 @@ export function DossierJuridiqueTab({
         </Card>
       )}
 
+      {/* Lot L1 (RG-DR-06) : sans le droit, le bouton est masque et l'ecran dit pourquoi. */}
+      {canUpload && droits && !droits.peutSupprimerDocuments && (
+        <p role="status" className="rounded-lg border border-border bg-bg-overlay px-3 py-2 text-sm text-fg-muted">
+          Vous pouvez ajouter des documents à ce dossier, mais pas en supprimer.{' '}
+          {droits.motif ?? 'Demandez le droit de suppression à votre superviseur.'}
+        </p>
+      )}
+
       {!isSearchActive && (
         <Card>
           <header className="flex items-center justify-between border-b border-border px-5 py-3">
@@ -367,6 +394,12 @@ export function DossierJuridiqueTab({
                 Documents en vigueur
               </h3>
               <Badge variant="neutral">{view.documentsEnVigueur.length}</Badge>
+              {canUpload && droits && (
+                <InfoBulle
+                  libelle="Qui peut supprimer un document ?"
+                  texte="L’employé responsable du dossier, si le superviseur lui en a accordé le droit. Un document supprimé reste en archive et la suppression est tracée."
+                />
+              )}
             </div>
             <div className="flex items-center gap-2">
               {/*
@@ -472,6 +505,7 @@ export function DossierJuridiqueTab({
                 key={dossier.ticketId ?? 'hors-ticket'}
                 dossier={dossier}
                 canDelete={canUpload}
+                canRemove={canRemove}
                 onDeleted={load}
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelect}
@@ -608,12 +642,15 @@ export function DossierJuridiqueTab({
 function DossierDeTicket({
   dossier,
   canDelete,
+  canRemove,
   onDeleted,
   selectedIds,
   onToggleSelect,
 }: {
   dossier: DossierTicket;
   canDelete: boolean;
+  /** Lot L1 : bouton de suppression (droit accorde par le superviseur). */
+  canRemove: boolean;
   onDeleted: () => void;
   selectedIds: Set<string>;
   onToggleSelect: (id: string) => void;
@@ -669,6 +706,7 @@ function DossierDeTicket({
                   key={doc.id}
                   doc={doc}
                   canDelete={canDelete}
+                  canRemove={canRemove}
                   onDeleted={onDeleted}
                   selectable
                   selected={selectedIds.has(doc.id)}
@@ -685,6 +723,7 @@ function DossierDeTicket({
 function DocumentRow({
   doc,
   canDelete,
+  canRemove = false,
   onDeleted,
   highlightQuery,
   canDownload = true,
@@ -694,7 +733,10 @@ function DocumentRow({
   onToggleSelect,
 }: {
   doc: DocumentSummary;
+  /** Versionner et restaurer (employe responsable, dossier non archive). */
   canDelete?: boolean;
+  /** Lot L1 (RG-DR-06) : supprimer, seulement avec le droit accorde par le superviseur. */
+  canRemove?: boolean;
   onDeleted?: () => Promise<void> | void;
   highlightQuery?: string;
   /** Sprint 7 / TASK 3 -- permissions affichage des boutons (modal + ligne). */
@@ -814,7 +856,7 @@ function DocumentRow({
               Telecharger
             </Button>
           )}
-          {canDelete && (
+          {canDelete && canRemove && (
             <button
               type="button"
               onClick={() => setConfirmDeleteOpen(true)}

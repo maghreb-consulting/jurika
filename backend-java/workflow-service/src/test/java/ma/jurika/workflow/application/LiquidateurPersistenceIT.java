@@ -243,9 +243,10 @@ class LiquidateurPersistenceIT {
                         INSERT INTO entreprise_dossiers
                           (id, workspace_id, raison_sociale, forme_juridique, rc_numero,
                            rc_tribunal, capital_social_mad, adresse_siege, ville, statut,
-                           date_dissolution, fiche_structuree)
+                           date_dissolution, fiche_structuree, responsable_id)
                         VALUES (?, ?, ?, 'SARL', '123456', 'CASABLANCA', 100000,
-                                '12 RUE DES FOULES', 'CASABLANCA', ?, ?, CAST(? AS jsonb))
+                                '12 RUE DES FOULES', 'CASABLANCA', ?, ?, CAST(? AS jsonb),
+                                '33333333-3333-3333-3333-333333333333')
                         """, id, ws, raison, statut, dateDissolution, ficheJson);
     }
 

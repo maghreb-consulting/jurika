@@ -5,6 +5,7 @@ import ma.jurika.common.exception.NotFoundException;
 import ma.jurika.common.security.AuthenticatedUser;
 import ma.jurika.ticket.api.dto.DeboursDto;
 import ma.jurika.ticket.api.dto.DeboursRequest;
+import ma.jurika.ticket.application.AccesDeboursTicket;
 import ma.jurika.ticket.application.DeboursUseCase;
 import ma.jurika.common.pdf.CabinetIdentity;
 import ma.jurika.ticket.domain.port.TicketRepository;
@@ -38,25 +39,36 @@ public class DeboursController {
     private final TicketRepository ticketRepository;
     private final DeboursPdfGenerator pdfGenerator;
     private final WorkspaceViewJpaRepository workspaces;
+    private final AccesDeboursTicket acces;
 
     public DeboursController(DeboursUseCase deboursUseCase, TicketRepository ticketRepository,
                               DeboursPdfGenerator pdfGenerator,
-                              WorkspaceViewJpaRepository workspaces) {
+                              WorkspaceViewJpaRepository workspaces,
+                              AccesDeboursTicket acces) {
         this.deboursUseCase = deboursUseCase;
         this.ticketRepository = ticketRepository;
         this.pdfGenerator = pdfGenerator;
         this.workspaces = workspaces;
+        this.acces = acces;
     }
 
-    // Lot L0 (E22, arb. 8) : lecture reservee aux roles du cabinet (EMPLOYE,
-    // SUPERVISEUR), dans leur workspace ; aucun acces client en L0 (RG-DEB-03 :
-    // lot L1). Ticket d'un autre workspace : 404 (et non une liste vide).
+    /** Lot L1 : le debours doit appartenir au ticket du chemin (404 sinon). */
+    private void exigerDeboursDuTicket(AuthenticatedUser actor, UUID ticketId, UUID deboursId) {
+        boolean present = deboursUseCase.listForTicket(actor.workspaceId(), ticketId).items().stream()
+                .anyMatch(d -> deboursId.equals(d.id()));
+        if (!present) {
+            throw new NotFoundException("Debours inconnu");
+        }
+    }
+
+    // Lot L1 (RG-DEB-03, RG-DOS-01) : superviseur, employe responsable, et client du
+    // dossier si sa permission de consultation le prevoit (AccesDeboursTicket).
+    // Ticket d'un autre workspace ou d'un autre dossier : 404 (et non une liste vide).
     @GetMapping
-    @PreAuthorize("hasAnyRole('EMPLOYE','SUPERVISEUR')")
+    @PreAuthorize("hasAnyRole('EMPLOYE','SUPERVISEUR','CLIENT') and !hasRole('SUPER_ADMIN')")
     public Map<String, Object> list(@AuthenticationPrincipal AuthenticatedUser actor,
                                      @PathVariable UUID ticketId) {
-        ticketRepository.findById(actor.workspaceId(), ticketId)
-                .orElseThrow(() -> new NotFoundException("Ticket inconnu"));
+        acces.lecture(actor, ticketId);
         var summary = deboursUseCase.listForTicket(actor.workspaceId(), ticketId);
         List<DeboursDto> items = summary.items().stream().map(DeboursDto::from).toList();
         BigDecimal total = summary.total();
@@ -70,6 +82,7 @@ public class DeboursController {
     public ResponseEntity<DeboursDto> create(@AuthenticationPrincipal AuthenticatedUser actor,
                                               @PathVariable UUID ticketId,
                                               @Valid @RequestBody DeboursRequest req) {
+        acces.ecriture(actor, ticketId); // Lot L1, RG-DOS-01
         var d = deboursUseCase.create(new DeboursUseCase.CreateCommand(
                 actor.workspaceId(), ticketId, req.libelle(), req.categorie(),
                 req.montant(), req.dateEngagement(), req.pieceJointeUrl(),
@@ -83,6 +96,8 @@ public class DeboursController {
                               @PathVariable UUID ticketId,
                               @PathVariable UUID deboursId,
                               @Valid @RequestBody DeboursRequest req) {
+        acces.ecriture(actor, ticketId); // Lot L1, RG-DOS-01
+        exigerDeboursDuTicket(actor, ticketId, deboursId);
         var d = deboursUseCase.update(new DeboursUseCase.UpdateCommand(
                 actor.workspaceId(), deboursId, req.libelle(), req.categorie(),
                 req.montant(), req.dateEngagement(), req.notes()));
@@ -94,6 +109,8 @@ public class DeboursController {
     public ResponseEntity<Void> delete(@AuthenticationPrincipal AuthenticatedUser actor,
                                         @PathVariable UUID ticketId,
                                         @PathVariable UUID deboursId) {
+        acces.ecriture(actor, ticketId); // Lot L1, RG-DOS-01
+        exigerDeboursDuTicket(actor, ticketId, deboursId);
         deboursUseCase.delete(actor.workspaceId(), deboursId);
         return ResponseEntity.noContent().build();
     }
@@ -107,12 +124,11 @@ public class DeboursController {
     // pour que le workspace courant atteigne la RLS sous jurika_app.
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     @GetMapping(value = "/export-pdf", produces = MediaType.APPLICATION_PDF_VALUE)
-    // Lot L0 (E22) : comme la liste, roles du cabinet seulement.
-    @PreAuthorize("hasAnyRole('EMPLOYE','SUPERVISEUR')")
+    // Lot L1 : memes droits que la liste (RG-DEB-03).
+    @PreAuthorize("hasAnyRole('EMPLOYE','SUPERVISEUR','CLIENT') and !hasRole('SUPER_ADMIN')")
     public ResponseEntity<byte[]> exportPdf(@AuthenticationPrincipal AuthenticatedUser actor,
                                               @PathVariable UUID ticketId) {
-        var ticket = ticketRepository.findById(actor.workspaceId(), ticketId)
-                .orElseThrow(() -> new NotFoundException("Ticket inconnu"));
+        var ticket = acces.lecture(actor, ticketId);
         var summary = deboursUseCase.listForTicket(actor.workspaceId(), ticketId);
         // Papier a en-tete du cabinet (nom + logo + coordonnees + mentions).
         // Resolution unique via CabinetIdentity.resolve.

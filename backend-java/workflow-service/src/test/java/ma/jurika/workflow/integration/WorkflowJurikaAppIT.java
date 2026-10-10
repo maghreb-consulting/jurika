@@ -106,9 +106,10 @@ class WorkflowJurikaAppIT {
         SchemaJurikaDb.workspace(jdbc, workspaceId, "Cabinet Workflow", "JUR-F0001");
         jdbc.update("""
                 INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale, forme_juridique,
-                                                rc_numero, rc_tribunal, capital_social_mad, ville)
-                VALUES (?, ?, 'NOVA INDUSTRIE', 'SARL', '123456', 'CASABLANCA', 100000, 'CASABLANCA')
-                """, dossierId, workspaceId);
+                                                rc_numero, rc_tribunal, capital_social_mad, ville,
+                                                responsable_id)
+                VALUES (?, ?, 'NOVA INDUSTRIE', 'SARL', '123456', 'CASABLANCA', 100000, 'CASABLANCA', ?)
+                """, dossierId, workspaceId, EMPLOYE);
         jdbc.update("""
                 INSERT INTO tickets(id, workspace_id, reference, titre, type, statut, cree_par_id)
                 VALUES (?, ?, 'T-2026-00901', 'Creation SARL', 'CREATION', 'CREATION_TICKET', ?)
@@ -186,6 +187,30 @@ class WorkflowJurikaAppIT {
         assertThat(lues).hasSize(1);
         Map<String, Object> charge = dansLeWorkspace(() -> magasin.lirePourGeneration(workspaceId, ticketId));
         assertThat(charge).isNotEmpty();
+    }
+
+    /**
+     * Lot L1, etape E12 (RG-VAR-02) : la provenance distingue la saisie, le calcul, la
+     * valeur EXTRAITE d'une piece (confirmee par un employe, RG-VAR-09 : auteur
+     * obligatoire) et la valeur reprise de la FICHE societe (sans auteur).
+     */
+    @Test
+    void provenances_extraite_et_fiche() {
+        dansLeWorkspace(() -> {
+            magasin.poser(workspaceId, ticketId, "ASSOCIE_CIN", "AB123456",
+                    VariableDuDossier.Origine.valueOf("EXTRAITE"), EMPLOYE, "extraction-cin");
+            magasin.poser(workspaceId, ticketId, "RC_NUMERO", "123456",
+                    VariableDuDossier.Origine.valueOf("FICHE"), null, "fiche-societe");
+            return null;
+        });
+        List<VariableDuDossier> lues = dansLeWorkspace(() -> magasin.lire(workspaceId, ticketId));
+        assertThat(lues).extracting(v -> v.variable() + "=" + v.origine())
+                .contains("ASSOCIE_CIN=EXTRAITE", "RC_NUMERO=FICHE");
+        // Une valeur extraite sans employe qui l'a confirmee est refusee par la base.
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> jdbc.update(
+                "INSERT INTO dossier_variables (workspace_id, ticket_id, variable, valeur, origine, saisie_le) "
+                        + "VALUES (?, ?, 'X', 'v', 'EXTRAITE', NOW())", workspaceId, ticketId))
+                .hasMessageContaining("ck_dossier_variables_saisie_auteur");
     }
 
     @Test

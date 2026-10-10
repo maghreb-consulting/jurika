@@ -28,6 +28,7 @@ import { SensitiveTransitionDialog } from './SensitiveTransitionDialog';
 import { DeadlinesPanel } from '../../components/tickets/DeadlinesPanel';
 import { DemarchesPanel } from './DemarchesPanel';
 import { RecapitulatifPanel } from './RecapitulatifPanel';
+import { NoteTicketPanel } from './NoteTicketPanel';
 import { EntityActivityPanel } from '../../components/tracabilite/EntityActivityPanel';
 
 interface Props {
@@ -321,6 +322,9 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
             La regle vaut pour tous les statuts, cloture comprise : un ticket clos
             n'offre donc AUCUNE action.
           */}
+          {/* Lot L1 (RG-TKT-07) : note interne du ticket, enregistree automatiquement. */}
+          <NoteTicketPanel ticketId={ticketId} statut={ticket.statut} role={user?.role} />
+
           <DemarchesPanel
             ticketId={ticketId}
             dossierId={ticket.dossierId ?? null}

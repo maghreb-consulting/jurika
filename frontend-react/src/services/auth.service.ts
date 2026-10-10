@@ -417,4 +417,17 @@ export const authService = {
     );
     return data;
   },
+
+  /** Lot L1 (CDC 3.2, RG-DR-06) : employes du cabinet qui ont le droit de suppression en Data Room. */
+  async listDroitsSuppressionDataroom(): Promise<string[]> {
+    const { data } = await api.get<{ employesAvecLeDroit: string[] }>(
+      '/auth/users/droit-suppression-dataroom',
+    );
+    return data.employesAvecLeDroit;
+  },
+
+  /** Lot L1 : le superviseur accorde ou retire le droit de suppression a un employe (trace). */
+  async setDroitSuppressionDataroom(userId: string, accorde: boolean): Promise<void> {
+    await api.put(`/auth/users/${userId}/droit-suppression-dataroom`, { accorde });
+  },
 };

@@ -242,6 +242,8 @@ export interface UpdateIdentifiantsPayload {
   ville?: string | null;
   capitalSocialMad?: number | null;
   dateConstitution?: string | null;
+  /** Lot L1 (RG-FIC-02) : date de prise d'effet de la taxe professionnelle, facultative. */
+  taxeProfessionnelleDateEffet?: string | null;
 }
 
 export interface DepotSummary {
@@ -461,6 +463,29 @@ export interface DataroomSettings {
   clientLinkToken: string;
   accessCount: number;
   lastAccessedAt: string | null;
+  /** Lot L1 (V34, RG-CLI-01) : consultation des documents et envoi de demandes. */
+  permConsultation: boolean;
+  permDemandes: boolean;
+}
+
+/** Lot L1 (RG-CLI-01) : reglage partiel des permissions du client (null = inchange). */
+export interface PermissionsClientPatch {
+  permDownload?: boolean;
+  permPrint?: boolean;
+  permDepot?: boolean;
+  permConsultation?: boolean;
+  permDemandes?: boolean;
+}
+
+/** Lot L1 (V35 dataroom) : une ligne de l'historique de l'acces client. */
+export interface HistoriqueAccesClient {
+  id: string;
+  nature: 'PERMISSIONS' | 'SUSPENSION' | 'REACTIVATION';
+  acteurId: string;
+  acteurNom: string | null;
+  avant: Record<string, boolean | string> | null;
+  apres: Record<string, boolean | string> | null;
+  createdAt: string;
 }
 
 /**
@@ -591,4 +616,44 @@ export interface SeanceEdition {
   verrouPar: string | null;
   /** Depuis quand, pour que l'appel téléphonique qui suit soit informé. */
   verrouDepuis: string | null;
+}
+
+/** Lot L1 : ligne d'historique des responsables d'un dossier (ticket-service). */
+export interface ReaffectationVue {
+  id: string;
+  dossierId: string;
+  raisonSociale: string;
+  ancienResponsableId: string | null;
+  ancienResponsableNom: string | null;
+  nouveauResponsableId: string;
+  nouveauResponsableNom: string | null;
+  nature: 'ACCEPTEE' | 'FORCEE' | 'RATTRAPAGE';
+  auteurId: string | null;
+  auteurNom: string | null;
+  motif: string | null;
+  createdAt: string;
+  responsableActuelId: string;
+  responsableActuelNom: string | null;
+  verifiePar: string | null;
+  verifieParNom: string | null;
+  verifieLe: string | null;
+}
+
+/** Lot L1 : version datee de la taxe professionnelle (RG-FIC-02). */
+export interface VersionTaxeProfessionnelle {
+  id: string;
+  numero: string;
+  dateEffet: string | null;
+  saisiPar: string;
+  saisiLe: string;
+  origine: 'SAISIE' | 'REPRISE_V30';
+  enVigueur: boolean;
+}
+
+/** Lot L1 : droits de l'utilisateur sur un dossier (bouton de suppression). */
+export interface DroitsDossier {
+  peutSupprimerDocuments: boolean;
+  motif: string | null;
+  /** RG-CLI-01 : responsable du dossier ou superviseur. */
+  peutReglerAccesClient: boolean;
 }

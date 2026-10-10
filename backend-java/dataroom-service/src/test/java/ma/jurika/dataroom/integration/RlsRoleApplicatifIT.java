@@ -63,8 +63,8 @@ class RlsRoleApplicatifIT {
         JdbcTemplate owner = SchemaJurikaDb.proprietaire(pg);
         SchemaJurikaDb.workspace(owner, WS_A, "Cabinet A", "JUR-RLSAA");
         SchemaJurikaDb.workspace(owner, WS_B, "Cabinet B", "JUR-RLSBB");
-        owner.update("INSERT INTO entreprise_dossiers (id, workspace_id, raison_sociale, forme_juridique) VALUES "
-                + "(?, ?, 'Societe A', 'SARL'), (?, ?, 'Societe B', 'SARL')", DOSSIER_A, WS_A, DOSSIER_B, WS_B);
+        owner.update("INSERT INTO entreprise_dossiers (id, workspace_id, raison_sociale, forme_juridique, responsable_id) VALUES "
+                + "(?, ?, 'Societe A', 'SARL', '33333333-3333-3333-3333-333333333333'), (?, ?, 'Societe B', 'SARL', '33333333-3333-3333-3333-333333333333')", DOSSIER_A, WS_A, DOSSIER_B, WS_B);
         owner.update("INSERT INTO dataroom_settings (dossier_id, workspace_id) VALUES (?, ?), (?, ?)",
                 DOSSIER_A, WS_A, DOSSIER_B, WS_B);
 

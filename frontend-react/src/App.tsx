@@ -32,6 +32,7 @@ import { BillingPage } from './pages/billing/BillingPage';
 import { BillingSuccessPage } from './pages/billing/BillingSuccessPage';
 import { TeamPage } from './pages/team/TeamPage';
 import { TracabilitePage } from './pages/tracabilite/TracabilitePage';
+import { DossiersAVerifierPage } from './pages/dossiers/DossiersAVerifierPage';
 import { CalendarPage } from './pages/calendar/CalendarPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { ChangePlanPage } from './pages/billing/ChangePlanPage';
@@ -132,6 +133,8 @@ function App() {
           <Route element={<AppShell />}>
             <Route path="/app/team" element={<TeamPage />} />
             <Route path="/tracabilite" element={<TracabilitePage />} />
+            {/* Lot L1 (D1) : dossiers dont le responsable a ete designe d'office. */}
+            <Route path="/dossiers-a-verifier" element={<DossiersAVerifierPage />} />
           </Route>
         </Route>
 

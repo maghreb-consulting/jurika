@@ -2,11 +2,12 @@ package ma.jurika.ticket.application;
 
 import ma.jurika.common.audit.AuditEventEmitter;
 import ma.jurika.common.exception.NotFoundException;
-import ma.jurika.common.notification.NotificationPublisher;
+import ma.jurika.common.exception.ValidationException;
 import ma.jurika.common.security.TenantContext;
+import ma.jurika.ticket.domain.model.EntrepriseDossier;
 import ma.jurika.ticket.domain.model.Ticket;
 import ma.jurika.ticket.domain.model.TicketPriorite;
-import ma.jurika.ticket.domain.port.TicketEventPublisher;
+import ma.jurika.ticket.domain.port.DossierRepository;
 import ma.jurika.ticket.domain.port.TicketRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,16 +21,14 @@ import java.util.UUID;
 public class UpdateTicketUseCase {
 
     private final TicketRepository ticketRepository;
-    private final TicketEventPublisher eventPublisher;
+    private final DossierRepository dossierRepository;
     private final AuditEventEmitter auditEmitter;
-    private final NotificationPublisher notificationPublisher;
 
-    public UpdateTicketUseCase(TicketRepository ticketRepository, TicketEventPublisher eventPublisher,
-                               AuditEventEmitter auditEmitter, NotificationPublisher notificationPublisher) {
+    public UpdateTicketUseCase(TicketRepository ticketRepository, DossierRepository dossierRepository,
+                               AuditEventEmitter auditEmitter) {
         this.ticketRepository = ticketRepository;
-        this.eventPublisher = eventPublisher;
+        this.dossierRepository = dossierRepository;
         this.auditEmitter = auditEmitter;
-        this.notificationPublisher = notificationPublisher;
     }
 
     public record Command(UUID workspaceId, UUID ticketId, String titre, String description,
@@ -40,36 +39,27 @@ public class UpdateTicketUseCase {
         TenantContext.set(cmd.workspaceId());
         Ticket current = ticketRepository.findById(cmd.workspaceId(), cmd.ticketId())
                 .orElseThrow(() -> new NotFoundException("Ticket inconnu"));
-        UUID previousAssignee = current.assigneId();
-        // 2026-06-24 — ASSIGNATION != PRISE EN CHARGE. Un superviseur peut assigner
-        // un ticket a un employe sans le faire passer EN_COURS : ce updateAssignment
-        // ne touche JAMAIS le statut (pas d'appel updateStatut). Le ticket reste
-        // NOUVEAU jusqu'a la prise en charge explicite (transition EN_COURS) ou la
-        // validation de l'etape 1 du workflow.
-        Ticket updated = ticketRepository.updateAssignment(current.id(),
-                cmd.assigneId(), cmd.priorite(), cmd.deadline(), cmd.titre(), cmd.description());
-        if (!java.util.Objects.equals(previousAssignee, cmd.assigneId())) {
-            eventPublisher.publishTicketAssigned(updated, previousAssignee);
-            // E2 tracabilite — l'assignation via PATCH n'etait pas auditee. On
-            // ecrit TICKET_ASSIGNED UNIQUEMENT quand l'assigne change reellement
-            // (pas sur une simple edition titre/priorite), avec ancien -> nouveau.
-            Map<String, Object> meta = new LinkedHashMap<>();
-            meta.put("ancienAssigne", previousAssignee == null ? null : previousAssignee.toString());
-            meta.put("nouvelAssigne", cmd.assigneId() == null ? null : cmd.assigneId().toString());
-            auditEmitter.emit(cmd.workspaceId(), cmd.actorId(),
-                    "TICKET_ASSIGNED", "ticket", cmd.ticketId(), meta);
-            // Notification persistante (cloche) au NOUVEL assigne — jamais a l'acteur
-            // lui-meme (un employe qui s'auto-assigne n'a pas besoin d'etre notifie).
-            if (cmd.assigneId() != null && !cmd.assigneId().equals(cmd.actorId())) {
-                Map<String, Object> notifMeta = new LinkedHashMap<>();
-                notifMeta.put("ticketId", cmd.ticketId().toString());
-                notifMeta.put("reference", updated.reference());
-                notificationPublisher.notifyUser(cmd.assigneId(), cmd.workspaceId(), "TICKET_ASSIGNED",
-                        "Nouveau ticket assigne",
-                        "Le ticket " + updated.reference() + " vous a ete assigne.",
-                        "/tickets", notifMeta);
-            }
+        // Lot L1 (RG-DOS-01) : seul l'employe responsable du dossier edite le ticket ;
+        // a defaut de dossier (ticket SUCCURSALE_ETR avant l'etape 1), son assigne ou
+        // son createur. Tout autre employe : 404, comme a la lecture.
+        UUID responsable = current.dossierId() == null ? null
+                : dossierRepository.findById(cmd.workspaceId(), current.dossierId())
+                        .map(EntrepriseDossier::responsableId).orElse(null);
+        boolean autorise = responsable != null
+                ? responsable.equals(cmd.actorId())
+                : cmd.actorId().equals(current.assigneId()) || cmd.actorId().equals(current.creeParId());
+        if (!autorise) {
+            throw new NotFoundException("Ticket inconnu");
         }
+        // Lot L1 (RG-TKT-08, RG-DOS-02) : les tickets suivent leur dossier. Un
+        // changement d'assigne passe par le transfert du dossier (accepte par le
+        // destinataire) ou la reaffectation d'office du superviseur, plus par PATCH.
+        if (cmd.assigneId() != null && !cmd.assigneId().equals(current.assigneId())) {
+            throw new ValidationException("Le responsable d'un ticket est celui de son dossier : "
+                    + "transferer le dossier pour en changer");
+        }
+        Ticket updated = ticketRepository.updateAssignment(current.id(),
+                null, cmd.priorite(), cmd.deadline(), cmd.titre(), cmd.description());
         // 2026-06-25 — "Journaliser TOUTES les actions du ticket" : l'edition des
         // champs (titre / description / priorite / echeance) etait silencieuse cote
         // audit_log. On ecrit TICKET_UPDATED avec la liste des champs reellement
