@@ -29,6 +29,7 @@ import { ProvenanceDonnees } from '../../../components/workflow/ProvenanceDonnee
 import { ChampConnu } from '../../../components/workflow/ChampConnu';
 import { DonneesAttendues } from '../../../components/workflow/DonneesAttendues';
 import { ClausesLibresPanel } from '../../../components/workflow/ClausesLibresPanel';
+import { ValeurProposee } from '../../../components/workflow/ValeurProposee';
 import { RetourGeneration } from '../../../components/workflow/RetourGeneration';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 import { DocumentEditor } from '../../../components/document/DocumentEditor';
@@ -125,7 +126,7 @@ interface DocState {
   editeManuellementAt?: string | null;
   /** Lot L3 : donnees internes manquantes nommees par le serveur (generation refusee). */
   refus?: DonneeManquante[];
-  /** Lot L3 : donnees externes manquantes, marquees « À OBTENIR » dans l'acte et reclamees. */
+  /** Lot L3 : donnees externes manquantes, marquees "A OBTENIR" dans l'acte et reclamees. */
   aObtenir?: DonneeNommee[];
 }
 
@@ -725,12 +726,12 @@ export function Step7Generation({
   }, [forme, hasNonStatutaire, STATUTS_TEMPLATE_CODE, ACTE_TEMPLATE_CODE]);
 
   /**
-   * Lot L3 (P2, RG-VAR-05) — LA CHARGE UTILE EST CONSTRUITE PAR LE SERVEUR.
+   * Lot L3 (P2, RG-VAR-05) -- LA CHARGE UTILE EST CONSTRUITE PAR LE SERVEUR.
    *
    * Le navigateur n'envoie plus que le ticket : ai-service relit le magasin de
    * variables (ConstructeurChargeUtileCreation, workflow-service). Une correction
    * faite a un seul endroit se repercute sur toutes les generations suivantes, et
-   * plus aucune valeur n'est inventee ici (la date du jour et « Casablanca »
+   * plus aucune valeur n'est inventee ici (la date du jour et "Casablanca"
    * remplissaient la date et le lieu de signature).
    *
    * `persister` : enregistre d'abord l'etat de l'etape (documents retenus, saisies
@@ -1198,7 +1199,7 @@ export function Step7Generation({
       actesNominationIds: [],
       statutsValides: !!statutsState?.validated,
       documents: documentsPayload,
-      // Lot 5 — la selection et les saisies propres aux formulaires vivent avec
+      // Lot 5 -- la selection et les saisies propres aux formulaires vivent avec
       // l'etape : revenir dessus (ou decocher un document) ne doit rien effacer.
       lignesRetenues: Array.from(lignesRetenues),
       complements,
@@ -1365,7 +1366,9 @@ export function Step7Generation({
             <p>
               Indiquez la ville et la date auxquelles les associés signent les actes. Elles servent à
               tous les documents retenus ; corrigez-les ici, et la correction vaut pour toutes les
-              générations suivantes.
+              générations suivantes. Les autres valeurs sont des usages proposés par la plateforme :
+              vérifiez-les, puis confirmez-les ou modifiez-les ; une valeur non confirmée n’est pas
+              reprise dans les actes.
             </p>
           </TexteAide>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1393,6 +1396,56 @@ export function Step7Generation({
                 className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm text-fg"
               />
             </div>
+            {/* Lot L3 (D6) : valeurs d'usage PROPOSEES, transmises une fois confirmees. */}
+            <ValeurProposee
+              id="complement-nombreOriginaux"
+              label="Nombre d’exemplaires originaux"
+              proposition="6"
+              valeur={complements.nombreOriginaux}
+              onChange={(v) => setComplements((prev) => ({ ...prev, nombreOriginaux: v }))}
+            />
+            <ValeurProposee
+              id="complement-heureActe"
+              label="Heure de l’acte"
+              proposition="10 heures"
+              valeur={complements.heureActe}
+              onChange={(v) => setComplements((prev) => ({ ...prev, heureActe: v }))}
+            />
+            <ValeurProposee
+              id="complement-exerciceDebut"
+              label="Début de l’exercice social"
+              proposition="1er janvier"
+              valeur={complements.exerciceDebut}
+              onChange={(v) => setComplements((prev) => ({ ...prev, exerciceDebut: v }))}
+            />
+            <ValeurProposee
+              id="complement-exerciceFin"
+              label="Fin de l’exercice social"
+              proposition="31 décembre"
+              valeur={complements.exerciceFin}
+              onChange={(v) => setComplements((prev) => ({ ...prev, exerciceFin: v }))}
+            />
+            <div>
+              <label htmlFor="complement-commissaireComptesNom" className="mb-1 block text-xs font-medium text-fg">
+                Commissaire aux comptes (s’il en est désigné)
+              </label>
+              <input
+                id="complement-commissaireComptesNom"
+                type="text"
+                value={complements.commissaireComptesNom ?? ''}
+                onChange={(e) => setComplements((prev) => ({ ...prev, commissaireComptesNom: e.target.value }))}
+                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm text-fg"
+              />
+            </div>
+            {(complements.commissaireComptesNom ?? '').trim() !== '' && (
+              <ValeurProposee
+                id="complement-dureeMandatCac"
+                label="Durée du mandat du commissaire aux comptes (exercices)"
+                proposition="3"
+                valeur={complements.dureeMandatCac}
+                onChange={(v) => setComplements((prev) => ({ ...prev, dureeMandatCac: v }))}
+              />
+            )}
           </div>
         </section>
       )}

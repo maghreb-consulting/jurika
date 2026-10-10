@@ -12,6 +12,7 @@ import { useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
+import { ValeurProposee } from './ValeurProposee';
 
 export type FieldKind = 'text' | 'number' | 'date' | 'textarea' | 'select';
 
@@ -21,6 +22,8 @@ export interface FieldSpec {
   kind: FieldKind;
   options?: { value: string; label: string }[];
   placeholder?: string;
+  /** L3 (D6) : valeur d'usage PROPOSEE, transmise seulement une fois confirmee. */
+  proposition?: string;
 }
 
 export interface SubListSpec {
@@ -328,7 +331,7 @@ export const RES_SPECS: Record<string, TypeSpec> = {
         { value: 'fin de mandat', label: 'Fin de mandat' },
       ] },
       { key: 'commissaireComptesNom', label: 'Commissaire aux comptes', kind: 'text' },
-      { key: 'dureeMandatCac', label: 'Durée du mandat (exercices)', kind: 'text', placeholder: 'trois' },
+      { key: 'dureeMandatCac', label: 'Durée du mandat (exercices)', kind: 'text', proposition: 'trois' },
       { key: 'cacFinMandatDate', label: 'Exercice clos (fin de mandat)', kind: 'date' },
     ],
   },
@@ -583,6 +586,17 @@ export function DynamicField({
   value: string;
   onChange: (v: string) => void;
 }) {
+  if (spec.proposition) {
+    return (
+      <ValeurProposee
+        id={`resolution-${spec.key}`}
+        label={spec.label}
+        proposition={spec.proposition}
+        valeur={value || undefined}
+        onChange={onChange}
+      />
+    );
+  }
   if (spec.kind === 'select') {
     return <SelectField spec={spec} value={value} onChange={onChange} />;
   }

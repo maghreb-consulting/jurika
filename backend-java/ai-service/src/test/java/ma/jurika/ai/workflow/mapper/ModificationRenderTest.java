@@ -83,7 +83,14 @@ class ModificationRenderTest {
     private static Map<String, Object> seance() {
         return Map.of("type", "extraordinaire", "date", "2026-05-15", "heure", "10H00",
                 "lieu", "SIEGE SOCIAL", "heureCloture", "12H00",
-                "presidentNom", "M. Ahmed Alaoui", "presidentQualite", "gérant");
+                "presidentNom", "M. Ahmed Alaoui", "presidentQualite", "gérant",
+                "quorumAtteint", "oui"); // L3 (D6) : quorum saisi
+    }
+
+    /** L3 (D6) : vote saisi par l'employe, jamais suppose. */
+    private static Map<String, Object> vote() {
+        return Map.of("resultat", "adopt\u00e9e", "majorite", "\u00e0 l'unanimit\u00e9",
+                "voixPour", "1000", "voixContre", "0", "abstentions", "0");
     }
 
     private static Map<String, Object> convocation() {
@@ -93,13 +100,13 @@ class ModificationRenderTest {
     private static Map<String, Object> pvSarl(List<String> odj, List<Map<String, Object>> resolutions) {
         return Map.of("formeJuridique", "SARL", "societe", societeSarl(), "seance", seance(),
                 "convocation", convocation(), "associes", deuxAssocies(),
-                "ordreDuJour", odj, "resolutions", resolutions);
+                "ordreDuJour", odj, "resolutions", resolutions, "vote", vote());
     }
 
     private static Map<String, Object> pvAu(List<String> odj, List<Map<String, Object>> resolutions) {
         return Map.of("formeJuridique", "SARL_AU", "associeUnique", true, "societe", societeAu(),
                 "seance", seance(), "associes", List.of(associeUniquePhysique()),
-                "gerantEstAssocie", "oui", "ordreDuJour", odj, "resolutions", resolutions);
+                "gerantEstAssocie", "oui", "ordreDuJour", odj, "resolutions", resolutions, "vote", vote());
     }
 
     // ── SARL — un cas par famille ────────────────────────────────────────────

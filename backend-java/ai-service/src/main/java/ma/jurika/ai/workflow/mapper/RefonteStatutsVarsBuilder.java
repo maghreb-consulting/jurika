@@ -87,7 +87,7 @@ public final class RefonteStatutsVarsBuilder {
         putFirst(societe, "valeurPart", fiche.get("valeurNominale"), societeIn.get("valeurPart"));
         putFirst(societe, "nombreParts", fiche.get("nombreParts"), societeIn.get("nombreParts"));
         putFirst(societe, "dureeAnnees", fiche.get("dureeAnnees"), societeIn.get("dureeAnnees"));
-        // Lot L3 : « Fait a ..., le ... » des statuts refondus. Ces deux variables n'etaient
+        // Lot L3 : "Fait a ..., le ..." des statuts refondus. Ces deux variables n'etaient
         // fournies par personne : le blanc s'imprimait en silence. Les statuts mis a jour
         // portent la date de l'assemblee qui les adopte et le lieu de signature du PV ;
         // absents, ils sont nommes (regle des variables), jamais devines.
@@ -98,6 +98,13 @@ public final class RefonteStatutsVarsBuilder {
                 assemblee == null ? null : assemblee.get("dateAge"));
         putFirst(societe, "lieuSignature", convocation == null ? null : convocation.get("lieuSignature"),
                 payload.get("lieuSignature"));
+        // Lot L3 (D6) : nombre d'originaux et exercice social des statuts mis a jour. Valeurs
+        // confirmees a l'ecran (bloc "Statuts mis a jour") ; l'exercice peut venir de la fiche.
+        Map<String, Object> refonte = asMap(payload.get("statutsRefondus"));
+        if (refonte == null) refonte = Map.of();
+        putFirst(societe, "nombreOriginaux", refonte.get("nombreOriginaux"));
+        putFirst(societe, "exerciceDebut", refonte.get("exerciceDebut"), fiche.get("exerciceDebut"));
+        putFirst(societe, "exerciceFin", refonte.get("exerciceFin"), fiche.get("exerciceFin"));
 
         List<Map<String, Object>> gerants =
                 new ArrayList<>(asListOfMaps(firstNonNull(fiche.get("gerants"), fiche.get("dirigeants"))));
@@ -287,6 +294,7 @@ public final class RefonteStatutsVarsBuilder {
                 putStr(g, "nom", d.get("nom"));
                 putStr(g, "prenom", d.get("prenom"));
                 putStr(g, "cinNumero", d.get("cin"));
+                putStr(g, "pieceType", d.get("pieceType")); // L3 (D6) : idem
                 putStr(g, "nationalite", d.get("nationalite"));
                 g.put("isStatutaire", Boolean.FALSE);
                 if (g.size() > 1) gerants.add(g);
@@ -372,6 +380,8 @@ public final class RefonteStatutsVarsBuilder {
         putStr(a, "prenom", na.get("prenom"));
         putStr(a, "nom", na.get("nom"));
         putStr(a, "cinNumero", firstNonNull(na.get("cin"), na.get("cinNumero")));
+        // Lot L3 (D6) : le type de piece etait perdu, masque par le "CIN" par defaut du rendu.
+        putStr(a, "pieceType", na.get("pieceType"));
         putStr(a, "nationalite", na.get("nationalite"));
         putStr(a, "adresse", na.get("adresse"));
         putStr(a, "dateNaissance", na.get("dateNaissance"));

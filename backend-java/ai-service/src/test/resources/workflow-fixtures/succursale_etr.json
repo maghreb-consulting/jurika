@@ -1,5 +1,7 @@
 {
   "PV_CREATION_SUCCURSALE_ETRANGERE_SARL": {
+    "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+    "quorumAtteint": "oui",
     "societeMere": {
       "denomination": "GLOBAL TRADING LTD",
       "forme": "Limited",
@@ -39,6 +41,8 @@
     "formalitesMandataireNom": "M. Rachid EL FASSI"
   },
   "PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU": {
+    "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+    "quorumAtteint": "oui",
     "societeMere": {
       "denomination": "MEDITERRANEA GMBH",
       "forme": "GmbH",

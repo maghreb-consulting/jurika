@@ -57,6 +57,7 @@ const AG_SECTIONS: SeanceSections = {
   resolutions: false,
   presence: true,
   voix: false,
+  vote: true, // L3 (D6) : quorum et vote saisis
 };
 
 const AU_SECTIONS: SeanceSections = {
@@ -179,7 +180,7 @@ export function ModificationOperationForm({
       resolutions: resolutions.map(flattenResolution),
       ordreDuJour,
       commissaireComptes: { existe: cacExiste, present: cacPresent, nom: commissaireComptesNom },
-      quorumAtteint: 'oui',
+      // L3 (D6) : quorumAtteint vient du formulaire de seance (saisi), plus de "oui" impose.
       gerantEstAssocie,
     };
   };

@@ -47,6 +47,9 @@ class ApprobationComptesRenderTest {
     }
 
     private RenderResult render(String code, Map<String, Object> payload) {
+        // L3 (D6) : le vote est saisi a l'ecran ; chaque cas de ce test le porte.
+        payload.putIfAbsent("vote", Map.of("resultat", "adopt\u00e9e", "majorite", "\u00e0 l'unanimit\u00e9",
+                "voixPour", "1000", "voixContre", "0", "abstentions", "0"));
         Map<String, Object> vars = mapper.map(code, payload);
         DocumentResult res = engine().generate(code, vars);
         StringBuilder sb = new StringBuilder();

@@ -1,5 +1,7 @@
 {
   "PV_AGE_SARL": {
+    "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+    "quorumAtteint": "oui",
     "societe": {
       "denomination": "TEST SARL",
       "formeJuridique": "SARL",
@@ -56,6 +58,8 @@
     ]
   },
   "PV_AGE_SARL_AU": {
+    "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+    "quorumAtteint": "oui",
     "societe": {
       "denomination": "TEST SARL AU",
       "formeJuridique": "SARL AU",
@@ -176,6 +180,7 @@
     ]
   },
   "STATUTS_REFONDUS_SARL": {
+    "statutsRefondus": {"nombreOriginaux": "quatre", "exerciceDebut": "1er janvier", "exerciceFin": "31 décembre"},
     "ficheStructuree": {
       "denomination": "TEST GROUP SARL",
       "formeJuridique": "SARL",
@@ -221,6 +226,7 @@
     ]
   },
   "STATUTS_REFONDUS_SARL_AU": {
+    "statutsRefondus": {"nombreOriginaux": "quatre", "exerciceDebut": "1er janvier", "exerciceFin": "31 décembre"},
     "ficheStructuree": {
       "denomination": "TEST GROUP SARL AU",
       "formeJuridique": "SARL_AU",

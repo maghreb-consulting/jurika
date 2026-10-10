@@ -16,6 +16,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
+import { InfoBulle, TexteAide } from '../ui/Aide';
+import { TypePieceProposee } from './ValeurProposee';
 
 // --------------------------------------------------------------------------
 // Types publics
@@ -68,7 +70,8 @@ export interface AssocieInput {
   adresse: string;
   nombreParts: string;
   nombreVoix: string;
-  presence: 'présent' | 'représenté' | 'absent';
+  /** L3 (D6) : '' tant que l'employe ne l'a pas indiquee (jamais supposee). */
+  presence: 'présent' | 'représenté' | 'absent' | '';
   mandataireNom: string;
   /**
    * Fix M6 (2026-08-16) — n° de pièce d'identité (CIN).
@@ -112,6 +115,23 @@ export interface SeanceSections {
   resolutions?: boolean;
   presence?: boolean;
   voix?: boolean;
+  /** L3 (D6) : quorum et vote des resolutions, saisis (documents de decision : PV). */
+  vote?: boolean;
+}
+
+/** L3 (D6) : vote des resolutions, saisi par l'employe (jamais suppose). */
+export interface VoteInput {
+  /** Resultat imprime par les PV "est ... par N voix pour" : adoptee / rejetee. */
+  resultat: string;
+  /** Majorite imprimee par les PV "est adoptee ..." : a l'unanimite, a la majorite... */
+  majorite: string;
+  voixPour: string;
+  voixContre: string;
+  abstentions: string;
+}
+
+function emptyVote(): VoteInput {
+  return { resultat: '', majorite: '', voixPour: '', voixContre: '', abstentions: '' };
 }
 
 export function emptyAssocie(): AssocieInput {
@@ -124,16 +144,16 @@ export function emptyAssocie(): AssocieInput {
     adresse: '',
     nombreParts: '',
     nombreVoix: '',
-    presence: 'présent',
+    presence: '',
     mandataireNom: '',
-    pieceType: 'CIN',
+    pieceType: '',
     pieceNumero: '',
     estGerant: false,
   };
 }
 
 export function emptyResolution(): ResolutionInput {
-  return { intitule: '', texte: '', voixPour: '', voixContre: '', abstentions: '', resultat: 'adoptée' };
+  return { intitule: '', texte: '', voixPour: '', voixContre: '', abstentions: '', resultat: '' };
 }
 
 export function emptyGerant(): GerantInput {
@@ -204,6 +224,9 @@ export interface SeanceFormApi {
   resolutions: ResolutionInput[]; setResolutions: React.Dispatch<React.SetStateAction<ResolutionInput[]>>;
   associes: AssocieInput[]; setAssocies: React.Dispatch<React.SetStateAction<AssocieInput[]>>;
   gerants: GerantInput[]; setGerants: React.Dispatch<React.SetStateAction<GerantInput[]>>;
+  // L3 (D6) : quorum et vote, saisis
+  quorumAtteint: '' | 'oui' | 'non'; setQuorumAtteint: (v: '' | 'oui' | 'non') => void;
+  vote: VoteInput; setVote: React.Dispatch<React.SetStateAction<VoteInput>>;
   buildPayload: () => Record<string, unknown>;
   /** Instantané brut de l'état (persistance inter-étapes). */
   snapshot: Record<string, unknown>;
@@ -267,6 +290,8 @@ export function useSeanceForm(opts: UseSeanceFormOptions): SeanceFormApi {
     'Formule de pouvoir',
   ]));
   const [resolutions, setResolutions] = useState<ResolutionInput[]>(sv('resolutions', []));
+  const [quorumAtteint, setQuorumAtteint] = useState<'' | 'oui' | 'non'>(sv('quorumAtteint', ''));
+  const [vote, setVote] = useState<VoteInput>(sv('vote', emptyVote()));
   const snapAssoc = snap?.associes as AssocieInput[] | undefined;
   const snapAssocUsable = !!(snapAssoc
     && snapAssoc.some((a) => a?.nom?.trim() || a?.prenom?.trim() || a?.denomination?.trim()));
@@ -426,8 +451,12 @@ export function useSeanceForm(opts: UseSeanceFormOptions): SeanceFormApi {
       // Gérants = liste manuelle + associés cochés « gérant » (désignation #5), dédupliqués.
       gerants: mergeGerants(gerants, associes),
       associes: associes.map(serializeAssocie),
+      // L3 (D6) : quorum et vote saisis ; absents, la generation les nomme.
+      quorumAtteint,
+      vote: { ...vote },
     };
   }, [
+    quorumAtteint, vote,
     formeJuridique, isAU, societe, type, date, heure, lieu, heureCloture, presidentNom,
     presidentQualite, secretairePresent, secretaireNom, convAuteur, convDate, convHeure, convMode,
     convRang, dateAgPremiere, lieuSignature, irregulariteNature, secondeDate, secondeHeure,
@@ -440,7 +469,9 @@ export function useSeanceForm(opts: UseSeanceFormOptions): SeanceFormApi {
     secretairePresent, secretaireNom, convAuteur, convDate, convHeure, convMode, convRang,
     dateAgPremiere, lieuSignature, irregulariteNature, secondeDate, secondeHeure,
     secondeLieu, suiteAssemblee, ordreDuJour, documentsJoints, resolutions, associes, gerants,
+    quorumAtteint, vote,
   }), [
+    quorumAtteint, vote,
     type, date, heure, lieu, heureCloture, presidentNom, presidentQualite,
     secretairePresent, secretaireNom, convAuteur, convDate, convHeure, convMode, convRang,
     dateAgPremiere, lieuSignature, irregulariteNature, secondeDate, secondeHeure,
@@ -460,6 +491,7 @@ export function useSeanceForm(opts: UseSeanceFormOptions): SeanceFormApi {
     suiteAssemblee, setSuiteAssemblee,
     ordreDuJour, setOrdreDuJour, documentsJoints, setDocumentsJoints,
     resolutions, setResolutions, associes, setAssocies, gerants, setGerants,
+    quorumAtteint, setQuorumAtteint, vote, setVote,
     buildPayload, snapshot,
   };
 }
@@ -493,8 +525,9 @@ export function serializeAssocie(a: AssocieInput) {
     nombreVoix: a.nombreVoix,
     presence: a.presence,
     mandataireNom: a.presence === 'représenté' ? a.mandataireNom : '',
-    // Fix M6 — alimente $ASSOCIE_PIECE_TYPE / $ASSOCIE_PIECE_NUMERO (comparution AU).
-    pieceType: a.pieceType?.trim() || 'CIN',
+    // Fix M6 -- alimente $ASSOCIE_PIECE_TYPE / $ASSOCIE_PIECE_NUMERO (comparution AU).
+    // L3 (D6) : plus de "CIN" par defaut ; la valeur proposee est confirmee a l'ecran.
+    pieceType: a.pieceType?.trim() ?? '',
     pieceNumero: a.pieceNumero ?? '',
   };
 }
@@ -756,6 +789,8 @@ export function SeanceFormFields({
         </Card>
       )}
 
+      {sections.vote && <VoteFields form={f} />}
+
       {sections.presence && (
         <Card
           title={f.isAU ? 'Associé unique et gérance' : 'Associés et présence (quorum)'}
@@ -816,6 +851,70 @@ function updateGer(f: SeanceFormApi, i: number, patch: Partial<GerantInput>) {
 // --------------------------------------------------------------------------
 // Sous-composants
 // --------------------------------------------------------------------------
+/**
+ * L3 (D6) : quorum et vote des resolutions, SAISIS. Avant, "quorum atteint", "adoptee",
+ * "a l'unanimite" et "voix pour = parts presentes" s'imprimaient par defaut. Absents,
+ * la generation nomme la donnee manquante.
+ */
+function VoteFields({ form: f }: { form: SeanceFormApi }) {
+  const set = (patch: Partial<VoteInput>) => f.setVote((v) => ({ ...v, ...patch }));
+  return (
+    <Card title="Quorum et vote des résolutions">
+      <TexteAide cle="seance-vote" titre="Quorum et vote : à saisir">
+        <p>
+          Indiquez si le quorum est atteint et le résultat du vote : la plateforme ne suppose
+          jamais une adoption ni une unanimité. Ce vote s’applique aux résolutions qui ne
+          portent pas leur propre résultat. Sans ces données, le procès-verbal n’est pas
+          généré et la donnée manquante vous est indiquée.
+        </p>
+      </TexteAide>
+      <div className="mt-3 grid gap-3 md:grid-cols-3">
+        {!f.isAU && (
+        <Select
+          label="Quorum atteint *"
+          value={f.quorumAtteint}
+          onChange={(e) => f.setQuorumAtteint(e.target.value as '' | 'oui' | 'non')}
+          hint={f.quorumAtteint ? undefined : 'À indiquer d’après la feuille de présence.'}
+          options={[
+            { value: '', label: 'Choisir…' },
+            { value: 'oui', label: 'Oui' },
+            { value: 'non', label: 'Non' },
+          ]}
+        />
+        )}
+        <Select
+          label="Résultat du vote *"
+          value={f.vote.resultat}
+          onChange={(e) => set({ resultat: e.target.value })}
+          options={[
+            { value: '', label: 'Choisir…' },
+            { value: 'adoptée', label: 'Adoptée' },
+            { value: 'rejetée', label: 'Rejetée' },
+          ]}
+        />
+        <div>
+          <TextField
+            label="Majorité *"
+            value={f.vote.majorite}
+            onChange={(e) => set({ majorite: e.target.value })}
+            placeholder="Ex. : à l’unanimité"
+          />
+          <p className="mt-1 flex items-center gap-1 text-[11px] text-fg-subtle">
+            Imprimée après « est adoptée »
+            <InfoBulle
+              libelle="Où la majorité est-elle imprimée ?"
+              texte="Les procès-verbaux de modification et de dissolution écrivent « Cette résolution est adoptée … » suivi de la majorité saisie ici (par exemple « à l’unanimité »)."
+            />
+          </p>
+        </div>
+        <TextField label="Voix pour *" type="number" value={f.vote.voixPour} onChange={(e) => set({ voixPour: e.target.value })} />
+        <TextField label="Voix contre *" type="number" value={f.vote.voixContre} onChange={(e) => set({ voixContre: e.target.value })} />
+        <TextField label="Abstentions *" type="number" value={f.vote.abstentions} onChange={(e) => set({ abstentions: e.target.value })} />
+      </div>
+    </Card>
+  );
+}
+
 function Card({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-border bg-bg-raised p-4">
@@ -873,15 +972,24 @@ export function AssocieFields({
           hint="Repris de la fiche société ; complétez s'il manque."
         />
       )}
+      {!isMorale && (
+        <TypePieceProposee
+          id={`associe-piece-type-${value.nom || value.prenom || 'nouveau'}`}
+          valeur={value.pieceType}
+          onChange={(v) => onChange({ ...value, pieceType: v })}
+        />
+      )}
       <TextField label="Nombre de parts" type="number" value={value.nombreParts} onChange={(e) => onChange({ ...value, nombreParts: e.target.value })} />
       {showVoix && (
         <TextField label="Nombre de voix" type="number" value={value.nombreVoix} onChange={(e) => onChange({ ...value, nombreVoix: e.target.value })} placeholder="= parts" />
       )}
       <Select
-        label="Présence"
+        label="Présence *"
         value={value.presence}
         onChange={(e) => onChange({ ...value, presence: e.target.value as AssocieInput['presence'] })}
+        hint={value.presence ? undefined : 'À indiquer : la présence n’est jamais supposée.'}
         options={[
+          { value: '', label: 'Choisir…' },
           { value: 'présent', label: 'Présent' },
           { value: 'représenté', label: 'Représenté' },
           { value: 'absent', label: 'Absent' },

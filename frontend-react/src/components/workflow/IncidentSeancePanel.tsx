@@ -104,6 +104,7 @@ const INCIDENT_SECTIONS: SeanceSections = {
   resolutions: true,
   presence: true,
   voix: false,
+  vote: true, // L3 (D6) : quorum et vote saisis
 };
 
 // Les 2 PV « incident » se déposent dans le slot juridique PV_AGE.

@@ -89,9 +89,10 @@ class RefonteStatutsDirecteurOverlayTest {
                                 "nom", "TAZI", "prenom", "Nadia", "cin", "T998877",
                                 "nationalite", "marocaine", "adresse", "Casablanca"))))));
 
-        // Lot L3 : date de l'assemblee et lieu de signature (« Fait a ..., le ... »).
+        // Lot L3 : date de l'assemblee et lieu de signature ("Fait a ..., le ...").
         p.put("seance", Map.of("date", "2026-06-15"));
         p.put("convocation", Map.of("lieuSignature", "Casablanca"));
+        p.put("statutsRefondus", Map.of("nombreOriginaux", "quatre")); // L3 (D6) : valeur confirmee
         Map<String, Object> vars = mapper.map("STATUTS_REFONDUS_SARL", p);
         String text = render("STATUTS_REFONDUS_SARL", vars);
         String digits = text.replaceAll("[\\s\\u00A0\\u202F]", "");
@@ -123,9 +124,10 @@ class RefonteStatutsDirecteurOverlayTest {
                         "nom", "TAZI", "prenom", "Nadia", "cin", "T998877",
                         "nationalite", "marocaine"))))));
 
-        // Lot L3 : date de l'assemblee et lieu de signature (« Fait a ..., le ... »).
+        // Lot L3 : date de l'assemblee et lieu de signature ("Fait a ..., le ...").
         p.put("seance", Map.of("date", "2026-06-15"));
         p.put("convocation", Map.of("lieuSignature", "Casablanca"));
+        p.put("statutsRefondus", Map.of("nombreOriginaux", "quatre")); // L3 (D6) : valeur confirmee
         Map<String, Object> vars = mapper.map("STATUTS_REFONDUS_SARL", p);
         String text = render("STATUTS_REFONDUS_SARL", vars);
         String digits = text.replaceAll("[\\s\\u00A0\\u202F]", "");

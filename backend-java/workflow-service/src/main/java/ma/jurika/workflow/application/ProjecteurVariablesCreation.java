@@ -137,17 +137,13 @@ public class ProjecteurVariablesCreation {
         projeterBoucles(workspaceId, ticketId, auteur, sousCarte(s7, "boucles"), n);
 
         // ---- étape 9 — les dix champs qui n'atteignaient aucun document ------
-        // Lot L3 : LIEU_SIGNATURE se saisit a l'etape 7 (« Signature des actes »), une seule
-        // fois ; l'etape 9 le posait aussi, avec « Casablanca » par defaut, apres la generation.
-        poser(workspaceId, ticketId, auteur, "etape-9", n, "NOMBRE_ORIGINAUX", acte.get("nombreOriginaux"));
-        poser(workspaceId, ticketId, auteur, "etape-9", n, "HEURE_ACTE", acte.get("heureActe"));
-        poser(workspaceId, ticketId, auteur, "etape-9", n, "EXERCICE_DEBUT", acte.get("exerciceDebut"));
-        poser(workspaceId, ticketId, auteur, "etape-9", n, "EXERCICE_FIN", acte.get("exerciceFin"));
+        // Lot L3 (D6) : nombre d'originaux, heure, exercice social et commissaire aux comptes
+        // se saisissent a l'etape 7 (valeurs proposees, confirmees), avant la generation ;
+        // l'etape 9 les posait apres, et en recouvrait la saisie.
+        // Lot L3 : LIEU_SIGNATURE se saisit a l'etape 7 ("Signature des actes"), une seule
+        // fois ; l'etape 9 le posait aussi, avec "Casablanca" par defaut, apres la generation.
         poser(workspaceId, ticketId, auteur, "etape-9", n, "PREMIER_EXERCICE_CLOTURE",
                 acte.get("premierExerciceCloture"));
-        poser(workspaceId, ticketId, auteur, "etape-9", n, "COMMISSAIRE_COMPTES_NOM",
-                acte.get("commissaireComptesNom"));
-        poser(workspaceId, ticketId, auteur, "etape-9", n, "DUREE_MANDAT_CAC", acte.get("dureeMandatCac"));
         poser(workspaceId, ticketId, auteur, "etape-9", n, "ENGAGEMENTS_MANDAT", acte.get("engagementsMandat"));
         poser(workspaceId, ticketId, auteur, "etape-9", n, "ARTICLE_DESIGNATION_STATUTS",
                 acte.get("articleDesignationStatuts"));
@@ -215,7 +211,7 @@ public class ProjecteurVariablesCreation {
             g.put("GERANT_NATIONALITE", txt(d.get("nationalite")));
             g.put("GERANT_DATE_NAISSANCE", txt(d.get("dateNaissance")));
             g.put("GERANT_LIEU_NAISSANCE", txt(d.get("lieuNaissance")));
-            g.put("GERANT_PIECE_TYPE", txt(premier(d.get("pieceType"), "CIN")));
+            g.put("GERANT_PIECE_TYPE", typePiece(d, "MORALE".equalsIgnoreCase(txt(d.get("typePersonne")))));
             g.put("GERANT_PIECE_NUMERO", txt(premier(d.get("pieceNumero"), d.get("cinNumero"))));
             gerants.add(g);
 
@@ -276,7 +272,7 @@ public class ProjecteurVariablesCreation {
             it.put("ASSOCIE_NATIONALITE", txt(a.get("nationalite")));
             it.put("ASSOCIE_DATE_NAISSANCE", txt(a.get("dateNaissance")));
             it.put("ASSOCIE_LIEU_NAISSANCE", txt(a.get("lieuNaissance")));
-            it.put("ASSOCIE_PIECE_TYPE", txt(premier(a.get("pieceType"), "CIN")));
+            it.put("ASSOCIE_PIECE_TYPE", typePiece(a, morale));
             // Lot L3 : l'ecran des associes ecrit `cin` (le projecteur ne lisait que pieceNumero/cinNumero).
             it.put("ASSOCIE_PIECE_NUMERO", txt(premier(a.get("pieceNumero"), a.get("cinNumero"), a.get("cin"))));
             it.put("ASSOCIE_NOMBRE_PARTS", txt(a.get("nombreParts")));
@@ -386,6 +382,19 @@ public class ProjecteurVariablesCreation {
     private static Object nomComplet(Map<String, Object> o) {
         String n = (txt(o.get("repPrenom")) + " " + txt(o.get("repNom"))).trim();
         return n.isEmpty() ? null : n;
+    }
+
+    /**
+     * Lot L3 (D6) : type de piece d'identite, jamais suppose. Le parcours de creation
+     * saisit un "N de CIN" (format controle, scan de la CIN exige) : le type CIN est
+     * DERIVE de ce numero quand il est saisi. Sans numero, ou pour une personne
+     * morale, rien n'est derive : la generation nomme la donnee manquante.
+     */
+    static String typePiece(Map<String, Object> p, boolean morale) {
+        String saisi = txt(p.get("pieceType"));
+        if (!saisi.isEmpty()) return saisi;
+        if (morale) return "";
+        return premier(p.get("cin"), p.get("cinNumero")) == null ? "" : "CIN";
     }
 
     private static Object premier(Object... candidats) {

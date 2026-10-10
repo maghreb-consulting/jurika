@@ -40,4 +40,17 @@ class ProjecteurVariablesCreationTest {
         assertThat(ProjecteurVariablesCreation.variableDeLaCle("")).isEmpty();
         assertThat(ProjecteurVariablesCreation.variableDeLaCle(null)).isEmpty();
     }
+
+    @Test
+    @DisplayName("L3 (D6) : le type de piece n'est jamais suppose ; CIN seulement si un n° de CIN est saisi")
+    void leTypeDePieceSuitLaDonneeSaisie() {
+        assertThat(ProjecteurVariablesCreation.typePiece(java.util.Map.of("cin", "BK123456"), false)).isEqualTo("CIN");
+        assertThat(ProjecteurVariablesCreation.typePiece(java.util.Map.of("cinNumero", "BK123456"), false)).isEqualTo("CIN");
+        assertThat(ProjecteurVariablesCreation.typePiece(
+                java.util.Map.of("pieceType", "passeport", "pieceNumero", "P1"), false)).isEqualTo("passeport");
+        assertThat(ProjecteurVariablesCreation.typePiece(java.util.Map.of("nom", "ALAOUI"), false))
+                .as("aucun numero saisi : rien a deriver").isEmpty();
+        assertThat(ProjecteurVariablesCreation.typePiece(java.util.Map.of("rc", "12345"), true))
+                .as("personne morale : pas de CIN").isEmpty();
+    }
 }

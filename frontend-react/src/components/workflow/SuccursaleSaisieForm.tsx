@@ -20,6 +20,7 @@ import { Building2, Coins, UserCheck } from 'lucide-react';
 import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
 import { IdentityExtractor } from '../identity/IdentityExtractor';
+import { TypePieceProposee } from './ValeurProposee';
 import { buildLiquidateurOptions, EXTERNE_KEY } from './LiquidateurPicker';
 import type { DossierParties } from '../../services/workflow.service';
 
@@ -79,7 +80,7 @@ export function emptySuccursaleSaisie(): SuccursaleSaisieState {
       representantNom: '',
       nationalite: 'marocaine',
       adresse: '',
-      pieceType: 'CIN',
+      pieceType: '', // L3 (D6) : "CIN" propose a l'ecran, puis confirme
       pieceNumero: '',
       pouvoirs: '',
     },
@@ -435,12 +436,20 @@ export function SuccursaleSaisieForm({
                   onChange={(e) => setResp({ adresse: e.target.value })}
                 />
               </div>
-              <TextField
-                label="Type de pièce"
-                value={r.pieceType}
-                onChange={(e) => setResp({ pieceType: e.target.value })}
-                placeholder={isMorale ? 'RC' : 'CIN'}
-              />
+              {isMorale ? (
+                <TextField
+                  label="Type de pièce"
+                  value={r.pieceType}
+                  onChange={(e) => setResp({ pieceType: e.target.value })}
+                  placeholder="RC"
+                />
+              ) : (
+                <TypePieceProposee
+                  id="succ-responsable-piece-type"
+                  valeur={r.pieceType}
+                  onChange={(v) => setResp({ pieceType: v })}
+                />
+              )}
               <TextField
                 label={isMorale ? 'N° RC *' : 'N° de pièce *'}
                 value={r.pieceNumero}

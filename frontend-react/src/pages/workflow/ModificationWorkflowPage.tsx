@@ -25,6 +25,8 @@ import { Button } from '../../components/ui/Button';
 import { PdfPreviewModal } from '../../components/ui/PdfPreviewModal';
 import { TextField } from '../../components/ui/TextField';
 import { Select } from '../../components/ui/Select';
+import { TexteAide } from '../../components/ui/Aide';
+import { ValeurProposee } from '../../components/workflow/ValeurProposee';
 import { WorkflowShell } from '../../components/workflow/WorkflowShell';
 import type { RoadmapStep } from '../../components/workflow/WorkflowRoadmap';
 import { ticketService } from '../../services/ticket.service';
@@ -705,6 +707,12 @@ function ModificationWorkflowPageBody() {
   );
   // Phase 2 — dépôt légal (annonce) : n° + date attribués par le greffe APRÈS dépôt,
   // donc facultatifs à la génération (l'annonce se génère avec ces champs vides).
+  // L3 (D6) : valeurs d'usage des statuts mis a jour, PROPOSEES puis confirmees.
+  const [statutsRefondus, setStatutsRefondus] = useState<{
+    nombreOriginaux?: string;
+    exerciceDebut?: string;
+    exerciceFin?: string;
+  }>(() => (stepData.step3?.statutsRefondus as Record<string, string> | undefined) ?? {});
   const [depotLegalNumero, setDepotLegalNumero] = useState<string>(
     (stepData.step3?.depotLegalNumero as string) ?? '',
   );
@@ -986,11 +994,10 @@ function ModificationWorkflowPageBody() {
           adresse: String(a?.adresse ?? ''),
           nombreParts: parts,
           nombreVoix: parts,
-          presence: 'présent',
+          presence: '', // L3 (D6) : saisie a l'ecran, jamais supposee
           mandataireNom: '',
-          // Fix M6 (2026-08-16) — la CIN est en base depuis la création : sans
-          // elle, la comparution des PV d'associé unique sortait « CIN n° , ».
-          pieceType: 'CIN',
+          // L3 (D6) : type de piece repris de la fiche, sinon "CIN" propose a l'ecran.
+          pieceType: String(a?.pieceType ?? ''),
           pieceNumero: String(a?.cin ?? a?.cinNumero ?? a?.pieceNumero ?? ''),
         };
       })
@@ -1417,6 +1424,7 @@ function ModificationWorkflowPageBody() {
             depotLegalDate,
             pvSnapshot,
             feuilleSnapshot,
+            statutsRefondus,
           },
         };
       }
@@ -1424,7 +1432,7 @@ function ModificationWorkflowPageBody() {
     },
     [selected, datePV, decisionType, assembleeNature, convocationDate, convocationHeure,
       convocationSnapshot, selectedDossierId, resolutions, docs, ficheOverrides,
-      piecesJointes, depotLegalNumero, depotLegalDate, pvSnapshot, feuilleSnapshot],
+      piecesJointes, depotLegalNumero, depotLegalDate, pvSnapshot, feuilleSnapshot, statutsRefondus],
   );
 
   // `__stepKey` : les etapes 3 et 4 partagent la cle `step3` (cf. flushDraft).
@@ -1529,6 +1537,8 @@ function ModificationWorkflowPageBody() {
       decisionType,
       // Pass-through de l'état structuré complet pour la refonte (étape 2 backend).
       ficheStructuree: fiche,
+      // L3 (D6) : valeurs confirmees a l'ecran (bloc "Statuts mis a jour").
+      statutsRefondus,
     };
   }
 
@@ -2399,6 +2409,47 @@ function ModificationWorkflowPageBody() {
                       )}
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* L3 (D6) : valeurs d'usage des statuts mis a jour, proposees puis confirmees. */}
+            {hasRefonteTemplate && (
+              <div className="space-y-3 rounded-xl border border-border bg-bg-raised p-4" data-testid="refonte-valeurs-proposees">
+                <p className="text-sm font-semibold text-fg">Statuts mis à jour : valeurs à confirmer</p>
+                <TexteAide cle="refonte-valeurs-proposees" titre="Pourquoi confirmer ces valeurs ?">
+                  <p>
+                    La plateforme propose l’usage courant, mais ne l’imprime qu’après votre
+                    confirmation. Sans confirmation, les statuts mis à jour ne sont pas générés et
+                    la donnée manquante vous est indiquée.
+                  </p>
+                </TexteAide>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <ValeurProposee
+                    id="refonte-nombre-originaux"
+                    label="Nombre d’exemplaires originaux"
+                    proposition="6"
+                    valeur={statutsRefondus.nombreOriginaux}
+                    onChange={(v) => setStatutsRefondus((p) => ({ ...p, nombreOriginaux: v }))}
+                  />
+                  {isBlankValue(effectiveFiche?.exerciceDebut) && (
+                    <ValeurProposee
+                      id="refonte-exercice-debut"
+                      label="Début de l’exercice social"
+                      proposition="1er janvier"
+                      valeur={statutsRefondus.exerciceDebut}
+                      onChange={(v) => setStatutsRefondus((p) => ({ ...p, exerciceDebut: v }))}
+                    />
+                  )}
+                  {isBlankValue(effectiveFiche?.exerciceFin) && (
+                    <ValeurProposee
+                      id="refonte-exercice-fin"
+                      label="Fin de l’exercice social"
+                      proposition="31 décembre"
+                      valeur={statutsRefondus.exerciceFin}
+                      onChange={(v) => setStatutsRefondus((p) => ({ ...p, exerciceFin: v }))}
+                    />
+                  )}
                 </div>
               </div>
             )}

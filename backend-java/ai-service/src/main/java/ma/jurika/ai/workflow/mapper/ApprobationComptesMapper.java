@@ -100,7 +100,7 @@ public class ApprobationComptesMapper implements WorkflowDocumentMapper {
         // les PV de succursale. Un ordre du jour explicitement fourni reste respecté
         // (rétro-compatibilité des payloads existants).
         boolean isAu = templateCode.toUpperCase(Locale.ROOT).contains("SARL_AU");
-        vars.put("RESOLUTIONS", buildResolutions(approbation, vars, isAu));
+        vars.put("RESOLUTIONS", buildResolutions(approbation, vars, isAu, VoteSaisi.de(payload)));
         if (isEmptyList(vars.get("ORDRE_DU_JOUR"))) {
             vars.put("ORDRE_DU_JOUR", buildOrdreDuJour(approbation));
         }
@@ -141,12 +141,12 @@ public class ApprobationComptesMapper implements WorkflowDocumentMapper {
      * réglementées, quitus à la gérance, pouvoirs pour formalités.
      */
     static List<Map<String, Object>> buildResolutions(Map<String, Object> a,
-                                                      Map<String, Object> v, boolean isAu) {
+                                                      Map<String, Object> v, boolean isAu, VoteSaisi vote) {
         String exercice = str(v.get("EXERCICE_CLOS_DATE"));
         String resultatType = str(v.get("RESULTAT_TYPE"));
         String resultatChiffres = str(v.get("RESULTAT_NET_CHIFFRES"));
         String resultatLettres = str(v.get("RESULTAT_NET_LETTRES"));
-        String voixPour = defaultVoixPour(v);
+        VoteSaisi voixPour = vote;
 
         List<Map<String, Object>> res = new ArrayList<>();
 
@@ -248,14 +248,16 @@ public class ApprobationComptesMapper implements WorkflowDocumentMapper {
     }
 
     private static Map<String, Object> resolution(String intitule, String texte, boolean isAu,
-                                                  String voixPour) {
+                                                  VoteSaisi vote) {
+        // Lot L3 (D6) : resultat et decompte des voix SAISIS ; plus de "adoptee", de
+        // "l'unanimite" ni de "0" par defaut. Absents, ils sont nommes a la generation.
         Map<String, Object> r = new LinkedHashMap<>();
         r.put("RESOLUTION_INTITULE", intitule);
         r.put("RESOLUTION_TEXTE", texte);
-        r.put("RESOLUTION_RESULTAT", "adoptée");
-        r.put("RESOLUTION_VOIX_POUR", isAu ? "" : voixPour);
-        r.put("RESOLUTION_VOIX_CONTRE", isAu ? "" : "0");
-        r.put("RESOLUTION_ABSTENTIONS", isAu ? "" : "0");
+        r.put("RESOLUTION_RESULTAT", vote.resultat);
+        r.put("RESOLUTION_VOIX_POUR", isAu ? "" : vote.voixPour);
+        r.put("RESOLUTION_VOIX_CONTRE", isAu ? "" : vote.voixContre);
+        r.put("RESOLUTION_ABSTENTIONS", isAu ? "" : vote.abstentions);
         return r;
     }
 
@@ -266,11 +268,6 @@ public class ApprobationComptesMapper implements WorkflowDocumentMapper {
         return (n >= 1 && n < ORDINALES.length) ? ORDINALES[n] : (n + "E");
     }
 
-    /** Voix « pour » : parts présentes calculées par le noyau séance, sinon « l'unanimité ». */
-    private static String defaultVoixPour(Map<String, Object> v) {
-        String pp = str(v.get("PARTS_PRESENTES_CHIFFRES"));
-        return pp == null || pp.isBlank() ? "l'unanimité" : pp;
-    }
 
     private static boolean isEmptyList(Object o) {
         return !(o instanceof List<?> l) || l.isEmpty();

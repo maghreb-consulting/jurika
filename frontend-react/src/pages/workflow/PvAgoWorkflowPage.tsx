@@ -102,6 +102,7 @@ const SEANCE_SECTIONS = {
   resolutions: false,
   presence: true,
   voix: true,
+  vote: true, // L3 (D6) : quorum et vote saisis
 } as const;
 
 interface Affectation {
@@ -219,9 +220,9 @@ function PvAgoWorkflowPageBody() {
             adresse: String(a?.adresse ?? ''),
             nombreParts: parts,
             nombreVoix: parts,
-            presence: 'présent',
+            presence: '', // L3 (D6) : saisie a l'ecran, jamais supposee
             mandataireNom: '',
-            pieceType: 'CIN',
+            pieceType: String(a?.pieceType ?? ''), // L3 (D6)
             pieceNumero: String(a?.cin ?? a?.cinNumero ?? a?.pieceNumero ?? ''),
           };
         })

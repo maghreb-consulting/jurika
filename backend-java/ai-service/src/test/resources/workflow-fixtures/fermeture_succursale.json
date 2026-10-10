@@ -1,5 +1,7 @@
 {
   "PV_FERMETURE_SUCCURSALE_SARL": {
+    "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+    "quorumAtteint": "oui",
     "societe": {
       "denomination": "PARACOSME",
       "formeJuridique": "SARL",
@@ -37,6 +39,8 @@
     "formalitesMandataireNom": "M. Karim BENALI"
   },
   "PV_FERMETURE_SUCCURSALE_SARL_AU": {
+    "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+    "quorumAtteint": "oui",
     "societe": {
       "denomination": "PARACOSME AU",
       "formeJuridique": "SARL_AU",

@@ -73,9 +73,10 @@ class StatutsRefondusTest {
                 "societe", Map.of("denomination", fiche.get("denomination"),
                         "formeJuridique", fiche.get("formeJuridique")),
                 "modifications", modifications,
-                // Lot L3 : date de l'assemblee et lieu de signature (« Fait a ..., le ... »).
+                // Lot L3 : date de l'assemblee et lieu de signature ("Fait a ..., le ...").
                 "seance", Map.of("date", "2026-06-15"),
-                "convocation", Map.of("lieuSignature", "Casablanca"));
+                "convocation", Map.of("lieuSignature", "Casablanca"),
+                "statutsRefondus", Map.of("nombreOriginaux", "quatre")); // L3 (D6) : valeur confirmee
     }
 
     private static String text(byte[] bytes) throws IOException {

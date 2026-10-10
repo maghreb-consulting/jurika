@@ -25,6 +25,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
+import { TypePieceProposee } from './ValeurProposee';
 import {
   WorkflowDocumentBlock,
   freshDocState,
@@ -150,6 +151,7 @@ const AG_SECTIONS: SeanceSections = {
   resolutions: false,
   presence: true,
   voix: false,
+  vote: true, // L3 (D6) : quorum et vote saisis
 };
 
 const ETR_SECTIONS: SeanceSections = {
@@ -157,6 +159,7 @@ const ETR_SECTIONS: SeanceSections = {
   bureau: true,
   convocation: false,
   presence: false,
+  vote: true, // L3 (D6) : resultat du vote saisi (les voix pour viennent de l'organe)
 };
 
 const PV_CODE: Record<SuccursaleMode, { sarl: string; au: string }> = {
@@ -278,7 +281,7 @@ export function SuccursaleOperationForm({
     succursaleSeed?.responsableNationalite ?? 'marocaine',
   );
   const [respAdresse, setRespAdresse] = useState(succursaleSeed?.responsableAdresse ?? '');
-  const [respPieceType, setRespPieceType] = useState(succursaleSeed?.responsablePieceType ?? 'CIN');
+  const [respPieceType, setRespPieceType] = useState(succursaleSeed?.responsablePieceType ?? ''); // L3 (D6)
   const [respPieceNumero, setRespPieceNumero] = useState(
     succursaleSeed?.responsablePieceNumero ?? '',
   );
@@ -635,7 +638,7 @@ export function SuccursaleOperationForm({
                   <div className="md:col-span-2">
                     <TextField label="Adresse" value={respAdresse} onChange={(e) => setRespAdresse(e.target.value)} />
                   </div>
-                  <TextField label="Type de pièce" value={respPieceType} onChange={(e) => setRespPieceType(e.target.value)} placeholder={isEtr ? 'carte de séjour' : 'CIN'} />
+                  <TypePieceProposee id="succ-op-responsable-piece-type" valeur={respPieceType} onChange={setRespPieceType} />
                   <TextField label="N° de pièce" value={respPieceNumero} onChange={(e) => setRespPieceNumero(e.target.value)} />
                   <div className="md:col-span-2">
                     <TextField label="Pouvoirs" value={respPouvoirs} onChange={(e) => setRespPouvoirs(e.target.value)} placeholder="Laisser vide pour le texte par défaut" />

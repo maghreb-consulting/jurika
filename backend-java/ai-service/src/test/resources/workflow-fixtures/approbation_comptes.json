@@ -1,5 +1,7 @@
 {
   "PV_APPROBATION_COMPTES_SARL": {
+    "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+    "quorumAtteint": "oui",
     "societe": {
       "denomination": "ACME SARL",
       "formeJuridique": "SARL",
@@ -85,6 +87,8 @@
     }
   },
   "PV_APPROBATION_COMPTES_SARL_AU": {
+    "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+    "quorumAtteint": "oui",
     "societe": {
       "denomination": "ACME SARL AU",
       "formeJuridique": "SARL AU",

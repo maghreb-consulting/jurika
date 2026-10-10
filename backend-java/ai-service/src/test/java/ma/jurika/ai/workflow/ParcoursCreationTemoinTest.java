@@ -134,11 +134,17 @@ class ParcoursCreationTemoinTest {
         societe.put("email", "contact@paracosme.ma");
         // Lot L3 : plus aucune date ni ville inventee par le navigateur ; l'employe saisit
         // le lieu et la date de signature des actes (le front ne les remplit plus avec
-        // « Casablanca » et la date du jour).
+        // "Casablanca" et la date du jour).
         societe.put("lieuSignature", "Casablanca");
         societe.put("dateSignature", "2026-10-01");
         // Apport en nature : le commissaire aux apports est nomme (art. 59, loi 5-96).
         societe.put("commissaireApportsNom", "Cabinet AUDIT CONSEIL");
+        // Lot L3 (D6) : valeurs d'usage proposees a l'ecran (etape 7) et CONFIRMEES par
+        // l'employe ; le mapper ne les invente plus.
+        societe.put("nombreOriginaux", "six");
+        societe.put("heureActe", "10 heures");
+        societe.put("exerciceDebut", "1er janvier");
+        societe.put("exerciceFin", "31 d\u00e9cembre");
 
         Map<String, Object> gerant = new LinkedHashMap<>();
         gerant.put("civilite", "M");

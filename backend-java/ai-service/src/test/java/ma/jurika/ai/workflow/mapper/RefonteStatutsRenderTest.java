@@ -116,9 +116,10 @@ class RefonteStatutsRenderTest {
         p.put("societe", Map.of("denomination", fiche.get("denomination"),
                 "formeJuridique", fiche.get("formeJuridique")));
         p.put("modifications", modifications());
-        // Lot L3 : date de l'assemblee et lieu de signature (« Fait a ..., le ... »).
+        // Lot L3 : date de l'assemblee et lieu de signature ("Fait a ..., le ...").
         p.put("seance", Map.of("date", "2026-06-15"));
         p.put("convocation", Map.of("lieuSignature", "Casablanca"));
+        p.put("statutsRefondus", Map.of("nombreOriginaux", "quatre")); // L3 (D6) : valeur confirmee
         return p;
     }
 

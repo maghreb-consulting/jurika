@@ -30,6 +30,9 @@ public final class FichesCompletes {
             }
         }
         f.putIfAbsent("ville", "Rabat");
+        // L3 (D6) : exercice social de la societe, tel que ses statuts le fixent.
+        f.putIfAbsent("exerciceDebut", "1er janvier");
+        f.putIfAbsent("exerciceFin", "31 d\u00e9cembre");
         return f;
     }
 
@@ -39,6 +42,7 @@ public final class FichesCompletes {
         r.putIfAbsent("adresse", "10 rue des Tests, Rabat");
         r.putIfAbsent("dateNaissance", "1980-01-15");
         r.putIfAbsent("lieuNaissance", "Rabat");
+        r.putIfAbsent("pieceType", "CIN"); // L3 (D6) : valeur proposee, confirmee a l'ecran
         return r;
     }
 }
