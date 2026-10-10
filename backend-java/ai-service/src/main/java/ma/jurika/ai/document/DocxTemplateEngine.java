@@ -189,6 +189,28 @@ public class DocxTemplateEngine {
         this(manifestLoader, defaultsApplier, null);
     }
 
+    /** Lot L3 : dictionnaire unique du corpus charge (libelles des donnees manquantes), ou null. */
+    public ma.jurika.ai.document.corpus.DictionnaireUnique dictionnaire() {
+        return corpus == null ? null : corpus.dictionnaire();
+    }
+
+    /** Lot L3 : nom en clair (libelle du dictionnaire) des donnees externes manquantes du document. */
+    public static String enteteDonneesAObtenir(DocumentResult result, ma.jurika.ai.document.corpus.DictionnaireUnique dico) {
+        java.util.List<java.util.Map<String, String>> l = new ArrayList<>();
+        for (MissingVariableMarker.Manquante m : result.manquantes()) {
+            if (m.externe()) {
+                String lib = dico == null ? null : dico.libelle(m.nom());
+                l.add(java.util.Map.of("variable", m.nom(), "libelle", lib == null ? m.nom() : lib));
+            }
+        }
+        try {
+            return java.net.URLEncoder.encode(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(l),
+                    java.nio.charset.StandardCharsets.UTF_8);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     /** Lot L2 : codes rendus depuis le classpath alors qu'un corpus est charge. */
     public java.util.Set<String> codesServisHorsCorpus() {
         return java.util.Set.copyOf(codesServisHorsCorpus);

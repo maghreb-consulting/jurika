@@ -200,8 +200,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU (A_DECIDER directeur : manque, ou doublon de
   PV_CREATION_SUCCURSALE_ETRANGERE_SARL qui vise une societe etrangere sans forme).
   Tableau : `~/docs/rapports/L2_correspondance_gabarits.md`.
-- **D8 : afficher un message clair a l'utilisateur au lieu d'une erreur 500 quand un modele est
-  refuse** (gabarit du corpus modifie depuis le chargement ou non rendable : `CorpusException`).
 
 ### Lot L6 (qualite de la langue, ergonomie) -- a prevoir
 

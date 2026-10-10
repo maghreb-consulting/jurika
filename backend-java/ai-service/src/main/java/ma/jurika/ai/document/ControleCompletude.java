@@ -38,16 +38,44 @@ public final class ControleCompletude {
      *         nommant chaque variable fautive ET la ligne où elle apparaît.
      */
     public static String motifDeRefus(DocxTemplateEngine.DocumentResult result) {
-        if (result == null) return null;
-        List<MissingVariableMarker.Manquante> bloquantes = result.manquantesBloquantes();
-        if (bloquantes.isEmpty()) return null;
+        List<GenerationRefuseeException.DonneeManquante> d = donneesManquantes(result, null);
+        return d.isEmpty() ? null : message(d);
+    }
 
-        StringBuilder sb = new StringBuilder(
-                "Génération refusée : le document sortirait avec un blanc au milieu d'une phrase. ");
-        for (MissingVariableMarker.Manquante m : bloquantes) {
-            sb.append('$').append(m.nom()).append(" — « ").append(m.endroit()).append(" » ; ");
+    /**
+     * Lot L3 (regle des variables) : les donnees INTERNES manquantes, nommees avec le
+     * libelle du dictionnaire unique (ou le nom de la variable s'il n'en donne pas).
+     */
+    public static List<GenerationRefuseeException.DonneeManquante> donneesManquantes(
+            DocxTemplateEngine.DocumentResult result, ma.jurika.ai.document.corpus.DictionnaireUnique dico) {
+        if (result == null) return List.of();
+        return result.manquantesBloquantes().stream()
+                .map(m -> new GenerationRefuseeException.DonneeManquante(m.nom(), libelle(m.nom(), dico), m.endroit()))
+                .toList();
+    }
+
+    /** Lot L3 : leve le refus structure si une donnee interne manque. */
+    public static void verifier(String templateCode, DocxTemplateEngine.DocumentResult result,
+                                ma.jurika.ai.document.corpus.DictionnaireUnique dico) {
+        List<GenerationRefuseeException.DonneeManquante> d = donneesManquantes(result, dico);
+        if (!d.isEmpty()) {
+            throw new GenerationRefuseeException(templateCode, message(d), d);
         }
-        sb.setLength(sb.length() - 2);
+    }
+
+    static String libelle(String variable, ma.jurika.ai.document.corpus.DictionnaireUnique dico) {
+        String l = dico == null ? null : dico.libelle(variable);
+        return l == null ? variable : l;
+    }
+
+    private static String message(List<GenerationRefuseeException.DonneeManquante> d) {
+        StringBuilder sb = new StringBuilder("Génération refusée : des données manquent. ");
+        for (GenerationRefuseeException.DonneeManquante m : d) {
+            sb.append(m.libelle()).append(" ($").append(m.variable()).append(") — « ")
+                    .append(m.endroit()).append(" » ; ");
+        }
+        sb.setLength(sb.length() - 3);
+        sb.append('.');
         return sb.toString();
     }
 }

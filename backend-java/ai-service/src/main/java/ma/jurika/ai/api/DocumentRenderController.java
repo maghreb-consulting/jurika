@@ -78,6 +78,8 @@ public class DocumentRenderController {
             return libreOfficeUnavailable();
         }
         DocumentResult docx = engine.generate(templateCode, variables);
+        // Lot L3 : meme regle que la generation par parcours (donnee interne manquante : refus nomme).
+        ma.jurika.ai.document.ControleCompletude.verifier(templateCode, docx, engine.dictionnaire());
         byte[] pdfBytes;
         try {
             pdfBytes = pdfConverter.convert(docx.bytes(), templateCode);

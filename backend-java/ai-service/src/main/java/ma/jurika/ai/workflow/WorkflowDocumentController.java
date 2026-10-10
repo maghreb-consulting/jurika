@@ -190,6 +190,10 @@ public class WorkflowDocumentController {
                 .header("X-Workflow-Code", workflowCode)
                 .header("X-Template-Code", templateCode)
                 .header("X-Missing-Variables", String.join(",", result.missingVariables()))
+                // Lot L3 : donnees externes manquantes (marquees « A OBTENIR »), en JSON
+                // encode URL : le front les affiche et la plateforme les reclame.
+                .header("X-Donnees-A-Obtenir",
+                        DocxTemplateEngine.enteteDonneesAObtenir(result, docxTemplateEngine.dictionnaire()))
                 .contentType(MediaType.parseMediaType(result.contentType()))
                 .body(result.bytes());
     }
@@ -236,16 +240,14 @@ public class WorkflowDocumentController {
      * un formulaire DGI incomplet reste un formulaire recevable — c'est la
      * classification posée au lot 5.
      *
-     * <p>Portée volontairement limitée au workflow CRÉATION : les huit autres
-     * conservent le comportement historique (marqueur rouge dans le document).
+     * <p>Lot L3 : etendu a tous les parcours (regle des variables) ; refus structure
+     * ({@code GenerationRefuseeException}, 422 avec la liste des donnees manquantes).
      */
     private void refuserSiTrouGrammatical(String workflowCode, String templateCode,
                                            DocumentResult result) {
-        if (!"CREATION_SARL".equals(workflowCode)) return;
-        String motif = ma.jurika.ai.document.ControleCompletude.motifDeRefus(result);
-        if (motif == null) return;
-        log.warn("Refus generation {} / {} : {}", workflowCode, templateCode, motif);
-        throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, motif);
+        // Lot L3 (regle des variables) : TOUS les parcours, et plus seulement la creation.
+        // Une donnee interne manquante bloque la generation et elle est nommee.
+        ma.jurika.ai.document.ControleCompletude.verifier(templateCode, result, docxTemplateEngine.dictionnaire());
     }
 
     /**
