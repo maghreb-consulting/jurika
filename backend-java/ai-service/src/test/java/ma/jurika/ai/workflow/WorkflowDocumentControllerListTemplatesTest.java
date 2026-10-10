@@ -46,7 +46,7 @@ class WorkflowDocumentControllerListTemplatesTest {
         manifestLoader = mock(TemplateManifestLoader.class);
         docxTemplateEngine = mock(DocxTemplateEngine.class);
         controller = new WorkflowDocumentController(mappingService, docxTemplateEngine, manifestLoader,
-                new SocieteIdentityEnricher((ws, id) -> java.util.Map.of()));
+                new SocieteIdentityEnricher((ws, id) -> java.util.Map.of()), (ws, t, e) -> java.util.Map.of());
     }
 
     private TemplateManifest.TemplateEntry entry(String code, String workflow, String origin,

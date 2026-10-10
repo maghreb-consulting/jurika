@@ -45,7 +45,7 @@ class GenerationRefusNommeTest {
     @BeforeEach
     void setUp() {
         WorkflowDocumentController c = new WorkflowDocumentController(mapping, engine,
-                mock(TemplateManifestLoader.class), new SocieteIdentityEnricher((ws, id) -> Map.of()));
+                mock(TemplateManifestLoader.class), new SocieteIdentityEnricher((ws, id) -> Map.of()), (ws, t, e) -> Map.of());
         mvc = MockMvcBuilders.standaloneSetup(c).setControllerAdvice(new GenerationExceptionHandler()).build();
         when(mapping.map(any(), any(), anyMap())).thenReturn(Map.of());
         when(engine.dictionnaire()).thenReturn(new DictionnaireUnique(Set.of("$SIEGE_VILLE", "$ICE"), Map.of(),
@@ -98,5 +98,43 @@ class GenerationRefusNommeTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("MODELE_REFUSE"));
+    }
+
+    // ---- Lot L3 (P2) : la creation est generee depuis le magasin du ticket ----
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void creation_la_charge_du_serveur_remplace_celle_du_navigateur() {
+        java.util.UUID ws = java.util.UUID.randomUUID();
+        java.util.UUID employe = java.util.UUID.randomUUID();
+        java.util.UUID ticket = java.util.UUID.randomUUID();
+        Map<String, Object> serveur = Map.of("societe", Map.of("denomination", "NOVA (magasin)"), "ticketId", ticket.toString());
+        WorkflowDocumentController c = new WorkflowDocumentController(mapping, engine,
+                mock(TemplateManifestLoader.class), new SocieteIdentityEnricher((w, id) -> Map.of()),
+                (w, t, e) -> {
+                    assertThat(List.of(w, t, e)).containsExactly(ws, ticket, employe);
+                    return serveur;
+                });
+        when(engine.generate(eq("ANNONCE_LEGALE_CONSTITUTION"), anyMap())).thenReturn(resultat());
+        var user = new ma.jurika.common.security.AuthenticatedUser(employe, ws, "e@x.ma", ma.jurika.common.security.Role.EMPLOYE);
+
+        c.generate("CREATION_SARL", "ANNONCE_LEGALE_CONSTITUTION", user,
+                Map.of("ticketId", ticket.toString(), "societe", Map.of("denomination", "VALEUR DU NAVIGATEUR")));
+
+        org.mockito.ArgumentCaptor<Map<String, Object>> charge = org.mockito.ArgumentCaptor.forClass(Map.class);
+        org.mockito.Mockito.verify(mapping).map(eq("CREATION_SARL"), eq("ANNONCE_LEGALE_CONSTITUTION"), charge.capture());
+        assertThat((Map<String, Object>) charge.getValue().get("societe")).containsEntry("denomination", "NOVA (magasin)");
+    }
+
+    @Test
+    void creation_sans_ticket_refusee() {
+        WorkflowDocumentController c = new WorkflowDocumentController(mapping, engine,
+                mock(TemplateManifestLoader.class), new SocieteIdentityEnricher((w, id) -> Map.of()), (w, t, e) -> Map.of());
+        var user = new ma.jurika.common.security.AuthenticatedUser(java.util.UUID.randomUUID(), java.util.UUID.randomUUID(),
+                "e@x.ma", ma.jurika.common.security.Role.EMPLOYE);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> c.generate("CREATION_SARL", "STATUTS_SARL", user,
+                        Map.of("societe", Map.of("denomination", "X"))))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("depuis le ticket");
     }
 }

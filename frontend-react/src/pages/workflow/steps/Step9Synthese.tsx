@@ -73,12 +73,10 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
   const siegeRaw = (data.step2 as Record<string, unknown>) ?? {};
   const capRaw = (data.step3 as Record<string, unknown>) ?? {};
   const actRaw = (data.step4 as Record<string, unknown>) ?? {};
-  // 2026-08 (contrat CREATION) — pré-remplissage : ville du siège pour lieuSignature.
-  const siegeInner = (siege.siege as Record<string, unknown>) ?? siege;
-  const defaultLieu =
-    (siegeInner.villeGreffe as string) ??
-    (siegeInner.province as string) ??
-    'Casablanca';
+  // Lot L3 : le lieu (et la date) de signature se saisissent a l'etape 7, une seule
+  // fois, sans valeur par defaut (« Casablanca » etait invente ici).
+  const lieuSignatureEtape7 =
+    ((data.step7 as { complements?: Record<string, string> })?.complements?.lieuSignature ?? '').trim();
   const acteExisting = ((data.step9 as { acteParams?: Record<string, unknown> })?.acteParams) ?? {};
   const dirs = ((data.step5 as { dirigeants?: Array<{ nom: string; prenom: string; fonction?: string; isStatutaire: boolean }> })?.dirigeants ??
     []) as Array<{ nom: string; prenom: string; fonction?: string; isStatutaire: boolean }>;
@@ -104,9 +102,6 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
   const [engagementsMandat, setEngagementsMandat] = useState<string>(
     (acteExisting.engagementsMandat as string) ?? '',
   );
-  const [lieuSignature, setLieuSignature] = useState<string>(
-    (acteExisting.lieuSignature as string) ?? defaultLieu,
-  );
   const [nombreOriginaux, setNombreOriginaux] = useState<number>(
     Number(acteExisting.nombreOriginaux ?? 6),
   );
@@ -128,7 +123,6 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
     exerciceFin,
     premierExerciceCloture,
     engagementsMandat,
-    lieuSignature,
     nombreOriginaux,
     articleDesignationStatuts,
     heureActe,
@@ -345,16 +339,11 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Lieu de signature
-            </label>
-            <input aria-label="Lieu de signature"
-              type="text"
-              value={lieuSignature}
-              onChange={(e) => setLieuSignature(e.target.value)}
-              placeholder="Ex: Casablanca"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
-            />
+            <p className="mb-1 block text-xs font-medium text-fg">Lieu de signature</p>
+            <p className="text-sm text-fg">
+              {lieuSignatureEtape7 || 'Non renseigné'}
+              <span className="ml-1 text-xs text-fg-subtle">(saisi à l’étape 7, « Signature des actes »)</span>
+            </p>
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-fg">

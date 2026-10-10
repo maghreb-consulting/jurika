@@ -36,9 +36,18 @@ const TEMPLATES = [
   placeholderStyle: 'uppercase_dollar',
 }));
 
-vi.mock('../../../../services/workflowDocumentService', () => ({
-  listTemplatesForWorkflow: vi.fn(async () => TEMPLATES),
-  generateDocument: vi.fn(async () => ({ blob: new Blob(['x']), filename: 'x.docx' })),
+vi.mock('../../../../services/workflowDocumentService', async () => {
+  const vrai = await vi.importActual<typeof import('../../../../services/workflowDocumentService')>(
+    '../../../../services/workflowDocumentService',
+  );
+  return {
+    ...vrai,
+    listTemplatesForWorkflow: vi.fn(async () => TEMPLATES),
+    generateDocument: vi.fn(async () => ({ blob: new Blob(['x']), filename: 'x.docx', donneesAObtenir: [] })),
+  };
+});
+vi.mock('../../../../services/workflow.service', () => ({
+  workflowService: { save: vi.fn(async () => ({})) },
 }));
 
 vi.mock('../../../../services/dataroom.service', () => ({
@@ -261,62 +270,54 @@ describe('Étape 7 — régénérer un document modifié à la main', () => {
   });
 });
 
-describe('Étape 7 — la durée du mandat arrive jusqu’au générateur', () => {
+describe('Étape 7 — la charge utile est construite par le serveur (lot L3, P2)', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('transmet la durée saisie à l’étape 5, au lieu de la laisser tomber', async () => {
+  function rendreAvecTicket() {
+    return render(
+      <Step7Generation existing={{}} data={data} saving={false} onSubmit={vi.fn(async () => undefined)} ticketId="t-1" />,
+    );
+  }
+
+  it('n’envoie que le ticket : plus de date du jour ni de « Casablanca » inventés', async () => {
     const { generateDocument } = await import('../../../../services/workflowDocumentService');
-    rendre();
-    const boutons = await screen.findAllByRole('button', { name: /^Generer$/i });
-    fireEvent.click(boutons[0]);
-
-    await waitFor(() => expect(generateDocument).toHaveBeenCalled());
-    const [, , payload] = (generateDocument as unknown as {
-      mock: { calls: unknown[][] };
-    }).mock.calls[0] as [string, string, Record<string, never>];
-
-    const gerants = (payload as unknown as { gerants: { dureeMandat?: string }[] }).gerants;
-    expect(gerants[0].dureeMandat).toBe('3 année(s)');
-
-    const societe = (payload as unknown as { societe: { dureeGerance?: string } }).societe;
-    expect(societe.dureeGerance).toBe('3 année(s)');
-  });
-
-  it('ne renvoie JAMAIS la durée de la société comme durée de mandat', async () => {
-    const { generateDocument } = await import('../../../../services/workflowDocumentService');
-    rendre();
+    rendreAvecTicket();
     const boutons = await screen.findAllByRole('button', { name: /^Generer$/i });
     fireEvent.click(boutons[0]);
     await waitFor(() => expect(generateDocument).toHaveBeenCalled());
-    const [, , payload] = (generateDocument as unknown as {
-      mock: { calls: unknown[][] };
-    }).mock.calls[0] as [string, string, Record<string, never>];
-    const societe = (payload as unknown as {
-      societe: { dureeGerance?: string; dureeAnnees?: number };
-    }).societe;
-    // 99 est la durée de la SOCIÉTÉ : elle ne doit pas tenir lieu de mandat.
-    expect(societe.dureeAnnees).toBe(99);
-    expect(societe.dureeGerance).not.toBe('99 années');
-    expect(societe.dureeGerance).not.toBe(99);
+    const [workflow, , payload] = (generateDocument as unknown as { mock: { calls: unknown[][] } }).mock.calls[0];
+    expect(workflow).toBe('CREATION_SARL');
+    expect(payload).toEqual({ ticketId: 't-1' });
   });
 
-  it('transporte les saisies du parcours sous la clé que le mapper relit', async () => {
+  it('enregistre l’étape avant de générer : la saisie arrive au magasin, signature comprise', async () => {
+    const { workflowService } = await import('../../../../services/workflow.service');
     const { generateDocument } = await import('../../../../services/workflowDocumentService');
-    rendre();
+    rendreAvecTicket();
     await screen.findByTestId('choix-document-8');
     fireEvent.click(caseDuDocument(8));
     fireEvent.change(await screen.findByLabelText(/Taxe professionnelle commune/i), {
       target: { value: 'Casablanca-Anfa' },
     });
-
+    fireEvent.change(screen.getByLabelText('Lieu de signature (ville)'), { target: { value: 'Rabat' } });
+    fireEvent.change(screen.getByLabelText('Date de signature'), { target: { value: '2026-10-01' } });
     const boutons = await screen.findAllByRole('button', { name: /^Generer$/i });
     fireEvent.click(boutons[0]);
     await waitFor(() => expect(generateDocument).toHaveBeenCalled());
+    const save = workflowService.save as unknown as { mock: { calls: unknown[][] } };
+    const [ticket, etape, donnees] = save.mock.calls[0] as [string, number, { step7: { complements: Record<string, string> } }];
+    expect([ticket, etape]).toEqual(['t-1', 7]);
+    expect(donnees.step7.complements).toMatchObject({
+      tpCommune: 'Casablanca-Anfa', lieuSignature: 'Rabat', dateSignature: '2026-10-01',
+    });
+  });
 
-    const [, , payload] = (generateDocument as unknown as {
-      mock: { calls: unknown[][] };
-    }).mock.calls[0] as [string, string, Record<string, never>];
-    const creation = (payload as unknown as { creation: Record<string, unknown> }).creation;
-    expect(creation.tpCommune).toBe('Casablanca-Anfa');
+  it('sans ticket, ne génère rien et le dit', async () => {
+    const { generateDocument } = await import('../../../../services/workflowDocumentService');
+    rendre();
+    const boutons = await screen.findAllByRole('button', { name: /^Generer$/i });
+    fireEvent.click(boutons[0]);
+    expect(await screen.findByText(/rattaché à aucun ticket/)).toBeInTheDocument();
+    expect(generateDocument).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
@@ -18,9 +18,15 @@ import {
 } from 'lucide-react';
 import {
   generateDocument,
+  GenerationRefuseeError,
   listTemplatesForWorkflow,
+  type DonneeManquante,
+  type DonneeNommee,
   type TemplateInfo,
 } from '../../../services/workflowDocumentService';
+import { workflowService } from '../../../services/workflow.service';
+import { RetourGeneration } from '../../../components/workflow/RetourGeneration';
+import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 import { DocumentEditor } from '../../../components/document/DocumentEditor';
 import { CollaboraEditor } from '../../../components/document/CollaboraEditor';
 import { dataroomService } from '../../../services/dataroom.service';
@@ -33,10 +39,8 @@ import {
   REPRISES_AUTOMATIQUES,
   type ChampCreation,
 } from './documents-creation';
-import { dureeMandatLabel } from './Step5Dirigeants';
 import { buildDocFilename } from '../../../components/workflow/workflowFilename';
 import type { DocumentType } from '../../../types/dataroom';
-import { formatObjetSocial } from '../objetSocial';
 
 /**
  * 2026-06-09 (fix LLM-off) — Plus AUCUN passage par LLM (Groq / Ollama / autre)
@@ -115,6 +119,10 @@ interface DocState {
    * avertissement generique se clique sans se lire.
    */
   editeManuellementAt?: string | null;
+  /** Lot L3 : donnees internes manquantes nommees par le serveur (generation refusee). */
+  refus?: DonneeManquante[];
+  /** Lot L3 : donnees externes manquantes, marquees « À OBTENIR » dans l'acte et reclamees. */
+  aObtenir?: DonneeNommee[];
 }
 
 function freshState(): DocState {
@@ -588,7 +596,6 @@ export function Step7Generation({
    */
   const voieSiege = siege.justificatifType as string | undefined;
   const cap = unwrapStep(data.step3, 'capital');
-  const act = unwrapStep(data.step4, 'activite');
   const formeFromStep1 = den.formeJuridique as string | undefined;
   const forme: 'SARL' | 'SARL_AU' = formeFromStep1 === 'SARL_AU' ? 'SARL_AU' : 'SARL';
   const STATUTS_TEMPLATE_CODE = STATUTS_BY_FORME[forme];
@@ -598,8 +605,6 @@ export function Step7Generation({
   const statutaires = dirs.filter((d) => d.isStatutaire === true);
   const nonStatutaires = dirs.filter((d) => d.isStatutaire === false);
   const hasNonStatutaire = nonStatutaires.length > 0;
-  const associesStep6 = ((data.step6 as { associes?: Array<Record<string, unknown>> })
-    ?.associes ?? []) as Array<Record<string, unknown>>;
 
   // C4 2026-06-21 — Preflight : ceinture-et-bretelles de la politique stricte.
   // C1 force deja la saisie a chaque etape ; ce panneau attrape les brouillons
@@ -682,214 +687,30 @@ export function Step7Generation({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [forme, hasNonStatutaire, STATUTS_TEMPLATE_CODE, ACTE_TEMPLATE_CODE]);
 
-  const buildPayload = useCallback(
-    (): Record<string, unknown> => {
-      const capital = Number(cap.capitalSocialMad ?? 0);
-      const numeraireLibere = Number(cap.apportNumeraireLibere ?? 0);
-      const apportNature = Number(cap.apportNature ?? 0);
-      const apportIndustrie = Number(cap.apportIndustrie ?? 0);
-      // Le total libere = numeraire libere + nature (100%) + industrie (100%).
-      const capitalLibere = numeraireLibere + apportNature + apportIndustrie;
-      const today = new Date().toISOString().slice(0, 10);
-
-      return {
-        societe: {
-          denomination: den.denomination,
-          formeJuridique: forme,
-          adresseSiege: siege.adresse ?? siege.adresseLigne1,
-          capitalChiffres: capital,
-          // 2026-08 — objet social multi-activités : liste à tirets si plusieurs
-          // activités (le moteur rend les \n en <w:br/>), phrase sinon.
-          objetSocial: formatObjetSocial(act.activites, act.description),
-          activiteSociete: act.description,
-          nombreParts: Number(cap.nombreParts ?? 0),
-          valeurPart: Number(cap.valeurNominale ?? 0),
-          dureeAnnees: Number(cap.dureeAnnees ?? 99),
-          iceNumero: den.ice,
-          // 2026-06-11 — IF collecte en Step1 (optionnel) - propage aux Statuts.
-          ifNumero: den.ifFiscal,
-          rcVille:
-            ((siege.commune as string | undefined) ??
-              (siege.ville as string | undefined) ??
-              'Casablanca'),
-          dateConstitution: (existing as Record<string, unknown> | undefined)
-            ?.dateConstitution ?? today,
-          // 2026-08 (fix VILLE_GREFFE) — clé manquante dans CE builder : sans elle,
-          // le mapper retombait sur `tribunalCompetent`/`rcVille` = la COMMUNE.
-          // On injecte la ville du greffe (Step2) — jamais la commune ; défaut =
-          // province/ville du siège.
-          villeGreffe:
-            ((siege.villeGreffe as string | undefined) ??
-              (siege.province as string | undefined) ??
-              'Casablanca'),
-          // tribunalCompetent : ville du tribunal — on privilégie désormais la
-          // ville du greffe / la province (jamais la commune administrative).
-          tribunalCompetent:
-            (siege.tribunal as string | undefined) ??
-            (siege.villeGreffe as string | undefined) ??
-            (siege.province as string | undefined) ??
-            'Casablanca',
-          villeSignature:
-            (siege.villeGreffe as string | undefined) ??
-            (siege.province as string | undefined) ??
-            (siege.commune as string | undefined) ??
-            'Casablanca',
-          // Lot 5 (2026-09-07) — donnees DEJA saisies aux etapes 1, 2 et 4 mais que
-          // le payload ne transportait pas, faute de modele qui les consomme. Les
-          // trois formulaires les reclament : les redemander aurait ete une saisie
-          // en double.
-          sigle: den.sigle,
-          certificatNegatifNumero: den.cnNumero,
-          certificatNegatifDate: den.cnDate,
-          ville:
-            ((siege.commune as string | undefined) ??
-              (siege.ville as string | undefined) ??
-              (siege.province as string | undefined)),
-          activites: act.activites,
-          nationalite: 'marocaine',
-          // 2026-09-08 — repli de la durée du mandat, quand aucun gérant ne porte
-          // le sien (brouillon antérieur à la saisie par dirigeant).
-          dureeGerance: (gerance7.dureeGerance ?? gerance7.dureeMandat) as string | undefined,
-        },
-        // Lot 5 — saisies propres aux formulaires (cf. `documents-creation.ts`).
-        // Elles n'existent nulle part ailleurs dans le workflow.
-        formulaires: complements,
-        // Lot B — LES SAISIES DU CORPUS DU 9 SEPTEMBRE, champs simples et
-        // boucles. Le mapper les lit sous cette clé, d'après le catalogue
-        // généré : aucun nom de variable n'est écrit ici.
-        creation: { ...complements, ...boucles },
-        gerants: dirs.map((d) => ({
-          civilite: d.civilite ?? 'M',
-          prenom: d.prenom ?? '',
-          nom: d.nom ?? '',
-          cin: d.cinNumero ?? d.cin ?? '',
-          nationalite: d.nationalite ?? 'marocaine',
-          adresse: d.adresse ?? '',
-          dateNaissance: d.dateNaissance ?? undefined,
-          lieuNaissance: d.lieuNaissance ?? undefined,
-          // 2026-06-11 — Pour {{gerant_piece_validite}}.
-          pieceValidite: d.pieceValidite ?? undefined,
-          /**
-           * 2026-09-08 — LA DURÉE DU MANDAT ARRIVE JUSQU'À L'ACTE.
-           *
-           * Elle était saisie à l'étape 5, rendue OBLIGATOIRE là-bas, et le
-           * préflight ci-dessus BLOQUE encore la génération si elle manque — puis
-           * ce payload ne la transmettait pas. Le moteur retombait sur son défaut
-           * codé en dur, et l'acte de nomination annonçait « pour une durée de
-           * 99 années » — la durée de la SOCIÉTÉ — quel que soit le mandat choisi.
-           * On forçait une saisie pour la jeter.
-           *
-           * Le constructeur de l'étape 9 transmettait déjà la donnée : les deux
-           * divergeaient, et c'est celui qui produit le document validé par
-           * l'employé qui avait tort. Le lot C a retiré le second et porté la
-           * construction côté serveur — il n'en reste qu'un.
-           *
-           * Le mandat PROPRE au dirigeant prime ; l'agrégat de l'étape 5 sert de
-           * repli pour les brouillons antérieurs à la saisie par dirigeant.
-           */
-          dureeMandat: d.dureeMandatType
-            ? dureeMandatLabel(d as { dureeMandatType?: string; dureeAnnees?: number })
-            : (gerance7.dureeMandat as string | undefined),
-          isStatutaire: d.isStatutaire === true,
-          typePersonne: d.typePersonne ?? 'PHYSIQUE',
-          denomination: d.denomination ?? undefined,
-          rc: d.rc ?? undefined,
-          ice: d.ice ?? undefined,
-          ifFiscal: d.ifFiscal ?? undefined,
-          siege: d.siege ?? undefined,
-          // 2026-06-11 — Pour {{gerant_pm_capital}} / {{gerant_pm_deliberation_date}}.
-          capitalEntite: d.capitalEntite !== undefined ? Number(d.capitalEntite) : undefined,
-          deliberationDate: d.deliberationDate ?? undefined,
-          representantLegal:
-            d.representantLegal ??
-            (d.repPrenom || d.repNom
-              ? `${(d.repCivilite as string) === 'M' ? 'M.' : (d.repCivilite ?? '')} ${d.repPrenom ?? ''} ${d.repNom ?? ''}`.trim()
-              : undefined),
-        })),
-        associes: associesStep6.map((a) => ({
-          civilite: a.civilite ?? 'M',
-          prenom: a.prenom ?? '',
-          nom: a.nom ?? '',
-          cin: a.cin ?? '',
-          nationalite: a.nationalite ?? 'marocaine',
-          adresse: a.adresse ?? '',
-          dateNaissance: a.dateNaissance ?? undefined,
-          lieuNaissance: a.lieuNaissance ?? undefined,
-          // 2026-06-11 — Pour {{associe_pp_piece_validite}}.
-          pieceValidite: a.pieceValidite ?? undefined,
-          nombreParts: Number(a.nombreParts ?? 0),
-          montantApport: Number(a.montantApport ?? 0),
-          typeApport: a.typeApport ?? 'NUMERAIRE',
-          typePersonne: a.typePersonne ?? 'PHYSIQUE',
-          // PM
-          denomination: a.denomination ?? undefined,
-          rc: a.rc ?? undefined,
-          ice: a.ice ?? undefined,
-          ifFiscal: a.ifFiscal ?? undefined,
-          siege: a.siege ?? undefined,
-          // 2026-06-11 — Pour {{associe_pm_capital}} / {{associe_pm_deliberation_date}}.
-          capitalEntite: a.capitalEntite !== undefined ? Number(a.capitalEntite) : undefined,
-          deliberationDate: a.deliberationDate ?? undefined,
-          representantLegal:
-            (a.repPrenom || a.repNom)
-              ? `${(a.repCivilite as string) === 'M' ? 'M.' : (a.repCivilite ?? '')} ${a.repPrenom ?? ''} ${a.repNom ?? ''}`.trim()
-              : undefined,
-          repCivilite: a.repCivilite ?? undefined,
-          repPrenom: a.repPrenom ?? undefined,
-          repNom: a.repNom ?? undefined,
-          repCin: a.repCin ?? undefined,
-          repQualite: a.repQualite ?? undefined,
-        })),
-        depot: {
-          banque: cap.banqueDepot ?? undefined,
-          dateSignature: today,
-          capitalLibere,
-        },
-        // Champs plats (compat retro avec l'ancien payload).
-        denomination: den.denomination,
-        formeJuridique: forme,
-        siegeAdresse: siege.adresse,
-        capitalSocial: capital,
-        objetSocial: act.description,
-        nombreParts: Number(cap.nombreParts ?? 0),
-        valeurPart: Number(cap.valeurNominale ?? 0),
-        dureeAnnees: Number(cap.dureeAnnees ?? 99),
-        iceNumero: den.ice,
-      };
-    },
-    [
-      den.denomination,
-      den.ice,
-      den.ifFiscal,
-      forme,
-      siege.adresse,
-      siege.adresseLigne1,
-      siege.commune,
-      siege.ville,
-      siege.tribunal,
-      cap.capitalSocialMad,
-      cap.nombreParts,
-      cap.valeurNominale,
-      cap.dureeAnnees,
-      cap.apportNumeraireLibere,
-      cap.apportNature,
-      cap.apportIndustrie,
-      cap.banqueDepot,
-      act.description,
-      act.activites,
-      gerance7.dureeGerance,
-      gerance7.dureeMandat,
-      den.sigle,
-      den.cnNumero,
-      den.cnDate,
-      siege.province,
-      siege.villeGreffe,
-      complements,
-      dirs,
-      associesStep6,
-      existing,
-    ],
-  );
+  /**
+   * Lot L3 (P2, RG-VAR-05) — LA CHARGE UTILE EST CONSTRUITE PAR LE SERVEUR.
+   *
+   * Le navigateur n'envoie plus que le ticket : ai-service relit le magasin de
+   * variables (ConstructeurChargeUtileCreation, workflow-service). Une correction
+   * faite a un seul endroit se repercute sur toutes les generations suivantes, et
+   * plus aucune valeur n'est inventee ici (la date du jour et « Casablanca »
+   * remplissaient la date et le lieu de signature).
+   *
+   * `persister` : enregistre d'abord l'etat de l'etape (documents retenus, saisies
+   * complementaires), sans quoi le magasin generait avec la saisie precedente.
+   */
+  const chargeServeur = async (persister: boolean): Promise<Record<string, unknown>> => {
+    if (!ticketId) {
+      throw new GenerationRefuseeError(
+        'Ce parcours n’est rattaché à aucun ticket : rechargez la page, puis relancez la génération.',
+        'SANS_TICKET',
+      );
+    }
+    if (persister && !readOnly) {
+      await workflowService.save(ticketId, 7, { step7: etatEtape() });
+    }
+    return { ticketId };
+  };
 
   function updateDoc(code: string, patch: Partial<DocState>) {
     setDocs((prev) => ({
@@ -1020,7 +841,7 @@ export function Step7Generation({
             const { blob, filename } = await generateDocument(
               'CREATION_SARL',
               code,
-              buildPayload(),
+              await chargeServeur(false),
             );
             if (cancelled) return;
             updateDoc(code, { blob, filename });
@@ -1145,13 +966,14 @@ export function Step7Generation({
     updateDoc(tpl.code, {
       generating: true,
       error: null,
+      refus: [],
       validated: false,
     });
     try {
-      const { blob, filename } = await generateDocument(
+      const { blob, filename, donneesAObtenir } = await generateDocument(
         'CREATION_SARL',
         tpl.code,
-        buildPayload(),
+        await chargeServeur(true),
       );
       updateDoc(tpl.code, {
         generating: false,
@@ -1159,6 +981,7 @@ export function Step7Generation({
         blob,
         filename,
         version: nextVersion,
+        aObtenir: donneesAObtenir,
       });
       // Pas de DEPOT dataroom ici : on attend la validation de l'employe. Mais
       // le document est PERSISTE comme brouillon, sans quoi il ne survivrait pas
@@ -1167,7 +990,8 @@ export function Step7Generation({
     } catch (err) {
       updateDoc(tpl.code, {
         generating: false,
-        error: err instanceof Error ? err.message : 'Generation impossible',
+        error: err instanceof Error ? err.message : 'Génération impossible.',
+        refus: err instanceof GenerationRefuseeError ? err.donneesManquantes : [],
       });
     }
   }
@@ -1192,7 +1016,7 @@ export function Step7Generation({
       const { blob, filename } = await generateDocument(
         'CREATION_SARL',
         tpl.code,
-        buildPayload(),
+        await chargeServeur(true),
       );
       updateDoc(tpl.code, { generating: false, blob, filename });
       triggerDownload(blob, cleanName);
@@ -1226,7 +1050,7 @@ export function Step7Generation({
         const result = await generateDocument(
           'CREATION_SARL',
           tpl.code,
-          buildPayload(),
+          await chargeServeur(true),
         );
         blob = result.blob;
         filename = result.filename;
@@ -1326,22 +1150,27 @@ export function Step7Generation({
     return out;
   }, [docs]);
 
+  /** Etat persiste de l'etape : documents, selection et saisies propres aux formulaires. */
+  function etatEtape(): Record<string, unknown> {
+    return {
+      statutsDocumentId: statutsState?.documentId ?? null,
+      actesNominationIds: [],
+      statutsValides: !!statutsState?.validated,
+      documents: documentsPayload,
+      // Lot 5 — la selection et les saisies propres aux formulaires vivent avec
+      // l'etape : revenir dessus (ou decocher un document) ne doit rien effacer.
+      lignesRetenues: Array.from(lignesRetenues),
+      complements,
+      boucles,
+    };
+  }
+
   return (
     <form
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
-        onSubmit({
-          statutsDocumentId: statutsState?.documentId ?? null,
-          actesNominationIds: [],
-          statutsValides: !!statutsState?.validated,
-          documents: documentsPayload,
-          // Lot 5 — la selection et les saisies propres aux formulaires vivent
-          // avec l'etape : revenir dessus ne doit rien effacer.
-          lignesRetenues: Array.from(lignesRetenues),
-          complements,
-          boucles,
-        });
+        onSubmit(etatEtape());
       }}
       className="space-y-6"
     >
@@ -1480,6 +1309,51 @@ export function Step7Generation({
             })}
           </div>
         </div>
+      )}
+
+      {!readOnly && documentsRetenus.length > 0 && (
+        <section aria-labelledby="signature-actes" className="rounded-xl border border-border bg-bg-raised p-5">
+          <h4 id="signature-actes" className="flex items-center gap-1 text-sm font-semibold text-fg">
+            Signature des actes
+            <InfoBulle
+              libelle="Pourquoi le lieu et la date de signature ?"
+              texte="Les statuts et la plupart des actes se terminent par « Fait à …, le … ». La plateforme n’invente ni la ville ni la date : sans elles, ces actes ne sont pas générés."
+            />
+          </h4>
+          <TexteAide cle="creation-signature" titre="Lieu et date de signature">
+            <p>
+              Indiquez la ville et la date auxquelles les associés signent les actes. Elles servent à
+              tous les documents retenus ; corrigez-les ici, et la correction vaut pour toutes les
+              générations suivantes.
+            </p>
+          </TexteAide>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor="complement-lieuSignature" className="mb-1 block text-xs font-medium text-fg">
+                Lieu de signature (ville)
+              </label>
+              <input
+                id="complement-lieuSignature"
+                type="text"
+                value={complements.lieuSignature ?? ''}
+                onChange={(e) => setComplements((prev) => ({ ...prev, lieuSignature: e.target.value }))}
+                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm text-fg"
+              />
+            </div>
+            <div>
+              <label htmlFor="complement-dateSignature" className="mb-1 block text-xs font-medium text-fg">
+                Date de signature
+              </label>
+              <input
+                id="complement-dateSignature"
+                type="date"
+                value={complements.dateSignature ?? ''}
+                onChange={(e) => setComplements((prev) => ({ ...prev, dateSignature: e.target.value }))}
+                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm text-fg"
+              />
+            </div>
+          </div>
+        </section>
       )}
 
       {!readOnly && groupesChamps.length > 0 && (
@@ -1643,12 +1517,7 @@ export function Step7Generation({
               </div>
 
               <div className="space-y-3 p-5">
-                {st.error && (
-                  <div className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger/10 p-2 text-xs text-danger">
-                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="flex-1">{st.error}</span>
-                  </div>
-                )}
+                <RetourGeneration erreur={st.error} refus={st.refus} aObtenir={st.aObtenir} />
 
                 {!st.generated && readOnly && (
                   <div className="rounded-lg border border-border bg-bg-overlay p-3 text-[11px] text-fg-subtle">

@@ -53,9 +53,9 @@ class RepriseFicheSocieteTest {
 
     @Test
     void une_identite_illisible_fait_echouer_au_lieu_d_une_map_vide() {
-        WorkflowIdentityClient client = (dossierId, workspaceId) -> {
-            throw new IllegalStateException("workflow-service indisponible");
-        };
+        WorkflowIdentityClient client = org.mockito.Mockito.mock(WorkflowIdentityClient.class);
+        org.mockito.Mockito.when(client.identity(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenThrow(new IllegalStateException("workflow-service indisponible"));
         RemoteSocieteIdentityProvider provider = new RemoteSocieteIdentityProvider(client);
         assertThatThrownBy(() -> provider.loadIdentity(UUID.randomUUID(), UUID.randomUUID()))
                 .isInstanceOf(IdentiteSocieteIndisponibleException.class);

@@ -71,15 +71,19 @@ public class WorkflowDocumentController {
     private final DocxTemplateEngine docxTemplateEngine;
     private final TemplateManifestLoader manifestLoader;
     private final SocieteIdentityEnricher identityEnricher;
+    /** Lot L3 (P2) : charge utile de la creation construite par le serveur depuis le magasin. */
+    private final ma.jurika.ai.workflow.identity.ChargeUtileCreationProvider chargeUtileCreation;
 
     public WorkflowDocumentController(WorkflowDocumentMappingService mappingService,
                                        DocxTemplateEngine docxTemplateEngine,
                                        TemplateManifestLoader manifestLoader,
-                                       SocieteIdentityEnricher identityEnricher) {
+                                       SocieteIdentityEnricher identityEnricher,
+                                       ma.jurika.ai.workflow.identity.ChargeUtileCreationProvider chargeUtileCreation) {
         this.mappingService = mappingService;
         this.docxTemplateEngine = docxTemplateEngine;
         this.manifestLoader = manifestLoader;
         this.identityEnricher = identityEnricher;
+        this.chargeUtileCreation = chargeUtileCreation;
     }
 
     /**
@@ -170,6 +174,11 @@ public class WorkflowDocumentController {
         // Enrichissement identite societe depuis la BD (point unique, tous workflows PV).
         // Best-effort : si dossierId absent ou identite indisponible, payload inchange.
         UUID workspaceId = user == null ? null : user.workspaceId();
+        // Lot L3 (P2, RG-VAR-05) : la creation est generee depuis le magasin du ticket. Le
+        // navigateur n'envoie que l'identifiant du ticket ; toute autre donnee est ignoree.
+        if ("CREATION_SARL".equals(workflowCode)) {
+            payload = chargeUtileServeur(payload, workspaceId, user == null ? null : user.userId());
+        }
         Map<String, Object> enriched = identityEnricher.enrich(payload, workspaceId);
 
         Map<String, Object> variables = mappingService.map(
@@ -199,6 +208,21 @@ public class WorkflowDocumentController {
                         DocxTemplateEngine.enteteDonneesAObtenir(result, docxTemplateEngine.dictionnaire()))
                 .contentType(MediaType.parseMediaType(result.contentType()))
                 .body(result.bytes());
+    }
+
+    private Map<String, Object> chargeUtileServeur(Map<String, Object> payload, UUID workspaceId, UUID employeId) {
+        Object brut = payload == null ? null : payload.get("ticketId");
+        UUID ticketId = null;
+        try {
+            ticketId = brut == null ? null : UUID.fromString(String.valueOf(brut));
+        } catch (IllegalArgumentException ignore) {
+            // identifiant invalide : traite comme absent
+        }
+        if (ticketId == null || workspaceId == null || employeId == null) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Les actes de la création se génèrent depuis le ticket : rechargez la page, puis relancez la génération.");
+        }
+        return chargeUtileCreation.charger(workspaceId, ticketId, employeId);
     }
 
     /**

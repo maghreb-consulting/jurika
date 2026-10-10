@@ -135,7 +135,8 @@ public class ProjecteurVariablesCreation {
         projeterBoucles(workspaceId, ticketId, auteur, sousCarte(s7, "boucles"), n);
 
         // ---- étape 9 — les dix champs qui n'atteignaient aucun document ------
-        poser(workspaceId, ticketId, auteur, "etape-9", n, "LIEU_SIGNATURE", acte.get("lieuSignature"));
+        // Lot L3 : LIEU_SIGNATURE se saisit a l'etape 7 (« Signature des actes »), une seule
+        // fois ; l'etape 9 le posait aussi, avec « Casablanca » par defaut, apres la generation.
         poser(workspaceId, ticketId, auteur, "etape-9", n, "NOMBRE_ORIGINAUX", acte.get("nombreOriginaux"));
         poser(workspaceId, ticketId, auteur, "etape-9", n, "HEURE_ACTE", acte.get("heureActe"));
         poser(workspaceId, ticketId, auteur, "etape-9", n, "EXERCICE_DEBUT", acte.get("exerciceDebut"));
