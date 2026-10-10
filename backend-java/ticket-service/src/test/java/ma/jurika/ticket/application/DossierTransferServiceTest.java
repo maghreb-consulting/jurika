@@ -116,6 +116,7 @@ class DossierTransferServiceTest {
                 TransfertStatut.EN_ATTENTE, false, null, Instant.now(), null);
         when(dossierRepository.findById(WS, DOSSIER)).thenReturn(Optional.of(dossier(ANCIEN)));
         when(memberDirectory.roleOf(WS, NOUVEAU)).thenReturn(Optional.of("EMPLOYE"));
+        when(memberDirectory.estActif(WS, NOUVEAU)).thenReturn(true);
         when(requestRepository.findPendingForDossier(WS, DOSSIER)).thenReturn(Optional.of(enAttente));
         when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(ticketRepository.realignerSurResponsable(WS, DOSSIER, NOUVEAU)).thenReturn(2);
@@ -154,7 +155,18 @@ class DossierTransferServiceTest {
         when(dossierRepository.findById(WS, DOSSIER)).thenReturn(Optional.of(dossier(ANCIEN)));
         when(memberDirectory.roleOf(WS, NOUVEAU)).thenReturn(Optional.of("SUPERVISEUR"));
         assertThatThrownBy(() -> service().reaffecterDOffice(WS, SUPERVISEUR, DOSSIER, NOUVEAU, "Absence"))
-                .isInstanceOf(ValidationException.class).hasMessageContaining("employe");
+                .isInstanceOf(ValidationException.class).hasMessageContaining("employé");
+        verify(dossierRepository, never()).updateResponsable(any(), any(), any());
+        verify(reaffectations, never()).enregistrer(any());
+    }
+
+    @Test
+    void reaffectationDOffice_versUnEmployeDesactive_refusee() {
+        when(dossierRepository.findById(WS, DOSSIER)).thenReturn(Optional.of(dossier(ANCIEN)));
+        when(memberDirectory.roleOf(WS, NOUVEAU)).thenReturn(Optional.of("EMPLOYE"));
+        when(memberDirectory.estActif(WS, NOUVEAU)).thenReturn(false);
+        assertThatThrownBy(() -> service().reaffecterDOffice(WS, SUPERVISEUR, DOSSIER, NOUVEAU, "Absence"))
+                .isInstanceOf(ValidationException.class).hasMessageContaining("actif");
         verify(dossierRepository, never()).updateResponsable(any(), any(), any());
         verify(reaffectations, never()).enregistrer(any());
     }
@@ -163,7 +175,7 @@ class DossierTransferServiceTest {
     void reaffectationDOffice_versLeResponsableActuel_refusee() {
         when(dossierRepository.findById(WS, DOSSIER)).thenReturn(Optional.of(dossier(ANCIEN)));
         assertThatThrownBy(() -> service().reaffecterDOffice(WS, SUPERVISEUR, DOSSIER, ANCIEN, "Absence"))
-                .isInstanceOf(ValidationException.class).hasMessageContaining("deja responsable");
+                .isInstanceOf(ValidationException.class).hasMessageContaining("déjà responsable");
         verify(dossierRepository, never()).updateResponsable(any(), any(), any());
     }
 

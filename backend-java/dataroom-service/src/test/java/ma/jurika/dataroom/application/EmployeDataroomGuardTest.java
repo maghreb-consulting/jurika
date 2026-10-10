@@ -140,5 +140,18 @@ class EmployeDataroomGuardTest {
         assertThatThrownBy(() -> guard.droitsSurDossier(DOSSIER, employe(UUID.randomUUID())))
                 .isInstanceOf(NotFoundException.class);
     }
+
+    // ---- Ecran "Acces du client" (RG-CLI-01) : le responsable et le superviseur reglent ----
+
+    @Test
+    void le_responsable_et_le_superviseur_reglent_l_acces_du_client() {
+        when(droits.aLeDroit(WS, RESPONSABLE)).thenReturn(false);
+        org.assertj.core.api.Assertions.assertThat(
+                guard.droitsSurDossier(DOSSIER, employe(RESPONSABLE)).peutReglerAccesClient()).isTrue();
+        org.assertj.core.api.Assertions.assertThat(guard.droitsSurDossier(DOSSIER,
+                new AuthenticatedUser(UUID.randomUUID(), WS, "s@x.ma", Role.SUPERVISEUR)).peutReglerAccesClient()).isTrue();
+        org.assertj.core.api.Assertions.assertThat(guard.droitsSurDossier(DOSSIER,
+                new AuthenticatedUser(UUID.randomUUID(), WS, "c@x.ma", Role.CLIENT)).peutReglerAccesClient()).isFalse();
+    }
 }
 

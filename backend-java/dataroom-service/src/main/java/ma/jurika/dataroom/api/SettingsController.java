@@ -90,7 +90,16 @@ public class SettingsController {
                                           @PathVariable UUID dossierId,
                                           @Valid @RequestBody ToggleSuspensionRequest req) {
         employeGuard.assertResponsable(dossierId, user); // Lot L1, RG-DOS-01
-        return toView(settings.toggleSuspension(dossierId, req.suspended()));
+        return toView(settings.toggleSuspension(dossierId, user.userId(), req.suspended()));
+    }
+
+    /** Lot L1 (RG-CLI-01) : historique de l'acces client (responsable du dossier ou superviseur). */
+    @GetMapping("/dossiers/{dossierId}/settings/historique")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR') and !hasAuthority('ROLE_SUPER_ADMIN')")
+    public java.util.List<DataroomSettingsService.HistoriqueAcces> historique(
+            @AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID dossierId) {
+        employeGuard.assertResponsable(dossierId, user);
+        return settings.historique(dossierId);
     }
 
     @PostMapping("/dossiers/{dossierId}/settings/regenerate-link")

@@ -49,6 +49,15 @@ public class DroitSuppressionDataroomController {
                 http.getRemoteAddr(), http.getHeader("User-Agent")));
     }
 
+    /** Page Equipe : employes du cabinet qui ont le droit, pour afficher l'etat de chacun. */
+    public record EmployesAvecLeDroit(java.util.List<UUID> employesAvecLeDroit) {}
+
+    @GetMapping("/api/v1/auth/users/droit-suppression-dataroom")
+    @PreAuthorize("hasRole('SUPERVISEUR') and !hasRole('SUPER_ADMIN')")
+    public EmployesAvecLeDroit lister(@AuthenticationPrincipal AuthenticatedUser user) {
+        return new EmployesAvecLeDroit(droits.employesAvecLeDroit(user.workspaceId()));
+    }
+
     @GetMapping(CHEMIN)
     @PreAuthorize("hasRole('SUPERVISEUR') and !hasRole('SUPER_ADMIN')")
     public Map<String, Object> lire(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID userId) {

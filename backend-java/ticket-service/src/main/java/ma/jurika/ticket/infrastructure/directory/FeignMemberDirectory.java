@@ -38,4 +38,14 @@ public class FeignMemberDirectory implements MemberDirectory {
             return Optional.empty();
         }
     }
+
+    @Override
+    public boolean estActif(UUID workspaceId, UUID userId) {
+        try {
+            WorkspaceStatusFeignClient.MemberRoleDto dto = client.getUserRole(workspaceId, userId);
+            return dto != null && "ACTIVE".equals(dto.status());
+        } catch (FeignException.NotFound e) {
+            return false;
+        }
+    }
 }

@@ -9,4 +9,7 @@ public interface DroitSuppressionDataroomRepository {
     boolean lire(UUID workspaceId, UUID userId);
 
     void definir(UUID workspaceId, UUID userId, boolean accorde);
+
+    /** Employes du workspace qui ont le droit (page Equipe du superviseur). */
+    java.util.List<UUID> employesAvecLeDroit(UUID workspaceId);
 }

@@ -25,6 +25,16 @@ public class DroitSuppressionDataroomRepositoryAdapter implements DroitSuppressi
     }
 
     @Override
+    public java.util.List<UUID> employesAvecLeDroit(UUID workspaceId) {
+        java.util.List<?> r = em.createNativeQuery(
+                        "SELECT id FROM users WHERE workspace_id = ?1 AND role = 'EMPLOYE' "
+                                + "AND droit_suppression_dataroom ORDER BY id")
+                .setParameter(1, workspaceId)
+                .getResultList();
+        return r.stream().map(o -> o instanceof UUID u ? u : UUID.fromString(o.toString())).toList();
+    }
+
+    @Override
     public void definir(UUID workspaceId, UUID userId, boolean accorde) {
         em.createNativeQuery(
                         "UPDATE users SET droit_suppression_dataroom = ?1 WHERE id = ?2 AND workspace_id = ?3")

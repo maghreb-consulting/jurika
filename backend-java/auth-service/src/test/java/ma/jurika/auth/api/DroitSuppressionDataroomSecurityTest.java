@@ -21,7 +21,7 @@ class DroitSuppressionDataroomSecurityTest {
 
     @Test
     void superviseur_seul() {
-        for (String nom : new String[]{"definir", "lire"}) {
+        for (String nom : new String[]{"definir", "lire", "lister"}) {
             Method m = Arrays.stream(DroitSuppressionDataroomController.class.getDeclaredMethods())
                     .filter(x -> x.getName().equals(nom)).findFirst().orElseThrow();
             assertThat(autorise("ROLE_SUPERVISEUR", m)).as(nom).isTrue();

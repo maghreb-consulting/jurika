@@ -179,16 +179,20 @@ public class DossierTransferService {
     public DossierReaffectation reaffecterDOffice(UUID workspaceId, UUID superviseurId,
                                                   UUID dossierId, UUID toUserId, String motif) {
         if (motif == null || motif.isBlank()) {
-            throw new ValidationException("Le motif de la reaffectation est obligatoire");
+            throw new ValidationException("Le motif de la réaffectation est obligatoire.");
         }
         TenantContext.set(workspaceId);
         EntrepriseDossier dossier = loadDossier(workspaceId, dossierId);
         if (toUserId == null || toUserId.equals(dossier.responsableId())) {
-            throw new ValidationException("Cet employe est deja responsable du dossier");
+            throw new ValidationException("Cet employé est déjà responsable du dossier.");
         }
         String targetRole = memberDirectory.roleOf(workspaceId, toUserId).orElse(null);
         if (!"EMPLOYE".equals(targetRole)) {
-            throw new ValidationException("Le nouveau responsable doit etre un employe");
+            throw new ValidationException("Le nouveau responsable doit être un employé du cabinet.");
+        }
+        if (!memberDirectory.estActif(workspaceId, toUserId)) {
+            throw new ValidationException("Le nouveau responsable doit être un employé actif : "
+                    + "ce compte est en attente ou désactivé.");
         }
         requestRepository.findPendingForDossier(workspaceId, dossierId).ifPresent(req ->
                 requestRepository.save(new DossierTransfertRequest(

@@ -69,19 +69,24 @@ public class EmployeDataroomGuard {
         }
     }
 
-    /** Lot L1 : droits de l'utilisateur sur un dossier, pour l'ecran (bouton de suppression ou message). */
-    public record DroitsDossier(boolean peutSupprimerDocuments, String motif) {}
+    /**
+     * Lot L1 : droits de l'utilisateur sur un dossier, pour l'ecran : bouton de suppression ou
+     * message (RG-DR-06), reglage de l'acces du client par le responsable ou le superviseur
+     * (RG-CLI-01).
+     */
+    public record DroitsDossier(boolean peutSupprimerDocuments, String motif, boolean peutReglerAccesClient) {}
 
     @Transactional(readOnly = true)
     public DroitsDossier droitsSurDossier(UUID dossierId, AuthenticatedUser user) {
         if (user == null || user.role() != Role.EMPLOYE) {
-            return new DroitsDossier(false, "Seul l’employé responsable du dossier supprime des documents.");
+            boolean superviseur = user != null && user.role() == Role.SUPERVISEUR;
+            return new DroitsDossier(false, "Seul l’employé responsable du dossier supprime des documents.", superviseur);
         }
         assertResponsable(dossierId, user);
         return droits.aLeDroit(TenantContext.get(), user.userId())
-                ? new DroitsDossier(true, null)
+                ? new DroitsDossier(true, null, true)
                 : new DroitsDossier(false, "Le droit de supprimer des documents ne vous a pas été accordé : "
-                        + "demandez-le à votre superviseur.");
+                        + "demandez-le à votre superviseur.", true);
     }
 
     /** RG-DOS-01 : l'employe doit etre responsable du dossier (404 sinon). Autres roles : sans effet. */

@@ -242,5 +242,61 @@ class ResponsableEtDroitsDataroomIT {
         assertThatThrownBy(() -> enEmploye(responsable, u -> demandes.createDemande(u, demande(dossierId))))
                 .isInstanceOf(AccessDeniedException.class);
     }
-}
 
+    // ---- Ecran "Acces du client" (RG-CLI-01) : historique des modifications ----
+
+    private Object enSuperviseur(UUID sup, java.util.function.Function<AuthenticatedUser, Object> appel) {
+        AuthenticatedUser principal = new AuthenticatedUser(sup, workspaceId, sup + "@rls.test", Role.SUPERVISEUR);
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                principal, null, List.of(new SimpleGrantedAuthority("ROLE_SUPERVISEUR"))));
+        TenantContext.set(workspaceId);
+        try {
+            return appel.apply(principal);
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
+    @Test
+    void chaque_modification_de_l_acces_client_entre_dans_l_historique() {
+        UUID sup = UUID.randomUUID();
+        SchemaJurikaDb.utilisateur(jdbc, sup, workspaceId);
+        jdbc.update("UPDATE users SET role = 'SUPERVISEUR', first_name = 'Salma', last_name = 'Superviseure' WHERE id = ?", sup);
+        jdbc.update("UPDATE users SET first_name = 'Rachid', last_name = 'Responsable' WHERE id = ?", responsable);
+        var dtos = new Object() {
+            ma.jurika.dataroom.api.dto.DataroomDtos.UpdatePermissionsRequest perms(Boolean dl, Boolean demandes) {
+                return new ma.jurika.dataroom.api.dto.DataroomDtos.UpdatePermissionsRequest(dl, null, null, null, demandes);
+            }
+        };
+
+        enEmploye(responsable, u -> reglages.updatePermissions(u, dossierId, dtos.perms(false, null)));
+        // Sans changement reel : aucune ligne.
+        enEmploye(responsable, u -> reglages.updatePermissions(u, dossierId, dtos.perms(false, null)));
+        enEmploye(responsable, u -> reglages.toggleSuspension(u, dossierId,
+                new ma.jurika.dataroom.api.dto.DataroomDtos.ToggleSuspensionRequest(true)));
+        enSuperviseur(sup, u -> reglages.toggleSuspension(u, dossierId,
+                new ma.jurika.dataroom.api.dto.DataroomDtos.ToggleSuspensionRequest(false)));
+        enSuperviseur(sup, u -> reglages.updatePermissions(u, dossierId, dtos.perms(null, false)));
+
+        @SuppressWarnings("unchecked")
+        var lignes = (List<ma.jurika.dataroom.application.DataroomSettingsService.HistoriqueAcces>)
+                enEmploye(responsable, u -> reglages.historique(u, dossierId));
+        assertThat(lignes).extracting(l -> l.nature())
+                .containsExactly("PERMISSIONS", "REACTIVATION", "SUSPENSION", "PERMISSIONS");
+        assertThat(lignes).extracting(l -> l.acteurNom())
+                .containsExactly("Salma Superviseure", "Salma Superviseure", "Rachid Responsable", "Rachid Responsable");
+        var premiere = lignes.get(3);
+        assertThat(premiere.avant()).containsEntry("telechargement", true);
+        assertThat(premiere.apres()).containsEntry("telechargement", false);
+        assertThat(lignes.get(0).apres()).containsEntry("demandes", false);
+        assertThat(lignes.get(2).apres()).containsEntry("acces", "SUSPENDED");
+
+        // Le superviseur lit le meme historique ; un autre employe n'y accede pas.
+        assertThat((List<?>) enSuperviseur(sup, u -> reglages.historique(u, dossierId))).hasSize(4);
+        assertThatThrownBy(() -> enEmploye(autre, u -> reglages.historique(u, dossierId)))
+                .isInstanceOf(NotFoundException.class);
+        // La trace d'audit de la suspension existe aussi.
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_log WHERE action = 'ACCES_CLIENT_SUSPENDU' "
+                + "AND entity_id = ?", Integer.class, dossierId)).isEqualTo(1);
+    }
+}

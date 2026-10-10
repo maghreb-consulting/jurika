@@ -169,6 +169,7 @@ class TicketJurikaAppIT {
     @BeforeEach
     void annuaire() {
         when(annuaire.roleOf(any(), any())).thenReturn(Optional.of("EMPLOYE"));
+        when(annuaire.estActif(any(), any())).thenReturn(true);
     }
 
     private static String jeton(UUID userId, UUID workspace, String role) {
