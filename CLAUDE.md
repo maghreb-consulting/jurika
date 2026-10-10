@@ -215,7 +215,7 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 ### Lot L1 (dossiers et employes, 2026-10-09) -- dette relevee
 
 - **Ecrans manquants du lot L1** (API livrees et testees, aucun ecran) : reaffectation d'office
-  par le superviseur et historique des responsables ; note de ticket ; permissions client
+  par le superviseur et historique des responsables ; permissions client
   "consulter" et "envoyer des demandes" ; droit de suppression en Data Room (sans ecran, aucun
   employe ne peut plus supprimer de document tant que le superviseur ne l'a pas accorde par
   l'API) ; versions de la taxe professionnelle et date d'effet ; debours cote client.
