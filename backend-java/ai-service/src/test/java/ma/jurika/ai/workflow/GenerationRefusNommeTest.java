@@ -45,7 +45,7 @@ class GenerationRefusNommeTest {
     @BeforeEach
     void setUp() {
         WorkflowDocumentController c = new WorkflowDocumentController(mapping, engine,
-                mock(TemplateManifestLoader.class), new SocieteIdentityEnricher((ws, id) -> Map.of()), (ws, t, e) -> Map.of(), (w, t, wf, tpl, d) -> { });
+                mock(TemplateManifestLoader.class), new SocieteIdentityEnricher((ws, id) -> Map.of()), (ws, t, e) -> Map.of(), (w, t, wf, tpl, d) -> { }, (w, t) -> java.util.List.of());
         mvc = MockMvcBuilders.standaloneSetup(c).setControllerAdvice(new GenerationExceptionHandler()).build();
         when(mapping.map(any(), any(), anyMap())).thenReturn(Map.of());
         when(engine.dictionnaire()).thenReturn(new DictionnaireUnique(Set.of("$SIEGE_VILLE", "$ICE"), Map.of(),
@@ -114,7 +114,7 @@ class GenerationRefusNommeTest {
                 (w, t, e) -> {
                     assertThat(List.of(w, t, e)).containsExactly(ws, ticket, employe);
                     return serveur;
-                }, (w, t, wf, tpl, d) -> { });
+                }, (w, t, wf, tpl, d) -> { }, (w, t) -> java.util.List.of());
         when(engine.generate(eq("ANNONCE_LEGALE_CONSTITUTION"), anyMap())).thenReturn(resultat());
         var user = new ma.jurika.common.security.AuthenticatedUser(employe, ws, "e@x.ma", ma.jurika.common.security.Role.EMPLOYE);
 
@@ -129,7 +129,7 @@ class GenerationRefusNommeTest {
     @Test
     void creation_sans_ticket_refusee() {
         WorkflowDocumentController c = new WorkflowDocumentController(mapping, engine,
-                mock(TemplateManifestLoader.class), new SocieteIdentityEnricher((w, id) -> Map.of()), (w, t, e) -> Map.of(), (w, t, wf, tpl, d) -> { });
+                mock(TemplateManifestLoader.class), new SocieteIdentityEnricher((w, id) -> Map.of()), (w, t, e) -> Map.of(), (w, t, wf, tpl, d) -> { }, (w, t) -> java.util.List.of());
         var user = new ma.jurika.common.security.AuthenticatedUser(java.util.UUID.randomUUID(), java.util.UUID.randomUUID(),
                 "e@x.ma", ma.jurika.common.security.Role.EMPLOYE);
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> c.generate("CREATION_SARL", "STATUTS_SARL", user,
@@ -145,7 +145,7 @@ class GenerationRefusNommeTest {
         java.util.List<Object[]> appels = new java.util.ArrayList<>();
         WorkflowDocumentController c = new WorkflowDocumentController(mapping, engine,
                 mock(TemplateManifestLoader.class), new SocieteIdentityEnricher((w, id) -> Map.of()), (w, t, e) -> Map.of(),
-                (w, t, wf, tpl, d) -> appels.add(new Object[]{t, wf, tpl, d}));
+                (w, t, wf, tpl, d) -> appels.add(new Object[]{t, wf, tpl, d}), (w, t) -> java.util.List.of());
         java.util.UUID ticket = java.util.UUID.randomUUID();
         var user = new ma.jurika.common.security.AuthenticatedUser(java.util.UUID.randomUUID(), java.util.UUID.randomUUID(),
                 "e@x.ma", ma.jurika.common.security.Role.EMPLOYE);

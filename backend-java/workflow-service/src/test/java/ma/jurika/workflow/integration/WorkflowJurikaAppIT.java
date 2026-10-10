@@ -89,6 +89,7 @@ class WorkflowJurikaAppIT {
     @Autowired private MagasinVariables magasin;
     @Autowired private ma.jurika.workflow.application.ProjecteurVariablesCreation projecteur;
     @Autowired private ma.jurika.workflow.application.DonneesAttenduesService donneesAttendues;
+    @Autowired private ma.jurika.workflow.application.ClausesLibresService clausesLibres;
 
     private UUID workspaceId;
     private UUID dossierId;
@@ -361,5 +362,39 @@ class WorkflowJurikaAppIT {
         assertThat(dansLeWorkspace(() -> donneesAttendues.lister(workspaceId, ticketId)).get(0).recue()).isFalse();
         jdbc.update("UPDATE entreprise_dossiers SET ice = '001234567000089' WHERE id = ?", dossierId);
         assertThat(dansLeWorkspace(() -> donneesAttendues.lister(workspaceId, ticketId)).get(0).recue()).isTrue();
+    }
+
+    // ---- Lot L3 (RG-GEN-05/06) : clauses libres au magasin, tracees ----
+
+    private static ma.jurika.workflow.application.ClausesLibresService.Clause clause(String titre, String texte) {
+        return new ma.jurika.workflow.application.ClausesLibresService.Clause("PV_APPROBATION_COMPTES_SARL",
+                "A_LA_SUITE_DES_RESOLUTIONS", titre, texte, "adoptée", "1000", "0", "0", null, null);
+    }
+
+    @Test
+    void l3_clauses_libres_au_magasin_avec_auteur_et_date_conservee_si_inchangee() throws Exception {
+        var premiere = dansLeWorkspace(() -> clausesLibres.remplacer(workspaceId, ticketId, EMPLOYE,
+                List.of(clause("Pouvoirs particuliers", "L'assemblee confere tous pouvoirs a M. X."),
+                        clause("Remerciements", "L'assemblee remercie la gerance."))));
+        assertThat(premiere).extracting(c -> c.titre()).containsExactly("Pouvoirs particuliers", "Remerciements");
+        assertThat(premiere).allSatisfy(c -> assertThat(c.saisiePar()).isEqualTo(EMPLOYE));
+        java.time.Instant date1 = premiere.get(0).saisieLe();
+        Thread.sleep(20);
+
+        var seconde = dansLeWorkspace(() -> clausesLibres.remplacer(workspaceId, ticketId, EMPLOYE,
+                List.of(clause("Pouvoirs particuliers", "L'assemblee confere tous pouvoirs a M. X."))));
+        assertThat(seconde).hasSize(1);
+        assertThat(seconde.get(0).saisieLe().truncatedTo(java.time.temporal.ChronoUnit.MILLIS))
+                .as("clause inchangee : date d'origine").isEqualTo(date1.truncatedTo(java.time.temporal.ChronoUnit.MILLIS));
+
+        // Lue telle quelle par ai-service a chaque generation (reutilisee a la regeneration).
+        mvc.perform(get("/internal/tickets/{t}/clauses-libres", ticketId).param("workspaceId", workspaceId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].titre").value("Pouvoirs particuliers"))
+                .andExpect(jsonPath("$[0].texte").value("L'assemblee confere tous pouvoirs a M. X."));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> dansLeWorkspace(() -> clausesLibres.remplacer(
+                        workspaceId, ticketId, EMPLOYE, List.of(clause(" ", "texte")))))
+                .hasMessageContaining("titre");
     }
 }

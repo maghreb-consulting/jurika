@@ -26,6 +26,7 @@ import {
 } from '../../../services/workflowDocumentService';
 import { workflowService, type DonneeAttendue } from '../../../services/workflow.service';
 import { DonneesAttendues } from '../../../components/workflow/DonneesAttendues';
+import { ClausesLibresPanel } from '../../../components/workflow/ClausesLibresPanel';
 import { RetourGeneration } from '../../../components/workflow/RetourGeneration';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 import { DocumentEditor } from '../../../components/document/DocumentEditor';
@@ -1539,6 +1540,9 @@ export function Step7Generation({
                     enCours={st.generating}
                     onRegenerer={() => generateOne(tpl)}
                   />
+                )}
+                {!readOnly && ticketId && tpl.code.startsWith('STATUTS') && (
+                  <ClausesLibresPanel ticketId={ticketId} workflowCode="CREATION_SARL" templateCode={tpl.code} />
                 )}
 
                 {!st.generated && readOnly && (

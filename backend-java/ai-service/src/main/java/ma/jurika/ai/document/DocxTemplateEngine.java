@@ -189,6 +189,13 @@ public class DocxTemplateEngine {
         this(manifestLoader, defaultsApplier, null);
     }
 
+    /** Lot L3 (RG-GEN-05/07) : le gabarit prevoit-il un emplacement de clause libre ? */
+    public boolean emplacementClausesPrevu(String templateCode) {
+        byte[] gabarit = resolveTemplate(templateCode, Map.of());
+        if (gabarit == null) throw new GabaritIntrouvableException(templateCode);
+        return ClausesLibres.emplacementPrevu(gabarit);
+    }
+
     /** Lot L3 : dictionnaire unique du corpus charge (libelles des donnees manquantes), ou null. */
     public ma.jurika.ai.document.corpus.DictionnaireUnique dictionnaire() {
         return corpus == null ? null : corpus.dictionnaire();

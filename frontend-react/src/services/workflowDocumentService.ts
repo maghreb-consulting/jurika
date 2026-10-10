@@ -147,3 +147,18 @@ export async function generateDocument(
   });
   return { blob, filename, donneesAObtenir: lireDonneesAObtenir(headers['x-donnees-a-obtenir']) };
 }
+
+/** Lot L3 (RG-GEN-05/07) : emplacement de clause libre prevu par le modele, ou motif. */
+export interface EmplacementClauses {
+  possible: boolean;
+  emplacement?: string | null;
+  libelle?: string;
+  motif?: string;
+}
+
+export async function emplacementClausesLibres(workflowCode: string, templateCode: string): Promise<EmplacementClauses> {
+  const { data } = await api.get<EmplacementClauses>(
+    `/ai/workflows/${encodeURIComponent(workflowCode)}/templates/${encodeURIComponent(templateCode)}/clauses-libres`,
+  );
+  return data;
+}

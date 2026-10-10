@@ -34,6 +34,7 @@ import {
 import { workflowService, type DonneeAttendue } from '../../services/workflow.service';
 import { RetourGeneration } from './RetourGeneration';
 import { DonneesAttendues } from './DonneesAttendues';
+import { ClausesLibresPanel } from './ClausesLibresPanel';
 import { dataroomService } from '../../services/dataroom.service';
 import { GeneratedDocPreview } from '../document/GeneratedDocPreview';
 import { DocumentEditModal } from '../document/DocumentEditModal';
@@ -291,6 +292,9 @@ export interface WorkflowDocumentBlockProps {
    * Sans ce prop, le bouton n'apparaît pas (rétro-compatible).
    */
   onEdited?: (blob: Blob, filename: string) => void;
+  /** Lot L3 (RG-GEN-05) : ticket et parcours, pour proposer les clauses libres du document. */
+  ticketId?: string | null;
+  workflowCode?: string;
 }
 
 export function WorkflowDocumentBlock({
@@ -302,6 +306,8 @@ export function WorkflowDocumentBlock({
   onValidate,
   onTogglePreview,
   onEdited,
+  ticketId,
+  workflowCode,
 }: WorkflowDocumentBlockProps) {
   const title = tpl.documentKind || tpl.code;
   const [editing, setEditing] = useState(false);
@@ -341,6 +347,14 @@ export function WorkflowDocumentBlock({
           enCours={state.generating}
           onRegenerer={state.generated ? onRegenerate : onGenerate}
         />
+        {ticketId && workflowCode && (
+          <ClausesLibresPanel
+            ticketId={ticketId}
+            workflowCode={workflowCode}
+            templateCode={tpl.code}
+            onEnregistre={state.generated ? onRegenerate : undefined}
+          />
+        )}
 
         {!state.generated ? (
           <button

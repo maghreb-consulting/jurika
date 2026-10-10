@@ -75,19 +75,23 @@ public class WorkflowDocumentController {
     private final ma.jurika.ai.workflow.identity.ChargeUtileCreationProvider chargeUtileCreation;
     /** Lot L3 : reclamation des donnees externes manquantes (regle des variables). */
     private final ma.jurika.ai.workflow.identity.ReclamationDonnees reclamation;
+    /** Lot L3 (RG-GEN-05/06) : clauses libres du ticket, au magasin. */
+    private final ma.jurika.ai.workflow.identity.ClausesLibresProvider clausesLibres;
 
     public WorkflowDocumentController(WorkflowDocumentMappingService mappingService,
                                        DocxTemplateEngine docxTemplateEngine,
                                        TemplateManifestLoader manifestLoader,
                                        SocieteIdentityEnricher identityEnricher,
                                        ma.jurika.ai.workflow.identity.ChargeUtileCreationProvider chargeUtileCreation,
-                                       ma.jurika.ai.workflow.identity.ReclamationDonnees reclamation) {
+                                       ma.jurika.ai.workflow.identity.ReclamationDonnees reclamation,
+                                       ma.jurika.ai.workflow.identity.ClausesLibresProvider clausesLibres) {
         this.mappingService = mappingService;
         this.docxTemplateEngine = docxTemplateEngine;
         this.manifestLoader = manifestLoader;
         this.identityEnricher = identityEnricher;
         this.chargeUtileCreation = chargeUtileCreation;
         this.reclamation = reclamation;
+        this.clausesLibres = clausesLibres;
     }
 
     /**
@@ -190,6 +194,7 @@ public class WorkflowDocumentController {
         // Lot L3 (RG-VAR-03) : variables canoniques de la fiche societe reprises quand le
         // mapper les laisse vides (jamais ecrasees, jamais inventees).
         variables = ma.jurika.ai.workflow.identity.RepriseFicheSociete.completer(variables, enriched);
+        variables = appliquerClausesLibres(templateCode, variables, enriched, workspaceId);
 
         refuserSiControleBloquant(workflowCode, templateCode, variables);
 
@@ -213,6 +218,51 @@ public class WorkflowDocumentController {
                         DocxTemplateEngine.enteteDonneesAObtenir(result, docxTemplateEngine.dictionnaire()))
                 .contentType(MediaType.parseMediaType(result.contentType()))
                 .body(result.bytes());
+    }
+
+    /**
+     * Lot L3 (RG-GEN-05/06) : les clauses libres du ticket pour ce document sont imprimees a
+     * l'emplacement prevu par le modele ; sans emplacement, la generation le refuse au lieu de
+     * les perdre en silence.
+     */
+    private Map<String, Object> appliquerClausesLibres(String templateCode, Map<String, Object> variables,
+                                                       Map<String, Object> payload, UUID workspaceId) {
+        UUID ticketId = ticketDe(payload);
+        if (ticketId == null || workspaceId == null) return variables;
+        java.util.List<Map<String, Object>> clauses = clausesLibres.lister(workspaceId, ticketId).stream()
+                .filter(c -> templateCode.equals(String.valueOf(c.get("document"))))
+                .toList();
+        if (clauses.isEmpty()) return variables;
+        if (!docxTemplateEngine.emplacementClausesPrevu(templateCode)) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Ce modèle ne prévoit pas d'emplacement pour une clause libre : retirez la clause de ce document.");
+        }
+        return ma.jurika.ai.document.ClausesLibres.inserer(variables, clauses);
+    }
+
+    private static UUID ticketDe(Map<String, Object> payload) {
+        Object brut = payload == null ? null : payload.get("ticketId");
+        try {
+            return brut == null ? null : UUID.fromString(String.valueOf(brut));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /** Lot L3 (RG-GEN-05/07) : le document accepte-t-il une clause libre, et ou ? */
+    @GetMapping("/{workflowCode}/templates/{templateCode}/clauses-libres")
+    @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR')")
+    public Map<String, Object> emplacementsClausesLibres(@PathVariable String workflowCode,
+                                                         @PathVariable String templateCode) {
+        if (templateCode.startsWith("STATUTS")) {
+            return Map.of("possible", false, "motif", ma.jurika.ai.document.ClausesLibres.A_DECIDER_STATUTS);
+        }
+        boolean possible = docxTemplateEngine.emplacementClausesPrevu(templateCode);
+        return possible
+                ? Map.of("possible", true, "emplacement", ma.jurika.ai.document.ClausesLibres.EMPLACEMENT,
+                        "libelle", ma.jurika.ai.document.ClausesLibres.LIBELLE_EMPLACEMENT)
+                : Map.of("possible", false,
+                        "motif", "Ce modèle ne prévoit pas d'emplacement pour une résolution libre.");
     }
 
     /**

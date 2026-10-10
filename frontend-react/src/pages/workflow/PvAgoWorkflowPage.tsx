@@ -1314,6 +1314,8 @@ function PvAgoWorkflowPageBody() {
                   key={tpl.code}
                   tpl={tpl}
                   state={docs[tpl.code] ?? freshDocState()}
+                  ticketId={ticket?.id}
+                  workflowCode={'PV_AGO'}
                   onGenerate={() => generateOne(tpl)}
                   onDownload={() => downloadOne(tpl)}
                   onRegenerate={() => generateOne(tpl)}

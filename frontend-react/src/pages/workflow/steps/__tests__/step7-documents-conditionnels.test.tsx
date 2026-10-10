@@ -44,10 +44,11 @@ vi.mock('../../../../services/workflowDocumentService', async () => {
     ...vrai,
     listTemplatesForWorkflow: vi.fn(async () => TEMPLATES),
     generateDocument: vi.fn(async () => ({ blob: new Blob(['x']), filename: 'x.docx', donneesAObtenir: [] })),
+    emplacementClausesLibres: vi.fn(async () => ({ possible: false, motif: 'En attente du cabinet.' })),
   };
 });
 vi.mock('../../../../services/workflow.service', () => ({
-  workflowService: { save: vi.fn(async () => ({})), donneesAttendues: vi.fn(async () => []) },
+  workflowService: { save: vi.fn(async () => ({})), donneesAttendues: vi.fn(async () => []), clausesLibres: vi.fn(async () => []) },
 }));
 
 vi.mock('../../../../services/dataroom.service', () => ({

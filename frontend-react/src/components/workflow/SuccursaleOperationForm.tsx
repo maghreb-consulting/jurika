@@ -688,6 +688,8 @@ export function SuccursaleOperationForm({
               key={tpl.code}
               tpl={tpl}
               state={docs[tpl.code] ?? freshDocState()}
+              ticketId={ticketId}
+              workflowCode={workflowCode}
               onGenerate={() => { if (!bureauManquant) void generateOne(tpl); }}
               onDownload={() => downloadOne(tpl)}
               onRegenerate={() => { if (!bureauManquant) void generateOne(tpl); }}

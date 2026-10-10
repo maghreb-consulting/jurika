@@ -87,6 +87,21 @@ export interface DonneeAttendue {
   recue: boolean;
 }
 
+
+/** Lot L3 : une clause libre d'un document (RG-GEN-05/06). */
+export interface ClauseLibre {
+  document: string;
+  emplacement?: string | null;
+  titre: string;
+  texte: string;
+  resultat?: string | null;
+  voixPour?: string | null;
+  voixContre?: string | null;
+  abstentions?: string | null;
+  saisiePar?: string | null;
+  saisieLe?: string | null;
+}
+
 export const workflowService = {
   async start(ticketId: string, type: WorkflowType): Promise<WorkflowProgress> {
     const { data } = await api.post<WorkflowProgress>(`/workflows/${ticketId}/start`, { type });
@@ -117,6 +132,18 @@ export const workflowService = {
    */
   async donneesAttendues(ticketId: string): Promise<DonneeAttendue[]> {
     const { data } = await api.get<DonneeAttendue[]>(`/workflows/${ticketId}/donnees-attendues`);
+    return data;
+  },
+
+  /** Lot L3 (RG-GEN-05/06) : clauses libres du ticket (auteur, date). */
+  async clausesLibres(ticketId: string): Promise<ClauseLibre[]> {
+    const { data } = await api.get<ClauseLibre[]>(`/workflows/${ticketId}/clauses-libres`);
+    return data;
+  },
+
+  /** Lot L3 : remplace les clauses libres du ticket (employe en charge seulement). */
+  async remplacerClausesLibres(ticketId: string, clauses: ClauseLibre[]): Promise<ClauseLibre[]> {
+    const { data } = await api.put<ClauseLibre[]>(`/workflows/${ticketId}/clauses-libres`, clauses);
     return data;
   },
 

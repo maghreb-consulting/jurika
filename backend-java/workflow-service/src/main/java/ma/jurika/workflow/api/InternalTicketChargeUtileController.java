@@ -25,11 +25,26 @@ public class InternalTicketChargeUtileController {
 
     private final ChargeUtileServeur chargeUtile;
     private final DonneesAttenduesService donneesAttendues;
+    private final ma.jurika.workflow.application.ClausesLibresService clausesLibres;
 
     public InternalTicketChargeUtileController(ChargeUtileServeur chargeUtile,
-                                               DonneesAttenduesService donneesAttendues) {
+                                               DonneesAttenduesService donneesAttendues,
+                                               ma.jurika.workflow.application.ClausesLibresService clausesLibres) {
         this.chargeUtile = chargeUtile;
         this.donneesAttendues = donneesAttendues;
+        this.clausesLibres = clausesLibres;
+    }
+
+    /** Lot L3 (RG-GEN-06) : clauses libres du ticket, relues a chaque generation. */
+    @GetMapping("/{ticketId}/clauses-libres")
+    public java.util.List<ma.jurika.workflow.application.ClausesLibresService.Clause> clausesLibres(
+            @PathVariable UUID ticketId, @RequestParam UUID workspaceId) {
+        TenantContext.set(workspaceId);
+        try {
+            return clausesLibres.lister(workspaceId, ticketId);
+        } finally {
+            TenantContext.clear();
+        }
     }
 
     /** Lot L3 : donnees externes manquantes d'un document qui vient d'etre genere. */

@@ -56,6 +56,8 @@ class WorkflowWriteSecurityTest {
     /** Lot C — le controleur lit le magasin de variables du dossier. */
     @MockBean MagasinVariables magasin;
     @MockBean ma.jurika.workflow.application.DonneesAttenduesService donneesAttendues; // lot L3
+    @MockBean ma.jurika.workflow.application.ClausesLibresService clausesLibres; // lot L3
+    @MockBean ma.jurika.workflow.application.EmployeEnCharge employeEnCharge; // lot L3
 
     private static RequestPostProcessor as(Role role) {
         AuthenticatedUser principal = new AuthenticatedUser(

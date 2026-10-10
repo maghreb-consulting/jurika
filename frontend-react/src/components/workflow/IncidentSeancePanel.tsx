@@ -262,6 +262,8 @@ export function IncidentSeancePanel({
                   key={tpl.code}
                   tpl={tpl}
                   state={docs[tpl.code] ?? freshDocState()}
+                  ticketId={ticketId}
+                  workflowCode={WORKFLOW_CODE}
                   onGenerate={() => generateOne(tpl)}
                   onDownload={() => downloadOne(tpl)}
                   onRegenerate={() => generateOne(tpl)}
