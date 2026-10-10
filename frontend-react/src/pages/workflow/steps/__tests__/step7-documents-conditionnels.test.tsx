@@ -47,7 +47,7 @@ vi.mock('../../../../services/workflowDocumentService', async () => {
   };
 });
 vi.mock('../../../../services/workflow.service', () => ({
-  workflowService: { save: vi.fn(async () => ({})) },
+  workflowService: { save: vi.fn(async () => ({})), donneesAttendues: vi.fn(async () => []) },
 }));
 
 vi.mock('../../../../services/dataroom.service', () => ({

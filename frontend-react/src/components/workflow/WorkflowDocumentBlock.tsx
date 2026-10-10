@@ -13,9 +13,8 @@
  * Volontairement decouple : la page hote fournit la liste des templates,
  * le payload, le mapping `mapTemplateToDocumentType` et le dossierId.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  AlertCircle,
   CheckCircle,
   Download,
   Eye,
@@ -27,8 +26,14 @@ import {
 } from 'lucide-react';
 import {
   generateDocument,
+  GenerationRefuseeError,
+  type DonneeManquante,
+  type DonneeNommee,
   type TemplateInfo,
 } from '../../services/workflowDocumentService';
+import { workflowService, type DonneeAttendue } from '../../services/workflow.service';
+import { RetourGeneration } from './RetourGeneration';
+import { DonneesAttendues } from './DonneesAttendues';
 import { dataroomService } from '../../services/dataroom.service';
 import { GeneratedDocPreview } from '../document/GeneratedDocPreview';
 import { DocumentEditModal } from '../document/DocumentEditModal';
@@ -44,6 +49,12 @@ export interface DocState {
   previewOpen: boolean;
   /** True quand le depot auto dataroom a reussi (sur Valider). */
   depositedToDataroom: boolean;
+  /** Lot L3 : donnees internes manquantes nommees par le serveur (generation refusee). */
+  refus?: DonneeManquante[];
+  /** Lot L3 : donnees externes manquantes de la derniere generation (« À OBTENIR »). */
+  aObtenir?: DonneeNommee[];
+  /** Lot L3 : donnees externes reclamees pour ce document, et si elles sont arrivees. */
+  attendues?: DonneeAttendue[];
 }
 
 export function freshDocState(): DocState {
@@ -128,6 +139,32 @@ export function useDocumentBlocks(params: UseDocumentBlocksParams) {
     [setDocs],
   );
 
+  /**
+   * Lot L3 : donnees externes reclamees pour les documents du ticket, reparties par
+   * document. Relues au montage et apres chaque generation.
+   */
+  const rafraichirAttendues = useCallback(async () => {
+    if (!ticketId) return;
+    try {
+      const liste = await workflowService.donneesAttendues(ticketId);
+      setDocs((prev) => {
+        const next = { ...prev };
+        const codes = new Set([...Object.keys(prev), ...liste.map((a) => a.templateCode)]);
+        for (const code of codes) {
+          next[code] = { ...(prev[code] ?? freshDocState()), attendues: liste.filter((a) => a.templateCode === code) };
+        }
+        return next;
+      });
+    } catch {
+      // Lecture seulement indicative : l'echec n'empeche pas de generer ; la reclamation
+      // elle-meme est faite par le serveur a chaque generation.
+    }
+  }, [ticketId, setDocs]);
+
+  useEffect(() => {
+    void rafraichirAttendues();
+  }, [rafraichirAttendues]);
+
   const depositGeneratedToDataroom = useCallback(
     async (tpl: TemplateInfo, st: DocState) => {
       if (!dossierId || !st.blob || !st.filename) return;
@@ -177,7 +214,7 @@ export function useDocumentBlocks(params: UseDocumentBlocksParams) {
 
   const generateOne = useCallback(
     async (tpl: TemplateInfo) => {
-      updateDoc(tpl.code, { generating: true, error: null, validated: false });
+      updateDoc(tpl.code, { generating: true, error: null, refus: [], validated: false });
       try {
         // dossierId permet au backend d'enrichir l'identite societe depuis la BD
         // (capital, siege, RC, ville du greffe, parts...) — en-tete PV complet meme
@@ -185,7 +222,9 @@ export function useDocumentBlocks(params: UseDocumentBlocksParams) {
         // prioritaire pour tout le reste ; la BD gagne uniquement sur l'identite.
         const payload = buildPayload();
         if (dossierId && payload.dossierId == null) payload.dossierId = dossierId;
-        const { blob, filename } = await generateDocument(
+        // Lot L3 : le ticket permet au serveur de reclamer les donnees a obtenir.
+        if (ticketId && payload.ticketId == null) payload.ticketId = ticketId;
+        const { blob, filename, donneesAObtenir } = await generateDocument(
           workflowCode,
           tpl.code,
           payload,
@@ -198,15 +237,18 @@ export function useDocumentBlocks(params: UseDocumentBlocksParams) {
           filename: friendly || filename,
           previewOpen: true,
           depositedToDataroom: false,
+          aObtenir: donneesAObtenir,
         });
+        await rafraichirAttendues();
       } catch (err) {
         updateDoc(tpl.code, {
           generating: false,
-          error: err instanceof Error ? err.message : 'Generation impossible',
+          error: err instanceof Error ? err.message : 'Génération impossible.',
+          refus: err instanceof GenerationRefuseeError ? err.donneesManquantes : [],
         });
       }
     },
-    [workflowCode, dossierId, buildPayload, updateDoc, params],
+    [workflowCode, dossierId, ticketId, buildPayload, updateDoc, params, rafraichirAttendues],
   );
 
   const downloadOne = useCallback(
@@ -293,15 +335,12 @@ export function WorkflowDocumentBlock({
       </div>
 
       <div className="space-y-3 p-5">
-        {state.error && (
-          <div
-            className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger/10 p-2 text-xs text-danger"
-            role="alert"
-          >
-            <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-            <span className="flex-1">{state.error}</span>
-          </div>
-        )}
+        <RetourGeneration erreur={state.error} refus={state.refus} aObtenir={state.aObtenir} />
+        <DonneesAttendues
+          attendues={state.attendues}
+          enCours={state.generating}
+          onRegenerer={state.generated ? onRegenerate : onGenerate}
+        />
 
         {!state.generated ? (
           <button

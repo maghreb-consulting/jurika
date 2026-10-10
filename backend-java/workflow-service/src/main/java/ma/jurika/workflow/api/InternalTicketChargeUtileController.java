@@ -2,6 +2,7 @@ package ma.jurika.workflow.api;
 
 import ma.jurika.common.security.TenantContext;
 import ma.jurika.workflow.application.ChargeUtileServeur;
+import ma.jurika.workflow.application.DonneesAttenduesService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,9 +24,28 @@ import java.util.UUID;
 public class InternalTicketChargeUtileController {
 
     private final ChargeUtileServeur chargeUtile;
+    private final DonneesAttenduesService donneesAttendues;
 
-    public InternalTicketChargeUtileController(ChargeUtileServeur chargeUtile) {
+    public InternalTicketChargeUtileController(ChargeUtileServeur chargeUtile,
+                                               DonneesAttenduesService donneesAttendues) {
         this.chargeUtile = chargeUtile;
+        this.donneesAttendues = donneesAttendues;
+    }
+
+    /** Lot L3 : donnees externes manquantes d'un document qui vient d'etre genere. */
+    public record DonneesAttenduesRequete(String workflowCode, String templateCode,
+                                          java.util.List<DonneesAttenduesService.Donnee> donnees) {}
+
+    @org.springframework.web.bind.annotation.PostMapping("/{ticketId}/donnees-attendues")
+    public void donneesAttendues(@PathVariable UUID ticketId, @RequestParam UUID workspaceId,
+                                 @org.springframework.web.bind.annotation.RequestBody DonneesAttenduesRequete req) {
+        TenantContext.set(workspaceId);
+        try {
+            donneesAttendues.enregistrer(workspaceId, ticketId, req.workflowCode(), req.templateCode(),
+                    req.donnees() == null ? java.util.List.of() : req.donnees());
+        } finally {
+            TenantContext.clear();
+        }
     }
 
     @GetMapping("/{ticketId}/charge-utile-creation")

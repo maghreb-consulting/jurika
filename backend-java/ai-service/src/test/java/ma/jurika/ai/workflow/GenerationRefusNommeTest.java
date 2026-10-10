@@ -45,7 +45,7 @@ class GenerationRefusNommeTest {
     @BeforeEach
     void setUp() {
         WorkflowDocumentController c = new WorkflowDocumentController(mapping, engine,
-                mock(TemplateManifestLoader.class), new SocieteIdentityEnricher((ws, id) -> Map.of()), (ws, t, e) -> Map.of());
+                mock(TemplateManifestLoader.class), new SocieteIdentityEnricher((ws, id) -> Map.of()), (ws, t, e) -> Map.of(), (w, t, wf, tpl, d) -> { });
         mvc = MockMvcBuilders.standaloneSetup(c).setControllerAdvice(new GenerationExceptionHandler()).build();
         when(mapping.map(any(), any(), anyMap())).thenReturn(Map.of());
         when(engine.dictionnaire()).thenReturn(new DictionnaireUnique(Set.of("$SIEGE_VILLE", "$ICE"), Map.of(),
@@ -114,7 +114,7 @@ class GenerationRefusNommeTest {
                 (w, t, e) -> {
                     assertThat(List.of(w, t, e)).containsExactly(ws, ticket, employe);
                     return serveur;
-                });
+                }, (w, t, wf, tpl, d) -> { });
         when(engine.generate(eq("ANNONCE_LEGALE_CONSTITUTION"), anyMap())).thenReturn(resultat());
         var user = new ma.jurika.common.security.AuthenticatedUser(employe, ws, "e@x.ma", ma.jurika.common.security.Role.EMPLOYE);
 
@@ -129,12 +129,36 @@ class GenerationRefusNommeTest {
     @Test
     void creation_sans_ticket_refusee() {
         WorkflowDocumentController c = new WorkflowDocumentController(mapping, engine,
-                mock(TemplateManifestLoader.class), new SocieteIdentityEnricher((w, id) -> Map.of()), (w, t, e) -> Map.of());
+                mock(TemplateManifestLoader.class), new SocieteIdentityEnricher((w, id) -> Map.of()), (w, t, e) -> Map.of(), (w, t, wf, tpl, d) -> { });
         var user = new ma.jurika.common.security.AuthenticatedUser(java.util.UUID.randomUUID(), java.util.UUID.randomUUID(),
                 "e@x.ma", ma.jurika.common.security.Role.EMPLOYE);
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> c.generate("CREATION_SARL", "STATUTS_SARL", user,
                         Map.of("societe", Map.of("denomination", "X"))))
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
                 .hasMessageContaining("depuis le ticket");
+    }
+
+    // ---- Lot L3 : la plateforme reclame les donnees externes, et clot celles qui arrivent ----
+
+    @Test
+    void les_donnees_externes_manquantes_sont_reclamees_sur_le_ticket() {
+        java.util.List<Object[]> appels = new java.util.ArrayList<>();
+        WorkflowDocumentController c = new WorkflowDocumentController(mapping, engine,
+                mock(TemplateManifestLoader.class), new SocieteIdentityEnricher((w, id) -> Map.of()), (w, t, e) -> Map.of(),
+                (w, t, wf, tpl, d) -> appels.add(new Object[]{t, wf, tpl, d}));
+        java.util.UUID ticket = java.util.UUID.randomUUID();
+        var user = new ma.jurika.common.security.AuthenticatedUser(java.util.UUID.randomUUID(), java.util.UUID.randomUUID(),
+                "e@x.ma", ma.jurika.common.security.Role.EMPLOYE);
+        when(engine.generate(eq("ANNONCE_LEGALE_DISSOLUTION_SARL"), anyMap()))
+                .thenReturn(resultat(new Manquante("ICE", "ICE : ...", false, true)))
+                .thenReturn(resultat());
+
+        c.generate("DISSOLUTION", "ANNONCE_LEGALE_DISSOLUTION_SARL", user, Map.of("ticketId", ticket.toString()));
+        c.generate("DISSOLUTION", "ANNONCE_LEGALE_DISSOLUTION_SARL", user, Map.of("ticketId", ticket.toString()));
+
+        assertThat(appels).hasSize(2);
+        assertThat(appels.get(0)[0]).isEqualTo(ticket);
+        assertThat(appels.get(0)[3].toString()).contains("variable=ICE").contains("Identifiant commun de l'entreprise");
+        assertThat((List<?>) appels.get(1)[3]).as("rien ne manque plus : la reclamation est close").isEmpty();
     }
 }

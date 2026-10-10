@@ -33,13 +33,17 @@ public class WorkflowController {
     private final DossierIdentityQueryService dossierIdentity;
     /** Lot C — le magasin de variables du dossier, source unique de la génération. */
     private final MagasinVariables magasin;
+    /** Lot L3 : donnees attendues d'un organisme (regle des variables). */
+    private final ma.jurika.workflow.application.DonneesAttenduesService donneesAttendues;
 
     public WorkflowController(WorkflowUseCases useCases,
                               DossierIdentityQueryService dossierIdentity,
-                              MagasinVariables magasin) {
+                              MagasinVariables magasin,
+                              ma.jurika.workflow.application.DonneesAttenduesService donneesAttendues) {
         this.useCases = useCases;
         this.dossierIdentity = dossierIdentity;
         this.magasin = magasin;
+        this.donneesAttendues = donneesAttendues;
     }
 
     /**
@@ -153,6 +157,17 @@ public class WorkflowController {
                                             @PathVariable UUID ticketId) {
         return ConstructeurChargeUtileCreation.construire(
                 magasin.lirePourGeneration(actor.workspaceId(), ticketId));
+    }
+
+    /**
+     * Lot L3 : donnees externes (RC, ICE, IF...) que les documents du ticket attendent
+     * d'un organisme, et si elles sont arrivees (l'ecran regenere alors le document).
+     */
+    @GetMapping("/{ticketId}/donnees-attendues")
+    @PreAuthorize("hasAnyRole('EMPLOYE','SUPERVISEUR')")
+    public java.util.List<ma.jurika.workflow.application.DonneesAttenduesService.Attendue> donneesAttendues(
+            @AuthenticationPrincipal AuthenticatedUser actor, @PathVariable UUID ticketId) {
+        return donneesAttendues.lister(actor.workspaceId(), ticketId);
     }
 
     /** Les variables du dossier avec leur provenance — affichage « en lecture » de l'étape 7. */

@@ -73,17 +73,21 @@ public class WorkflowDocumentController {
     private final SocieteIdentityEnricher identityEnricher;
     /** Lot L3 (P2) : charge utile de la creation construite par le serveur depuis le magasin. */
     private final ma.jurika.ai.workflow.identity.ChargeUtileCreationProvider chargeUtileCreation;
+    /** Lot L3 : reclamation des donnees externes manquantes (regle des variables). */
+    private final ma.jurika.ai.workflow.identity.ReclamationDonnees reclamation;
 
     public WorkflowDocumentController(WorkflowDocumentMappingService mappingService,
                                        DocxTemplateEngine docxTemplateEngine,
                                        TemplateManifestLoader manifestLoader,
                                        SocieteIdentityEnricher identityEnricher,
-                                       ma.jurika.ai.workflow.identity.ChargeUtileCreationProvider chargeUtileCreation) {
+                                       ma.jurika.ai.workflow.identity.ChargeUtileCreationProvider chargeUtileCreation,
+                                       ma.jurika.ai.workflow.identity.ReclamationDonnees reclamation) {
         this.mappingService = mappingService;
         this.docxTemplateEngine = docxTemplateEngine;
         this.manifestLoader = manifestLoader;
         this.identityEnricher = identityEnricher;
         this.chargeUtileCreation = chargeUtileCreation;
+        this.reclamation = reclamation;
     }
 
     /**
@@ -195,6 +199,7 @@ public class WorkflowDocumentController {
         // rendue en 404 ; il n'y a plus de document de remplacement a detecter ici.
 
         refuserSiTrouGrammatical(workflowCode, templateCode, result);
+        reclamerDonneesExternes(workflowCode, templateCode, enriched, workspaceId, result);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -208,6 +213,35 @@ public class WorkflowDocumentController {
                         DocxTemplateEngine.enteteDonneesAObtenir(result, docxTemplateEngine.dictionnaire()))
                 .contentType(MediaType.parseMediaType(result.contentType()))
                 .body(result.bytes());
+    }
+
+    /**
+     * Lot L3 (regle des variables) : les donnees EXTERNES manquantes du document produit
+     * sont reclamees sur le ticket ; celles qui ne manquent plus sont closes. Toujours
+     * appele quand le ticket est connu, meme sans manquante, pour clore ce qui est arrive.
+     */
+    private void reclamerDonneesExternes(String workflowCode, String templateCode, Map<String, Object> payload,
+                                         UUID workspaceId, DocumentResult result) {
+        UUID ticketId = null;
+        Object brut = payload == null ? null : payload.get("ticketId");
+        try {
+            ticketId = brut == null ? null : UUID.fromString(String.valueOf(brut));
+        } catch (IllegalArgumentException ignore) {
+            // identifiant invalide : pas de ticket
+        }
+        if (ticketId == null || workspaceId == null) {
+            log.warn("Generation {} / {} sans ticket : donnees a obtenir non reclamees", workflowCode, templateCode);
+            return;
+        }
+        var dico = docxTemplateEngine.dictionnaire();
+        java.util.List<Map<String, String>> donnees = new java.util.ArrayList<>();
+        for (var m : result.manquantes()) {
+            if (m.externe()) {
+                String lib = dico == null ? null : dico.libelle(m.nom());
+                donnees.add(Map.of("variable", m.nom(), "libelle", lib == null ? m.nom() : lib));
+            }
+        }
+        reclamation.enregistrer(workspaceId, ticketId, workflowCode, templateCode, donnees);
     }
 
     private Map<String, Object> chargeUtileServeur(Map<String, Object> payload, UUID workspaceId, UUID employeId) {

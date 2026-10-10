@@ -87,6 +87,17 @@ function lireDonneesAObtenir(entete: string | undefined): DonneeNommee[] {
   }
 }
 
+/** Texte d'un Blob ; `FileReader` quand `Blob#text` manque (anciens navigateurs, jsdom). */
+function lireTexte(b: Blob): Promise<string> {
+  if (typeof b.text === 'function') return b.text();
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result ?? ''));
+    r.onerror = () => reject(r.error);
+    r.readAsText(b);
+  });
+}
+
 /**
  * La reponse d'erreur arrive en Blob (`responseType: 'blob'`) : elle est relue en JSON,
  * sans quoi l'employe ne verrait que « Request failed with status code 422 ».
@@ -99,7 +110,7 @@ async function erreurLisible(err: unknown): Promise<Error> {
   let corps: Record<string, unknown> | null = null;
   try {
     const d = reponse.data;
-    const texte = d instanceof Blob ? await d.text() : typeof d === 'string' ? d : JSON.stringify(d ?? {});
+    const texte = d instanceof Blob ? await lireTexte(d) : typeof d === 'string' ? d : JSON.stringify(d ?? {});
     corps = JSON.parse(texte) as Record<string, unknown>;
   } catch {
     corps = null;

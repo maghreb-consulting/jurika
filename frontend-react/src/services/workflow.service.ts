@@ -75,6 +75,18 @@ export interface DossierParties {
   nombreParts?: number | string | null;
 }
 
+
+/** Lot L3 : une donnee externe attendue par un document du ticket. */
+export interface DonneeAttendue {
+  templateCode: string;
+  workflowCode: string;
+  variable: string;
+  libelle: string;
+  reclameeLe: string;
+  /** Presente au magasin du ticket ou a la fiche societe : le document peut etre regenere. */
+  recue: boolean;
+}
+
 export const workflowService = {
   async start(ticketId: string, type: WorkflowType): Promise<WorkflowProgress> {
     const { data } = await api.post<WorkflowProgress>(`/workflows/${ticketId}/start`, { type });
@@ -96,6 +108,15 @@ export const workflowService = {
 
   async executeStep(ticketId: string, step: number, payload: Record<string, unknown>): Promise<ExecuteStepResult> {
     const { data } = await api.post<ExecuteStepResult>(`/workflows/${ticketId}/execute-step`, { step, payload });
+    return data;
+  },
+
+  /**
+   * Lot L3 (regle des variables) : donnees externes (RC, ICE, IF...) que les documents
+   * du ticket attendent d'un organisme, et si elles sont arrivees.
+   */
+  async donneesAttendues(ticketId: string): Promise<DonneeAttendue[]> {
+    const { data } = await api.get<DonneeAttendue[]>(`/workflows/${ticketId}/donnees-attendues`);
     return data;
   },
 

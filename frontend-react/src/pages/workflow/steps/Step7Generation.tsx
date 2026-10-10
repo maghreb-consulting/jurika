@@ -24,7 +24,8 @@ import {
   type DonneeNommee,
   type TemplateInfo,
 } from '../../../services/workflowDocumentService';
-import { workflowService } from '../../../services/workflow.service';
+import { workflowService, type DonneeAttendue } from '../../../services/workflow.service';
+import { DonneesAttendues } from '../../../components/workflow/DonneesAttendues';
 import { RetourGeneration } from '../../../components/workflow/RetourGeneration';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 import { DocumentEditor } from '../../../components/document/DocumentEditor';
@@ -522,6 +523,19 @@ export function Step7Generation({
   );
 
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
+  /** Lot L3 : donnees externes reclamees pour les documents du ticket (regle des variables). */
+  const [attendues, setAttendues] = useState<DonneeAttendue[]>([]);
+  useEffect(() => {
+    if (!ticketId || readOnly) return undefined;
+    let actif = true;
+    workflowService
+      .donneesAttendues(ticketId)
+      .then((l) => actif && setAttendues(l))
+      .catch(() => actif && setAttendues([]));
+    return () => {
+      actif = false;
+    };
+  }, [ticketId, readOnly]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [docs, setDocs] = useState<Record<string, DocState>>(() => {
@@ -987,6 +1001,7 @@ export function Step7Generation({
       // le document est PERSISTE comme brouillon, sans quoi il ne survivrait pas
       // a un rechargement (lot 2).
       await persistBrouillon(tpl, blob, cleanDocFilename(tpl, denomination, forme, nextVersion));
+      if (ticketId) setAttendues(await workflowService.donneesAttendues(ticketId));
     } catch (err) {
       updateDoc(tpl.code, {
         generating: false,
@@ -1518,6 +1533,13 @@ export function Step7Generation({
 
               <div className="space-y-3 p-5">
                 <RetourGeneration erreur={st.error} refus={st.refus} aObtenir={st.aObtenir} />
+                {!readOnly && (
+                  <DonneesAttendues
+                    attendues={attendues.filter((a) => a.templateCode === tpl.code)}
+                    enCours={st.generating}
+                    onRegenerer={() => generateOne(tpl)}
+                  />
+                )}
 
                 {!st.generated && readOnly && (
                   <div className="rounded-lg border border-border bg-bg-overlay p-3 text-[11px] text-fg-subtle">

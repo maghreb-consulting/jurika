@@ -88,6 +88,7 @@ class WorkflowJurikaAppIT {
     @Autowired private WorkflowFinalizationService finalisation;
     @Autowired private MagasinVariables magasin;
     @Autowired private ma.jurika.workflow.application.ProjecteurVariablesCreation projecteur;
+    @Autowired private ma.jurika.workflow.application.DonneesAttenduesService donneesAttendues;
 
     private UUID workspaceId;
     private UUID dossierId;
@@ -95,6 +96,7 @@ class WorkflowJurikaAppIT {
 
     @BeforeEach
     void seed() {
+        jdbc.execute("DELETE FROM donnees_attendues");
         jdbc.execute("DELETE FROM dossier_variables");
         jdbc.execute("DELETE FROM workflow_progress");
         jdbc.execute("DELETE FROM tickets");
@@ -316,5 +318,48 @@ class WorkflowJurikaAppIT {
                         .get("/internal/tickets/{t}/charge-utile-creation", ticketId)
                         .param("workspaceId", workspaceId.toString()).param("employeId", UUID.randomUUID().toString()))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isForbidden());
+    }
+
+    @Test
+    void l3_donnee_externe_reclamee_puis_recue_puis_close_a_la_regeneration() {
+        var rc = new ma.jurika.workflow.application.DonneesAttenduesService.Donnee("RC_NUMERO", "Numero du registre du commerce");
+        var dl = new ma.jurika.workflow.application.DonneesAttenduesService.Donnee("DATE_DEPOT_LEGAL", "Date du depot legal");
+        dansLeWorkspace(() -> {
+            donneesAttendues.enregistrer(workspaceId, ticketId, "CREATION_SARL", "ANNONCE_LEGALE_CONSTITUTION", List.of(rc, dl));
+            return null;
+        });
+        var attendues = dansLeWorkspace(() -> donneesAttendues.lister(workspaceId, ticketId));
+        assertThat(attendues).extracting(a -> a.variable() + "=" + a.recue())
+                .containsExactlyInAnyOrder("RC_NUMERO=false", "DATE_DEPOT_LEGAL=false");
+
+        // La donnee arrive au magasin (saisie de l'employe) : elle est signalee recue.
+        dansLeWorkspace(() -> {
+            magasin.poser(workspaceId, ticketId, "RC_NUMERO", "654321", VariableDuDossier.Origine.SAISIE, EMPLOYE, "etape-9");
+            return null;
+        });
+        assertThat(dansLeWorkspace(() -> donneesAttendues.lister(workspaceId, ticketId)))
+                .extracting(a -> a.variable() + "=" + a.recue()).contains("RC_NUMERO=true", "DATE_DEPOT_LEGAL=false");
+
+        // Le document est regenere : il n'attend plus que la date du depot ; le RC est clos.
+        dansLeWorkspace(() -> {
+            donneesAttendues.enregistrer(workspaceId, ticketId, "CREATION_SARL", "ANNONCE_LEGALE_CONSTITUTION", List.of(dl));
+            return null;
+        });
+        assertThat(dansLeWorkspace(() -> donneesAttendues.lister(workspaceId, ticketId)))
+                .extracting(a -> a.variable()).containsExactly("DATE_DEPOT_LEGAL");
+    }
+
+    @Test
+    void l3_une_donnee_de_la_fiche_societe_compte_comme_recue() throws Exception {
+        jdbc.update("UPDATE tickets SET dossier_id = ? WHERE id = ?", dossierId, ticketId);
+        var ice = new ma.jurika.workflow.application.DonneesAttenduesService.Donnee("ICE", "ICE");
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/internal/tickets/{t}/donnees-attendues", ticketId).param("workspaceId", workspaceId.toString())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"workflowCode\":\"PV_AGO\",\"templateCode\":\"PV_X\",\"donnees\":[{\"variable\":\"ICE\",\"libelle\":\"ICE\"}]}"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+        assertThat(dansLeWorkspace(() -> donneesAttendues.lister(workspaceId, ticketId)).get(0).recue()).isFalse();
+        jdbc.update("UPDATE entreprise_dossiers SET ice = '001234567000089' WHERE id = ?", dossierId);
+        assertThat(dansLeWorkspace(() -> donneesAttendues.lister(workspaceId, ticketId)).get(0).recue()).isTrue();
     }
 }
