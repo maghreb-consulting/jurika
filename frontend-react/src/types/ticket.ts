@@ -215,3 +215,14 @@ export const CATEGORIE_LABELS: Record<DeboursCategorie, string> = {
   TRANSPORT: 'Transport',
   AUTRE: 'Autre',
 };
+
+/**
+ * Lot L1 (RG-TKT-07) : note interne d'un ticket. `modifieLe` null : jamais
+ * enregistree (note vide, ouverte des la creation du ticket).
+ */
+export interface TicketNote {
+  ticketId: string;
+  contenu: string;
+  modifiePar: string | null;
+  modifieLe: string | null;
+}

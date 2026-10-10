@@ -25,6 +25,7 @@ import {
 import { Card } from '../../components/ui/Card';
 import { TextField } from '../../components/ui/TextField';
 import { Button } from '../../components/ui/Button';
+import { TexteAide } from '../../components/ui/Aide';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { dataroomService } from '../../services/dataroom.service';
 import { extractError } from '../../lib/api';
@@ -655,6 +656,18 @@ function DataroomDetail({
         <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           {error}
         </div>
+      )}
+
+      {/* Lot L1 : aide de l'ecran modifie (regle de l'aide integree, CDC 15.4). */}
+      {user?.role !== 'CLIENT' && (
+        <TexteAide cle="dataroom-conservation" titre="Ajouter, supprimer, conserver">
+          <p>
+            Les documents de la société sont conservés : une Data Room ne se supprime pas.
+            L’employé responsable du dossier ajoute des documents ; il ne peut en supprimer que si
+            le superviseur lui en a accordé le droit, et toute suppression est tracée. Un document
+            supprimé reste en archive.
+          </p>
+        </TexteAide>
       )}
 
       {/* §A — bandeau explicite : archive legale, lecture seule pour tous. */}
