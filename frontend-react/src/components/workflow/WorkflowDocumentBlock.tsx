@@ -52,7 +52,7 @@ export interface DocState {
   depositedToDataroom: boolean;
   /** Lot L3 : donnees internes manquantes nommees par le serveur (generation refusee). */
   refus?: DonneeManquante[];
-  /** Lot L3 : donnees externes manquantes de la derniere generation (« À OBTENIR »). */
+  /** Lot L3 : donnees externes manquantes de la derniere generation ("A OBTENIR"). */
   aObtenir?: DonneeNommee[];
   /** Lot L3 : donnees externes reclamees pour ce document, et si elles sont arrivees. */
   attendues?: DonneeAttendue[];

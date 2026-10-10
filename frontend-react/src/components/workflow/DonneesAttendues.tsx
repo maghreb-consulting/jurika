@@ -5,7 +5,7 @@ import type { DonneeAttendue } from '../../services/workflow.service';
 /**
  * Lot L3 (regle des variables) : les donnees qu'un document attend d'un organisme.
  *
- * La plateforme les a reclamees a la generation (l'acte porte « À OBTENIR » a leur
+ * La plateforme les a reclamees a la generation (l'acte porte "A OBTENIR" a leur
  * place). Quand TOUTES sont arrivees (saisies au ticket ou a la fiche de la societe),
  * le document est regenere d'office, une fois, sans autre geste de l'employe.
  */

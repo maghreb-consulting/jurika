@@ -73,7 +73,7 @@ export class GenerationRefuseeError extends Error {
 export interface DocumentGenere {
   blob: Blob;
   filename: string;
-  /** Lot L3 : donnees externes manquantes (marquees « À OBTENIR » dans l'acte). */
+  /** Lot L3 : donnees externes manquantes (marquees "A OBTENIR" dans l'acte). */
   donneesAObtenir: DonneeNommee[];
 }
 
@@ -100,7 +100,7 @@ function lireTexte(b: Blob): Promise<string> {
 
 /**
  * La reponse d'erreur arrive en Blob (`responseType: 'blob'`) : elle est relue en JSON,
- * sans quoi l'employe ne verrait que « Request failed with status code 422 ».
+ * sans quoi l'employe ne verrait que "Request failed with status code 422".
  */
 async function erreurLisible(err: unknown): Promise<Error> {
   const reponse = (err as { response?: { status?: number; data?: unknown } })?.response;

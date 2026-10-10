@@ -196,7 +196,7 @@ public class WorkflowUseCases {
      * devient une variable : c'est ce qui permet d'affirmer qu'il n'existe pas
      * deux chemins pour la même valeur.
      *
-     * <p><b>Lot L3 (motif 9) : plus de « best-effort ».</b> La charge utile de la
+     * <p><b>Lot L3 (motif 9) : plus de "best-effort".</b> La charge utile de la
      * creation est desormais construite depuis le magasin : une projection echouee en
      * silence ferait generer l'acte sur une valeur perimee, que le controle de
      * completude ne voit pas. L'echec remonte ; l'etape n'est pas enregistree et

@@ -16,18 +16,18 @@ import java.util.Map;
  * <p>Emplacement prevu par le modele (le gabarit n'est jamais modifie, P8) : la boucle
  * {@code RESOLUTIONS} qui imprime, pour chaque resolution, {@code $RESOLUTION_INTITULE}
  * puis {@code $RESOLUTION_TEXTE}. Une clause libre y devient une resolution de plus,
- * « a la suite des resolutions », imprimee telle que saisie dans la mise en forme du
+ * "a la suite des resolutions", imprimee telle que saisie dans la mise en forme du
  * modele. Un modele sans cette boucle n'a pas d'emplacement : la clause n'y est pas
  * imprimee en silence, la generation le refuse.
  *
  * <p>Statuts : le cabinet doit ajouter aux modeles STATUTS_SARL et STATUTS_SARL_AU
- * l'emplacement des clauses particulieres (CDC § 18-6) -- A_DECIDER.
+ * l'emplacement des clauses particulieres (CDC 18-6) -- A_DECIDER.
  */
 public final class ClausesLibres {
 
     public static final String EMPLACEMENT = "A_LA_SUITE_DES_RESOLUTIONS";
     public static final String LIBELLE_EMPLACEMENT = "À la suite des résolutions";
-    /** A_DECIDER (CDC § 18-6) : emplacement des clauses particulieres des statuts. */
+    /** A_DECIDER (CDC 18-6) : emplacement des clauses particulieres des statuts. */
     public static final String A_DECIDER_STATUTS =
             "Les statuts n'ont pas encore d'emplacement pour les clauses particulières : le cabinet doit "
                     + "l'ajouter aux modèles (cahier des charges, § 18-6).";
@@ -56,7 +56,7 @@ public final class ClausesLibres {
 
     /**
      * Ajoute chaque clause a la suite des resolutions du mapper. La numerotation suit
-     * celle du mapper (« TROISIEME RESOLUTION » -> « QUATRIEME RESOLUTION », ou 3 -> 4).
+     * celle du mapper ("TROISIEME RESOLUTION" -> "QUATRIEME RESOLUTION", ou 3 -> 4).
      */
     @SuppressWarnings("unchecked")
     public static Map<String, Object> inserer(Map<String, Object> variables, List<Map<String, Object>> clauses) {

@@ -200,7 +200,7 @@ class MissingVariableMarkerTest {
 
     @Test
     void l3_interne_manquante_bloquante_meme_seule_apres_un_libelle() throws Exception {
-        // Avant L3, « Ville : $X » seul sur sa ligne passait pour une case : le blanc sortait.
+        // Avant L3, "Ville : $X" seul sur sa ligne passait pour une case : le blanc sortait.
         byte[] docx = buildDocxWithParagraphs("Lieu de signature : $LIEU_SIGNATURE",
                 "Fait le $DATE_SIGNATURE en six exemplaires.");
         var r = engine.render(docx, "PV_TEST.docx", Map.of());
@@ -222,7 +222,7 @@ class MissingVariableMarkerTest {
 
     @Test
     void l3_valeur_vide_est_une_donnee_manquante() throws Exception {
-        // Avant L3 : « registre du commerce de , numero » -- le vide s'imprimait en silence.
+        // Avant L3 : "registre du commerce de , numero" -- le vide s'imprimait en silence.
         byte[] docx = buildDocxWithParagraph("Siege a $SIEGE_VILLE, objet : $OBJET.");
         var r = engine.render(docx, "test.docx", Map.of("SIEGE_VILLE", "  ", "OBJET", "conseil"));
         String text = fullText(r.bytes());

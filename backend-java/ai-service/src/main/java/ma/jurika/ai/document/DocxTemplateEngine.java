@@ -449,7 +449,7 @@ public class DocxTemplateEngine {
             // rouge au lieu du "VALEUR MANQUANTE" generique. Les autres variables
             // manquantes restent en rouge "VALEUR MANQUANTE" (vrai bug / oubli).
             // Lot L3 : la liste fill_later est remplacee par le classement des variables :
-            // une externe manquante est marquee « A OBTENIR » (jamais bloquante), une
+            // une externe manquante est marquee "A OBTENIR" (jamais bloquante), une
             // interne manquante est bloquante (sauf case d'imprime administratif).
             ma.jurika.ai.document.corpus.DictionnaireUnique dico = corpus == null ? null : corpus.dictionnaire();
             List<MissingVariableMarker.Manquante> detail =
@@ -2179,7 +2179,7 @@ public class DocxTemplateEngine {
                                  Map<String, String> scopedVars, String literal) {
         String trouvee = trouverUpper(name, variables, scopedVars);
         // Lot L3 (motif 9) : une valeur VIDE est une donnee manquante. Elle s'imprimait
-        // en silence (« registre du commerce de , numero ») : elle est desormais marquee
+        // en silence ("registre du commerce de , numero") : elle est desormais marquee
         // et classee comme une variable absente.
         if (trouvee != null && !trouvee.isBlank()) return trouvee;
         String upper = normalizeUpperKey(name);
@@ -2207,7 +2207,7 @@ public class DocxTemplateEngine {
         if (variables.containsKey(norm)) return variables.get(norm);
         String normUpper = normalize(upper);
         if (variables.containsKey(normUpper)) return variables.get(normUpper);
-        // 2026-06-19 (PARTIE A) — Variable non fournie : l'appelant insere un sentinel
+        // 2026-06-19 (PARTIE A) -- Variable non fournie : l'appelant insere un sentinel
         // {@link MissingVariableMarker#SENTINEL_OPEN}NOM_NORMALISE
         // {@link MissingVariableMarker#SENTINEL_CLOSE}, converti en run gras+rouge
         // par la passe universelle {@link MissingVariableMarker}. Le nom utilise est

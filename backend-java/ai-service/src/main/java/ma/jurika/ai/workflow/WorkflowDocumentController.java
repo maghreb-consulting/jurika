@@ -212,7 +212,7 @@ public class WorkflowDocumentController {
                 .header("X-Workflow-Code", workflowCode)
                 .header("X-Template-Code", templateCode)
                 .header("X-Missing-Variables", String.join(",", result.missingVariables()))
-                // Lot L3 : donnees externes manquantes (marquees « A OBTENIR »), en JSON
+                // Lot L3 : donnees externes manquantes (marquees "A OBTENIR"), en JSON
                 // encode URL : le front les affiche et la plateforme les reclame.
                 .header("X-Donnees-A-Obtenir",
                         DocxTemplateEngine.enteteDonneesAObtenir(result, docxTemplateEngine.dictionnaire()))

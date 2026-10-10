@@ -7,7 +7,7 @@ import type { DonneeManquante, DonneeNommee } from '../../services/workflowDocum
  * - refus : une donnee INTERNE manque ; elle est nommee (libelle du champ), avec la
  *   phrase de l'acte ou elle s'imprime. Rien n'est produit.
  * - donnees a obtenir : une donnee EXTERNE (attendue d'un organisme : RC, ICE, IF...)
- *   manque ; l'acte est produit avec le marqueur « À OBTENIR », la plateforme la
+ *   manque ; l'acte est produit avec le marqueur "A OBTENIR", la plateforme la
  *   reclame, et l'acte se regenere quand elle arrive.
  */
 export function RetourGeneration({

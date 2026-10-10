@@ -33,7 +33,7 @@ public class RemoteSocieteIdentityProvider implements SocieteIdentityProvider {
             Map<String, Object> identity = client.identity(dossierId, workspaceId);
             return identity == null ? Map.of() : identity;
         } catch (Exception ex) {
-            // Lot L3 (motif 9) : plus de « mode degrade » silencieux -- l'acte partait sans
+            // Lot L3 (motif 9) : plus de "mode degrade" silencieux -- l'acte partait sans
             // les donnees de la societe. La generation echoue et le dit.
             log.error("Identite societe illisible (dossier={}) : {}", dossierId, ex.getMessage());
             throw new IdentiteSocieteIndisponibleException(

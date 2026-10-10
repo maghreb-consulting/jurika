@@ -144,9 +144,9 @@ public final class MissingVariableMarker {
      *
      * <p>Lot L3 (regle des variables) : {@code estExterne} classe chaque variable.
      * Une variable externe manquante n'est jamais bloquante et porte le marqueur
-     * « ‹ À OBTENIR : NOM › » ; une variable interne manquante est bloquante, sauf une
+     * "<A OBTENIR : NOM>" ; une variable interne manquante est bloquante, sauf une
      * case d'imprime administratif. La liste {@code fill_later} et son libelle
-     * « [a completer] » sont retires : ils laissaient passer des donnees internes.
+     * "[a completer]" sont retires : ils laissaient passer des donnees internes.
      */
     public static List<Manquante> applyDetailed(XWPFDocument doc, java.util.function.Predicate<String> estExterne,
                                                  boolean casesEnBlanc) {
@@ -198,8 +198,8 @@ public final class MissingVariableMarker {
      * segments rouges+gras a la place. Preserve la police et la taille des autres
      * segments en clonant depuis le 1er run.
      *
-     * <p>Lot L3 : une variable EXTERNE manquante s'affiche « ‹ À OBTENIR : NOM › » (rouge),
-     * une variable interne « ‹ VALEUR MANQUANTE : NOM › » ; une case d'imprime
+     * <p>Lot L3 : une variable EXTERNE manquante s'affiche "<A OBTENIR : NOM>" (rouge),
+     * une variable interne "<VALEUR MANQUANTE : NOM>" ; une case d'imprime
      * administratif reste blanche.
      */
     private static void renderMissingMarkers(XWPFParagraph p,
@@ -241,7 +241,7 @@ public final class MissingVariableMarker {
             String varName = m.group(1);
             // Lot L3, regle des variables :
             //  - EXTERNE (donnee d'un organisme) : jamais bloquante ; marqueur visible
-            //    « A OBTENIR », la donnee est reclamee et l'acte se regenerera ;
+            //    "A OBTENIR", la donnee est reclamee et l'acte se regenerera ;
             //  - INTERNE : bloquante, et nommee a l'employe. Seule exception, une CASE
             //    d'un imprime administratif, qui peut rester vide (RG-VAR-10, RG-GEN-03).
             boolean externe = estExterne != null && estExterne.test(varName);
@@ -255,7 +255,7 @@ public final class MissingVariableMarker {
                 addRun(p, prefix, baseFamily, baseSize, baseBold, baseItalic, null);
             }
             // Imprime administratif : une CASE laissee blanche sort blanche, externe
-            // comprise (RG-GEN-03 : « sans aucune marque d'erreur ») ; la donnee externe
+            // comprise (RG-GEN-03 : "sans aucune marque d'erreur") ; la donnee externe
             // reste remontee, donc reclamee.
             boolean enBlanc = caseAdministrative;
             if (!enBlanc) {

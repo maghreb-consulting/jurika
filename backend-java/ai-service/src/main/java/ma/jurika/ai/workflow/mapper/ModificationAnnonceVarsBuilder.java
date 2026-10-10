@@ -31,7 +31,7 @@ import java.util.Set;
  * alors pas la génération de l'annonce).
  *
  * <p><b>{@code $DEPOT_LEGAL_NUMERO} / {@code $DATE_DEPOT_LEGAL}</b> : attribués par le greffe APRÈS
- * dépôt, donc inconnus à la génération : donnees EXTERNES (lot L3), marquees « À OBTENIR » et reclamees.
+ * depot, donc inconnus a la generation : donnees EXTERNES (lot L3), marquees "A OBTENIR" et reclamees.
  */
 public final class ModificationAnnonceVarsBuilder {
 
@@ -75,9 +75,9 @@ public final class ModificationAnnonceVarsBuilder {
         // qu'APRÈS le dépôt : au moment de rédiger l'avis, elles sont normalement
         // inconnues. On les rendait vides, d'où « … le  sous le numéro  RC N° 123456 »
         // — une phrase trouée que rien ne signalait. On reprend le marqueur déjà
-        // Lot L3 : plus de bouche-trou « [a completer apres immatriculation] ». Date et
+        // Lot L3 : plus de bouche-trou "[a completer apres immatriculation]". Date et
         // numero du depot legal sont des donnees EXTERNES (greffe) : absentes, l'acte
-        // porte le marqueur « A OBTENIR » et la donnee est reclamee (regle des variables).
+        // porte le marqueur "A OBTENIR" et la donnee est reclamee (regle des variables).
         String dateDepotLegal = dateStr(first0(depot.get("date"), safe.get("dateDepotLegal")));
         String numeroDepotLegal = str(first0(depot.get("numero"), safe.get("depotLegalNumero")));
         put(v, "DATE_DEPOT_LEGAL",

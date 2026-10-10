@@ -3,7 +3,7 @@
  *
  * Sur l'objet saisi (etape 1, dirigeant, associe), `_extraits` liste les champs remplis
  * par la lecture d'une piece (CIN, certificat negatif) et confirmes par l'employe. Le
- * serveur les enregistre avec la provenance « extraite » au magasin. Un champ modifie a
+ * serveur les enregistre avec la provenance "extraite" au magasin. Un champ modifie a
  * la main ensuite sort de la liste : il redevient une saisie.
  */
 export const CLE_EXTRAITS = '_extraits';
