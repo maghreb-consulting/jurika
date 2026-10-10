@@ -112,8 +112,12 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
 - Seule une variable **externe** peut manquer : l'acte sort avec un **marqueur visible**, la
   plateforme **reclame** la donnee, puis l'acte se **regenere** quand elle arrive.
 - Mise en oeuvre (lot L3) : liste explicite des variables externes
-  `ai-service/.../templates/v2/variables-externes.txt` (proposition a valider par le directeur,
-  regles dans `scripts/l3/variables_externes.py`), controlee au demarrage contre le dictionnaire ;
+  `ai-service/.../templates/v2/variables-externes.txt` (regles dans
+  `scripts/l3/variables_externes.py`, liste classee : `~/docs/rapports/L3_variables_externes.md`),
+  controlee au demarrage contre le dictionnaire. Decision du 2026-10-10 (D2) : seules les donnees
+  de la SOCIETE TRAITEE attendues d'un organisme sont externes (RC, ICE, IF, TP, CNSS, dates et
+  numeros d'immatriculation, de depot, de recepisse) ; les identifiants des tiers (bailleur,
+  domiciliataire, associe personne morale...) sont internes ;
   refus structure (422, donnees nommees) a tous les parcours ; marqueur « A OBTENIR » ;
   reclamation (`donnees_attendues`, workflow V16) et regeneration a l'arrivee. Les 17 gabarits D3
   de L2 suivent la regle (tableau : `~/docs/rapports/L3_rapport_final.md`).
@@ -215,17 +219,24 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L3 (saisie unique, 2026-10-10) -- dette relevee
 
-- **Valeurs par defaut inventees des mappers et de l'etape 9** (A_DECIDER directeur) : NOMBRE_ORIGINAUX
-  « 6 », HEURE_ACTE « 10 heures », exercice « 1er janvier / 31 decembre », mandat du commissaire
-  aux comptes « 3 », duree « 99 », resultat de vote « adoptee » / « a l'unanimite », quorum « oui »,
-  presence « present », type de piece « CIN ». A trancher : valeurs du cabinet ou donnees a saisir.
+- **Usages a confirmer par le directeur** (D6, 2026-10-10) : nombre d'originaux et heure de l'acte
+  sont desormais des valeurs proposees a l'ecran (composant `ValeurProposee`), confirmees par
+  l'employe ; les propositions ("6", "quatre", "10 heures") restent a valider comme usages du cabinet.
+- **Valeurs pre-remplies encore affichees sans confirmation** (hors liste D6) : la liste de choix
+  des resolutions de modification prend sa premiere option d'office (`SelectField`,
+  `modificationResolutions.tsx`) ; remuneration du liquidateur "exercees a titre gratuit", motif de
+  dissolution "volontaire", nationalite "Marocaine" (creation, etape 6). Visibles et modifiables,
+  mais jamais confirmees : a passer en valeurs proposees (L4 ou L6).
+- **Creation : seule la CIN est acceptee comme piece** (format controle, scan de la CIN exige) ;
+  le type de piece est derive du n de CIN saisi (D6). Un associe ou gerant etranger (passeport,
+  carte de sejour) ne peut pas etre saisi : a instruire.
 - **Gabarits D3 de dissolution, liquidation et approbation (SARL AU)** : leurs variables du corpus
   (liquidateur personne morale, dates de decision et d'effet...) ne sont pas fournies par les
   mappers ; ces actes sont refuses avec les donnees nommees jusqu'a la reecriture des mappers (L4).
 - **Controle d'acces des endpoints workflow** (`save`, `execute-step`, `variables`, `charge-utile`) :
   workspace seulement, pas l'employe en charge du ticket (les endpoints L3 l'exigent).
-- **Champs sans ecran** lus par le projecteur : ville du RC d'un associe personne morale
-  (`ASSOCIE_RC_VILLE`), type de piece d'un associe ou gerant (repli « CIN »).
+- **Champ sans ecran** lu par le projecteur : ville du RC d'un associe personne morale
+  (`ASSOCIE_RC_VILLE`).
 - **Clauses libres** : pas d'emplacement dans les PV de modification, de dissolution / liquidation
   ni dans les PV SARL AU servis ; les modeles du corpus qui le prevoient (`PV_AG_SARL`,
   `PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU`, `$RESOLUTION_TEXTE_LIBRE`) arrivent avec L4.
