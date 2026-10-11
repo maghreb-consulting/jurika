@@ -14,7 +14,7 @@ import { UserCheck } from 'lucide-react';
 import { Select } from '../ui/Select';
 import { TextField } from '../ui/TextField';
 import { IdentityExtractor } from '../identity/IdentityExtractor';
-import { TypePieceProposee, ValeurProposee } from './ValeurProposee';
+import { TypePieceProposee } from './ValeurProposee';
 import { TexteAide } from '../ui/Aide';
 import { estPersonneMorale } from '../../lib/liquidateur';
 import type { DossierPartie, DossierParties } from '../../services/workflow.service';
@@ -48,6 +48,19 @@ export interface LiquidateurState {
   ice?: string;
   representantNom?: string;
   representantQualite?: string;
+  /**
+   * Lot L4d (E11d) : donnees du PV de dissolution du corpus. Nationalite et date de
+   * naissance (personne physique), ancien gerant (oui / non), remuneration (oui / non,
+   * montant, modalites) : saisies, jamais supposees.
+   */
+  nationalite?: string;
+  dateNaissance?: string;
+  ancienGerant?: '' | 'oui' | 'non';
+  remunerationApplicable?: '' | 'oui' | 'non';
+  remunerationMontant?: string;
+  remunerationModalites?: string;
+  /** Lot L4d (E11d) : siege de la liquidation au siege social (oui) ou a une autre adresse (non). */
+  siegeIdentique?: string;
 }
 
 export interface LiquidateurOption {
@@ -167,6 +180,54 @@ export interface LiquidateurPickerProps {
   error?: string | null;
 }
 
+/**
+ * Lot L4d (E11d) : remuneration du liquidateur, telle que le PV du corpus la redige
+ * (a titre gratuit, ou montant et modalites). Remplace le champ libre propose
+ * "exercees a titre gratuit".
+ */
+function RemunerationLiquidateur({
+  value,
+  set,
+}: {
+  value: LiquidateurState;
+  set: (patch: Partial<LiquidateurState>) => void;
+}) {
+  return (
+    <div className="grid gap-3 md:grid-cols-3" data-testid="liquidateur-remuneration">
+      <Select
+        label="Rémunération du liquidateur *"
+        value={value.remunerationApplicable ?? ''}
+        data-testid="liquidateur-remuneration-applicable"
+        onChange={(e) => set({ remunerationApplicable: e.target.value as '' | 'oui' | 'non' })}
+        hint={value.remunerationApplicable ? undefined : 'À indiquer : le procès-verbal fixe la rémunération ou la gratuité des fonctions.'}
+        options={[
+          { value: '', label: 'Choisir…' },
+          { value: 'non', label: 'Fonctions exercées à titre gratuit' },
+          { value: 'oui', label: 'Fonctions rémunérées' },
+        ]}
+      />
+      {value.remunerationApplicable === 'oui' && (
+        <>
+          <TextField
+            label="Montant (dirhams) *"
+            type="number"
+            value={value.remunerationMontant ?? ''}
+            data-testid="liquidateur-remuneration-montant"
+            onChange={(e) => set({ remunerationMontant: e.target.value })}
+          />
+          <TextField
+            label="Modalités de versement *"
+            value={value.remunerationModalites ?? ''}
+            data-testid="liquidateur-remuneration-modalites"
+            onChange={(e) => set({ remunerationModalites: e.target.value })}
+            placeholder="Ex. : payable en fin de mission"
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
 export function LiquidateurPicker({
   value,
   onChange,
@@ -283,13 +344,6 @@ export function LiquidateurPicker({
               onChange={(e) => set({ representantNom: e.target.value })} hint="Civilité, prénom et nom." />
             <TextField label="Qualité du représentant" value={value.representantQualite ?? ''} data-testid="liquidateur-representant-qualite"
               onChange={(e) => set({ representantQualite: e.target.value })} hint="Par exemple : gérant." />
-            <ValeurProposee
-              id="liquidateur-remuneration-pm"
-              label="Rémunération du liquidateur"
-              proposition="exercées à titre gratuit"
-              valeur={value.remuneration || undefined}
-              onChange={(v) => set({ remuneration: v })}
-            />
           </div>
         </>
       )}
@@ -366,15 +420,38 @@ export function LiquidateurPicker({
           onChange={(e) => set({ adresse: e.target.value })}
           hint="Publiée dans l'annonce légale (« demeurant à … »)."
         />
-        <ValeurProposee
-          id="liquidateur-remuneration"
-          label="Rémunération du liquidateur"
-          proposition="exercées à titre gratuit"
-          valeur={value.remuneration || undefined}
-          onChange={(v) => set({ remuneration: v })}
+        <TextField
+          label="Nationalité"
+          value={value.nationalite ?? ''}
+          data-testid="liquidateur-nationalite"
+          onChange={(e) => set({ nationalite: e.target.value })}
+          hint="Mentionnée au procès-verbal de dissolution."
         />
+        <TextField
+          label="Date de naissance"
+          type="date"
+          value={value.dateNaissance ?? ''}
+          data-testid="liquidateur-date-naissance"
+          onChange={(e) => set({ dateNaissance: e.target.value })}
+        />
+        {!(value.source === 'BD' && value.partieKey.startsWith('gerant:')) && (
+          <Select
+            label="A-t-il été gérant de la société ?"
+            value={value.ancienGerant ?? ''}
+            data-testid="liquidateur-ancien-gerant"
+            onChange={(e) => set({ ancienGerant: e.target.value as '' | 'oui' | 'non' })}
+            hint="Le procès-verbal lui rappelle alors qu'aucune cession d'actif ne peut lui être consentie (article 366 de la loi 17-95)."
+            options={[
+              { value: '', label: 'Choisir…' },
+              { value: 'oui', label: 'Oui' },
+              { value: 'non', label: 'Non' },
+            ]}
+          />
+        )}
       </div>
       )}
+
+      <RemunerationLiquidateur value={value} set={set} />
 
       {error && (
         <p className="text-xs text-danger" role="alert" data-testid="liquidateur-error">

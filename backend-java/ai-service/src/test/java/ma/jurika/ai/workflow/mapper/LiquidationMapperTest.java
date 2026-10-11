@@ -139,6 +139,15 @@ class LiquidationMapperTest {
     }
 
     @Test
+    void siege_au_siege_social_enregistre_a_la_dissolution() {
+        Map<String, Object> p = fixture("liquidation.json");
+        bloc(p, "liquidateur").put("siegeIdentique", "oui");
+        bloc(p, "liquidateur").remove("siege");
+        assertThat(mapper.map("PV_DISSOLUTION_LIQUIDATION_SARL", p)).containsEntry("LIQUIDATION_SIEGE_IDENTIQUE", "oui")
+                .doesNotContainKey("LIQUIDATION_SIEGE_ADRESSE");
+    }
+
+    @Test
     void prorata_qui_ne_tombe_pas_juste_refuse() {
         refuse("ASSOCIE_SOLDE_BRUT_CHIFFRES", p -> {
             // 1 000 parts : 333 / 667 ; boni 40 001 : quotes-parts non exactes au centime.

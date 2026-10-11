@@ -163,6 +163,20 @@ class DissolutionMapperTest {
     }
 
     @Test
+    void siege_de_la_liquidation_au_siege_social_comme_l_envoie_l_ecran() {
+        // Charge de l'ecran (etape 1) : choix porte par le liquidateur, aucune adresse.
+        Map<String, Object> p = fixture("dissolution.json");
+        bloc(p, "dissolution").remove("siegeLiquidationIdentique");
+        bloc(p, "liquidateur").put("siegeIdentique", "oui");
+        bloc(p, "liquidateur").put("siege", "");
+        bloc(p, "liquidateur").put("pouvoirsComplementaires", List.of("vendre le fonds de commerce", " "));
+        Map<String, Object> v = mapper.map("PV_DISSOLUTION_LIQUIDATION_SARL", p);
+        assertThat(v).containsEntry("LIQUIDATION_SIEGE_IDENTIQUE", "oui").doesNotContainKey("LIQUIDATION_SIEGE_ADRESSE")
+                .containsEntry("LIQUIDATEUR_POUVOIRS_COMPLEMENTAIRES_EXISTENT", "oui");
+        assertThat((List<?>) v.get("LIQUIDATEUR_POUVOIRS_COMPLEMENTAIRES")).hasSize(1);
+    }
+
+    @Test
     void heures_d_usage() {
         assertThat(LiquidationCorpusCommun.heure("10:30")).isEqualTo("10 heures 30");
         assertThat(LiquidationCorpusCommun.heure("09H00")).isEqualTo("9 heures");

@@ -51,6 +51,7 @@ import {
   type LiquidateurState,
 } from '../../components/workflow/LiquidateurPicker';
 import { champsPersonneMorale, estPersonneMorale, identiteLiquidateur } from '../../lib/liquidateur';
+import { champsMandatLiquidateur, type MentionsPv } from '../../lib/liquidationPv';
 import {
   PiecesJointesPanel,
   type PieceJointeEntry,
@@ -128,8 +129,40 @@ function toLiquidateurState(bd: DossierLiquidateur): LiquidateurState {
     cin: String(bd.cin ?? ''),
     adresse: String(bd.adresse ?? ''),
     remuneration: String(bd.remuneration ?? ''), // L4a (E2) : jamais supposee
+    ...mandatBd(bd as Record<string, unknown>),
     ...personneMoraleBd(bd as Record<string, unknown>),
   };
+}
+
+/**
+ * Lot L4d (E11d) : donnees du liquidateur enregistrees a la dissolution et lues par le PV
+ * de cloture du corpus (piece, nationalite, remuneration, siege de la liquidation). La
+ * valeur proposee avant L4d ("exercees a titre gratuit") vaut "non remunere".
+ */
+function mandatBd(bd: Record<string, unknown>): Partial<LiquidateurState> {
+  const t = (k: string) => (bd[k] == null ? '' : String(bd[k]));
+  const ouiNon = (k: string): '' | 'oui' | 'non' => (t(k) === 'oui' || t(k) === 'non' ? (t(k) as 'oui' | 'non') : '');
+  let remunerationApplicable = ouiNon('remunerationApplicable');
+  if (!remunerationApplicable && t('remuneration').toLowerCase().includes('gratuit')) remunerationApplicable = 'non';
+  return {
+    pieceType: t('pieceType') || undefined,
+    nationalite: t('nationalite'),
+    dateNaissance: t('dateNaissance'),
+    ancienGerant: ouiNon('ancienGerant'),
+    remunerationApplicable,
+    remunerationMontant: t('remunerationMontant'),
+    remunerationModalites: t('remunerationModalites'),
+    siegeIdentique: t('siegeIdentique'),
+  };
+}
+
+/** Lot L4d (E11d) : mandat fixe a la dissolution, reconduit tel quel quand le liquidateur est renvoye. */
+const CLES_MANDAT_BD = ['mandatDateEffet', 'dureeMandat', 'redditionPeriodicite', 'pouvoirsComplementaires',
+  'pouvoirsLimitation', 'siegeIdentique', 'siege'];
+function mandatConserve(bd: Record<string, unknown> | null | undefined): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of CLES_MANDAT_BD) if (bd && bd[k] != null && bd[k] !== '') out[k] = bd[k];
+  return out;
 }
 
 /** Lot L4d (E5) : liquidateur personne morale enregistre a la dissolution. */
@@ -229,6 +262,10 @@ function LiquidationWorkflowPageBody() {
   );
   const [depotLegalNumero, setDepotLegalNumero] = useState(
     ((stepData.step2?.depotLegal as { numero?: string } | undefined) ?? {}).numero ?? '',
+  );
+  // L4d (E11d) : compte definitif et decisions du PV de cloture (brouillon de l'etape 2).
+  const [mentionsPv, setMentionsPv] = useState<MentionsPv>(
+    () => (stepData.step2?.mentionsPv as MentionsPv | undefined) ?? {},
   );
   const [depotLegalDate, setDepotLegalDate] = useState(
     ((stepData.step2?.depotLegal as { date?: string } | undefined) ?? {}).date ?? '',
@@ -503,10 +540,14 @@ function LiquidationWorkflowPageBody() {
           : 'masculin') as 'masculin' | 'féminin',
         remuneration: liquidateur.remuneration,
         ...champsPersonneMorale(liquidateur), // L4d (E5)
+        ...champsMandatLiquidateur(liquidateur), // L4d (E11d)
+        siegeIdentique: liquidateur.siegeIdentique,
         siege: siegeLiquidation || undefined,
       },
       cloture: {
-        resultatSens: (resultatType ?? 'boni') as 'boni' | 'mali',
+        // L4d (E11d) : avis de cloture (quitus, dates) repris par le PV ; plus de "boni" suppose.
+        ...avisCloture,
+        resultatSens: resultatType ?? undefined,
         resultatMontant: boniMali === null ? null : Math.abs(boniMali),
         dateClotureLiquidation: dateCloture || null,
         actifRealise: totalActif || null,
@@ -515,7 +556,7 @@ function LiquidationWorkflowPageBody() {
       dissolutionDate: dateDissolution,
     }),
     [liquidateur, siegeLiquidation, resultatType, boniMali, dateCloture,
-      totalActif, totalPassif, dateDissolution],
+      totalActif, totalPassif, dateDissolution, avisCloture],
   );
 
   if (loading) return <Loader />;
@@ -558,8 +599,9 @@ function LiquidationWorkflowPageBody() {
           cin: liquidateur.cin || undefined,
           adresse: liquidateur.adresse,
           remuneration: liquidateur.remuneration,
+          ...mandatConserve(liquidateurBd as Record<string, unknown> | null), // L4d (E11d)
           ...champsPersonneMorale(liquidateur), // L4d (E5)
-        ...champsPersonneMorale(liquidateur), // L4d (E5)
+          ...champsMandatLiquidateur(liquidateur), // L4d (E11d)
         },
         comptesFinaux: {
           totalActif: Number.parseFloat(totalActif),
@@ -590,6 +632,7 @@ function LiquidationWorkflowPageBody() {
             ? { numero: depotLegalNumero || null, date: depotLegalDate || null }
             : undefined,
         avisCloture,
+        mentionsPv,
       });
     } else if (step === 3) {
       // Etape OPTIONNELLE : jamais bloquante, peut etre vide.
@@ -631,12 +674,13 @@ function LiquidationWorkflowPageBody() {
           annonceValide: annonceValidated,
           depotLegal: { numero: depotLegalNumero, date: depotLegalDate },
           avisCloture,
+          mentionsPv,
         };
       }
       if (n === 3) return { piecesJointes };
       return null;
     },
-    [dossierId, formeJuridique, dateCloture, dateDissolution, liquidateur, totalActif, avisCloture,
+    [dossierId, formeJuridique, dateCloture, dateDissolution, liquidateur, totalActif, avisCloture, mentionsPv,
       totalPassif, convocationDate, convocationHeure, convocationSnapshot, docsValidated,
       annonceValidated, depotLegalNumero, depotLegalDate, piecesJointes],
   );
@@ -1092,6 +1136,9 @@ function LiquidationWorkflowPageBody() {
               operation={operationInput}
               initialAssocies={bdAssocies}
               initialGerants={bdGerants}
+              referenceDossier={ticket?.reference ?? ''}
+              initialMentions={mentionsPv}
+              onMentions={setMentionsPv}
               onReady={setDocsValidated}
               versioned
               depositMotif={depositMotif}

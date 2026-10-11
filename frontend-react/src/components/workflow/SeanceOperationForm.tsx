@@ -1,18 +1,16 @@
 /**
- * Sous-formulaire de séance + opération Dissolution / Liquidation (Phase C, 2026-08-08).
+ * Sous-formulaire de seance + operation Dissolution / Liquidation (Phase C, 2026-08-08).
  *
- * Réutilise le noyau séance partagé ({@link SeanceForm}) et n'ajoute que les champs propres
- * à l'opération. Le PV directeur est unifié ({@code PV_DISSOLUTION_LIQUIDATION_SARL(/_AU)})
- * et couvre les trois étapes du cycle via {@code $PV_ETAPE} ; l'étape est fixée par le
- * workflow (jamais saisie). Les résolutions (avec leur type) sont dérivées de l'opération.
+ * Reutilise le noyau seance partage ({@link SeanceForm}) et n'ajoute que les champs propres
+ * a l'operation. Lot L4d (E11d) : l'ecran demande toujours PV_DISSOLUTION_LIQUIDATION_SARL(/_AU),
+ * mais le serveur rend le modele du corpus selon le parcours : PV_DISSOLUTION_ANTICIPEE_* pour
+ * la dissolution, PV_CLOTURE_LIQUIDATION_* pour la cloture (et RAPPORT_LIQUIDATEUR_* pour le
+ * rapport). Les mentions et decisions de ces modeles se saisissent dans {@link MentionsPvFields}.
  *
- * - Mode « dissolution » : depuis le lot « Dissolution 4 étapes » (2026-08-12), le liquidateur
- *   et le siège de la liquidation sont saisis à l'ÉTAPE 1 et transmis via {@code operation} —
- *   le bloc de saisie ci-dessous n'apparaît donc plus (il subsiste comme repli si un appelant
- *   ne fournit pas {@code operation}).
- * - Mode « liquidation » : le liquidateur et les comptes de clôture sont fournis par la page
- *   hôte (prop {@code operation}) — elle les saisit déjà pour la validation workflow — et le
- *   rapport de liquidation est généré en plus du PV.
+ * - Mode "dissolution" : le liquidateur, son mandat et le siege de la liquidation viennent de
+ *   l'etape 1 (prop {@code operation}) ; le bloc de saisie ci-dessous ne sert que de repli.
+ * - Mode "liquidation" : le liquidateur (base) et les comptes de cloture (etape 1) sont
+ *   fournis par la page hote ; le rapport du liquidateur est genere en plus du PV.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Sparkles } from 'lucide-react';
@@ -38,6 +36,8 @@ import {
 } from './SeanceForm';
 import type { DocumentType } from '../../types/dataroom';
 import { USAGES_CABINET } from '../../lib/usagesCabinet';
+import { MentionsPvFields } from './MentionsPvFields';
+import { cloturePayload, mentionsPayload, type MentionsPv } from '../../lib/liquidationPv';
 
 type Mode = 'dissolution' | 'liquidation';
 
@@ -53,16 +53,26 @@ export interface OperationInput {
     genre?: 'masculin' | 'féminin';
     remuneration?: string;
     siege?: string;
+    /** Lot L4d (E11d) : autres donnees du liquidateur lues par les PV du corpus. */
+    [cle: string]: unknown;
   };
   cloture?: {
-    resultatSens: 'boni' | 'mali';
+    /** L4d (E11d) : sens calcule des totaux ; absent, rien n'est suppose. */
+    resultatSens?: 'boni' | 'mali' | null;
     resultatMontant?: string | number | null;
     boniParPart?: string | number | null;
     dateClotureLiquidation?: string | null;
     actifRealise?: string | number | null;
     passifRegle?: string | number | null;
+    /** Lot L4d (E11d) : donnees de l'avis de cloture reprises par le PV (quitus, dates). */
+    [cle: string]: unknown;
   };
   dissolutionDate?: string;
+  /**
+   * Lot L4d (E11d) : precisions de la dissolution saisies a l'etape 1 (date d'effet, terme,
+   * exercice, article et circonstances, evenement de l'objet, article 86).
+   */
+  dissolution?: Record<string, unknown>;
 }
 
 export interface SeanceOperationFormProps {
@@ -110,13 +120,19 @@ export interface SeanceOperationFormProps {
   versioned?: boolean;
   /** Motif tracé sur le dépôt versionné (distinct du motif de dissolution). */
   depositMotif?: string;
+  /** Lot L4d (E11d) : reference du ticket, proposee comme reference du dossier. */
+  referenceDossier?: string;
+  /** Lot L4d (E11d) : mentions du PV deja saisies (brouillon de l'etape), et leur suivi. */
+  initialMentions?: MentionsPv | null;
+  onMentions?: (mentions: MentionsPv) => void;
 }
 
 const SECTIONS: SeanceSections = {
   seance: true,
   bureau: true,
   convocation: true,
-  convocationRang: false,
+  // L4d (E11d) : les PV du corpus impriment le rang de la convocation (seconde assemblee).
+  convocationRang: true,
   irregularite: false,
   secondeAssemblee: false,
   ordreDuJour: false,
@@ -160,6 +176,9 @@ export function SeanceOperationForm({
   filenameFor,
   versioned,
   depositMotif,
+  referenceDossier,
+  initialMentions,
+  onMentions,
 }: SeanceOperationFormProps) {
   const isAU = formeJuridique === 'SARL_AU';
   const workflowCode = mode === 'dissolution' ? 'DISSOLUTION' : 'LIQUIDATION';
@@ -192,6 +211,14 @@ export function SeanceOperationForm({
   // L3 (D6) : "quatre" originaux est une valeur PROPOSEE, transmise une fois confirmee.
   const [nombreOriginaux, setNombreOriginaux] = useState<string | undefined>(undefined);
   const [liquidationSiege, setLiquidationSiege] = useState(societe.siegeSocial ?? '');
+  // L4d (E11d) : mentions et decisions des PV du corpus (brouillon conserve par la page).
+  const [mentions, setMentions] = useState<MentionsPv>(() => ({ ...(initialMentions ?? {}) }));
+  const changerMentions = (patch: MentionsPv) =>
+    setMentions((m) => {
+      const next = { ...m, ...patch };
+      onMentions?.(next);
+      return next;
+    });
 
   const [docs, setDocs] = useState<Record<string, DocState>>({});
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
@@ -255,13 +282,17 @@ export function SeanceOperationForm({
         }
       : undefined;
     const dissoDate = operation?.dissolutionDate ?? defaultDate ?? '';
+    // L4d (E11d) : la date d'effet est celle confirmee a l'etape 1 (plus de reprise de la
+    // date de l'assemblee), avec les precisions du motif.
+    const dissolution = { motif: motif ?? '', nature: nature ?? '', ...(operation?.dissolution ?? {}), date: dissoDate };
     return {
       ...base,
       pvEtape,
-      dissolution: { motif: motif ?? '', nature: nature ?? '', dateEffet: defaultDate ?? '', date: dissoDate },
+      dissolution,
       liquidateur,
       liquidationSiege: operation ? operation.liquidateur.siege ?? '' : liquidationSiege,
-      cloture: clotureBlock,
+      cloture: mode === 'liquidation' ? { ...(operation?.cloture ?? {}), ...(clotureBlock ?? {}), ...cloturePayload(mentions) } : clotureBlock,
+      mentionsPv: { ...mentionsPayload(mentions), nombreOriginaux: nombreOriginaux ?? '' },
       resolutions: derived.resolutions,
       ordreDuJour: derived.ordreDuJour,
       signature: {
@@ -350,6 +381,16 @@ export function SeanceOperationForm({
           />
         </div>
       </section>
+
+      <MentionsPvFields
+        mode={mode}
+        isAU={isAU}
+        valeurs={mentions}
+        onChange={changerMentions}
+        referenceDossier={referenceDossier}
+        villeEnregistrement={societe.villeGreffe ?? ''}
+        quitusAvis={typeof operation?.cloture?.quitus === 'string' ? (operation.cloture.quitus as string) : undefined}
+      />
 
       {mode === 'dissolution' && !operation && (
         <section className="space-y-4 rounded-xl border border-border bg-bg-raised p-4">
