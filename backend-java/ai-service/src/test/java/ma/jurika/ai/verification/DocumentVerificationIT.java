@@ -145,7 +145,11 @@ class DocumentVerificationIT {
     static final Set<String> CORPUS_REEL_REQUIS = Set.of(
             "NOTE_ANNULATION_DOSSIER_SOCIETE_EXISTANTE",
             "LETTRE_RETRAIT_DEPOT_SOCIETE_EXISTANTE",
-            "BORDEREAU_REMISE_DOSSIER_SOCIETE_EXISTANTE");
+            "BORDEREAU_REMISE_DOSSIER_SOCIETE_EXISTANTE",
+            // Lot L4d (E11) : avis d'ouverture de succursale d'une societe etrangere, rendu par
+            // le modele du corpus ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SOCIETE_ETRANGERE.
+            "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL",
+            "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL_AU");
 
     static final Set<String> DOCUMENTS_ANNULATION =
             new ma.jurika.ai.workflow.mapper.AnnulationMapper().supportedTemplates();

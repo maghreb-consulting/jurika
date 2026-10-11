@@ -74,14 +74,9 @@ class DirecteurTemplateContentUnchangedTest {
             "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL.docx",
             "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL_AU.docx",
             "ANNONCE_LEGALE_FERMETURE_SUCCURSALE_SARL.docx",
-            "ANNONCE_LEGALE_FERMETURE_SUCCURSALE_SARL_AU.docx",
-            // 2026-08-13 (lot DIVERS §C) — variante ÉTRANGÈRE de l'avis d'ouverture.
-            // ⚠ origin = derive-jurika : ce contenu n'est PAS du directeur, il est
-            // dérivé du modèle 05_ par scripts/derive-succursale-etrangere-annonce.
-            // La baseline sert ici de garde-fou anti-dérive : le corps repris du
-            // directeur ne doit pas bouger sans regénération explicite.
-            "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL.docx",
-            "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL_AU.docx"})
+            "ANNONCE_LEGALE_FERMETURE_SUCCURSALE_SARL_AU.docx"})
+            // Lot L4d (E11) : la variante etrangere de l'avis d'ouverture (derive-jurika) est
+            // retiree, l'avis est rendu par le modele du corpus.
     void contenu_identique_a_la_reference(String fn) throws Exception {
         List<String> baseline = loadBaseline(fn);
         List<String> current = paragraphTexts("templates/docx/" + fn);
