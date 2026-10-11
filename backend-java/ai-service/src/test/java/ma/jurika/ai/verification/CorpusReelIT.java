@@ -109,8 +109,16 @@ class CorpusReelIT {
                 Map<String, Object> variables = ma.jurika.ai.workflow.identity.RepriseFicheSociete.completer(
                         b.mapper().map(code, payload), payload);
                 e.put("dans_corpus", corpus.gabarit(code).isPresent());
-                DocumentResult ra = avant.generate(code, variables);
-                Files.write(SORTIE.resolve("temoin/classpath/" + code + ".docx"), ra.bytes());
+                // Lot L4a (E5) : un modele propre au corpus (ex. documents d'annulation
+                // _SOCIETE_EXISTANTE) n'a pas de temoin classpath : rendu par le corpus seul.
+                DocumentResult ra;
+                try {
+                    ra = avant.generate(code, variables);
+                    Files.write(SORTIE.resolve("temoin/classpath/" + code + ".docx"), ra.bytes());
+                } catch (ma.jurika.ai.document.GabaritIntrouvableException absent) {
+                    ra = null;
+                    e.put("classpath", "absent (modele propre au corpus)");
+                }
                 Set<String> horsAvant = apres.codesServisHorsCorpus();
                 DocumentResult rb;
                 try {
@@ -125,18 +133,18 @@ class CorpusReelIT {
                         && !apres.codesServisHorsCorpus().contains(code);
                 e.put("source_apres", servieParCorpus ? "corpus" : "classpath");
                 Files.write(SORTIE.resolve("temoin/corpus/" + code + ".docx"), rb.bytes());
-                List<String> la = lignes(ra.bytes());
+                List<String> la = ra == null ? List.of() : lignes(ra.bytes());
                 List<String> lb = lignes(rb.bytes());
                 e.put("texte_identique", la.equals(lb));
                 e.put("lignes_avant", la.size());
                 e.put("lignes_apres", lb.size());
                 e.put("lignes_retirees", difference(la, lb));
                 e.put("lignes_ajoutees", difference(lb, la));
-                Set<String> va = variablesGabarit(code, loader);
+                Set<String> va = ra == null ? Set.of() : variablesGabarit(code, loader);
                 Set<String> vb = corpus.gabarit(code).map(GabaritCorpus::variables).orElse(Set.of());
                 e.put("variables_disparues", new TreeSet<>(difference(new ArrayList<>(va), new ArrayList<>(vb))));
                 e.put("variables_apparues", new TreeSet<>(difference(new ArrayList<>(vb), new ArrayList<>(va))));
-                e.put("manquantes_avant", ra.missingVariables());
+                e.put("manquantes_avant", ra == null ? List.of() : ra.missingVariables());
                 e.put("manquantes_apres", rb.missingVariables());
                 List<String> residus = new ArrayList<>();
                 for (String l : lb) {
