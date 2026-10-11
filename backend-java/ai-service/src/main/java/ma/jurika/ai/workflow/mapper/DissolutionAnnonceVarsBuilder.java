@@ -91,6 +91,10 @@ public final class DissolutionAnnonceVarsBuilder {
         put(v, "DEPOT_LEGAL_NUMERO",
                 numeroDepotLegal);
 
+        // Lot L4d (E11) : SARL AU, l'avis imprime $ASSOCIE_UNIQUE comme l'IDENTITE de l'associe
+        // unique ("..., <identite>, associe unique de la societe") ; le drapeau "oui" s'y
+        // imprimait (avis publie). Meme regle que les PV de la famille (LiquidationCorpusCommun).
+        LiquidationCorpusCommun.identiteAssocieUnique(v, safe, templateCode.endsWith("_SARL_AU"));
         return v;
     }
 

@@ -59,12 +59,8 @@ class DirecteurTemplateContentUnchangedTest {
             "ANNONCE_LEGALE_MODIFICATION_SARL_AU.docx",
             // 2026-08-12 — Annonce légale de dissolution (avis simple, sans condition
             // ni boucle : le modèle directeur ne comporte que des $VAR).
-            "ANNONCE_LEGALE_DISSOLUTION_SARL.docx",
-            "ANNONCE_LEGALE_DISSOLUTION_SARL_AU.docx",
             // 2026-08-13 — Annonce légale de CLÔTURE DE LIQUIDATION (second avis du
             // cycle) : avis à condition unique ◇ SI boni / ◇ SINON mali, sans boucle.
-            "ANNONCE_LEGALE_LIQUIDATION_SARL.docx",
-            "ANNONCE_LEGALE_LIQUIDATION_SARL_AU.docx",
             // 2026-08-13 (lot DIVERS) — Annonces légales de SUCCURSALE : ouverture (deux
             // blocs ◇ SI : dotation, responsable) et fermeture (avis linéaire).
             "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL.docx",

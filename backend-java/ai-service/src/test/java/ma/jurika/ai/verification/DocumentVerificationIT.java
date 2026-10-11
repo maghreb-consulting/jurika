@@ -109,10 +109,6 @@ class DocumentVerificationIT {
      */
     enum Source { CORPUS, CLASSPATH }
 
-    private static final String CLASSPATH_PERIME =
-            "gabarit du classpath, servi seulement sans corpus (le corpus est obligatoire en service) : "
-                    + "non aligne sur les variables du corpus";
-
     static final Map<String, Map<Source, String>> EN_ATTENTE = Map.ofEntries(
             // Ecart du CORPUS : la fiche n'imprime que $BAILLEUR_NOM, vide pour un bailleur societe
             // (meme texte dans la copie du classpath).
@@ -121,12 +117,6 @@ class DocumentVerificationIT {
                     Source.CLASSPATH, "A_DECIDER cabinet : $BAILLEUR_NOM seul imprime (copie du classpath du modele)")),
             // Variables des modeles du corpus que les mappers ne fournissent pas (D5, bascule).
             Map.entry("PV_APPROBATION_COMPTES_SARL_AU", Map.of(Source.CORPUS, ECART_CORPUS)),
-            // L4b : avis conformes sur le corpus ; leurs copies du classpath, servies seulement
-            // sans corpus, ne le sont pas.
-            Map.entry("ANNONCE_LEGALE_DISSOLUTION_SARL", Map.of(Source.CLASSPATH, CLASSPATH_PERIME)),
-            Map.entry("ANNONCE_LEGALE_DISSOLUTION_SARL_AU", Map.of(Source.CLASSPATH, CLASSPATH_PERIME)),
-            Map.entry("ANNONCE_LEGALE_LIQUIDATION_SARL", Map.of(Source.CLASSPATH, CLASSPATH_PERIME)),
-            Map.entry("ANNONCE_LEGALE_LIQUIDATION_SARL_AU", Map.of(Source.CLASSPATH, CLASSPATH_PERIME)),
             // Ecart du CORPUS (gabarits intouchables, rapporte au cabinet) : $ASSOCIE_UNIQUE, drapeau
             // "oui" / "non", imprime sous "L'associe unique" a la place de son identite.
             Map.entry("PV_CREATION_SUCCURSALE_MAROC_SARL_AU", Map.of(Source.CORPUS, ECART_CORPUS)),
@@ -160,7 +150,12 @@ class DocumentVerificationIT {
             // Lot L4d (E11c) : PV de modification rendus par PV_AG_SARL et
             // PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU du corpus.
             "PV_MODIFICATION_SARL",
-            "PV_MODIFICATION_SARL_AU");
+            "PV_MODIFICATION_SARL_AU",
+            // Lot L4d (E11) : avis de dissolution et de liquidation, copies du classpath retirees.
+            "ANNONCE_LEGALE_DISSOLUTION_SARL",
+            "ANNONCE_LEGALE_DISSOLUTION_SARL_AU",
+            "ANNONCE_LEGALE_LIQUIDATION_SARL",
+            "ANNONCE_LEGALE_LIQUIDATION_SARL_AU");
 
     static final Set<String> DOCUMENTS_ANNULATION =
             new ma.jurika.ai.workflow.mapper.AnnulationMapper().supportedTemplates();

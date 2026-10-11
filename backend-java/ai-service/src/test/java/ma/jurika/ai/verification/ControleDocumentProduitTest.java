@@ -71,4 +71,17 @@ class ControleDocumentProduitTest {
         assertThat(ControleDocumentProduit.defauts("fait le . Sign\u00e9", Set.of())).isNotEmpty();
         assertThat(ControleDocumentProduit.defauts("demeurant \u00e0 , titulaire", Set.of())).isNotEmpty();
     }
+
+    /**
+     * Lot L4d (E11) : le drapeau $ASSOCIE_UNIQUE imprime dans une phrase ("..., oui, associe
+     * unique de la societe") echappait au controle, qui ne voyait que "oui" seul sur sa ligne.
+     */
+    @Test
+    void drapeau_associe_unique_imprime_dans_une_phrase() {
+        assertThat(ControleDocumentProduit.defauts(
+                "r\u00e9pertori\u00e9e au registre des d\u00e9cisions, oui, associ\u00e9 unique de la soci\u00e9t\u00e9 PARACOSME", Set.of()))
+                .anyMatch(d -> d.startsWith("drapeau imprime"));
+        assertThat(ControleDocumentProduit.defauts(
+                "M. Ahmed ALAOUI, associ\u00e9 unique de la soci\u00e9t\u00e9 PARACOSME", Set.of())).isEmpty();
+    }
 }
