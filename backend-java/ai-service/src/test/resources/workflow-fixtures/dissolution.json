@@ -81,7 +81,8 @@
     "motif": "volontaire",
     "dateEffet": "2026-05-15",
     "exerciceClosDate": "2025-12-31",
-    "nature": "anticipée"
+    "nature": "volonte_associes",
+    "siegeLiquidationIdentique": "non"
   },
   "liquidateur": {
     "civilite": "M.",
@@ -92,6 +93,7 @@
     "pieceNumero": "BE123456",
     "genre": "masculin",
     "remuneration": "exercées à titre gratuit",
-    "siege": "12 RUE DES FOULES, CASABLANCA"
+    "siege": "20 BOULEVARD ZERKTOUNI, CASABLANCA",
+    "mandatDateEffet": "2026-05-15"
   }
 }

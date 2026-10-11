@@ -108,8 +108,6 @@ class DocumentVerificationIT {
                     "A_DECIDER cabinet : $BAILLEUR_NOM seul imprime, vide quand le bailleur est une societe"),
             // Variables des modeles du corpus que les mappers ne fournissent pas (D5, bascule).
             Map.entry("PV_APPROBATION_COMPTES_SARL_AU", L4B),
-            Map.entry("ANNONCE_LEGALE_DISSOLUTION_SARL", L4B),
-            Map.entry("ANNONCE_LEGALE_DISSOLUTION_SARL_AU", L4B),
             Map.entry("ANNONCE_LEGALE_LIQUIDATION_SARL", L4B),
             Map.entry("ANNONCE_LEGALE_LIQUIDATION_SARL_AU", L4B),
             Map.entry("ANNONCE_LEGALE_MODIFICATION_SARL", L4B),
