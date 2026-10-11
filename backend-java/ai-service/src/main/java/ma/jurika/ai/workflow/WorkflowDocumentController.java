@@ -144,6 +144,17 @@ public class WorkflowDocumentController {
                 Optional<TemplateManifest.TemplateEntry> resolved = manifestLoader.resolve(entry.code());
                 if (resolved.isEmpty()) continue;
                 TemplateManifest.TemplateEntry target = resolved.get();
+                // Lot L4d (E11a) : un alias qui declare son propre workflow (statuts refondus =
+                // statuts du corpus, rendus depuis la modification) est liste sous ce workflow,
+                // avec son libelle, et n'est pas un code herite.
+                if (entry.workflow() != null) {
+                    if (workflowCode.equals(entry.workflow())) {
+                        result.add(new TemplateInfo(entry.code(),
+                                entry.documentKind() != null ? entry.documentKind() : target.documentKind(),
+                                target.file(), entry.origin(), entry.deprecated(), target.placeholderStyle()));
+                    }
+                    continue;
+                }
                 if (workflowCode.equals(target.workflow())) {
                     // L'alias hérite des métadonnées (kind, file, style) de sa cible mais
                     // reste flaggé "hérité" + deprecated.
