@@ -143,6 +143,35 @@ class DocxTemplateEngineDirectorTest {
         assertEquals("IND", render(t, vars("APPORT_TYPE", "industrie")));
     }
 
+    /**
+     * Lot L4d (E11b) : quatre modeles du corpus (dossier des comptes : CONVOCATION_AGO_SARL,
+     * FEUILLE_PRESENCE_AGO_SARL, POUVOIR_REPRESENTATION_AGO_SARL,
+     * LETTRE_COMMUNICATION_PREALABLE_ASSOCIES_SARL) ecrivent l'egalite en toutes lettres,
+     * sans guillemets : "$VAR egal valeur" (avec accent). Non reconnue, la condition valait
+     * faux : la feuille de presence imprimait "Absent et non represente" pour chaque associe.
+     */
+    @Test
+    void egaliteEcriteEnToutesLettres() {
+        byte[] t = docx(
+                "\u25c7 SI : $ASSOCIE_PRESENCE \u00e9gal pr\u00e9sent",
+                "PRESENT",
+                "\u25c7 SINON SI : $ASSOCIE_PRESENCE \u00e9gal repr\u00e9sent\u00e9",
+                "REPRESENTE",
+                "\u25c7 SINON",
+                "ABSENT",
+                "\u25c6 FIN SI");
+        assertEquals("PRESENT", render(t, vars("ASSOCIE_PRESENCE", "pr\u00e9sent")));
+        assertEquals("REPRESENTE", render(t, vars("ASSOCIE_PRESENCE", "repr\u00e9sent\u00e9")));
+        assertEquals("ABSENT", render(t, vars("ASSOCIE_PRESENCE", "absent")));
+        byte[] mode = docx(
+                "\u25c7 SI : $CONVOCATION_MODE \u00e9gal lettre recommand\u00e9e avec accus\u00e9 de r\u00e9ception",
+                "LRAR",
+                "\u25c6 FIN SI");
+        assertEquals("LRAR", render(mode, vars("CONVOCATION_MODE",
+                "lettre recommand\u00e9e avec accus\u00e9 de r\u00e9ception")));
+        assertEquals("", render(mode, vars("CONVOCATION_MODE", "voie \u00e9lectronique")));
+    }
+
     @Test
     void comparisonIsCaseAndAccentInsensitive() {
         byte[] t = docx(

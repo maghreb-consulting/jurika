@@ -945,9 +945,14 @@ public class DocxTemplateEngine {
     private static final Pattern ATOM_EXISTS = Pattern.compile(
             "\\$([A-Z][A-Z0-9_]*)\\s+existe", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 
-    /** Egalite : {@code $VAR = « valeur »} (guillemets optionnels). */
+    /**
+     * Egalite : {@code $VAR = « valeur »} (guillemets optionnels). Lot L4d (E11b) : aussi
+     * l'egalite ecrite en toutes lettres, {@code $VAR egal valeur} (avec ou sans accent),
+     * employee par quatre modeles du dossier des comptes du corpus ; non reconnue, la
+     * condition valait faux sans bruit.
+     */
     private static final Pattern ATOM_EQUALS = Pattern.compile(
-            "\\$([A-Z][A-Z0-9_]*)\\s*=\\s*(.+)", Pattern.DOTALL);
+            "\\$([A-Z][A-Z0-9_]*)\\s*(?:=|\\s(?:\u00e9|e)gal\\s)\\s*(.+)", Pattern.DOTALL);
 
     /**
      * Classe le texte recompose d'un paragraphe. Ne reconnait le format directeur que
