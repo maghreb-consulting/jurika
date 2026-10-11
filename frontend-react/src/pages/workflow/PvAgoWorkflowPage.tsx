@@ -56,6 +56,13 @@ import {
 import { formeLabel } from '../../components/workflow/workflowFilename';
 import type { DocumentType, DossierBrief } from '../../types/dataroom';
 import { USAGES_CABINET } from '../../lib/usagesCabinet';
+import { RapportGestionFields } from '../../components/workflow/RapportGestionFields';
+import {
+  rapportGestionDepuis,
+  rapportGestionManquants,
+  rapportGestionPayload,
+  type RapportGestionSaisie,
+} from '../../components/workflow/rapportGestion';
 
 /**
  * Workflow PV AGO — approbation des comptes, en 5 étapes (spec directeur, lot DIVERS §E,
@@ -132,24 +139,6 @@ const num = (v: string | number | null | undefined): number => Number(v) || 0;
  * Ordre du jour de l'AGO d'approbation des comptes — il était vide. Il découle de
  * l'objet même de l'assemblée (art. 70 loi 5-96) et ne varie pas. Amorce éditable.
  */
-/**
- * Montant d'une affectation retrouvée par son libellé, insensible à la casse et
- * aux accents. L'employé peut renommer la ligne (« Réserve légale (5 %) »), d'où
- * la recherche par inclusion plutôt que par égalité stricte.
- */
-function montantAffectation(
-  lignes: { libelle: string; montant: string }[],
-  cle: string,
-): number {
-  const norm = (s: string) =>
-    s.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').trim();
-  const cible = norm(cle);
-  const ligne = lignes.find((a) => norm(a.libelle ?? '').includes(cible));
-  if (!ligne) return 0;
-  const n = Number.parseFloat(String(ligne.montant ?? '').replace(',', '.'));
-  return Number.isFinite(n) ? n : 0;
-}
-
 // L4d (E11b) : plus d'ordre du jour pre-rempli pour la convocation. La lettre du cabinet
 // (CONVOCATION_AGO_SARL) imprime deja les rubriques de l'assemblee annuelle (rapport de
 // gestion, comptes, affectation, quitus, pouvoirs) : les reprendre les imprimait deux fois.
@@ -390,16 +379,16 @@ function PvAgoWorkflowPageBody() {
   const [piecesJointes, setPiecesJointes] = useState<PieceJointeEntry[]>(
     () => (stepData.step4?.piecesJointes as PieceJointeEntry[] | undefined) ?? [],
   );
-  // Rapport de gestion (optionnel).
-  const [chiffreAffaires, setChiffreAffaires] = useState(
-    (stepData.step2?.chiffreAffaires as string) ?? '',
-  );
-  const [commentaireActivite, setCommentaireActivite] = useState(
-    (stepData.step2?.commentaireActivite as string) ?? '',
-  );
-  const [perspectives, setPerspectives] = useState(
-    (stepData.step2?.perspectives as string) ?? '',
-  );
+  // Lot L4d (E11e) : rapport de gestion (optionnel), modele du corpus selon la forme.
+  // Aucun texte par defaut ; un brouillon anterieur garde les textes deja saisis.
+  const [rapportGestion, setRapportGestion] = useState<RapportGestionSaisie>(() => {
+    const r = rapportGestionDepuis(stepData.step2?.rapportGestion);
+    if (!stepData.step2?.rapportGestion) {
+      r.activiteExpose = (stepData.step2?.commentaireActivite as string) ?? '';
+      r.perspectives = (stepData.step2?.perspectives as string) ?? '';
+    }
+    return r;
+  });
 
   const resultatNetNum = num(resultatNet);
 
@@ -536,37 +525,15 @@ function PvAgoWorkflowPageBody() {
         conventionsReglementees,
         conventionsDetail: conventionsReglementees === 'oui' ? conventionsDetail : '',
       },
-      // Rapport de gestion (RAPPORT_GESTION, délégué à AnnualReportMapper côté back).
-      //
-      // 2026-08-14 — Réserve légale, dividendes et report à nouveau MANQUAIENT ici :
-      // ils sont bien saisis à l'étape 2, mais rangés dans `approbation.affectations`
-      // (liste libellé/montant) alors que le mapper du rapport les lit dans `exercice`.
-      // Le rapport sortait donc avec trois mentions « VALEUR MANQUANTE » en rouge,
-      // pour des montants pourtant déjà à l'écran. On les dérive ici plutôt que de
-      // les faire re-saisir : l'affectation reste l'unique lieu de saisie.
-      exercice: {
-        dateCloture: exerciceClosDate,
-        resultatNet: resultatNetNum,
-        chiffreAffaires: num(chiffreAffaires),
-        reserveLegale: montantAffectation(affectations, 'réserve légale'),
-        reportANouveau: montantAffectation(affectations, 'report à nouveau'),
-        dividendes: dividendeDistribue === 'oui' ? num(dividendeMontantTotal) : 0,
-        commentaireActivite,
-        evenementsPerspectives: perspectives,
-      },
-      gerant: { nom: seance.gerants.map((g) => `${g.prenom} ${g.nom}`.trim()).filter(Boolean)[0] ?? '' },
-      signature: {
-        lieuDateEmission: villeGreffe
-          ? `${villeGreffe}, le ${dateAgo || exerciceClosDate}`
-          : '',
-      },
+      // Lot L4d (E11e) : rapport de gestion (RAPPORT_GESTION), rendu par le modele du corpus
+      // de la forme ; les donnees de la societe et des comptes ne sont pas reprises ici.
+      rapportGestion: rapportGestionPayload(rapportGestion, resultatType),
     };
   }, [
     seance, siegeSocial, villeGreffe, dossier, exerciceClosDate, commissairePresent,
     commissaireNom, resultatType, resultatNetNum, affectations, dividendeDistribue,
     dividendeMontantTotal, dividendeParPart, dividendeMiseEnPaiementDate,
-    quitusGerance, conventionsReglementees, conventionsDetail,
-    chiffreAffaires, commentaireActivite, perspectives, dateAgo,
+    quitusGerance, conventionsReglementees, conventionsDetail, rapportGestion,
     dossierReference, registrePvNumero, registrePvFeuillet, nombreOriginaux,
   ]);
 
@@ -630,6 +597,10 @@ function PvAgoWorkflowPageBody() {
 
   const pvTemplate = templates.find((t) => t.code.startsWith('PV_APPROBATION_COMPTES'));
   const rapportTemplate = templates.find((t) => t.code === 'RAPPORT_GESTION');
+  const rapportManquants = useMemo(
+    () => rapportGestionManquants(rapportGestion, { resultatType, dateAgo }),
+    [rapportGestion, resultatType, dateAgo],
+  );
 
   // Règle DURE des 16 jours (miroir exact du backend WorkflowSteps.convocationDelaiError).
   const convocationError = useMemo(
@@ -790,7 +761,7 @@ function PvAgoWorkflowPageBody() {
           dossierReference, registrePvNumero, registrePvFeuillet, nombreOriginaux,
           affectations, dividendeDistribue, dividendeMontantTotal, dividendeParPart,
           dividendeMiseEnPaiementDate, quitusGerance, conventionsReglementees,
-          conventionsDetail, chiffreAffaires, commentaireActivite, perspectives,
+          conventionsDetail, rapportGestion,
         };
       }
       if (n === 3) {
@@ -815,7 +786,7 @@ function PvAgoWorkflowPageBody() {
       dossierReference, registrePvNumero, registrePvFeuillet, nombreOriginaux,
       affectations, dividendeDistribue, dividendeMontantTotal, dividendeParPart,
       dividendeMiseEnPaiementDate, quitusGerance, conventionsReglementees,
-      conventionsDetail, chiffreAffaires, commentaireActivite, perspectives,
+      conventionsDetail, rapportGestion,
       docs, piecesJointes],
   );
 
@@ -1299,47 +1270,19 @@ function PvAgoWorkflowPageBody() {
               </p>
             </div>
 
-            {/* Rapport de gestion (optionnel). */}
+            {/* Lot L4d (E11e) : rapport de gestion (optionnel), modele du corpus selon la forme. */}
             <div className="rounded-xl border border-border bg-bg-overlay p-4">
               <h3 className="mb-3 text-sm font-semibold text-fg">
                 Contenu du rapport de gestion (optionnel)
               </h3>
-              <div className="grid gap-3 md:grid-cols-2">
-                <TextField
-                  label="Chiffre d'affaires (MAD)"
-                  type="number"
-                  value={chiffreAffaires}
-                  onChange={(e) => setChiffreAffaires(e.target.value)}
-                />
-              </div>
-              <div className="mt-3 space-y-3">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-fg-muted">
-                    Commentaire sur l'activité
-                  </label>
-                  <textarea
-                    aria-label="Commentaire sur l'activite de l'exercice"
-                    rows={3}
-                    value={commentaireActivite}
-                    onChange={(e) => setCommentaireActivite(e.target.value)}
-                    placeholder="Faits marquants de l'exercice, croissance, contrats..."
-                    className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-fg-muted">
-                    Événements et perspectives
-                  </label>
-                  <textarea
-                    aria-label="Evenements post-cloture et perspectives"
-                    rows={2}
-                    value={perspectives}
-                    onChange={(e) => setPerspectives(e.target.value)}
-                    placeholder="Perspectives N+1, événements post-clôture..."
-                    className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                  />
-                </div>
-              </div>
+              <RapportGestionFields
+                valeur={rapportGestion}
+                onChange={setRapportGestion}
+                resultatType={resultatType}
+                dateAgo={dateAgo}
+                propositionDebut={exercice ? `${exercice}-01-01` : ''}
+                propositionLieu={dossier?.ville ?? villeGreffe}
+              />
             </div>
           </div>
         )}
@@ -1394,6 +1337,12 @@ function PvAgoWorkflowPageBody() {
             {pvTemplate && !docs[pvTemplate.code]?.validated && (
               <p className="text-xs text-warning">
                 Le PV d'approbation doit être validé pour avancer. Le rapport de gestion est recommandé mais optionnel.
+              </p>
+            )}
+            {rapportTemplate && rapportManquants.length > 0 && (
+              <p className="text-xs text-fg-muted" data-testid="pvago-rapport-manquants-etape3">
+                Rapport de gestion : il reste à saisir, à l’étape 2, {rapportManquants.join(' ; ')}.
+                Sans ces données, sa génération est refusée et les données manquantes sont nommées.
               </p>
             )}
 
