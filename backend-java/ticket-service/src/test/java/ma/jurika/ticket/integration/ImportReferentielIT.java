@@ -189,6 +189,51 @@ class ImportReferentielIT {
                 + "WHERE corpus_version = 'CORPUS_B'", String.class)).isEqualTo("Parcours de cr\u00e9ation absent du corpus.");
     }
 
+    /**
+     * Lot L4d (E3) : une nouvelle version du corpus ne fait pas perdre l'avancement des tickets
+     * en cours. Les etats (cochage, motif) et les delais saisis suivent la ligne de la nouvelle
+     * version qui occupe la meme place (matrice, numero de ligne, decision) ; le rapport compte
+     * les etats reportes et ceux qui n'ont pas de ligne correspondante.
+     */
+    @Test
+    @Order(6)
+    void l_avancement_des_tickets_suit_la_nouvelle_version() {
+        UUID ws = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        UUID employe = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        UUID ticket = UUID.randomUUID();
+        db.update("INSERT INTO tickets (id, workspace_id, reference, titre, type, statut, priorite, assigne_id, cree_par_id) "
+                + "VALUES (?, ?, 'T-L4D-E3', 'T', 'MODIFICATION', 'DEROULEMENT_DEMARCHE', 'NORMALE', ?, ?)",
+                ticket, ws, employe, employe);
+        String version = imports.versionActive();
+        UUID depot = db.queryForObject("SELECT id FROM demarches_referentiel WHERE corpus_version = ? AND actif "
+                + "AND matrice = 'MATRICE_COMPTES_RESULTAT_SARL' AND ordre = 1", UUID.class, version);
+        db.update("INSERT INTO ticket_demarches (workspace_id, ticket_id, demarche_id, etat, acteur_id, coche_at) "
+                + "VALUES (?, ?, ?, 'COCHEE', ?, now())", ws, ticket, depot, employe);
+        db.update("INSERT INTO ticket_demarche_delais (workspace_id, ticket_id, demarche_id, depart) "
+                + "VALUES (?, ?, ?, DATE '2026-10-01')", ws, ticket, depot);
+
+        source.set(version("CORPUS_D", List.of()));
+        // Import par le role d'execution (soumis a la RLS), comme en service : un report fait
+        // par simple UPDATE ne toucherait aucune ligne, sans erreur.
+        DriverManagerDataSource app = new DriverManagerDataSource(pg.getJdbcUrl(), "jurika_app", "jurika_app_it");
+        ImportReferentielDemarches parLeRoleApplicatif =
+                new ImportReferentielDemarches(source::get, new JdbcTemplate(app), new ObjectMapper());
+        assertThat(parLeRoleApplicatif.importer(ADMIN).statut()).isEqualTo("APPLIQUE");
+
+        UUID nouvelle = db.queryForObject("SELECT id FROM demarches_referentiel WHERE corpus_version = 'CORPUS_D' "
+                + "AND matrice = 'MATRICE_COMPTES_RESULTAT_SARL' AND ordre = 1", UUID.class);
+        assertThat(db.queryForObject("SELECT demarche_id FROM ticket_demarches WHERE ticket_id = ?", UUID.class, ticket))
+                .isEqualTo(nouvelle);
+        assertThat(db.queryForObject("SELECT etat FROM ticket_demarches WHERE ticket_id = ?", String.class, ticket))
+                .isEqualTo("COCHEE");
+        assertThat(db.queryForObject("SELECT demarche_id FROM ticket_demarche_delais WHERE ticket_id = ?", UUID.class,
+                ticket)).isEqualTo(nouvelle);
+        assertThat(db.queryForObject("SELECT rapport->>'etatsReportes' FROM referentiel_imports "
+                + "WHERE corpus_version = 'CORPUS_D'", String.class)).isEqualTo("1");
+        assertThat(db.queryForObject("SELECT rapport->>'etatsNonReportes' FROM referentiel_imports "
+                + "WHERE corpus_version = 'CORPUS_D'", String.class)).isEqualTo("0");
+    }
+
     private void migrer(String emplacement, String historique, String cible) {
         var config = Flyway.configure()
                 .dataSource(pg.getJdbcUrl(), pg.getUsername(), pg.getPassword())

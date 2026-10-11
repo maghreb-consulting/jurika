@@ -124,7 +124,9 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
 
 ## Corpus documentaires (source de verite metier)
 
-- Corpus de reference courant : `~/corpus/CORPUS_2026-10-03` (lire son `00_LISEZ_MOI.md`).
+- Corpus de reference courant : `~/corpus/CORPUS_2026-10-11` (lire son `00_LISEZ_MOI.md` et la note
+  de livraison du 2026-10-11 : seules les 16 decisions d'AGO de la matrice Modifications SARL
+  changent par rapport a `CORPUS_2026-10-03`, preuve par empreintes).
   222 modeles, 12 matrices avec un onglet « Demarches », dictionnaire unique
   `00_COMMUN/DICTIONNAIRE_UNIQUE_VARIABLES.xlsx`.
 - Le corpus est une **donnee versionnee** : chaque nouvelle version est un **nouveau dossier

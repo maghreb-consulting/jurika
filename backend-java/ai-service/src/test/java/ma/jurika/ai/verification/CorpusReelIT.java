@@ -51,7 +51,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CorpusReelIT {
 
     static final Path RACINE = Path.of(System.getenv().getOrDefault("JURIKA_CORPUS_REEL",
-            "/home/jurika/corpus/CORPUS_2026-10-03"));
+            "/home/jurika/corpus/CORPUS_2026-10-11"));
     static final Path SORTIE = Path.of("target/corpus-reel");
     static final Pattern VARIABLE = Pattern.compile("\\$[A-Z][A-Z0-9_]*");
     static final Pattern RESIDU_RENDU = Pattern.compile(

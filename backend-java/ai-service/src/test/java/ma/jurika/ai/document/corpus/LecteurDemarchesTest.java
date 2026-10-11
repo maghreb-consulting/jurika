@@ -22,7 +22,7 @@ class LecteurDemarchesTest {
 
     /** Meme corpus que CorpusReelIT (variable JURIKA_CORPUS_REEL, sinon le corpus du serveur). */
     static final java.nio.file.Path RACINE = java.nio.file.Path.of(System.getenv().getOrDefault("JURIKA_CORPUS_REEL",
-            System.getProperty("user.home") + "/corpus/CORPUS_2026-10-03"));
+            System.getProperty("user.home") + "/corpus/CORPUS_2026-10-11"));
 
     static boolean corpusReelPresent() {
         return java.nio.file.Files.isRegularFile(RACINE.resolve("INDEX_CORPUS.xlsx"));
@@ -59,6 +59,26 @@ class LecteurDemarchesTest {
         assertThat(legal.valeur()).as("un texte ne devient pas un chiffre").isNull();
         assertThat(LecteurDemarches.delai("1 mois au moins avant la fermeture (art. 66 du code du travail)").valeur())
                 .as("delai avant un evenement : pas de calcul vers l'avant").isNull();
+    }
+
+    /**
+     * Lot L4d (E3), decision du directeur du 11 octobre 2026 (CORPUS_2026-10-11) : les 16
+     * decisions d'AGO de la matrice Modifications SARL appellent les modeles d'AGO
+     * (convocation, feuille de presence, pouvoir de representation), plus ceux d'AGE.
+     */
+    @Test
+    void les_decisions_d_ago_appellent_les_modeles_d_ago() {
+        Assumptions.assumeTrue(corpusReelPresent(), "corpus reel absent");
+        ReferentielDemarches r = LecteurDemarches.lire(RACINE);
+        List<Integer> ago = List.of(1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 20);
+        List<Ligne> lignes = r.lignes().stream()
+                .filter(l -> "MATRICE_DECISIONS_MODIFICATIONS_SARL".equals(l.matrice()))
+                .filter(l -> l.numeroDecision() != null && ago.contains(l.numeroDecision()))
+                .filter(l -> l.modele() != null && l.modele().matches("(CONVOCATION|FEUILLE_PRESENCE|POUVOIR_REPRESENTATION)_AG[EO]_SARL"))
+                .toList();
+        assertThat(lignes).hasSize(48);
+        assertThat(lignes).allSatisfy(l -> assertThat(l.modele()).endsWith("_AGO_SARL"));
+        assertThat(lignes.stream().map(Ligne::numeroDecision).distinct()).hasSize(16);
     }
 
     @Test
