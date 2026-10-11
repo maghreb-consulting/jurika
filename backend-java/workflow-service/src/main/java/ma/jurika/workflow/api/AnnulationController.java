@@ -56,8 +56,12 @@ public class AnnulationController {
         this.employeEnCharge = employeEnCharge;
     }
 
-    /** Saisies de l'ecran d'annulation : variables simples et demarches interrompues (rang par rang). */
-    public record Saisies(Map<String, String> variables, List<Map<String, String>> demarches) {}
+    /**
+     * Saisies de l'ecran d'annulation : variables simples, demarches interrompues (rang par
+     * rang) et pieces restituees (bordereau).
+     */
+    public record Saisies(Map<String, String> variables, List<Map<String, String>> demarches,
+                          List<Map<String, String>> pieces) {}
 
     @GetMapping("/{ticketId}/annulation")
     @PreAuthorize("hasRole('EMPLOYE') and !hasRole('SUPERVISEUR')")
@@ -86,19 +90,27 @@ public class AnnulationController {
             });
         }
         if (saisies.demarches() != null) {
-            List<Map<String, String>> occurrences = new ArrayList<>();
-            for (Map<String, String> d : saisies.demarches()) {
-                Map<String, String> it = new LinkedHashMap<>();
-                d.forEach((nom, valeur) -> {
-                    exigerNom(nom);
-                    it.put(nom, valeur);
-                });
-                occurrences.add(it);
-            }
-            magasin.poserBoucle(ws, ticketId, "DEMARCHES_INTERROMPUES", occurrences, Origine.SAISIE,
-                    actor.userId(), "annulation");
+            magasin.poserBoucle(ws, ticketId, "DEMARCHES_INTERROMPUES", occurrences(saisies.demarches()),
+                    Origine.SAISIE, actor.userId(), "annulation");
+        }
+        if (saisies.pieces() != null) {
+            magasin.poserBoucle(ws, ticketId, "PIECES_REMISES", occurrences(saisies.pieces()),
+                    Origine.SAISIE, actor.userId(), "annulation");
         }
         return chargeAnnulation.construire(ws, ticketId, actor.userId());
+    }
+
+    private static List<Map<String, String>> occurrences(List<Map<String, String>> lignes) {
+        List<Map<String, String>> out = new ArrayList<>();
+        for (Map<String, String> d : lignes) {
+            Map<String, String> it = new LinkedHashMap<>();
+            d.forEach((nom, valeur) -> {
+                exigerNom(nom);
+                it.put(nom, valeur);
+            });
+            out.add(it);
+        }
+        return out;
     }
 
     private static void exigerNom(String nom) {

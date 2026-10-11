@@ -63,6 +63,7 @@ public class AnnulationMapper implements WorkflowDocumentMapper {
             ((Map<String, Object>) m).forEach((k, val) -> v.put(k, formate(val)));
         }
         identite(v, safe.get("societe") instanceof Map<?, ?> s ? (Map<String, Object>) s : Map.of());
+        pieces(v);
         gerance(v, safe.get("gerants") instanceof List<?> g ? (List<Map<String, Object>>) g : List.of());
 
         if (LETTRES.contains(templateCode)) {
@@ -101,6 +102,32 @@ public class AnnulationMapper implements WorkflowDocumentMapper {
         } else if (forme.equalsIgnoreCase("SARL")) {
             v.put("FORME_JURIDIQUE", "Soci\u00e9t\u00e9 \u00e0 responsabilit\u00e9 limit\u00e9e");
         }
+    }
+
+    /**
+     * Bordereau : les pieces sont numerotees dans l'ordre de saisie ; le total est la somme
+     * des quantites, pose seulement quand chaque quantite est saisie (sinon la generation
+     * nomme la donnee manquante).
+     */
+    @SuppressWarnings("unchecked")
+    private static void pieces(Map<String, Object> v) {
+        if (!(v.get("PIECES_REMISES") instanceof List<?> l) || l.isEmpty()) return;
+        int total = 0;
+        boolean complet = true;
+        int rang = 0;
+        for (Object o : l) {
+            Map<String, Object> it = (Map<String, Object>) o;
+            rang++;
+            putSi(it, "PIECE_NUMERO", String.valueOf(rang));
+            try {
+                int n = Integer.parseInt(String.valueOf(it.get("PIECE_NOMBRE")).trim());
+                if (n <= 0) complet = false;
+                total += n;
+            } catch (NumberFormatException e) {
+                complet = false;
+            }
+        }
+        if (complet) putSi(v, "PIECES_NOMBRE_TOTAL", String.valueOf(total));
     }
 
     /**

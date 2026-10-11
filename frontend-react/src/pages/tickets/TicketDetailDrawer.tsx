@@ -24,7 +24,8 @@ import {
 } from '../../types/ticket';
 import type { Debours, DeboursCategorie, Ticket } from '../../types/ticket';
 import { CancelTicketDialog } from './CancelTicketDialog';
-import { SensitiveTransitionDialog } from './SensitiveTransitionDialog';
+import { RepriseTicketDialog } from './RepriseTicketDialog';
+import { AnnulationDocumentsPanel } from './AnnulationDocumentsPanel';
 import { DeadlinesPanel } from '../../components/tickets/DeadlinesPanel';
 import { DemarchesPanel } from './DemarchesPanel';
 import { RecapitulatifPanel } from './RecapitulatifPanel';
@@ -48,8 +49,8 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
   const [debours, setDebours] = useState<Debours[]>([]);
   const [totalDebours, setTotalDebours] = useState(0);
   const [showCancel, setShowCancel] = useState(false);
-  // Transition sensible depuis ANNULE : reprise (-> EN_COURS) ou cloture (-> CLOTURE).
-  const [sensitive, setSensitive] = useState<null | 'REPRENDRE' | 'CLOTURER_ANNULE'>(null);
+  // Lot L4a (E6, RG-TKT-05) : sortie d'ANNULE par la seule reprise, au statut anterieur.
+  const [showReprise, setShowReprise] = useState(false);
   const [showAddDebours, setShowAddDebours] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Suppression d'un debours : confirmation via ConfirmDialog (remplace le
@@ -160,19 +161,16 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
                   Consulter le workflow
                 </Button>
               )}
-              {/* 2026-06-25 — Un ticket ANNULE peut etre repris ou cloture,
-                  chacun via dialog de motif obligatoire.
-                  2026-08-12 — + consultation lecture seule du workflow. */}
+              {/* Lot L4a (E6, RG-TKT-02/05) : un ticket ANNULE ne sort que par la reprise,
+                  vers son statut anterieur (la cloture directe n'est pas une transition du
+                  cahier des charges). + consultation lecture seule du workflow. */}
               {ticket.statut === 'ANNULE' && (
                 <>
                   <Button variant="secondary" onClick={() => navigate(`/workflows/${ticket.id}`)}>
                     Consulter le workflow
                   </Button>
-                  <Button variant="primary" onClick={() => setSensitive('REPRENDRE')}>
+                  <Button variant="primary" onClick={() => setShowReprise(true)}>
                     <Play className="mr-1 h-4 w-4" /> Reprendre
-                  </Button>
-                  <Button variant="secondary" onClick={() => setSensitive('CLOTURER_ANNULE')}>
-                    Cloturer
                   </Button>
                 </>
               )}
@@ -342,6 +340,9 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
             <RecapitulatifPanel ticketId={ticketId} />
           )}
 
+          {/* Lot L4a (E6, RG-TKT-04) : documents d'annulation, tous parcours. */}
+          {ticket.statut === 'ANNULE' && <AnnulationDocumentsPanel ticket={ticket} canAct={canAct} />}
+
           <DeadlinesPanel ticketId={ticketId} />
 
           {/* E2 — Activite (tracabilite) de ce ticket */}
@@ -360,34 +361,13 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
         />
       )}
 
-      {sensitive === 'REPRENDRE' && (
-        <SensitiveTransitionDialog
-          title="Reprendre le ticket"
-          intro="Vous etes sur le point de reprendre (remettre EN COURS) le ticket annule"
-          reference={ticket.reference}
-          minLength={1}
-          confirmLabel="Reprendre le ticket"
-          variant="primary"
-          onClose={() => setSensitive(null)}
-          onConfirm={async (comment) => {
-            await handleTransition('GENERATION_DOCUMENTS', comment);
-            setSensitive(null);
-          }}
-        />
-      )}
-
-      {sensitive === 'CLOTURER_ANNULE' && (
-        <SensitiveTransitionDialog
-          title="Cloturer le ticket"
-          intro="Vous etes sur le point de cloturer le ticket annule"
-          reference={ticket.reference}
-          minLength={1}
-          confirmLabel="Cloturer le ticket"
-          variant="primary"
-          onClose={() => setSensitive(null)}
-          onConfirm={async (comment) => {
-            await handleTransition('CLOTURE_DOSSIER', comment);
-            setSensitive(null);
+      {showReprise && (
+        <RepriseTicketDialog
+          ticket={ticket}
+          onClose={() => setShowReprise(false)}
+          onConfirm={async (cible, comment) => {
+            await handleTransition(cible, comment);
+            setShowReprise(false);
           }}
         />
       )}

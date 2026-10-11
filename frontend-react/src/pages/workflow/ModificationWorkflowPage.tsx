@@ -2889,7 +2889,7 @@ function ModificationWorkflowPageBody() {
           onClose={() => setShowCancel(false)}
           onConfirm={async (comment) => {
             await ticketService.transition(ticket.id, { target: 'ANNULE', comment });
-            navigate('/tickets');
+            navigate(`/tickets?ticket=${ticket.id}`);
           }}
         />
       )}

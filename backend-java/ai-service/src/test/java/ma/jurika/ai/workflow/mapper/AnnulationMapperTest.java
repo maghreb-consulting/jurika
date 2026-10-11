@@ -74,4 +74,20 @@ class AnnulationMapperTest {
         p.put("gerants", List.of(Map.of("prenom", "Sam", "nom", "IDRISSI")));
         assertThat(mapper.map("NOTE_ANNULATION_DOSSIER", p)).doesNotContainKey("GERANT_ACCORD");
     }
+
+    @Test
+    void les_pieces_sont_numerotees_et_totalisees_seulement_si_chaque_quantite_est_saisie() {
+        Map<String, Object> p = charge(List.of(), null);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> variables = (Map<String, Object>) p.get("variables");
+        variables.put("PIECES_REMISES", List.of(Map.of("PIECE_DESIGNATION", "Certificat", "PIECE_NOMBRE", "2"),
+                Map.of("PIECE_DESIGNATION", "Statuts", "PIECE_NOMBRE", "3")));
+        Map<String, Object> v = mapper.map("BORDEREAU_REMISE_DOSSIER", p);
+        assertThat(v).containsEntry("PIECES_NOMBRE_TOTAL", "5");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> pieces = (List<Map<String, Object>>) v.get("PIECES_REMISES");
+        assertThat(pieces).extracting(it -> it.get("PIECE_NUMERO")).containsExactly("1", "2");
+        variables.put("PIECES_REMISES", List.of(Map.of("PIECE_DESIGNATION", "Certificat")));
+        assertThat(mapper.map("BORDEREAU_REMISE_DOSSIER", p)).doesNotContainKey("PIECES_NOMBRE_TOTAL");
+    }
 }

@@ -25,7 +25,7 @@ import java.util.UUID;
  *   <li>les donnees DERIVEES du parcours : famille de l'operation, succursale de societe
  *       etrangere, societe en liquidation, depots en cours, objet du bordereau ;</li>
  *   <li>les demarches interrompues : depots coches sans retrait coche (referentiel du
- *       parcours), completees par les saisies de l'ecran d'annulation, rang par rang ;</li>
+ *       parcours), completees par les saisies de l'ecran de meme designation ;</li>
  *   <li>les saisies de l'ecran d'annulation, au magasin du ticket, sous leur nom de
  *       variable ;</li>
  *   <li>le dossier, dont ai-service relit l'identite de la societe (fiche).</li>
@@ -99,17 +99,26 @@ public class ChargeUtileAnnulation {
         // Le bordereau d'une annulation RESTITUE les pieces (emploi "restitution" du parcours).
         variables.put("BORDEREAU_OBJET", "restitution");
 
-        // Demarches interrompues : celles que le ticket a suivies, completees rang par rang
-        // par les saisies de l'ecran (reference, suite, adresse de l'administration...).
-        List<Map<String, Object>> saisies = variables.get("DEMARCHES_INTERROMPUES") instanceof List<?> l
-                ? (List<Map<String, Object>>) l : List.of();
+        // Demarches interrompues : celles que le ticket a suivies (marquees "_suivie" : l'ecran
+        // ne les retire pas), completees par les saisies de l'ecran de meme designation
+        // (reference, suite, adresse de l'administration...) ; les autres saisies sont des
+        // demarches ajoutees a la main.
+        List<Map<String, Object>> saisies = new ArrayList<>(variables.get("DEMARCHES_INTERROMPUES") instanceof List<?> l
+                ? (List<Map<String, Object>>) l : List.of());
         List<Map<String, Object>> interrompues = new ArrayList<>();
-        int n = Math.max(demarchesSuivies.size(), saisies.size());
-        for (int i = 0; i < n; i++) {
-            Map<String, Object> item = new LinkedHashMap<>(i < demarchesSuivies.size() ? demarchesSuivies.get(i) : Map.of());
-            if (i < saisies.size()) saisies.get(i).forEach(item::putIfAbsent);
+        for (Map<String, Object> suivie : demarchesSuivies) {
+            Map<String, Object> item = new LinkedHashMap<>(suivie);
+            Object designation = suivie.get("DEMARCHE_DESIGNATION");
+            for (int i = 0; i < saisies.size(); i++) {
+                if (designation != null && designation.equals(saisies.get(i).get("DEMARCHE_DESIGNATION"))) {
+                    saisies.remove(i).forEach(item::putIfAbsent);
+                    break;
+                }
+            }
+            item.put("_suivie", "oui");
             interrompues.add(item);
         }
+        saisies.forEach(sa -> interrompues.add(new LinkedHashMap<>(sa)));
         variables.put("DEMARCHES_INTERROMPUES", interrompues);
         variables.put("ANNULATION_DEPOTS_EN_COURS", interrompues.isEmpty() ? "non" : "oui");
 

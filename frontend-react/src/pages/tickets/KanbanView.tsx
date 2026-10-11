@@ -6,7 +6,7 @@ import type { Ticket, TicketStatut } from '../../types/ticket';
 import { TicketCard } from '../../components/tickets/TicketCard';
 import { useToast } from '../../components/ui/Toast';
 import { CancelTicketDialog } from './CancelTicketDialog';
-import { SensitiveTransitionDialog } from './SensitiveTransitionDialog';
+import { RepriseTicketDialog } from './RepriseTicketDialog';
 import type { ColonneTickets } from './useTicketColumns';
 
 interface Props {
@@ -82,11 +82,9 @@ export function KanbanView({
   const toast = useToast();
   const [dragTicket, setDragTicket] = useState<Ticket | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Ticket | null>(null);
-  // Sortie d'ANNULE (reprise -> EN_COURS / cloture -> CLOTURE) : transition
-  // sensible exigeant un motif -> dialog dedie (via bouton ou drag).
-  const [sensitiveTarget, setSensitiveTarget] = useState<
-    { ticket: Ticket; target: TicketStatut } | null
-  >(null);
+  // Lot L4a (E6, RG-TKT-05) : sortie d'ANNULE par la seule reprise, vers le statut
+  // anterieur que le serveur annonce (quelle que soit la colonne de depot).
+  const [repriseTarget, setRepriseTarget] = useState<Ticket | null>(null);
 
   function onDragStart(e: DragEvent<HTMLDivElement>, t: Ticket) {
     setDragTicket(t);
@@ -109,10 +107,10 @@ export function KanbanView({
       setDragTicket(null);
       return;
     }
-    // Sortie d'ANNULE (-> EN_COURS / CLOTURE) : motif obligatoire cote backend
-    // -> on passe par le dialog de transition sensible au lieu d'un appel direct.
+    // Sortie d'ANNULE : reprise au statut anterieur (motif obligatoire), annoncee par
+    // le dialogue commun ; la colonne de depot ne choisit pas le statut retrouve.
     if (dragTicket.statut === 'ANNULE') {
-      setSensitiveTarget({ ticket: dragTicket, target });
+      setRepriseTarget(dragTicket);
       setDragTicket(null);
       return;
     }
@@ -215,14 +213,14 @@ export function KanbanView({
                       <Play className="h-3.5 w-3.5" /> Prendre en charge
                     </button>
                   )}
-                  {/* Affordance "Reprendre" sur les cartes ANNULE : sortie
-                      d'ANNULE via dialog de motif (-> EN_COURS). */}
+                  {/* Affordance "Reprendre" sur les cartes ANNULE : reprise au statut
+                      anterieur (dialogue commun, RG-TKT-05). */}
                   {canAct && col.statut === 'ANNULE' && (
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSensitiveTarget({ ticket: t, target: 'GENERATION_DOCUMENTS' });
+                        setRepriseTarget(t);
                       }}
                       className="inline-flex items-center justify-center gap-1 rounded-lg border border-accent/40 bg-accent/10 px-2 py-1 text-xs font-semibold text-accent transition-colors hover:bg-accent/20"
                     >
@@ -269,22 +267,13 @@ export function KanbanView({
         />
       )}
 
-      {sensitiveTarget && (
-        <SensitiveTransitionDialog
-          title={sensitiveTarget.target === 'GENERATION_DOCUMENTS' ? 'Reprendre le ticket' : 'Cloturer le ticket'}
-          intro={
-            sensitiveTarget.target === 'GENERATION_DOCUMENTS'
-              ? 'Vous etes sur le point de reprendre (remettre EN COURS) le ticket annule'
-              : 'Vous etes sur le point de cloturer le ticket annule'
-          }
-          reference={sensitiveTarget.ticket.reference}
-          minLength={1}
-          confirmLabel={sensitiveTarget.target === 'GENERATION_DOCUMENTS' ? 'Reprendre le ticket' : 'Cloturer le ticket'}
-          variant="primary"
-          onClose={() => setSensitiveTarget(null)}
-          onConfirm={async (comment) => {
-            await onTransition(sensitiveTarget.ticket.id, sensitiveTarget.target, comment);
-            setSensitiveTarget(null);
+      {repriseTarget && (
+        <RepriseTicketDialog
+          ticket={repriseTarget}
+          onClose={() => setRepriseTarget(null)}
+          onConfirm={async (cible, comment) => {
+            await onTransition(repriseTarget.id, cible, comment);
+            setRepriseTarget(null);
           }}
         />
       )}

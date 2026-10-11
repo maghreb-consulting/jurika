@@ -40,20 +40,26 @@ class ChargeUtileAnnulationTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void demarches_suivies_completees_par_les_saisies_rang_par_rang() {
+    void demarches_suivies_completees_par_les_saisies_de_meme_designation() {
         FaitsDuTicket.Faits faits = new FaitsDuTicket.Faits("T-1", "2026-09-01", "S", "2026-10-05", "Motif",
                 "CREATION", "DEROULEMENT_DEMARCHE");
         List<Map<String, Object>> suivies = List.of(Map.of("DEMARCHE_DESIGNATION", "D\u00e9p\u00f4t au CRI",
                 "DEMARCHE_ADMINISTRATION", "CRI Casablanca-Settat", "DEMARCHE_DATE_DEPOT", "2026-09-25"));
-        Map<String, Object> magasin = Map.of("DEMARCHES_INTERROMPUES", List.of(Map.of(
-                "DEMARCHE_REFERENCE", "CRI-2026-55821", "RETRAIT_ADMINISTRATION_ADRESSE", "Avenue Hassan II",
-                "DEMARCHE_ADMINISTRATION", "ne doit pas recouvrir le suivi")));
+        // Saisie d'une demarche ajoutee a la main d'abord : l'ordre de saisie ne decide pas.
+        Map<String, Object> magasin = Map.of("DEMARCHES_INTERROMPUES", List.of(
+                Map.of("DEMARCHE_DESIGNATION", "Demande de taxe professionnelle", "DEMARCHE_ADMINISTRATION", "DGI"),
+                Map.of("DEMARCHE_DESIGNATION", "D\u00e9p\u00f4t au CRI",
+                        "DEMARCHE_REFERENCE", "CRI-2026-55821", "RETRAIT_ADMINISTRATION_ADRESSE", "Avenue Hassan II",
+                        "DEMARCHE_ADMINISTRATION", "ne doit pas recouvrir le suivi")));
         Map<String, Object> v = variables(ChargeUtileAnnulation.assembler(faits, magasin, suivies, null));
         List<Map<String, Object>> d = (List<Map<String, Object>>) v.get("DEMARCHES_INTERROMPUES");
-        assertThat(d).singleElement().satisfies(it -> assertThat(it)
+        assertThat(d).hasSize(2);
+        assertThat(d.get(0))
                 .containsEntry("DEMARCHE_ADMINISTRATION", "CRI Casablanca-Settat")
                 .containsEntry("DEMARCHE_REFERENCE", "CRI-2026-55821")
-                .containsEntry("RETRAIT_ADMINISTRATION_ADRESSE", "Avenue Hassan II"));
+                .containsEntry("RETRAIT_ADMINISTRATION_ADRESSE", "Avenue Hassan II")
+                .containsEntry("_suivie", "oui");
+        assertThat(d.get(1)).containsEntry("DEMARCHE_ADMINISTRATION", "DGI").doesNotContainKey("_suivie");
         assertThat(v).containsEntry("ANNULATION_DEPOTS_EN_COURS", "oui")
                 .doesNotContainKey("SUCCURSALE_SOCIETE_ETRANGERE");
     }
