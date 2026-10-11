@@ -29,6 +29,7 @@ import { WorkspacesPage } from './pages/admin/WorkspacesPage';
 import { WorkspaceDetailPage } from './pages/admin/WorkspaceDetailPage';
 import { UsersPage } from './pages/admin/UsersPage';
 import { ReferentielDemarchesPage } from './pages/admin/ReferentielDemarchesPage';
+import { DelaisGreffePage } from './pages/referentiel/DelaisGreffePage';
 import { BillingPage } from './pages/billing/BillingPage';
 import { BillingSuccessPage } from './pages/billing/BillingSuccessPage';
 import { TeamPage } from './pages/team/TeamPage';
@@ -163,6 +164,8 @@ function App() {
         <Route element={<ProtectedRoute allowed={['SUPERVISEUR', 'EMPLOYE']} />}>
           <Route element={<AppShell />}>
             <Route path="/chat" element={<ChatPage />} />
+            {/* Lot L4d (E7) : delais de depot au greffe par nature d'acte. */}
+            <Route path="/delais-greffe" element={<DelaisGreffePage />} />
           </Route>
         </Route>
 

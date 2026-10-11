@@ -49,6 +49,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -407,6 +408,39 @@ class DemarchesCorpusIT {
         mvc.perform(put("/api/v1/tickets/" + ticketId + "/decisions").header("Authorization", jeton("SUPERVISEUR"))
                         .contentType("application/json").content("{ \"decisions\": [] }"))
                 .andExpect(status().isForbidden());
+    }
+
+    /**
+     * Lot L4d (E7) : referentiel des delais de depot au greffe, lu dans le corpus (sans delai
+     * ni article : a confirmer), ajuste par le superviseur seul, et applique a la ligne de
+     * depot du ticket ; le retrait de l'ajustement retablit la ligne du corpus.
+     */
+    @Test
+    @Order(10)
+    void les_delais_de_depot_au_greffe_se_lisent_dans_le_corpus_et_s_ajustent_par_le_cabinet() throws Exception {
+        JsonNode ref = lire("/api/v1/tickets/delais-greffe");
+        JsonNode nature = null;
+        for (JsonNode n : ref) {
+            if (n.get("matrice").asText().equals(COMPTES) && n.get("decisionCode").asText().equals("approbation_comptes")) nature = n;
+        }
+        assertThat(nature).as("nature d'acte du depot au greffe : " + ref).isNotNull();
+        assertThat(nature.get("statut").asText()).isEqualTo("A_CONFIRMER");
+        assertThat(nature.get("article").isNull()).as("aucun article invente").isTrue();
+
+        String corps = "{\"delaiValeur\":30,\"delaiUnite\":\"JOURS\",\"article\":\"art. 95 de la loi n 5-96\"}";
+        String url = "/api/v1/tickets/delais-greffe/" + COMPTES + "/approbation_comptes";
+        mvc.perform(put(url).header("Authorization", jeton("EMPLOYE")).contentType("application/json").content(corps))
+                .andExpect(status().isForbidden());
+        mvc.perform(put(url).header("Authorization", jeton("SUPERVISEUR")).contentType("application/json").content(corps))
+                .andExpect(status().isNoContent());
+
+        JsonNode depot = ligneDe(lire("/api/v1/tickets/" + ticketId + "/demarches"), "commissaire \u2014 d\u00e9p\u00f4t");
+        assertThat(depot.toString()).contains("ajust\u00e9 par le cabinet").contains("art. 95 de la loi n 5-96");
+        assertThat(lire("/api/v1/tickets/delais-greffe").toString()).contains("\"delaiValeur\":30");
+
+        mvc.perform(delete(url).header("Authorization", jeton("SUPERVISEUR"))).andExpect(status().isNoContent());
+        depot = ligneDe(lire("/api/v1/tickets/" + ticketId + "/demarches"), "commissaire \u2014 d\u00e9p\u00f4t");
+        assertThat(depot.toString()).doesNotContain("ajust\u00e9 par le cabinet");
     }
 
     private JsonNode lire(String url) throws Exception {
