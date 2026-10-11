@@ -18,6 +18,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Megaphone } from 'lucide-react';
 import { TextField } from '../ui/TextField';
+import { InfoBulle } from '../ui/Aide';
+import { ValeurProposee } from './ValeurProposee';
 import {
   WorkflowDocumentBlock,
   freshDocState,
@@ -40,6 +42,15 @@ export interface AnnonceLiquidateurInput {
   nom?: string;
 }
 
+/** L4b (E7) : données de l'avis de clôture (modèle du corpus). */
+export interface AvisCloture {
+  acteNature?: string;
+  dissolutionDateEffet?: string;
+  compteDefinitifDate?: string;
+  quitus?: string;
+  siegeLiquidation?: string;
+}
+
 export interface LiquidationAnnoncePanelProps {
   dossierId?: string | null;
   ticketId?: string | null;
@@ -57,6 +68,14 @@ export interface LiquidationAnnoncePanelProps {
   depotLegalDate: string;
   onDepotLegalNumeroChange: (v: string) => void;
   onDepotLegalDateChange: (v: string) => void;
+  /**
+   * L4b (E7, D5) : données de l'avis de clôture du corpus, saisies ici et conservées par la
+   * page (brouillon de l'étape 2). Aucune n'est supposée.
+   */
+  avis?: AvisCloture;
+  onAvisChange?: (avis: AvisCloture) => void;
+  /** Date de dissolution connue du dossier : proposée pour la date d'effet. */
+  dateDissolution?: string;
   /** Notifié quand l'annonce est générée ET validée. */
   onReady?: (ready: boolean) => void;
   /** Nommage `type - dénomination - forme (- v<n>)`. */
@@ -83,6 +102,9 @@ function toNumber(v: string): number | null {
 }
 
 export function LiquidationAnnoncePanel({
+  avis,
+  onAvisChange,
+  dateDissolution,
   dossierId,
   ticketId,
   formeJuridique,
@@ -147,6 +169,11 @@ export function LiquidationAnnoncePanel({
     },
     cloture: {
       dateClotureLiquidation: dateCloture,
+      acteNature: avis?.acteNature ?? '',
+      dissolutionDateEffet: avis?.dissolutionDateEffet ?? '',
+      compteDefinitifDate: avis?.compteDefinitifDate ?? '',
+      quitus: avis?.quitus ?? '',
+      siegeLiquidation: avis?.siegeLiquidation ?? '',
       actifRealise: toNumber(totalActif),
       passifRegle: toNumber(totalPassif),
       resultatType: resultat?.sens ?? null,
@@ -185,10 +212,59 @@ export function LiquidationAnnoncePanel({
         Avis de clôture des opérations de liquidation à publier au Journal d'Annonces Légales.
         La société (dénomination, capital, siège, RC, ville du greffe), la date de l'
         {isAU ? "assemblée / décision de l'associé unique" : 'AGE de clôture'}, le liquidateur
-        et le résultat de liquidation sont repris de l'étape 1 et de la Data Room —{' '}
-        <strong>rien à re-saisir</strong>. Avec le dépôt du dossier de clôture, cet avis fonde
-        la <strong>radiation</strong> de la société au registre du commerce.
+        et le résultat de liquidation sont repris de l'étape 1 et de la Data Room. Complétez
+        ci-dessous ce que l'avis publie en plus : l'acte de clôture, la date d'effet de la
+        dissolution, la date du compte définitif, le quitus et le siège de la liquidation. Avec le
+        dépôt du dossier de clôture, cet avis fonde la <strong>radiation</strong> de la société au
+        registre du commerce.
       </p>
+
+      {onAvisChange && (
+        <div className="grid gap-3 md:grid-cols-2" data-testid="avis-cloture">
+          <div>
+            <label htmlFor="avis-acte-nature" className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
+              Acte constatant la clôture *
+              <InfoBulle
+                libelle="Quel acte constate la clôture ?"
+                texte="En principe la décision des associés (ou de l'associé unique) qui approuve le compte définitif. À défaut de délibération, ou si les comptes ne sont pas approuvés, le tribunal statue : l'avis le dit alors."
+              />
+            </label>
+            <select id="avis-acte-nature" className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
+              value={avis?.acteNature ?? ''} onChange={(e) => onAvisChange({ ...avis, acteNature: e.target.value })}>
+              <option value="">Choisir…</option>
+              <option value={isAU ? "Décision de l'associé unique" : 'Décision des associés'}>
+                {isAU ? "Décision de l'associé unique" : 'Décision des associés'}
+              </option>
+              <option value="Décision de justice">Décision de justice</option>
+            </select>
+          </div>
+          <ValeurProposee
+            id="avis-dissolution-date-effet"
+            label="Date d'effet de la dissolution *"
+            type="date"
+            proposition={dateDissolution ?? ''}
+            valeur={avis?.dissolutionDateEffet || undefined}
+            onChange={(v) => onAvisChange({ ...avis, dissolutionDateEffet: v })}
+          />
+          <TextField label="Compte définitif arrêté au *" type="date" value={avis?.compteDefinitifDate ?? ''}
+            onChange={(e) => onAvisChange({ ...avis, compteDefinitifDate: e.target.value })} />
+          <div>
+            <label htmlFor="avis-quitus" className="mb-1 block text-xs font-medium text-fg">Quitus au liquidateur *</label>
+            <select id="avis-quitus" className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
+              value={avis?.quitus ?? ''} onChange={(e) => onAvisChange({ ...avis, quitus: e.target.value })}>
+              <option value="">Choisir…</option>
+              <option value="accorde">Quitus accordé</option>
+              <option value="sous_reserve">Quitus accordé sous réserves</option>
+              <option value="sans_quitus">Décharge du mandat, sans quitus</option>
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <TextField label="Siège de la liquidation *" value={avis?.siegeLiquidation ?? ''}
+              onChange={(e) => onAvisChange({ ...avis, siegeLiquidation: e.target.value })}
+              hint="Adresse publiée en tête de l'avis (celle fixée à la dissolution)." />
+          </div>
+        </div>
+      )}
 
       {resultat && (
         <p className="rounded-lg border border-border bg-bg-overlay p-3 text-xs text-fg-muted" data-testid="annonce-resultat">

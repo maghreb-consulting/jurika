@@ -109,7 +109,12 @@
     "dateClotureLiquidation": "2026-06-20",
     "actifRealise": 300000,
     "passifRegle": 150000,
-    "resultatType": "boni"
+    "resultatType": "boni",
+    "acteNature": "Décision des associés",
+    "dissolutionDateEffet": "2026-05-15",
+    "compteDefinitifDate": "2026-06-10",
+    "quitus": "accorde",
+    "siegeLiquidation": "20 BOULEVARD ZERKTOUNI, CASABLANCA"
   },
   "signature": {
     "lieu": "CASABLANCA",
