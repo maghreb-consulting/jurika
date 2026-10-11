@@ -47,7 +47,12 @@ public final class ClausesLibres {
             int fin = t.indexOf("FIN BOUCLE — RESOLUTIONS");
             if (debut < 0 || fin < debut) return false;
             String boucle = t.substring(debut, fin);
-            return boucle.contains("$RESOLUTION_INTITULE") && boucle.matches("(?s).*\\$RESOLUTION_TEXTE(?![A-Z_]).*");
+            // Lot L4d (E11c) : PV du corpus (PV_AG_SARL, decisions de l'associe unique) :
+            // "$RESOLUTION_ORDINAL ... -- $RESOLUTION_OBJET" puis, pour un type non catalogue,
+            // la branche "$RESOLUTION_TEXTE_LIBRE".
+            boolean corpus = boucle.contains("$RESOLUTION_OBJET") && boucle.contains("$RESOLUTION_TEXTE_LIBRE");
+            return corpus || (boucle.contains("$RESOLUTION_INTITULE")
+                    && boucle.matches("(?s).*\\$RESOLUTION_TEXTE(?![A-Z_]).*"));
         } catch (java.io.IOException e) {
             throw new IllegalStateException("Gabarit illisible", e);
         }
@@ -81,6 +86,21 @@ public final class ClausesLibres {
         int n = modeleResolutions.size();
         String modele = modeleResolutions.isEmpty() ? null
                 : String.valueOf(modeleResolutions.get(n - 1).getOrDefault("RESOLUTION_NUMERO", ""));
+        // Lot L4d (E11c) : resolutions typees des PV du corpus ($RESOLUTION_TYPE, $RESOLUTION_ORDINAL).
+        boolean corpus = modeleResolutions.stream().anyMatch(r -> r.containsKey("RESOLUTION_TYPE"));
+        String majorite = corpus ? majoriteCommune(modeleResolutions) : null;
+        if (corpus) {
+            for (Map<String, Object> c : clauses) {
+                String resultat = c.get("resultat") == null ? "" : String.valueOf(c.get("resultat")).trim();
+                if (resultat.toLowerCase(Locale.ROOT).startsWith("rejet")) {
+                    // "Cette resolution, mise aux voix, est adoptee $RESOLUTION_RESULTAT" : le modele
+                    // n'ecrit qu'une resolution adoptee.
+                    throw new ClauseLibreImpossibleException(templateCode, "Clause libre impossible : la clause \u00ab "
+                            + c.get("titre") + " \u00bb est rejet\u00e9e, or le mod\u00e8le n'\u00e9crit qu'une r\u00e9solution adopt\u00e9e. "
+                            + "Retirez la clause de ce document.");
+                }
+            }
+        }
         // Position de chaque clause : avant la resolution k du modele (1..n), ou n+1 (a la suite).
         List<int[]> places = new ArrayList<>();
         for (int j = 0; j < clauses.size(); j++) {
@@ -112,11 +132,20 @@ public final class ClausesLibres {
                 r.put("RESOLUTION_VOIX_POUR", c.get("voixPour"));
                 r.put("RESOLUTION_VOIX_CONTRE", c.get("voixContre"));
                 r.put("RESOLUTION_ABSTENTIONS", c.get("abstentions"));
+                if (corpus) {
+                    // Type non catalogue : le modele imprime $RESOLUTION_TEXTE_LIBRE ; la majorite
+                    // est celle du vote saisi pour le proces-verbal (commune a ses resolutions).
+                    r.put("RESOLUTION_TYPE", "clause_libre");
+                    r.put("RESOLUTION_OBJET", c.get("titre"));
+                    r.put("RESOLUTION_TEXTE_LIBRE", c.get("texte"));
+                    r.put("RESOLUTION_RESULTAT", majorite == null ? "" : majorite);
+                }
                 resolutions.add(r);
             }
             if (k <= n) {
                 Map<String, Object> r = modeleResolutions.get(k - 1);
-                for (String champ : new String[]{"RESOLUTION_INTITULE", "RESOLUTION_TEXTE"}) {
+                for (String champ : new String[]{"RESOLUTION_INTITULE", "RESOLUTION_TEXTE",
+                        "RESOLUTION_OBJET", "RESOLUTION_TEXTE_LIBRE"}) {
                     if (r.get(champ) instanceof String t) r.put(champ, renvois(templateCode, t, nouveauRang));
                 }
                 resolutions.add(r);
@@ -124,9 +153,23 @@ public final class ClausesLibres {
         }
         for (int i = 0; i < resolutions.size(); i++) {
             resolutions.get(i).put("RESOLUTION_NUMERO", numero(modele, i + 1));
+            if (corpus) {
+                resolutions.get(i).put("RESOLUTION_ORDINAL", i + 1 < ORDINAUX.length ? ORDINAUX[i + 1] : (i + 1) + "E");
+            }
         }
         out.put("RESOLUTIONS", resolutions);
         return out;
+    }
+
+    /** Majorite imprimee par les resolutions du modele, si elle est la meme pour toutes ; sinon null. */
+    private static String majoriteCommune(List<Map<String, Object>> resolutions) {
+        String commune = null;
+        for (Map<String, Object> r : resolutions) {
+            String m = r.get("RESOLUTION_RESULTAT") == null ? "" : String.valueOf(r.get("RESOLUTION_RESULTAT")).trim();
+            if (m.isEmpty() || (commune != null && !commune.equals(m))) return null;
+            commune = m;
+        }
+        return commune;
     }
 
     static int avant(Object emplacement) {
