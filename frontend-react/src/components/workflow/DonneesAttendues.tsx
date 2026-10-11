@@ -29,14 +29,13 @@ export function DonneesAttendues({
   ticketId?: string | null;
 }) {
   const dejaRegenere = useRef(false);
-  const [liste, setListe] = useState<DonneeAttendue[]>(attendues);
+  // Liste mise a jour par une saisie ; elle cede la place a la liste du parent des que
+  // celui-ci en fournit une nouvelle (etat derive, sans effet).
+  const [maj, setMaj] = useState<{ source: DonneeAttendue[]; liste: DonneeAttendue[] } | null>(null);
+  const liste = maj && maj.source === attendues ? maj.liste : attendues;
   const [valeurs, setValeurs] = useState<Record<string, string>>({});
   const [erreur, setErreur] = useState<string | null>(null);
   const [envoi, setEnvoi] = useState<string | null>(null);
-
-  useEffect(() => {
-    setListe(attendues);
-  }, [attendues]);
 
   const toutesRecues = liste.length > 0 && liste.every((a) => a.recue);
 
@@ -53,8 +52,8 @@ export function DonneesAttendues({
     setEnvoi(a.variable);
     setErreur(null);
     try {
-      const maj = await workflowService.saisirDonneeAttendue(ticketId, a.variable, valeur);
-      setListe(maj.filter((x) => x.templateCode === a.templateCode));
+      const reponse = await workflowService.saisirDonneeAttendue(ticketId, a.variable, valeur);
+      setMaj({ source: attendues, liste: reponse.filter((x) => x.templateCode === a.templateCode) });
     } catch (err) {
       setErreur(extractError(err).message);
     } finally {
