@@ -197,6 +197,15 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L2 (chargeur du corpus, 2026-10-09) -- dette relevee
 
+- **Ecart du corpus a rapporter au cabinet (L4a, 2026-10-11)** : 13 modeles SARL AU impriment
+  `$ASSOCIE_UNIQUE` (drapeau "oui" / "non", pilote SARL / SARL AU) sous "L'associe unique", a la
+  place de son identite (PV_CREATION_SUCCURSALE_MAROC_SARL_AU, PV_FERMETURE_SUCCURSALE_SARL_AU,
+  PV_APPROBATION_COMPTES_SARL_AU, PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU...). Le document produit porte
+  "oui" sous la signature. Gabarits intouchables : A_DECIDER cabinet (correction du modele).
+- **Ecart du corpus (L4a)** : `FICHE_RENSEIGNEMENTS_CREATION` imprime "Bail commercial consenti par
+  $BAILLEUR_NOM" ; quand le bailleur est une societe, `$BAILLEUR_NOM` est vide (le contrat de bail, lui,
+  distingue $BAILLEUR_TYPE et imprime $BAILLEUR_DENOMINATION). La fiche est alors refusee, donnee nommee.
+  A_DECIDER cabinet (correction du modele).
 - **Parcours a basculer sur les modeles du corpus (L4).** 12 des 15 gabarits du classpath
   absents du corpus ont un equivalent dans `CORPUS_2026-10-03` (STATUTS deterministes,
   CONVOCATION_AG, FEUILLE_PRESENCE_AG, RAPPORT_GESTION, RAPPORT_LIQUIDATION_DIRECTEUR,
@@ -217,24 +226,21 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **Nouveau logo**, avec sa variante ivoire en mode sombre.
 - **Super-admin affiche "JURIKA"** (et non un nom de cabinet ou de compte).
 
+### Lot L4a (controles, annulation, 2026-10-11) -- dette relevee
+
+- **Lettre de retrait : ecart mecanique du corpus** : `LETTRE_RETRAIT_DEPOT` (creation) imprime
+  `$POUVOIR_MANDATAIRE_NOM` seul sous la signature, la variante `_SOCIETE_EXISTANTE` civilite,
+  prenom et nom. A rapporter au cabinet (gabarits intouchables).
+- **Documents d'annulation encore au catalogue de la creation** : `CreationSarlMapper` sert
+  toujours `NOTE_ANNULATION_DOSSIER` et `LETTRE_RETRAIT_DEPOT` (parcours `CREATION_SARL`, sans les
+  faits du ticket) ; l'ecran de la creation ne les propose pas, le parcours `ANNULATION` les
+  produit. A retirer du catalogue quand les temoins de rendu de la creation seront revus.
+
 ### Lot L3 (saisie unique, 2026-10-10) -- dette relevee
 
-- **`DocumentVerificationIT` ne voit pas les marqueurs de donnee manquante** : il declare OK un
-  `PV_MODIFICATION_SARL` (`target/sample_outputs/`) qui porte "VALEUR MANQUANTE" a la date, l'heure,
-  le lieu et le president de seance (fixture `modification.json` a l'ancienne forme `assemblee`,
-  sans `seance`). Le controle ne cherche que les variables residuelles : controle silencieusement
-  inoperant (motif 9). A corriger avec la fixture (L4, bascule des parcours).
 - **Usages a confirmer par le directeur** (D6, 2026-10-10) : nombre d'originaux et heure de l'acte
   sont desormais des valeurs proposees a l'ecran (composant `ValeurProposee`), confirmees par
   l'employe ; les propositions ("6", "quatre", "10 heures") restent a valider comme usages du cabinet.
-- **Valeurs pre-remplies encore affichees sans confirmation** (hors liste D6) : la liste de choix
-  des resolutions de modification prend sa premiere option d'office (`SelectField`,
-  `modificationResolutions.tsx`) ; remuneration du liquidateur "exercees a titre gratuit", motif de
-  dissolution "volontaire", nationalite "Marocaine" (creation, etape 6). Visibles et modifiables,
-  mais jamais confirmees : a passer en valeurs proposees (L4 ou L6).
-- **Creation : seule la CIN est acceptee comme piece** (format controle, scan de la CIN exige) ;
-  le type de piece est derive du n de CIN saisi (D6). Un associe ou gerant etranger (passeport,
-  carte de sejour) ne peut pas etre saisi : a instruire.
 - **Gabarits D3 de dissolution, liquidation et approbation (SARL AU)** : leurs variables du corpus
   (liquidateur personne morale, dates de decision et d'effet...) ne sont pas fournies par les
   mappers ; ces actes sont refuses avec les donnees nommees jusqu'a la reecriture des mappers (L4).
@@ -283,8 +289,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **`JwtAuthFilter`** : si la suite de la chaine leve une exception dans le `try`, le
   `catch (Exception)` relance `chain.doFilter` une seconde fois (double execution).
 - **`AuditLogJpaRepository` (auth)** inutilise depuis E10b : code mort a retirer (test d'abord).
-- **Annulation d'un ticket** : action de remplacement pour la Data Room (RG-TKT-04), au lot des
-  parcours (la suppression automatique a ete retiree en E16a).
 - **Objets MinIO orphelins** quand l'ecriture en base echoue, et suppression de l'ancien objet
   avant validation (dataroom).
 - **Front : boutons d'action encore visibles au superviseur** alors que le serveur les refuse

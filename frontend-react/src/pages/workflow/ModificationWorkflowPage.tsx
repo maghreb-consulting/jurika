@@ -998,6 +998,7 @@ function ModificationWorkflowPageBody() {
           mandataireNom: '',
           // L3 (D6) : type de piece repris de la fiche, sinon "CIN" propose a l'ecran.
           pieceType: String(a?.pieceType ?? ''),
+          nationalite: String(a?.nationalite ?? ''), // L4a (E2) : reprise de la fiche, sinon proposee
           pieceNumero: String(a?.cin ?? a?.cinNumero ?? a?.pieceNumero ?? ''),
         };
       })
@@ -2888,7 +2889,7 @@ function ModificationWorkflowPageBody() {
           onClose={() => setShowCancel(false)}
           onConfirm={async (comment) => {
             await ticketService.transition(ticket.id, { target: 'ANNULE', comment });
-            navigate('/tickets');
+            navigate(`/tickets?ticket=${ticket.id}`);
           }}
         />
       )}

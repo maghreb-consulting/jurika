@@ -1,0 +1,629 @@
+{
+  "_commentaire": "Lot L4a (E1) : charge du formulaire de seance commun (SeanceForm.buildPayload), par modele.",
+  "PV_DEFAUT_QUORUM_SARL": {
+    "formeJuridique": "SARL",
+    "associeUnique": false,
+    "societe": {
+      "denomination": "PARACOSME",
+      "formeJuridique": "SARL",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 rue des Foules, Casablanca",
+      "nombreParts": 1000,
+      "rcNumero": "123456",
+      "villeGreffe": "Casablanca",
+      "ice": "001122334000055",
+      "ifNumero": "40998877",
+      "ville": "Casablanca",
+      "rcVille": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
+    },
+    "seance": {
+      "type": "ordinaire",
+      "date": "2026-06-15",
+      "heure": "10H00",
+      "lieu": "au siège social",
+      "heureCloture": "10H30",
+      "presidentNom": "M. Karim BENALI",
+      "presidentQualite": "gérant",
+      "secretairePresent": "non",
+      "secretaireNom": ""
+    },
+    "convocation": {
+      "auteur": "la gérance",
+      "date": "2026-05-30",
+      "heure": "10H00",
+      "mode": "lettre recommandée avec accusé de réception",
+      "rang": "première",
+      "dateAgPremiere": "2026-06-15",
+      "lieuSignature": "Casablanca",
+      "irregulariteNature": "convocation adressée hors délai légal"
+    },
+    "secondeAssemblee": {
+      "date": "2026-07-01",
+      "heure": "10H00",
+      "lieu": "au siège social"
+    },
+    "suiteAssemblee": "renvoi",
+    "ordreDuJour": [
+      "Approbation des comptes de l'exercice 2025",
+      "Affectation du résultat"
+    ],
+    "documentsJoints": [
+      "Texte des résolutions proposées",
+      "Formule de pouvoir"
+    ],
+    "resolutions": [
+      {
+        "intitule": "Approbation des comptes",
+        "texte": "L'assemblée approuve les comptes de l'exercice.",
+        "voixPour": "1000",
+        "voixContre": "0",
+        "abstentions": "0",
+        "resultat": "adoptée"
+      }
+    ],
+    "quorumAtteint": "non",
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
+    "gerants": [
+      {
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI"
+      }
+    ],
+    "associes": [
+      {
+        "typePersonne": "PHYSIQUE",
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI",
+        "adresse": "5 boulevard Zerktouni, Casablanca",
+        "nombreParts": "600",
+        "nombreVoix": "600",
+        "presence": "présent",
+        "mandataireNom": "",
+        "pieceType": "CIN",
+        "pieceNumero": "BE123456",
+        "nationalite": "marocaine"
+      },
+      {
+        "typePersonne": "PHYSIQUE",
+        "civilite": "Mme",
+        "prenom": "Sofia",
+        "nom": "ALAOUI",
+        "adresse": "22 avenue Hassan II, Rabat",
+        "nombreParts": "400",
+        "nombreVoix": "400",
+        "presence": "absent",
+        "mandataireNom": "",
+        "pieceType": "CIN",
+        "pieceNumero": "BK554433",
+        "nationalite": "marocaine"
+      }
+    ]
+  },
+  "PV_IRREGULARITE_CONVOCATION_SARL": {
+    "formeJuridique": "SARL",
+    "associeUnique": false,
+    "societe": {
+      "denomination": "PARACOSME",
+      "formeJuridique": "SARL",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 rue des Foules, Casablanca",
+      "nombreParts": 1000,
+      "rcNumero": "123456",
+      "villeGreffe": "Casablanca",
+      "ice": "001122334000055",
+      "ifNumero": "40998877",
+      "ville": "Casablanca",
+      "rcVille": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
+    },
+    "seance": {
+      "type": "ordinaire",
+      "date": "2026-06-15",
+      "heure": "10H00",
+      "lieu": "au siège social",
+      "heureCloture": "10H30",
+      "presidentNom": "M. Karim BENALI",
+      "presidentQualite": "gérant",
+      "secretairePresent": "non",
+      "secretaireNom": ""
+    },
+    "convocation": {
+      "auteur": "la gérance",
+      "date": "2026-05-30",
+      "heure": "10H00",
+      "mode": "lettre recommandée avec accusé de réception",
+      "rang": "première",
+      "dateAgPremiere": "2026-06-15",
+      "lieuSignature": "Casablanca",
+      "irregulariteNature": "convocation adressée hors délai légal"
+    },
+    "secondeAssemblee": {
+      "date": "2026-07-01",
+      "heure": "10H00",
+      "lieu": "au siège social"
+    },
+    "suiteAssemblee": "renvoi",
+    "ordreDuJour": [
+      "Approbation des comptes de l'exercice 2025",
+      "Affectation du résultat"
+    ],
+    "documentsJoints": [
+      "Texte des résolutions proposées",
+      "Formule de pouvoir"
+    ],
+    "resolutions": [
+      {
+        "intitule": "Approbation des comptes",
+        "texte": "L'assemblée approuve les comptes de l'exercice.",
+        "voixPour": "1000",
+        "voixContre": "0",
+        "abstentions": "0",
+        "resultat": "adoptée"
+      }
+    ],
+    "quorumAtteint": "non",
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
+    "gerants": [
+      {
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI"
+      }
+    ],
+    "associes": [
+      {
+        "typePersonne": "PHYSIQUE",
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI",
+        "adresse": "5 boulevard Zerktouni, Casablanca",
+        "nombreParts": "600",
+        "nombreVoix": "600",
+        "presence": "présent",
+        "mandataireNom": "",
+        "pieceType": "CIN",
+        "pieceNumero": "BE123456",
+        "nationalite": "marocaine"
+      },
+      {
+        "typePersonne": "PHYSIQUE",
+        "civilite": "Mme",
+        "prenom": "Sofia",
+        "nom": "ALAOUI",
+        "adresse": "22 avenue Hassan II, Rabat",
+        "nombreParts": "400",
+        "nombreVoix": "400",
+        "presence": "absent",
+        "mandataireNom": "",
+        "pieceType": "CIN",
+        "pieceNumero": "BK554433",
+        "nationalite": "marocaine"
+      }
+    ]
+  },
+  "CONVOCATION_AG": {
+    "formeJuridique": "SARL",
+    "associeUnique": false,
+    "societe": {
+      "denomination": "PARACOSME",
+      "formeJuridique": "SARL",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 rue des Foules, Casablanca",
+      "nombreParts": 1000,
+      "rcNumero": "123456",
+      "villeGreffe": "Casablanca",
+      "ice": "001122334000055",
+      "ifNumero": "40998877",
+      "ville": "Casablanca",
+      "rcVille": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
+    },
+    "seance": {
+      "type": "ordinaire",
+      "date": "2026-06-15",
+      "heure": "10H00",
+      "lieu": "au siège social",
+      "heureCloture": "10H30",
+      "presidentNom": "M. Karim BENALI",
+      "presidentQualite": "gérant",
+      "secretairePresent": "non",
+      "secretaireNom": ""
+    },
+    "convocation": {
+      "auteur": "la gérance",
+      "date": "2026-05-30",
+      "heure": "10H00",
+      "mode": "lettre recommandée avec accusé de réception",
+      "rang": "première",
+      "dateAgPremiere": "2026-06-15",
+      "lieuSignature": "Casablanca",
+      "irregulariteNature": "convocation adressée hors délai légal"
+    },
+    "secondeAssemblee": {
+      "date": "2026-07-01",
+      "heure": "10H00",
+      "lieu": "au siège social"
+    },
+    "suiteAssemblee": "renvoi",
+    "ordreDuJour": [
+      "Approbation des comptes de l'exercice 2025",
+      "Affectation du résultat"
+    ],
+    "documentsJoints": [
+      "Texte des résolutions proposées",
+      "Formule de pouvoir"
+    ],
+    "resolutions": [
+      {
+        "intitule": "Approbation des comptes",
+        "texte": "L'assemblée approuve les comptes de l'exercice.",
+        "voixPour": "1000",
+        "voixContre": "0",
+        "abstentions": "0",
+        "resultat": "adoptée"
+      }
+    ],
+    "quorumAtteint": "non",
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
+    "gerants": [
+      {
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI"
+      }
+    ],
+    "associes": [
+      {
+        "typePersonne": "PHYSIQUE",
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI",
+        "adresse": "5 boulevard Zerktouni, Casablanca",
+        "nombreParts": "600",
+        "nombreVoix": "600",
+        "presence": "présent",
+        "mandataireNom": "",
+        "pieceType": "CIN",
+        "pieceNumero": "BE123456",
+        "nationalite": "marocaine"
+      },
+      {
+        "typePersonne": "PHYSIQUE",
+        "civilite": "Mme",
+        "prenom": "Sofia",
+        "nom": "ALAOUI",
+        "adresse": "22 avenue Hassan II, Rabat",
+        "nombreParts": "400",
+        "nombreVoix": "400",
+        "presence": "absent",
+        "mandataireNom": "",
+        "pieceType": "CIN",
+        "pieceNumero": "BK554433",
+        "nationalite": "marocaine"
+      }
+    ]
+  },
+  "FEUILLE_PRESENCE_AG": {
+    "formeJuridique": "SARL",
+    "associeUnique": false,
+    "societe": {
+      "denomination": "PARACOSME",
+      "formeJuridique": "SARL",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 rue des Foules, Casablanca",
+      "nombreParts": 1000,
+      "rcNumero": "123456",
+      "villeGreffe": "Casablanca",
+      "ice": "001122334000055",
+      "ifNumero": "40998877",
+      "ville": "Casablanca",
+      "rcVille": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
+    },
+    "seance": {
+      "type": "ordinaire",
+      "date": "2026-06-15",
+      "heure": "10H00",
+      "lieu": "au siège social",
+      "heureCloture": "10H30",
+      "presidentNom": "M. Karim BENALI",
+      "presidentQualite": "gérant",
+      "secretairePresent": "non",
+      "secretaireNom": ""
+    },
+    "convocation": {
+      "auteur": "la gérance",
+      "date": "2026-05-30",
+      "heure": "10H00",
+      "mode": "lettre recommandée avec accusé de réception",
+      "rang": "première",
+      "dateAgPremiere": "2026-06-15",
+      "lieuSignature": "Casablanca",
+      "irregulariteNature": "convocation adressée hors délai légal"
+    },
+    "secondeAssemblee": {
+      "date": "2026-07-01",
+      "heure": "10H00",
+      "lieu": "au siège social"
+    },
+    "suiteAssemblee": "renvoi",
+    "ordreDuJour": [
+      "Approbation des comptes de l'exercice 2025",
+      "Affectation du résultat"
+    ],
+    "documentsJoints": [
+      "Texte des résolutions proposées",
+      "Formule de pouvoir"
+    ],
+    "resolutions": [
+      {
+        "intitule": "Approbation des comptes",
+        "texte": "L'assemblée approuve les comptes de l'exercice.",
+        "voixPour": "1000",
+        "voixContre": "0",
+        "abstentions": "0",
+        "resultat": "adoptée"
+      }
+    ],
+    "quorumAtteint": "non",
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
+    "gerants": [
+      {
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI"
+      }
+    ],
+    "associes": [
+      {
+        "typePersonne": "PHYSIQUE",
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI",
+        "adresse": "5 boulevard Zerktouni, Casablanca",
+        "nombreParts": "600",
+        "nombreVoix": "600",
+        "presence": "présent",
+        "mandataireNom": "",
+        "pieceType": "CIN",
+        "pieceNumero": "BE123456",
+        "nationalite": "marocaine"
+      },
+      {
+        "typePersonne": "PHYSIQUE",
+        "civilite": "Mme",
+        "prenom": "Sofia",
+        "nom": "ALAOUI",
+        "adresse": "22 avenue Hassan II, Rabat",
+        "nombreParts": "400",
+        "nombreVoix": "400",
+        "presence": "absent",
+        "mandataireNom": "",
+        "pieceType": "CIN",
+        "pieceNumero": "BK554433",
+        "nationalite": "marocaine"
+      }
+    ]
+  },
+  "PV_DEFAUT_QUORUM_SARL_AU": {
+    "formeJuridique": "SARL_AU",
+    "associeUnique": true,
+    "societe": {
+      "denomination": "PARACOSME AU",
+      "formeJuridique": "SARL_AU",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 rue des Foules, Casablanca",
+      "nombreParts": 1000,
+      "rcNumero": "123456",
+      "villeGreffe": "Casablanca",
+      "ice": "001122334000055",
+      "ifNumero": "40998877",
+      "ville": "Casablanca",
+      "rcVille": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
+    },
+    "seance": {
+      "type": "ordinaire",
+      "date": "2026-06-15",
+      "heure": "10H00",
+      "lieu": "au siège social",
+      "heureCloture": "10H30",
+      "presidentNom": "M. Karim BENALI",
+      "presidentQualite": "gérant",
+      "secretairePresent": "non",
+      "secretaireNom": ""
+    },
+    "convocation": {
+      "auteur": "la gérance",
+      "date": "2026-05-30",
+      "heure": "10H00",
+      "mode": "lettre recommandée avec accusé de réception",
+      "rang": "première",
+      "dateAgPremiere": "2026-06-15",
+      "lieuSignature": "Casablanca",
+      "irregulariteNature": "convocation adressée hors délai légal"
+    },
+    "secondeAssemblee": {
+      "date": "2026-07-01",
+      "heure": "10H00",
+      "lieu": "au siège social"
+    },
+    "suiteAssemblee": "renvoi",
+    "ordreDuJour": [
+      "Approbation des comptes de l'exercice 2025",
+      "Affectation du résultat"
+    ],
+    "documentsJoints": [
+      "Texte des résolutions proposées",
+      "Formule de pouvoir"
+    ],
+    "resolutions": [
+      {
+        "intitule": "Approbation des comptes",
+        "texte": "L'assemblée approuve les comptes de l'exercice.",
+        "voixPour": "1000",
+        "voixContre": "0",
+        "abstentions": "0",
+        "resultat": "adoptée"
+      }
+    ],
+    "quorumAtteint": "non",
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
+    "gerants": [
+      {
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI"
+      }
+    ],
+    "associes": [
+      {
+        "typePersonne": "PHYSIQUE",
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI",
+        "adresse": "5 boulevard Zerktouni, Casablanca",
+        "nombreParts": "1000",
+        "nombreVoix": "1000",
+        "presence": "présent",
+        "mandataireNom": "",
+        "pieceType": "CIN",
+        "pieceNumero": "BE123456",
+        "nationalite": "marocaine"
+      }
+    ]
+  },
+  "PV_IRREGULARITE_CONVOCATION_SARL_AU": {
+    "formeJuridique": "SARL_AU",
+    "associeUnique": true,
+    "societe": {
+      "denomination": "PARACOSME AU",
+      "formeJuridique": "SARL_AU",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 rue des Foules, Casablanca",
+      "nombreParts": 1000,
+      "rcNumero": "123456",
+      "villeGreffe": "Casablanca",
+      "ice": "001122334000055",
+      "ifNumero": "40998877",
+      "ville": "Casablanca",
+      "rcVille": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
+    },
+    "seance": {
+      "type": "ordinaire",
+      "date": "2026-06-15",
+      "heure": "10H00",
+      "lieu": "au siège social",
+      "heureCloture": "10H30",
+      "presidentNom": "M. Karim BENALI",
+      "presidentQualite": "gérant",
+      "secretairePresent": "non",
+      "secretaireNom": ""
+    },
+    "convocation": {
+      "auteur": "la gérance",
+      "date": "2026-05-30",
+      "heure": "10H00",
+      "mode": "lettre recommandée avec accusé de réception",
+      "rang": "première",
+      "dateAgPremiere": "2026-06-15",
+      "lieuSignature": "Casablanca",
+      "irregulariteNature": "convocation adressée hors délai légal"
+    },
+    "secondeAssemblee": {
+      "date": "2026-07-01",
+      "heure": "10H00",
+      "lieu": "au siège social"
+    },
+    "suiteAssemblee": "renvoi",
+    "ordreDuJour": [
+      "Approbation des comptes de l'exercice 2025",
+      "Affectation du résultat"
+    ],
+    "documentsJoints": [
+      "Texte des résolutions proposées",
+      "Formule de pouvoir"
+    ],
+    "resolutions": [
+      {
+        "intitule": "Approbation des comptes",
+        "texte": "L'assemblée approuve les comptes de l'exercice.",
+        "voixPour": "1000",
+        "voixContre": "0",
+        "abstentions": "0",
+        "resultat": "adoptée"
+      }
+    ],
+    "quorumAtteint": "non",
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
+    "gerants": [
+      {
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI"
+      }
+    ],
+    "associes": [
+      {
+        "typePersonne": "PHYSIQUE",
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI",
+        "adresse": "5 boulevard Zerktouni, Casablanca",
+        "nombreParts": "1000",
+        "nombreVoix": "1000",
+        "presence": "présent",
+        "mandataireNom": "",
+        "pieceType": "CIN",
+        "pieceNumero": "BE123456",
+        "nationalite": "marocaine"
+      }
+    ]
+  }
+}

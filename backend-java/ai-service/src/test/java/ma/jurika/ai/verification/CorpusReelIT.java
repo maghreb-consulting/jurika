@@ -85,6 +85,7 @@ class CorpusReelIT {
         DocxTemplateEngine apres = new DocxTemplateEngine(loader, null, corpus);
 
         List<Map<String, Object>> temoin = new ArrayList<>();
+        List<String> nonConformesRequis = new ArrayList<>();
         Set<String> vus = new TreeSet<>();
         for (DocumentVerificationIT.MapperBinding b : dv.buildBindings()) {
             Map<String, Object> racineFixture = dv.loadFixture(b.fixtureFile());
@@ -109,8 +110,16 @@ class CorpusReelIT {
                 Map<String, Object> variables = ma.jurika.ai.workflow.identity.RepriseFicheSociete.completer(
                         b.mapper().map(code, payload), payload);
                 e.put("dans_corpus", corpus.gabarit(code).isPresent());
-                DocumentResult ra = avant.generate(code, variables);
-                Files.write(SORTIE.resolve("temoin/classpath/" + code + ".docx"), ra.bytes());
+                // Lot L4a (E5) : un modele propre au corpus (ex. documents d'annulation
+                // _SOCIETE_EXISTANTE) n'a pas de temoin classpath : rendu par le corpus seul.
+                DocumentResult ra;
+                try {
+                    ra = avant.generate(code, variables);
+                    Files.write(SORTIE.resolve("temoin/classpath/" + code + ".docx"), ra.bytes());
+                } catch (ma.jurika.ai.document.GabaritIntrouvableException absent) {
+                    ra = null;
+                    e.put("classpath", "absent (modele propre au corpus)");
+                }
                 Set<String> horsAvant = apres.codesServisHorsCorpus();
                 DocumentResult rb;
                 try {
@@ -125,18 +134,18 @@ class CorpusReelIT {
                         && !apres.codesServisHorsCorpus().contains(code);
                 e.put("source_apres", servieParCorpus ? "corpus" : "classpath");
                 Files.write(SORTIE.resolve("temoin/corpus/" + code + ".docx"), rb.bytes());
-                List<String> la = lignes(ra.bytes());
+                List<String> la = ra == null ? List.of() : lignes(ra.bytes());
                 List<String> lb = lignes(rb.bytes());
                 e.put("texte_identique", la.equals(lb));
                 e.put("lignes_avant", la.size());
                 e.put("lignes_apres", lb.size());
                 e.put("lignes_retirees", difference(la, lb));
                 e.put("lignes_ajoutees", difference(lb, la));
-                Set<String> va = variablesGabarit(code, loader);
+                Set<String> va = ra == null ? Set.of() : variablesGabarit(code, loader);
                 Set<String> vb = corpus.gabarit(code).map(GabaritCorpus::variables).orElse(Set.of());
                 e.put("variables_disparues", new TreeSet<>(difference(new ArrayList<>(va), new ArrayList<>(vb))));
                 e.put("variables_apparues", new TreeSet<>(difference(new ArrayList<>(vb), new ArrayList<>(va))));
-                e.put("manquantes_avant", ra.missingVariables());
+                e.put("manquantes_avant", ra == null ? List.of() : ra.missingVariables());
                 e.put("manquantes_apres", rb.missingVariables());
                 List<String> residus = new ArrayList<>();
                 for (String l : lb) {
@@ -144,6 +153,14 @@ class CorpusReelIT {
                     if (m.find()) residus.add(m.group());
                 }
                 e.put("residus_apres", residus);
+                // Lot L4a (CI) : gabarits que seul le corpus reel porte : controle strict ici
+                // (DocumentVerificationIT les declare CORPUS_REEL_REQUIS sans corpus).
+                if (DocumentVerificationIT.CORPUS_REEL_REQUIS.contains(code)) {
+                    List<String> d = ControleDocumentProduit.defauts(String.join("\n", lb),
+                            DocumentVerificationIT.EXTERNES_ATTENDUES.getOrDefault(code, Set.of()));
+                    e.put("controle_strict", d);
+                    if (!d.isEmpty()) nonConformesRequis.add(code + " : " + d);
+                }
                 e.put("statut", "OK");
                 temoin.add(e);
             }
@@ -161,6 +178,10 @@ class CorpusReelIT {
         assertThat(rapport.nonRendables()).isEmpty();
         assertThat(temoin).isNotEmpty();
         assertThat(temoin).filteredOn(t -> "ECHEC_CORPUS".equals(t.get("statut"))).isEmpty();
+        assertThat(temoin).as("gabarits CORPUS_REEL_REQUIS rendus ici")
+                .filteredOn(t -> DocumentVerificationIT.CORPUS_REEL_REQUIS.contains(t.get("code"))).hasSize(
+                        DocumentVerificationIT.CORPUS_REEL_REQUIS.size());
+        assertThat(nonConformesRequis).as("controle strict des gabarits CORPUS_REEL_REQUIS").isEmpty();
         // Aucun document produit ne garde un marqueur du moteur, une variable brute ou
         // la section de documentation des gabarits.
         assertThat(temoin).filteredOn(t -> t.get("residus_apres") instanceof List<?> l && !l.isEmpty())

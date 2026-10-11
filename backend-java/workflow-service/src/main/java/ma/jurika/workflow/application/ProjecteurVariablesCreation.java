@@ -113,6 +113,14 @@ public class ProjecteurVariablesCreation {
         poser(workspaceId, ticketId, auteur, "etape-3", n, "BANQUE_DEPOSITAIRE",
                 premier(s3.get("banqueDepot"), s3.get("depotBanqueNom")));
 
+        // Lot L4a (E1c) : saisies de l'etape 3 que personne ne lisait.
+        poser(workspaceId, ticketId, auteur, "etape-3", n, "COMMISSAIRE_APPORTS_NOM", s3.get("commissaireApportsNom"));
+        poser(workspaceId, ticketId, auteur, "etape-3", n, "MODE_LIBERATION", s3.get("modeLiberation"));
+        poser(workspaceId, ticketId, auteur, "etape-3", n, "DEPOT_FONDS_BLOQUE", s3.get("depotFondsBloque"));
+        poser(workspaceId, ticketId, auteur, "etape-3", n, "COMPTE_BANCAIRE_NUMERO",
+                premier(s3.get("depotNumero"), sousCarte(s3, "depot").get("numero")));
+        poser(workspaceId, ticketId, auteur, "etape-3", n, "DATE_COMMENCEMENT_EXPLOITATION", s3.get("dateCommencement"));
+
         // ---- étape 4 — activité --------------------------------------------
         poser(workspaceId, ticketId, auteur, "etape-4", n, "OBJET_SOCIAL", objetSocial(s4));
         // Saisie à l'étape 4 et NULLE PART AILLEURS : le champ que l'étape 7
@@ -128,9 +136,24 @@ public class ProjecteurVariablesCreation {
         Map<String, Object> gerance = sousCarte(etape(data, "step5", null), "gerance");
         poser(workspaceId, ticketId, auteur, "etape-5", n, "DUREE_GERANCE",
                 premier(gerance.get("dureeGerance"), gerance.get("dureeMandat")));
+        // Lot L4a (E1c) : pouvoirs et signature de la gerance, saisis a l'etape 5 et jamais lus.
+        poser(workspaceId, ticketId, auteur, "etape-5", n, "GERANT_MODE_DESIGNATION", gerance.get("gerantModeDesignation"));
+        poser(workspaceId, ticketId, auteur, "etape-5", n, "LIMITATION_POUVOIRS", gerance.get("limitationPouvoirs"));
+        poser(workspaceId, ticketId, auteur, "etape-5", n, "MODE_SIGNATURE",
+                premier(gerance.get("modeSignature"), s3.get("modeSignature")));
+        poser(workspaceId, ticketId, auteur, "etape-5", n, "MODE_SIGNATURE_ADMIN", gerance.get("modeSignatureAdmin"));
+        poser(workspaceId, ticketId, auteur, "etape-5", n, "SIGNATURE_MANDATAIRE", gerance.get("signatureMandataire"));
+        poser(workspaceId, ticketId, auteur, "etape-5", n, "MANDATAIRE_NOM", gerance.get("mandataireNom"));
+        poser(workspaceId, ticketId, auteur, "etape-5", n, "MANDATAIRE_ACTE_DELEGATION", gerance.get("mandataireActeDelegation"));
+        poser(workspaceId, ticketId, auteur, "etape-5", n, "SIGNATURE_PLAFOND_CHIFFRES",
+                positif(premier(gerance.get("signaturePlafond"), s3.get("signaturePlafond"))));
+        Map<String, Object> s5 = etape(data, "step5", null);
+        if (Boolean.TRUE.equals(s5.get("cacNomme"))) {
+            poser(workspaceId, ticketId, auteur, "etape-5", n, "COMMISSAIRE_COMPTES_NOM", s5.get("cacNom"));
+        }
 
         // ---- étape 6 — associés ---------------------------------------------
-        projeterAssocies(workspaceId, ticketId, auteur, liste(data, "step6", "associes"), n);
+        projeterAssocies(workspaceId, ticketId, auteur, liste(data, "step6", "associes"), s3, n);
 
         // ---- étape 7 — les saisies du corpus --------------------------------
         projeterCatalogue(workspaceId, ticketId, auteur, sousCarte(s7, "complements"), n);
@@ -226,6 +249,7 @@ public class ProjecteurVariablesCreation {
             pm.add(e);
         }
         magasin.poserBoucle(ws, ticket, "GERANTS", gerants, Origine.SAISIE, auteur, "etape-5");
+        n.boucles.put("GERANTS", gerants);
         magasin.poserBoucle(ws, ticket, "DIRIGEANTS_PM", pm, Origine.SAISIE, auteur, "etape-5");
         n.valeur += gerants.size();
     }
@@ -258,7 +282,12 @@ public class ProjecteurVariablesCreation {
     }
 
     private void projeterAssocies(UUID ws, UUID ticket, UUID auteur,
-                                   List<Map<String, Object>> associes, Compteur n) {
+                                   List<Map<String, Object>> associes, Map<String, Object> s3, Compteur n) {
+        // Lot L4a (E1c) : un seul apporteur en nature (ou en industrie) se voit attribuer la
+        // description de l'etape 3 (donnee DERIVEE de l'unicite) ; a plusieurs, chacun la saisit.
+        long apporteursNature = associes.stream().filter(a -> partsDuType(a, "NATURE") > 0).count();
+        long apporteursIndustrie = associes.stream().filter(a -> partsDuType(a, "INDUSTRIE") > 0).count();
+        java.math.BigDecimal nominale = nombre(s3.get("valeurNominale"));
         List<Map<String, String>> base = new ArrayList<>();
         List<Map<String, String>> apports = new ArrayList<>();
         for (Map<String, Object> a : associes) {
@@ -275,6 +304,7 @@ public class ProjecteurVariablesCreation {
             it.put("ASSOCIE_PIECE_TYPE", typePiece(a, morale));
             // Lot L3 : l'ecran des associes ecrit `cin` (le projecteur ne lisait que pieceNumero/cinNumero).
             it.put("ASSOCIE_PIECE_NUMERO", txt(premier(a.get("pieceNumero"), a.get("cinNumero"), a.get("cin"))));
+            // Lot L4a (E1c) : personne morale representee (l'ecran ecrit repPrenom / repNom).
             it.put("ASSOCIE_NOMBRE_PARTS", txt(a.get("nombreParts")));
             it.put("ASSOCIE_EST_GERANT", ouiNon(a.get("estGerant")));
             if (morale) {
@@ -289,11 +319,29 @@ public class ProjecteurVariablesCreation {
             }
             base.add(it);
 
+            // Lot L4a (E1c) : les apports de l'associe, lus sur ses LIGNES d'apport (l'ecran ecrit
+            // apports[]{type, parts}) : avant, seul le type dominant atteignait le magasin, sans
+            // montant ni description -- statuts et declarations etaient refuses faute d'apport.
             Map<String, String> ap = new LinkedHashMap<>();
             ap.put("APPORT_TYPE", txt(premier(a.get("apportType"), a.get("typeApport"))));
+            ap.put("APPORT_NUMERAIRE_CHIFFRES", montant(partsDuType(a, "NUMERAIRE"), nominale));
+            long pNature = partsDuType(a, "NATURE");
+            if (pNature > 0) {
+                ap.put("APPORT_NATURE_VALEUR_CHIFFRES", montant(pNature, nominale));
+                ap.put("APPORT_NATURE_DESCRIPTION", txt(premier(a.get("apportNatureDescription"),
+                        apporteursNature == 1 ? s3.get("descriptionNature") : null)));
+                ap.put("APPORT_NATURE_METHODE", txt(a.get("apportNatureMethode")));
+                ap.put("APPORT_NATURE_ORIGINE_PROPRIETE", txt(a.get("apportNatureOriginePropriete")));
+                ap.put("APPORT_NATURE_CHARGES", txt(a.get("apportNatureCharges")));
+            }
+            if (partsDuType(a, "INDUSTRIE") > 0) {
+                ap.put("APPORT_INDUSTRIE_DESCRIPTION", txt(premier(a.get("apportIndustrieDescription"),
+                        apporteursIndustrie == 1 ? s3.get("descriptionIndustrie") : null)));
+            }
             apports.add(ap);
         }
         magasin.poserBoucle(ws, ticket, "ASSOCIES", base, Origine.SAISIE, auteur, "etape-6");
+        n.boucles.put("ASSOCIES", base);
         magasin.poserBoucle(ws, ticket, "APPORTS_PAR_ASSOCIE", apports, Origine.SAISIE, auteur, "etape-6");
         n.valeur += base.size();
 
@@ -304,8 +352,12 @@ public class ProjecteurVariablesCreation {
     /** Les champs du catalogue de l'étape 7 : {@code bailleurNom} → {@code $BAILLEUR_NOM}. */
     private void projeterCatalogue(UUID ws, UUID ticket, UUID auteur,
                                     Map<String, Object> complements, Compteur n) {
-        complements.forEach((cle, valeur) ->
-                poser(ws, ticket, auteur, "etape-7", n, variableDeLaCle(cle), valeur));
+        // Lot L4a (E1c, RG-VAR-03) : une donnee saisie aux etapes 1 a 6 n'est jamais
+        // recouverte par l'etape 7 (l'ecran l'y affiche en lecture, avec sa provenance).
+        complements.forEach((cle, valeur) -> {
+            String variable = variableDeLaCle(cle);
+            if (!n.desEtapes.contains(variable)) poser(ws, ticket, auteur, "etape-7", n, variable, valeur);
+        });
     }
 
     @SuppressWarnings("unchecked")
@@ -320,8 +372,17 @@ public class ProjecteurVariablesCreation {
                 ((Map<String, Object>) m).forEach((cle, v) -> it.put(variableDeLaCle(cle), txt(v)));
                 out.add(it);
             }
-            magasin.poserBoucle(ws, ticket, variableDeLaCle(nomBoucle), out,
-                    Origine.SAISIE, auteur, "etape-7");
+            String boucle = variableDeLaCle(nomBoucle);
+            List<Map<String, String>> deja = n.boucles.get(boucle);
+            if (deja != null) {
+                // Lot L4a (E1c) : boucle des etapes 5-6 (ASSOCIES...) : l'etape 7 la COMPLETE
+                // rang par rang ; elle ne la remplace pas (une liste plus courte purgeait les associes).
+                for (int i = 0; i < Math.min(deja.size(), out.size()); i++) {
+                    out.get(i).forEach(deja.get(i)::putIfAbsent);
+                }
+                out = deja;
+            }
+            magasin.poserBoucle(ws, ticket, boucle, out, Origine.SAISIE, auteur, "etape-7");
             n.valeur += out.size();
         });
     }
@@ -332,12 +393,49 @@ public class ProjecteurVariablesCreation {
      * Réciproque de la règle de génération du catalogue :
      * {@code bailleurNom} → {@code BAILLEUR_NOM}.
      */
+    /**
+     * Lot L4a (E1c) : les 20 champs HERITES des imprimes administratifs (lot 5) ne suivent
+     * pas la regle de nommage : l'ecran envoie {@code activiteNature}, la variable est
+     * {@code DE_ACTIVITE_NATURE}. Sans cette table, la regle posait ACTIVITE_NATURE, que
+     * personne ne lit : les cases des imprimes (regime fiscal, TVA...) n'etaient jamais
+     * cochees. Table verifiee contre le catalogue par ProjecteurVariablesCreationTest.
+     */
+    static final Map<String, String> CHAMPS_HERITES = Map.ofEntries(
+            Map.entry("associePrincipalEmail", "ASSOCIE_PRINCIPAL_EMAIL"),
+            Map.entry("associePrincipalFax", "ASSOCIE_PRINCIPAL_FAX"),
+            Map.entry("associePrincipalIf", "ASSOCIE_PRINCIPAL_IF"),
+            Map.entry("associePrincipalTel", "ASSOCIE_PRINCIPAL_TEL"),
+            Map.entry("associePrincipalVille", "ASSOCIE_PRINCIPAL_VILLE"),
+            Map.entry("dateDebutActivite", "DATE_DEBUT_ACTIVITE"),
+            Map.entry("activiteNature", "DE_ACTIVITE_NATURE"),
+            Map.entry("regimeResultat", "DE_REGIME_RESULTAT"),
+            Map.entry("tvaAssujettissement", "DE_TVA_ASSUJETTISSEMENT"),
+            Map.entry("tvaFaitGenerateur", "DE_TVA_FAIT_GENERATEUR"),
+            Map.entry("tvaPeriodicite", "DE_TVA_PERIODICITE"),
+            Map.entry("directionRegionale", "DIRECTION_REGIONALE"),
+            Map.entry("email", "EMAIL"),
+            Map.entry("enseigne", "ENSEIGNE"),
+            Map.entry("fax", "FAX"),
+            Map.entry("piecesProduites", "PIECES_PRODUITES"),
+            Map.entry("subdivision", "SUBDIVISION"),
+            Map.entry("telephone", "TELEPHONE"),
+            Map.entry("tpObjet", "TP_OBJET"),
+            Map.entry("tpObjetAutrePrecision", "TP_OBJET_AUTRE_PRECISION"));
+
     static String variableDeLaCle(String cle) {
         if (cle == null || cle.isBlank()) return "";
+        String herite = CHAMPS_HERITES.get(cle);
+        if (herite != null) return herite;
         StringBuilder sb = new StringBuilder(cle.length() + 8);
+        char precedent = 0;
         for (char c : cle.toCharArray()) {
-            if (Character.isUpperCase(c)) sb.append('_').append(c);
-            else sb.append(Character.toUpperCase(c));
+            // Lot L4a (E1c) : un chiffre qui suit une lettre ouvre un segment
+            // ("cnProposition1" -> "CN_PROPOSITION_1"), reciproque de la regle du catalogue.
+            if (Character.isUpperCase(c) || (Character.isDigit(c) && Character.isLetter(precedent))) {
+                sb.append('_');
+            }
+            sb.append(Character.toUpperCase(c));
+            precedent = c;
         }
         return sb.toString();
     }
@@ -348,6 +446,7 @@ public class ProjecteurVariablesCreation {
         if (v.isBlank()) return;
         magasin.poser(ws, ticket, variable, v, Origine.SAISIE, auteur, occasion);
         n.valeur++;
+        if (!"etape-7".equals(occasion) && !"etape-9".equals(occasion)) n.desEtapes.add(variable);
     }
 
     /** « bail » / « domiciliation » — les libellés EXACTS du corpus, pas le code écran. */
@@ -379,6 +478,49 @@ public class ProjecteurVariablesCreation {
     }
 
     /** Lot L3 : representant d'une personne morale saisi en prenom / nom (repPrenom, repNom). */
+    /** Parts d'un type d'apport, sur les lignes {@code apports[]} de l'associe. */
+    @SuppressWarnings("unchecked")
+    private static long partsDuType(Map<String, Object> associe, String type) {
+        Object lignes = associe.get("apports");
+        long total = 0;
+        if (lignes instanceof List<?> l && !l.isEmpty()) {
+            for (Object o : l) {
+                if (o instanceof Map<?, ?> m && type.equalsIgnoreCase(txt(((Map<String, Object>) m).get("type")))) {
+                    java.math.BigDecimal p = nombre(((Map<String, Object>) m).get("parts"));
+                    if (p != null) total += p.longValue();
+                }
+            }
+            return total;
+        }
+        // Sans lignes : l'associe n'a qu'un type, celui de typeApport, pour toutes ses parts.
+        if (type.equalsIgnoreCase(txt(associe.get("typeApport")))) {
+            java.math.BigDecimal p = nombre(associe.get("nombreParts"));
+            return p == null ? 0 : p.longValue();
+        }
+        return 0;
+    }
+
+    private static String montant(long parts, java.math.BigDecimal nominale) {
+        if (parts <= 0 || nominale == null) return "";
+        return java.math.BigDecimal.valueOf(parts).multiply(nominale).stripTrailingZeros().toPlainString();
+    }
+
+    private static java.math.BigDecimal nombre(Object o) {
+        String t = txt(o).replace(" ", "").replace("\u00a0", "").replace(",", ".");
+        if (t.isEmpty()) return null;
+        try {
+            return new java.math.BigDecimal(t);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** Un plafond nul ou negatif n'est pas un plafond : rien n'est pose. */
+    private static Object positif(Object o) {
+        java.math.BigDecimal b = nombre(o);
+        return b == null || b.signum() <= 0 ? null : b.stripTrailingZeros().toPlainString();
+    }
+
     private static Object nomComplet(Map<String, Object> o) {
         String n = (txt(o.get("repPrenom")) + " " + txt(o.get("repNom"))).trim();
         return n.isEmpty() ? null : n;
@@ -439,5 +581,9 @@ public class ProjecteurVariablesCreation {
     /** Compteur mutable — les lambdas de projection ne peuvent pas incrémenter un int local. */
     private static final class Compteur {
         int valeur;
+        /** Lot L4a (E1c) : variables posees par les etapes 1 a 6 ; l'etape 7 ne les recouvre pas. */
+        final java.util.Set<String> desEtapes = new java.util.HashSet<>();
+        /** Lot L4a (E1c) : boucles posees par les etapes 5 et 6, que l'etape 7 complete sans purger. */
+        final Map<String, List<Map<String, String>>> boucles = new LinkedHashMap<>();
     }
 }

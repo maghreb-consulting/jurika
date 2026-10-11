@@ -161,11 +161,11 @@ class SuccursaleMaMapperTest {
     }
 
     @Test
-    @DisplayName("Payload null : pas de crash, RESOLUTIONS présentes")
-    @SuppressWarnings("unchecked")
+    @DisplayName("Payload null : refus nomme (mandataire des formalites), jamais un PV invente")
     void tolerantToNullPayload() {
-        Map<String, Object> vars = mapper.map("PV_CREATION_SUCCURSALE_MAROC_SARL", null);
-        assertThat(vars).containsKey("RESOLUTIONS");
-        assertThat((List<?>) vars.get("RESOLUTIONS")).isNotEmpty();
+        // Lot L4a (E1) : le mandataire n'est plus suppose ; sans lui, la resolution des
+        // pouvoirs ne peut pas s'ecrire et la generation le nomme.
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> mapper.map("PV_CREATION_SUCCURSALE_MAROC_SARL", null))
+                .isInstanceOf(ma.jurika.ai.document.GenerationRefuseeException.class);
     }
 }

@@ -14,7 +14,7 @@ import { UserCheck } from 'lucide-react';
 import { Select } from '../ui/Select';
 import { TextField } from '../ui/TextField';
 import { IdentityExtractor } from '../identity/IdentityExtractor';
-import { TypePieceProposee } from './ValeurProposee';
+import { TypePieceProposee, ValeurProposee } from './ValeurProposee';
 import type { DossierPartie, DossierParties } from '../../services/workflow.service';
 
 /** Origine du liquidateur : partie prenante du dossier (BD) ou tiers (EXTERNE). */
@@ -56,7 +56,7 @@ export function emptyLiquidateur(): LiquidateurState {
     nom: '',
     cin: '',
     adresse: '',
-    remuneration: 'exercées à titre gratuit',
+    remuneration: '', // L4a (E2) : proposee a l'ecran, a confirmer
   };
 }
 
@@ -254,10 +254,12 @@ export function LiquidateurPicker({
           onChange={(e) => set({ adresse: e.target.value })}
           hint="Publiée dans l'annonce légale (« demeurant à … »)."
         />
-        <TextField
+        <ValeurProposee
+          id="liquidateur-remuneration"
           label="Rémunération du liquidateur"
-          value={value.remuneration}
-          onChange={(e) => set({ remuneration: e.target.value })}
+          proposition="exercées à titre gratuit"
+          valeur={value.remuneration || undefined}
+          onChange={(v) => set({ remuneration: v })}
         />
       </div>
 

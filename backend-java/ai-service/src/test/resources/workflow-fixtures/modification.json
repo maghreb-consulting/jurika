@@ -1,6 +1,12 @@
 {
   "PV_AGE_SARL": {
-    "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
     "quorumAtteint": "oui",
     "societe": {
       "denomination": "TEST SARL",
@@ -12,7 +18,11 @@
       "ifNumero": "40123456",
       "iceNumero": "001234567000099",
       "nombreParts": 1000,
-      "valeurPart": 100
+      "valeurPart": 100,
+      "ice": "001122334000055",
+      "ville": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
     },
     "assemblee": {
       "dateAge": "2026-07-10",
@@ -60,7 +70,13 @@
     ]
   },
   "PV_AGE_SARL_AU": {
-    "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
     "quorumAtteint": "oui",
     "societe": {
       "denomination": "TEST SARL AU",
@@ -72,7 +88,11 @@
       "ifNumero": "40987654",
       "iceNumero": "009876543000011",
       "nombreParts": 1000,
-      "valeurPart": 100
+      "valeurPart": 100,
+      "ice": "001122334000055",
+      "ville": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
     },
     "assemblee": {
       "dateAge": "2026-07-10",
@@ -108,7 +128,11 @@
       "rcNumero": "123456",
       "rcVille": "Casablanca",
       "ifNumero": "40123456",
-      "iceNumero": "001234567000099"
+      "iceNumero": "001234567000099",
+      "ice": "001122334000055",
+      "ville": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
     },
     "assemblee": {
       "dateAge": "2026-07-10",
@@ -156,7 +180,11 @@
       "rcVille": "Casablanca",
       "ifNumero": "40123456",
       "iceNumero": "001234567000099",
-      "nombreParts": 1000
+      "nombreParts": 1000,
+      "ice": "001122334000055",
+      "ville": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
     },
     "assemblee": {
       "dateAge": "2026-07-10",
@@ -184,7 +212,9 @@
     ]
   },
   "STATUTS_REFONDUS_SARL": {
-    "statutsRefondus": {"nombreOriginaux": "quatre", "exerciceDebut": "1er janvier", "exerciceFin": "31 décembre"},
+    "statutsRefondus": {
+      "nombreOriginaux": "quatre"
+    },
     "ficheStructuree": {
       "denomination": "TEST GROUP SARL",
       "formeJuridique": "SARL",
@@ -196,29 +226,58 @@
       "dureeAnnees": 99,
       "dirigeants": [
         {
+          "civilite": "Mme",
           "nom": "ALAMI",
           "prenom": "Sara",
           "cinNumero": "BK99887",
+          "pieceType": "CIN",
           "nationalite": "marocaine",
+          "adresse": "10 rue des Tests, Rabat",
+          "dateNaissance": "1980-01-15",
+          "lieuNaissance": "Rabat",
           "isStatutaire": true
         }
       ],
       "associes": [
         {
           "typePersonne": "PHYSIQUE",
-          "nom": "ALAMI",
+          "civilite": "Mme",
           "prenom": "Sara",
+          "nom": "ALAMI",
           "cin": "BK99887",
-          "nbParts": 1500
+          "pieceType": "CIN",
+          "nbParts": 1500,
+          "nombreParts": 1500,
+          "apportNumeraire": 150000,
+          "nationalite": "marocaine",
+          "adresse": "10 rue des Tests, Rabat",
+          "dateNaissance": "1980-01-15",
+          "lieuNaissance": "Rabat"
         },
         {
           "typePersonne": "PHYSIQUE",
-          "nom": "BENNANI",
+          "civilite": "M.",
           "prenom": "Omar",
+          "nom": "BENNANI",
           "cin": "BE11223",
-          "nbParts": 1000
+          "pieceType": "CIN",
+          "nbParts": 1000,
+          "nombreParts": 1000,
+          "apportNumeraire": 100000,
+          "nationalite": "marocaine",
+          "adresse": "10 rue des Tests, Rabat",
+          "dateNaissance": "1980-01-15",
+          "lieuNaissance": "Rabat"
         }
-      ]
+      ],
+      "nombreParts": 2500,
+      "ville": "Casablanca",
+      "villeGreffe": "Casablanca",
+      "exerciceDebut": "1er janvier",
+      "exerciceFin": "31 décembre",
+      "premierExerciceCloture": "31 décembre 2020",
+      "rcNumero": "123456",
+      "ifNumero": "40998877"
     },
     "modifications": [
       {
@@ -227,10 +286,18 @@
           "nouvelleDenomination": "NOUVEAU NOM SARL"
         }
       }
-    ]
+    ],
+    "seance": {
+      "date": "2026-07-10"
+    },
+    "convocation": {
+      "lieuSignature": "Casablanca"
+    }
   },
   "STATUTS_REFONDUS_SARL_AU": {
-    "statutsRefondus": {"nombreOriginaux": "quatre", "exerciceDebut": "1er janvier", "exerciceFin": "31 décembre"},
+    "statutsRefondus": {
+      "nombreOriginaux": "quatre"
+    },
     "ficheStructuree": {
       "denomination": "TEST GROUP SARL AU",
       "formeJuridique": "SARL_AU",
@@ -242,22 +309,43 @@
       "dureeAnnees": 99,
       "dirigeants": [
         {
+          "civilite": "Mme",
           "nom": "ALAMI",
           "prenom": "Sara",
           "cinNumero": "BK99887",
+          "pieceType": "CIN",
           "nationalite": "marocaine",
+          "adresse": "10 rue des Tests, Rabat",
+          "dateNaissance": "1980-01-15",
+          "lieuNaissance": "Rabat",
           "isStatutaire": true
         }
       ],
       "associes": [
         {
           "typePersonne": "PHYSIQUE",
-          "nom": "ALAMI",
+          "civilite": "Mme",
           "prenom": "Sara",
+          "nom": "ALAMI",
           "cin": "BK99887",
-          "nbParts": 2500
+          "pieceType": "CIN",
+          "nbParts": 2500,
+          "nombreParts": 2500,
+          "apportNumeraire": 250000,
+          "nationalite": "marocaine",
+          "adresse": "10 rue des Tests, Rabat",
+          "dateNaissance": "1980-01-15",
+          "lieuNaissance": "Rabat"
         }
-      ]
+      ],
+      "nombreParts": 2500,
+      "ville": "Casablanca",
+      "villeGreffe": "Casablanca",
+      "exerciceDebut": "1er janvier",
+      "exerciceFin": "31 décembre",
+      "premierExerciceCloture": "31 décembre 2020",
+      "rcNumero": "123456",
+      "ifNumero": "40998877"
     },
     "modifications": [
       {
@@ -266,6 +354,182 @@
           "nouveauCapital": 500000,
           "nouvellesParts": 2500
         }
+      }
+    ],
+    "seance": {
+      "date": "2026-07-10"
+    },
+    "convocation": {
+      "lieuSignature": "Casablanca"
+    }
+  },
+  "PV_MODIFICATION_SARL": {
+    "_commentaire": "Lot L4a (E1) : charge de production du PV de modification (formulaire de seance commun).",
+    "formeJuridique": "SARL",
+    "societe": {
+      "denomination": "PARACOSME",
+      "formeJuridique": "SARL",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 rue des Foules, Casablanca",
+      "nombreParts": 1000,
+      "rcNumero": "123456",
+      "villeGreffe": "Casablanca",
+      "ice": "001122334000055",
+      "ifNumero": "40998877",
+      "ville": "Casablanca",
+      "rcVille": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
+    },
+    "seance": {
+      "type": "extraordinaire",
+      "date": "2026-07-10",
+      "heure": "10H00",
+      "lieu": "au siège social",
+      "heureCloture": "12H00",
+      "presidentNom": "M. Karim BENALI",
+      "presidentQualite": "gérant",
+      "quorumAtteint": "oui"
+    },
+    "convocation": {
+      "mode": "lettre recommandée avec accusé de réception",
+      "date": "2026-06-25",
+      "auteur": "la gérance",
+      "lieuSignature": "Casablanca"
+    },
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
+    "quorumAtteint": "oui",
+    "associes": [
+      {
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI",
+        "nombreParts": 600,
+        "presence": "présent"
+      },
+      {
+        "civilite": "Mme",
+        "prenom": "Sofia",
+        "nom": "ALAOUI",
+        "nombreParts": 400,
+        "presence": "représenté",
+        "mandataireNom": "M. Karim BENALI"
+      }
+    ],
+    "gerants": [
+      {
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI"
+      }
+    ],
+    "ordreDuJour": [
+      "Transfert du siège social",
+      "Changement de dénomination sociale"
+    ],
+    "resolutions": [
+      {
+        "type": "transfert_siege",
+        "objet": "Transfert du siège social",
+        "nouveauSiege": "45 avenue Hassan II, Casablanca",
+          "siegeMemePrefecture": "oui",
+        "nouvelleVille": "Casablanca",
+        "dateEffet": "2026-08-01",
+        "articlesModifies": "4"
+      },
+      {
+        "type": "modification_denomination",
+        "objet": "Changement de dénomination sociale",
+        "nouvelleDenomination": "PARACOSME GROUP",
+        "dateEffet": "2026-08-01",
+        "articlesModifies": "2"
+      }
+    ]
+  },
+  "PV_MODIFICATION_SARL_AU": {
+    "_commentaire": "Lot L4a (E1) : charge de production du PV de modification (associe unique).",
+    "formeJuridique": "SARL_AU",
+    "associeUnique": true,
+    "societe": {
+      "denomination": "PARACOSME AU",
+      "formeJuridique": "SARL_AU",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 rue des Foules, Casablanca",
+      "nombreParts": 1000,
+      "rcNumero": "123456",
+      "villeGreffe": "Casablanca",
+      "ice": "001122334000055",
+      "ifNumero": "40998877",
+      "ville": "Casablanca",
+      "rcVille": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
+    },
+    "seance": {
+      "type": "extraordinaire",
+      "date": "2026-07-10",
+      "heure": "10H00",
+      "lieu": "au siège social",
+      "heureCloture": "12H00",
+      "presidentNom": "M. Karim BENALI",
+      "presidentQualite": "gérant",
+      "quorumAtteint": "oui"
+    },
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
+    "associes": [
+      {
+        "typePersonne": "PHYSIQUE",
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI",
+        "nationalite": "marocaine",
+        "adresse": "5 boulevard Zerktouni, Casablanca",
+        "pieceType": "CIN",
+        "pieceNumero": "BE123456",
+        "nombreParts": 1000,
+        "presence": "présent"
+      }
+    ],
+    "gerants": [
+      {
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI"
+      }
+    ],
+    "gerantEstAssocie": "oui",
+    "ordreDuJour": [
+      "Transfert du siège social",
+      "Changement de dénomination sociale"
+    ],
+    "resolutions": [
+      {
+        "type": "transfert_siege",
+        "objet": "Transfert du siège social",
+        "nouveauSiege": "45 avenue Hassan II, Casablanca",
+          "siegeMemePrefecture": "oui",
+        "nouvelleVille": "Casablanca",
+        "dateEffet": "2026-08-01",
+        "articlesModifies": "4"
+      },
+      {
+        "type": "modification_denomination",
+        "objet": "Changement de dénomination sociale",
+        "nouvelleDenomination": "PARACOSME GROUP",
+        "dateEffet": "2026-08-01",
+        "articlesModifies": "2"
       }
     ]
   }

@@ -1,6 +1,12 @@
 {
   "PV_CREATION_SUCCURSALE_MAROC_SARL": {
-    "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
     "quorumAtteint": "oui",
     "societe": {
       "denomination": "PARACOSME",
@@ -9,7 +15,13 @@
       "siegeSocial": "12 RUE DES FOULES, CASABLANCA",
       "nombreParts": 1000,
       "rcNumero": "123456",
-      "villeGreffe": "CASABLANCA"
+      "villeGreffe": "CASABLANCA",
+      "ice": "001122334000055",
+      "ifNumero": "40998877",
+      "ville": "Casablanca",
+      "rcVille": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
     },
     "seance": {
       "type": "extraordinaire",
@@ -22,13 +34,33 @@
       "secretairePresent": "oui",
       "secretaireNom": "Mme Sofia ALAOUI"
     },
-    "convocation": {"auteur": "la gérance", "date": "2026-08-20", "mode": "lettre recommandée"},
+    "convocation": {
+      "auteur": "la gérance",
+      "date": "2026-08-20",
+      "mode": "lettre recommandée"
+    },
     "associes": [
-      {"civilite": "M.", "prenom": "Karim", "nom": "BENALI", "nombreParts": 600, "presence": "présent"},
-      {"civilite": "Mme", "prenom": "Sofia", "nom": "ALAOUI", "nombreParts": 400, "presence": "représenté",
-       "mandataireNom": "M. BENALI"}
+      {
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI",
+        "nombreParts": 600,
+        "presence": "présent"
+      },
+      {
+        "civilite": "Mme",
+        "prenom": "Sofia",
+        "nom": "ALAOUI",
+        "nombreParts": 400,
+        "presence": "représenté",
+        "mandataireNom": "M. BENALI"
+      }
     ],
-    "ordreDuJour": ["Ouverture d'une succursale", "Désignation du responsable", "Pouvoirs pour formalités"],
+    "ordreDuJour": [
+      "Ouverture d'une succursale",
+      "Désignation du responsable",
+      "Pouvoirs pour formalités"
+    ],
     "succursale": {
       "enseigne": "PARACOSME — Agence Marrakech",
       "adresse": "5 Avenue Mohammed VI",
@@ -40,15 +72,27 @@
       "dotationMontant": 50000,
       "responsablePresent": "oui",
       "responsable": {
-        "civilite": "M.", "prenom": "Yassine", "nom": "TAZI", "nationalite": "marocaine",
-        "adresse": "8 Rue Ibn Khaldoun, Marrakech", "pieceType": "CIN", "pieceNumero": "MK456789",
+        "civilite": "M.",
+        "prenom": "Yassine",
+        "nom": "TAZI",
+        "nationalite": "marocaine",
+        "adresse": "8 Rue Ibn Khaldoun, Marrakech",
+        "pieceType": "CIN",
+        "pieceNumero": "MK456789",
         "pouvoirs": "la gestion courante de la succursale"
       }
     },
-    "formalitesMandataireNom": "M. Karim BENALI"
+    "formalitesMandataireNom": "M. Karim BENALI",
+    "nombreOriginaux": "quatre"
   },
   "PV_CREATION_SUCCURSALE_MAROC_SARL_AU": {
-    "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
     "quorumAtteint": "oui",
     "societe": {
       "denomination": "PARACOSME AU",
@@ -57,20 +101,48 @@
       "siegeSocial": "12 RUE DES FOULES, CASABLANCA",
       "nombreParts": 1000,
       "rcNumero": "123456",
-      "villeGreffe": "CASABLANCA"
+      "villeGreffe": "CASABLANCA",
+      "ice": "001122334000055",
+      "ifNumero": "40998877",
+      "ville": "Casablanca",
+      "rcVille": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
     },
     "associeUnique": true,
     "seance": {
-      "date": "2026-09-05", "heure": "10H00", "lieu": "au siège social", "heureCloture": "11H00",
-      "presidentNom": "M. Omar CHERKAOUI", "presidentQualite": "gérant"
+      "date": "2026-09-05",
+      "heure": "10H00",
+      "lieu": "au siège social",
+      "heureCloture": "11H00",
+      "presidentNom": "M. Omar CHERKAOUI",
+      "presidentQualite": "gérant"
     },
     "associes": [
-      {"typePersonne": "PHYSIQUE", "civilite": "M.", "prenom": "Omar", "nom": "CHERKAOUI",
-       "nationalite": "marocaine", "adresse": "12 rue X, Casablanca", "pieceType": "CIN",
-       "pieceNumero": "BK12345", "nombreParts": 1000, "presence": "présent"}
+      {
+        "typePersonne": "PHYSIQUE",
+        "civilite": "M.",
+        "prenom": "Omar",
+        "nom": "CHERKAOUI",
+        "nationalite": "marocaine",
+        "adresse": "12 rue X, Casablanca",
+        "pieceType": "CIN",
+        "pieceNumero": "BK12345",
+        "nombreParts": 1000,
+        "presence": "présent"
+      }
     ],
-    "gerants": [{"civilite": "M.", "prenom": "Omar", "nom": "CHERKAOUI"}],
-    "ordreDuJour": ["Ouverture d'une succursale", "Pouvoirs pour formalités"],
+    "gerants": [
+      {
+        "civilite": "M.",
+        "prenom": "Omar",
+        "nom": "CHERKAOUI"
+      }
+    ],
+    "ordreDuJour": [
+      "Ouverture d'une succursale",
+      "Pouvoirs pour formalités"
+    ],
     "succursale": {
       "enseigne": "PARACOSME AU — Agence Tanger",
       "adresse": "10 Boulevard Pasteur",
@@ -81,29 +153,7 @@
       "dotationPresente": "non",
       "responsablePresent": "non"
     },
-    "formalitesMandataireNom": "M. Omar CHERKAOUI"
-  },
-  "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL": {
-    "societe": {
-      "denomination": "PARACOSME",
-      "formeJuridique": "SARL",
-      "capitalChiffres": 100000,
-      "siegeSocial": "12 RUE DES FOULES, CASABLANCA",
-      "adresseSiege": "12 RUE DES FOULES, CASABLANCA",
-      "rcNumero": "123456",
-      "rcVille": "CASABLANCA",
-      "ifNumero": "40123456",
-      "iceNumero": "001234567000099"
-    },
-    "seance": {"date": "2026-09-05"},
-    "succursale": {
-      "enseigne": "PARACOSME — Agence Marrakech",
-      "adresse": "5 Avenue Mohammed VI, Marrakech",
-      "activite": "Conseil juridique et fiscal",
-      "responsable": {"civilite": "M.", "prenom": "Yassine", "nom": "TAZI"},
-      "numeroRcSuccursale": "55512"
-    },
-    "dateDepot": "2026-10-05",
-    "numeroDepot": "DEPOT-2026-991"
+    "formalitesMandataireNom": "M. Omar CHERKAOUI",
+    "nombreOriginaux": "quatre"
   }
 }

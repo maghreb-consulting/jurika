@@ -126,7 +126,7 @@ function toLiquidateurState(bd: DossierLiquidateur): LiquidateurState {
     nom: String(bd.nom ?? ''),
     cin: String(bd.cin ?? ''),
     adresse: String(bd.adresse ?? ''),
-    remuneration: String(bd.remuneration ?? 'exercées à titre gratuit'),
+    remuneration: String(bd.remuneration ?? ''), // L4a (E2) : jamais supposee
   };
 }
 
@@ -357,6 +357,7 @@ function LiquidationWorkflowPageBody() {
             mandataireNom: '',
             // L3 (D6) : type de piece repris de la fiche, sinon "CIN" propose a l'ecran.
             pieceType: String(a?.pieceType ?? ''),
+            nationalite: String(a?.nationalite ?? ''), // L4a (E2) : reprise de la fiche, sinon proposee
             pieceNumero: String(a?.cin ?? a?.cinNumero ?? a?.pieceNumero ?? ''),
           };
         })
@@ -1345,7 +1346,7 @@ function LiquidationWorkflowPageBody() {
           onClose={() => setShowCancel(false)}
           onConfirm={async (comment) => {
             await ticketService.transition(ticket.id, { target: 'ANNULE', comment });
-            navigate('/tickets');
+            navigate(`/tickets?ticket=${ticket.id}`);
           }}
         />
       )}

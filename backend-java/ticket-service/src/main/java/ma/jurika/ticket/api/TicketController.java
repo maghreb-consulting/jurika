@@ -109,6 +109,14 @@ public class TicketController {
         return TicketDto.from(t);
     }
 
+    /** Lot L4a (E4, RG-TKT-05) : statut retrouve a la reprise, ou la raison qui l'empeche. */
+    @GetMapping("/{id}/reprise")
+    @PreAuthorize("hasAnyRole('EMPLOYE','SUPERVISEUR')")
+    public TransitionTicketUseCase.EtatReprise reprise(@AuthenticationPrincipal AuthenticatedUser actor,
+                                                       @PathVariable UUID id) {
+        return transitionTicketUseCase.etatReprise(actor.workspaceId(), id);
+    }
+
     @PostMapping("/{id}/transition")
     @PreAuthorize("hasRole('EMPLOYE') and !hasRole('SUPERVISEUR')")
     public TicketDto transition(@AuthenticationPrincipal AuthenticatedUser actor,

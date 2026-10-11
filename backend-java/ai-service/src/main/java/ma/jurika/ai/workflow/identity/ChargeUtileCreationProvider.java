@@ -10,4 +10,9 @@ import java.util.UUID;
 public interface ChargeUtileCreationProvider {
 
     Map<String, Object> charger(UUID workspaceId, UUID ticketId, UUID employeId);
+
+    /** Lot L4a (E5) : charge des documents d'annulation, construite par workflow-service. */
+    default Map<String, Object> chargerAnnulation(UUID workspaceId, UUID ticketId, UUID employeId) {
+        throw new UnsupportedOperationException("charge d'annulation non disponible");
+    }
 }

@@ -263,6 +263,10 @@ public final class ConstructeurChargeUtileCreation {
             {"apportNatureValeur", "APPORT_NATURE_VALEUR_CHIFFRES"},
             {"apportNatureValeurChiffres", "APPORT_NATURE_VALEUR_CHIFFRES"},
             {"apportNatureDescription", "APPORT_NATURE_DESCRIPTION"},
+            // Lot L4a (E1c) : evaluation de l'apport en nature, saisie par associe (etape 6).
+            {"apportNatureMethode", "APPORT_NATURE_METHODE"},
+            {"apportNatureOriginePropriete", "APPORT_NATURE_ORIGINE_PROPRIETE"},
+            {"apportNatureCharges", "APPORT_NATURE_CHARGES"},
             {"apportIndustrieDescription", "APPORT_INDUSTRIE_DESCRIPTION"},
             // boucle SOUSCRIPTIONS, au même rang
             {"montantSouscrit", "SOUSCRIPTEUR_MONTANT_SOUSCRIT"},
@@ -327,7 +331,7 @@ public final class ConstructeurChargeUtileCreation {
         charge.put("depot", bloc(v, DEPOT));
         charge.put("dossier", bloc(v, DOSSIER));
         charge.put("ticket", bloc(v, TICKET));
-        charge.put("creation", bloc(v, CREATION));
+        charge.put("creation", saisiesDuCorpus(v));
 
         List<Map<String, Object>> gerants = boucle(v, BOUCLES_GERANT, GERANT, true);
         List<Map<String, Object>> associes = boucle(v, BOUCLES_ASSOCIE, ASSOCIE, false);
@@ -352,6 +356,69 @@ public final class ConstructeurChargeUtileCreation {
     }
 
     // ------------------------------------------------------------------
+
+    /**
+     * Lot L4a (E1c) : le bloc {@code creation}, lu par le resolveur au catalogue des saisies
+     * ({@code CreationCorpusVarsBuilder} : cle d'ecran {@code bailleurNom} -> {@code $BAILLEUR_NOM}).
+     *
+     * <p>Avant, il ne portait que les quatre cles de la table {@link #CREATION} : les quelque
+     * 180 saisies de l'etape 7 arrivaient au magasin et n'en ressortaient jamais (contrat de
+     * bail, declarations, pouvoir...). Le test de contrat ne le voyait pas : il releve les
+     * cles ECRITES dans le code du resolveur, et celui-ci lit le catalogue. Le bloc porte
+     * desormais toutes les variables du magasin sous leur cle d'ecran (reciproque exacte de
+     * {@link ProjecteurVariablesCreation#variableDeLaCle}), et chaque boucle sous le nom de
+     * boucle du catalogue.
+     */
+    static Map<String, Object> saisiesDuCorpus(Map<String, Object> v) {
+        Map<String, Object> out = new LinkedHashMap<>(bloc(v, CREATION));
+        v.forEach((variable, valeur) -> {
+            if (valeur instanceof List<?> l) {
+                List<Map<String, Object>> items = new ArrayList<>();
+                for (Object o : l) {
+                    if (!(o instanceof Map<?, ?> m)) continue;
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    m.forEach((k, val) -> item.put(cleDe(String.valueOf(k)), val));
+                    items.add(item);
+                }
+                out.putIfAbsent(cleDe(variable), items);
+            } else {
+                out.putIfAbsent(cleDe(variable), valeur);
+            }
+        });
+        return out;
+    }
+
+    /**
+     * Lot L4a (E1c) : les faits du ticket (reference, ouverture, employe en charge,
+     * annulation), poses comme donnees DERIVEES quand le magasin ne les porte pas. Le numero
+     * du dossier imprime en creation est la reference du TICKET : le dossier n'existe pas
+     * encore (decision a revoir, L4a).
+     */
+    public static Map<String, Object> avecFaitsDuTicket(Map<String, Object> variables, FaitsDuTicket.Faits f) {
+        Map<String, Object> v = new LinkedHashMap<>(variables == null ? Map.of() : variables);
+        if (f == null) return v;
+        putSi(v, "DOSSIER_NUMERO", f.reference());
+        putSi(v, "DOSSIER_DATE_OUVERTURE", f.ouvertLe());
+        putSi(v, "DOSSIER_CHARGE", f.chargeNom());
+        putSi(v, "DOSSIER_DATE_ANNULATION", f.annuleLe());
+        putSi(v, "DOSSIER_MOTIF_ANNULATION", f.motifAnnulation());
+        return v;
+    }
+
+    private static void putSi(Map<String, Object> v, String variable, String valeur) {
+        if (valeur != null && !valeur.isBlank()) v.putIfAbsent(variable, valeur);
+    }
+
+    /** {@code BAILLEUR_NOM} -> {@code bailleurNom}, {@code CN_PROPOSITION_1} -> {@code cnProposition1}. */
+    static String cleDe(String variable) {
+        String[] mots = variable.toLowerCase(java.util.Locale.ROOT).split("_");
+        StringBuilder sb = new StringBuilder(mots[0]);
+        for (int i = 1; i < mots.length; i++) {
+            if (mots[i].isEmpty()) continue;
+            sb.append(Character.toUpperCase(mots[i].charAt(0))).append(mots[i].substring(1));
+        }
+        return sb.toString();
+    }
 
     /** Un bloc-objet : chaque clé du contrat est PRODUITE, nulle si le magasin est muet. */
     private static Map<String, Object> bloc(Map<String, Object> v, String[][] table) {

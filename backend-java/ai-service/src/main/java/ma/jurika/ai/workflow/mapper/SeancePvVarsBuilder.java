@@ -67,15 +67,15 @@ public final class SeancePvVarsBuilder {
         put(v, "ASSEMBLEE_LIEU", str(seance.get("lieu")));
         put(v, "HEURE_CLOTURE", str(seance.get("heureCloture")));
         put(v, "PRESIDENT_SEANCE_NOM", str(seance.get("presidentNom")));
-        put(v, "PRESIDENT_SEANCE_QUALITE", first(str(seance.get("presidentQualite")), "gérant"));
+        put(v, "PRESIDENT_SEANCE_QUALITE", str(seance.get("presidentQualite"))); // L4a (E2) : saisie
         String secretairePresent = normOuiNon(seance.get("secretairePresent"), "non");
         put(v, "SECRETAIRE_PRESENT", secretairePresent);
         put(v, "SECRETAIRE_SEANCE_NOM", str(seance.get("secretaireNom")));
 
         // ---- Convocation ----
-        put(v, "CONVOCATION_AUTEUR", first(str(convoc.get("auteur")), "la gérance"));
+        put(v, "CONVOCATION_AUTEUR", str(convoc.get("auteur"))); // L4a (E2) : saisie
         put(v, "CONVOCATION_DATE", dateStr(convoc.get("date")));
-        put(v, "CONVOCATION_MODE", first(str(convoc.get("mode")), "lettre recommandée"));
+        put(v, "CONVOCATION_MODE", str(convoc.get("mode"))); // L4a (E2) : saisie
         if (isIrreg) {
             put(v, "IRREGULARITE_NATURE", str(convoc.get("irregulariteNature")));
         }
@@ -95,7 +95,7 @@ public final class SeancePvVarsBuilder {
         put(v, "HEURE_AG", str(seance.get("heure")));
         put(v, "LIEU_AG", str(seance.get("lieu")));
         put(v, "PRESIDENT_NOM", str(seance.get("presidentNom")));
-        put(v, "PRESIDENT_QUALITE", first(str(seance.get("presidentQualite")), "gérant"));
+        put(v, "PRESIDENT_QUALITE", str(seance.get("presidentQualite"))); // L4a (E2) : saisie
         Integer annee = yearOf(first0(seance.get("date"), seance.get("assembleeDate")));
         put(v, "ANNEE_LETTRES", annee == null ? "" : FrenchNumberToLetters.numberToLetters(annee));
 
@@ -308,7 +308,7 @@ public final class SeancePvVarsBuilder {
         put(v, "ASSOCIE_NOM", morale ? strOr(a.get("denomination"), "") : strOr(a.get("nom"), ""));
         if (morale) {
             put(v, "ASSOCIE_DENOMINATION", strOr(a.get("denomination"), ""));
-            put(v, "ASSOCIE_FORME", strOr(first0(a.get("forme"), a.get("formeJuridique")), "SARL"));
+            put(v, "ASSOCIE_FORME", strOr(first0(a.get("forme"), a.get("formeJuridique")), "")); // L4a (E2)
             put(v, "ASSOCIE_CAPITAL", strOr(first0(a.get("capital"), a.get("capitalEntite")), ""));
             put(v, "ASSOCIE_SIEGE", strOr(a.get("siege"), ""));
             put(v, "ASSOCIE_RC_VILLE", strOr(first0(a.get("rcVille"), a.get("villeGreffe")), ""));
@@ -320,7 +320,7 @@ public final class SeancePvVarsBuilder {
         } else {
             put(v, "ASSOCIE_CIVILITE", normCivilite(a.get("civilite")));
             put(v, "ASSOCIE_PRENOM", strOr(a.get("prenom"), ""));
-            put(v, "ASSOCIE_NATIONALITE", strOr(a.get("nationalite"), "marocaine"));
+            put(v, "ASSOCIE_NATIONALITE", strOr(a.get("nationalite"), "")); // L4a (E2) : plus de "marocaine"
             put(v, "ASSOCIE_ADRESSE", strOr(a.get("adresse"), ""));
             put(v, "ASSOCIE_PIECE_TYPE", strOr(a.get("pieceType"), "")); // L3 (D6) : plus de "CIN" par defaut
             put(v, "ASSOCIE_PIECE_NUMERO", strOr(first0(a.get("pieceNumero"), a.get("cin"),

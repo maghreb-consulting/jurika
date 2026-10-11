@@ -37,4 +37,10 @@ public interface WorkflowIdentityClient {
     Map<String, Object> chargeUtileCreation(@PathVariable("ticketId") UUID ticketId,
                                             @RequestParam("workspaceId") UUID workspaceId,
                                             @RequestParam("employeId") UUID employeId);
+
+    /** Lot L4a (E5) : charge utile des documents d'annulation (tous parcours). */
+    @GetMapping("/internal/tickets/{ticketId}/charge-utile-annulation")
+    Map<String, Object> chargeUtileAnnulation(@PathVariable("ticketId") UUID ticketId,
+                                              @RequestParam("workspaceId") UUID workspaceId,
+                                              @RequestParam("employeId") UUID employeId);
 }

@@ -50,11 +50,12 @@ describe('buildLiquidateurOptions', () => {
 });
 
 describe('emptyLiquidateur', () => {
-  it('part sur une sélection BD vide et la rémunération par défaut du modèle', () => {
+  it('part sur une sélection BD vide, sans rémunération supposée', () => {
     const l = emptyLiquidateur();
     expect(l.source).toBe('BD');
     expect(l.partieKey).toBe('');
     expect(l.nom).toBe('');
-    expect(l.remuneration).toBe('exercées à titre gratuit');
+    // L4a (E2) : la rémunération n'est plus supposée ; l'écran la propose, l'employé confirme.
+    expect(l.remuneration).toBe('');
   });
 });

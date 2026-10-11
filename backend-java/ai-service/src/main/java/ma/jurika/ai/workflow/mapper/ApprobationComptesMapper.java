@@ -87,7 +87,17 @@ public class ApprobationComptesMapper implements WorkflowDocumentMapper {
                 SeancePvVarsBuilder.build(templateCode, safe));
 
         // 2) Variables propres à l'approbation des comptes.
-        Map<String, Object> approbation = asMap(safe.get("approbation"));
+        Map<String, Object> approbation = new LinkedHashMap<>(asMap(safe.get("approbation")));
+        // Lot L4a (E2) : quitus, conventions reglementees et distribution de dividendes
+        // ajoutent ou retirent une resolution (et l'absence de convention s'imprime comme un
+        // constat) : ils sont SAISIS, jamais supposes ("oui" / "non" par defaut avant).
+        approbation.put("quitusGerance", SaisieExigee.ouiNon(templateCode, approbation.get("quitusGerance"),
+                "QUITUS_GERANCE", "Quitus \u00e0 la g\u00e9rance (oui ou non)"));
+        approbation.put("conventionsReglementees", SaisieExigee.ouiNon(templateCode,
+                approbation.get("conventionsReglementees"), "CONVENTIONS_REGLEMENTEES",
+                "Conventions r\u00e9glement\u00e9es intervenues au cours de l'exercice (oui ou non)"));
+        approbation.put("dividendeDistribue", SaisieExigee.ouiNon(templateCode, approbation.get("dividendeDistribue"),
+                "DIVIDENDE_DISTRIBUE", "Distribution de dividendes (oui ou non)"));
         vars.putAll(approbationVars(approbation));
 
         // 3) Lot DIVERS §E (2026-08-13) — ORDRE DU JOUR et RÉSOLUTIONS DÉRIVÉS.

@@ -80,6 +80,8 @@ export interface ChampCreation {
    * champ, plus personne ne la renseigne.
    */
   heritee?: boolean;
+  /** Lot L4a (E1b) : champ ouvert pour une variable "sans source" du lot B. */
+  ouvertL4a?: boolean;
 }
 
 export interface BoucleCreation {
@@ -2984,6 +2986,686 @@ export const CHAMPS_CREATION: ChampCreation[] = [
       "DECLARATION_CNDP"
     ],
     "boucle": "TRAITEMENTS_DONNEES"
+  },
+  {
+    "variable": "BAILLEUR_ADRESSE",
+    "cle": "bailleurAdresse",
+    "label": "Adresse du bailleur",
+    "type": "text",
+    "options": null,
+    "aide": "Bailleur : $BAILLEUR_TYPE (« personne physique » / « personne morale »), $BAILLEUR_CIVILITE, $BAILLEUR_PRENOM, $BAILLEUR_NOM, $BAILLEUR_NATIONALITE, $BAILLEUR_ADRESSE, $BAILLEUR_PIECE_TYPE, $BAILLEUR_PIECE_NUMERO, $BAILLEUR_DENOMINATION, $BAILLEUR_FORME, $BAILLEUR_CAPITAL, $BAILLEUR_SIEGE, $BAILLEUR_RC_VILLE, $BAILLEUR_RC_NUMERO, $BAILLEUR_REPRESENTANT_NOM, $BAILLEUR_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAILLEUR_CAPITAL",
+    "cle": "bailleurCapital",
+    "label": "Capital de la société bailleresse (en dirhams)",
+    "type": "text",
+    "options": null,
+    "aide": "Bailleur : $BAILLEUR_TYPE (« personne physique » / « personne morale »), $BAILLEUR_CIVILITE, $BAILLEUR_PRENOM, $BAILLEUR_NOM, $BAILLEUR_NATIONALITE, $BAILLEUR_ADRESSE, $BAILLEUR_PIECE_TYPE, $BAILLEUR_PIECE_NUMERO, $BAILLEUR_DENOMINATION, $BAILLEUR_FORME, $BAILLEUR_CAPITAL, $BAILLEUR_SIEGE, $BAILLEUR_RC_VILLE, $BAILLEUR_RC_NUMERO, $BAILLEUR_REPRESENTANT_NOM, $BAILLEUR_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAILLEUR_CIVILITE",
+    "cle": "bailleurCivilite",
+    "label": "Civilité du bailleur",
+    "type": "select",
+    "options": [
+      "M.",
+      "Mme"
+    ],
+    "aide": "Bailleur : $BAILLEUR_TYPE (« personne physique » / « personne morale »), $BAILLEUR_CIVILITE, $BAILLEUR_PRENOM, $BAILLEUR_NOM, $BAILLEUR_NATIONALITE, $BAILLEUR_ADRESSE, $BAILLEUR_PIECE_TYPE, $BAILLEUR_PIECE_NUMERO, $BAILLEUR_DENOMINATION, $BAILLEUR_FORME, $BAILLEUR_CAPITAL, $BAILLEUR_SIEGE, $BAILLEUR_RC_VILLE, $BAILLEUR_RC_NUMERO, $BAILLEUR_REPRESENTANT_NOM, $BAILLEUR_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAILLEUR_DENOMINATION",
+    "cle": "bailleurDenomination",
+    "label": "Dénomination de la société bailleresse",
+    "type": "text",
+    "options": null,
+    "aide": "Bailleur : $BAILLEUR_TYPE (« personne physique » / « personne morale »), $BAILLEUR_CIVILITE, $BAILLEUR_PRENOM, $BAILLEUR_NOM, $BAILLEUR_NATIONALITE, $BAILLEUR_ADRESSE, $BAILLEUR_PIECE_TYPE, $BAILLEUR_PIECE_NUMERO, $BAILLEUR_DENOMINATION, $BAILLEUR_FORME, $BAILLEUR_CAPITAL, $BAILLEUR_SIEGE, $BAILLEUR_RC_VILLE, $BAILLEUR_RC_NUMERO, $BAILLEUR_REPRESENTANT_NOM, $BAILLEUR_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAILLEUR_FORME",
+    "cle": "bailleurForme",
+    "label": "Forme juridique de la société bailleresse",
+    "type": "text",
+    "options": null,
+    "aide": "Bailleur : $BAILLEUR_TYPE (« personne physique » / « personne morale »), $BAILLEUR_CIVILITE, $BAILLEUR_PRENOM, $BAILLEUR_NOM, $BAILLEUR_NATIONALITE, $BAILLEUR_ADRESSE, $BAILLEUR_PIECE_TYPE, $BAILLEUR_PIECE_NUMERO, $BAILLEUR_DENOMINATION, $BAILLEUR_FORME, $BAILLEUR_CAPITAL, $BAILLEUR_SIEGE, $BAILLEUR_RC_VILLE, $BAILLEUR_RC_NUMERO, $BAILLEUR_REPRESENTANT_NOM, $BAILLEUR_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAILLEUR_NATIONALITE",
+    "cle": "bailleurNationalite",
+    "label": "Nationalité du bailleur",
+    "type": "text",
+    "options": null,
+    "aide": "Bailleur : $BAILLEUR_TYPE (« personne physique » / « personne morale »), $BAILLEUR_CIVILITE, $BAILLEUR_PRENOM, $BAILLEUR_NOM, $BAILLEUR_NATIONALITE, $BAILLEUR_ADRESSE, $BAILLEUR_PIECE_TYPE, $BAILLEUR_PIECE_NUMERO, $BAILLEUR_DENOMINATION, $BAILLEUR_FORME, $BAILLEUR_CAPITAL, $BAILLEUR_SIEGE, $BAILLEUR_RC_VILLE, $BAILLEUR_RC_NUMERO, $BAILLEUR_REPRESENTANT_NOM, $BAILLEUR_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAILLEUR_NOM",
+    "cle": "bailleurNom",
+    "label": "Nom du bailleur",
+    "type": "text",
+    "options": null,
+    "aide": "Bailleur : $BAILLEUR_TYPE (« personne physique » / « personne morale »), $BAILLEUR_CIVILITE, $BAILLEUR_PRENOM, $BAILLEUR_NOM, $BAILLEUR_NATIONALITE, $BAILLEUR_ADRESSE, $BAILLEUR_PIECE_TYPE, $BAILLEUR_PIECE_NUMERO, $BAILLEUR_DENOMINATION, $BAILLEUR_FORME, $BAILLEUR_CAPITAL, $BAILLEUR_SIEGE, $BAILLEUR_RC_VILLE, $BAILLEUR_RC_NUMERO, $BAILLEUR_REPRESENTANT_NOM, $BAILLEUR_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL",
+      "FICHE_RENSEIGNEMENTS_CREATION"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAILLEUR_PIECE_NUMERO",
+    "cle": "bailleurPieceNumero",
+    "label": "Numéro de la pièce d'identité du bailleur",
+    "type": "text",
+    "options": null,
+    "aide": "Bailleur : $BAILLEUR_TYPE (« personne physique » / « personne morale »), $BAILLEUR_CIVILITE, $BAILLEUR_PRENOM, $BAILLEUR_NOM, $BAILLEUR_NATIONALITE, $BAILLEUR_ADRESSE, $BAILLEUR_PIECE_TYPE, $BAILLEUR_PIECE_NUMERO, $BAILLEUR_DENOMINATION, $BAILLEUR_FORME, $BAILLEUR_CAPITAL, $BAILLEUR_SIEGE, $BAILLEUR_RC_VILLE, $BAILLEUR_RC_NUMERO, $BAILLEUR_REPRESENTANT_NOM, $BAILLEUR_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAILLEUR_PIECE_TYPE",
+    "cle": "bailleurPieceType",
+    "label": "Type de pièce d'identité du bailleur",
+    "type": "text",
+    "options": null,
+    "aide": "Bailleur : $BAILLEUR_TYPE (« personne physique » / « personne morale »), $BAILLEUR_CIVILITE, $BAILLEUR_PRENOM, $BAILLEUR_NOM, $BAILLEUR_NATIONALITE, $BAILLEUR_ADRESSE, $BAILLEUR_PIECE_TYPE, $BAILLEUR_PIECE_NUMERO, $BAILLEUR_DENOMINATION, $BAILLEUR_FORME, $BAILLEUR_CAPITAL, $BAILLEUR_SIEGE, $BAILLEUR_RC_VILLE, $BAILLEUR_RC_NUMERO, $BAILLEUR_REPRESENTANT_NOM, $BAILLEUR_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAILLEUR_PRENOM",
+    "cle": "bailleurPrenom",
+    "label": "Prénom du bailleur",
+    "type": "text",
+    "options": null,
+    "aide": "Bailleur : $BAILLEUR_TYPE (« personne physique » / « personne morale »), $BAILLEUR_CIVILITE, $BAILLEUR_PRENOM, $BAILLEUR_NOM, $BAILLEUR_NATIONALITE, $BAILLEUR_ADRESSE, $BAILLEUR_PIECE_TYPE, $BAILLEUR_PIECE_NUMERO, $BAILLEUR_DENOMINATION, $BAILLEUR_FORME, $BAILLEUR_CAPITAL, $BAILLEUR_SIEGE, $BAILLEUR_RC_VILLE, $BAILLEUR_RC_NUMERO, $BAILLEUR_REPRESENTANT_NOM, $BAILLEUR_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAILLEUR_RC_NUMERO",
+    "cle": "bailleurRcNumero",
+    "label": "Numéro au registre du commerce du bailleur",
+    "type": "text",
+    "options": null,
+    "aide": "Bailleur : $BAILLEUR_TYPE (« personne physique » / « personne morale »), $BAILLEUR_CIVILITE, $BAILLEUR_PRENOM, $BAILLEUR_NOM, $BAILLEUR_NATIONALITE, $BAILLEUR_ADRESSE, $BAILLEUR_PIECE_TYPE, $BAILLEUR_PIECE_NUMERO, $BAILLEUR_DENOMINATION, $BAILLEUR_FORME, $BAILLEUR_CAPITAL, $BAILLEUR_SIEGE, $BAILLEUR_RC_VILLE, $BAILLEUR_RC_NUMERO, $BAILLEUR_REPRESENTANT_NOM, $BAILLEUR_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAILLEUR_RC_VILLE",
+    "cle": "bailleurRcVille",
+    "label": "Ville du registre du commerce du bailleur",
+    "type": "text",
+    "options": null,
+    "aide": "Bailleur : $BAILLEUR_TYPE (« personne physique » / « personne morale »), $BAILLEUR_CIVILITE, $BAILLEUR_PRENOM, $BAILLEUR_NOM, $BAILLEUR_NATIONALITE, $BAILLEUR_ADRESSE, $BAILLEUR_PIECE_TYPE, $BAILLEUR_PIECE_NUMERO, $BAILLEUR_DENOMINATION, $BAILLEUR_FORME, $BAILLEUR_CAPITAL, $BAILLEUR_SIEGE, $BAILLEUR_RC_VILLE, $BAILLEUR_RC_NUMERO, $BAILLEUR_REPRESENTANT_NOM, $BAILLEUR_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAILLEUR_REPRESENTANT_NOM",
+    "cle": "bailleurRepresentantNom",
+    "label": "Représentant de la société bailleresse",
+    "type": "text",
+    "options": null,
+    "aide": "Bailleur : $BAILLEUR_TYPE (« personne physique » / « personne morale »), $BAILLEUR_CIVILITE, $BAILLEUR_PRENOM, $BAILLEUR_NOM, $BAILLEUR_NATIONALITE, $BAILLEUR_ADRESSE, $BAILLEUR_PIECE_TYPE, $BAILLEUR_PIECE_NUMERO, $BAILLEUR_DENOMINATION, $BAILLEUR_FORME, $BAILLEUR_CAPITAL, $BAILLEUR_SIEGE, $BAILLEUR_RC_VILLE, $BAILLEUR_RC_NUMERO, $BAILLEUR_REPRESENTANT_NOM, $BAILLEUR_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAILLEUR_REPRESENTANT_QUALITE",
+    "cle": "bailleurRepresentantQualite",
+    "label": "Qualité du représentant du bailleur",
+    "type": "text",
+    "options": null,
+    "aide": "Bailleur : $BAILLEUR_TYPE (« personne physique » / « personne morale »), $BAILLEUR_CIVILITE, $BAILLEUR_PRENOM, $BAILLEUR_NOM, $BAILLEUR_NATIONALITE, $BAILLEUR_ADRESSE, $BAILLEUR_PIECE_TYPE, $BAILLEUR_PIECE_NUMERO, $BAILLEUR_DENOMINATION, $BAILLEUR_FORME, $BAILLEUR_CAPITAL, $BAILLEUR_SIEGE, $BAILLEUR_RC_VILLE, $BAILLEUR_RC_NUMERO, $BAILLEUR_REPRESENTANT_NOM, $BAILLEUR_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAILLEUR_SIEGE",
+    "cle": "bailleurSiege",
+    "label": "Siège social de la société bailleresse",
+    "type": "text",
+    "options": null,
+    "aide": "Bailleur : $BAILLEUR_TYPE (« personne physique » / « personne morale »), $BAILLEUR_CIVILITE, $BAILLEUR_PRENOM, $BAILLEUR_NOM, $BAILLEUR_NATIONALITE, $BAILLEUR_ADRESSE, $BAILLEUR_PIECE_TYPE, $BAILLEUR_PIECE_NUMERO, $BAILLEUR_DENOMINATION, $BAILLEUR_FORME, $BAILLEUR_CAPITAL, $BAILLEUR_SIEGE, $BAILLEUR_RC_VILLE, $BAILLEUR_RC_NUMERO, $BAILLEUR_REPRESENTANT_NOM, $BAILLEUR_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAILLEUR_TYPE",
+    "cle": "bailleurType",
+    "label": "Le bailleur est",
+    "type": "select",
+    "options": [
+      "personne physique",
+      "personne morale"
+    ],
+    "aide": "Bailleur : $BAILLEUR_TYPE (« personne physique » / « personne morale »), $BAILLEUR_CIVILITE, $BAILLEUR_PRENOM, $BAILLEUR_NOM, $BAILLEUR_NATIONALITE, $BAILLEUR_ADRESSE, $BAILLEUR_PIECE_TYPE, $BAILLEUR_PIECE_NUMERO, $BAILLEUR_DENOMINATION, $BAILLEUR_FORME, $BAILLEUR_CAPITAL, $BAILLEUR_SIEGE, $BAILLEUR_RC_VILLE, $BAILLEUR_RC_NUMERO, $BAILLEUR_REPRESENTANT_NOM, $BAILLEUR_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAIL_TITRE_FONCIER",
+    "cle": "bailTitreFoncier",
+    "label": "Numéro du titre foncier des locaux (facultatif)",
+    "type": "text",
+    "options": null,
+    "aide": "Contrat : $BAIL_TITRE_FONCIER, $BAIL_TITRE_FONCIER_NOM, $BAIL_DESTINATION, $BAIL_DUREE, $BAIL_DATE_EFFET, $BAIL_DATE_FIN, $BAIL_LOYER_CHIFFRES, $BAIL_LOYER_LETTRES, $BAIL_LOYER_PERIODICITE, $BAIL_LOYER_MODALITES, $BAIL_FRANCHISE, $BAIL_DEPOT_GARANTIE, $BAIL_TRAVAUX_PRENEUR, $BAIL_SOUS_LOCATION (« autorisée » / « interdite »), $BAIL_TRIBUNAL, $BAIL_FRAIS_CHARGE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BAIL_TITRE_FONCIER_NOM",
+    "cle": "bailTitreFoncierNom",
+    "label": "Nom de la propriété au titre foncier",
+    "type": "text",
+    "options": null,
+    "aide": "Contrat : $BAIL_TITRE_FONCIER, $BAIL_TITRE_FONCIER_NOM, $BAIL_DESTINATION, $BAIL_DUREE, $BAIL_DATE_EFFET, $BAIL_DATE_FIN, $BAIL_LOYER_CHIFFRES, $BAIL_LOYER_LETTRES, $BAIL_LOYER_PERIODICITE, $BAIL_LOYER_MODALITES, $BAIL_FRANCHISE, $BAIL_DEPOT_GARANTIE, $BAIL_TRAVAUX_PRENEUR, $BAIL_SOUS_LOCATION (« autorisée » / « interdite »), $BAIL_TRIBUNAL, $BAIL_FRAIS_CHARGE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_BAIL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BE_CHAINE_DETENTION",
+    "cle": "beChaineDetention",
+    "label": "Chaîne de détention (détention indirecte)",
+    "type": "textarea",
+    "options": null,
+    "aide": "$BE_CHAINE_DETENTION, $BE_INTERMEDIAIRE_DENOMINATION, $BE_INTERMEDIAIRE_RC_VILLE, $BE_INTERMEDIAIRE_RC_NUMERO — Conditionnels, si détention indirecte.",
+    "section": "11. Formalités postérieures à l'immatriculation — [2026-09-03]",
+    "documents": [
+      "DECLARATION_BENEFICIAIRES_EFFECTIFS"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BE_INTERMEDIAIRE_DENOMINATION",
+    "cle": "beIntermediaireDenomination",
+    "label": "Société intermédiaire : dénomination",
+    "type": "text",
+    "options": null,
+    "aide": "$BE_CHAINE_DETENTION, $BE_INTERMEDIAIRE_DENOMINATION, $BE_INTERMEDIAIRE_RC_VILLE, $BE_INTERMEDIAIRE_RC_NUMERO — Conditionnels, si détention indirecte.",
+    "section": "11. Formalités postérieures à l'immatriculation — [2026-09-03]",
+    "documents": [
+      "DECLARATION_BENEFICIAIRES_EFFECTIFS"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BE_INTERMEDIAIRE_RC_NUMERO",
+    "cle": "beIntermediaireRcNumero",
+    "label": "Société intermédiaire : numéro au registre du commerce",
+    "type": "text",
+    "options": null,
+    "aide": "$BE_CHAINE_DETENTION, $BE_INTERMEDIAIRE_DENOMINATION, $BE_INTERMEDIAIRE_RC_VILLE, $BE_INTERMEDIAIRE_RC_NUMERO — Conditionnels, si détention indirecte.",
+    "section": "11. Formalités postérieures à l'immatriculation — [2026-09-03]",
+    "documents": [
+      "DECLARATION_BENEFICIAIRES_EFFECTIFS"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "BE_INTERMEDIAIRE_RC_VILLE",
+    "cle": "beIntermediaireRcVille",
+    "label": "Société intermédiaire : ville du registre du commerce",
+    "type": "text",
+    "options": null,
+    "aide": "$BE_CHAINE_DETENTION, $BE_INTERMEDIAIRE_DENOMINATION, $BE_INTERMEDIAIRE_RC_VILLE, $BE_INTERMEDIAIRE_RC_NUMERO — Conditionnels, si détention indirecte.",
+    "section": "11. Formalités postérieures à l'immatriculation — [2026-09-03]",
+    "documents": [
+      "DECLARATION_BENEFICIAIRES_EFFECTIFS"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "CNDP_RECEPISSE_NUMERO",
+    "cle": "cndpRecepisseNumero",
+    "label": "Numéro du récépissé de la CNDP",
+    "type": "text",
+    "options": null,
+    "aide": "$CNDP_RECEPISSE_NUMERO, $CNDP_MOTIF_MODIFICATION — Conditionnels, si déclaration modificative.",
+    "section": "21. Protection des données personnelles — déclaration CNDP — [2026-09-09]",
+    "documents": [
+      "DECLARATION_CNDP"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "CNSS_PIECES_COMPLEMENT",
+    "cle": "cnssPiecesComplement",
+    "label": "Pièces complémentaires exigées par l'agence CNSS",
+    "type": "textarea",
+    "options": null,
+    "aide": "$CNSS_PIECES_COMPLEMENT — Pièces complémentaires exigées par l'agence.",
+    "section": "11. Formalités postérieures à l'immatriculation — [2026-09-03]",
+    "documents": [
+      "DEMANDE_AFFILIATION_CNSS"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "COMMISSAIRE_APPORTS_ADRESSE",
+    "cle": "commissaireApportsAdresse",
+    "label": "Adresse professionnelle du commissaire aux apports",
+    "type": "text",
+    "options": null,
+    "aide": "$COMMISSAIRE_APPORTS_QUALITE, $COMMISSAIRE_APPORTS_ADRESSE — **[2026-09-03]** Qualité professionnelle et adresse.",
+    "section": "6. Apports — boucle `APPORTS_PAR_ASSOCIE`",
+    "documents": [
+      "RAPPORT_COMMISSAIRE_APPORTS"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "COMMISSAIRE_APPORTS_DATE_DESIGNATION",
+    "cle": "commissaireApportsDateDesignation",
+    "label": "Date de désignation du commissaire aux apports",
+    "type": "date",
+    "options": null,
+    "aide": "$COMMISSAIRE_APPORTS_DATE_DESIGNATION, $COMMISSAIRE_APPORTS_DATE_RAPPORT, $COMMISSAIRE_APPORTS_LIEU — **[2026-09-03]**.",
+    "section": "6. Apports — boucle `APPORTS_PAR_ASSOCIE`",
+    "documents": [
+      "RAPPORT_COMMISSAIRE_APPORTS"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "COMMISSAIRE_APPORTS_DATE_RAPPORT",
+    "cle": "commissaireApportsDateRapport",
+    "label": "Date du rapport du commissaire aux apports",
+    "type": "date",
+    "options": null,
+    "aide": "$COMMISSAIRE_APPORTS_DATE_DESIGNATION, $COMMISSAIRE_APPORTS_DATE_RAPPORT, $COMMISSAIRE_APPORTS_LIEU — **[2026-09-03]**.",
+    "section": "6. Apports — boucle `APPORTS_PAR_ASSOCIE`",
+    "documents": [
+      "DECLARATION_IMMATRICULATION_RC",
+      "RAPPORT_COMMISSAIRE_APPORTS"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "COMMISSAIRE_APPORTS_DILIGENCES_COMPLEMENTAIRES",
+    "cle": "commissaireApportsDiligencesComplementaires",
+    "label": "Diligences propres au dossier",
+    "type": "textarea",
+    "options": null,
+    "aide": "$COMMISSAIRE_APPORTS_DILIGENCES_COMPLEMENTAIRES, $COMMISSAIRE_APPORTS_OBSERVATIONS — **[2026-09-03]** Diligences propres au dossier et observations éventuelles.",
+    "section": "6. Apports — boucle `APPORTS_PAR_ASSOCIE`",
+    "documents": [
+      "RAPPORT_COMMISSAIRE_APPORTS"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "COMMISSAIRE_APPORTS_LIEU",
+    "cle": "commissaireApportsLieu",
+    "label": "Lieu de signature du rapport du commissaire",
+    "type": "text",
+    "options": null,
+    "aide": "$COMMISSAIRE_APPORTS_DATE_DESIGNATION, $COMMISSAIRE_APPORTS_DATE_RAPPORT, $COMMISSAIRE_APPORTS_LIEU — **[2026-09-03]**.",
+    "section": "6. Apports — boucle `APPORTS_PAR_ASSOCIE`",
+    "documents": [
+      "RAPPORT_COMMISSAIRE_APPORTS"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "COMMISSAIRE_APPORTS_MODE_DESIGNATION",
+    "cle": "commissaireApportsModeDesignation",
+    "label": "Désignation du commissaire aux apports",
+    "type": "select",
+    "options": [
+      "unanimité",
+      "ordonnance du président du tribunal"
+    ],
+    "aide": "$COMMISSAIRE_APPORTS_MODE_DESIGNATION — **[2026-09-03]** « unanimité » (désignation par les futurs associés) / « ordonnance » (désignation par le président du tribunal).",
+    "section": "6. Apports — boucle `APPORTS_PAR_ASSOCIE`",
+    "documents": [
+      "RAPPORT_COMMISSAIRE_APPORTS"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "COMMISSAIRE_APPORTS_OBSERVATIONS",
+    "cle": "commissaireApportsObservations",
+    "label": "Observations du commissaire aux apports (facultatif)",
+    "type": "textarea",
+    "options": null,
+    "aide": "$COMMISSAIRE_APPORTS_DILIGENCES_COMPLEMENTAIRES, $COMMISSAIRE_APPORTS_OBSERVATIONS — **[2026-09-03]** Diligences propres au dossier et observations éventuelles.",
+    "section": "6. Apports — boucle `APPORTS_PAR_ASSOCIE`",
+    "documents": [
+      "RAPPORT_COMMISSAIRE_APPORTS"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "COMMISSAIRE_APPORTS_QUALITE",
+    "cle": "commissaireApportsQualite",
+    "label": "Qualité professionnelle du commissaire aux apports",
+    "type": "text",
+    "options": null,
+    "aide": "$COMMISSAIRE_APPORTS_QUALITE, $COMMISSAIRE_APPORTS_ADRESSE — **[2026-09-03]** Qualité professionnelle et adresse.",
+    "section": "6. Apports — boucle `APPORTS_PAR_ASSOCIE`",
+    "documents": [
+      "DECLARATION_IMMATRICULATION_RC",
+      "RAPPORT_COMMISSAIRE_APPORTS"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "COMMISSAIRE_COMPTES_ADRESSE",
+    "cle": "commissaireComptesAdresse",
+    "label": "Adresse professionnelle du commissaire aux comptes",
+    "type": "text",
+    "options": null,
+    "aide": "$COMMISSAIRE_COMPTES_ADRESSE — **[2026-09-09]** Adresse professionnelle du commissaire aux comptes, exigée à la rubrique 9 du modèle n° 2 de déclaration d'immatriculation.",
+    "section": "13. Contrôle, comptes et clôture",
+    "documents": [
+      "DECLARATION_IMMATRICULATION_RC"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "DEBLOCAGE_PIECES_COMPLEMENT",
+    "cle": "deblocagePiecesComplement",
+    "label": "Pièces complémentaires exigées par la banque",
+    "type": "textarea",
+    "options": null,
+    "aide": "$DEBLOCAGE_PIECES_COMPLEMENT — **[2026-09-03]** Pièces complémentaires exigées par la banque.",
+    "section": "4. Capital et parts",
+    "documents": [
+      "DEMANDE_DEBLOCAGE_CAPITAL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "DOMICILIATAIRE_CAPITAL",
+    "cle": "domiciliataireCapital",
+    "label": "Capital du domiciliataire (en dirhams)",
+    "type": "text",
+    "options": null,
+    "aide": "Domiciliataire : $DOMICILIATAIRE_DENOMINATION, $DOMICILIATAIRE_FORME, $DOMICILIATAIRE_CAPITAL, $DOMICILIATAIRE_SIEGE, $DOMICILIATAIRE_RC_VILLE, $DOMICILIATAIRE_RC_NUMERO, $DOMICILIATAIRE_ICE, $DOMICILIATAIRE_REPRESENTANT_NOM, $DOMICILIATAIRE_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_DOMICILIATION"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "DOMICILIATAIRE_DENOMINATION",
+    "cle": "domiciliataireDenomination",
+    "label": "Dénomination du domiciliataire",
+    "type": "text",
+    "options": null,
+    "aide": "Domiciliataire : $DOMICILIATAIRE_DENOMINATION, $DOMICILIATAIRE_FORME, $DOMICILIATAIRE_CAPITAL, $DOMICILIATAIRE_SIEGE, $DOMICILIATAIRE_RC_VILLE, $DOMICILIATAIRE_RC_NUMERO, $DOMICILIATAIRE_ICE, $DOMICILIATAIRE_REPRESENTANT_NOM, $DOMICILIATAIRE_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_DOMICILIATION",
+      "DECLARATION_IMMATRICULATION_RC",
+      "DEMANDE_TAXE_PROFESSIONNELLE",
+      "FICHE_RENSEIGNEMENTS_CREATION"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "DOMICILIATAIRE_FORME",
+    "cle": "domiciliataireForme",
+    "label": "Forme juridique du domiciliataire",
+    "type": "text",
+    "options": null,
+    "aide": "Domiciliataire : $DOMICILIATAIRE_DENOMINATION, $DOMICILIATAIRE_FORME, $DOMICILIATAIRE_CAPITAL, $DOMICILIATAIRE_SIEGE, $DOMICILIATAIRE_RC_VILLE, $DOMICILIATAIRE_RC_NUMERO, $DOMICILIATAIRE_ICE, $DOMICILIATAIRE_REPRESENTANT_NOM, $DOMICILIATAIRE_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_DOMICILIATION"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "DOMICILIATAIRE_ICE",
+    "cle": "domiciliataireIce",
+    "label": "ICE du domiciliataire",
+    "type": "text",
+    "options": null,
+    "aide": "Domiciliataire : $DOMICILIATAIRE_DENOMINATION, $DOMICILIATAIRE_FORME, $DOMICILIATAIRE_CAPITAL, $DOMICILIATAIRE_SIEGE, $DOMICILIATAIRE_RC_VILLE, $DOMICILIATAIRE_RC_NUMERO, $DOMICILIATAIRE_ICE, $DOMICILIATAIRE_REPRESENTANT_NOM, $DOMICILIATAIRE_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_DOMICILIATION",
+      "DEMANDE_TAXE_PROFESSIONNELLE"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "DOMICILIATAIRE_RC_NUMERO",
+    "cle": "domiciliataireRcNumero",
+    "label": "Numéro au registre du commerce du domiciliataire",
+    "type": "text",
+    "options": null,
+    "aide": "Domiciliataire : $DOMICILIATAIRE_DENOMINATION, $DOMICILIATAIRE_FORME, $DOMICILIATAIRE_CAPITAL, $DOMICILIATAIRE_SIEGE, $DOMICILIATAIRE_RC_VILLE, $DOMICILIATAIRE_RC_NUMERO, $DOMICILIATAIRE_ICE, $DOMICILIATAIRE_REPRESENTANT_NOM, $DOMICILIATAIRE_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_DOMICILIATION",
+      "DECLARATION_IMMATRICULATION_RC",
+      "DEMANDE_TAXE_PROFESSIONNELLE",
+      "FICHE_RENSEIGNEMENTS_CREATION"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "DOMICILIATAIRE_RC_VILLE",
+    "cle": "domiciliataireRcVille",
+    "label": "Ville du registre du commerce du domiciliataire",
+    "type": "text",
+    "options": null,
+    "aide": "Domiciliataire : $DOMICILIATAIRE_DENOMINATION, $DOMICILIATAIRE_FORME, $DOMICILIATAIRE_CAPITAL, $DOMICILIATAIRE_SIEGE, $DOMICILIATAIRE_RC_VILLE, $DOMICILIATAIRE_RC_NUMERO, $DOMICILIATAIRE_ICE, $DOMICILIATAIRE_REPRESENTANT_NOM, $DOMICILIATAIRE_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_DOMICILIATION",
+      "DECLARATION_IMMATRICULATION_RC",
+      "DEMANDE_TAXE_PROFESSIONNELLE",
+      "FICHE_RENSEIGNEMENTS_CREATION"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "DOMICILIATAIRE_REPRESENTANT_NOM",
+    "cle": "domiciliataireRepresentantNom",
+    "label": "Représentant du domiciliataire",
+    "type": "text",
+    "options": null,
+    "aide": "Domiciliataire : $DOMICILIATAIRE_DENOMINATION, $DOMICILIATAIRE_FORME, $DOMICILIATAIRE_CAPITAL, $DOMICILIATAIRE_SIEGE, $DOMICILIATAIRE_RC_VILLE, $DOMICILIATAIRE_RC_NUMERO, $DOMICILIATAIRE_ICE, $DOMICILIATAIRE_REPRESENTANT_NOM, $DOMICILIATAIRE_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_DOMICILIATION"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "DOMICILIATAIRE_REPRESENTANT_QUALITE",
+    "cle": "domiciliataireRepresentantQualite",
+    "label": "Qualité du représentant du domiciliataire",
+    "type": "text",
+    "options": null,
+    "aide": "Domiciliataire : $DOMICILIATAIRE_DENOMINATION, $DOMICILIATAIRE_FORME, $DOMICILIATAIRE_CAPITAL, $DOMICILIATAIRE_SIEGE, $DOMICILIATAIRE_RC_VILLE, $DOMICILIATAIRE_RC_NUMERO, $DOMICILIATAIRE_ICE, $DOMICILIATAIRE_REPRESENTANT_NOM, $DOMICILIATAIRE_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_DOMICILIATION"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "DOMICILIATAIRE_SIEGE",
+    "cle": "domiciliataireSiege",
+    "label": "Siège social du domiciliataire",
+    "type": "text",
+    "options": null,
+    "aide": "Domiciliataire : $DOMICILIATAIRE_DENOMINATION, $DOMICILIATAIRE_FORME, $DOMICILIATAIRE_CAPITAL, $DOMICILIATAIRE_SIEGE, $DOMICILIATAIRE_RC_VILLE, $DOMICILIATAIRE_RC_NUMERO, $DOMICILIATAIRE_ICE, $DOMICILIATAIRE_REPRESENTANT_NOM, $DOMICILIATAIRE_REPRESENTANT_QUALITE.",
+    "section": "8. Siège — occupation des locaux — [2026-09-03]",
+    "documents": [
+      "CONTRAT_DOMICILIATION"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "POUVOIR_ETENDUE_COMPLEMENT",
+    "cle": "pouvoirEtendueComplement",
+    "label": "Diligence supplémentaire confiée au mandataire",
+    "type": "textarea",
+    "options": null,
+    "aide": "$POUVOIR_ETENDUE_COMPLEMENT — Diligence supplémentaire propre au dossier.",
+    "section": "10. Pouvoir pour les formalités — [2026-09-03]",
+    "documents": [
+      "POUVOIR_FORMALITES_CREATION"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "RBE_PIECES_COMPLEMENT",
+    "cle": "rbePiecesComplement",
+    "label": "Pièces complémentaires (bénéficiaires effectifs)",
+    "type": "textarea",
+    "options": null,
+    "aide": "$RBE_PIECES_COMPLEMENT — Pièces complémentaires.",
+    "section": "11. Formalités postérieures à l'immatriculation — [2026-09-03]",
+    "documents": [
+      "DECLARATION_BENEFICIAIRES_EFFECTIFS"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "SIMPL_PIECES_COMPLEMENT",
+    "cle": "simplPiecesComplement",
+    "label": "Pièces complémentaires exigées par le service (SIMPL)",
+    "type": "textarea",
+    "options": null,
+    "aide": "$SIMPL_PIECES_COMPLEMENT — Pièces complémentaires exigées par le service.",
+    "section": "20. Téléservices fiscaux — adhésion SIMPL — [2026-09-09]",
+    "documents": [
+      "DEMANDE_ADHESION_SIMPL"
+    ],
+    "boucle": null,
+    "ouvertL4a": true
+  },
+  {
+    "variable": "PIECE_DESIGNATION",
+    "cle": "pieceDesignation",
+    "label": "Désignation de la pièce",
+    "type": "text",
+    "options": null,
+    "aide": null,
+    "section": "Bordereau de remise",
+    "documents": [
+      "BORDEREAU_REMISE_DOSSIER"
+    ],
+    "boucle": "PIECES_REMISES",
+    "ouvertL4a": true
   }
 ];
 
@@ -3099,6 +3781,7 @@ export const BOUCLES_CREATION: BoucleCreation[] = [
       "BORDEREAU_REMISE_DOSSIER"
     ],
     "champs": [
+      "pieceDesignation",
       "pieceForme",
       "pieceNombre",
       "pieceObservation"
@@ -3140,56 +3823,10 @@ export const VARIABLES_SANS_SOURCE: string[] = [
   "APPORT_NATURE_CHARGES",
   "APPORT_NATURE_METHODE",
   "APPORT_NATURE_ORIGINE_PROPRIETE",
-  "BAILLEUR_ADRESSE",
-  "BAILLEUR_CAPITAL",
-  "BAILLEUR_CIVILITE",
-  "BAILLEUR_DENOMINATION",
-  "BAILLEUR_FORME",
-  "BAILLEUR_NATIONALITE",
-  "BAILLEUR_NOM",
-  "BAILLEUR_PIECE_NUMERO",
-  "BAILLEUR_PIECE_TYPE",
-  "BAILLEUR_PRENOM",
-  "BAILLEUR_RC_NUMERO",
-  "BAILLEUR_RC_VILLE",
-  "BAILLEUR_REPRESENTANT_NOM",
-  "BAILLEUR_REPRESENTANT_QUALITE",
-  "BAILLEUR_SIEGE",
-  "BAILLEUR_TYPE",
-  "BAIL_TITRE_FONCIER",
-  "BAIL_TITRE_FONCIER_NOM",
-  "BE_CHAINE_DETENTION",
-  "BE_INTERMEDIAIRE_DENOMINATION",
-  "BE_INTERMEDIAIRE_RC_NUMERO",
-  "BE_INTERMEDIAIRE_RC_VILLE",
-  "CNDP_RECEPISSE_NUMERO",
-  "CNSS_PIECES_COMPLEMENT",
-  "COMMISSAIRE_APPORTS_ADRESSE",
-  "COMMISSAIRE_APPORTS_DATE_DESIGNATION",
-  "COMMISSAIRE_APPORTS_DATE_RAPPORT",
-  "COMMISSAIRE_APPORTS_DILIGENCES_COMPLEMENTAIRES",
-  "COMMISSAIRE_APPORTS_LIEU",
-  "COMMISSAIRE_APPORTS_MODE_DESIGNATION",
-  "COMMISSAIRE_APPORTS_OBSERVATIONS",
-  "COMMISSAIRE_APPORTS_QUALITE",
-  "COMMISSAIRE_COMPTES_ADRESSE",
-  "DEBLOCAGE_PIECES_COMPLEMENT",
-  "DOMICILIATAIRE_CAPITAL",
-  "DOMICILIATAIRE_DENOMINATION",
-  "DOMICILIATAIRE_FORME",
-  "DOMICILIATAIRE_ICE",
-  "DOMICILIATAIRE_RC_NUMERO",
-  "DOMICILIATAIRE_RC_VILLE",
-  "DOMICILIATAIRE_REPRESENTANT_NOM",
-  "DOMICILIATAIRE_REPRESENTANT_QUALITE",
-  "DOMICILIATAIRE_SIEGE",
-  "POUVOIR_ETENDUE_COMPLEMENT",
-  "RBE_PIECES_COMPLEMENT",
   "RETRAIT_ADMINISTRATION_ADRESSE",
   "RETRAIT_ADMINISTRATION_DESIGNATION",
   "RETRAIT_DEPOT_DATE",
-  "RETRAIT_DEPOT_REFERENCE",
-  "SIMPL_PIECES_COMPLEMENT"
+  "RETRAIT_DEPOT_REFERENCE"
 ];
 
 /**

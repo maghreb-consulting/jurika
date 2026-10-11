@@ -211,7 +211,9 @@ public final class ModificationAnnonceVarsBuilder {
                 put(it, "GERANT_CIVILITE", normCivilite(first0(g.get("civilite"), r.get("gerantCivilite"))));
                 put(it, "GERANT_PRENOM", str(first0(g.get("prenom"), r.get("gerantPrenom"))));
                 put(it, "GERANT_NOM", str(first0(g.get("nom"), r.get("gerantNom"))));
-                put(it, "GERANT_QUALITE_ACCORD", first(str(r.get("gerantQualiteAccord")), "gérant"));
+                // L4a (E2) : accord derive de la civilite (gerant / gerante), jamais suppose.
+                put(it, "GERANT_QUALITE_ACCORD", first(str(r.get("gerantQualiteAccord")),
+                        accordGerant(str(it.get("GERANT_CIVILITE")))));
             }
             case "cessation_gerant" -> {
                 put(it, "GERANT_SORTANT_NOM",
@@ -220,11 +222,11 @@ public final class ModificationAnnonceVarsBuilder {
             }
             case "transformation_forme" ->
                     put(it, "FORME_NOUVELLE",
-                            first(str(r.get("formeNouvelle")), str(r.get("transformationForme")), "société anonyme"));
+                            first(str(r.get("formeNouvelle")), str(r.get("transformationForme")))); // L4a (E2)
             default -> // "autre"
                     put(it, "DECISION_TEXTE_LIBRE",
                             first(str(r.get("decisionTexteLibre")), str(r.get("statutsNouveauLibelle")),
-                                    str(r.get("objet")), "Autre décision de l'assemblée"));
+                                    str(r.get("objet")))); // L4a (E2) : plus de texte par defaut
         }
     }
 
@@ -378,4 +380,13 @@ public final class ModificationAnnonceVarsBuilder {
         }
         return out;
     }
+
+    /** Lot L4a (E2) : "gerante" pour Mme / Mlle, "gerant" pour M. ; civilite inconnue : rien. */
+    static String accordGerant(String civilite) {
+        String c = civilite == null ? "" : civilite.trim().toLowerCase(java.util.Locale.ROOT);
+        if (c.startsWith("mme") || c.startsWith("mlle") || c.startsWith("madame")) return "g\u00e9rante";
+        if (c.startsWith("m")) return "g\u00e9rant";
+        return "";
+    }
+
 }

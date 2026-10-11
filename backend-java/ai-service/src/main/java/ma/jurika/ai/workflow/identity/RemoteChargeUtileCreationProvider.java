@@ -39,4 +39,23 @@ public class RemoteChargeUtileCreationProvider implements ChargeUtileCreationPro
                     "Les donnees du ticket n'ont pas pu etre lues (ticket " + ticketId + ")", e);
         }
     }
+
+    @Override
+    public Map<String, Object> chargerAnnulation(UUID workspaceId, UUID ticketId, UUID employeId) {
+        try {
+            Map<String, Object> charge = client.chargeUtileAnnulation(ticketId, workspaceId, employeId);
+            if (charge == null || charge.isEmpty()) {
+                throw new IdentiteSocieteIndisponibleException("Charge d'annulation vide pour le ticket " + ticketId, null);
+            }
+            return charge;
+        } catch (FeignException.NotFound e) {
+            throw new NotFoundException("Ticket inconnu");
+        } catch (FeignException.Forbidden e) {
+            throw new AccessDeniedException("Seul l'employ\u00e9 en charge du ticket g\u00e9n\u00e8re ses documents.");
+        } catch (FeignException e) {
+            throw new IdentiteSocieteIndisponibleException(
+                    "Les donnees de l'annulation n'ont pas pu etre lues (ticket " + ticketId + ")", e);
+        }
+    }
+
 }

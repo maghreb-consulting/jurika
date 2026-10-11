@@ -133,6 +133,7 @@ class ModificationRenderTest {
         aug.put("augcapPartsA", 1_500);
         aug.put("augcapLiberationMode", "numéraire");
         aug.put("dpsSuppression", "oui");
+        aug.put("primeEmission", "non"); // L4a (E2) : saisi
         aug.put("articlesModifies", "6 et 7");
         aug.put("beneficiairesDps", List.of(
                 Map.of("nom", "M. Idrissi", "nbParts", 300),
@@ -244,7 +245,7 @@ class ModificationRenderTest {
         Map<String, Object> pv = pvAu(List.of("Transfert du siège social"),
                 List.of(Map.of("type", "transfert_siege",
                         "nouveauSiege", "45 BD ZERKTOUNI, RABAT", "dateEffet", "2026-06-01",
-                        "articlesModifies", "4")));
+                        "articlesModifies", "4", "siegeMemePrefecture", "non")));
         String text = renderAu("transfert_siege", pv);
         assertTrue(text.contains("transférer le siège social"), "contenu transfert AU attendu");
         assertTrue(text.contains("L'ASSOCIÉ UNIQUE"), "en-tête décisions associé unique attendu");
@@ -268,12 +269,13 @@ class ModificationRenderTest {
                         Map.of("type", "modification_denomination",
                                 "nouvelleDenomination", "PARACOSME AU CONSULTING",
                                 "dateEffet", "2026-06-01", "articlesModifies", "2"),
-                        Map.of("type", "augmentation_capital_numeraire",
+                        ajout(Map.of("type", "augmentation_capital_numeraire",
                                 "augcapMontantChiffres", 50_000, "augcapNouveauCapital", 150_000,
                                 "augcapMode", "création de parts nouvelles",
                                 "augcapNbPartsNouvelles", 500, "valeurNominalePart", 100,
                                 "augcapPartsDe", 1_001, "augcapPartsA", 1_500,
                                 "augcapLiberationMode", "numéraire", "articlesModifies", "6 et 7"),
+                                "primeEmission", "non", "dpsSuppression", "non"),
                         Map.of("type", "pouvoirs_formalites")));
         String text = renderAu("multi_resolutions", pv);
         assertTrue(text.contains("PARACOSME AU CONSULTING"), "nouvelle dénomination AU rendue");
@@ -321,4 +323,12 @@ class ModificationRenderTest {
         assertFalse(m.find(), label + " : marqueur condition/boucle résiduel");
         assertFalse(text.contains("VALEUR MANQUANTE"), label + " : variable manquante (rouge) dans le rendu");
     }
+
+    /** Lot L4a (E2) : ajoute des saisies a une resolution (Map.of est limitee a dix paires). */
+    private static Map<String, Object> ajout(Map<String, Object> base, Object... paires) {
+        Map<String, Object> m = new java.util.LinkedHashMap<>(base);
+        for (int i = 0; i + 1 < paires.length; i += 2) m.put(String.valueOf(paires[i]), paires[i + 1]);
+        return m;
+    }
+
 }

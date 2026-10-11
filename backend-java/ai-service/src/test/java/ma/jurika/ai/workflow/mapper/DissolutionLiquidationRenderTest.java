@@ -127,7 +127,7 @@ class DissolutionLiquidationRenderTest {
                                 "type", "nomination_liquidateur", "resultat", "à l'unanimité"),
                         Map.of("objet", "Pouvoirs pour formalités",
                                 "type", "pouvoirs_formalites", "resultat", "à l'unanimité")),
-                "dissolution", Map.of("motif", "volontaire"),
+                "dissolution", Map.of("motif", "volontaire", "nature", "anticip\u00e9e"),
                 "liquidateur", liquidateurPhysique());
 
         String text = render(dissolutionMapper::map, "PV_DISSOLUTION_LIQUIDATION_SARL", payload);

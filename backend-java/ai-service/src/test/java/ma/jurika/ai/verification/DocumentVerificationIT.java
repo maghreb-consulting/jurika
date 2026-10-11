@@ -57,8 +57,11 @@ import java.util.regex.Pattern;
  *   <li>Émet un rapport JSON dans target/document-verification-report.json</li>
  * </ol>
  *
- * <p>Le test ne fait JAMAIS échouer le build sur des résiduels (WARN).
- * Il ne fail que sur exception levée ou bytes=0 ou .docx illisible.
+ * <p>Lot L4a (E1) : le test ECHOUE sur tout document non conforme -- donnee manquante
+ * ("VALEUR MANQUANTE"), "A OBTENIR" non attendu, blanc dans une phrase ("de ,"), residuel
+ * de balisage -- sauf les documents de la liste explicite EN_ATTENTE, chacun avec la passe
+ * qui le traite. Il rend par la chaine de production : corpus (s'il est present) et reprise
+ * de la fiche societe.
  */
 class DocumentVerificationIT {
 
@@ -66,6 +69,86 @@ class DocumentVerificationIT {
             Pattern.compile("\\$\\{[A-Z][A-Z0-9_]*\\}");
     private static final Pattern RESIDUAL_BLOCK_MARKER =
             Pattern.compile("\\u25B6\\s*[A-Z]+");
+
+    /**
+     * Lot L4a (E1) : donnees EXTERNES dont l'absence est attendue dans la fixture, par
+     * document (un "A OBTENIR" de ces donnees est normal : l'organisme ne les a pas encore
+     * delivrees). Tout autre "A OBTENIR" est un defaut.
+     */
+    private static final Set<String> DEPOT_LEGAL = Set.of("DATE_DEPOT_LEGAL", "DEPOT_LEGAL_NUMERO");
+
+    static final Map<String, Set<String>> EXTERNES_ATTENDUES = Map.ofEntries(
+            // Creation : delivres par le greffe, la DGI et la CNSS APRES la generation.
+            Map.entry("ANNONCE_LEGALE_CONSTITUTION", Set.of("DATE_DEPOT_LEGAL")),
+            Map.entry("DEMANDE_DEBLOCAGE_CAPITAL", Set.of("DATE_IMMATRICULATION")),
+            Map.entry("NOTE_CONFORMITE_MENTIONS_LEGALES", Set.of("IDENTIFIANT_TP", "CNSS_NUMERO")),
+            // Annonces legales : numero et date du depot legal, attribues par le greffe apres
+            // le depot de l'annonce (l'ecran les dit facultatifs a la generation).
+            Map.entry("ANNONCE_LEGALE_MODIFICATION_SARL", DEPOT_LEGAL),
+            Map.entry("ANNONCE_LEGALE_MODIFICATION_SARL_AU", DEPOT_LEGAL),
+            Map.entry("ANNONCE_LEGALE_FERMETURE_SUCCURSALE_SARL", DEPOT_LEGAL),
+            Map.entry("ANNONCE_LEGALE_FERMETURE_SUCCURSALE_SARL_AU", DEPOT_LEGAL),
+            Map.entry("ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL", DEPOT_LEGAL),
+            Map.entry("ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL_AU", DEPOT_LEGAL),
+            Map.entry("ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL", DEPOT_LEGAL),
+            Map.entry("ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL_AU", DEPOT_LEGAL));
+
+    /**
+     * Lot L4a (E1) : documents dont la non-conformite est CONNUE et traitee dans une passe
+     * nommee. Un document liste ici qui devient conforme fait echouer le test (a retirer).
+     */
+    private static final String L4B = "L4b : variables des modeles du corpus (D5, bascule)";
+
+    private static final String ECART_CORPUS =
+            "A_DECIDER cabinet : $ASSOCIE_UNIQUE (oui/non) imprime sous la signature de l'associe unique";
+
+    /**
+     * Source reelle d'un gabarit rendu : le corpus quand il porte le code (en service, le corpus
+     * est obligatoire et prime), sinon le classpath. Sans corpus reel (CI), tout vient du
+     * classpath : un ecart propre au corpus ne s'y applique pas, un gabarit du classpath
+     * perime y est declare comme tel. Le verdict est ainsi le meme sur le serveur et en CI.
+     */
+    enum Source { CORPUS, CLASSPATH }
+
+    private static final String CLASSPATH_PERIME =
+            "gabarit du classpath, servi seulement sans corpus (le corpus est obligatoire en service) : "
+                    + "non aligne sur les variables du corpus";
+
+    static final Map<String, Map<Source, String>> EN_ATTENTE = Map.ofEntries(
+            // Ecart du CORPUS : la fiche n'imprime que $BAILLEUR_NOM, vide pour un bailleur societe
+            // (meme texte dans la copie du classpath).
+            Map.entry("FICHE_RENSEIGNEMENTS_CREATION", Map.of(
+                    Source.CORPUS, "A_DECIDER cabinet : $BAILLEUR_NOM seul imprime, vide quand le bailleur est une societe",
+                    Source.CLASSPATH, "A_DECIDER cabinet : $BAILLEUR_NOM seul imprime (copie du classpath du modele)")),
+            // Variables des modeles du corpus que les mappers ne fournissent pas (D5, bascule).
+            Map.entry("PV_APPROBATION_COMPTES_SARL_AU", Map.of(Source.CORPUS, L4B)),
+            Map.entry("ANNONCE_LEGALE_DISSOLUTION_SARL", Map.of(Source.CORPUS, L4B, Source.CLASSPATH, CLASSPATH_PERIME)),
+            Map.entry("ANNONCE_LEGALE_DISSOLUTION_SARL_AU", Map.of(Source.CORPUS, L4B, Source.CLASSPATH, CLASSPATH_PERIME)),
+            Map.entry("ANNONCE_LEGALE_LIQUIDATION_SARL", Map.of(Source.CORPUS, L4B, Source.CLASSPATH, CLASSPATH_PERIME)),
+            Map.entry("ANNONCE_LEGALE_LIQUIDATION_SARL_AU", Map.of(Source.CORPUS, L4B, Source.CLASSPATH, CLASSPATH_PERIME)),
+            Map.entry("ANNONCE_LEGALE_MODIFICATION_SARL", Map.of(Source.CORPUS, L4B, Source.CLASSPATH, CLASSPATH_PERIME)),
+            Map.entry("ANNONCE_LEGALE_MODIFICATION_SARL_AU", Map.of(Source.CORPUS, L4B, Source.CLASSPATH, CLASSPATH_PERIME)),
+            // Gabarit du classpath qui imprime sa notice de saisie ; bascule sur
+            // RAPPORT_GESTION_EXERCICE_SARL(_AU) du corpus.
+            Map.entry("RAPPORT_GESTION", Map.of(Source.CLASSPATH, "L4b : bascule sur le modele du corpus")),
+            // Ecart du CORPUS (gabarits intouchables, rapporte au cabinet) : $ASSOCIE_UNIQUE, drapeau
+            // "oui" / "non", imprime sous "L'associe unique" a la place de son identite.
+            Map.entry("PV_CREATION_SUCCURSALE_MAROC_SARL_AU", Map.of(Source.CORPUS, ECART_CORPUS)),
+            Map.entry("PV_FERMETURE_SUCCURSALE_SARL_AU", Map.of(Source.CORPUS, ECART_CORPUS)));
+
+    /**
+     * Gabarits que seul le corpus reel porte (aucune copie au classpath) : sans corpus reel,
+     * ils ne se rendent pas ici et sont declares "CORPUS_REEL_REQUIS" au rapport (jamais une
+     * exclusion silencieuse) ; ils sont controles strictement par ce test sur le serveur et par
+     * CorpusReelIT. Un code liste qui se rend sans corpus, ou qui n'est plus rendu, fait echouer.
+     */
+    static final Set<String> CORPUS_REEL_REQUIS = Set.of(
+            "NOTE_ANNULATION_DOSSIER_SOCIETE_EXISTANTE",
+            "LETTRE_RETRAIT_DEPOT_SOCIETE_EXISTANTE",
+            "BORDEREAU_REMISE_DOSSIER_SOCIETE_EXISTANTE");
+
+    static final Set<String> DOCUMENTS_ANNULATION =
+            new ma.jurika.ai.workflow.mapper.AnnulationMapper().supportedTemplates();
 
     private static final ObjectMapper JSON = new ObjectMapper()
             .enable(SerializationFeature.INDENT_OUTPUT);
@@ -94,7 +177,15 @@ class DocumentVerificationIT {
                 new MapperBinding("SuccursaleEtrMapper", new SuccursaleEtrMapper(),
                         "/workflow-fixtures/succursale_etr.json", true),
                 new MapperBinding("AnnualReportMapper", new AnnualReportMapper(),
-                        "/workflow-fixtures/annual_report.json", true)
+                        "/workflow-fixtures/annual_report.json", true),
+                // Lot L4a (E1) : les deux mappers du formulaire de seance commun n'etaient pas controles.
+                new MapperBinding("IncidentSeanceMapper", new ma.jurika.ai.workflow.mapper.IncidentSeanceMapper(),
+                        "/workflow-fixtures/seance.json", true),
+                new MapperBinding("SeanceDocumentMapper", new ma.jurika.ai.workflow.mapper.SeanceDocumentMapper(),
+                        "/workflow-fixtures/seance.json", true),
+                // Lot L4a (E5) : documents d'annulation, tous parcours (charge servie par le ticket).
+                new MapperBinding("AnnulationMapper", new ma.jurika.ai.workflow.mapper.AnnulationMapper(),
+                        "/workflow-fixtures/annulation.json", true)
         );
     }
 
@@ -105,7 +196,15 @@ class DocumentVerificationIT {
         TemplateManifestLoader loader = new TemplateManifestLoader(jacksonForLoader);
         // load() est @PostConstruct → on l'invoque explicitement (public method).
         invokeLoad(loader);
-        DocxTemplateEngine engine = new DocxTemplateEngine(loader);
+        // Lot L4a (E1) : rendu par la chaine de production -- corpus de reference quand il est
+        // present (comme ai-service), sinon le classpath ; le rapport dit lequel.
+        boolean avecCorpus = CorpusReelIT.corpusReelPresent();
+        ma.jurika.ai.document.corpus.CorpusCharge corpus = avecCorpus
+                ? ma.jurika.ai.document.corpus.ChargeurCorpus.charger(CorpusReelIT.RACINE) : null;
+        DocxTemplateEngine engine = avecCorpus
+                ? new DocxTemplateEngine(loader, null, corpus)
+                : new DocxTemplateEngine(loader);
+        Set<String> requisRencontres = new java.util.TreeSet<>();
 
         // ── 2. Préparer le dossier sample_outputs ──
         Path sampleOutputs = Paths.get("target/sample_outputs");
@@ -119,6 +218,10 @@ class DocumentVerificationIT {
             Map<String, Object> fixtureRoot = loadFixture(b.fixtureFile());
             Set<String> supported = b.mapper().supportedTemplates();
             for (String templateCode : new TreeSet<>(supported)) {
+                // Lot L4a (E5) : les documents d'annulation se produisent par le parcours
+                // ANNULATION (charge du ticket), controles une seule fois, sous ce mapper.
+                if (!(b.mapper() instanceof ma.jurika.ai.workflow.mapper.AnnulationMapper)
+                        && DOCUMENTS_ANNULATION.contains(templateCode)) continue;
                 Map<String, Object> entry = new LinkedHashMap<>();
                 entry.put("template", templateCode);
                 entry.put("mapper", b.name());
@@ -148,7 +251,9 @@ class DocumentVerificationIT {
                         payload = fixtureRoot;
                     }
 
-                    Map<String, Object> variables = b.mapper().map(templateCode, payload);
+                    // Meme chaine que WorkflowDocumentController : mapper, puis reprise de la fiche.
+                    Map<String, Object> variables = ma.jurika.ai.workflow.identity.RepriseFicheSociete.completer(
+                            b.mapper().map(templateCode, payload), payload);
                     DocxTemplateEngine.DocumentResult result = engine.generate(templateCode, variables);
 
                     byte[] bytes = result.bytes();
@@ -177,17 +282,59 @@ class DocumentVerificationIT {
 
                     boolean templateFound = result.templateFound();
                     boolean hasResiduals = !residualUpperVars.isEmpty() || !residualBlocks.isEmpty();
+                    // Lot L4a (E1) : donnee manquante, "A OBTENIR" non attendu, blanc "de ," :
+                    // le document n'est pas conforme. Un residuel de balisage l'est pas non plus.
+                    List<String> defauts = new ArrayList<>(ControleDocumentProduit.defauts(
+                            fullText, EXTERNES_ATTENDUES.getOrDefault(templateCode, Set.of())));
+                    residualUpperVars.forEach(v -> defauts.add("variable residuelle : " + v));
+                    residualBlocks.forEach(v -> defauts.add("marqueur de bloc residuel : " + v));
+                    Source source = corpus != null && corpus.gabarit(templateCode).isPresent()
+                            ? Source.CORPUS : Source.CLASSPATH;
+                    entry.put("source", source.name());
+                    String enAttente = EN_ATTENTE.getOrDefault(templateCode, Map.of()).get(source);
+                    if (CORPUS_REEL_REQUIS.contains(templateCode) && source == Source.CLASSPATH) {
+                        // Rendu sans le corpus : la liste "corpus reel requis" est perimee.
+                        defauts.add("rendu sans le corpus reel : a retirer de CORPUS_REEL_REQUIS");
+                    }
+                    String statut;
+                    if (enAttente == null) {
+                        statut = defauts.isEmpty() ? "OK" : "FAIL";
+                    } else {
+                        // La liste ne vieillit pas en silence : un document devenu conforme doit en sortir.
+                        statut = defauts.isEmpty() ? "FAIL" : "EN_ATTENTE";
+                        if (defauts.isEmpty()) entry.put("notes", "conforme : a retirer de EN_ATTENTE (" + enAttente + ")");
+                        else entry.put("en_attente", enAttente);
+                    }
+                    entry.put("defauts", defauts);
+                    entry.put("moteur", avecCorpus ? "corpus, sinon classpath" : "classpath");
 
-                    entry.put("ok", true);
-                    entry.put("status", hasResiduals ? "WARN" : "OK");
+                    entry.put("ok", "OK".equals(statut));
+                    entry.put("status", statut);
                     entry.put("template_found", templateFound);
                     entry.put("size_bytes", bytes.length);
                     entry.put("residual_uppercase_vars", new ArrayList<>(residualUpperVars));
                     entry.put("residual_block_markers", new ArrayList<>(residualBlocks));
                     entry.put("output_path", outFile.toAbsolutePath().toString());
+                    if ("FAIL".equals(statut) && !entry.containsKey("notes")) {
+                        entry.put("notes", String.join(" | ", defauts));
+                    }
                     if (!templateFound) {
                         entry.put("notes",
                                 "Template introuvable : placeholder docx généré");
+                    }
+                } catch (ma.jurika.ai.document.GabaritIntrouvableException absent) {
+                    entry.put("ok", false);
+                    entry.put("size_bytes", 0);
+                    entry.put("residual_uppercase_vars", List.of());
+                    entry.put("residual_block_markers", List.of());
+                    if (corpus == null && CORPUS_REEL_REQUIS.contains(templateCode)) {
+                        // Declare, jamais exclu en silence : controle sur le vrai corpus.
+                        requisRencontres.add(templateCode);
+                        entry.put("status", "CORPUS_REEL_REQUIS");
+                        entry.put("notes", "corpus reel requis : controle par ce test sur le serveur et par CorpusReelIT");
+                    } else {
+                        entry.put("status", "FAIL");
+                        entry.put("notes", absent.getClass().getSimpleName() + ": " + absent.getMessage());
                     }
                 } catch (Throwable t) {
                     entry.put("ok", false);
@@ -199,6 +346,21 @@ class DocumentVerificationIT {
                             t.getClass().getSimpleName() + ": " + t.getMessage());
                 }
                 report.add(entry);
+            }
+        }
+
+        // La liste "corpus reel requis" ne vieillit pas en silence : sans corpus, chacun de ses
+        // codes doit avoir ete rencontre (et declare) ; un code absent des bindings fait echouer.
+        if (corpus == null) {
+            for (String code : new java.util.TreeSet<>(CORPUS_REEL_REQUIS)) {
+                if (!requisRencontres.contains(code)) {
+                    Map<String, Object> e = new LinkedHashMap<>();
+                    e.put("template", code);
+                    e.put("ok", false);
+                    e.put("status", "FAIL");
+                    e.put("notes", "declare CORPUS_REEL_REQUIS mais ni rendu ni declare : liste a corriger");
+                    report.add(e);
+                }
             }
         }
 
@@ -222,11 +384,16 @@ class DocumentVerificationIT {
         Files.writeString(reportFile, JSON.writeValueAsString(rootReport));
 
         System.out.println("=== Document verification report ===");
-        System.out.println("Total: " + total + " | OK: " + ok + " | WARN: " + warn + " | FAIL: " + fail);
+        long attente = report.stream().filter(e -> "EN_ATTENTE".equals(e.get("status"))).count();
+        long requis = report.stream().filter(e -> "CORPUS_REEL_REQUIS".equals(e.get("status"))).count();
+        System.out.println("Total: " + total + " | OK: " + ok + " | WARN: " + warn + " | FAIL: " + fail
+                + " | EN_ATTENTE: " + attente + " | CORPUS_REEL_REQUIS: " + requis
+                + " | corpus : " + (corpus == null ? "absent (classpath seul)" : corpus.version()));
         System.out.println("Report: " + reportFile.toAbsolutePath());
         System.out.println("Samples: " + sampleOutputs.toAbsolutePath());
 
-        // Échec dur uniquement si exception (FAIL).
+        // Lot L4a (E1) : echec sur tout document non conforme (FAIL) ; les documents EN_ATTENTE
+        // sont nommes au rapport, avec la passe qui les traite.
         if (fail > 0) {
             StringBuilder sb = new StringBuilder("FAIL count > 0:\n");
             for (Map<String, Object> e : report) {

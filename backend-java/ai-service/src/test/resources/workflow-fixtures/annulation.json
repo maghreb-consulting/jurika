@@ -1,0 +1,454 @@
+{
+  "NOTE_ANNULATION_DOSSIER": {
+    "variables": {
+      "DOSSIER_NUMERO": "T-2026-00042",
+      "DOSSIER_DATE_OUVERTURE": "2026-09-01",
+      "DOSSIER_CHARGE": "Karim ALAOUI",
+      "DOSSIER_DATE_ANNULATION": "2026-10-05",
+      "DOSSIER_MOTIF_ANNULATION": "le client renonce \u00e0 son projet",
+      "ANNULATION_STATUT_ATTEINT": "D\u00e9roulement de la d\u00e9marche",
+      "ANNULATION_ORIGINE": "D\u00e9cision du client",
+      "ANNULATION_DEPOTS_EN_COURS": "oui",
+      "LIEU_SIGNATURE": "Casablanca",
+      "DATE_SIGNATURE": "2026-10-06",
+      "ANNULATION_OBSERVATIONS": "Le client a \u00e9t\u00e9 inform\u00e9 par courriel le 5 octobre 2026.",
+      "BORDEREAU_OBJET": "restitution",
+      "CLIENT_SIGNATAIRE_NOM": "Salma BENNANI",
+      "CLIENT_SIGNATAIRE_QUALITE": "g\u00e9rante",
+      "PIECES_REMISES": [
+        {
+          "PIECE_NUMERO": "1",
+          "PIECE_DESIGNATION": "Original du certificat n\u00e9gatif",
+          "PIECE_FORME": "original",
+          "PIECE_NOMBRE": "1",
+          "PIECE_OBSERVATION": "sans objet"
+        },
+        {
+          "PIECE_NUMERO": "2",
+          "PIECE_DESIGNATION": "Copie de la CIN de la g\u00e9rante",
+          "PIECE_FORME": "copie",
+          "PIECE_NOMBRE": "1",
+          "PIECE_OBSERVATION": "sans objet"
+        }
+      ],
+      "PIECES_NOMBRE_TOTAL": "2",
+      "PIECES_MANQUANTES": "aucune",
+      "DEMARCHES_INTERROMPUES": [
+        {
+          "DEMARCHE_DESIGNATION": "D\u00e9p\u00f4t du proc\u00e8s-verbal",
+          "DEMARCHE_ADMINISTRATION": "Greffe du tribunal de commerce de Casablanca",
+          "DEMARCHE_DATE_DEPOT": "2026-09-20",
+          "DEMARCHE_REFERENCE": "DL-2026-1187",
+          "DEMARCHE_SUITE": "lettre de retrait",
+          "RETRAIT_ADMINISTRATION_ADRESSE": "Boulevard Rachidi, Casablanca",
+          "RETRAIT_OBJET": "Retrait d'une demande en cours",
+          "RETRAIT_DEMANDE_OBJET": "le d\u00e9p\u00f4t du proc\u00e8s-verbal",
+          "RETRAIT_PIECES_JOINTES": "Copie de la d\u00e9cision de la g\u00e9rance du 4 octobre 2026"
+        }
+      ],
+      "POUVOIR_MANDATAIRE_TYPE": "personne physique",
+      "POUVOIR_MANDATAIRE_CIVILITE": "M.",
+      "POUVOIR_MANDATAIRE_PRENOM": "Karim",
+      "POUVOIR_MANDATAIRE_NOM": "Karim ALAOUI",
+      "SIGNATAIRE_NOM_QUALITE": "Karim ALAOUI, mandataire aux formalit\u00e9s"
+    },
+    "societe": {
+      "denomination": "PARACOSME",
+      "formeJuridique": "SARL",
+      "capitalChiffres": "100 000,00",
+      "siegeSocial": "12, rue Ibn Toumert",
+      "ville": "Casablanca"
+    },
+    "gerants": [
+      {
+        "civilite": "Mme",
+        "prenom": "Salma",
+        "nom": "BENNANI"
+      }
+    ]
+  },
+  "LETTRE_RETRAIT_DEPOT": {
+    "variables": {
+      "DOSSIER_NUMERO": "T-2026-00042",
+      "DOSSIER_DATE_OUVERTURE": "2026-09-01",
+      "DOSSIER_CHARGE": "Karim ALAOUI",
+      "DOSSIER_DATE_ANNULATION": "2026-10-05",
+      "DOSSIER_MOTIF_ANNULATION": "le client renonce \u00e0 son projet",
+      "ANNULATION_STATUT_ATTEINT": "D\u00e9roulement de la d\u00e9marche",
+      "ANNULATION_ORIGINE": "D\u00e9cision du client",
+      "ANNULATION_DEPOTS_EN_COURS": "oui",
+      "LIEU_SIGNATURE": "Casablanca",
+      "DATE_SIGNATURE": "2026-10-06",
+      "ANNULATION_OBSERVATIONS": "Le client a \u00e9t\u00e9 inform\u00e9 par courriel le 5 octobre 2026.",
+      "BORDEREAU_OBJET": "restitution",
+      "CLIENT_SIGNATAIRE_NOM": "Salma BENNANI",
+      "CLIENT_SIGNATAIRE_QUALITE": "g\u00e9rante",
+      "PIECES_REMISES": [
+        {
+          "PIECE_NUMERO": "1",
+          "PIECE_DESIGNATION": "Original du certificat n\u00e9gatif",
+          "PIECE_FORME": "original",
+          "PIECE_NOMBRE": "1",
+          "PIECE_OBSERVATION": "sans objet"
+        },
+        {
+          "PIECE_NUMERO": "2",
+          "PIECE_DESIGNATION": "Copie de la CIN de la g\u00e9rante",
+          "PIECE_FORME": "copie",
+          "PIECE_NOMBRE": "1",
+          "PIECE_OBSERVATION": "sans objet"
+        }
+      ],
+      "PIECES_NOMBRE_TOTAL": "2",
+      "PIECES_MANQUANTES": "aucune",
+      "DEMARCHES_INTERROMPUES": [
+        {
+          "DEMARCHE_DESIGNATION": "D\u00e9p\u00f4t du proc\u00e8s-verbal",
+          "DEMARCHE_ADMINISTRATION": "Greffe du tribunal de commerce de Casablanca",
+          "DEMARCHE_DATE_DEPOT": "2026-09-20",
+          "DEMARCHE_REFERENCE": "DL-2026-1187",
+          "DEMARCHE_SUITE": "lettre de retrait",
+          "RETRAIT_ADMINISTRATION_ADRESSE": "Boulevard Rachidi, Casablanca",
+          "RETRAIT_OBJET": "Retrait d'une demande en cours",
+          "RETRAIT_DEMANDE_OBJET": "le d\u00e9p\u00f4t du proc\u00e8s-verbal",
+          "RETRAIT_PIECES_JOINTES": "Copie de la d\u00e9cision de la g\u00e9rance du 4 octobre 2026"
+        }
+      ],
+      "POUVOIR_MANDATAIRE_TYPE": "personne physique",
+      "POUVOIR_MANDATAIRE_CIVILITE": "M.",
+      "POUVOIR_MANDATAIRE_PRENOM": "Karim",
+      "POUVOIR_MANDATAIRE_NOM": "Karim ALAOUI",
+      "SIGNATAIRE_NOM_QUALITE": "Karim ALAOUI, mandataire aux formalit\u00e9s"
+    },
+    "societe": {
+      "denomination": "PARACOSME",
+      "formeJuridique": "SARL",
+      "capitalChiffres": "100 000,00",
+      "siegeSocial": "12, rue Ibn Toumert",
+      "ville": "Casablanca"
+    },
+    "gerants": [
+      {
+        "civilite": "Mme",
+        "prenom": "Salma",
+        "nom": "BENNANI"
+      }
+    ],
+    "retraitIndex": 0
+  },
+  "BORDEREAU_REMISE_DOSSIER": {
+    "variables": {
+      "DOSSIER_NUMERO": "T-2026-00042",
+      "DOSSIER_DATE_OUVERTURE": "2026-09-01",
+      "DOSSIER_CHARGE": "Karim ALAOUI",
+      "DOSSIER_DATE_ANNULATION": "2026-10-05",
+      "DOSSIER_MOTIF_ANNULATION": "le client renonce \u00e0 son projet",
+      "ANNULATION_STATUT_ATTEINT": "D\u00e9roulement de la d\u00e9marche",
+      "ANNULATION_ORIGINE": "D\u00e9cision du client",
+      "ANNULATION_DEPOTS_EN_COURS": "oui",
+      "LIEU_SIGNATURE": "Casablanca",
+      "DATE_SIGNATURE": "2026-10-06",
+      "ANNULATION_OBSERVATIONS": "Le client a \u00e9t\u00e9 inform\u00e9 par courriel le 5 octobre 2026.",
+      "BORDEREAU_OBJET": "restitution",
+      "CLIENT_SIGNATAIRE_NOM": "Salma BENNANI",
+      "CLIENT_SIGNATAIRE_QUALITE": "g\u00e9rante",
+      "PIECES_REMISES": [
+        {
+          "PIECE_NUMERO": "1",
+          "PIECE_DESIGNATION": "Original du certificat n\u00e9gatif",
+          "PIECE_FORME": "original",
+          "PIECE_NOMBRE": "1",
+          "PIECE_OBSERVATION": "sans objet"
+        },
+        {
+          "PIECE_NUMERO": "2",
+          "PIECE_DESIGNATION": "Copie de la CIN de la g\u00e9rante",
+          "PIECE_FORME": "copie",
+          "PIECE_NOMBRE": "1",
+          "PIECE_OBSERVATION": "sans objet"
+        }
+      ],
+      "PIECES_NOMBRE_TOTAL": "2",
+      "PIECES_MANQUANTES": "aucune",
+      "DEMARCHES_INTERROMPUES": [
+        {
+          "DEMARCHE_DESIGNATION": "D\u00e9p\u00f4t du proc\u00e8s-verbal",
+          "DEMARCHE_ADMINISTRATION": "Greffe du tribunal de commerce de Casablanca",
+          "DEMARCHE_DATE_DEPOT": "2026-09-20",
+          "DEMARCHE_REFERENCE": "DL-2026-1187",
+          "DEMARCHE_SUITE": "lettre de retrait",
+          "RETRAIT_ADMINISTRATION_ADRESSE": "Boulevard Rachidi, Casablanca",
+          "RETRAIT_OBJET": "Retrait d'une demande en cours",
+          "RETRAIT_DEMANDE_OBJET": "le d\u00e9p\u00f4t du proc\u00e8s-verbal",
+          "RETRAIT_PIECES_JOINTES": "Copie de la d\u00e9cision de la g\u00e9rance du 4 octobre 2026"
+        }
+      ],
+      "POUVOIR_MANDATAIRE_TYPE": "personne physique",
+      "POUVOIR_MANDATAIRE_CIVILITE": "M.",
+      "POUVOIR_MANDATAIRE_PRENOM": "Karim",
+      "POUVOIR_MANDATAIRE_NOM": "Karim ALAOUI",
+      "SIGNATAIRE_NOM_QUALITE": "Karim ALAOUI, mandataire aux formalit\u00e9s"
+    },
+    "societe": {
+      "denomination": "PARACOSME",
+      "formeJuridique": "SARL",
+      "capitalChiffres": "100 000,00",
+      "siegeSocial": "12, rue Ibn Toumert",
+      "ville": "Casablanca"
+    },
+    "gerants": [
+      {
+        "civilite": "Mme",
+        "prenom": "Salma",
+        "nom": "BENNANI"
+      }
+    ]
+  },
+  "NOTE_ANNULATION_DOSSIER_SOCIETE_EXISTANTE": {
+    "variables": {
+      "DOSSIER_NUMERO": "T-2026-00042",
+      "DOSSIER_DATE_OUVERTURE": "2026-09-01",
+      "DOSSIER_CHARGE": "Karim ALAOUI",
+      "DOSSIER_DATE_ANNULATION": "2026-10-05",
+      "DOSSIER_MOTIF_ANNULATION": "le client renonce \u00e0 son projet",
+      "ANNULATION_STATUT_ATTEINT": "D\u00e9roulement de la d\u00e9marche",
+      "ANNULATION_ORIGINE": "D\u00e9cision du client",
+      "ANNULATION_DEPOTS_EN_COURS": "oui",
+      "LIEU_SIGNATURE": "Casablanca",
+      "DATE_SIGNATURE": "2026-10-06",
+      "ANNULATION_OBSERVATIONS": "Le client a \u00e9t\u00e9 inform\u00e9 par courriel le 5 octobre 2026.",
+      "BORDEREAU_OBJET": "restitution",
+      "CLIENT_SIGNATAIRE_NOM": "Salma BENNANI",
+      "CLIENT_SIGNATAIRE_QUALITE": "g\u00e9rante",
+      "PIECES_REMISES": [
+        {
+          "PIECE_NUMERO": "1",
+          "PIECE_DESIGNATION": "Original du certificat n\u00e9gatif",
+          "PIECE_FORME": "original",
+          "PIECE_NOMBRE": "1",
+          "PIECE_OBSERVATION": "sans objet"
+        },
+        {
+          "PIECE_NUMERO": "2",
+          "PIECE_DESIGNATION": "Copie de la CIN de la g\u00e9rante",
+          "PIECE_FORME": "copie",
+          "PIECE_NOMBRE": "1",
+          "PIECE_OBSERVATION": "sans objet"
+        }
+      ],
+      "PIECES_NOMBRE_TOTAL": "2",
+      "PIECES_MANQUANTES": "aucune",
+      "DEMARCHES_INTERROMPUES": [
+        {
+          "DEMARCHE_DESIGNATION": "D\u00e9p\u00f4t du proc\u00e8s-verbal",
+          "DEMARCHE_ADMINISTRATION": "Greffe du tribunal de commerce de Casablanca",
+          "DEMARCHE_DATE_DEPOT": "2026-09-20",
+          "DEMARCHE_REFERENCE": "DL-2026-1187",
+          "DEMARCHE_SUITE": "lettre de retrait",
+          "RETRAIT_ADMINISTRATION_ADRESSE": "Boulevard Rachidi, Casablanca",
+          "RETRAIT_OBJET": "Retrait d'une demande en cours",
+          "RETRAIT_DEMANDE_OBJET": "le d\u00e9p\u00f4t du proc\u00e8s-verbal",
+          "RETRAIT_PIECES_JOINTES": "Copie de la d\u00e9cision de la g\u00e9rance du 4 octobre 2026"
+        }
+      ],
+      "POUVOIR_MANDATAIRE_TYPE": "personne physique",
+      "POUVOIR_MANDATAIRE_CIVILITE": "M.",
+      "POUVOIR_MANDATAIRE_PRENOM": "Karim",
+      "POUVOIR_MANDATAIRE_NOM": "ALAOUI",
+      "SIGNATAIRE_NOM_QUALITE": "Karim ALAOUI, mandataire aux formalit\u00e9s",
+      "ANNULATION_FAMILLE": "Modification statutaire ou vie sociale",
+      "ANNULATION_OPERATION_LIBELLE": "transfert du si\u00e8ge social",
+      "SUCCURSALE_SOCIETE_ETRANGERE": "non",
+      "SOCIETE_EN_LIQUIDATION": "non",
+      "ANNULATION_DECISION_SOCIALE_ETAT": "d\u00e9cision adopt\u00e9e, \u00e0 rapporter",
+      "ANNULATION_DECISION_ORGANE": "assembl\u00e9e des associ\u00e9s",
+      "ASSEMBLEE_DATE": "2026-09-15",
+      "ANNULATION_FORMALITES_EFFET": "oui",
+      "ENREGISTREMENT_ACTE_DATE": "2026-09-18",
+      "ENREGISTREMENT_ACTE_REFERENCE": "ENR-2026-5521",
+      "RETRAIT_SIGNATAIRE_TYPE": "g\u00e9rance"
+    },
+    "societe": {
+      "denomination": "PARACOSME",
+      "formeJuridique": "SARL",
+      "capitalChiffres": "100 000,00",
+      "siegeSocial": "12, rue Ibn Toumert",
+      "ville": "Casablanca",
+      "ice": "001234567000089",
+      "rcNumero": "456789",
+      "rcVille": "Casablanca"
+    },
+    "gerants": [
+      {
+        "civilite": "Mme",
+        "prenom": "Salma",
+        "nom": "BENNANI"
+      }
+    ]
+  },
+  "LETTRE_RETRAIT_DEPOT_SOCIETE_EXISTANTE": {
+    "variables": {
+      "DOSSIER_NUMERO": "T-2026-00042",
+      "DOSSIER_DATE_OUVERTURE": "2026-09-01",
+      "DOSSIER_CHARGE": "Karim ALAOUI",
+      "DOSSIER_DATE_ANNULATION": "2026-10-05",
+      "DOSSIER_MOTIF_ANNULATION": "le client renonce \u00e0 son projet",
+      "ANNULATION_STATUT_ATTEINT": "D\u00e9roulement de la d\u00e9marche",
+      "ANNULATION_ORIGINE": "D\u00e9cision du client",
+      "ANNULATION_DEPOTS_EN_COURS": "oui",
+      "LIEU_SIGNATURE": "Casablanca",
+      "DATE_SIGNATURE": "2026-10-06",
+      "ANNULATION_OBSERVATIONS": "Le client a \u00e9t\u00e9 inform\u00e9 par courriel le 5 octobre 2026.",
+      "BORDEREAU_OBJET": "restitution",
+      "CLIENT_SIGNATAIRE_NOM": "Salma BENNANI",
+      "CLIENT_SIGNATAIRE_QUALITE": "g\u00e9rante",
+      "PIECES_REMISES": [
+        {
+          "PIECE_NUMERO": "1",
+          "PIECE_DESIGNATION": "Original du certificat n\u00e9gatif",
+          "PIECE_FORME": "original",
+          "PIECE_NOMBRE": "1",
+          "PIECE_OBSERVATION": "sans objet"
+        },
+        {
+          "PIECE_NUMERO": "2",
+          "PIECE_DESIGNATION": "Copie de la CIN de la g\u00e9rante",
+          "PIECE_FORME": "copie",
+          "PIECE_NOMBRE": "1",
+          "PIECE_OBSERVATION": "sans objet"
+        }
+      ],
+      "PIECES_NOMBRE_TOTAL": "2",
+      "PIECES_MANQUANTES": "aucune",
+      "DEMARCHES_INTERROMPUES": [
+        {
+          "DEMARCHE_DESIGNATION": "D\u00e9p\u00f4t du proc\u00e8s-verbal",
+          "DEMARCHE_ADMINISTRATION": "Greffe du tribunal de commerce de Casablanca",
+          "DEMARCHE_DATE_DEPOT": "2026-09-20",
+          "DEMARCHE_REFERENCE": "DL-2026-1187",
+          "DEMARCHE_SUITE": "lettre de retrait",
+          "RETRAIT_ADMINISTRATION_ADRESSE": "Boulevard Rachidi, Casablanca",
+          "RETRAIT_OBJET": "Retrait d'une demande en cours",
+          "RETRAIT_DEMANDE_OBJET": "le d\u00e9p\u00f4t du proc\u00e8s-verbal",
+          "RETRAIT_PIECES_JOINTES": "Copie de la d\u00e9cision de la g\u00e9rance du 4 octobre 2026"
+        }
+      ],
+      "POUVOIR_MANDATAIRE_TYPE": "personne physique",
+      "POUVOIR_MANDATAIRE_CIVILITE": "M.",
+      "POUVOIR_MANDATAIRE_PRENOM": "Karim",
+      "POUVOIR_MANDATAIRE_NOM": "ALAOUI",
+      "SIGNATAIRE_NOM_QUALITE": "Karim ALAOUI, mandataire aux formalit\u00e9s",
+      "ANNULATION_FAMILLE": "Modification statutaire ou vie sociale",
+      "ANNULATION_OPERATION_LIBELLE": "transfert du si\u00e8ge social",
+      "SUCCURSALE_SOCIETE_ETRANGERE": "non",
+      "SOCIETE_EN_LIQUIDATION": "non",
+      "ANNULATION_DECISION_SOCIALE_ETAT": "d\u00e9cision adopt\u00e9e, \u00e0 rapporter",
+      "ANNULATION_DECISION_ORGANE": "assembl\u00e9e des associ\u00e9s",
+      "ASSEMBLEE_DATE": "2026-09-15",
+      "ANNULATION_FORMALITES_EFFET": "oui",
+      "ENREGISTREMENT_ACTE_DATE": "2026-09-18",
+      "ENREGISTREMENT_ACTE_REFERENCE": "ENR-2026-5521",
+      "RETRAIT_SIGNATAIRE_TYPE": "g\u00e9rance"
+    },
+    "societe": {
+      "denomination": "PARACOSME",
+      "formeJuridique": "SARL",
+      "capitalChiffres": "100 000,00",
+      "siegeSocial": "12, rue Ibn Toumert",
+      "ville": "Casablanca",
+      "ice": "001234567000089",
+      "rcNumero": "456789",
+      "rcVille": "Casablanca"
+    },
+    "gerants": [
+      {
+        "civilite": "Mme",
+        "prenom": "Salma",
+        "nom": "BENNANI"
+      }
+    ],
+    "retraitIndex": 0
+  },
+  "BORDEREAU_REMISE_DOSSIER_SOCIETE_EXISTANTE": {
+    "variables": {
+      "DOSSIER_NUMERO": "T-2026-00042",
+      "DOSSIER_DATE_OUVERTURE": "2026-09-01",
+      "DOSSIER_CHARGE": "Karim ALAOUI",
+      "DOSSIER_DATE_ANNULATION": "2026-10-05",
+      "DOSSIER_MOTIF_ANNULATION": "le client renonce \u00e0 son projet",
+      "ANNULATION_STATUT_ATTEINT": "D\u00e9roulement de la d\u00e9marche",
+      "ANNULATION_ORIGINE": "D\u00e9cision du client",
+      "ANNULATION_DEPOTS_EN_COURS": "oui",
+      "LIEU_SIGNATURE": "Casablanca",
+      "DATE_SIGNATURE": "2026-10-06",
+      "ANNULATION_OBSERVATIONS": "Le client a \u00e9t\u00e9 inform\u00e9 par courriel le 5 octobre 2026.",
+      "BORDEREAU_OBJET": "restitution",
+      "CLIENT_SIGNATAIRE_NOM": "Salma BENNANI",
+      "CLIENT_SIGNATAIRE_QUALITE": "g\u00e9rante",
+      "PIECES_REMISES": [
+        {
+          "PIECE_NUMERO": "1",
+          "PIECE_DESIGNATION": "Original du certificat n\u00e9gatif",
+          "PIECE_FORME": "original",
+          "PIECE_NOMBRE": "1",
+          "PIECE_OBSERVATION": "sans objet"
+        },
+        {
+          "PIECE_NUMERO": "2",
+          "PIECE_DESIGNATION": "Copie de la CIN de la g\u00e9rante",
+          "PIECE_FORME": "copie",
+          "PIECE_NOMBRE": "1",
+          "PIECE_OBSERVATION": "sans objet"
+        }
+      ],
+      "PIECES_NOMBRE_TOTAL": "2",
+      "PIECES_MANQUANTES": "aucune",
+      "DEMARCHES_INTERROMPUES": [
+        {
+          "DEMARCHE_DESIGNATION": "D\u00e9p\u00f4t du proc\u00e8s-verbal",
+          "DEMARCHE_ADMINISTRATION": "Greffe du tribunal de commerce de Casablanca",
+          "DEMARCHE_DATE_DEPOT": "2026-09-20",
+          "DEMARCHE_REFERENCE": "DL-2026-1187",
+          "DEMARCHE_SUITE": "lettre de retrait",
+          "RETRAIT_ADMINISTRATION_ADRESSE": "Boulevard Rachidi, Casablanca",
+          "RETRAIT_OBJET": "Retrait d'une demande en cours",
+          "RETRAIT_DEMANDE_OBJET": "le d\u00e9p\u00f4t du proc\u00e8s-verbal",
+          "RETRAIT_PIECES_JOINTES": "Copie de la d\u00e9cision de la g\u00e9rance du 4 octobre 2026"
+        }
+      ],
+      "POUVOIR_MANDATAIRE_TYPE": "personne physique",
+      "POUVOIR_MANDATAIRE_CIVILITE": "M.",
+      "POUVOIR_MANDATAIRE_PRENOM": "Karim",
+      "POUVOIR_MANDATAIRE_NOM": "ALAOUI",
+      "SIGNATAIRE_NOM_QUALITE": "Karim ALAOUI, mandataire aux formalit\u00e9s",
+      "ANNULATION_FAMILLE": "Modification statutaire ou vie sociale",
+      "ANNULATION_OPERATION_LIBELLE": "transfert du si\u00e8ge social",
+      "SUCCURSALE_SOCIETE_ETRANGERE": "non",
+      "SOCIETE_EN_LIQUIDATION": "non",
+      "ANNULATION_DECISION_SOCIALE_ETAT": "d\u00e9cision adopt\u00e9e, \u00e0 rapporter",
+      "ANNULATION_DECISION_ORGANE": "assembl\u00e9e des associ\u00e9s",
+      "ASSEMBLEE_DATE": "2026-09-15",
+      "ANNULATION_FORMALITES_EFFET": "oui",
+      "ENREGISTREMENT_ACTE_DATE": "2026-09-18",
+      "ENREGISTREMENT_ACTE_REFERENCE": "ENR-2026-5521",
+      "RETRAIT_SIGNATAIRE_TYPE": "g\u00e9rance"
+    },
+    "societe": {
+      "denomination": "PARACOSME",
+      "formeJuridique": "SARL",
+      "capitalChiffres": "100 000,00",
+      "siegeSocial": "12, rue Ibn Toumert",
+      "ville": "Casablanca",
+      "ice": "001234567000089",
+      "rcNumero": "456789",
+      "rcVille": "Casablanca"
+    },
+    "gerants": [
+      {
+        "civilite": "Mme",
+        "prenom": "Salma",
+        "nom": "BENNANI"
+      }
+    ]
+  }
+}

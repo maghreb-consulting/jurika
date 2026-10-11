@@ -17,7 +17,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
 import { InfoBulle, TexteAide } from '../ui/Aide';
-import { TypePieceProposee } from './ValeurProposee';
+import { TypePieceProposee, ValeurProposee } from './ValeurProposee';
 
 // --------------------------------------------------------------------------
 // Types publics
@@ -83,6 +83,8 @@ export interface AssocieInput {
    */
   pieceType?: string;
   pieceNumero?: string;
+  /** L4a (E2) : imprimee dans la comparution ("de nationalite ..."), jamais supposee. */
+  nationalite?: string;
   /** L'associé exerce aussi la gérance (désignation depuis la liste des associés). */
   estGerant?: boolean;
 }
@@ -202,6 +204,8 @@ export interface SeanceFormApi {
   heureCloture: string; setHeureCloture: (v: string) => void;
   presidentNom: string; setPresidentNom: (v: string) => void;
   presidentQualite: string; setPresidentQualite: (v: string) => void;
+  /** L4a (E2) : qualite proposee (l'appelant peut l'imposer : organe d'une societe etrangere). */
+  presidentQualitePropose: string;
   secretairePresent: 'oui' | 'non'; setSecretairePresent: (v: 'oui' | 'non') => void;
   secretaireNom: string; setSecretaireNom: (v: string) => void;
   // convocation
@@ -249,16 +253,16 @@ export function useSeanceForm(opts: UseSeanceFormOptions): SeanceFormApi {
   const [lieu, setLieu] = useState(sv('lieu', defaults?.lieu ?? societe.siegeSocial ?? ''));
   const [heureCloture, setHeureCloture] = useState(sv('heureCloture', ''));
   const [presidentNom, setPresidentNom] = useState(sv('presidentNom', defaults?.presidentNom ?? ''));
-  const [presidentQualite, setPresidentQualite] = useState(
-    sv('presidentQualite', defaults?.presidentQualite ?? 'Gérant'),
-  );
+  // L4a (E2) : qualite du president, auteur et mode de convocation : valeurs PROPOSEES,
+  // affichees et confirmees (avant : pre-remplies, transmises sans confirmation).
+  const [presidentQualite, setPresidentQualite] = useState(sv('presidentQualite', ''));
   const [secretairePresent, setSecretairePresent] = useState<'oui' | 'non'>(sv('secretairePresent', 'non'));
   const [secretaireNom, setSecretaireNom] = useState(sv('secretaireNom', ''));
 
-  const [convAuteur, setConvAuteur] = useState(sv('convAuteur', 'la gérance'));
+  const [convAuteur, setConvAuteur] = useState(sv('convAuteur', ''));
   const [convDate, setConvDate] = useState(sv('convDate', defaults?.convDate ?? ''));
   const [convHeure, setConvHeure] = useState(sv('convHeure', defaults?.convHeure ?? ''));
-  const [convMode, setConvMode] = useState(sv('convMode', 'lettre recommandée avec accusé de réception'));
+  const [convMode, setConvMode] = useState(sv('convMode', ''));
   const [convRang, setConvRang] = useState<'première' | 'deuxième'>(
     sv('convRang', defaults?.convocationRang ?? 'première'),
   );
@@ -482,6 +486,7 @@ export function useSeanceForm(opts: UseSeanceFormOptions): SeanceFormApi {
     isAU, societe,
     type, setType, date, setDate, heure, setHeure, lieu, setLieu, heureCloture, setHeureCloture,
     presidentNom, setPresidentNom, presidentQualite, setPresidentQualite,
+    presidentQualitePropose: defaults?.presidentQualite ?? 'gérant',
     secretairePresent, setSecretairePresent, secretaireNom, setSecretaireNom,
     convAuteur, setConvAuteur, convDate, setConvDate, convHeure, setConvHeure,
     convMode, setConvMode,
@@ -529,6 +534,7 @@ export function serializeAssocie(a: AssocieInput) {
     // L3 (D6) : plus de "CIN" par defaut ; la valeur proposee est confirmee a l'ecran.
     pieceType: a.pieceType?.trim() ?? '',
     pieceNumero: a.pieceNumero ?? '',
+    nationalite: a.nationalite?.trim() ?? '',
   };
 }
 
@@ -596,7 +602,9 @@ export function SeanceFormFields({
               <>
                 <TextField label="Heure de clôture" type="time" value={f.heureCloture} onChange={(e) => f.setHeureCloture(e.target.value)} />
                 <TextField label="Président — Nom" value={f.presidentNom} onChange={(e) => f.setPresidentNom(e.target.value)} />
-                <TextField label="Président — Qualité" value={f.presidentQualite} onChange={(e) => f.setPresidentQualite(e.target.value)} placeholder="Ex : Gérant" />
+                <ValeurProposee id="seance-president-qualite" label="Président — Qualité"
+                  proposition={f.presidentQualitePropose} valeur={f.presidentQualite || undefined}
+                  onChange={f.setPresidentQualite} />
                 <Select
                   label="Secrétaire présent ?"
                   value={f.secretairePresent}
@@ -615,7 +623,8 @@ export function SeanceFormFields({
       {sections.convocation && (
         <Card title="Convocation">
           <div className="grid gap-3 md:grid-cols-3">
-            <TextField label="Auteur de la convocation" value={f.convAuteur} onChange={(e) => f.setConvAuteur(e.target.value)} placeholder="Ex : la gérance" />
+            <ValeurProposee id="seance-convocation-auteur" label="Auteur de la convocation"
+              proposition="la gérance" valeur={f.convAuteur || undefined} onChange={f.setConvAuteur} />
             {/* Date ET heure sont masquees ensemble : quand l'etape 1 porte la
                 convocation, elle porte les deux. Les redemander ici obligeait a
                 ressaisir la meme donnee a deux endroits. */}
@@ -625,7 +634,9 @@ export function SeanceFormFields({
                 <TextField label="Heure de convocation" type="time" value={f.convHeure} onChange={(e) => f.setConvHeure(e.target.value)} />
               </>
             )}
-            <TextField label="Mode de convocation" value={f.convMode} onChange={(e) => f.setConvMode(e.target.value)} placeholder="Ex : LRAR" />
+            <ValeurProposee id="seance-convocation-mode" label="Mode de convocation"
+              proposition="lettre recommandée avec accusé de réception" valeur={f.convMode || undefined}
+              onChange={f.setConvMode} />
             {sections.convocationRang && (
               <>
                 <Select
@@ -970,6 +981,15 @@ export function AssocieFields({
           value={value.pieceNumero ?? ''}
           onChange={(e) => onChange({ ...value, pieceNumero: e.target.value })}
           hint="Repris de la fiche société ; complétez s'il manque."
+        />
+      )}
+      {!isMorale && (
+        <ValeurProposee
+          id={`associe-nationalite-${value.nom || value.prenom || 'nouveau'}`}
+          label="Nationalité"
+          proposition="marocaine"
+          valeur={value.nationalite || undefined}
+          onChange={(v) => onChange({ ...value, nationalite: v })}
         />
       )}
       {!isMorale && (

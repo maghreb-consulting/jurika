@@ -11,6 +11,8 @@ import {
   UserPlus,
 } from 'lucide-react';
 import type { FormeJuridique } from '../../../types/ticket';
+import { TypePieceProposee, ValeurProposee } from '../../../components/workflow/ValeurProposee';
+import { libelleNumeroPiece, pieceInvalidMessage, pieceSansExtraction } from './pieceIdentite';
 import { IdentityExtractor } from '../../../components/identity/IdentityExtractor';
 import { toIsoDate } from '../../../types/identity';
 import { useStepAutosave } from '../useStepAutosave';
@@ -64,6 +66,8 @@ type TypePersonne = 'PHYSIQUE' | 'MORALE';
 
 interface Dirigeant {
   id: string;
+  /** Lot L4a (E3) : CIN, passeport ou carte de sejour ; absent = CIN (numero dans `cinNumero`). */
+  pieceType?: string;
   /** Lot L3 : champs remplis par extraction d'une piece et confirmes (provenance EXTRAITE). */
   _extraits?: string[];
   typePersonne: TypePersonne;
@@ -161,7 +165,7 @@ function newDirigeant(): Dirigeant {
     nom: '',
     prenom: '',
     cinNumero: '',
-    nationalite: 'Marocaine',
+    nationalite: '', // L4a (E2) : proposee a l'ecran, jamais supposee
     dateNaissance: '',
     lieuNaissance: '',
     pieceValidite: '',
@@ -422,7 +426,7 @@ export function Step5Dirigeants({
         d.cinNumero &&
         d.adresse &&
         (importMode || d.cinUploaded) &&
-        !cinInvalidMessage(d.cinNumero) &&
+        !pieceInvalidMessage(d.pieceType, d.cinNumero) &&
         // Lot 2 (2026-09-07) — l'acte de nomination du gerant imprime
         // $GERANT_DATE_NAISSANCE : sans elle, l'acte sortait avec un trou
         // (« né le , demeurant à… »). Une date de naissance manquante dans un
@@ -600,9 +604,11 @@ export function Step5Dirigeants({
       } else {
         if (!d.nom) manques.push('nom');
         if (!d.prenom) manques.push('prénom');
-        if (!d.cinNumero) manques.push('n° de CIN');
-        else if (cinInvalidMessage(d.cinNumero)) manques.push('n° de CIN valide');
+        if (!d.pieceType) manques.push('type de pièce d’identité');
+        if (!d.cinNumero) manques.push(libelleNumeroPiece(d.pieceType).replace('N°', 'n°'));
+        else if (pieceInvalidMessage(d.pieceType, d.cinNumero)) manques.push(`${libelleNumeroPiece(d.pieceType).replace('N°', 'n°')} valide`);
         if (!d.adresse) manques.push('adresse');
+        if (!d.nationalite?.trim()) manques.push('nationalité');
         if (!d.dateNaissance) {
           manques.push('date de naissance (imprimée dans l’acte de nomination)');
         }
@@ -675,7 +681,7 @@ export function Step5Dirigeants({
       </div>
 
       {dirigeants.map((d, i) => {
-        const cinError = cinInvalidMessage(d.cinNumero);
+        const cinError = pieceInvalidMessage(d.pieceType, d.cinNumero);
         const isMorale = d.typePersonne === 'MORALE';
         return (
           <div
@@ -871,7 +877,29 @@ export function Step5Dirigeants({
                     est déjà archivée en Data Room on n'affiche PAS l'extracteur
                     par défaut — on indique l'archive existante + bouton
                     "Remplacer" qui rouvre l'extracteur. */}
-                {(!d.cinUploaded || !d.cinFileName || replacingCinIds.has(d.id)) && (
+                {/* L4a (E3) : passeport ou carte de sejour, simplement joints (pas de lecture automatique). */}
+                {pieceSansExtraction(d.pieceType) && (!d.cinUploaded || replacingCinIds.has(d.id)) && (
+                  <label className="mb-3 block text-xs font-medium text-fg">
+                    Joindre la pièce d’identité ({d.pieceType}) *
+                    <input
+                      type="file"
+                      accept="application/pdf,image/*"
+                      className="mt-1 block text-xs"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        update(d.id, { cinUploaded: true, cinFileName: file.name });
+                        void onPieceUploaded?.(
+                          `PIECE_IDENTITE_DIRIGEANT_${d.id.slice(0, 8)}`,
+                          `${d.pieceType} de ${[d.prenom, d.nom].filter(Boolean).join(' ') || 'du dirigeant'}`,
+                          file,
+                        );
+                        setReplacingCinIds((st) => { const next = new Set(st); next.delete(d.id); return next; });
+                      }}
+                    />
+                  </label>
+                )}
+                {!pieceSansExtraction(d.pieceType) && (!d.cinUploaded || !d.cinFileName || replacingCinIds.has(d.id)) && (
                   <IdentityExtractor
                     mode="cin"
                     dossierId={dossierId}
@@ -943,9 +971,14 @@ export function Step5Dirigeants({
                   value={d.prenom}
                   onChange={(e) => update(d.id, { prenom: e.target.value })}
                 />
+                <TypePieceProposee
+                  id={`dirigeant-piece-type-${d.id}`}
+                  valeur={d.pieceType || undefined}
+                  onChange={(v) => update(d.id, { pieceType: v })}
+                />
                 <div>
                   <label className="mb-1 block text-xs text-fg-subtle">
-                    N° CIN <span className="text-danger">*</span>
+                    {libelleNumeroPiece(d.pieceType)} <span className="text-danger">*</span>
                   </label>
                   <input aria-label="N° CIN"
                     type="text"
@@ -966,12 +999,12 @@ export function Step5Dirigeants({
                     </p>
                   )}
                 </div>
-                <Field
-                  label="Nationalite"
-                  value={d.nationalite}
-                  onChange={(e) =>
-                    update(d.id, { nationalite: e.target.value })
-                  }
+                <ValeurProposee
+                  id={`dirigeant-nationalite-${d.id}`}
+                  label="Nationalité"
+                  proposition="marocaine"
+                  valeur={d.nationalite || undefined}
+                  onChange={(v) => update(d.id, { nationalite: v })}
                 />
                 <Field
                   label="Date de naissance"

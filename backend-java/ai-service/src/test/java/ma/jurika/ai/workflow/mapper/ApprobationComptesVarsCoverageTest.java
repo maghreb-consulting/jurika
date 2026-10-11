@@ -46,7 +46,7 @@ class ApprobationComptesVarsCoverageTest {
     @Test
     void pv_approbation_sarl_couvert() {
         assertCovered("PV_APPROBATION_COMPTES_SARL",
-                mapper.map("PV_APPROBATION_COMPTES_SARL", payloadSarl()));
+                mapper.map("PV_APPROBATION_COMPTES_SARL", ApprobationComptesRenderTest.saisi(payloadSarl())));
     }
 
     @Test
@@ -54,8 +54,8 @@ class ApprobationComptesVarsCoverageTest {
         // Le modèle AU référence les DEUX branches associé (physique / morale) : on unit
         // les deux variantes de payload pour couvrir toutes les variables possibles.
         assertCovered("PV_APPROBATION_COMPTES_SARL_AU",
-                mapper.map("PV_APPROBATION_COMPTES_SARL_AU", payloadAuPhysique()),
-                mapper.map("PV_APPROBATION_COMPTES_SARL_AU", payloadAuMorale()));
+                mapper.map("PV_APPROBATION_COMPTES_SARL_AU", ApprobationComptesRenderTest.saisi(payloadAuPhysique())),
+                mapper.map("PV_APPROBATION_COMPTES_SARL_AU", ApprobationComptesRenderTest.saisi(payloadAuMorale())));
     }
 
     @Test

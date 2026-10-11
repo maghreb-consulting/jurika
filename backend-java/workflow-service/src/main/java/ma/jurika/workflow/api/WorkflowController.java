@@ -177,6 +177,23 @@ public class WorkflowController {
         return donneesAttendues.lister(actor.workspaceId(), ticketId);
     }
 
+    /** Lot L4a (E1d) : saisie d'une donnee attendue d'un organisme (depot legal...). */
+    @org.springframework.web.bind.annotation.PutMapping("/{ticketId}/donnees-attendues/{variable}")
+    @PreAuthorize("hasRole('EMPLOYE') and !hasRole('SUPERVISEUR')")
+    public java.util.List<ma.jurika.workflow.application.DonneesAttenduesService.Attendue> saisirDonneeAttendue(
+            @AuthenticationPrincipal AuthenticatedUser actor, @PathVariable UUID ticketId,
+            @PathVariable String variable,
+            @org.springframework.web.bind.annotation.RequestBody java.util.Map<String, String> corps) {
+        employeEnCharge.exiger(actor.workspaceId(), ticketId, actor.userId());
+        String valeur = corps == null ? null : corps.get("valeur");
+        if (valeur == null || valeur.isBlank()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Valeur vide.");
+        }
+        donneesAttendues.saisir(actor.workspaceId(), ticketId, actor.userId(), variable, valeur.trim());
+        return donneesAttendues.lister(actor.workspaceId(), ticketId);
+    }
+
     /** Lot L3 (RG-GEN-05/06) : clauses libres du ticket (auteur, date). */
     @GetMapping("/{ticketId}/clauses-libres")
     @PreAuthorize("hasAnyRole('EMPLOYE','SUPERVISEUR')")

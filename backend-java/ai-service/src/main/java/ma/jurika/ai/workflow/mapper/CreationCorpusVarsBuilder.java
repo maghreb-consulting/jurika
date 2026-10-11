@@ -240,6 +240,13 @@ public final class CreationCorpusVarsBuilder {
             item.put("APPORT_NATURE_APPORTEUR", libelleAssocie(a));
             String description = first(str(a.get("apportNatureDescription")));
             if (!description.isBlank()) item.put("APPORT_NATURE_DESCRIPTION", description);
+            // Lot L4a (E1c) : evaluation saisie par associe a l'etape 6 (methode, origine, charges).
+            for (String[] c : new String[][]{{"apportNatureMethode", "APPORT_NATURE_METHODE"},
+                    {"apportNatureOriginePropriete", "APPORT_NATURE_ORIGINE_PROPRIETE"},
+                    {"apportNatureCharges", "APPORT_NATURE_CHARGES"}}) {
+                String val = str(a.get(c[0]));
+                if (!val.isBlank()) item.put(c[1], val);
+            }
             item.put("APPORT_NATURE_VALEUR_CHIFFRES", entier(valeur));
             item.put("APPORT_NATURE_VALEUR_LETTRES", enLettres(valeur));
             if (valeurNominale.signum() > 0) {

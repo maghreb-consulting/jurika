@@ -229,7 +229,11 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
         }
         // 2026-08 (Phase 3) — mode de designation de la gerance (voie directeur).
         // Non bloquant si absent (defaut « statutaire ») ; libelles exacts sinon.
-        String modeDesig = normLabel(p.get("gerantModeDesignation"));
+        // Lot L4a (E1c) : l'ecran l'ecrit sous `gerance` ; le controle au premier niveau ne
+        // voyait jamais la valeur (controle silencieusement inoperant).
+        Object gerance = p.get("gerance");
+        String modeDesig = normLabel(gerance instanceof Map<?, ?> g && g.get("gerantModeDesignation") != null
+                ? g.get("gerantModeDesignation") : p.get("gerantModeDesignation"));
         if (!modeDesig.isEmpty()
                 && !java.util.Set.of("statutaire", "non statutaire").contains(modeDesig)) {
             return StepResult.blocked(
@@ -255,7 +259,7 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
             } else {
                 requireStr(m, "nom", "Dirigeant " + idx + " : nom");
                 requireStr(m, "prenom", "Dirigeant " + idx + " : prenom");
-                requireStr(m, "cinNumero", "Dirigeant " + idx + " : CIN");
+                requireStr(m, "cinNumero", "Dirigeant " + idx + " : numero de piece d'identite (CIN, passeport ou carte de sejour)");
             }
         }
         // C1 2026-06-21 — Gouvernance de la gerance OBLIGATOIRE (politique stricte
@@ -316,7 +320,7 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
             } else {
                 requireStr(m, "nom", "Associe " + idx + " : nom");
                 requireStr(m, "prenom", "Associe " + idx + " : prenom");
-                requireStr(m, "cin", "Associe " + idx + " : CIN");
+                requireStr(m, "cin", "Associe " + idx + " : numero de piece d'identite (CIN, passeport ou carte de sejour)");
             }
         }
         // RG-C16/S04 : SARL_AU = 1 associe a 100% / SARL = somme parts == nombreParts total

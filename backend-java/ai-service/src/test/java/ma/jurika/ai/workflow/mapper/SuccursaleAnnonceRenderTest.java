@@ -90,6 +90,7 @@ class SuccursaleAnnonceRenderTest {
         p.put("societe", societe());
         p.put("seance", Map.of("type", "extraordinaire", "date", "2026-09-05"));
         p.put("succursale", succursale(dotation, responsable));
+        p.put("formalitesMandataireNom", "Mme Salma IDRISSI"); // L4a : mandataire saisi
         return p;
     }
 

@@ -1,5 +1,11 @@
 {
-  "vote": {"resultat": "adoptée", "majorite": "à l'unanimité", "voixPour": "1000", "voixContre": "0", "abstentions": "0"},
+  "vote": {
+    "resultat": "adoptée",
+    "majorite": "à l'unanimité",
+    "voixPour": "1000",
+    "voixContre": "0",
+    "abstentions": "0"
+  },
   "quorumAtteint": "oui",
   "societe": {
     "denomination": "PARACOSME",
@@ -8,7 +14,13 @@
     "nombreParts": 1000,
     "rcNumero": "123456",
     "villeGreffe": "CASABLANCA",
-    "formeJuridique": "SARL"
+    "formeJuridique": "SARL",
+    "ice": "001122334000055",
+    "ifNumero": "40998877",
+    "ville": "Casablanca",
+    "rcVille": "Casablanca",
+    "identifiantTp": "35501234",
+    "cnssNumero": "8812345"
   },
   "seance": {
     "type": "extraordinaire",
@@ -19,24 +31,67 @@
     "presidentQualite": "gérant",
     "heureCloture": "12H00"
   },
-  "convocation": { "mode": "lettre recommandée", "date": "2026-04-30" },
+  "convocation": {
+    "mode": "lettre recommandée",
+    "date": "2026-04-30"
+  },
   "associes": [
-    { "civilite": "M.", "prenom": "Ahmed", "nom": "Alaoui", "nationalite": "marocaine",
-      "adresse": "5 RUE D'ALGER, CASABLANCA", "pieceType": "CIN", "pieceNumero": "BE123456",
-      "nombreParts": 600, "presence": "présent" },
-    { "civilite": "Mme", "prenom": "Fatima", "nom": "Bennani",
-      "nombreParts": 400, "presence": "présent" }
+    {
+      "civilite": "M.",
+      "prenom": "Ahmed",
+      "nom": "Alaoui",
+      "nationalite": "marocaine",
+      "adresse": "5 RUE D'ALGER, CASABLANCA",
+      "pieceType": "CIN",
+      "pieceNumero": "BE123456",
+      "nombreParts": 600,
+      "presence": "présent"
+    },
+    {
+      "civilite": "Mme",
+      "prenom": "Fatima",
+      "nom": "Bennani",
+      "nombreParts": 400,
+      "presence": "présent"
+    }
   ],
-  "ordreDuJour": ["Dissolution anticipée et mise en liquidation", "Nomination du liquidateur", "Pouvoirs pour formalités"],
+  "ordreDuJour": [
+    "Dissolution anticipée et mise en liquidation",
+    "Nomination du liquidateur",
+    "Pouvoirs pour formalités"
+  ],
   "resolutions": [
-    { "objet": "Dissolution anticipée et mise en liquidation", "type": "dissolution_anticipee", "resultat": "à l'unanimité" },
-    { "objet": "Nomination du liquidateur", "type": "nomination_liquidateur", "resultat": "à l'unanimité" },
-    { "objet": "Pouvoirs pour formalités", "type": "pouvoirs_formalites", "resultat": "à l'unanimité" }
+    {
+      "objet": "Dissolution anticipée et mise en liquidation",
+      "type": "dissolution_anticipee",
+      "resultat": "à l'unanimité"
+    },
+    {
+      "objet": "Nomination du liquidateur",
+      "type": "nomination_liquidateur",
+      "resultat": "à l'unanimité"
+    },
+    {
+      "objet": "Pouvoirs pour formalités",
+      "type": "pouvoirs_formalites",
+      "resultat": "à l'unanimité"
+    }
   ],
-  "dissolution": { "motif": "volontaire", "dateEffet": "2026-05-15", "exerciceClosDate": "2025-12-31" },
+  "dissolution": {
+    "motif": "volontaire",
+    "dateEffet": "2026-05-15",
+    "exerciceClosDate": "2025-12-31",
+    "nature": "anticipée"
+  },
   "liquidateur": {
-    "civilite": "M.", "prenom": "Ahmed", "nom": "Alaoui",
-    "adresse": "5 RUE D'ALGER, CASABLANCA", "pieceType": "CIN", "pieceNumero": "BE123456",
-    "genre": "masculin", "remuneration": "exercées à titre gratuit", "siege": "12 RUE DES FOULES, CASABLANCA"
+    "civilite": "M.",
+    "prenom": "Ahmed",
+    "nom": "Alaoui",
+    "adresse": "5 RUE D'ALGER, CASABLANCA",
+    "pieceType": "CIN",
+    "pieceNumero": "BE123456",
+    "genre": "masculin",
+    "remuneration": "exercées à titre gratuit",
+    "siege": "12 RUE DES FOULES, CASABLANCA"
   }
 }

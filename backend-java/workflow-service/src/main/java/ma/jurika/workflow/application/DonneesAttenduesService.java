@@ -46,6 +46,40 @@ public class DonneesAttenduesService {
     @PersistenceContext
     private EntityManager em;
 
+    private final MagasinVariables magasin;
+
+    public DonneesAttenduesService(MagasinVariables magasin) {
+        this.magasin = magasin;
+    }
+
+    /**
+     * Lot L4a (E1d) : saisie d'une donnee attendue d'un organisme, la ou elle est reclamee.
+     * Seule une donnee que les documents du ticket attendent se saisit ici ; les identifiants
+     * de la societe (RC, ICE, IF, TP, CNSS) se saisissent dans sa fiche, source unique
+     * (RG-VAR-08). La valeur va au magasin du ticket : la donnee est alors "recue" et
+     * l'ecran regenere le document.
+     */
+    @Transactional
+    public void saisir(UUID workspaceId, UUID ticketId, UUID auteur, String variable, String valeur) {
+        TenantContext.set(workspaceId);
+        if (COLONNES_FICHE.containsKey(variable)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT,
+                    "Cette donn\u00e9e se saisit dans la fiche de la soci\u00e9t\u00e9 (Data Room, \u00ab Identifiants de la soci\u00e9t\u00e9 \u00bb).");
+        }
+        List<?> attendue = em.createNativeQuery("""
+                SELECT 1 FROM donnees_attendues
+                WHERE workspace_id = ?1 AND ticket_id = ?2 AND variable = ?3 AND regeneree_le IS NULL
+                """).setParameter(1, workspaceId).setParameter(2, ticketId).setParameter(3, variable).getResultList();
+        if (attendue.isEmpty()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Cette donn\u00e9e n'est pas attendue par les documents du ticket.");
+        }
+        magasin.poser(workspaceId, ticketId, variable, valeur,
+                ma.jurika.workflow.domain.model.VariableDuDossier.Origine.SAISIE, auteur, "donnee-attendue");
+    }
+
     @Transactional
     public void enregistrer(UUID workspaceId, UUID ticketId, String workflowCode, String templateCode,
                             List<Donnee> manquantes) {

@@ -483,6 +483,9 @@ export function Step7Generation({
    * Elles vivent avec l'etape (donc dans le brouillon), pas dans un etat volatile :
    * revenir sur l'etape 7 apres avoir genere ne doit pas les faire disparaitre.
    */
+  // L4a (E1c) : commissaire aux comptes nomme a l'etape 5 (le serveur garde cette saisie).
+  const step5Cac = (data?.step5 as { cacNomme?: boolean; cacNom?: string } | undefined) ?? {};
+  const cacEtape5 = step5Cac.cacNomme && step5Cac.cacNom?.trim() ? step5Cac.cacNom.trim() : '';
   const [complements, setComplements] = useState<Record<string, string>>(
     () => (previous.complements as Record<string, string> | undefined) ?? {},
   );
@@ -1425,6 +1428,16 @@ export function Step7Generation({
               valeur={complements.exerciceFin}
               onChange={(v) => setComplements((prev) => ({ ...prev, exerciceFin: v }))}
             />
+            {cacEtape5 ? (
+              // L4a (E1c, RG-VAR-03) : nomme a l'etape 5, il n'est pas redemande ici.
+              <div>
+                <p className="mb-1 text-xs font-medium text-fg">Commissaire aux comptes</p>
+                <p className="rounded-lg border border-border bg-bg-overlay px-3 py-2 text-sm text-fg">
+                  {cacEtape5}
+                  <span className="block text-[11px] text-fg-subtle">Saisi à l’étape 5 ; corrigez-le à l’étape 5.</span>
+                </p>
+              </div>
+            ) : (
             <div>
               <label htmlFor="complement-commissaireComptesNom" className="mb-1 block text-xs font-medium text-fg">
                 Commissaire aux comptes (s’il en est désigné)
@@ -1437,7 +1450,8 @@ export function Step7Generation({
                 className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm text-fg"
               />
             </div>
-            {(complements.commissaireComptesNom ?? '').trim() !== '' && (
+            )}
+            {((complements.commissaireComptesNom ?? '').trim() !== '' || !!cacEtape5) && (
               <ValeurProposee
                 id="complement-dureeMandatCac"
                 label="Durée du mandat du commissaire aux comptes (exercices)"
@@ -1622,6 +1636,7 @@ export function Step7Generation({
                     attendues={attendues.filter((a) => a.templateCode === tpl.code)}
                     enCours={st.generating}
                     onRegenerer={() => generateOne(tpl)}
+                    ticketId={ticketId}
                   />
                 )}
                 {!readOnly && ticketId && tpl.code.startsWith('STATUTS') && (

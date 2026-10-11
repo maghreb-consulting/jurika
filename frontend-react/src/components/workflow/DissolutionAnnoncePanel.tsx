@@ -48,6 +48,8 @@ export interface DissolutionAnnoncePanelProps {
   dateAGE: string;
   /** Motif de dissolution (étape 1) — tracé au dépôt, non publié dans l'avis. */
   motif?: string;
+  /** L4a (E2) : nature de la dissolution, saisie. */
+  nature?: string;
   liquidateur: AnnonceLiquidateurInput;
   /** Siège de la liquidation (étape 1) = $SIEGE_LIQUIDATION. */
   siegeLiquidation: string;
@@ -82,6 +84,7 @@ export function DissolutionAnnoncePanel({
   denomination,
   dateAGE,
   motif,
+  nature,
   liquidateur,
   siegeLiquidation,
   depotLegalNumero,
@@ -123,7 +126,7 @@ export function DissolutionAnnoncePanel({
     // que la dénomination en repli — AUCUNE re-saisie d'identité.
     societe: { denomination: denomination ?? '' },
     seance: { type: 'extraordinaire', date: dateAGE },
-    dissolution: { motif: motif ?? 'volontaire', date: dateAGE, dateEffet: dateAGE },
+    dissolution: { motif: motif ?? '', nature: nature ?? '', date: dateAGE, dateEffet: dateAGE },
     liquidateur: {
       civilite: liquidateur.civilite ?? '',
       prenom: liquidateur.prenom ?? '',

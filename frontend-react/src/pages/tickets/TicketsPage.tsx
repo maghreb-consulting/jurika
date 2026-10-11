@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useCurrentUser } from '../../store/authStore';
 import { ticketService } from '../../services/ticket.service';
 import type {
@@ -30,7 +31,10 @@ export function TicketsPage() {
   const [filterPriorite, setFilterPriorite] = useState<TicketPriorite | ''>('');
   const [filterStatut, setFilterStatut] = useState<TicketStatut | ''>('');
   const [newOpen, setNewOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState<string | null>(null);
+  // Lot L4a (E6) : /tickets?ticket=<id> ouvre la fiche du ticket (retour d'une annulation
+  // faite depuis un parcours : les documents d'annulation se preparent dans la fiche).
+  const [searchParams] = useSearchParams();
+  const [detailOpen, setDetailOpen] = useState<string | null>(() => searchParams.get('ticket'));
 
   const filtres = useMemo(
     () => ({

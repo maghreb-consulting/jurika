@@ -116,7 +116,7 @@ public final class ModificationDirecteurMapper {
             it.put("RESOLUTION_OBJET", first(str(r.get("objet")), defaultObjet(type)));
             // Lot L3 (D6) : la majorite est saisie ("a l'unanimite" n'est plus suppose).
             it.put("RESOLUTION_RESULTAT", first(str(r.get("resultat")), vote.majorite));
-            fillTypeVars(it, type, r, vnGlobal);
+            fillTypeVars(it, type, r, vnGlobal, templateCode);
             out.add(it);
             n++;
 
@@ -145,11 +145,11 @@ public final class ModificationDirecteurMapper {
     // ==================================================================
 
     private static void fillTypeVars(Map<String, Object> it, String type, Map<String, Object> r,
-                                     String vnGlobal) {
+                                     String vnGlobal, String templateCode) {
         switch (type) {
             case "approbation_comptes" -> {
                 putDate(it, "EXERCICE_CLOS_DATE", r.get("exerciceClosDate"));
-                put(it, "RESULTAT_SENS", normResultatSens(r.get("resultatSens")));
+                put(it, "RESULTAT_SENS", choix(templateCode, r.get("resultatSens"), "RESULTAT_SENS", "R\u00e9sultat de l'exercice (b\u00e9n\u00e9fice ou perte)", ModificationDirecteurMapper::normResultatSens));
                 putAmount(it, "RESULTAT_MONTANT", r.get("resultatMontant"));
             }
             case "affectation_resultat" -> {
@@ -177,13 +177,13 @@ public final class ModificationDirecteurMapper {
                 put(it, "GERANT_SORTANT", sortant ? "oui" : "non");
                 put(it, "GERANT_SORTANT_NOM", str(r.get("gerantSortantNom")));
                 put(it, "GERANT_SORTANT_MOTIF",
-                        first(str(r.get("gerantSortantMotif")), "démission"));
+                        str(r.get("gerantSortantMotif")));
                 putDate(it, "GERANT_SORTANT_DATE_EFFET", r.get("gerantSortantDateEffet"));
-                put(it, "DUREE_GERANCE", first(str(r.get("dureeGerance")), "durée illimitée"));
+                put(it, "DUREE_GERANCE", str(r.get("dureeGerance")));
             }
             case "renouvellement_gerant" -> {
                 put(it, "GERANT_NOM", str(r.get("gerantNom")));
-                put(it, "DUREE_GERANCE", first(str(r.get("dureeGerance")), "durée illimitée"));
+                put(it, "DUREE_GERANCE", str(r.get("dureeGerance")));
             }
             case "revocation_gerant" ->
                 put(it, "GERANT_SORTANT_NOM",
@@ -191,13 +191,13 @@ public final class ModificationDirecteurMapper {
             case "remuneration_gerant" -> {
                 put(it, "GERANT_NOM", str(r.get("gerantNom")));
                 put(it, "REMUNERATION_PERIODICITE",
-                        first(str(r.get("remunerationPeriodicite")), "mensuelle"));
+                        str(r.get("remunerationPeriodicite")));
                 putAmount(it, "REMUNERATION_MONTANT", r.get("remunerationMontant"));
                 putDate(it, "REMUNERATION_DATE_EFFET", r.get("remunerationDateEffet"));
             }
             case "conventions_reglementees" -> { /* aucune variable propre (pilote CAC_EXISTE global) */ }
             case "commissaire_comptes" -> {
-                put(it, "CAC_ACTION", normCacAction(r.get("cacAction")));
+                put(it, "CAC_ACTION", choix(templateCode, r.get("cacAction"), "CAC_ACTION", "Action sur le commissaire aux comptes", ModificationDirecteurMapper::normCacAction));
                 put(it, "COMMISSAIRE_COMPTES_NOM", str(r.get("commissaireComptesNom")));
                 put(it, "DUREE_MANDAT_CAC", str(r.get("dureeMandatCac"))); // L3 (D6) : plus de "trois" par defaut
                 putDate(it, "CAC_FIN_MANDAT_DATE", r.get("cacFinMandatDate"));
@@ -210,20 +210,20 @@ public final class ModificationDirecteurMapper {
                 putAmount(it, "AUGCAP_MONTANT_CHIFFRES", r.get("augcapMontantChiffres"));
                 put(it, "AUGCAP_MONTANT_LETTRES", lettres(r.get("augcapMontantChiffres")));
                 putAmount(it, "AUGCAP_NOUVEAU_CAPITAL", r.get("augcapNouveauCapital"));
-                put(it, "AUGCAP_MODE", normAugcapMode(r.get("augcapMode")));
+                put(it, "AUGCAP_MODE", choix(templateCode, r.get("augcapMode"), "AUGCAP_MODE", "Mode d'augmentation du capital", ModificationDirecteurMapper::normAugcapMode));
                 put(it, "AUGCAP_NB_PARTS_NOUVELLES", str(r.get("augcapNbPartsNouvelles")));
                 put(it, "VALEUR_NOMINALE_PART", first(str(r.get("valeurNominalePart")), vnGlobal));
                 put(it, "AUGCAP_PARTS_DE", str(r.get("augcapPartsDe")));
                 put(it, "AUGCAP_PARTS_A", str(r.get("augcapPartsA")));
                 putAmount(it, "NOUVELLE_VALEUR_NOMINALE", r.get("nouvelleValeurNominale"));
-                put(it, "AUGCAP_LIBERATION_MODE", normLiberationMode(r.get("augcapLiberationMode")));
-                String prime = normOuiNon(r.get("primeEmission"), "non");
+                put(it, "AUGCAP_LIBERATION_MODE", choix(templateCode, r.get("augcapLiberationMode"), "AUGCAP_LIBERATION_MODE", "Mode de lib\u00e9ration", ModificationDirecteurMapper::normLiberationMode));
+                String prime = SaisieExigee.ouiNon(templateCode, r.get("primeEmission"), "PRIME_EMISSION", "Prime d'\u00e9mission (oui ou non)");
                 put(it, "PRIME_EMISSION", prime);
                 putAmount(it, "PRIME_EMISSION_MONTANT", r.get("primeEmissionMontant"));
                 putAmount(it, "PRIME_EMISSION_TOTAL", first0(r.get("primeEmissionTotal"),
                         product(r.get("primeEmissionMontant"), r.get("augcapNbPartsNouvelles"))));
-                put(it, "DPS_SUPPRESSION", normOuiNon(r.get("dpsSuppression"), "non"));
-                put(it, "ARTICLES_MODIFIES", first(str(r.get("articlesModifies")), "6 et 7"));
+                put(it, "DPS_SUPPRESSION", SaisieExigee.ouiNon(templateCode, r.get("dpsSuppression"), "DPS_SUPPRESSION", "Suppression du droit pr\u00e9f\u00e9rentiel (oui ou non)"));
+                put(it, "ARTICLES_MODIFIES", str(r.get("articlesModifies")));
             }
             case "augmentation_capital_nature" -> {
                 put(it, "COMMISSAIRE_APPORTS_NOM", str(r.get("commissaireApportsNom")));
@@ -235,42 +235,41 @@ public final class ModificationDirecteurMapper {
                 putAmount(it, "AUGCAP_NOUVEAU_CAPITAL", r.get("augcapNouveauCapital"));
                 put(it, "AUGCAP_NB_PARTS_NOUVELLES", str(r.get("augcapNbPartsNouvelles")));
                 put(it, "VALEUR_NOMINALE_PART", first(str(r.get("valeurNominalePart")), vnGlobal));
-                put(it, "ARTICLES_MODIFIES", first(str(r.get("articlesModifies")), "6 et 7"));
-                put(it, "FONDS_COMMERCE", normOuiNon(r.get("fondsCommerce"), "non"));
+                put(it, "ARTICLES_MODIFIES", str(r.get("articlesModifies")));
+                put(it, "FONDS_COMMERCE", SaisieExigee.ouiNon(templateCode, r.get("fondsCommerce"), "FONDS_COMMERCE", "Apport d'un fonds de commerce (oui ou non)"));
             }
             case "augmentation_capital_incorporation" -> {
                 putAmount(it, "AUGCAP_MONTANT_CHIFFRES", r.get("augcapMontantChiffres"));
                 putAmount(it, "AUGCAP_NOUVEAU_CAPITAL", r.get("augcapNouveauCapital"));
-                put(it, "INCORPORATION_POSTE", first(str(r.get("incorporationPoste")),
-                        "Report à nouveau"));
-                put(it, "AUGCAP_MODE", normAugcapMode(r.get("augcapMode")));
+                put(it, "INCORPORATION_POSTE", str(r.get("incorporationPoste")));
+                put(it, "AUGCAP_MODE", choix(templateCode, r.get("augcapMode"), "AUGCAP_MODE", "Mode d'augmentation du capital", ModificationDirecteurMapper::normAugcapMode));
                 put(it, "AUGCAP_NB_PARTS_NOUVELLES", str(r.get("augcapNbPartsNouvelles")));
                 put(it, "VALEUR_NOMINALE_PART", first(str(r.get("valeurNominalePart")), vnGlobal));
                 putAmount(it, "NOUVELLE_VALEUR_NOMINALE", r.get("nouvelleValeurNominale"));
-                put(it, "ARTICLES_MODIFIES", first(str(r.get("articlesModifies")), "6 et 7"));
+                put(it, "ARTICLES_MODIFIES", str(r.get("articlesModifies")));
             }
             case "reduction_capital" -> {
-                put(it, "REDCAP_MOTIF", normRedcapMotif(r.get("redcapMotif")));
+                put(it, "REDCAP_MOTIF", choix(templateCode, r.get("redcapMotif"), "REDCAP_MOTIF", "Motif de la r\u00e9duction du capital", ModificationDirecteurMapper::normRedcapMotif));
                 putAmount(it, "REDCAP_MONTANT", r.get("redcapMontant"));
                 putAmount(it, "REDCAP_NOUVEAU_CAPITAL", r.get("redcapNouveauCapital"));
-                put(it, "REDCAP_MODE", normRedcapMode(r.get("redcapMode")));
+                put(it, "REDCAP_MODE", choix(templateCode, r.get("redcapMode"), "REDCAP_MODE", "Mode de r\u00e9duction du capital", ModificationDirecteurMapper::normRedcapMode));
                 put(it, "VALEUR_NOMINALE_PART", first(str(r.get("valeurNominalePart")), vnGlobal));
                 putAmount(it, "NOUVELLE_VALEUR_NOMINALE", r.get("nouvelleValeurNominale"));
                 put(it, "REDCAP_NB_PARTS_NOUVELLES", str(r.get("redcapNbPartsNouvelles")));
                 putAmount(it, "RACHAT_PRIX_PART", r.get("rachatPrixPart"));
                 putDate(it, "RACHAT_DATE_LIMITE", r.get("rachatDateLimite"));
-                put(it, "ARTICLES_MODIFIES", first(str(r.get("articlesModifies")), "6 et 7"));
+                put(it, "ARTICLES_MODIFIES", str(r.get("articlesModifies")));
             }
             case "modification_denomination" -> {
                 put(it, "NOUVELLE_DENOMINATION", str(r.get("nouvelleDenomination")));
                 putDate(it, "DATE_EFFET", r.get("dateEffet"));
-                put(it, "ARTICLES_MODIFIES", first(str(r.get("articlesModifies")), "2"));
+                put(it, "ARTICLES_MODIFIES", str(r.get("articlesModifies")));
             }
             case "modification_objet" -> {
-                put(it, "OBJET_ACTION", normObjetAction(r.get("objetAction")));
+                put(it, "OBJET_ACTION", choix(templateCode, r.get("objetAction"), "OBJET_ACTION", "Action sur l'objet social", ModificationDirecteurMapper::normObjetAction));
                 put(it, "OBJET_MODIFICATION", str(r.get("objetModification")));
                 putDate(it, "DATE_EFFET", r.get("dateEffet"));
-                put(it, "ARTICLES_MODIFIES", first(str(r.get("articlesModifies")), "3"));
+                put(it, "ARTICLES_MODIFIES", str(r.get("articlesModifies")));
             }
             case "transfert_siege" -> {
                 // Fix M1 (2026-08-16) — repli aligné sur le libellé AFFICHÉ par le
@@ -278,23 +277,23 @@ public final class ModificationDirecteurMapper {
                 // écrire « située dans la MÊME préfecture » quand la clé n'arrivait
                 // pas : c'est l'affirmation la plus lourde des deux (elle dispense
                 // des formalités au greffe du nouveau ressort), donc jamais par défaut.
-                put(it, "SIEGE_MEME_PREFECTURE", normOuiNon(r.get("siegeMemePrefecture"), "non"));
+                put(it, "SIEGE_MEME_PREFECTURE", SaisieExigee.ouiNon(templateCode, r.get("siegeMemePrefecture"), "SIEGE_MEME_PREFECTURE", "Nouveau si\u00e8ge dans la m\u00eame pr\u00e9fecture (oui ou non)"));
                 put(it, "NOUVEAU_SIEGE", str(r.get("nouveauSiege")));
                 putDate(it, "DATE_EFFET", r.get("dateEffet"));
-                put(it, "ARTICLES_MODIFIES", first(str(r.get("articlesModifies")), "4"));
+                put(it, "ARTICLES_MODIFIES", str(r.get("articlesModifies")));
             }
             case "prorogation_duree" -> {
                 putDate(it, "DATE_EXPIRATION_INITIALE", r.get("dateExpirationInitiale"));
                 put(it, "PROROGATION_DUREE", str(r.get("prorogationDuree")));
                 putDate(it, "NOUVELLE_DUREE_ECHEANCE", r.get("nouvelleDureeEcheance"));
-                put(it, "ARTICLES_MODIFIES", first(str(r.get("articlesModifies")), "5"));
+                put(it, "ARTICLES_MODIFIES", str(r.get("articlesModifies")));
             }
             case "modification_exercice" -> {
                 put(it, "NOUVELLE_DATE_CLOTURE", str(r.get("nouvelleDateCloture")));
                 put(it, "EXERCICE_TRANSITOIRE_DUREE", str(r.get("exerciceTransitoireDuree")));
                 putDate(it, "EXERCICE_TRANSITOIRE_DEBUT", r.get("exerciceTransitoireDebut"));
                 putDate(it, "EXERCICE_TRANSITOIRE_FIN", r.get("exerciceTransitoireFin"));
-                put(it, "ARTICLES_MODIFIES", first(str(r.get("articlesModifies")), "24"));
+                put(it, "ARTICLES_MODIFIES", str(r.get("articlesModifies")));
             }
             case "mise_harmonie_statuts" -> { /* aucune variable propre */ }
             case "modification_statuts_autre" -> {
@@ -308,15 +307,17 @@ public final class ModificationDirecteurMapper {
                 put(it, "CEDANT_NOM", str(r.get("cedantNom")));
                 put(it, "CESSIONNAIRE_NOM", str(r.get("cessionnaireNom")));
                 putAmount(it, "CESSION_PRIX", r.get("cessionPrix"));
-                put(it, "CESSIONNAIRE_TIERS", normOuiNon(r.get("cessionnaireTiers"), "oui"));
-                put(it, "ARTICLES_MODIFIES", first(str(r.get("articlesModifies")), "6 et 7"));
+                // Lot L4a (E2) : le cessionnaire tiers pilote l'agrement ; jamais suppose.
+                put(it, "CESSIONNAIRE_TIERS", SaisieExigee.ouiNon(templateCode, r.get("cessionnaireTiers"),
+                        "CESSIONNAIRE_TIERS", "Cessionnaire tiers \u00e0 la soci\u00e9t\u00e9 (oui ou non)"));
+                put(it, "ARTICLES_MODIFIES", str(r.get("articlesModifies")));
             }
             case "agrement_transmission" -> {
                 put(it, "CESSION_NB_PARTS", str(r.get("cessionNbParts")));
                 put(it, "TRANSMISSION_ORIGINE",
-                        first(str(r.get("transmissionOrigine")), "une succession"));
+                        str(r.get("transmissionOrigine")));
                 put(it, "CESSIONNAIRE_NOM", str(r.get("cessionnaireNom")));
-                put(it, "ARTICLES_MODIFIES", first(str(r.get("articlesModifies")), "6 et 7"));
+                put(it, "ARTICLES_MODIFIES", str(r.get("articlesModifies")));
             }
             case "nantissement_parts" -> {
                 put(it, "NANTISSEMENT_NB_PARTS", str(r.get("nantissementNbParts")));
@@ -330,7 +331,7 @@ public final class ModificationDirecteurMapper {
                                 !str(r.get("commissaireTransformationNom")).isBlank()), "non"));
                 put(it, "COMMISSAIRE_TRANSFORMATION_NOM", str(r.get("commissaireTransformationNom")));
                 put(it, "TRANSFORMATION_FORME",
-                        first(str(r.get("transformationForme")), "société anonyme"));
+                        str(r.get("transformationForme")));
                 put(it, "TRANSFORMATION_ORGANES", str(r.get("transformationOrganes")));
             }
             case "designation_commissaire_transformation" ->
@@ -339,14 +340,14 @@ public final class ModificationDirecteurMapper {
                 putDate(it, "EXERCICE_CLOS_DATE", r.get("exerciceClosDate"));
             case "operation_restructuration" -> {
                 put(it, "RESTRUCTURATION_NATURE",
-                        first(str(r.get("restructurationNature")), "fusion"));
+                        str(r.get("restructurationNature")));
                 put(it, "RESTRUCTURATION_MODALITES", str(r.get("restructurationModalites")));
             }
             case "cession_parts_pluripersonnelle" -> {
                 put(it, "CESSION_NB_PARTS", str(r.get("cessionNbParts")));
                 put(it, "CESSIONNAIRE_NOM", str(r.get("cessionnaireNom")));
                 putAmount(it, "CESSION_PRIX", r.get("cessionPrix"));
-                put(it, "ARTICLES_MODIFIES", first(str(r.get("articlesModifies")), "6, 7 et 8"));
+                put(it, "ARTICLES_MODIFIES", str(r.get("articlesModifies")));
             }
             case "pouvoirs_formalites" -> { /* aucune variable propre */ }
             default -> { /* type inconnu : seuls ordinal / objet / résultat sont rendus */ }
@@ -377,7 +378,7 @@ public final class ModificationDirecteurMapper {
             it.put("GERANT_CIVILITE", normCivilite(g.get("civilite")));
             it.put("GERANT_PRENOM", str(g.get("prenom")));
             it.put("GERANT_NOM", str(g.get("nom")));
-            it.put("GERANT_NATIONALITE", first(str(g.get("nationalite")), "marocaine"));
+            it.put("GERANT_NATIONALITE", str(g.get("nationalite"))); // L4a (E2) : plus de "marocaine"
             it.put("GERANT_DATE_NAISSANCE", dateStr(g.get("dateNaissance")));
             it.put("GERANT_ADRESSE", str(g.get("adresse")));
             it.put("GERANT_PIECE_TYPE", str(g.get("pieceType"))); // L3 (D6) : plus de "CIN" par defaut
@@ -500,6 +501,13 @@ public final class ModificationDirecteurMapper {
         String s = norm(raw);
         if (s.startsWith("exten") || s.contains("ajout")) return "extension";
         return "modification";
+    }
+
+    /** Lot L4a (E2) : un choix vide ne prend jamais la valeur par defaut de la normalisation. */
+    private static String choix(String templateCode, Object raw, String variable, String libelle,
+                                java.util.function.Function<Object, String> norm) {
+        if (raw == null || String.valueOf(raw).isBlank()) throw SaisieExigee.refus(templateCode, variable, libelle);
+        return norm.apply(raw);
     }
 
     private static String ordinalF(int n) {

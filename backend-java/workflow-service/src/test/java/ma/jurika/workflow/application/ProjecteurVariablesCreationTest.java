@@ -3,6 +3,8 @@ package ma.jurika.workflow.application;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -52,5 +54,26 @@ class ProjecteurVariablesCreationTest {
                 .as("aucun numero saisi : rien a deriver").isEmpty();
         assertThat(ProjecteurVariablesCreation.typePiece(java.util.Map.of("rc", "12345"), true))
                 .as("personne morale : pas de CIN").isEmpty();
+    }
+
+    @Test
+    @DisplayName("L4a (E1c) : la cle d'ecran de CHAQUE champ du catalogue redonne sa variable (chiffres compris)")
+    @SuppressWarnings("unchecked")
+    void reciproqueExacteSurToutLeCatalogue() throws java.io.IOException {
+        java.nio.file.Path catalogue = java.nio.file.Path.of(
+                "../ai-service/src/main/resources/templates/v2/creation-champs.json");
+        Map<String, Object> cat = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readValue(catalogue.toFile(), Map.class);
+        java.util.List<String> fausses = new java.util.ArrayList<>();
+        for (Map<String, Object> c : (java.util.List<Map<String, Object>>) cat.get("champs")) {
+            String cle = (String) c.get("cle");
+            String variable = (String) c.get("variable");
+            if (!variable.equals(ProjecteurVariablesCreation.variableDeLaCle(cle))) fausses.add(cle + " -> " + variable);
+            // Le sens retour (variable -> cle d'ecran) ne vaut que pour la regle de nommage :
+            // les champs herites passent par le bloc `formulaires`, sous leur propre table.
+            if (!Boolean.TRUE.equals(c.get("heritee"))
+                    && !cle.equals(ConstructeurChargeUtileCreation.cleDe(variable))) fausses.add(variable + " -> " + cle);
+        }
+        assertThat(fausses).isEmpty();
     }
 }

@@ -50,7 +50,7 @@ class ApprobationComptesRenderTest {
         // L3 (D6) : le vote est saisi a l'ecran ; chaque cas de ce test le porte.
         payload.putIfAbsent("vote", Map.of("resultat", "adopt\u00e9e", "majorite", "\u00e0 l'unanimit\u00e9",
                 "voixPour", "1000", "voixContre", "0", "abstentions", "0"));
-        Map<String, Object> vars = mapper.map(code, payload);
+        Map<String, Object> vars = mapper.map(code, ApprobationComptesRenderTest.saisi(payload));
         DocumentResult res = engine().generate(code, vars);
         StringBuilder sb = new StringBuilder();
         try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(res.bytes()))) {
@@ -224,7 +224,7 @@ class ApprobationComptesRenderTest {
                 "quitusGerance", "oui",
                 "conventionsReglementees", "non"));
 
-        Map<String, Object> vars = mapper.map("PV_APPROBATION_COMPTES_SARL", p);
+        Map<String, Object> vars = mapper.map("PV_APPROBATION_COMPTES_SARL", ApprobationComptesRenderTest.saisi(p));
         List<Map<String, Object>> res = (List<Map<String, Object>>) vars.get("RESOLUTIONS");
 
         // approbation + affectation + dividendes + conventions + quitus + formalités
@@ -264,7 +264,7 @@ class ApprobationComptesRenderTest {
                 "conventionsReglementees", "oui",
                 "conventionsDetail", "convention de compte courant d'associé du 12/03/2025"));
 
-        Map<String, Object> vars = mapper.map("PV_APPROBATION_COMPTES_SARL", p);
+        Map<String, Object> vars = mapper.map("PV_APPROBATION_COMPTES_SARL", ApprobationComptesRenderTest.saisi(p));
         List<Map<String, Object>> res = (List<Map<String, Object>>) vars.get("RESOLUTIONS");
         String joined = res.stream()
                 .map(r -> String.valueOf(r.get("RESOLUTION_INTITULE")) + ' '
@@ -300,10 +300,26 @@ class ApprobationComptesRenderTest {
                     "dividendeDistribue", "oui", "dividendeParPart", 150L,
                     "dividendeMiseEnPaiementDate", "2026-07-01"));
             DocumentResult res = engine().generate("PV_APPROBATION_COMPTES_SARL",
-                    mapper.map("PV_APPROBATION_COMPTES_SARL", sarl));
+                    mapper.map("PV_APPROBATION_COMPTES_SARL", ApprobationComptesRenderTest.saisi(sarl)));
             java.nio.file.Files.write(out.resolve("PV_APPROBATION_COMPTES_SARL.docx"), res.bytes());
         } catch (Exception ex) {
             System.out.println("[echantillons approbation] ignoré : " + ex.getMessage());
         }
     }
+    /**
+     * Lot L4a (E2) : quitus, conventions et dividendes sont SAISIS (plus de defaut dans le
+     * mapper) ; les cas de ce test les portent, sauf s'ils les fixent eux-memes.
+     */
+    @SuppressWarnings("unchecked")
+    static Map<String, Object> saisi(Map<String, Object> p) {
+        Map<String, Object> copie = new java.util.LinkedHashMap<>(p);
+        Map<String, Object> a = new java.util.LinkedHashMap<>(
+                (Map<String, Object>) copie.getOrDefault("approbation", Map.of()));
+        a.putIfAbsent("quitusGerance", "oui");
+        a.putIfAbsent("conventionsReglementees", "non");
+        a.putIfAbsent("dividendeDistribue", "non");
+        copie.put("approbation", a);
+        return copie;
+    }
+
 }
