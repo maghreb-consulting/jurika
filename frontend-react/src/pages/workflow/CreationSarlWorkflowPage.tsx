@@ -247,6 +247,7 @@ function CreationSarlWorkflowPageBody() {
       civilite?: 'M' | 'Mme';
       nom?: string;
       prenom?: string;
+      pieceType?: string;
       cinNumero?: string;
       adresse?: string;
       isAssociate?: boolean;
@@ -293,6 +294,7 @@ function CreationSarlWorkflowPageBody() {
         nom: d.nom ?? '',
         prenom: d.prenom ?? '',
         cinNumero: d.cinNumero ?? '',
+        pieceType: d.pieceType ?? '', // L4a (E3) : passeport ou carte de sejour compris
         adresse: d.adresse ?? '',
         cinUploaded: !!d.cinUploaded,
         cinFileName: d.cinFileName,

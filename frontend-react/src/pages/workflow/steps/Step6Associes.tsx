@@ -17,7 +17,8 @@ import { IdentityExtractor } from '../../../components/identity/IdentityExtracto
 import { toIsoDate } from '../../../types/identity';
 import { useStepAutosave } from '../useStepAutosave';
 import { InfoBulle } from '../../../components/ui/Aide';
-import { ValeurProposee } from '../../../components/workflow/ValeurProposee';
+import { TypePieceProposee, ValeurProposee } from '../../../components/workflow/ValeurProposee';
+import { libelleNumeroPiece, pieceInvalidMessage, pieceSansExtraction } from './pieceIdentite';
 import { ajouterExtraits, retirerExtraits } from '../provenance';
 import {
   computeDistributedAmounts,
@@ -70,6 +71,8 @@ interface Props {
     nom: string;
     prenom: string;
     cinNumero: string;
+    /** L4a (E3) : type de piece du dirigeant (absent = CIN). */
+    pieceType?: string;
     adresse: string;
     cinUploaded: boolean;
     cinFileName?: string;
@@ -226,6 +229,8 @@ interface Associe {
    * description ni l'evaluation n'etaient saisies par associe : le rapport du commissaire
    * aux apports et les statuts sortaient refuses.
    */
+  /** Lot L4a (E3) : CIN, passeport ou carte de sejour ; absent = CIN (champ historique `cin`). */
+  pieceType?: string;
   apportNatureDescription?: string;
   apportNatureMethode?: string;
   apportNatureOriginePropriete?: string;
@@ -433,6 +438,7 @@ export function Step6Associes({
           nom: d.nom,
           prenom: d.prenom,
           cin: d.cinNumero,
+          pieceType: d.pieceType, // L4a (E3) : piece du dirigeant, reprise telle quelle
           adresse: d.adresse,
           // 2026-08 (contrat CREATION) — un dirigeant marque « associe » EST gerant.
           estGerant: true,
@@ -689,7 +695,7 @@ export function Step6Associes({
       );
     }
     return Boolean(
-      a.nom && a.prenom && a.cin && a.adresse && (importMode || a.cinUploaded) && !cinInvalidMessage(a.cin)
+      a.nom && a.prenom && a.cin && a.adresse && (importMode || a.cinUploaded) && !pieceInvalidMessage(a.pieceType, a.cin)
         // Lot 2 (2026-09-07) — DATE ET LIEU DE NAISSANCE OBLIGATOIRES.
         // L'etape laissait valider sans, et les statuts sortaient avec
         // « M. KARIM TAZI, de nationalite Marocaine, ne le a, demeurant a… » :
@@ -750,14 +756,17 @@ export function Step6Associes({
       } else {
         if (!a.nom) manques.push('nom');
         if (!a.prenom) manques.push('prénom');
-        if (!a.cin) manques.push('n° de CIN');
-        else if (cinInvalidMessage(a.cin)) manques.push('n° de CIN valide');
+        if (!a.pieceType) manques.push('type de pièce d’identité');
+        if (!a.cin) manques.push(libelleNumeroPiece(a.pieceType).replace('N°', 'n°'));
+        else if (pieceInvalidMessage(a.pieceType, a.cin)) manques.push(`${libelleNumeroPiece(a.pieceType).replace('N°', 'n°')} valide`);
         if (!a.adresse) manques.push('adresse');
         if (!a.nationalite?.trim()) manques.push('nationalité (imprimée dans les statuts)');
         if (!a.dateNaissance) manques.push('date de naissance (imprimée dans les statuts)');
         if (!a.lieuNaissance) manques.push('lieu de naissance (imprimé dans les statuts)');
         if (!importMode && !a.cinUploaded) {
-          manques.push('CIN extraite — joindre le fichier ne suffit pas, cliquez « Extraire »');
+          manques.push(pieceSansExtraction(a.pieceType)
+            ? 'pièce d’identité jointe (passeport ou carte de séjour)'
+            : 'CIN extraite — joindre le fichier ne suffit pas, cliquez « Extraire »');
         }
       }
       // Lot L4a (E1c) : apport en nature ou en industrie, decrit par l'associe qui le fait.
@@ -974,7 +983,7 @@ export function Step6Associes({
         )}
 
         {associes.map((a, i) => {
-          const cinError = cinInvalidMessage(a.cin);
+          const cinError = pieceInvalidMessage(a.pieceType, a.cin);
           const isPropagated = !!a.fromDirigeantId;
           const isMorale = a.typePersonne === 'MORALE';
           const montantAffiche = distributedApports[i] ?? (
@@ -1175,7 +1184,30 @@ export function Step6Associes({
                     PAS l'IdentityExtractor par defaut — on indique l'archive
                     existante + bouton "Remplacer" qui rouvre l'extracteur. Evite
                     l'effet "redemande d'upload" a la navigation Step6 -> Step5. */}
-                {!isPropagated && (!a.cinUploaded || !a.cinFileName || replacingCinIds.has(a.id)) && (
+                {/* L4a (E3) : passeport ou carte de sejour -- la lecture automatique ne sait lire
+                    que la CIN ; la piece est simplement jointe (versee en Data Room). */}
+                {!isPropagated && pieceSansExtraction(a.pieceType) && (!a.cinUploaded || replacingCinIds.has(a.id)) && (
+                  <label className="mb-3 block text-xs font-medium text-fg">
+                    Joindre la pièce d’identité ({a.pieceType}) *
+                    <input
+                      type="file"
+                      accept="application/pdf,image/*"
+                      className="mt-1 block text-xs"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        update(a.id, { cinUploaded: true, cinFileName: file.name });
+                        void onPieceUploaded?.(
+                          `PIECE_IDENTITE_ASSOCIE_${a.id.slice(0, 8)}`,
+                          `${a.pieceType} de ${[a.prenom, a.nom].filter(Boolean).join(' ') || 'l’associé'}`,
+                          file,
+                        );
+                        setReplacingCinIds((st) => { const next = new Set(st); next.delete(a.id); return next; });
+                      }}
+                    />
+                  </label>
+                )}
+                {!isPropagated && !pieceSansExtraction(a.pieceType) && (!a.cinUploaded || !a.cinFileName || replacingCinIds.has(a.id)) && (
                   <div className="mb-3">
                     <IdentityExtractor
                       mode="cin"
@@ -1279,9 +1311,23 @@ export function Step6Associes({
                     onChange={(e) => update(a.id, { prenom: e.target.value })}
                     disabled={isPropagated}
                   />
+                  {!isPropagated ? (
+                    <TypePieceProposee
+                      id={`associe-piece-type-${a.id}`}
+                      valeur={a.pieceType || undefined}
+                      onChange={(v) => update(a.id, { pieceType: v })}
+                    />
+                  ) : (
+                    <div>
+                      <label className="mb-1 block text-xs text-fg-subtle">Type de pièce</label>
+                      <p className="flex h-9 items-center rounded-lg border border-border bg-bg-overlay px-3 text-sm opacity-60">
+                        {a.pieceType || 'reprise de l’étape 5'}
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <label className="mb-1 block text-xs text-fg-subtle">
-                      N° CIN <span className="text-danger">*</span>
+                      {libelleNumeroPiece(a.pieceType)} <span className="text-danger">*</span>
                     </label>
                     <input aria-label="N° CIN"
                       type="text"

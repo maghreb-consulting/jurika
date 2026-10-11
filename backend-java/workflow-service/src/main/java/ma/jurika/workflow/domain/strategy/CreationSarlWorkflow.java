@@ -259,7 +259,7 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
             } else {
                 requireStr(m, "nom", "Dirigeant " + idx + " : nom");
                 requireStr(m, "prenom", "Dirigeant " + idx + " : prenom");
-                requireStr(m, "cinNumero", "Dirigeant " + idx + " : CIN");
+                requireStr(m, "cinNumero", "Dirigeant " + idx + " : numero de piece d'identite (CIN, passeport ou carte de sejour)");
             }
         }
         // C1 2026-06-21 — Gouvernance de la gerance OBLIGATOIRE (politique stricte
@@ -320,7 +320,7 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
             } else {
                 requireStr(m, "nom", "Associe " + idx + " : nom");
                 requireStr(m, "prenom", "Associe " + idx + " : prenom");
-                requireStr(m, "cin", "Associe " + idx + " : CIN");
+                requireStr(m, "cin", "Associe " + idx + " : numero de piece d'identite (CIN, passeport ou carte de sejour)");
             }
         }
         // RG-C16/S04 : SARL_AU = 1 associe a 100% / SARL = somme parts == nombreParts total

@@ -236,9 +236,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   `modificationResolutions.tsx`) ; remuneration du liquidateur "exercees a titre gratuit", motif de
   dissolution "volontaire", nationalite "Marocaine" (creation, etape 6). Visibles et modifiables,
   mais jamais confirmees : a passer en valeurs proposees (L4 ou L6).
-- **Creation : seule la CIN est acceptee comme piece** (format controle, scan de la CIN exige) ;
-  le type de piece est derive du n de CIN saisi (D6). Un associe ou gerant etranger (passeport,
-  carte de sejour) ne peut pas etre saisi : a instruire.
 - **Gabarits D3 de dissolution, liquidation et approbation (SARL AU)** : leurs variables du corpus
   (liquidateur personne morale, dates de decision et d'effet...) ne sont pas fournies par les
   mappers ; ces actes sont refuses avec les donnees nommees jusqu'a la reecriture des mappers (L4).
