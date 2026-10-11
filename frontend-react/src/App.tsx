@@ -28,6 +28,7 @@ import AuditLogPage from './pages/admin/AuditLogPage';
 import { WorkspacesPage } from './pages/admin/WorkspacesPage';
 import { WorkspaceDetailPage } from './pages/admin/WorkspaceDetailPage';
 import { UsersPage } from './pages/admin/UsersPage';
+import { ReferentielDemarchesPage } from './pages/admin/ReferentielDemarchesPage';
 import { BillingPage } from './pages/billing/BillingPage';
 import { BillingSuccessPage } from './pages/billing/BillingSuccessPage';
 import { TeamPage } from './pages/team/TeamPage';
@@ -180,6 +181,7 @@ function App() {
             <Route path="/admin/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
             <Route path="/admin/users" element={<UsersPage />} />
             <Route path="/admin/audit" element={<AuditLogPage />} />
+            <Route path="/admin/referentiel-demarches" element={<ReferentielDemarchesPage />} />
           </Route>
         </Route>
 

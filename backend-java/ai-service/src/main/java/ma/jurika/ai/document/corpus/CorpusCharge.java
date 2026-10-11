@@ -38,6 +38,11 @@ public final class CorpusCharge {
         return version;
     }
 
+    /** Lot L4b (E2) : racine du corpus charge (lecture des matrices). */
+    public Path racine() {
+        return racine;
+    }
+
     public DictionnaireUnique dictionnaire() {
         return dictionnaire;
     }
