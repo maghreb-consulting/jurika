@@ -91,6 +91,10 @@ public final class SuccursaleVarsBuilder {
         List<Map<String, Object>> res = new ArrayList<>();
         String villeGreffe = str(v.get("SUCCURSALE_VILLE_GREFFE"));
         VoteSaisi voixPour = VoteSaisi.de(safe);
+        // L4a (E2) : textes composes ici ; chaque donnee inseree est exigee.
+        SaisieExigee.toutes(templateCode, v, "SUCCURSALE_ADRESSE", "Adresse de la succursale", "SUCCURSALE_VILLE", "Ville de la succursale",
+                "SUCCURSALE_ENSEIGNE", "Enseigne de la succursale", "SUCCURSALE_ACTIVITE", "Activit\u00e9 de la succursale",
+                "SUCCURSALE_DATE_OUVERTURE", "Date d'ouverture de la succursale");
         res.add(resolution("Ouverture de la succursale",
                 "Décision est prise d'ouvrir une succursale de la société à "
                         + str(v.get("SUCCURSALE_ADRESSE")) + " (" + str(v.get("SUCCURSALE_VILLE"))
@@ -99,6 +103,10 @@ public final class SuccursaleVarsBuilder {
                         + ", à compter du " + str(v.get("SUCCURSALE_DATE_OUVERTURE")) + ".",
                 isAu, voixPour));
         if ("oui".equals(respPresent)) {
+            SaisieExigee.toutes(templateCode, v, "SUCCURSALE_RESPONSABLE_NOM", "Nom du responsable", "SUCCURSALE_RESPONSABLE_NATIONALITE", "Nationalit\u00e9 du responsable",
+                    "SUCCURSALE_RESPONSABLE_ADRESSE", "Adresse du responsable", "SUCCURSALE_RESPONSABLE_PIECE_TYPE", "Type de pi\u00e8ce du responsable",
+                    "SUCCURSALE_RESPONSABLE_PIECE_NUMERO", "Num\u00e9ro de pi\u00e8ce du responsable",
+                    "SUCCURSALE_RESPONSABLE_POUVOIRS", "Pouvoirs du responsable");
             res.add(resolution("Désignation du responsable de la succursale",
                     "Est nommé(e) responsable de la succursale " + responsableLabel(v)
                             + ", de nationalité " + str(v.get("SUCCURSALE_RESPONSABLE_NATIONALITE"))
@@ -150,18 +158,24 @@ public final class SuccursaleVarsBuilder {
         put(v, "REPRESENTANT_SUCCURSALE_NOM", str(rep.get("nom")));
         put(v, "REPRESENTANT_SUCCURSALE_NATIONALITE", str(rep.get("nationalite")));
         put(v, "REPRESENTANT_SUCCURSALE_ADRESSE", str(rep.get("adresse")));
-        put(v, "REPRESENTANT_SUCCURSALE_PIECE_TYPE", first(str(rep.get("pieceType")), "carte de séjour"));
+        put(v, "REPRESENTANT_SUCCURSALE_PIECE_TYPE", str(rep.get("pieceType"))); // L4a (E2) : saisi
         put(v, "REPRESENTANT_SUCCURSALE_PIECE_NUMERO", first(str(rep.get("pieceNumero")),
                 str(rep.get("cin"))));
-        put(v, "REPRESENTANT_SUCCURSALE_POUVOIRS", first(str(rep.get("pouvoirs")),
-                "diriger la succursale et représenter la société auprès des tiers et des"
-                        + " administrations marocaines"));
+        // L4a (E2) : pouvoirs saisis (l'ecran propose l'usage, a confirmer).
+        put(v, "REPRESENTANT_SUCCURSALE_POUVOIRS", str(rep.get("pouvoirs")));
 
         String mandataire = mandataireNom(safe, v, templateCode);
         String villeGreffe = str(v.get("SUCCURSALE_VILLE_GREFFE"));
         VoteSaisi voixPour = VoteSaisi.de(safe).avecVoixPour(str(organe.get("voixPour")));
 
         List<Map<String, Object>> res = new ArrayList<>();
+        SaisieExigee.toutes(templateCode, v, "SUCCURSALE_ADRESSE", "Adresse de la succursale", "SUCCURSALE_VILLE", "Ville de la succursale",
+                "SUCCURSALE_ENSEIGNE", "Enseigne de la succursale", "SUCCURSALE_ACTIVITE", "Activit\u00e9 de la succursale",
+                "SUCCURSALE_DATE_OUVERTURE", "Date d'ouverture de la succursale",
+                "REPRESENTANT_SUCCURSALE_NOM", "Nom du repr\u00e9sentant", "REPRESENTANT_SUCCURSALE_NATIONALITE", "Nationalit\u00e9 du repr\u00e9sentant",
+                "REPRESENTANT_SUCCURSALE_ADRESSE", "Adresse du repr\u00e9sentant", "REPRESENTANT_SUCCURSALE_PIECE_TYPE", "Type de pi\u00e8ce du repr\u00e9sentant",
+                "REPRESENTANT_SUCCURSALE_PIECE_NUMERO", "Num\u00e9ro de pi\u00e8ce du repr\u00e9sentant",
+                "REPRESENTANT_SUCCURSALE_POUVOIRS", "Pouvoirs du repr\u00e9sentant");
         res.add(resolution("Ouverture d'une succursale au Maroc",
                 "Décision est prise d'ouvrir une succursale au Maroc à " + str(v.get("SUCCURSALE_ADRESSE"))
                         + " (" + str(v.get("SUCCURSALE_VILLE")) + "), sous l'enseigne "
@@ -207,8 +221,7 @@ public final class SuccursaleVarsBuilder {
         put(v, "SUCCURSALE_RC_NUMERO", first(str(succ.get("rcNumero")), str(succ.get("rc"))));
         put(v, "SUCCURSALE_DATE_FERMETURE", dateStr(first0(succ.get("dateFermeture"),
                 succ.get("dateEffet"))));
-        put(v, "SUCCURSALE_MOTIF", first(str(succ.get("motif")),
-                "cessation de l'activité exercée dans la succursale"));
+        put(v, "SUCCURSALE_MOTIF", str(succ.get("motif"))); // L4a (E2) : motif saisi
         // Responsable dont les fonctions cessent (identité réduite : civilité / prénom / nom).
         String respPresent = putResponsable(v, succ, true);
         String mandataire = mandataireNom(safe, v, templateCode);
@@ -216,6 +229,9 @@ public final class SuccursaleVarsBuilder {
         VoteSaisi voixPour = VoteSaisi.de(safe);
 
         List<Map<String, Object>> res = new ArrayList<>();
+        SaisieExigee.toutes(templateCode, v, "SUCCURSALE_ADRESSE", "Adresse de la succursale",
+                "SUCCURSALE_VILLE", "Ville de la succursale", "SUCCURSALE_RC_NUMERO", "Num\u00e9ro RC de la succursale",
+                "SUCCURSALE_DATE_FERMETURE", "Date de fermeture", "SUCCURSALE_MOTIF", "Motif de la fermeture");
         res.add(resolution("Fermeture de la succursale",
                 "Décision est prise de fermer la succursale sise à " + str(v.get("SUCCURSALE_ADRESSE"))
                         + " (" + str(v.get("SUCCURSALE_VILLE")) + "), immatriculée sous le numéro "
@@ -477,14 +493,13 @@ public final class SuccursaleVarsBuilder {
         put(v, "SUCCURSALE_RESPONSABLE_PRENOM", str(r.get("prenom")));
         put(v, "SUCCURSALE_RESPONSABLE_NOM", str(r.get("nom")));
         if (!reduced) {
-            put(v, "SUCCURSALE_RESPONSABLE_NATIONALITE", first(str(r.get("nationalite")), "marocaine"));
+            put(v, "SUCCURSALE_RESPONSABLE_NATIONALITE", first(str(r.get("nationalite")))); // L4a (E2)
             put(v, "SUCCURSALE_RESPONSABLE_ADRESSE", str(r.get("adresse")));
             put(v, "SUCCURSALE_RESPONSABLE_PIECE_TYPE", str(r.get("pieceType"))); // L3 (D6) : plus de "CIN" par defaut
             put(v, "SUCCURSALE_RESPONSABLE_PIECE_NUMERO", first(str(r.get("pieceNumero")),
                     str(r.get("cin"))));
-            put(v, "SUCCURSALE_RESPONSABLE_POUVOIRS", first(str(r.get("pouvoirs")),
-                    "la gestion courante de la succursale et la représentation de la société auprès"
-                            + " des tiers et des administrations"));
+            // L4a (E2) : pouvoirs saisis (l'ecran propose l'usage, a confirmer).
+            put(v, "SUCCURSALE_RESPONSABLE_POUVOIRS", str(r.get("pouvoirs")));
         }
         return present;
     }

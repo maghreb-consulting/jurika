@@ -86,7 +86,8 @@
     }
   ],
   "dissolution": {
-    "date": "2026-05-15"
+    "date": "2026-05-15",
+    "nature": "anticipée"
   },
   "liquidateur": {
     "civilite": "M.",

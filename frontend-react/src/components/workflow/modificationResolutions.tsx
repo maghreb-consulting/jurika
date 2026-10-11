@@ -8,7 +8,6 @@
  *
  * Aligné 1:1 sur {@code ModificationDirecteurMapper.fillTypeVars} (33 types).
  */
-import { useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
@@ -65,7 +64,7 @@ export const RES_SPECS: Record<string, TypeSpec> = {
       { key: 'siegeMemePrefecture', label: 'Même préfecture / province ?', kind: 'select', options: OUI_NON },
       { key: 'nouveauSiege', label: 'Nouveau siège', kind: 'text' },
       { key: 'dateEffet', label: "Date d'effet", kind: 'date' },
-      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', placeholder: '4' },
+      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', proposition: '4' },
     ],
   },
   modification_denomination: {
@@ -73,7 +72,7 @@ export const RES_SPECS: Record<string, TypeSpec> = {
     fields: [
       { key: 'nouvelleDenomination', label: 'Nouvelle dénomination', kind: 'text' },
       { key: 'dateEffet', label: "Date d'effet", kind: 'date' },
-      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', placeholder: '2' },
+      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', proposition: '2' },
     ],
   },
   modification_objet: {
@@ -85,7 +84,7 @@ export const RES_SPECS: Record<string, TypeSpec> = {
       ] },
       { key: 'objetModification', label: 'Texte (nouvel objet / activités ajoutées)', kind: 'textarea' },
       { key: 'dateEffet', label: "Date d'effet", kind: 'date' },
-      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', placeholder: '3' },
+      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', proposition: '3' },
     ],
   },
   modification_exercice: {
@@ -95,7 +94,7 @@ export const RES_SPECS: Record<string, TypeSpec> = {
       { key: 'exerciceTransitoireDuree', label: 'Durée exercice transitoire (mois)', kind: 'number' },
       { key: 'exerciceTransitoireDebut', label: 'Début exercice transitoire', kind: 'date' },
       { key: 'exerciceTransitoireFin', label: 'Fin exercice transitoire', kind: 'date' },
-      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', placeholder: '24' },
+      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', proposition: '24' },
     ],
   },
   prorogation_duree: {
@@ -104,7 +103,7 @@ export const RES_SPECS: Record<string, TypeSpec> = {
       { key: 'dateExpirationInitiale', label: "Date d'expiration initiale", kind: 'date' },
       { key: 'prorogationDuree', label: 'Prorogation (années)', kind: 'number' },
       { key: 'nouvelleDureeEcheance', label: 'Nouvelle échéance', kind: 'date' },
-      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', placeholder: '5' },
+      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', proposition: '5' },
     ],
   },
   mise_harmonie_statuts: {
@@ -139,7 +138,7 @@ export const RES_SPECS: Record<string, TypeSpec> = {
       { key: 'primeEmission', label: "Prime d'émission ?", kind: 'select', options: OUI_NON },
       { key: 'primeEmissionMontant', label: 'Prime par part (MAD)', kind: 'number' },
       { key: 'dpsSuppression', label: 'Suppression du DPS ?', kind: 'select', options: OUI_NON },
-      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', placeholder: '6 et 7' },
+      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', proposition: '6 et 7' },
     ],
     sublist: {
       key: 'beneficiairesDps', label: 'Bénéficiaires (si DPS supprimé)',
@@ -161,7 +160,7 @@ export const RES_SPECS: Record<string, TypeSpec> = {
       { key: 'augcapNbPartsNouvelles', label: 'Nb de parts nouvelles', kind: 'number' },
       { key: 'valeurNominalePart', label: 'Valeur nominale (MAD)', kind: 'number' },
       { key: 'fondsCommerce', label: 'Apport = fonds de commerce ?', kind: 'select', options: OUI_NON },
-      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', placeholder: '6 et 7' },
+      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', proposition: '6 et 7' },
     ],
   },
   augmentation_capital_incorporation: {
@@ -169,7 +168,7 @@ export const RES_SPECS: Record<string, TypeSpec> = {
     fields: [
       { key: 'augcapMontantChiffres', label: "Montant de l'augmentation (MAD)", kind: 'number' },
       { key: 'augcapNouveauCapital', label: 'Nouveau capital (MAD)', kind: 'number' },
-      { key: 'incorporationPoste', label: 'Poste incorporé', kind: 'text', placeholder: 'Report à nouveau' },
+      { key: 'incorporationPoste', label: 'Poste incorporé', kind: 'text', placeholder: 'ex. : Report à nouveau' },
       { key: 'augcapMode', label: 'Mode', kind: 'select', options: [
         { value: 'création de parts nouvelles', label: 'Création de parts nouvelles' },
         { value: 'élévation du nominal', label: 'Élévation du nominal' },
@@ -177,7 +176,7 @@ export const RES_SPECS: Record<string, TypeSpec> = {
       { key: 'augcapNbPartsNouvelles', label: 'Nb de parts nouvelles', kind: 'number' },
       { key: 'valeurNominalePart', label: 'Valeur nominale (MAD)', kind: 'number' },
       { key: 'nouvelleValeurNominale', label: 'Nouvelle valeur nominale (si élévation)', kind: 'number' },
-      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', placeholder: '6 et 7' },
+      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', proposition: '6 et 7' },
     ],
   },
   reduction_capital: {
@@ -199,7 +198,7 @@ export const RES_SPECS: Record<string, TypeSpec> = {
       { key: 'redcapNbPartsNouvelles', label: 'Nb de parts après échange', kind: 'number' },
       { key: 'rachatPrixPart', label: 'Prix de rachat par part (MAD)', kind: 'number' },
       { key: 'rachatDateLimite', label: 'Date limite de rachat', kind: 'date' },
-      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', placeholder: '6 et 7' },
+      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', proposition: '6 et 7' },
     ],
   },
   // ---- Parts sociales ----
@@ -213,16 +212,16 @@ export const RES_SPECS: Record<string, TypeSpec> = {
       { key: 'cessionnaireNom', label: 'Cessionnaire', kind: 'text' },
       { key: 'cessionPrix', label: 'Prix global (MAD)', kind: 'number' },
       { key: 'cessionnaireTiers', label: 'Cessionnaire tiers (non associé) ?', kind: 'select', options: OUI_NON },
-      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', placeholder: '6 et 7' },
+      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', proposition: '6 et 7' },
     ],
   },
   agrement_transmission: {
     label: "Agrément d'une transmission de parts", family: FAM_PARTS, auExclu: true,
     fields: [
       { key: 'cessionNbParts', label: 'Nb de parts transmises', kind: 'number' },
-      { key: 'transmissionOrigine', label: 'Origine', kind: 'text', placeholder: 'une succession' },
+      { key: 'transmissionOrigine', label: 'Origine', kind: 'text', placeholder: 'ex. : une succession' },
       { key: 'cessionnaireNom', label: 'Attributaire', kind: 'text' },
-      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', placeholder: '6 et 7' },
+      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', proposition: '6 et 7' },
     ],
   },
   nantissement_parts: {
@@ -240,7 +239,7 @@ export const RES_SPECS: Record<string, TypeSpec> = {
       { key: 'cessionNbParts', label: 'Nb de parts cédées', kind: 'number' },
       { key: 'cessionnaireNom', label: 'Cessionnaire', kind: 'text' },
       { key: 'cessionPrix', label: 'Prix global (MAD)', kind: 'number' },
-      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', placeholder: '6, 7 et 8' },
+      { key: 'articlesModifies', label: 'Article(s) modifié(s)', kind: 'text', proposition: '6, 7 et 8' },
     ],
   },
   // ---- Gérance ----
@@ -249,9 +248,9 @@ export const RES_SPECS: Record<string, TypeSpec> = {
     fields: [
       { key: 'gerantSortant', label: 'Gérant sortant ?', kind: 'select', options: OUI_NON },
       { key: 'gerantSortantNom', label: 'Nom du gérant sortant', kind: 'text' },
-      { key: 'gerantSortantMotif', label: 'Motif de cessation', kind: 'text', placeholder: 'démission' },
+      { key: 'gerantSortantMotif', label: 'Motif de cessation', kind: 'text', placeholder: 'ex. : démission' },
       { key: 'gerantSortantDateEffet', label: "Date d'effet cessation", kind: 'date' },
-      { key: 'dureeGerance', label: 'Durée du mandat', kind: 'text', placeholder: 'durée illimitée' },
+      { key: 'dureeGerance', label: 'Durée du mandat', kind: 'text', proposition: 'durée illimitée' },
     ],
     sublist: {
       key: 'gerants', label: 'Gérant(s) nommé(s)',
@@ -271,7 +270,7 @@ export const RES_SPECS: Record<string, TypeSpec> = {
     label: 'Renouvellement du mandat de gérant', family: FAM_GERANCE,
     fields: [
       { key: 'gerantNom', label: 'Gérant', kind: 'text' },
-      { key: 'dureeGerance', label: 'Durée du mandat', kind: 'text', placeholder: 'durée illimitée' },
+      { key: 'dureeGerance', label: 'Durée du mandat', kind: 'text', proposition: 'durée illimitée' },
     ],
   },
   revocation_gerant: {
@@ -282,7 +281,7 @@ export const RES_SPECS: Record<string, TypeSpec> = {
     label: 'Rémunération de la gérance', family: FAM_GERANCE,
     fields: [
       { key: 'gerantNom', label: 'Gérant', kind: 'text' },
-      { key: 'remunerationPeriodicite', label: 'Périodicité', kind: 'text', placeholder: 'mensuelle' },
+      { key: 'remunerationPeriodicite', label: 'Périodicité', kind: 'text', proposition: 'mensuelle' },
       { key: 'remunerationMontant', label: 'Montant (MAD)', kind: 'number' },
       { key: 'remunerationDateEffet', label: "Date d'effet", kind: 'date' },
     ],
@@ -298,7 +297,7 @@ export const RES_SPECS: Record<string, TypeSpec> = {
     fields: [
       { key: 'commissaireTransformationExiste', label: 'Commissaire à la transformation ?', kind: 'select', options: OUI_NON },
       { key: 'commissaireTransformationNom', label: 'Commissaire à la transformation', kind: 'text' },
-      { key: 'transformationForme', label: 'Forme nouvelle', kind: 'text', placeholder: 'société anonyme' },
+      { key: 'transformationForme', label: 'Forme nouvelle', kind: 'text', placeholder: 'ex. : société anonyme' },
       { key: 'transformationOrganes', label: 'Organes de la forme nouvelle', kind: 'textarea' },
     ],
   },
@@ -561,18 +560,15 @@ function SelectField({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const fallback = spec.options?.[0]?.value ?? '';
-  const effective = value || fallback;
-  useEffect(() => {
-    if (!value && fallback) onChange(fallback);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, fallback]);
+  // L4a (E2) : plus de premiere option appliquee d'office (valeur affichee mais jamais
+  // choisie) ; l'employe choisit, et la generation nomme un choix manquant.
   return (
     <Select
       label={spec.label}
-      value={effective}
+      value={value}
       onChange={(e) => onChange(e.target.value)}
-      options={spec.options ?? []}
+      options={[{ value: '', label: 'Choisir…' }, ...(spec.options ?? [])]}
+      hint={value ? undefined : 'À choisir.'}
     />
   );
 }

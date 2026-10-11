@@ -17,6 +17,7 @@ import { IdentityExtractor } from '../../../components/identity/IdentityExtracto
 import { toIsoDate } from '../../../types/identity';
 import { useStepAutosave } from '../useStepAutosave';
 import { InfoBulle } from '../../../components/ui/Aide';
+import { ValeurProposee } from '../../../components/workflow/ValeurProposee';
 import { ajouterExtraits, retirerExtraits } from '../provenance';
 import {
   computeDistributedAmounts,
@@ -241,7 +242,7 @@ function newAssocie(): Associe {
     prenom: '',
     cin: '',
     adresse: '',
-    nationalite: 'Marocaine',
+    nationalite: '', // L4a (E2) : proposee a l'ecran, jamais supposee
     dateNaissance: '',
     lieuNaissance: '',
     pieceValidite: '',
@@ -752,6 +753,7 @@ export function Step6Associes({
         if (!a.cin) manques.push('n° de CIN');
         else if (cinInvalidMessage(a.cin)) manques.push('n° de CIN valide');
         if (!a.adresse) manques.push('adresse');
+        if (!a.nationalite?.trim()) manques.push('nationalité (imprimée dans les statuts)');
         if (!a.dateNaissance) manques.push('date de naissance (imprimée dans les statuts)');
         if (!a.lieuNaissance) manques.push('lieu de naissance (imprimé dans les statuts)');
         if (!importMode && !a.cinUploaded) {
@@ -1340,15 +1342,22 @@ export function Step6Associes({
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-fg-subtle">Nationalite</label>
-                    <input aria-label="Nationalite"
-                      type="text"
-                      value={a.nationalite ?? 'marocaine'}
-                      onChange={(e) => update(a.id, { nationalite: e.target.value })}
-                      placeholder="marocaine"
-                      disabled={isPropagated}
-                      className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm disabled:opacity-60"
-                    />
+                    {isPropagated ? (
+                      <>
+                        <label className="mb-1 block text-xs text-fg-subtle">Nationalité</label>
+                        <p className="flex h-9 items-center rounded-lg border border-border bg-bg-overlay px-3 text-sm opacity-60">
+                          {a.nationalite || 'à saisir à l’étape 5'}
+                        </p>
+                      </>
+                    ) : (
+                      <ValeurProposee
+                        id={`associe-nationalite-${a.id}`}
+                        label="Nationalité"
+                        proposition="marocaine"
+                        valeur={a.nationalite || undefined}
+                        onChange={(v) => update(a.id, { nationalite: v })}
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="mb-1 block text-xs text-fg-subtle">CIN valable jusqu'au</label>

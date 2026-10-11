@@ -108,7 +108,8 @@
       "nationalite": "marocaine",
       "adresse": "3 Rue Oukaimeden, Rabat",
       "pieceType": "CIN",
-      "pieceNumero": "A123456"
+      "pieceNumero": "A123456",
+      "pouvoirs": "diriger la succursale et représenter la société auprès des tiers et des administrations marocaines"
     },
     "formalitesMandataireNom": "Mme Amina BERRADA",
     "nombreOriginaux": "quatre"

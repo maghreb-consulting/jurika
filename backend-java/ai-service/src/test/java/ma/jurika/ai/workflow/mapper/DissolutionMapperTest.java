@@ -52,7 +52,7 @@ class DissolutionMapperTest {
                         Map.of("objet", "Dissolution anticipée", "type", "dissolution_anticipee",
                                 "resultat", "à l'unanimité"),
                         Map.of("objet", "Nomination du liquidateur", "type", "nomination_liquidateur")),
-                "dissolution", Map.of("motif", "volontaire", "dateEffet", "2026-05-15",
+                "dissolution", Map.of("motif", "volontaire", "nature", "anticip\u00e9e", "dateEffet", "2026-05-15",
                         "exerciceClosDate", "2025-12-31"),
                 "liquidateur", Map.of("civilite", "M.", "prenom", "Ahmed", "nom", "Alaoui",
                         "adresse", "5 RUE D'ALGER, CASABLANCA", "remuneration", "exercées à titre gratuit",

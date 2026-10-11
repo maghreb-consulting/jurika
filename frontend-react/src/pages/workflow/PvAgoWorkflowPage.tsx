@@ -223,6 +223,7 @@ function PvAgoWorkflowPageBody() {
             presence: '', // L3 (D6) : saisie a l'ecran, jamais supposee
             mandataireNom: '',
             pieceType: String(a?.pieceType ?? ''), // L3 (D6)
+            nationalite: String(a?.nationalite ?? ''), // L4a (E2) : reprise de la fiche, sinon proposee
             pieceNumero: String(a?.cin ?? a?.cinNumero ?? a?.pieceNumero ?? ''),
           };
         })
@@ -354,8 +355,10 @@ function PvAgoWorkflowPageBody() {
       { libelle: 'Report à nouveau', montant: '' },
     ],
   );
-  const [dividendeDistribue, setDividendeDistribue] = useState<'oui' | 'non'>(
-    (stepData.step2?.dividendeDistribue as 'oui' | 'non') ?? 'non',
+  // L4a (E2) : dividende, quitus et conventions sont CHOISIS (avant : "non", "oui",
+  // "non" d'office ; le PV en tirait une resolution ou l'absence de convention).
+  const [dividendeDistribue, setDividendeDistribue] = useState<'oui' | 'non' | ''>(
+    (stepData.step2?.dividendeDistribue as 'oui' | 'non') ?? '',
   );
   const [dividendeParPart, setDividendeParPart] = useState(
     (stepData.step2?.dividendeParPart as string) ?? '',
@@ -367,11 +370,11 @@ function PvAgoWorkflowPageBody() {
     (stepData.step2?.dividendeMiseEnPaiementDate as string) ?? '',
   );
   // Lot DIVERS §E — oublis couverts : quitus à la gérance et conventions réglementées.
-  const [quitusGerance, setQuitusGerance] = useState<'oui' | 'non'>(
-    (stepData.step2?.quitusGerance as 'oui' | 'non') ?? 'oui',
+  const [quitusGerance, setQuitusGerance] = useState<'oui' | 'non' | ''>(
+    (stepData.step2?.quitusGerance as 'oui' | 'non') ?? '',
   );
-  const [conventionsReglementees, setConventionsReglementees] = useState<'oui' | 'non'>(
-    (stepData.step2?.conventionsReglementees as 'oui' | 'non') ?? 'non',
+  const [conventionsReglementees, setConventionsReglementees] = useState<'oui' | 'non' | ''>(
+    (stepData.step2?.conventionsReglementees as 'oui' | 'non') ?? '',
   );
   const [conventionsDetail, setConventionsDetail] = useState(
     (stepData.step2?.conventionsDetail as string) ?? '',
@@ -1147,8 +1150,8 @@ function PvAgoWorkflowPageBody() {
                 <Select
                   label="Dividende distribué ?"
                   value={dividendeDistribue}
-                  onChange={(e) => setDividendeDistribue(e.target.value as 'oui' | 'non')}
-                  options={[{ value: 'non', label: 'Non' }, { value: 'oui', label: 'Oui' }]}
+                  onChange={(e) => setDividendeDistribue(e.target.value as 'oui' | 'non' | '')}
+                  options={[{ value: '', label: 'Choisir…' }, { value: 'non', label: 'Non' }, { value: 'oui', label: 'Oui' }]}
                 />
                 {dividendeDistribue === 'oui' && (
                   <>
@@ -1193,8 +1196,9 @@ function PvAgoWorkflowPageBody() {
                   label="Quitus donné à la gérance ?"
                   value={quitusGerance}
                   data-testid="pvago-quitus"
-                  onChange={(e) => setQuitusGerance(e.target.value as 'oui' | 'non')}
+                  onChange={(e) => setQuitusGerance(e.target.value as 'oui' | 'non' | '')}
                   options={[
+                    { value: '', label: 'Choisir…' },
                     { value: 'oui', label: 'Oui — quitus entier et sans réserve' },
                     { value: 'non', label: 'Non — quitus refusé / différé' },
                   ]}
@@ -1204,8 +1208,9 @@ function PvAgoWorkflowPageBody() {
                   label="Conventions réglementées intervenues ?"
                   value={conventionsReglementees}
                   data-testid="pvago-conventions"
-                  onChange={(e) => setConventionsReglementees(e.target.value as 'oui' | 'non')}
+                  onChange={(e) => setConventionsReglementees(e.target.value as 'oui' | 'non' | '')}
                   options={[
+                    { value: '', label: 'Choisir…' },
                     { value: 'non', label: 'Non — aucune (loi 5-96)' },
                     { value: 'oui', label: 'Oui — à approuver' },
                   ]}

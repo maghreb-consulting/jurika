@@ -202,7 +202,7 @@ class NonVacuiteDocumentaireTest {
         p.put("associes", associes);
         p.put("gerants", List.of(Map.of("civilite", "M.", "prenom", "Ahmed", "nom", "ALAOUI")));
         p.put("liquidateur", liquidateur());
-        p.put("dissolution", Map.of("motif", "volontaire", "dateEffet", "2026-05-15"));
+        p.put("dissolution", Map.of("motif", "volontaire", "nature", "anticip\u00e9e", "dateEffet", "2026-05-15"));
         p.put("cloture", Map.of("resultatSens", "boni", "resultatMontant", 50_000,
                 "dateClotureLiquidation", "2026-09-30",
                 "actifRealise", 200_000, "passifRegle", 150_000));

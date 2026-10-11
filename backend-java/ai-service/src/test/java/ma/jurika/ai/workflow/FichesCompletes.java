@@ -42,6 +42,7 @@ public final class FichesCompletes {
         r.putIfAbsent("adresse", "10 rue des Tests, Rabat");
         r.putIfAbsent("dateNaissance", "1980-01-15");
         r.putIfAbsent("lieuNaissance", "Rabat");
+        r.putIfAbsent("nationalite", "marocaine"); // L4a (E2) : saisie, plus supposee
         r.putIfAbsent("pieceType", "CIN"); // L3 (D6) : valeur proposee, confirmee a l'ecran
         return r;
     }

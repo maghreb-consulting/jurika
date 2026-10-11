@@ -101,12 +101,24 @@ class ModificationVarsCoverageTest {
         return s;
     }
 
+    /** Lot L4a (E2) : les choix que l'employe fait dans les listes des resolutions. */
+    private static final Map<String, Object> CHOIX_SAISIS = Map.of(
+            "resultatSens", "b\u00e9n\u00e9fice", "cacAction", "nomination",
+            "augcapMode", "cr\u00e9ation de parts nouvelles", "augcapLiberationMode", "num\u00e9raire",
+            "redcapMotif", "pertes", "redcapMode", "diminution du nominal",
+            "objetAction", "modification", "primeEmission", "non", "dpsSuppression", "non",
+            "fondsCommerce", "non");
+
     /** Une résolution par type + données des boucles imbriquées sur les types concernés. */
     private static List<Map<String, Object>> resolutions(List<String> types) {
         List<Map<String, Object>> res = new ArrayList<>();
         for (String t : types) {
             Map<String, Object> r = new HashMap<>();
             r.put("type", t);
+            // L4a (E2) : choix et drapeaux pilotes, SAISIS (plus de defaut dans le mapper).
+            if ("agrement_cession".equals(t)) r.put("cessionnaireTiers", "oui");
+            CHOIX_SAISIS.forEach(r::putIfAbsent);
+            r.putIfAbsent("siegeMemePrefecture", "oui");
             if ("affectation_resultat".equals(t)) {
                 r.put("affectations", List.of(
                         Map.of("poste", "Réserve légale", "montant", 5_000),

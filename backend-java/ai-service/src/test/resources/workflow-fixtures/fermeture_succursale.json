@@ -73,7 +73,9 @@
       "responsable": {
         "civilite": "M.",
         "prenom": "Yassine",
-        "nom": "TAZI"
+        "nom": "TAZI",
+        "pouvoirs": "la gestion courante de la succursale et la représentation de la société auprès des tiers et des administrations",
+        "nationalite": "marocaine"
       }
     },
     "formalitesMandataireNom": "M. Karim BENALI",

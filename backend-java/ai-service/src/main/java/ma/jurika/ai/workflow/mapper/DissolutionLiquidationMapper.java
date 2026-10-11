@@ -77,7 +77,12 @@ public final class DissolutionLiquidationMapper {
         put(v, "PV_ETAPE", normEtape(first0(safe.get("pvEtape"), defaultEtape)));
 
         // Dissolution : motif + dates d'effet / d'exercice clos.
-        put(v, "DISSOLUTION_MOTIF", normMotif(dissolution.get("motif")));
+        // L4a (E2) : la nature de la dissolution pilote la resolution de dissolution ; elle
+        // est SAISIE (champ "nature"), jamais deduite d'un texte libre ni supposee "volontaire"
+        // (vide, le modele imprimait en silence la branche "arrivee du terme").
+        if (ETAPE_DISSOLUTION.equals(v.get("PV_ETAPE"))) {
+            put(v, "DISSOLUTION_MOTIF", natureDissolution(templateCode, dissolution));
+        }
         put(v, "DATE_EFFET", dateStr(first0(dissolution.get("dateEffet"), dissolution.get("dateDissolution"))));
         put(v, "EXERCICE_CLOS_DATE", dateStr(first0(dissolution.get("exerciceClosDate"),
                 cloture.get("exerciceClosDate"))));
@@ -86,7 +91,7 @@ public final class DissolutionLiquidationMapper {
         put(v, "LIQUIDATEUR_NOM", liquidateurLabel(liquidateur));
         put(v, "LIQUIDATEUR_ADRESSE", str(liquidateur.get("adresse")));
         put(v, "LIQUIDATEUR_REMUNERATION",
-                first(str(liquidateur.get("remuneration")), "exercées à titre gratuit"));
+                str(liquidateur.get("remuneration"))); // L4a (E2) : saisie (valeur proposee a l'ecran)
         put(v, "LIQUIDATEUR_SORTANT_NOM", str(liquidateur.get("sortantNom")));
         put(v, "LIQUIDATION_SIEGE", first(str(liquidateur.get("siege")),
                 str(safe.get("liquidationSiege")), str(asMap(safe.get("societe")).get("siegeSocial"))));
@@ -203,12 +208,17 @@ public final class DissolutionLiquidationMapper {
         return ETAPE_DISSOLUTION;
     }
 
-    /** Motif de dissolution : « volontaire » / « article 86 » / « arrivée du terme ». */
-    private static String normMotif(Object raw) {
-        String s = norm(raw);
-        if (s.contains("86") || s.contains("article")) return "article 86";
-        if (s.contains("terme") || s.contains("arriv")) return "arrivée du terme";
-        return "volontaire";
+    /**
+     * Nature de la dissolution, saisie : "volontaire" (anticipee, decision des associes),
+     * "article 86" (capitaux propres) ou "arrivee du terme". Absente ou illisible : refus nomme.
+     */
+    static String natureDissolution(String templateCode, Map<String, Object> dissolution) {
+        String s = norm(dissolution.get("nature"));
+        if (s.contains("86")) return "article 86";
+        if (s.contains("terme")) return "arriv\u00e9e du terme";
+        if (s.startsWith("antic") || s.startsWith("volont")) return "volontaire";
+        throw SaisieExigee.refus(templateCode, "DISSOLUTION_MOTIF",
+                "Nature de la dissolution (anticip\u00e9e, article 86 ou arriv\u00e9e du terme)");
     }
 
     /** Sens du résultat de liquidation : « boni » / « mali ». */

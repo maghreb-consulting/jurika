@@ -11,6 +11,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import type { FormeJuridique } from '../../../types/ticket';
+import { ValeurProposee } from '../../../components/workflow/ValeurProposee';
 import { IdentityExtractor } from '../../../components/identity/IdentityExtractor';
 import { toIsoDate } from '../../../types/identity';
 import { useStepAutosave } from '../useStepAutosave';
@@ -161,7 +162,7 @@ function newDirigeant(): Dirigeant {
     nom: '',
     prenom: '',
     cinNumero: '',
-    nationalite: 'Marocaine',
+    nationalite: '', // L4a (E2) : proposee a l'ecran, jamais supposee
     dateNaissance: '',
     lieuNaissance: '',
     pieceValidite: '',
@@ -603,6 +604,7 @@ export function Step5Dirigeants({
         if (!d.cinNumero) manques.push('n° de CIN');
         else if (cinInvalidMessage(d.cinNumero)) manques.push('n° de CIN valide');
         if (!d.adresse) manques.push('adresse');
+        if (!d.nationalite?.trim()) manques.push('nationalité');
         if (!d.dateNaissance) {
           manques.push('date de naissance (imprimée dans l’acte de nomination)');
         }
@@ -966,12 +968,12 @@ export function Step5Dirigeants({
                     </p>
                   )}
                 </div>
-                <Field
-                  label="Nationalite"
-                  value={d.nationalite}
-                  onChange={(e) =>
-                    update(d.id, { nationalite: e.target.value })
-                  }
+                <ValeurProposee
+                  id={`dirigeant-nationalite-${d.id}`}
+                  label="Nationalité"
+                  proposition="marocaine"
+                  valeur={d.nationalite || undefined}
+                  onChange={(v) => update(d.id, { nationalite: v })}
                 />
                 <Field
                   label="Date de naissance"

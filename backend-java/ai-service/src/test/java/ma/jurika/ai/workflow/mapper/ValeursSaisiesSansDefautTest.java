@@ -93,7 +93,7 @@ class ValeursSaisiesSansDefautTest {
                 "resultatNet", 1000L));
 
         Map<String, Object> v = new ApprobationComptesMapper(new AnnualReportMapper())
-                .map("PV_APPROBATION_COMPTES_SARL", p);
+                .map("PV_APPROBATION_COMPTES_SARL", ApprobationComptesRenderTest.saisi(p));
 
         List<Map<String, Object>> res = (List<Map<String, Object>>) v.get("RESOLUTIONS");
         assertThat(res).isNotEmpty();

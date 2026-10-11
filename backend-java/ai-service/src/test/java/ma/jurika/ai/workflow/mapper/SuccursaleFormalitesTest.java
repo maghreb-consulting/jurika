@@ -23,7 +23,7 @@ class SuccursaleFormalitesTest {
         p.put("associes", List.of(Map.of("civilite", "M.", "prenom", "Karim", "nom", "BENALI",
                 "nombreParts", 1000, "presence", "pr\u00e9sent")));
         p.put("succursale", Map.of("enseigne", "PCM", "adresse", "1 rue X", "ville", "Rabat",
-                "dateOuverture", "2026-10-01"));
+                "activite", "le conseil", "dateOuverture", "2026-10-01"));
         return p;
     }
 

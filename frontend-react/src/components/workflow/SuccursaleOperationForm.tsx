@@ -277,9 +277,8 @@ export function SuccursaleOperationForm({
   const [respCivilite, setRespCivilite] = useState(succursaleSeed?.responsableCivilite ?? 'M.');
   const [respPrenom, setRespPrenom] = useState(succursaleSeed?.responsablePrenom ?? '');
   const [respNom, setRespNom] = useState(succursaleSeed?.responsableNom ?? '');
-  const [respNationalite, setRespNationalite] = useState(
-    succursaleSeed?.responsableNationalite ?? 'marocaine',
-  );
+  // L4a (E2) : nationalite, pouvoirs et motif proposes a l'ecran, jamais supposes.
+  const [respNationalite, setRespNationalite] = useState(succursaleSeed?.responsableNationalite ?? '');
   const [respAdresse, setRespAdresse] = useState(succursaleSeed?.responsableAdresse ?? '');
   const [respPieceType, setRespPieceType] = useState(succursaleSeed?.responsablePieceType ?? ''); // L3 (D6)
   const [respPieceNumero, setRespPieceNumero] = useState(
@@ -587,7 +586,9 @@ export function SuccursaleOperationForm({
               <TextField label="N° RC secondaire" value={rcNumero} onChange={(e) => setRcNumero(e.target.value)} />
               <TextField label="Date d'effet de la fermeture" type="date" value={dateFermeture} onChange={(e) => setDateFermeture(e.target.value)} />
               <div className="md:col-span-2">
-                <TextField label="Motif de la fermeture" value={motif} onChange={(e) => setMotif(e.target.value)} />
+                <ValeurProposee id="succ-motif-fermeture" label="Motif de la fermeture"
+                  proposition="cessation de l'activité exercée dans la succursale"
+                  valeur={motif || undefined} onChange={setMotif} />
               </div>
             </>
           ) : (
@@ -637,14 +638,19 @@ export function SuccursaleOperationForm({
               <TextField label="Nom" value={respNom} onChange={(e) => setRespNom(e.target.value)} />
               {!isFermeture && (
                 <>
-                  <TextField label="Nationalité" value={respNationalite} onChange={(e) => setRespNationalite(e.target.value)} />
+                  <ValeurProposee id="succ-op-responsable-nationalite" label="Nationalité" proposition="marocaine"
+                    valeur={respNationalite || undefined} onChange={setRespNationalite} />
                   <div className="md:col-span-2">
                     <TextField label="Adresse" value={respAdresse} onChange={(e) => setRespAdresse(e.target.value)} />
                   </div>
                   <TypePieceProposee id="succ-op-responsable-piece-type" valeur={respPieceType} onChange={setRespPieceType} />
                   <TextField label="N° de pièce" value={respPieceNumero} onChange={(e) => setRespPieceNumero(e.target.value)} />
                   <div className="md:col-span-2">
-                    <TextField label="Pouvoirs" value={respPouvoirs} onChange={(e) => setRespPouvoirs(e.target.value)} placeholder="Laisser vide pour le texte par défaut" />
+                    <ValeurProposee id="succ-op-responsable-pouvoirs" label="Pouvoirs"
+                      proposition={isEtr
+                        ? 'diriger la succursale et représenter la société auprès des tiers et des administrations marocaines'
+                        : 'la gestion courante de la succursale et la représentation de la société auprès des tiers et des administrations'}
+                      valeur={respPouvoirs || undefined} onChange={setRespPouvoirs} />
                   </div>
                 </>
               )}

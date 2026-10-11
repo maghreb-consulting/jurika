@@ -104,7 +104,9 @@
       ],
       "dividendeDistribue": "oui",
       "dividendeParPart": 150,
-      "dividendeMiseEnPaiementDate": "2026-07-01"
+      "dividendeMiseEnPaiementDate": "2026-07-01",
+      "quitusGerance": "oui",
+      "conventionsReglementees": "non"
     }
   },
   "PV_APPROBATION_COMPTES_SARL_AU": {
@@ -198,7 +200,9 @@
           "montant": 171000
         }
       ],
-      "dividendeDistribue": "non"
+      "dividendeDistribue": "non",
+      "quitusGerance": "oui",
+      "conventionsReglementees": "non"
     }
   },
   "RAPPORT_GESTION": {

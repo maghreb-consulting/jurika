@@ -847,7 +847,7 @@ function SuccursaleEtrWorkflowPageBody() {
                 label="Mandataire charge des formalites"
                 value={mandataire}
                 onChange={(e) => setMandataire(e.target.value)}
-                placeholder="Laisser vide = le president de seance"
+                hint="Requis : la résolution des pouvoirs le nomme."
               />
             </section>
           </div>

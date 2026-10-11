@@ -73,6 +73,8 @@ export interface SeanceOperationFormProps {
   defaultDate?: string;
   /** Motif de dissolution saisi à l'étape 1 (mode dissolution). */
   motif?: string;
+  /** L4a (E2) : nature de la dissolution (anticipee, article 86, arrivee du terme), saisie. */
+  nature?: string;
   /**
    * Données d'opération fournies par la page hôte ; sinon saisies ici. Depuis le lot
    * « Dissolution 4 étapes » (2026-08-12), la page Dissolution fournit aussi ce bloc
@@ -147,6 +149,7 @@ export function SeanceOperationForm({
   societe,
   defaultDate,
   motif,
+  nature,
   operation,
   initialAssocies,
   initialGerants,
@@ -184,7 +187,7 @@ export function SeanceOperationForm({
   const [liqPieceType, setLiqPieceType] = useState<string | undefined>(undefined); // L3 (D6)
   const [liqPieceNumero, setLiqPieceNumero] = useState('');
   const [liqGenre, setLiqGenre] = useState<'masculin' | 'féminin'>('masculin');
-  const [liqRemuneration, setLiqRemuneration] = useState('exercées à titre gratuit');
+  const [liqRemuneration, setLiqRemuneration] = useState<string | undefined>(undefined); // L4a (E2)
   // L3 (D6) : "quatre" originaux est une valeur PROPOSEE, transmise une fois confirmee.
   const [nombreOriginaux, setNombreOriginaux] = useState<string | undefined>(undefined);
   const [liquidationSiege, setLiquidationSiege] = useState(societe.siegeSocial ?? '');
@@ -232,7 +235,7 @@ export function SeanceOperationForm({
           pieceType: liqPieceType ?? '',
           pieceNumero: liqPieceNumero,
           genre: liqGenre,
-          remuneration: liqRemuneration,
+          remuneration: liqRemuneration ?? '',
           siege: liquidationSiege,
         };
     const cloture = operation?.cloture;
@@ -254,7 +257,7 @@ export function SeanceOperationForm({
     return {
       ...base,
       pvEtape,
-      dissolution: { motif: motif ?? 'volontaire', dateEffet: defaultDate ?? '', date: dissoDate },
+      dissolution: { motif: motif ?? '', nature: nature ?? '', dateEffet: defaultDate ?? '', date: dissoDate },
       liquidateur,
       liquidationSiege: operation ? operation.liquidateur.siege ?? '' : liquidationSiege,
       cloture: clotureBlock,
@@ -374,7 +377,8 @@ export function SeanceOperationForm({
             <TextField label="Adresse" value={liqAdresse} onChange={(e) => setLiqAdresse(e.target.value)} />
             <TypePieceProposee id="seance-liquidateur-piece-type" valeur={liqPieceType} onChange={setLiqPieceType} />
             <TextField label="N° de pièce" value={liqPieceNumero} onChange={(e) => setLiqPieceNumero(e.target.value)} />
-            <TextField label="Rémunération du liquidateur" value={liqRemuneration} onChange={(e) => setLiqRemuneration(e.target.value)} />
+            <ValeurProposee id="seance-liquidateur-remuneration" label="Rémunération du liquidateur"
+              proposition="exercées à titre gratuit" valeur={liqRemuneration} onChange={setLiqRemuneration} />
             <TextField label="Siège de la liquidation" value={liquidationSiege} onChange={(e) => setLiquidationSiege(e.target.value)} />
           </div>
         </section>

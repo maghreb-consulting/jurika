@@ -20,7 +20,7 @@ import { Building2, Coins, UserCheck } from 'lucide-react';
 import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
 import { IdentityExtractor } from '../identity/IdentityExtractor';
-import { TypePieceProposee } from './ValeurProposee';
+import { TypePieceProposee, ValeurProposee } from './ValeurProposee';
 import { buildLiquidateurOptions, EXTERNE_KEY } from './LiquidateurPicker';
 import type { DossierParties } from '../../services/workflow.service';
 
@@ -78,7 +78,7 @@ export function emptySuccursaleSaisie(): SuccursaleSaisieState {
       nom: '',
       denomination: '',
       representantNom: '',
-      nationalite: 'marocaine',
+      nationalite: '', // L4a (E2) : proposee a l'ecran
       adresse: '',
       pieceType: '', // L3 (D6) : "CIN" propose a l'ecran, puis confirme
       pieceNumero: '',
@@ -421,10 +421,12 @@ export function SuccursaleSaisieForm({
                     data-testid="succ-responsable-nom"
                     onChange={(e) => setResp({ nom: e.target.value })}
                   />
-                  <TextField
+                  <ValeurProposee
+                    id="succ-responsable-nationalite"
                     label="Nationalité"
-                    value={r.nationalite}
-                    onChange={(e) => setResp({ nationalite: e.target.value })}
+                    proposition="marocaine"
+                    valeur={r.nationalite || undefined}
+                    onChange={(v) => setResp({ nationalite: v })}
                   />
                 </>
               )}

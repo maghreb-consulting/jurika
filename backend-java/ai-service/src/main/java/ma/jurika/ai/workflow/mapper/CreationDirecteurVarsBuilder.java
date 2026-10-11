@@ -222,7 +222,7 @@ public final class CreationDirecteurVarsBuilder {
             if (morale) {
                 it.put("ASSOCIE_NOM", str(a.get("denomination")));
                 it.put("ASSOCIE_DENOMINATION", strOr(a.get("denomination"), ""));
-                it.put("ASSOCIE_FORME", strOr(first0(a.get("forme"), a.get("formeJuridique")), "SARL"));
+                it.put("ASSOCIE_FORME", strOr(first0(a.get("forme"), a.get("formeJuridique")), "")); // L4a (E2)
                 it.put("ASSOCIE_CAPITAL", capitalDH(first0(a.get("capital"), a.get("capitalEntite"))));
                 it.put("ASSOCIE_SIEGE", strOr(a.get("siege"), ""));
                 it.put("ASSOCIE_RC_VILLE", strOr(first0(a.get("rcVille"), a.get("villeGreffe")), ""));
@@ -239,7 +239,7 @@ public final class CreationDirecteurVarsBuilder {
                 it.put("ASSOCIE_NOM", nomComplet
                         ? join(" ", strOr(a.get("prenom"), ""), strOr(a.get("nom"), ""))
                         : strOr(a.get("nom"), ""));
-                it.put("ASSOCIE_NATIONALITE", strOr(a.get("nationalite"), "marocaine"));
+                it.put("ASSOCIE_NATIONALITE", strOr(a.get("nationalite"), "")); // L4a (E2) : plus de "marocaine"
                 it.put("ASSOCIE_DATE_NAISSANCE", dateStr(first0(a.get("dateNaissance"), a.get("naissance"))));
                 it.put("ASSOCIE_LIEU_NAISSANCE", strOr(a.get("lieuNaissance"), ""));
                 it.put("ASSOCIE_ADRESSE", strOr(a.get("adresse"), ""));
@@ -294,7 +294,7 @@ public final class CreationDirecteurVarsBuilder {
             it.put("GERANT_CIVILITE", normCivilite(g.get("civilite")));
             it.put("GERANT_PRENOM", strOr(g.get("prenom"), ""));
             it.put("GERANT_NOM", strOr(g.get("nom"), ""));
-            it.put("GERANT_NATIONALITE", strOr(g.get("nationalite"), "marocaine"));
+            it.put("GERANT_NATIONALITE", strOr(g.get("nationalite"), "")); // L4a (E2) : plus de "marocaine"
             it.put("GERANT_ADRESSE", strOr(g.get("adresse"), ""));
             it.put("GERANT_PIECE_TYPE", strOr(g.get("pieceType"), "")); // L3 (D6) : "CIN" propose a l'ecran
             it.put("GERANT_PIECE_NUMERO", strOr(first0(g.get("pieceNumero"), g.get("cin"), g.get("cinNumero")), ""));
@@ -312,7 +312,7 @@ public final class CreationDirecteurVarsBuilder {
                 if (s == null || s.isEmpty()) continue;
                 Map<String, Object> it = new LinkedHashMap<>();
                 it.put("SIGNATAIRE_NOM", first(str(s.get("nom")), personLabel(s)));
-                it.put("SIGNATAIRE_QUALITE", strOr(s.get("qualite"), "gérant"));
+                it.put("SIGNATAIRE_QUALITE", strOr(s.get("qualite"), "")); // L4a (E2) : qualite saisie
                 out.add(it);
             }
             if (!out.isEmpty()) return out;

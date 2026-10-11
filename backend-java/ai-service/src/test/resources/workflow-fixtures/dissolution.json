@@ -80,7 +80,8 @@
   "dissolution": {
     "motif": "volontaire",
     "dateEffet": "2026-05-15",
-    "exerciceClosDate": "2025-12-31"
+    "exerciceClosDate": "2025-12-31",
+    "nature": "anticipée"
   },
   "liquidateur": {
     "civilite": "M.",

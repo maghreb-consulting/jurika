@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, AlertTriangle, CheckCircle, Megaphone, Paperclip, Sparkles } from 'lucide-react';
+import { InfoBulle } from '../../components/ui/Aide';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { WorkflowShell } from '../../components/workflow/WorkflowShell';
@@ -127,6 +128,9 @@ function DissolutionWorkflowPageBody() {
   const [dossierId, setDossierId] = useState(initialId);
   const [dossier, setDossier] = useState<DossierBrief | null>(null);
   const [motif, setMotif] = useState((stepData.step1?.motif as string) ?? '');
+  // L4a (E2) : nature de la dissolution, SAISIE (le serveur la deduisait du motif libre et
+  // supposait "volontaire" ; vide, le modele imprimait la branche "arrivee du terme").
+  const [nature, setNature] = useState((stepData.step1?.nature as string) ?? '');
   const [dateAGE, setDateAGE] = useState((stepData.step1?.dateAGE as string) ?? '');
   const [revealErrors, setRevealErrors] = useState<boolean>(false);
   const [liquidateur, setLiquidateur] = useState<LiquidateurState>(
@@ -237,6 +241,7 @@ function DissolutionWorkflowPageBody() {
             mandataireNom: '',
             // L3 (D6) : type de piece repris de la fiche, sinon "CIN" propose a l'ecran.
             pieceType: String(a?.pieceType ?? ''),
+            nationalite: String(a?.nationalite ?? ''), // L4a (E2) : reprise de la fiche, sinon proposee
             pieceNumero: String(a?.cin ?? a?.cinNumero ?? a?.pieceNumero ?? ''),
           };
         })
@@ -269,6 +274,7 @@ function DissolutionWorkflowPageBody() {
     dossierId?: string;
     dateAGE?: string;
     motif?: string;
+    nature?: string;
     liquidateur?: string;
     siegeLiquidation?: string;
     convocation?: string;
@@ -277,6 +283,7 @@ function DissolutionWorkflowPageBody() {
     const errs: FieldErrors = {};
     if (!dossierId.trim()) errs.dossierId = 'Selectionnez la societe a dissoudre.';
     if (!dateAGE) errs.dateAGE = "La date de l'AGE est obligatoire.";
+    if (!nature) errs.nature = 'Choisissez la nature de la dissolution.';
     if (motif.trim().length < MOTIF_MIN_LENGTH) {
       errs.motif = `Le motif est trop court (${motif.trim().length}/${MOTIF_MIN_LENGTH} caracteres minimum) — precisez la cause.`;
     }
@@ -290,7 +297,7 @@ function DissolutionWorkflowPageBody() {
     }
     if (convocationError) errs.convocation = convocationError;
     return errs;
-  }, [dossierId, dateAGE, motif, liquidateur, siegeLiquidation, convocationError]);
+  }, [dossierId, dateAGE, motif, nature, liquidateur, siegeLiquidation, convocationError]);
 
   const targetDenomination = dossier?.raisonSociale ?? ticket?.titre ?? '';
 
@@ -427,6 +434,7 @@ function DissolutionWorkflowPageBody() {
         return {
           dossierId,
           motif,
+          nature,
           dateAGE,
           formeJuridique,
           liquidateur,
@@ -446,7 +454,7 @@ function DissolutionWorkflowPageBody() {
       return null;
     },
     // convocationPayload lit convocationDate/Heure : dependances explicitees.
-    [dossierId, motif, dateAGE, formeJuridique, liquidateur, siegeLiquidation,
+    [dossierId, motif, nature, dateAGE, formeJuridique, liquidateur, siegeLiquidation,
       convocationDate, convocationHeure, convocationSnapshot, pvValidated,
       annonceValidated, depotLegalNumero, depotLegalDate, piecesJointes],
   );
@@ -561,6 +569,31 @@ function DissolutionWorkflowPageBody() {
                   : 'La dissolution se decide toujours en assemblee generale EXTRAORDINAIRE.'
               }
             />
+
+            <div>
+              <label htmlFor="dissolution-nature" className="mb-1 flex items-center gap-1 text-sm font-medium text-fg-muted">
+                Nature de la dissolution *
+                <InfoBulle
+                  libelle="Pourquoi la nature de la dissolution ?"
+                  texte="Le procès-verbal ne rédige pas la même résolution selon la cause : décision anticipée des associés, capitaux propres devenus inférieurs au quart du capital (article 86 de la loi 5-96) ou arrivée du terme statutaire. Le motif détaillé ci-dessous complète ce choix."
+                />
+              </label>
+              <select
+                id="dissolution-nature"
+                value={nature}
+                onChange={(e) => setNature(e.target.value)}
+                aria-invalid={!!showErr('nature')}
+                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
+              >
+                <option value="">Choisir…</option>
+                <option value="anticipée">Dissolution anticipée (décision des associés)</option>
+                <option value="article 86">Capitaux propres inférieurs au quart du capital (article 86)</option>
+                <option value="arrivée du terme">Arrivée du terme statutaire</option>
+              </select>
+              {showErr('nature') && (
+                <p className="mt-1 text-xs text-danger" role="alert">{showErr('nature')}</p>
+              )}
+            </div>
 
             <div>
               {/* `htmlFor` + `id` : ce <textarea> est ecrit a la main (hors TextField),
@@ -714,6 +747,7 @@ function DissolutionWorkflowPageBody() {
               societe={societeInput}
               defaultDate={dateAGE}
               motif={motif}
+              nature={nature}
               operation={operationInput}
               initialAssocies={bdAssocies}
               initialGerants={bdGerants}
@@ -730,6 +764,7 @@ function DissolutionWorkflowPageBody() {
               denomination={targetDenomination}
               dateAGE={dateAGE}
               motif={motif}
+              nature={nature}
               liquidateur={liquidateur}
               siegeLiquidation={siegeLiquidation}
               depotLegalNumero={depotLegalNumero}
