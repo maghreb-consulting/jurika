@@ -438,7 +438,7 @@
         "type": "transfert_siege",
         "objet": "Transfert du siège social",
         "nouveauSiege": "45 avenue Hassan II, Casablanca",
-          "siegeMemePrefecture": "oui",
+        "siegeMemePrefecture": "oui",
         "nouvelleVille": "Casablanca",
         "dateEffet": "2026-08-01",
         "articlesModifies": "4"
@@ -519,7 +519,177 @@
         "type": "transfert_siege",
         "objet": "Transfert du siège social",
         "nouveauSiege": "45 avenue Hassan II, Casablanca",
-          "siegeMemePrefecture": "oui",
+        "siegeMemePrefecture": "oui",
+        "nouvelleVille": "Casablanca",
+        "dateEffet": "2026-08-01",
+        "articlesModifies": "4"
+      },
+      {
+        "type": "modification_denomination",
+        "objet": "Changement de dénomination sociale",
+        "nouvelleDenomination": "PARACOSME GROUP",
+        "dateEffet": "2026-08-01",
+        "articlesModifies": "2"
+      }
+    ]
+  },
+  "ANNONCE_LEGALE_MODIFICATION_SARL": {
+    "_commentaire": "Lot L4a (E1) : charge de production du PV de modification (formulaire de seance commun).",
+    "formeJuridique": "SARL",
+    "societe": {
+      "denomination": "PARACOSME",
+      "formeJuridique": "SARL",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 rue des Foules, Casablanca",
+      "nombreParts": 1000,
+      "rcNumero": "123456",
+      "villeGreffe": "Casablanca",
+      "ice": "001122334000055",
+      "ifNumero": "40998877",
+      "ville": "Casablanca",
+      "rcVille": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
+    },
+    "seance": {
+      "type": "extraordinaire",
+      "date": "2026-07-10",
+      "heure": "10H00",
+      "lieu": "au siège social",
+      "heureCloture": "12H00",
+      "presidentNom": "M. Karim BENALI",
+      "presidentQualite": "gérant",
+      "quorumAtteint": "oui"
+    },
+    "convocation": {
+      "mode": "lettre recommandée avec accusé de réception",
+      "date": "2026-06-25",
+      "auteur": "la gérance",
+      "lieuSignature": "Casablanca"
+    },
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
+    "quorumAtteint": "oui",
+    "associes": [
+      {
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI",
+        "nombreParts": 600,
+        "presence": "présent"
+      },
+      {
+        "civilite": "Mme",
+        "prenom": "Sofia",
+        "nom": "ALAOUI",
+        "nombreParts": 400,
+        "presence": "représenté",
+        "mandataireNom": "M. Karim BENALI"
+      }
+    ],
+    "gerants": [
+      {
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI"
+      }
+    ],
+    "ordreDuJour": [
+      "Transfert du siège social",
+      "Changement de dénomination sociale"
+    ],
+    "resolutions": [
+      {
+        "type": "transfert_siege",
+        "objet": "Transfert du siège social",
+        "nouveauSiege": "45 avenue Hassan II, Casablanca",
+        "siegeMemePrefecture": "oui",
+        "nouvelleVille": "Casablanca",
+        "dateEffet": "2026-08-01",
+        "articlesModifies": "4"
+      },
+      {
+        "type": "modification_denomination",
+        "objet": "Changement de dénomination sociale",
+        "nouvelleDenomination": "PARACOSME GROUP",
+        "dateEffet": "2026-08-01",
+        "articlesModifies": "2"
+      }
+    ]
+  },
+  "ANNONCE_LEGALE_MODIFICATION_SARL_AU": {
+    "_commentaire": "Lot L4a (E1) : charge de production du PV de modification (associe unique).",
+    "formeJuridique": "SARL_AU",
+    "associeUnique": true,
+    "societe": {
+      "denomination": "PARACOSME AU",
+      "formeJuridique": "SARL_AU",
+      "capitalChiffres": 100000,
+      "siegeSocial": "12 rue des Foules, Casablanca",
+      "nombreParts": 1000,
+      "rcNumero": "123456",
+      "villeGreffe": "Casablanca",
+      "ice": "001122334000055",
+      "ifNumero": "40998877",
+      "ville": "Casablanca",
+      "rcVille": "Casablanca",
+      "identifiantTp": "35501234",
+      "cnssNumero": "8812345"
+    },
+    "seance": {
+      "type": "extraordinaire",
+      "date": "2026-07-10",
+      "heure": "10H00",
+      "lieu": "au siège social",
+      "heureCloture": "12H00",
+      "presidentNom": "M. Karim BENALI",
+      "presidentQualite": "gérant",
+      "quorumAtteint": "oui"
+    },
+    "vote": {
+      "resultat": "adoptée",
+      "majorite": "à l'unanimité",
+      "voixPour": "1000",
+      "voixContre": "0",
+      "abstentions": "0"
+    },
+    "associes": [
+      {
+        "typePersonne": "PHYSIQUE",
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI",
+        "nationalite": "marocaine",
+        "adresse": "5 boulevard Zerktouni, Casablanca",
+        "pieceType": "CIN",
+        "pieceNumero": "BE123456",
+        "nombreParts": 1000,
+        "presence": "présent"
+      }
+    ],
+    "gerants": [
+      {
+        "civilite": "M.",
+        "prenom": "Karim",
+        "nom": "BENALI"
+      }
+    ],
+    "gerantEstAssocie": "oui",
+    "ordreDuJour": [
+      "Transfert du siège social",
+      "Changement de dénomination sociale"
+    ],
+    "resolutions": [
+      {
+        "type": "transfert_siege",
+        "objet": "Transfert du siège social",
+        "nouveauSiege": "45 avenue Hassan II, Casablanca",
+        "siegeMemePrefecture": "oui",
         "nouvelleVille": "Casablanca",
         "dateEffet": "2026-08-01",
         "articlesModifies": "4"

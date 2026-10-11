@@ -51,4 +51,10 @@ class ControleDocumentProduitTest {
         assertThat(ControleDocumentProduit.defauts("L'associe unique\noui\nSignature : ....", Set.of())).isNotEmpty();
         assertThat(ControleDocumentProduit.defauts("Quorum atteint : oui", Set.of())).isEmpty();
     }
+
+    @Test
+    void la_documentation_non_publiee_d_un_modele_ne_s_imprime_pas() {
+        assertThat(ControleDocumentProduit.defauts("Pour avis.\nNOTES D'EMPLOI (non publi\u00e9es)\nCoh\u00e9rence.", java.util.Set.of()))
+                .contains("documentation du modele imprimee : NOTES D'EMPLOI");
+    }
 }

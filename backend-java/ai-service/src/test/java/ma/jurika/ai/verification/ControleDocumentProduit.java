@@ -28,6 +28,11 @@ final class ControleDocumentProduit {
     static final Pattern PARENTHESES_VIDES = Pattern.compile("\\(\\s*\\)");
     /** Un drapeau "oui" / "non" imprime seul sur sa ligne : une variable pilote a pris la place d'un texte. */
     static final Pattern DRAPEAU_IMPRIME = Pattern.compile("(?m)^\\s*(oui|non)\\s*$");
+    /**
+     * Lot L4b (E7) : section de documentation d'un modele, "non publiee" par definition,
+     * imprimee dans le document produit (vu dans trois annonces du corpus).
+     */
+    static final Pattern DOCUMENTATION_IMPRIMEE = Pattern.compile("(?m)^\\s*(NOTES D.EMPLOI|DICTIONNAIRE DES VARIABLES)\\b");
 
     private ControleDocumentProduit() {
     }
@@ -49,6 +54,8 @@ final class ControleDocumentProduit {
         }
         m = DRAPEAU_IMPRIME.matcher(texte);
         while (m.find()) out.add("drapeau imprime : \"" + contexte(texte, m.start()) + "\"");
+        m = DOCUMENTATION_IMPRIMEE.matcher(texte);
+        while (m.find()) out.add("documentation du modele imprimee : " + m.group(1));
         return out;
     }
 
