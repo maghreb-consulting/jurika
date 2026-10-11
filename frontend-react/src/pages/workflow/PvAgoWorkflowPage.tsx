@@ -150,13 +150,9 @@ function montantAffectation(
   return Number.isFinite(n) ? n : 0;
 }
 
-const ORDRE_DU_JOUR_AGO = [
-  'Lecture du rapport de gestion de la gérance',
-  'Approbation des comptes de l\'exercice clos',
-  'Affectation du résultat de l\'exercice',
-  'Quitus à la gérance',
-  'Pouvoirs en vue des formalités légales',
-];
+// L4d (E11b) : plus d'ordre du jour pre-rempli pour la convocation. La lettre du cabinet
+// (CONVOCATION_AGO_SARL) imprime deja les rubriques de l'assemblee annuelle (rapport de
+// gestion, comptes, affectation, quitus, pouvoirs) : les reprendre les imprimait deux fois.
 
 export function PvAgoWorkflowPage() {
   return (
@@ -1416,8 +1412,8 @@ function PvAgoWorkflowPageBody() {
                 date: dateAgo,
                 convDate: convocationDate,
                 convHeure: convocationHeure,
+                exerciceClos: exerciceClosDate,
               }}
-              initialOrdreDuJour={ORDRE_DU_JOUR_AGO}
               lockType
               hideSeanceDate
               hideConvDate
@@ -1466,6 +1462,7 @@ function PvAgoWorkflowPageBody() {
                   date: dateAgo,
                   convDate: convocationDate,
                   convHeure: convocationHeure,
+                  exerciceClos: exerciceClosDate,
                 }}
                 lockType
                 hideSeanceDate

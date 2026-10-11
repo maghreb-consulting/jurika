@@ -59,7 +59,73 @@ export interface SeanceDefaults {
    * lequel comptait.
    */
   convHeure?: string;
+  /** L4d (E11b) : date de cloture de l'exercice, saisie en amont (approbation des comptes). */
+  exerciceClos?: string;
 }
+
+/**
+ * L4d (E11b) : donnees des modeles du corpus pour la convocation (AGO, AGE, seconde
+ * convocation). Chaque oui / non pilote une condition du modele : vide, la generation le
+ * nomme (jamais suppose).
+ */
+export interface ConvocationCorpusInput {
+  auteurQualite: string;
+  /** gerant, commissaire aux comptes ou mandataire de justice (convocation AGO). */
+  auteurType: string;
+  ordonnanceDate: string;
+  pouvoirJoint: string;
+  communicationDateEnvoi: string;
+  // Seconde convocation : la premiere assemblee.
+  modePremiere: string;
+  datePremiere: string;
+  heureAgPremiere: string;
+  lieuAgPremiere: string;
+  clauseContraireStatuts: string;
+  clauseContraireTexte: string;
+  associeInteressePresent: string;
+  documentsJointsSeconde: string;
+  pouvoirsPremiereValables: string;
+}
+
+/** L4d (E11b) : dossier des comptes (assemblee ordinaire annuelle). */
+export interface ComptesInput {
+  exerciceDebut: string;
+  exerciceClos: string;
+  cacDesigne: string;
+  cacNom: string;
+  cacPresence: string;
+  conventionsReglementees: string;
+  reserveLegale: string;
+  reserveLegaleTaux: string;
+  reserveLegalePlafond: string;
+  dividendes: string;
+  reserves: string;
+  quitusGerantVote: string;
+}
+
+function emptyConvocationCorpus(): ConvocationCorpusInput {
+  return {
+    auteurQualite: '', auteurType: '', ordonnanceDate: '', pouvoirJoint: '', communicationDateEnvoi: '',
+    modePremiere: '', datePremiere: '', heureAgPremiere: '', lieuAgPremiere: '',
+    clauseContraireStatuts: '', clauseContraireTexte: '', associeInteressePresent: '',
+    documentsJointsSeconde: '', pouvoirsPremiereValables: '',
+  };
+}
+
+function emptyComptes(): ComptesInput {
+  return {
+    exerciceDebut: '', exerciceClos: '', cacDesigne: '', cacNom: '', cacPresence: '',
+    conventionsReglementees: '', reserveLegale: '', reserveLegaleTaux: '', reserveLegalePlafond: '',
+    dividendes: '', reserves: '', quitusGerantVote: '',
+  };
+}
+
+/** Modes d'envoi tels que les modeles du corpus les testent (libelles exacts). */
+const MODES_CONVOCATION = [
+  { value: 'lettre recommandée avec accusé de réception', label: 'Lettre recommandée avec accusé de réception' },
+  { value: 'remise en main propre contre décharge', label: 'Remise en main propre contre décharge' },
+  { value: 'voie électronique', label: 'Voie électronique' },
+];
 
 export interface AssocieInput {
   typePersonne: 'PHYSIQUE' | 'MORALE';
@@ -87,6 +153,10 @@ export interface AssocieInput {
   nationalite?: string;
   /** L'associé exerce aussi la gérance (désignation depuis la liste des associés). */
   estGerant?: boolean;
+  /** L4d (E11b) : adresse de la lettre de convocation envoyee par voie electronique. */
+  adresseElectronique?: string;
+  /** L4d (E11b) : date du pouvoir de l'associe represente (feuille de presence). */
+  pouvoirDate?: string;
 }
 
 export interface ResolutionInput {
@@ -119,6 +189,10 @@ export interface SeanceSections {
   voix?: boolean;
   /** L3 (D6) : quorum et vote des resolutions, saisis (documents de decision : PV). */
   vote?: boolean;
+  /** L4d (E11b) : donnees des modeles de convocation du corpus (AGO, AGE, seconde). */
+  convocationCorpus?: boolean;
+  /** L4d (E11b) : donnees des modeles de feuille de presence du corpus (AGO, AGE). */
+  feuilleCorpus?: boolean;
 }
 
 /** L3 (D6) : vote des resolutions, saisi par l'employe (jamais suppose). */
@@ -231,6 +305,11 @@ export interface SeanceFormApi {
   // L3 (D6) : quorum et vote, saisis
   quorumAtteint: '' | 'oui' | 'non'; setQuorumAtteint: (v: '' | 'oui' | 'non') => void;
   vote: VoteInput; setVote: React.Dispatch<React.SetStateAction<VoteInput>>;
+  // L4d (E11b) : modeles du corpus (convocation, feuille de presence)
+  convCorpus: ConvocationCorpusInput;
+  setConvCorpus: (patch: Partial<ConvocationCorpusInput>) => void;
+  comptes: ComptesInput;
+  setComptes: (patch: Partial<ComptesInput>) => void;
   buildPayload: () => Record<string, unknown>;
   /** Instantané brut de l'état (persistance inter-étapes). */
   snapshot: Record<string, unknown>;
@@ -289,10 +368,27 @@ export function useSeanceForm(opts: UseSeanceFormOptions): SeanceFormApi {
   // jour quand la sélection de modifications change, tout en respectant une édition
   // manuelle (si l'utilisateur a modifié la liste, on ne l'écrase plus).
   const lastAutoOdjRef = useRef<string[] | null>(snapOdjUsable ? null : autoOdj);
-  const [documentsJoints, setDocumentsJoints] = useState<string[]>(sv('documentsJoints', [
-    'Texte des résolutions proposées',
-    'Formule de pouvoir',
-  ]));
+  // L4d (E11b) : plus de liste pre-remplie. Les modeles du corpus impriment deja le texte des
+  // resolutions, et la formule de pouvoir a sa propre donnee (oui / non) : les reprendre ici
+  // les imprimait deux fois.
+  const [documentsJoints, setDocumentsJoints] = useState<string[]>(sv('documentsJoints', []));
+  const [convCorpus, setConvCorpusState] = useState<ConvocationCorpusInput>(
+    { ...emptyConvocationCorpus(), ...sv<Partial<ConvocationCorpusInput>>('convCorpus', {}) },
+  );
+  const setConvCorpus = useCallback(
+    (patch: Partial<ConvocationCorpusInput>) => setConvCorpusState((c) => ({ ...c, ...patch })), [],
+  );
+  const [comptesSaisis, setComptesState] = useState<ComptesInput>(
+    { ...emptyComptes(), ...sv<Partial<ComptesInput>>('comptes', {}) },
+  );
+  const setComptes = useCallback(
+    (patch: Partial<ComptesInput>) => setComptesState((c) => ({ ...c, ...patch })), [],
+  );
+  // Date de cloture saisie en amont (approbation des comptes) : reprise tant que le champ est vide.
+  const comptes = useMemo<ComptesInput>(
+    () => ({ ...comptesSaisis, exerciceClos: comptesSaisis.exerciceClos || (defaults?.exerciceClos ?? '') }),
+    [comptesSaisis, defaults?.exerciceClos],
+  );
   const [resolutions, setResolutions] = useState<ResolutionInput[]>(sv('resolutions', []));
   const [quorumAtteint, setQuorumAtteint] = useState<'' | 'oui' | 'non'>(sv('quorumAtteint', ''));
   const [vote, setVote] = useState<VoteInput>(sv('vote', emptyVote()));
@@ -446,6 +542,22 @@ export function useSeanceForm(opts: UseSeanceFormOptions): SeanceFormApi {
         dateAgPremiere,
         lieuSignature,
         irregulariteNature,
+        // L4d (E11b) : modeles du corpus. Vides, la generation les nomme (jamais supposes).
+        ...convCorpus,
+        clauseContraireTexte: convCorpus.clauseContraireStatuts === 'oui' ? convCorpus.clauseContraireTexte : '',
+      },
+      exercice: { dateDebut: comptes.exerciceDebut, dateCloture: comptes.exerciceClos },
+      comptes: {
+        cacDesigne: comptes.cacDesigne,
+        cacNom: comptes.cacDesigne === 'oui' ? comptes.cacNom : '',
+        cacPresence: comptes.cacDesigne === 'oui' ? comptes.cacPresence : '',
+        conventionsReglementees: comptes.conventionsReglementees,
+        reserveLegale: comptes.reserveLegale,
+        reserveLegaleTaux: comptes.reserveLegale === 'oui' ? comptes.reserveLegaleTaux : '',
+        reserveLegalePlafond: comptes.reserveLegale === 'oui' ? comptes.reserveLegalePlafond : '',
+        dividendes: comptes.dividendes,
+        reserves: comptes.reserves,
+        quitusGerantVote: comptes.quitusGerantVote,
       },
       secondeAssemblee: { date: secondeDate, heure: secondeHeure, lieu: secondeLieu },
       suiteAssemblee,
@@ -460,7 +572,7 @@ export function useSeanceForm(opts: UseSeanceFormOptions): SeanceFormApi {
       vote: { ...vote },
     };
   }, [
-    quorumAtteint, vote,
+    quorumAtteint, vote, convCorpus, comptes,
     formeJuridique, isAU, societe, type, date, heure, lieu, heureCloture, presidentNom,
     presidentQualite, secretairePresent, secretaireNom, convAuteur, convDate, convHeure, convMode,
     convRang, dateAgPremiere, lieuSignature, irregulariteNature, secondeDate, secondeHeure,
@@ -473,9 +585,9 @@ export function useSeanceForm(opts: UseSeanceFormOptions): SeanceFormApi {
     secretairePresent, secretaireNom, convAuteur, convDate, convHeure, convMode, convRang,
     dateAgPremiere, lieuSignature, irregulariteNature, secondeDate, secondeHeure,
     secondeLieu, suiteAssemblee, ordreDuJour, documentsJoints, resolutions, associes, gerants,
-    quorumAtteint, vote,
+    quorumAtteint, vote, convCorpus, comptes,
   }), [
-    quorumAtteint, vote,
+    quorumAtteint, vote, convCorpus, comptes,
     type, date, heure, lieu, heureCloture, presidentNom, presidentQualite,
     secretairePresent, secretaireNom, convAuteur, convDate, convHeure, convMode, convRang,
     dateAgPremiere, lieuSignature, irregulariteNature, secondeDate, secondeHeure,
@@ -497,6 +609,7 @@ export function useSeanceForm(opts: UseSeanceFormOptions): SeanceFormApi {
     ordreDuJour, setOrdreDuJour, documentsJoints, setDocumentsJoints,
     resolutions, setResolutions, associes, setAssocies, gerants, setGerants,
     quorumAtteint, setQuorumAtteint, vote, setVote,
+    convCorpus, setConvCorpus, comptes, setComptes,
     buildPayload, snapshot,
   };
 }
@@ -535,6 +648,9 @@ export function serializeAssocie(a: AssocieInput) {
     pieceType: a.pieceType?.trim() ?? '',
     pieceNumero: a.pieceNumero ?? '',
     nationalite: a.nationalite?.trim() ?? '',
+    // L4d (E11b) : lettre envoyee par voie electronique ; pouvoir de l'associe represente.
+    adresseElectronique: a.adresseElectronique?.trim() ?? '',
+    pouvoirDate: a.presence === 'représenté' ? a.pouvoirDate ?? '' : '',
   };
 }
 
@@ -572,6 +688,12 @@ export function SeanceFormFields({
   lockOrdreDuJour?: boolean;
 }) {
   const f = form;
+  // L4d (E11b) : la lettre est signee par son auteur (nom), sa qualite en dessous : le premier
+  // gerant est propose, jamais transmis sans confirmation.
+  const premierGerant = f.gerants.find((g) => g?.nom?.trim() || g?.prenom?.trim());
+  const auteurPropose = premierGerant
+    ? [premierGerant.civilite, premierGerant.prenom, premierGerant.nom].filter(Boolean).join(' ').trim()
+    : '';
   return (
     <div className="space-y-5">
       {sections.seance && (
@@ -622,9 +744,29 @@ export function SeanceFormFields({
 
       {sections.convocation && (
         <Card title="Convocation">
+          {sections.convocationCorpus && (
+            <div className="mb-3">
+              <TexteAide cle="seance-convocation-modele" titre="Quelle lettre de convocation ?">
+                <p>
+                  La lettre est celle du cabinet, choisie d’après la séance : assemblée ordinaire
+                  (lettre de l’assemblée annuelle d’approbation des comptes), assemblée extraordinaire
+                  ou mixte (lettre de l’assemblée extraordinaire), ou seconde convocation si le rang
+                  est « Deuxième ». Une lettre est produite pour chaque associé de la liste.
+                  Renseignez l’auteur, sa qualité et le mode d’envoi, puis les rubriques qui
+                  s’affichent : les réponses oui / non choisissent les paragraphes de la lettre.
+                  S’il manque une donnée, la génération vous la nomme.
+                </p>
+              </TexteAide>
+            </div>
+          )}
           <div className="grid gap-3 md:grid-cols-3">
             <ValeurProposee id="seance-convocation-auteur" label="Auteur de la convocation"
-              proposition="la gérance" valeur={f.convAuteur || undefined} onChange={f.setConvAuteur} />
+              proposition={auteurPropose} valeur={f.convAuteur || undefined} onChange={f.setConvAuteur} />
+            {(sections.convocationCorpus || sections.feuilleCorpus) && (
+              <ValeurProposee id="seance-convocation-auteur-qualite" label="Qualité de l’auteur"
+                proposition="gérant" valeur={f.convCorpus.auteurQualite || undefined}
+                onChange={(v) => f.setConvCorpus({ auteurQualite: v })} />
+            )}
             {/* Date ET heure sont masquees ensemble : quand l'etape 1 porte la
                 convocation, elle porte les deux. Les redemander ici obligeait a
                 ressaisir la meme donnee a deux endroits. */}
@@ -636,7 +778,28 @@ export function SeanceFormFields({
             )}
             <ValeurProposee id="seance-convocation-mode" label="Mode de convocation"
               proposition="lettre recommandée avec accusé de réception" valeur={f.convMode || undefined}
-              onChange={f.setConvMode} />
+              onChange={f.setConvMode} options={MODES_CONVOCATION} />
+            {sections.convocationCorpus && (
+              <ValeurProposee id="seance-convocation-pouvoir" label="Formule de pouvoir jointe"
+                proposition="oui" valeur={f.convCorpus.pouvoirJoint || undefined}
+                onChange={(v) => f.setConvCorpus({ pouvoirJoint: v })} options={OUI_NON} />
+            )}
+            {sections.convocationCorpus && f.type === 'ordinaire' && f.convRang === 'première' && (
+              <>
+                <ValeurProposee id="seance-convocation-auteur-type" label="Convoquée par"
+                  proposition="gérant" valeur={f.convCorpus.auteurType || undefined}
+                  onChange={(v) => f.setConvCorpus({ auteurType: v })} options={AUTEURS_CONVOCATION} />
+                {f.convCorpus.auteurType === 'mandataire de justice' && (
+                  <TextField label="Date de l’ordonnance désignant le mandataire *" type="date"
+                    value={f.convCorpus.ordonnanceDate}
+                    onChange={(e) => f.setConvCorpus({ ordonnanceDate: e.target.value })}
+                    hint="Imprimée dans la lettre : « désigné par ordonnance … en date du … »." />
+                )}
+                <ValeurProposee id="seance-communication-date" label="Date d’envoi des documents (art. 70)"
+                  type="date" proposition={f.convDate} valeur={f.convCorpus.communicationDateEnvoi || undefined}
+                  onChange={(v) => f.setConvCorpus({ communicationDateEnvoi: v })} />
+              </>
+            )}
             {sections.convocationRang && (
               <>
                 <Select
@@ -664,6 +827,58 @@ export function SeanceFormFields({
             )}
           </div>
         </Card>
+      )}
+
+      {sections.convocationCorpus && f.convRang === 'deuxième' && (
+        <Card title="Première assemblée (seconde convocation)">
+          <TexteAide cle="seance-seconde-convocation" titre="Seconde convocation : la première assemblée">
+            <p>
+              La lettre rappelle l’assemblée réunie sur première convocation, restée sans la majorité
+              requise. Indiquez comment et quand elle a été convoquée, puis où et quand elle s’est
+              tenue (sa date se saisit dans « Convocation »). Dans « Associés », la présence est celle
+              de cette première assemblée ; dans « Résolutions », saisissez le résultat et le
+              décompte des voix de chaque résolution votée. Sans réponse, la lettre n’est pas générée
+              et la donnée manquante vous est indiquée.
+            </p>
+          </TexteAide>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <Select label="Mode d’envoi de la première convocation *" value={f.convCorpus.modePremiere}
+              onChange={(e) => f.setConvCorpus({ modePremiere: e.target.value })}
+              options={[{ value: '', label: 'Choisir…' }, ...MODES_CONVOCATION]} />
+            <TextField label="Date de la première convocation *" type="date" value={f.convCorpus.datePremiere}
+              onChange={(e) => f.setConvCorpus({ datePremiere: e.target.value })} />
+            <TextField label="Heure de la première assemblée *" type="time" value={f.convCorpus.heureAgPremiere}
+              onChange={(e) => f.setConvCorpus({ heureAgPremiere: e.target.value })} />
+            <div className="md:col-span-3">
+              <TextField label="Lieu de la première assemblée *" value={f.convCorpus.lieuAgPremiere}
+                onChange={(e) => f.setConvCorpus({ lieuAgPremiere: e.target.value })} placeholder="Ex : au siège social" />
+            </div>
+            <OuiNon label="Les statuts écartent-ils la règle de la seconde convocation ? *"
+              value={f.convCorpus.clauseContraireStatuts}
+              onChange={(v) => f.setConvCorpus({ clauseContraireStatuts: v })} />
+            {f.convCorpus.clauseContraireStatuts === 'oui' && (
+              <div className="md:col-span-2">
+                <TextField label="Texte de la clause des statuts *" value={f.convCorpus.clauseContraireTexte}
+                  onChange={(e) => f.setConvCorpus({ clauseContraireTexte: e.target.value })}
+                  hint="Reproduit mot pour mot dans la lettre." />
+              </div>
+            )}
+            <OuiNon label="Un associé ou gérant intéressé à une convention participe ? *"
+              value={f.convCorpus.associeInteressePresent}
+              onChange={(v) => f.setConvCorpus({ associeInteressePresent: v })} />
+            <OuiNon label="Documents joints de nouveau à la lettre ? *"
+              value={f.convCorpus.documentsJointsSeconde}
+              onChange={(v) => f.setConvCorpus({ documentsJointsSeconde: v })} />
+            <OuiNon label="Pouvoirs de la première assemblée valables ? *"
+              value={f.convCorpus.pouvoirsPremiereValables}
+              onChange={(v) => f.setConvCorpus({ pouvoirsPremiereValables: v })} />
+          </div>
+        </Card>
+      )}
+
+      {f.type === 'ordinaire'
+        && ((sections.convocationCorpus && f.convRang === 'première') || sections.feuilleCorpus) && (
+        <ComptesFields form={f} convocation={!!sections.convocationCorpus} />
       )}
 
       {sections.secondeAssemblee && (
@@ -751,6 +966,18 @@ export function SeanceFormFields({
           title="Documents joints à la convocation"
           action={<SmallAddButton label="Ajouter un document" onClick={() => f.setDocumentsJoints((p) => [...p, ''])} />}
         >
+          {sections.convocationCorpus && (
+            <div className="mb-3">
+              <TexteAide cle="seance-documents-communiques" titre="Quels documents ajouter ?">
+                <p>
+                  Assemblée ordinaire : la lettre cite déjà l’inventaire, les états de synthèse, le
+                  rapport de gestion et le texte des résolutions ; n’ajoutez que les autres pièces.
+                  Assemblée extraordinaire ou seconde convocation : indiquez au moins un document,
+                  la lettre en dresse la liste. La formule de pouvoir se déclare dans « Convocation ».
+                </p>
+              </TexteAide>
+            </div>
+          )}
           <div className="space-y-2">
             {f.documentsJoints.map((d, i) => (
               <div key={i} className="flex items-center gap-2">
@@ -774,6 +1001,18 @@ export function SeanceFormFields({
           title="Résolutions (optionnel)"
           action={<SmallAddButton label="Ajouter une résolution" onClick={() => f.setResolutions((p) => [...p, emptyResolution()])} />}
         >
+          {sections.convocationCorpus && (
+            <div className="mb-3">
+              <TexteAide cle="seance-resolutions-convocation" titre="Résolutions et convocation">
+                <p>
+                  Assemblée ordinaire : le texte de chaque résolution proposée est annexé à la lettre
+                  (au moins une). Seconde convocation : saisissez le résultat et le décompte des voix
+                  de chaque résolution votée à la première assemblée. Assemblée extraordinaire : cette
+                  rubrique n’est pas imprimée dans la lettre.
+                </p>
+              </TexteAide>
+            </div>
+          )}
           <div className="space-y-3">
             {f.resolutions.length === 0 && (
               <p className="text-xs text-fg-subtle">Aucune résolution.</p>
@@ -825,6 +1064,9 @@ export function SeanceFormFields({
                 <AssocieFields
                   value={a}
                   showVoix={!!sections.voix}
+                  showEmail={!!sections.convocationCorpus && f.convMode === 'voie électronique'}
+                  showPouvoirDate={!!sections.feuilleCorpus}
+                  showPresence={!(sections.convocationCorpus && f.convRang === 'première')}
                   onChange={(next) => f.setAssocies((p) => p.map((x, j) => (j === i ? next : x)))}
                 />
               </div>
@@ -926,6 +1168,99 @@ function VoteFields({ form: f }: { form: SeanceFormApi }) {
   );
 }
 
+const OUI_NON = [
+  { value: 'oui', label: 'Oui' },
+  { value: 'non', label: 'Non' },
+];
+
+/** Libelles exacts testes par la convocation AGO du corpus ($CONVOCATION_AUTEUR_TYPE). */
+const AUTEURS_CONVOCATION = [
+  { value: 'gérant', label: 'Le gérant' },
+  { value: 'commissaire aux comptes', label: 'Le commissaire aux comptes' },
+  { value: 'mandataire de justice', label: 'Un mandataire de justice' },
+];
+
+/** L4d (E11b) : reponse oui / non a saisir ; vide, la generation la nomme. */
+function OuiNon({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <Select
+      label={label}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      hint={value ? undefined : 'À indiquer : rien n’est supposé.'}
+      options={[{ value: '', label: 'Choisir…' }, ...OUI_NON]}
+    />
+  );
+}
+
+/**
+ * L4d (E11b) : assemblee ordinaire = assemblee annuelle d'approbation des comptes (modeles
+ * du corpus). Chaque reponse choisit une rubrique imprimee ; rien n'est suppose.
+ */
+function ComptesFields({ form: f, convocation }: { form: SeanceFormApi; convocation: boolean }) {
+  const c = f.comptes;
+  return (
+    <Card title="Exercice et comptes (assemblée annuelle)">
+      <TexteAide cle="seance-comptes" titre="Assemblée ordinaire : les comptes de l’exercice">
+        <p>
+          Pour une assemblée ordinaire, le modèle du cabinet est celui de l’assemblée annuelle
+          d’approbation des comptes. Indiquez l’exercice : la date limite de six mois est calculée
+          depuis la date de clôture. Répondez à chaque question par oui ou non : chaque réponse
+          ajoute ou retire une rubrique de l’ordre du jour ou un paragraphe. L’ordre du jour saisi
+          plus bas ne doit contenir que les points propres au dossier, les rubriques annuelles étant
+          déjà imprimées.
+        </p>
+      </TexteAide>
+      <div className="mt-3 grid gap-3 md:grid-cols-3">
+        {convocation && (
+          <TextField label="Ouverture de l’exercice *" type="date" value={c.exerciceDebut}
+            onChange={(e) => f.setComptes({ exerciceDebut: e.target.value })} />
+        )}
+        <TextField label="Clôture de l’exercice *" type="date" value={c.exerciceClos}
+          onChange={(e) => f.setComptes({ exerciceClos: e.target.value })} />
+        <OuiNon label="Commissaire aux comptes en fonction ? *" value={c.cacDesigne}
+          onChange={(v) => f.setComptes({ cacDesigne: v })} />
+        {c.cacDesigne === 'oui' && (
+          <TextField label="Commissaire aux comptes — Nom *" value={c.cacNom}
+            onChange={(e) => f.setComptes({ cacNom: e.target.value })} />
+        )}
+        {!convocation && c.cacDesigne === 'oui' && (
+          <Select label="Commissaire aux comptes — Présence *" value={c.cacPresence}
+            onChange={(e) => f.setComptes({ cacPresence: e.target.value })}
+            options={[
+              { value: '', label: 'Choisir…' },
+              { value: 'assiste à la réunion', label: 'Assiste à la réunion' },
+              { value: 'est absent et excusé', label: 'Est absent et excusé' },
+            ]} />
+        )}
+        <OuiNon label="Conventions de l’article 64 sur l’exercice ? *" value={c.conventionsReglementees}
+          onChange={(v) => f.setComptes({ conventionsReglementees: v })} />
+        {convocation && (
+          <>
+            <OuiNon label="Dotation à la réserve légale due ? *" value={c.reserveLegale}
+              onChange={(v) => f.setComptes({ reserveLegale: v })} />
+            {c.reserveLegale === 'oui' && (
+              <>
+                <TextField label="Quotité du bénéfice affectée *" value={c.reserveLegaleTaux}
+                  onChange={(e) => f.setComptes({ reserveLegaleTaux: e.target.value })} placeholder="Ex : 5 %" />
+                <TextField label="Plafond de la réserve légale *" value={c.reserveLegalePlafond}
+                  onChange={(e) => f.setComptes({ reserveLegalePlafond: e.target.value })}
+                  placeholder="Ex : le dixième du capital social" />
+              </>
+            )}
+            <OuiNon label="Distribution de dividendes proposée ? *" value={c.dividendes}
+              onChange={(v) => f.setComptes({ dividendes: v })} />
+            <OuiNon label="Distribution de réserves proposée ? *" value={c.reserves}
+              onChange={(v) => f.setComptes({ reserves: v })} />
+            <OuiNon label="La gérance associée vote-t-elle le quitus ? *" value={c.quitusGerantVote}
+              onChange={(v) => f.setComptes({ quitusGerantVote: v })} />
+          </>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 function Card({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-border bg-bg-raised p-4">
@@ -942,10 +1277,19 @@ export function AssocieFields({
   value,
   onChange,
   showVoix,
+  showEmail,
+  showPouvoirDate,
+  showPresence = true,
 }: {
   value: AssocieInput;
   onChange: (next: AssocieInput) => void;
   showVoix?: boolean;
+  /** L4d (E11b) : adresse de la lettre de convocation envoyee par voie electronique. */
+  showEmail?: boolean;
+  /** L4d (E11b) : date du pouvoir de l'associe represente (feuille de presence). */
+  showPouvoirDate?: boolean;
+  /** L4d (E11b) : sans objet pour une premiere convocation (avant l'assemblee). */
+  showPresence?: boolean;
 }) {
   const isMorale = value.typePersonne === 'MORALE';
   return (
@@ -1003,6 +1347,12 @@ export function AssocieFields({
       {showVoix && (
         <TextField label="Nombre de voix" type="number" value={value.nombreVoix} onChange={(e) => onChange({ ...value, nombreVoix: e.target.value })} placeholder="= parts" />
       )}
+      {showEmail && (
+        <TextField label="Adresse électronique *" type="email" value={value.adresseElectronique ?? ''}
+          onChange={(e) => onChange({ ...value, adresseElectronique: e.target.value })}
+          hint="La lettre est envoyée à cette adresse (envoi par voie électronique)." />
+      )}
+      {showPresence && (
       <Select
         label="Présence *"
         value={value.presence}
@@ -1015,8 +1365,14 @@ export function AssocieFields({
           { value: 'absent', label: 'Absent' },
         ]}
       />
-      {value.presence === 'représenté' && (
+      )}
+      {showPresence && value.presence === 'représenté' && (
         <TextField label="Mandataire — Nom" value={value.mandataireNom} onChange={(e) => onChange({ ...value, mandataireNom: e.target.value })} />
+      )}
+      {showPresence && showPouvoirDate && value.presence === 'représenté' && (
+        <TextField label="Date du pouvoir *" type="date" value={value.pouvoirDate ?? ''}
+          onChange={(e) => onChange({ ...value, pouvoirDate: e.target.value })}
+          hint="Imprimée sur la feuille : « en vertu d’un pouvoir en date du … »." />
       )}
       {/* Désignation #5 : cocher un associé comme gérant depuis la liste des associés. */}
       {value.typePersonne === 'PHYSIQUE' && (
