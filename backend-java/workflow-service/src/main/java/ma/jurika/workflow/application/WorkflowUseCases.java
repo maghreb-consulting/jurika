@@ -370,11 +370,11 @@ public class WorkflowUseCases {
         // referentiel de demarches, conservent leur comportement : fin de workflow
         // = ticket cloture.
         if (finalStepValidated && p.statut() != WorkflowStatut.TERMINE) {
-            String cible = p.type() == WorkflowType.CREATION
-                    ? "DEROULEMENT_DEMARCHE"
-                    : "CLOTURE_DOSSIER";
+            // Lot L4c (E1, RG-TKT-02, RG-CLO-04) : tout parcours finit au statut 3
+            // « Deroulement de la demarche » ; la cloture est explicite (fiche du ticket),
+            // apres les demarches. Avant : saut direct a la cloture hors creation.
             autoTransitionTicket(workspaceId, ticketId, userId,
-                    "GENERATION_DOCUMENTS", cible, "WORKFLOW_COMPLETED");
+                    "GENERATION_DOCUMENTS", "DEROULEMENT_DEMARCHE", "WORKFLOW_COMPLETED");
         }
 
         WorkflowProgress updated = progressRepository.save(
@@ -2142,44 +2142,37 @@ public class WorkflowUseCases {
      * ne se passe (no-op). Trace systematiquement la tentative en audit_log avec
      * le compte de lignes affectees (utile pour distinguer transition reelle de no-op).
      */
+    /** Lot L4c (E1) : transitions demandees a ticket-service ; absent dans certains tests. */
+    private TransitionsTicket transitionsTicket;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setTransitionsTicket(TransitionsTicket transitionsTicket) {
+        this.transitionsTicket = transitionsTicket;
+    }
+
     private void autoTransitionTicket(UUID workspaceId, UUID ticketId, UUID userId,
                                        String expectedFrom, String newStatut, String reason) {
+        // Lot L4c (E1) : la transition est DEMANDEE a ticket-service (machine d'etats et
+        // controles de passage) ; plus d'UPDATE direct du statut. Un refus ne casse pas le
+        // parcours : le ticket reste ou il est, et sa fiche dit ce qui manque.
+        if (transitionsTicket == null) {
+            log.warn("ticket.transition non demandee ticket={} {}->{} : aucun client ticket-service",
+                    ticketId, expectedFrom, newStatut);
+            return;
+        }
         try {
-            int updated = em.createNativeQuery(
-                    "UPDATE tickets SET statut = ?1, " +
-                            "cloture_at = CASE WHEN ?1 = 'CLOTURE_DOSSIER' THEN NOW() ELSE cloture_at END, " +
-                            "updated_at = NOW() " +
-                            "WHERE id = ?2 AND workspace_id = ?3 AND statut = ?4")
-                    .setParameter(1, newStatut)
-                    .setParameter(2, ticketId)
-                    .setParameter(3, workspaceId)
-                    .setParameter(4, expectedFrom)
-                    .executeUpdate();
-            if (updated == 1) {
-                log.info("ticket.auto-transition {} {} -> {} (reason={})",
-                        ticketId, expectedFrom, newStatut, reason);
-                // Audit -- best-effort, ne pas faire echouer la transition si l'audit casse.
-                try {
-                    em.createNativeQuery(
-                            "INSERT INTO audit_log (workspace_id, user_id, action, entity_type, entity_id, metadata) " +
-                                    "VALUES (?1, ?2, ?3, 'ticket', ?4, CAST(?5 AS jsonb))")
-                            .setParameter(1, workspaceId)
-                            .setParameter(2, userId)
-                            .setParameter(3, "TICKET_AUTO_TRANSITION")
-                            .setParameter(4, ticketId)
-                            .setParameter(5, "{\"from\":\"" + expectedFrom + "\",\"to\":\"" + newStatut
-                                    + "\",\"reason\":\"" + reason + "\"}")
-                            .executeUpdate();
-                } catch (Exception auditEx) {
-                    log.warn("audit_log insert failed for ticket auto-transition: {}", auditEx.getMessage());
-                }
+            TransitionsTicket.Reponse r = transitionsTicket.demander(workspaceId, ticketId, expectedFrom, newStatut,
+                    "Parcours : " + reason, userId);
+            if ("REFUSEE".equals(r.resultat())) {
+                log.info("ticket.transition refusee ticket={} {}->{} (reason={}) : {}",
+                        ticketId, expectedFrom, newStatut, reason, r.motif());
             } else {
-                log.debug("ticket.auto-transition no-op ticket={} expectedFrom={} (statut deja different)",
-                        ticketId, expectedFrom);
+                log.info("ticket.transition {} ticket={} {}->{} (reason={})",
+                        r.resultat(), ticketId, expectedFrom, newStatut, reason);
             }
         } catch (Exception ex) {
             // Best-effort -- ne casse jamais le workflow.
-            log.warn("ticket.auto-transition failed ticket={} {}->{} : {}",
+            log.warn("ticket.transition echouee ticket={} {}->{} : {}",
                     ticketId, expectedFrom, newStatut, ex.getMessage());
         }
     }

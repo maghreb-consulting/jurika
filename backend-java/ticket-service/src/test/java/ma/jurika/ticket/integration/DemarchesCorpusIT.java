@@ -345,6 +345,26 @@ class DemarchesCorpusIT {
                 .andExpect(status().isConflict());
     }
 
+    /** Lot L4c (E1) : la transition demandee par un parcours passe par les memes controles. */
+    @Test
+    @Order(7)
+    void la_transition_demandee_par_un_parcours_suit_les_controles() throws Exception {
+        String sansObjet = mvc.perform(post("/internal/tickets/" + ticketId + "/transition").contentType("application/json")
+                        .content("{\"workspaceId\":\"" + WS_A + "\",\"attendu\":\"GENERATION_DOCUMENTS\","
+                                + "\"cible\":\"DEROULEMENT_DEMARCHE\",\"raison\":\"Parcours\",\"acteurId\":\"" + KARIM + "\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(sansObjet).get("resultat").asText()).isEqualTo("SANS_OBJET");
+        String refus = mvc.perform(post("/internal/tickets/" + ticketId + "/transition").contentType("application/json")
+                        .content("{\"workspaceId\":\"" + WS_A + "\",\"attendu\":\"DEROULEMENT_DEMARCHE\","
+                                + "\"cible\":\"CLOTURE_DOSSIER\",\"raison\":\"Parcours\",\"acteurId\":\"" + KARIM + "\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        JsonNode r = json.readTree(refus);
+        assertThat(r.get("resultat").asText()).isEqualTo("REFUSEE");
+        assertThat(r.get("motif").asText()).contains("non coch");
+        assertThat(owner.queryForObject("SELECT statut FROM tickets WHERE id = ?", String.class, ticketId))
+                .isEqualTo("DEROULEMENT_DEMARCHE");
+    }
+
     private JsonNode lire(String url) throws Exception {
         MvcResult r = mvc.perform(get(url).header("Authorization", jeton("EMPLOYE"))).andExpect(status().isOk()).andReturn();
         return json.readTree(r.getResponse().getContentAsString());

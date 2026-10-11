@@ -296,8 +296,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   desactive sur le Z440).
 - **`/internal/**` sans authentification entre services** : bloque a la passerelle et ports
   lies a 127.0.0.1 (L0), mais tout conteneur du reseau Docker peut les appeler.
-- **Transitions de ticket par UPDATE direct** depuis workflow
-  (`WorkflowUseCases#autoTransitionTicket`) : au lot des parcours.
 - **Dependance circulaire des migrations ticket V21 / dataroom** : ticket V21 reference
   `dataroom_documents`, que dataroom V5 cree en referencant `tickets`. Les tests passent par
   l'ordre auth, ticket jusqu'a V20, dataroom, fin de ticket. A demeler au lot des parcours.
