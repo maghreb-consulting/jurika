@@ -192,9 +192,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   `DocxToPdfConverterTest.real_conversion_produces_valid_pdf_when_libreoffice_installed`
   (`@EnabledIf("hasLibreOffice")`) et les 3 tests de `HtmlToPdfConverterTest` (assumption
   « LibreOffice absent »). La conversion PDF n'est donc jamais verifiee par `verify -Pit` ici.
-- **Gabarits rendus par deux mappers differents** : `PV_DISSOLUTION_LIQUIDATION_SARL` et
-  `PV_DISSOLUTION_LIQUIDATION_SARL_AU` (DissolutionMapper et LiquidationMapper). Doublon a
-  resorber au lot qui unifie les parcours (`RAPPORT_GESTION` : resolu en L4d, RapportGestionVarsBuilder).
 
 ### Lot L2 (chargeur du corpus, 2026-10-09) -- dette relevee
 
@@ -206,16 +203,34 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   creation ; regle "PV multi-resolutions" (modeles d'AGE cites pour toute assemblee) ; variante
   `PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU` citee par le corpus mais absente (servie par le classpath).
   Gabarits intouchables : A_DECIDER cabinet (correction des modeles, nouvelle version datee du corpus).
-- **Parcours a basculer sur les modeles du corpus (L4c ; rien de bascule en L4b, seules les annonces et le PV d'approbation SARL AU du corpus ont recu leurs variables D5).** 12 des 15 gabarits du classpath
-  absents du corpus ont un equivalent dans `CORPUS_2026-10-03` (STATUTS deterministes,
-  CONVOCATION_AG, FEUILLE_PRESENCE_AG, RAPPORT_GESTION, RAPPORT_LIQUIDATION_DIRECTEUR,
-  PV_DISSOLUTION_LIQUIDATION, PV_MODIFICATION, ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE) :
-  les parcours basculeront sur ces equivalents en L4 (correspondances parfois reparties sur
-  plusieurs modeles, choix selon la donnee du parcours). Restent :
-  PV_DEFAUT_QUORUM_SARL_AU et PV_IRREGULARITE_CONVOCATION_SARL_AU (sans objet) ;
-  PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU (A_DECIDER directeur : manque, ou doublon de
-  PV_CREATION_SUCCURSALE_ETRANGERE_SARL qui vise une societe etrangere sans forme).
-  Tableau : `~/docs/rapports/L2_correspondance_gabarits.md`.
+- **Bascule des gabarits du classpath sur le corpus (L4d E11, faite)** : restent au classpath
+  `RAPPORT_LIQUIDATION_DIRECTEUR` (bascule sur `RAPPORT_LIQUIDATEUR_SARL(_AU)` non resolue : onze
+  tableaux -- realisation de l'actif, apurement du passif, frais, diligences... -- sans ecran, 54
+  donnees ; a construire avec un ecran de saisie des operations de liquidation) et
+  `PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU` (ecart du cabinet, A_DECIDER directeur).
+
+### Lot L4d (page de ticket, bascule du corpus, 2026-10-12) -- dette relevee
+
+- **Rapport du liquidateur** : voir "Bascule des gabarits" (classpath conserve, bascule non resolue).
+- **PV de modification non rediges par le modele du corpus** (refus nomme) : incorporation de
+  reserves, elevation du nominal, article 86 en SARL, affectation / distributions / acompte en
+  SARL AU (donnees sans ecran ou branche absente) ; deux resolutions d'un meme type de liste dans
+  un PV. Detail : rapport final L4d.
+- **Assemblee ordinaire hors approbation des comptes** : la convocation et la feuille AGO du corpus
+  sont celles de l'assemblee annuelle ; les parcours succursale, fermeture et modification qui
+  tiennent une AGO hors comptes recoivent ces modeles (donnees des comptes demandees). A_DECIDER
+  cabinet (modele d'AGO generique) ; cloture de liquidation : `CONVOCATION_AG_CLOTURE_LIQUIDATION_SARL`
+  non branche.
+- **Associe personne morale sur la feuille de presence** (forme, siege, RC, representant) : sans
+  ecran, generation refusee avec les donnees nommees.
+- **`SeancePvVarsBuilder`** : `LIEU_SIGNATURE` replie sur la ville du greffe (supposition),
+  `CONVOCATION_RANG` "premiere" et `SECRETAIRE_PRESENT` "non" par defaut, "represente" sans accord.
+- **`DocumentTypes.ALL`** liste encore `RAPPORT_GESTION` : les endpoints generiques
+  `/ai/documents/generate/RAPPORT_GESTION` repondent 404 (aucun ecran ne les appelle).
+- **Brouillon** : la page de dissolution ne conserve pas l'instantane de seance du formulaire de PV
+  apres rechargement ; l'execution de l'etape 2 du PV AGO remplace `data.step2`.
+- **Note interne `NOTE_DEFAUT_DECISION_ASSOCIE_UNIQUE_SARL_AU`** du corpus non branchee (constat de
+  defaut de decision de l'associe unique).
 
 ### Lot L6 (qualite de la langue, ergonomie) -- a prevoir
 
@@ -228,12 +243,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L4b (demarches du corpus, D5, 2026-10-11) -- dette relevee
 
-- **PV de dissolution en service (classpath)** : il ne redige que trois natures ; les quatre autres
-  motifs du corpus (realisation ou extinction de l'objet, cause statutaire, autre) y sont refuses,
-  donnee nommee, jusqu'a la bascule sur `PV_DISSOLUTION_ANTICIPEE_SARL(_AU)` (L4c).
-- **Repli "boni" du resultat de liquidation** quand rien n'est saisi ni calculable
-  (`LiquidationAnnonceVarsBuilder.resolveResultatType`, `DissolutionLiquidationMapper.normBoniMali`) :
-  valeur supposee a retirer (refus nomme).
 - **Type du tribunal de la creation** : ville vide => "Tribunal de premiere instance"
   (`CreationFormulairesVarsBuilder`) ; a aligner sur `TribunalDerive` (rien deduit sans ville).
 - **Justificatifs du corpus en texte seul** : les lignes du referentiel du corpus n'ont pas de type
@@ -241,8 +250,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **Conditions des demarches du corpus** lues sur le magasin du ticket, que seules la creation et
   l'annulation alimentent : hors creation, la plupart des lignes conditionnelles restent "a apprecier"
   jusqu'a la page generique (L4c).
-- **Liquidateur personne morale** : prevu par les modeles du corpus, non saisissable a l'ecran
-  (A_DECIDER directeur).
 
 ### Lot L4a (controles, annulation, 2026-10-11) -- dette relevee
 
@@ -258,9 +265,9 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 - **Champ sans ecran** lu par le projecteur : ville du RC d'un associe personne morale
   (`ASSOCIE_RC_VILLE`).
-- **Clauses libres** : pas d'emplacement dans les PV de modification, de dissolution / liquidation
-  ni dans les PV SARL AU servis ; les modeles du corpus qui le prevoient (`PV_AG_SARL`,
-  `PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU`, `$RESOLUTION_TEXTE_LIBRE`) arrivent avec L4.
+- **Clauses libres** : les PV de dissolution et de cloture du corpus (`PV_DISSOLUTION_ANTICIPEE_*`,
+  `PV_CLOTURE_LIQUIDATION_*`) n'ont pas de boucle `RESOLUTIONS` : pas d'emplacement (la generation
+  refuse une clause). PV de modification et statuts : faits en L4d (E10, E11c).
 
 ### Lot L1 (dossiers et employes, 2026-10-09) -- dette relevee
 
