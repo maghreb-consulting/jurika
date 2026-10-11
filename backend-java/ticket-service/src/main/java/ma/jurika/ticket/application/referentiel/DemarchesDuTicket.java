@@ -220,6 +220,96 @@ public class DemarchesDuTicket implements LignesDuTicket {
     }
 
     // ------------------------------------------------------------------
+    //  Delais (E5, RG-DEM-06)
+    // ------------------------------------------------------------------
+
+    /**
+     * Delai d'une ligne du corpus sur ce ticket.
+     *
+     * @param depart       point de depart retenu (donnee du ticket, sinon saisi sur la ligne)
+     * @param echeance     date limite calculee ou lue
+     * @param attendu      DEPART ou ECHEANCE quand la ligne attend une saisie, sinon null
+     * @param donnee       variable du corpus qui porte la date attendue, si la matrice la nomme
+     */
+    public record DelaiLigne(java.time.LocalDate depart, java.time.LocalDate echeance, String attendu, String donnee) {}
+
+    public Map<UUID, DelaiLigne> delais(Ticket t, List<LigneCorpus> lignes) {
+        Map<String, String> vars = variables(t);
+        Map<UUID, Map<String, Object>> saisis = new LinkedHashMap<>();
+        for (Map<String, Object> m : db.queryForList("""
+                SELECT demarche_id, depart, echeance FROM ticket_demarche_delais WHERE workspace_id = ? AND ticket_id = ?
+                """, t.workspaceId(), t.id())) {
+            saisis.put((UUID) m.get("demarche_id"), m);
+        }
+        Map<UUID, DelaiLigne> out = new LinkedHashMap<>();
+        for (LigneCorpus l : lignes) {
+            Demarche d = l.demarche();
+            Map<String, Object> s = saisis.getOrDefault(d.id(), Map.of());
+            if (d.delaiValeur() != null && d.delaiUnite() != null) {
+                String donnee = d.delaiReferenceDonnee();
+                java.time.LocalDate depart = donnee == null ? null : date(vars.get(donnee));
+                if (depart == null) depart = local(s.get("depart"));
+                out.put(d.id(), depart == null
+                        ? new DelaiLigne(null, null, "DEPART", donnee)
+                        : new DelaiLigne(depart, ma.jurika.ticket.domain.service.EcheanceCalculator.echeance(
+                                depart, d.delaiValeur(), d.delaiUnite()), null, donnee));
+            } else if (l.echeanceDonnee() != null) {
+                java.time.LocalDate echeance = date(vars.get(l.echeanceDonnee()));
+                if (echeance == null) echeance = local(s.get("echeance"));
+                out.put(d.id(), new DelaiLigne(null, echeance, echeance == null ? "ECHEANCE" : null, l.echeanceDonnee()));
+            }
+        }
+        return out;
+    }
+
+    /** Saisie, sur la ligne, du point de depart ou de la date limite attendus (RG-DEM-06). */
+    public void saisirDelai(Ticket t, int ordre, java.time.LocalDate depart, java.time.LocalDate echeance, UUID acteur) {
+        if (t.statut() == TicketStatut.CLOTURE_DOSSIER || t.statut() == TicketStatut.ANNULE) {
+            throw new ConflictException("Les d\u00e9lais d'un ticket clos ou annul\u00e9 ne se modifient plus.");
+        }
+        LigneCorpus ligne = lignesCorpus(t).stream().filter(l -> l.demarche().ordre() == ordre).findFirst()
+                .orElseThrow(() -> new ConflictException("Aucune d\u00e9marche " + ordre + " sur ce ticket."));
+        DelaiLigne d = delais(t, List.of(ligne)).get(ligne.demarche().id());
+        boolean attendDepart = ligne.demarche().delaiValeur() != null && ligne.demarche().delaiUnite() != null;
+        boolean attendEcheance = !attendDepart && ligne.echeanceDonnee() != null;
+        if (d == null || (!attendDepart && !attendEcheance)) {
+            throw new ConflictException("Cette d\u00e9marche n'a pas de d\u00e9lai \u00e0 calculer.");
+        }
+        if ((attendDepart && depart == null) || (attendEcheance && echeance == null)) {
+            throw new ConflictException(attendDepart ? "Indiquez le point de d\u00e9part du d\u00e9lai."
+                    : "Indiquez la date limite.");
+        }
+        db.update("""
+                INSERT INTO ticket_demarche_delais (workspace_id, ticket_id, demarche_id, depart, echeance, saisi_par)
+                VALUES (?,?,?,?,?,?)
+                ON CONFLICT (ticket_id, demarche_id) DO UPDATE SET depart = EXCLUDED.depart,
+                    echeance = EXCLUDED.echeance, saisi_par = EXCLUDED.saisi_par, saisi_le = now()
+                """, t.workspaceId(), t.id(), ligne.demarche().id(), attendDepart ? depart : null,
+                attendEcheance ? echeance : null, acteur);
+    }
+
+    /** Date du magasin : ISO ou jj/mm/aaaa ; illisible = absente (jamais devinee). */
+    static java.time.LocalDate date(String brut) {
+        if (brut == null || brut.isBlank()) return null;
+        String b = brut.trim();
+        try {
+            if (b.matches("\\d{4}-\\d{2}-\\d{2}.*")) return java.time.LocalDate.parse(b.substring(0, 10));
+            if (b.matches("\\d{2}/\\d{2}/\\d{4}")) {
+                return java.time.LocalDate.parse(b, java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            }
+        } catch (java.time.format.DateTimeParseException e) {
+            return null;
+        }
+        return null;
+    }
+
+    private static java.time.LocalDate local(Object o) {
+        if (o instanceof java.sql.Date d) return d.toLocalDate();
+        if (o instanceof java.time.LocalDate d) return d;
+        return null;
+    }
+
+    // ------------------------------------------------------------------
     //  Evaluation
     // ------------------------------------------------------------------
 
@@ -228,6 +318,10 @@ public class DemarchesDuTicket implements LignesDuTicket {
                 SELECT matrice_renvoi, numero_renvoi FROM referentiel_renvois
                 WHERE actif AND matrice = ? AND code = ? AND numero_renvoi IS NOT NULL
                 """, c.matrice(), c.code());
+    }
+
+    public Map<String, String> donnees(Ticket t) {
+        return variables(t);
     }
 
     private Map<String, String> variables(Ticket t) {

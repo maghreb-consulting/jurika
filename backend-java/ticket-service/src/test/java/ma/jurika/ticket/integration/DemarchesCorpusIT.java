@@ -170,6 +170,11 @@ class DemarchesCorpusIT {
                 obligatoire, null, null, null, numero, null, null);
     }
 
+    private static Ligne delai(String matrice, int ordre, String libelle, ReferentielCorpus.Delai d) {
+        return new Ligne(matrice, "F", "SARL", ordre, "approbation_comptes", null, "DEROULEMENT_DEMARCHE", libelle,
+                "Greffe", null, false, d, null, null, 1, null, null);
+    }
+
     /**
      * Matrice des modifications : approbation_comptes (renvoyee vers la matrice des comptes,
      * decision n 1), transfert_siege (lignes propres). Matrice des comptes : la decision n 1,
@@ -185,7 +190,13 @@ class DemarchesCorpusIT {
                 ligne(COMPTES, 3, "approbation_comptes", "DEROULEMENT_DEMARCHE", "D\u00e9p\u00f4t du rapport du commissaire \u2014 retrait du r\u00e9c\u00e9piss\u00e9",
                         new Condition("CAC_EXISTE", "EGAL", "oui", "Si un commissaire"), true, 1),
                 ligne(COMPTES, 4, "approbation_comptes", "DEROULEMENT_DEMARCHE", "Contr\u00f4le du dossier",
-                        new Condition(null, "PHRASE", null, "Pi\u00e8ce produite au cours du ticket"), true, 1));
+                        new Condition(null, "PHRASE", null, "Pi\u00e8ce produite au cours du ticket"), true, 1),
+                delai(COMPTES, 5, "Publication de l'avis (d\u00e9lai sans d\u00e9part nomm\u00e9)",
+                        new ReferentielCorpus.Delai("30 jours \u2014 texte de la matrice : dans les trente jours", 30, "JOURS", null, null)),
+                delai(COMPTES, 6, "Inscription (d\u00e9part nomm\u00e9)",
+                        new ReferentielCorpus.Delai("1 mois \u00e0 compter de $DATE_APPROBATION", 1, "MOIS", "DATE_APPROBATION", null)),
+                delai(COMPTES, 7, "Annonce (date limite)",
+                        new ReferentielCorpus.Delai("au plus tard le $ANNONCE_LEGALE_DATE_LIMITE", null, null, null, "ANNONCE_LEGALE_DATE_LIMITE")));
         return new ReferentielCorpus("CORPUS_IT", lignes,
                 List.of(new Renvoi(MODIF, 1, "A", "Approbation des comptes", "approbation_comptes", "COMPTES",
                         COMPTES, 1, "La matrice de la famille fait foi")),
@@ -193,7 +204,7 @@ class DemarchesCorpusIT {
                         new Decision(MODIF, 30, "C", "transfert_siege", "Transfert du si\u00e8ge social", "AGE"),
                         new Decision(COMPTES, 1, "A", "approbation_comptes", "Approbation des \u00e9tats de synth\u00e8se", "AGO")),
                 List.of(),
-                new Rapport(Map.of(MODIF, 2, COMPTES, 4), 6, List.of(), List.of(), List.of()));
+                new Rapport(Map.of(MODIF, 2, COMPTES, 7), 9, List.of(), List.of(), List.of()));
     }
 
     @Test
@@ -297,6 +308,39 @@ class DemarchesCorpusIT {
         mvc.perform(post("/api/v1/tickets/" + ticketId + "/transition").header("Authorization", jeton("EMPLOYE"))
                         .contentType("application/json").content("{\"target\":\"DEROULEMENT_DEMARCHE\"}"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @Order(6)
+    void les_delais_partent_d_une_donnee_ou_d_une_date_saisie_sur_la_ligne() throws Exception {
+        java.time.LocalDate aujourdhui = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Casablanca"));
+        JsonNode vue = lire("/api/v1/tickets/" + ticketId + "/demarches");
+        JsonNode sansDepart = ligneDe(vue, "sans d\u00e9part nomm\u00e9");
+        assertThat(sansDepart.get("delaiAttendu").asText()).isEqualTo("DEPART");
+        assertThat(sansDepart.get("echeance").isNull()).as("aucune date fabriquee").isTrue();
+        assertThat(ligneDe(vue, "Inscription (").get("delaiDonnee").asText()).isEqualTo("DATE_APPROBATION");
+        assertThat(ligneDe(vue, "date limite").get("delaiAttendu").asText()).isEqualTo("ECHEANCE");
+
+        // Point de depart saisi sur la ligne : l'echeance se calcule (RG-DEM-06), et une
+        // echeance depassee entre aux points d'attention.
+        java.time.LocalDate depart = aujourdhui.minusDays(40);
+        mvc.perform(put("/api/v1/tickets/" + ticketId + "/demarches/" + sansDepart.get("ordre").asInt() + "/delai")
+                        .header("Authorization", jeton("EMPLOYE")).contentType("application/json")
+                        .content("{\"depart\":\"" + depart + "\"}"))
+                .andExpect(status().isOk());
+        // Point de depart porte par une donnee du ticket.
+        owner.update("INSERT INTO dossier_variables (workspace_id, ticket_id, variable, valeur, origine, saisie_par_id) "
+                + "VALUES (?, ?, 'DATE_APPROBATION', '2026-09-15', 'SAISIE', ?)", WS_A, ticketId, KARIM);
+        vue = lire("/api/v1/tickets/" + ticketId + "/demarches");
+        assertThat(ligneDe(vue, "sans d\u00e9part nomm\u00e9").get("echeance").asText()).isEqualTo(depart.plusDays(30).toString());
+        assertThat(ligneDe(vue, "Inscription (").get("echeance").asText()).isEqualTo("2026-10-15");
+        assertThat(vue.get("avancement").get("pointsAttention").toString()).contains("sans d\u00e9part nomm\u00e9")
+                .contains("DEPASSE");
+        // La date attendue est la bonne : une echeance n'est pas un depart.
+        mvc.perform(put("/api/v1/tickets/" + ticketId + "/demarches/" + ligneDe(vue, "date limite").get("ordre").asInt() + "/delai")
+                        .header("Authorization", jeton("EMPLOYE")).contentType("application/json")
+                        .content("{\"depart\":\"2026-10-01\"}"))
+                .andExpect(status().isConflict());
     }
 
     private JsonNode lire(String url) throws Exception {
