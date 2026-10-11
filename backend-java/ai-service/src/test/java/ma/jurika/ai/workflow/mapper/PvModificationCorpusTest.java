@@ -62,7 +62,7 @@ class PvModificationCorpusTest {
         Assumptions.assumeTrue(engine != null, "corpus reel absent : " + CORPUS);
     }
 
-    // \u2500\u2500 Choix du modele \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // -- Choix du modele --------------------------------------------------
 
     @Test
     void le_pv_de_modification_est_rendu_par_les_modeles_du_corpus() {
@@ -75,7 +75,7 @@ class PvModificationCorpusTest {
         assertThat(mapper.gabarit("STATUTS_REFONDUS_SARL", Map.of())).isEqualTo("STATUTS_REFONDUS_SARL");
     }
 
-    // \u2500\u2500 Fixture de la verification des documents \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // -- Fixture de la verification des documents -------------------------
 
     @Test
     @SuppressWarnings("unchecked")
@@ -111,7 +111,7 @@ class PvModificationCorpusTest {
         assertThat(au).contains("\noui, de nationalit\u00e9 marocaine").contains("L'associ\u00e9 unique\noui\n");
     }
 
-    // \u2500\u2500 SARL : une resolution par decision proposee \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // -- SARL : une resolution par decision proposee ----------------------
 
     @Test
     void sarl_comptes_et_distributions() throws Exception {
@@ -347,7 +347,7 @@ class PvModificationCorpusTest {
                 "mettre en harmonie l'enseigne");
     }
 
-    // \u2500\u2500 SARL AU \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // -- SARL AU ----------------------------------------------------------
 
     @Test
     void au_decisions_couvertes() throws Exception {
@@ -418,7 +418,7 @@ class PvModificationCorpusTest {
                 .isInstanceOf(GenerationRefuseeException.class);
     }
 
-    // \u2500\u2500 Refus : choix exiges, incoherences, boucles \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // -- Refus : choix exiges, incoherences, boucles ----------------------
 
     @Test
     void choix_absents_ou_incoherents_refuses_et_nommes() {
@@ -466,7 +466,26 @@ class PvModificationCorpusTest {
                 .contains("VILLE_GREFFE_ARRIVEE", "REGISTRE_PV_NUMERO", "REGISTRE_PV_FEUILLET", "NOMBRE_ORIGINAUX");
     }
 
-    // \u2500\u2500 Rendu \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    /**
+     * "deposera au greffe du tribunal de commerce de $TRIBUNAL_VILLE" : la ville n'est deduite
+     * que si le registre est tenu dans une ville de tribunal de commerce ; ailleurs, la donnee
+     * est nommee (jamais "tribunal de commerce de Kenitra").
+     */
+    @Test
+    void tribunal_de_commerce_non_deduit_hors_ville_de_tribunal_de_commerce() throws Exception {
+        corpusRequis();
+        Map<String, Object> pv = pvAu(List.of(ajout(res("approbation_comptes"),
+                "exerciceClosDate", "2025-12-31", "resultatSens", "b\u00e9n\u00e9fice", "resultatMontant", 12_000)));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> societe = (Map<String, Object>) pv.get("societe");
+        societe.put("villeGreffe", "K\u00e9nitra");
+        societe.put("rcVille", "K\u00e9nitra");
+        DocxTemplateEngine.DocumentResult r = engine.generate(mapper.gabarit("PV_MODIFICATION_SARL_AU", pv),
+                RepriseFiche.completer(mapper.map("PV_MODIFICATION_SARL_AU", pv), pv));
+        assertThat(r.manquantesBloquantes()).extracting(m -> m.nom()).contains("TRIBUNAL_VILLE");
+    }
+
+    // -- Rendu ------------------------------------------------------------
 
     private void assertRefus(Map<String, Object> pv, String variable) {
         String code = Boolean.TRUE.equals(pv.get("associeUnique")) ? "PV_MODIFICATION_SARL_AU" : "PV_MODIFICATION_SARL";
@@ -503,7 +522,7 @@ class PvModificationCorpusTest {
         return texte;
     }
 
-    // \u2500\u2500 Charges \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // -- Charges ----------------------------------------------------------
 
     /** Reprise de la fiche societe, comme le controleur. */
     private static final class RepriseFiche {

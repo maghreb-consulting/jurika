@@ -836,7 +836,6 @@ public final class ModificationDirecteurMapper {
         Map<String, Object> registre = asMap(safe.get("registre"));
         put(v, "REGISTRE_PV_NUMERO", first(str(registre.get("numero")), str(safe.get("registrePvNumero"))));
         put(v, "REGISTRE_PV_FEUILLET", first(str(registre.get("feuillet")), str(safe.get("registrePvFeuillet"))));
-        put(v, "TRIBUNAL_VILLE", "");
     }
 
     private static String associeUniqueNom(Map<String, Object> safe) {
