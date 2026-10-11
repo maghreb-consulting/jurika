@@ -22,11 +22,11 @@ public class IncidentSeanceMapper implements WorkflowDocumentMapper {
 
     private static final String WORKFLOW = "INCIDENT_SEANCE";
 
+    // Lot L4d (E11) : les variantes SARL AU sont retirees, sans objet (L2_correspondance_gabarits.md,
+    // n 14 et 15) : un associe unique ne tient ni assemblee a quorum ni convocation.
     private static final Set<String> TEMPLATES = Set.of(
             "PV_DEFAUT_QUORUM_SARL",
-            "PV_DEFAUT_QUORUM_SARL_AU",
-            "PV_IRREGULARITE_CONVOCATION_SARL",
-            "PV_IRREGULARITE_CONVOCATION_SARL_AU");
+            "PV_IRREGULARITE_CONVOCATION_SARL");
 
     @Override
     public String workflowCode() {

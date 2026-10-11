@@ -46,14 +46,11 @@ class SeanceVarsCoverageTest {
         // deux variantes de payload pour couvrir toutes les variables possibles.
         assertCovered("PV_DEFAUT_QUORUM_SARL",
                 incident.map("PV_DEFAUT_QUORUM_SARL", payloadSarl()));
-        assertCovered("PV_DEFAUT_QUORUM_SARL_AU",
-                incident.map("PV_DEFAUT_QUORUM_SARL_AU", payloadAu()),
-                incident.map("PV_DEFAUT_QUORUM_SARL_AU", payloadAuMorale()));
         assertCovered("PV_IRREGULARITE_CONVOCATION_SARL",
                 incident.map("PV_IRREGULARITE_CONVOCATION_SARL", payloadSarl()));
-        assertCovered("PV_IRREGULARITE_CONVOCATION_SARL_AU",
-                incident.map("PV_IRREGULARITE_CONVOCATION_SARL_AU", payloadAu()),
-                incident.map("PV_IRREGULARITE_CONVOCATION_SARL_AU", payloadAuMorale()));
+        // Lot L4d (E11) : variantes SARL AU retirees (sans objet).
+        org.assertj.core.api.Assertions.assertThat(incident.supportedTemplates())
+                .containsExactlyInAnyOrder("PV_DEFAUT_QUORUM_SARL", "PV_IRREGULARITE_CONVOCATION_SARL");
     }
 
     // Lot L4d (E11b) : convocation et feuille de presence sont rendues par les modeles du

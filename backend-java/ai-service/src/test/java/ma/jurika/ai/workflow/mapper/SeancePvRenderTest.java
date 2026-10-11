@@ -140,18 +140,6 @@ class SeancePvRenderTest {
     }
 
     @Test
-    void pv_defaut_quorum_sarl_au() {
-        Map<String, Object> payload = basePayload(false);
-        payload.put("associeUnique", m("typePersonne", "PHYSIQUE", "civilite", "M", "prenom", "Omar",
-                "nom", "CHERKAOUI", "nationalite", "marocaine", "adresse", "12 rue X",
-                "pieceType", "CIN", "pieceNumero", "BK12345"));
-        payload.put("gerants", List.of(m("civilite", "M", "prenom", "Omar", "nom", "CHERKAOUI")));
-        RenderResult r = render("PV_DEFAUT_QUORUM_SARL_AU", payload);
-        assertClean("PV_DEFAUT_QUORUM_SARL_AU", r);
-        assertTrue(r.text().contains("CHERKAOUI"), "associé unique absent");
-    }
-
-    @Test
     void pv_irregularite_convocation_sarl() {
         Map<String, Object> payload = basePayload(true);
         payload.put("associes", List.of(
@@ -166,16 +154,14 @@ class SeancePvRenderTest {
                 || r.text().contains("délai"), "mention irrégularité absente");
     }
 
+    /** Lot L4d (E11) : un associe unique ne tient ni assemblee a quorum ni convocation. */
     @Test
-    void pv_irregularite_convocation_sarl_au() {
-        Map<String, Object> payload = basePayload(true);
-        payload.put("associeUnique", m("typePersonne", "MORALE", "denomination", "GROUPE MAGHREB",
-                "forme", "SA", "capital", "1 000 000 DH", "siege", "Rabat", "rcVille", "Rabat",
-                "rcNumero", "98765", "representantNom", "M. Alaoui", "representantQualite", "Président"));
-        payload.put("gerants", List.of(m("civilite", "Mme", "prenom", "Nadia", "nom", "ALAMI")));
-        RenderResult r = render("PV_IRREGULARITE_CONVOCATION_SARL_AU", payload);
-        assertClean("PV_IRREGULARITE_CONVOCATION_SARL_AU", r);
-        assertTrue(r.text().contains("GROUPE MAGHREB"), "associé unique PM absent");
+    void variantes_sarl_au_retirees_sans_objet() {
+        IncidentSeanceMapper m = new IncidentSeanceMapper();
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> m.map("PV_DEFAUT_QUORUM_SARL_AU", Map.of()));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> m.map("PV_IRREGULARITE_CONVOCATION_SARL_AU", Map.of()));
     }
 
     @Test

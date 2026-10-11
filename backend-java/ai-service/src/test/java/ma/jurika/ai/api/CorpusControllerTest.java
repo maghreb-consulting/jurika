@@ -55,6 +55,6 @@ class CorpusControllerTest {
         // Lot L4d : 57 - 2 statuts deterministes (E11a) - PV unifie de dissolution (2) et
         // rapport du liquidateur du directeur (E11d), retires au profit du corpus.
         assertThat(r.horsCorpusClasspath()).contains("ACTE_NOMINATION_GERANT", "ANNONCE_LEGALE_CONSTITUTION")
-                .hasSize(42).isSorted(); // L4d (E11) : 15 gabarits du classpath basculent sur le corpus (rapport de liquidation et PV succursale etrangere AU conserves)
+                .hasSize(40).isSorted(); // L4d (E11) : 15 gabarits du classpath basculent sur le corpus ou sont retires (rapport de liquidation et PV succursale etrangere AU conserves)
     }
 }

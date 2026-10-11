@@ -195,9 +195,7 @@ public final class DocumentTypes {
 
     // PV de seance (incident) transverses — generables dans tout workflow tenant une AG (Phase 4)
     public static final String PV_DEFAUT_QUORUM_SARL = "PV_DEFAUT_QUORUM_SARL";
-    public static final String PV_DEFAUT_QUORUM_SARL_AU = "PV_DEFAUT_QUORUM_SARL_AU";
     public static final String PV_IRREGULARITE_CONVOCATION_SARL = "PV_IRREGULARITE_CONVOCATION_SARL";
-    public static final String PV_IRREGULARITE_CONVOCATION_SARL_AU = "PV_IRREGULARITE_CONVOCATION_SARL_AU";
 
     // Documents de seance partages (Phase A) — Convocation (debut) + Feuille de presence (apres AG).
     // Lot L4d (E11b) : codes logiques du parcours ; le mapper choisit le modele du corpus
@@ -242,7 +240,7 @@ public final class DocumentTypes {
             LETTRE_RETRAIT_DEPOT, NOTE_ANNULATION_DOSSIER, NOTE_CONFORMITE_MENTIONS_LEGALES,
             POUVOIR_FORMALITES_CREATION, RAPPORT_COMMISSAIRE_APPORTS,
             DEMANDE_TAXE_PROFESSIONNELLE, DECLARATION_EXISTENCE, DECLARATION_IMMATRICULATION_RC,
-            PV_DEFAUT_QUORUM_SARL, PV_DEFAUT_QUORUM_SARL_AU,
-            PV_IRREGULARITE_CONVOCATION_SARL, PV_IRREGULARITE_CONVOCATION_SARL_AU,
+            PV_DEFAUT_QUORUM_SARL,
+            PV_IRREGULARITE_CONVOCATION_SARL,
             CONVOCATION_AG, FEUILLE_PRESENCE_AG);
 }

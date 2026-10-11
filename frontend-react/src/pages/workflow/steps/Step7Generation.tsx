@@ -215,9 +215,7 @@ const DOCUMENT_LABELS: Record<string, string> = {
   DECLARATION_EXISTENCE: "Déclaration d'existence",
   DECLARATION_IMMATRICULATION_RC: "Déclaration d'immatriculation au RC (modèle 2)",
   PV_DEFAUT_QUORUM_SARL: 'PV — Défaut de quorum',
-  PV_DEFAUT_QUORUM_SARL_AU: 'PV — Défaut de quorum',
   PV_IRREGULARITE_CONVOCATION_SARL: 'PV — Irrégularité de convocation',
-  PV_IRREGULARITE_CONVOCATION_SARL_AU: 'PV — Irrégularité de convocation',
 };
 
 /**

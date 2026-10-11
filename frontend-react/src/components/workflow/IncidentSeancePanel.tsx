@@ -252,8 +252,12 @@ export function IncidentSeancePanel({
               </div>
             )}
             {!loadingTemplates && templates.length === 0 && !loadTemplatesError && (
-              <div className="rounded-lg border border-amber-200 bg-warning/10 p-3 text-sm text-amber-800">
-                Aucun modèle d'incident de séance disponible.
+              <div className="rounded-lg border border-amber-200 bg-warning/10 p-3 text-sm text-amber-800"
+                data-testid="incident-seance-aucun">
+                {/* Lot L4d (E11) : variantes SARL AU retirees, sans objet. */}
+                {isAU
+                  ? "En société à associé unique, il n'y a ni quorum ni convocation : aucun procès-verbal d'incident de séance (défaut de quorum, irrégularité de convocation) ne s'applique. L'associé unique consigne ses décisions au registre."
+                  : "Aucun modèle d'incident de séance disponible."}
               </div>
             )}
 

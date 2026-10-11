@@ -35,9 +35,7 @@ class DirecteurTemplateContentUnchangedTest {
             // deux gabarits deterministes du directeur et leurs baselines sont retires.
             // Phase 4 — PV de séance (incident) transverses.
             "PV_DEFAUT_QUORUM_SARL.docx",
-            "PV_DEFAUT_QUORUM_SARL_AU.docx",
             "PV_IRREGULARITE_CONVOCATION_SARL.docx",
-            "PV_IRREGULARITE_CONVOCATION_SARL_AU.docx",
             // Lot L4d (E11b) : convocation et feuille de presence rendues par les modeles du
             // corpus ; les gabarits du classpath et leurs baselines sont retires.
             // Phase B — PV d'approbation des comptes (AGO annuelle).
