@@ -318,6 +318,7 @@ class ApprobationComptesRenderTest {
         a.putIfAbsent("quitusGerance", "oui");
         a.putIfAbsent("conventionsReglementees", "non");
         a.putIfAbsent("dividendeDistribue", "non");
+        a.putIfAbsent("commissairePresent", "non"); // L4b (E7d) : choix exige
         copie.put("approbation", a);
         return copie;
     }
