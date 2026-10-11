@@ -4,7 +4,6 @@ import ma.jurika.common.audit.AuditEventEmitter;
 import ma.jurika.common.exception.NotFoundException;
 import ma.jurika.common.exception.ValidationException;
 import ma.jurika.common.security.TenantContext;
-import ma.jurika.ticket.domain.model.EntrepriseDossier;
 import ma.jurika.ticket.domain.model.Ticket;
 import ma.jurika.ticket.domain.model.TicketPriorite;
 import ma.jurika.ticket.domain.port.DossierRepository;
@@ -42,15 +41,7 @@ public class UpdateTicketUseCase {
         // Lot L1 (RG-DOS-01) : seul l'employe responsable du dossier edite le ticket ;
         // a defaut de dossier (ticket SUCCURSALE_ETR avant l'etape 1), son assigne ou
         // son createur. Tout autre employe : 404, comme a la lecture.
-        UUID responsable = current.dossierId() == null ? null
-                : dossierRepository.findById(cmd.workspaceId(), current.dossierId())
-                        .map(EntrepriseDossier::responsableId).orElse(null);
-        boolean autorise = responsable != null
-                ? responsable.equals(cmd.actorId())
-                : cmd.actorId().equals(current.assigneId()) || cmd.actorId().equals(current.creeParId());
-        if (!autorise) {
-            throw new NotFoundException("Ticket inconnu");
-        }
+        new EmployeEnChargeTicket(dossierRepository).exiger(cmd.workspaceId(), current, cmd.actorId());
         // Lot L1 (RG-TKT-08, RG-DOS-02) : les tickets suivent leur dossier. Un
         // changement d'assigne passe par le transfert du dossier (accepte par le
         // destinataire) ou la reaffectation d'office du superviseur, plus par PATCH.

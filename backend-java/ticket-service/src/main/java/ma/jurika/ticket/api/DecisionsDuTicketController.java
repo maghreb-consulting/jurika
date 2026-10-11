@@ -30,9 +30,13 @@ public class DecisionsDuTicketController {
     private final DemarchesDuTicket corpus;
     private final TicketRepository tickets;
 
-    public DecisionsDuTicketController(DemarchesDuTicket corpus, TicketRepository tickets) {
+    private final ma.jurika.ticket.application.EmployeEnChargeTicket enCharge;
+
+    public DecisionsDuTicketController(DemarchesDuTicket corpus, TicketRepository tickets,
+                                       ma.jurika.ticket.application.EmployeEnChargeTicket enCharge) {
         this.corpus = corpus;
         this.tickets = tickets;
+        this.enCharge = enCharge;
     }
 
     public record Choix(List<DemarchesDuTicket.Choix> decisions) {}
@@ -51,6 +55,7 @@ public class DecisionsDuTicketController {
     public DemarchesDuTicket.Decisions choisir(@AuthenticationPrincipal AuthenticatedUser user,
                                                @PathVariable UUID ticketId, @RequestBody Choix body) {
         Ticket t = ticket(user, ticketId);
+        enCharge.exiger(user.workspaceId(), t, user.userId()); // L4d (E2, RG-DOS-01)
         corpus.choisir(t, body == null || body.decisions() == null ? List.of() : body.decisions(), user.userId());
         return corpus.decisions(t);
     }

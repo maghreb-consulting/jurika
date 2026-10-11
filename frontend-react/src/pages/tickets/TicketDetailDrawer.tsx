@@ -45,7 +45,12 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
   // SUPERVISEUR / SUPER_ADMIN = oversight only : ils consultent le ticket mais
   // ne le manipulent pas. Seul l'EMPLOYE agit (prise en charge, workflow,
   // cloture, annulation, transfert). Le backend renvoie 403 de toute facon.
-  const canAct = user?.role === 'EMPLOYE';
+  // Lot L4d (E2, RG-DOS-01) : seul l'employe RESPONSABLE agit (le serveur le recontrole a
+  // chaque geste) ; le superviseur et les autres employes observent, la raison est affichee.
+  // enCharge (et non peutAgir) : sur un ticket clos, le responsable garde la consultation du
+  // workflow ; les panneaux excluent eux-memes les gestes des statuts clos et annule.
+  const [acces, setAcces] = useState<{ enCharge: boolean; raison: string | null } | null>(null);
+  const canAct = user?.role === 'EMPLOYE' && acces?.enCharge === true;
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [debours, setDebours] = useState<Debours[]>([]);
   const [totalDebours, setTotalDebours] = useState(0);
@@ -62,6 +67,7 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
   const [deletingDebours, setDeletingDebours] = useState(false);
 
   const load = useCallback(async () => {
+    ticketService.acces(ticketId).then(setAcces).catch(() => setAcces({ enCharge: false, raison: null }));
     try {
       const [t, dList] = await Promise.all([
         ticketService.get(ticketId),
@@ -187,8 +193,8 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
             </div>
           ) : (
             <div className="flex justify-end">
-              <span className="text-xs text-fg-subtle">
-                Consultation seule — actions reservees a l'employe en charge
+              <span className="text-xs text-fg-subtle" data-testid="acces-raison">
+                {acces?.raison ?? 'Consultation seule — actions réservées à l’employé responsable du dossier.'}
               </span>
             </div>
           )

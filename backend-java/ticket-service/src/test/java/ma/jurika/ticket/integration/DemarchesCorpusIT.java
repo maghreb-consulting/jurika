@@ -156,8 +156,12 @@ class DemarchesCorpusIT {
     }
 
     private static String jeton(String role) {
+        return jeton(KARIM, role);
+    }
+
+    private static String jeton(UUID user, String role) {
         return "Bearer " + Jwts.builder()
-                .claim(JwtClaims.USER_ID, KARIM.toString())
+                .claim(JwtClaims.USER_ID, user.toString())
                 .claim(JwtClaims.WORKSPACE_ID, WS_A.toString())
                 .claim(JwtClaims.ROLE, role)
                 .claim(JwtClaims.EMAIL, "test@rls.test")
@@ -381,6 +385,28 @@ class DemarchesCorpusIT {
         assertThat(d.get("manques").toString()).doesNotContain("Aucune d");
         assertThat(lire("/api/v1/tickets/" + importId + "/demarches").toString())
                 .contains("Collecte de la pi\u00e8ce : Statuts");
+    }
+
+    /** Lot L4d (E2, RG-DOS-01) : seul l'employe responsable agit ; le superviseur lit. */
+    @Test
+    @Order(9)
+    void seul_le_responsable_choisit_les_decisions_et_coche_les_demarches() throws Exception {
+        UUID collegue = UUID.fromString("33333333-3333-3333-3333-0000000000c9");
+        mvc.perform(put("/api/v1/tickets/" + ticketId + "/decisions").header("Authorization", jeton(collegue, "EMPLOYE"))
+                        .contentType("application/json").content("""
+                                { "decisions": [ { "matrice": "%s", "code": "approbation_comptes" } ] }
+                                """.formatted(MODIF)))
+                .andExpect(status().isNotFound());
+        JsonNode pv = ligneDe(lire("/api/v1/tickets/" + ticketId + "/demarches"), "Contr\u00f4le du dossier");
+        mvc.perform(post("/api/v1/tickets/" + ticketId + "/demarches/" + pv.get("ordre").asInt() + "/cocher")
+                        .header("Authorization", jeton(collegue, "EMPLOYE"))
+                        .contentType("application/json").content("{\"documentIds\":[]}"))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/decisions").header("Authorization", jeton("SUPERVISEUR")))
+                .andExpect(status().isOk());
+        mvc.perform(put("/api/v1/tickets/" + ticketId + "/decisions").header("Authorization", jeton("SUPERVISEUR"))
+                        .contentType("application/json").content("{ \"decisions\": [] }"))
+                .andExpect(status().isForbidden());
     }
 
     private JsonNode lire(String url) throws Exception {

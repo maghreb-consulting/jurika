@@ -73,16 +73,8 @@ public class TicketNoteService {
                 .orElseThrow(() -> new NotFoundException("Ticket inconnu"));
     }
 
-    /** Employe en charge : responsable du dossier ; sans dossier, assigne ou createur. 404 sinon. */
+    /** Employe en charge : regle unique (L4d, E2), {@link EmployeEnChargeTicket}. 404 sinon. */
     private void exigerEnCharge(UUID workspaceId, UUID actorId, Ticket ticket) {
-        UUID responsable = ticket.dossierId() == null ? null
-                : dossiers.findById(workspaceId, ticket.dossierId())
-                        .map(EntrepriseDossier::responsableId).orElse(null);
-        boolean enCharge = responsable != null
-                ? responsable.equals(actorId)
-                : actorId.equals(ticket.assigneId()) || actorId.equals(ticket.creeParId());
-        if (!enCharge) {
-            throw new NotFoundException("Ticket inconnu");
-        }
+        new EmployeEnChargeTicket(dossiers).exiger(workspaceId, ticket, actorId);
     }
 }

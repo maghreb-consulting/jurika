@@ -80,13 +80,8 @@ public class AccesDeboursTicket {
         return t.dossierId() == null ? null : dossiers.findById(actor.workspaceId(), t.dossierId()).orElse(null);
     }
 
+    /** Employe en charge : regle unique (L4d, E2), {@link EmployeEnChargeTicket}. 404 sinon. */
     private void exigerEnCharge(AuthenticatedUser actor, Ticket t) {
-        EntrepriseDossier d = dossier(actor, t);
-        boolean enCharge = d != null
-                ? actor.userId().equals(d.responsableId())
-                : actor.userId().equals(t.assigneId()) || actor.userId().equals(t.creeParId());
-        if (!enCharge) {
-            throw new NotFoundException("Ticket inconnu");
-        }
+        new EmployeEnChargeTicket(dossiers).exiger(actor.workspaceId(), t, actor.userId());
     }
 }

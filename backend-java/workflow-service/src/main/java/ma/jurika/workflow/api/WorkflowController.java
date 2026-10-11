@@ -53,6 +53,13 @@ public class WorkflowController {
         this.employeEnCharge = employeEnCharge;
     }
 
+    /** L4d (E2) : un employe ne lit que les tickets dont il a la charge ; le superviseur les lit tous. */
+    private void lectureEnCharge(AuthenticatedUser actor, UUID ticketId) {
+        if (actor.role() == ma.jurika.common.security.Role.EMPLOYE) {
+            employeEnCharge.exiger(actor.workspaceId(), ticketId, actor.userId());
+        }
+    }
+
     /**
      * Parties prenantes (associes + gerants) d'un dossier, lues depuis la fiche
      * structuree — pour peupler cote front les selecteurs « associes a convoquer »
@@ -131,6 +138,7 @@ public class WorkflowController {
     public ResponseEntity<WorkflowProgress> start(@AuthenticationPrincipal AuthenticatedUser actor,
                                                    @PathVariable UUID ticketId,
                                                    @Valid @RequestBody StartRequest req) {
+        employeEnCharge.exiger(actor.workspaceId(), ticketId, actor.userId()); // L4d (E2, RG-DOS-01)
         WorkflowProgress p = useCases.startOrResume(actor.workspaceId(), ticketId, req.type(), actor.userId());
         return ResponseEntity.status(HttpStatus.CREATED).body(p);
     }
@@ -162,6 +170,7 @@ public class WorkflowController {
     @PreAuthorize("hasAnyRole('EMPLOYE','SUPERVISEUR')")
     public Map<String, Object> chargeUtile(@AuthenticationPrincipal AuthenticatedUser actor,
                                             @PathVariable UUID ticketId) {
+        lectureEnCharge(actor, ticketId); // L4d (E2, RG-DOS-01) : superviseur en lecture
         return ConstructeurChargeUtileCreation.construire(
                 magasin.lirePourGeneration(actor.workspaceId(), ticketId));
     }
@@ -218,6 +227,7 @@ public class WorkflowController {
     @PreAuthorize("hasAnyRole('EMPLOYE','SUPERVISEUR')")
     public Object variables(@AuthenticationPrincipal AuthenticatedUser actor,
                              @PathVariable UUID ticketId) {
+        lectureEnCharge(actor, ticketId); // L4d (E2, RG-DOS-01) : superviseur en lecture
         return magasin.lire(actor.workspaceId(), ticketId);
     }
 
@@ -226,6 +236,7 @@ public class WorkflowController {
     public WorkflowProgress save(@AuthenticationPrincipal AuthenticatedUser actor,
                                   @PathVariable UUID ticketId,
                                   @Valid @RequestBody SaveRequest req) {
+        employeEnCharge.exiger(actor.workspaceId(), ticketId, actor.userId()); // L4d (E2, RG-DOS-01)
         return useCases.save(actor.workspaceId(), ticketId, req.currentStep(), req.data(),
                 actor.userId());
     }
@@ -235,6 +246,7 @@ public class WorkflowController {
     public Map<String, Object> executeStep(@AuthenticationPrincipal AuthenticatedUser actor,
                                             @PathVariable UUID ticketId,
                                             @Valid @RequestBody StepRequest req) {
+        employeEnCharge.exiger(actor.workspaceId(), ticketId, actor.userId()); // L4d (E2, RG-DOS-01)
         var r = useCases.executeStep(actor.workspaceId(), ticketId, req.step(),
                 req.payload(), actor.userId());
         return Map.of(
@@ -253,6 +265,7 @@ public class WorkflowController {
     public WorkflowProgress registerPiece(@AuthenticationPrincipal AuthenticatedUser actor,
                                            @PathVariable UUID ticketId,
                                            @Valid @RequestBody RegisterPieceRequest req) {
+        employeEnCharge.exiger(actor.workspaceId(), ticketId, actor.userId()); // L4d (E2, RG-DOS-01)
         return useCases.registerPiece(actor.workspaceId(), ticketId, req);
     }
 
@@ -264,6 +277,7 @@ public class WorkflowController {
     public WorkflowProgress unregisterPiece(@AuthenticationPrincipal AuthenticatedUser actor,
                                              @PathVariable UUID ticketId,
                                              @PathVariable String code) {
+        employeEnCharge.exiger(actor.workspaceId(), ticketId, actor.userId()); // L4d (E2, RG-DOS-01)
         return useCases.unregisterPiece(actor.workspaceId(), ticketId, code);
     }
 }

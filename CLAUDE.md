@@ -259,8 +259,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **Usages a confirmer par le directeur** (D6, 2026-10-10) : nombre d'originaux et heure de l'acte
   sont desormais des valeurs proposees a l'ecran (composant `ValeurProposee`), confirmees par
   l'employe ; les propositions ("6", "quatre", "10 heures") restent a valider comme usages du cabinet.
-- **Controle d'acces des endpoints workflow** (`save`, `execute-step`, `variables`, `charge-utile`) :
-  workspace seulement, pas l'employe en charge du ticket (les endpoints L3 l'exigent).
 - **Champ sans ecran** lu par le projecteur : ville du RC d'un associe personne morale
   (`ASSOCIE_RC_VILLE`).
 - **Clauses libres** : pas d'emplacement dans les PV de modification, de dissolution / liquidation
@@ -277,8 +275,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   `GET .../settings` et `GET .../settings/client-link` rendent le jeton a tout employe, sans
   controle du responsable. A retirer, ou a concevoir si un acces par lien est voulu (absent du
   CDC). L'ecran "Acces du client" affiche l'adresse de l'espace client, pas ce jeton (D21).
-- **Logique "employe en charge d'un ticket" dupliquee** (responsable du dossier, sinon assigne
-  ou createur) : `UpdateTicketUseCase`, `TicketNoteService`, `AccesDeboursTicket` : a factoriser.
 - **Le test de fumee affirme "SMTP Brevo configure (envoi reel)"** (lecture de variables)
   alors qu'auth envoie vers `localhost:1025` (MailHog absent du Z440 : "Connection refused" a
   chaque inscription) : controle silencieusement inoperant (motif 9).
