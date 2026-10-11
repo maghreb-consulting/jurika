@@ -22,11 +22,18 @@ public class FaitsDuTicket {
 
     /** Faits lus ; {@code null} pour une donnee absente (jamais une valeur de repli). */
     public record Faits(String reference, String ouvertLe, String chargeNom,
-                        String annuleLe, String motifAnnulation, String type, String statutAnterieur) {
+                        String annuleLe, String motifAnnulation, String type, String statutAnterieur,
+                        /** Lot L4d (E6) : reference lisible du dossier (annee-numero -- societe), ou null. */
+                        String dossierReference) {
+
+        public Faits(String reference, String ouvertLe, String chargeNom, String annuleLe, String motifAnnulation,
+                     String type, String statutAnterieur) {
+            this(reference, ouvertLe, chargeNom, annuleLe, motifAnnulation, type, statutAnterieur, null);
+        }
 
         /** Faits d'un ticket non annule, sans type connu (tests de la creation). */
         public Faits(String reference, String ouvertLe, String chargeNom, String annuleLe, String motifAnnulation) {
-            this(reference, ouvertLe, chargeNom, annuleLe, motifAnnulation, null, null);
+            this(reference, ouvertLe, chargeNom, annuleLe, motifAnnulation, null, null, null);
         }
     }
 
@@ -45,18 +52,20 @@ public class FaitsDuTicket {
                        COALESCE(t.statut_anterieur,
                                 (SELECT c.metadata ->> 'from' FROM ticket_comments c
                                  WHERE c.ticket_id = t.id AND c.workspace_id = t.workspace_id
-                                   AND c.type = 'ANNULATION' ORDER BY c.created_at DESC LIMIT 1))
+                                   AND c.type = 'ANNULATION' ORDER BY c.created_at DESC LIMIT 1)),
+                       d.numero_annee, d.numero_ordre, d.raison_sociale
                 FROM tickets t
                 LEFT JOIN entreprise_dossiers d ON d.id = t.dossier_id AND d.workspace_id = t.workspace_id
                 LEFT JOIN users u ON u.id = COALESCE(d.responsable_id, t.assigne_id, t.cree_par_id)
                                  AND u.workspace_id = t.workspace_id
                 WHERE t.id = ?1 AND t.workspace_id = ?2
                 """).setParameter(1, ticketId).setParameter(2, workspaceId).getResultList();
-        if (rows.isEmpty()) return new Faits(null, null, null, null, null, null, null);
+        if (rows.isEmpty()) return new Faits(null, null, null, null, null, null, null, null);
         Object[] r = rows.get(0);
         String nom = ((r[2] == null ? "" : r[2]) + " " + (r[3] == null ? "" : r[3])).trim();
         return new Faits(texte(r[0]), date(r[1]), nom.isEmpty() ? null : nom, date(r[4]), texte(r[5]),
-                texte(r[6]), texte(r[7]));
+                texte(r[6]), texte(r[7]),
+                ma.jurika.common.reference.ReferencesLisibles.dossier((Number) r[8], (Number) r[9], texte(r[10])));
     }
 
     private static String texte(Object o) {

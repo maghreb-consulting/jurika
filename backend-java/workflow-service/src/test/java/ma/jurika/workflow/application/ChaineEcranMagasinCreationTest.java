@@ -83,7 +83,9 @@ class ChaineEcranMagasinCreationTest {
         MagasinVariables magasin = new MagasinVariables(depotEnMemoire());
         new ProjecteurVariablesCreation(magasin).projeter(WS, TICKET, saisie(), UUID.randomUUID());
         // Faits du ticket, tels que FaitsDuTicket les lit en base (ticket ouvert, non annule).
-        FaitsDuTicket.Faits faits = new FaitsDuTicket.Faits("D-2026-00841", "2026-09-01", "Salma IDRISSI", null, null);
+        // Lot L4d (E6) : le numero imprime est la reference lisible du DOSSIER (ticket V38).
+        FaitsDuTicket.Faits faits = new FaitsDuTicket.Faits("T-2026-00841", "2026-09-01", "Salma IDRISSI", null, null,
+                "CREATION", null, "2026-0841 \u2014 PARACOSME");
         return ConstructeurChargeUtileCreation.construire(
                 ConstructeurChargeUtileCreation.avecFaitsDuTicket(magasin.lirePourGeneration(WS, TICKET), faits));
     }

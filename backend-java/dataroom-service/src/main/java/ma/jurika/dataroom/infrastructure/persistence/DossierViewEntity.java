@@ -102,4 +102,13 @@ public class DossierViewEntity {
     public String getFormeJuridiqueOrigine() { return formeJuridiqueOrigine; }
     public UUID getClientId() { return clientId; }
     public UUID getResponsableId() { return responsableId; }
+
+    /** Lot L4d (E6) : numero du dossier, par cabinet et par annee (ticket V38). */
+    @Column(name = "numero_annee", insertable = false, updatable = false)
+    private Short numeroAnnee;
+    @Column(name = "numero_ordre", insertable = false, updatable = false)
+    private Integer numeroOrdre;
+
+    public Short getNumeroAnnee() { return numeroAnnee; }
+    public Integer getNumeroOrdre() { return numeroOrdre; }
 }

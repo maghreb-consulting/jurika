@@ -268,7 +268,10 @@ public final class DataroomDtos {
                                    `formeJuridique` vaut alors 'ETRANGERE' et c'est cette
                                    valeur-ci qu'il faut afficher. Null pour un dossier
                                    marocain. */
-                                String formeJuridiqueOrigine) {}
+                                String formeJuridiqueOrigine,
+                                /* Lot L4d (E6) : reference lisible, "annee-numero -- societe"
+                                   (ReferencesLisibles) ; null sans numero. */
+                                String reference) {}
 
     /** Resume d'un depot libre (espace « Depots », sans categorie). */
     public record DepotSummary(
