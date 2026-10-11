@@ -48,4 +48,15 @@ describe('Référentiel des démarches', () => {
     expect(screen.getByText(/1 conditions rédigées en/)).toBeInTheDocument();
     expect(screen.getByTestId('ecarts-creation')).toHaveTextContent('1 écart(s)');
   });
+
+  // Lot L4d (E3) : l'avancement des tickets en cours suit la nouvelle version (V37).
+  it('dit combien d’états des tickets en cours ont suivi la nouvelle version', async () => {
+    const applique = imp('APPLIQUE');
+    applique.rapport = JSON.stringify({ total: 7006, erreurs: [], etatsReportes: 12, etatsNonReportes: 1 });
+    get.mockResolvedValueOnce({ data: { versionActive: 'CORPUS_2026-10-11', imports: [applique] } });
+    render(<ReferentielDemarchesPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Voir le rapport' }));
+    expect(screen.getByTestId('etats-reportes')).toHaveTextContent('12 état(s) reporté(s)');
+    expect(screen.getByTestId('etats-reportes')).toHaveTextContent('1 sans ligne correspondante');
+  });
 });

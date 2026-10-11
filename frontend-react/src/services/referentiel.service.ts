@@ -29,6 +29,9 @@ export interface ResultatImport {
 }
 
 export interface RapportImport {
+  /** Lot L4d (E3) : états des tickets en cours reportés sur la nouvelle version, et non reportés. */
+  etatsReportes?: number;
+  etatsNonReportes?: number;
   lignesParOnglet?: Record<string, number>;
   total?: number;
   conditionsPhrases?: string[];
