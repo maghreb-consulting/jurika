@@ -1,5 +1,8 @@
 package ma.jurika.ticket.application;
 
+import ma.jurika.ticket.application.referentiel.DemarchesDuTicket;
+import ma.jurika.ticket.application.referentiel.LignesDuTicket;
+import ma.jurika.ticket.application.referentiel.MatricesDuTicket;
 import ma.jurika.common.audit.Auditable;
 import ma.jurika.common.exception.ConflictException;
 import ma.jurika.common.exception.NotFoundException;
@@ -57,11 +60,23 @@ public class DemarcheUseCases {
     private final CommentRepository comments;
     private final DemarcheJournalRepository journal;
     private final SaisieDossierLookup saisies;
+    private final LignesDuTicket lignes;
 
     public DemarcheUseCases(TicketRepository tickets, DemarcheReferentielRepository referentiel,
                              TicketDemarcheRepository etats, DataroomDocumentLookup documents,
                              CommentRepository comments, DemarcheJournalRepository journal,
                              SaisieDossierLookup saisies) {
+        this(tickets, referentiel, etats, documents, comments, journal, saisies,
+                LignesDuTicket.duReferentiel(referentiel));
+    }
+
+    /** Lot L4b (E4) : les lignes du ticket viennent du corpus hors creation. */
+    @org.springframework.beans.factory.annotation.Autowired
+    public DemarcheUseCases(TicketRepository tickets, DemarcheReferentielRepository referentiel,
+                             TicketDemarcheRepository etats, DataroomDocumentLookup documents,
+                             CommentRepository comments, DemarcheJournalRepository journal,
+                             SaisieDossierLookup saisies, LignesDuTicket lignes) {
+        this.lignes = lignes;
         this.tickets = tickets;
         this.referentiel = referentiel;
         this.etats = etats;
@@ -133,7 +148,15 @@ public class DemarcheUseCases {
                          * aurait l air de savoir calculer et de ne rien dire. Il sait
                          * calculer ; il attend la date.
                          */
-                        String delaiDepartManquant) {}
+                        String delaiDepartManquant,
+                        /** Lot L4b (E4) : decision du ticket qui apporte la ligne (corpus), sinon null. */
+                        String decision,
+                        /** APPLICABLE ou A_APPRECIER (corpus) ; null pour la creation. */
+                        String applicabilite,
+                        /** Pourquoi la ligne est a apprecier (donnee non saisie, condition en phrase). */
+                        String raisonApplicabilite,
+                        /** Lot L4b (E5) : donnee qui porte la date limite ("au plus tard le $VAR"). */
+                        String delaiEcheanceDonnee) {}
 
     public record Phase(String code, String libelle, List<Ligne> demarches,
                         int traitees, int total) {}
@@ -159,7 +182,17 @@ public class DemarcheUseCases {
     public Vue vue(UUID workspaceId, UUID ticketId) {
         TenantContext.set(workspaceId);
         Ticket ticket = charger(workspaceId, ticketId);
-        List<Demarche> toutes = referentiel.findByWorkflow(ticket.type().name());
+        // Lot L4b (E4) : hors creation, les lignes du corpus et leur evaluation, lues une fois.
+        Map<UUID, DemarchesDuTicket.LigneCorpus> infos = new LinkedHashMap<>();
+        List<Demarche> toutes;
+        if (lignes instanceof DemarchesDuTicket corpus && MatricesDuTicket.servieParLeCorpus(ticket.type())) {
+            for (DemarchesDuTicket.LigneCorpus l : corpus.lignesCorpus(ticket)) {
+                if (l.applicabilite() != DemarchesDuTicket.Applicabilite.SANS_OBJET) infos.put(l.demarche().id(), l);
+            }
+            toutes = infos.values().stream().map(DemarchesDuTicket.LigneCorpus::demarche).toList();
+        } else {
+            toutes = lignes.toutes(ticket);
+        }
         Map<UUID, TicketDemarche> parDemarche = etats.findByTicket(workspaceId, ticketId);
         Map<UUID, List<DemarcheEvenement>> journaux = journal.parDemarche(workspaceId,
                 parDemarche.values().stream().map(TicketDemarche::id)
@@ -195,7 +228,11 @@ public class DemarcheUseCases {
                     deposeLe(d, depotParFormalite, parDemarche),
                     etat == null || etat.id() == null ? List.of()
                             : journaux.getOrDefault(etat.id(), List.of()),
-                    departManquant(d, datesSaisies)));
+                    departManquant(d, datesSaisies),
+                    infos.containsKey(d.id()) ? infos.get(d.id()).decision() : null,
+                    infos.containsKey(d.id()) ? infos.get(d.id()).applicabilite().name() : null,
+                    infos.containsKey(d.id()) ? infos.get(d.id()).raison() : null,
+                    infos.containsKey(d.id()) ? infos.get(d.id()).echeanceDonnee() : null));
         }
         lignes = marquerHorsSequence(lignes);
 
@@ -287,7 +324,8 @@ public class DemarcheUseCases {
                     l.cocheAt(), l.documentsDeposes(), l.actionnableMaintenant(),
                     traitee && trou,
                     l.formaliteCode(), l.formaliteVolet(), l.depotOrdre(), l.deposeLe(),
-                    l.journal(), l.delaiDepartManquant()));
+                    l.journal(), l.delaiDepartManquant(), l.decision(), l.applicabilite(),
+                    l.raisonApplicabilite(), l.delaiEcheanceDonnee()));
             if (!traitee) trouAvant.put(l.phaseCode(), true);
         }
         return out;
@@ -504,7 +542,7 @@ public class DemarcheUseCases {
         Map<UUID, TicketDemarche> parDemarche = etats.findByTicket(workspaceId, ticketId);
         for (int ordre : ORDRES_ACTE_NOMINATION) {
             Optional<Demarche> trouvee =
-                    referentiel.findByWorkflowAndOrdre(ticket.type().name(), ordre);
+                    lignes.parOrdre(ticket, ordre);
             if (trouvee.isEmpty()) continue;
             Demarche d = trouvee.get();
             if (d.obligatoire()) continue; // garde-fou : on n'écarte jamais une obligatoire
@@ -587,7 +625,7 @@ public class DemarcheUseCases {
     }
 
     private Demarche demarcheDuStatutCourant(Ticket ticket, int ordre) {
-        Demarche d = referentiel.findByWorkflowAndOrdre(ticket.type().name(), ordre)
+        Demarche d = lignes.parOrdre(ticket, ordre)
                 .orElseThrow(() -> new NotFoundException(
                         "Aucune demarche " + ordre + " au referentiel du workflow " + ticket.type()));
         if (d.statutTicket() != ticket.statut()) {

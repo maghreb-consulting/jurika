@@ -65,8 +65,11 @@ public class ImportReferentielDemarches {
         db.update("UPDATE referentiel_decisions SET actif = FALSE WHERE actif");
         db.update("UPDATE referentiel_renvois SET actif = FALSE WHERE actif");
 
+        List<String[]> formalites = formalites(r.lignes());
         List<Object[]> lignes = new ArrayList<>();
-        for (ReferentielCorpus.Ligne l : r.lignes()) {
+        for (int i = 0; i < r.lignes().size(); i++) {
+            ReferentielCorpus.Ligne l = r.lignes().get(i);
+            String[] formalite = formalites.get(i);
             String[] phase = PHASES.get(l.statut());
             ReferentielCorpus.Condition c = l.condition();
             ReferentielCorpus.Condition s = l.sousCondition();
@@ -80,7 +83,8 @@ public class ImportReferentielDemarches {
                     r.version(), l.matrice(), l.forme(), l.decision(),
                     s == null ? null : s.variable(), s == null ? null : s.valeur(), s == null ? null : s.texte(),
                     c == null ? null : c.variable(), c == null ? null : c.operateur(), c == null ? null : c.valeur(),
-                    l.numeroDecision(), l.aCompleter(), l.completePlateforme()});
+                    l.numeroDecision(), l.aCompleter(), l.completePlateforme(),
+                    formalite == null ? null : formalite[0], formalite == null ? null : formalite[1]});
         }
         db.batchUpdate("""
                 INSERT INTO demarches_referentiel (workflow_type, ordre, phase_code, phase_libelle, libelle,
@@ -88,8 +92,8 @@ public class ImportReferentielDemarches {
                     delai, delai_valeur, delai_unite, delai_reference_donnee, delai_echeance_donnee,
                     corpus_version, matrice, forme, decision_code, sous_condition_variable, sous_condition_valeur,
                     sous_condition_texte, condition_variable, condition_operateur, condition_valeur,
-                    numero_decision, a_completer, complete_plateforme, actif)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,TRUE)
+                    numero_decision, a_completer, complete_plateforme, formalite_code, formalite_volet, actif)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,TRUE)
                 """, lignes);
 
         List<Object[]> decisions = new ArrayList<>();
@@ -173,6 +177,35 @@ public class ImportReferentielDemarches {
         return t.equals("\u2014") ? "" : t;
     }
 
+    private static final java.util.regex.Pattern DEPOT = java.util.regex.Pattern.compile("^(.*) \u2014 d\u00e9p\u00f4t\\b.*$");
+    private static final java.util.regex.Pattern RETRAIT = java.util.regex.Pattern.compile("^(.*) \u2014 retrait\\b.*$");
+
+    /**
+     * RG-DEM-02 : une formalite a depot puis retrait figure sur deux lignes liees. Au corpus,
+     * la ligne "X -- depot" est suivie, pour la meme decision, de "X -- retrait ..." : les deux
+     * recoivent le meme code (rang de la matrice et ordre du depot). Une ligne sans pendant
+     * reste une ligne simple.
+     */
+    static List<String[]> formalites(List<ReferentielCorpus.Ligne> lignes) {
+        List<String[]> out = new ArrayList<>();
+        Map<String, String> ouverts = new LinkedHashMap<>();
+        for (ReferentielCorpus.Ligne l : lignes) {
+            String libelle = l.libelle() == null ? "" : l.libelle().trim();
+            java.util.regex.Matcher d = DEPOT.matcher(libelle);
+            java.util.regex.Matcher r = RETRAIT.matcher(libelle);
+            if (d.matches()) {
+                String code = "R" + MatricesDuTicket.rang(l.matrice()) + "-" + l.ordre();
+                ouverts.put(l.matrice() + "|" + l.decision() + "|" + d.group(1), code);
+                out.add(new String[]{code, "DEPOT"});
+            } else if (r.matches() && ouverts.containsKey(l.matrice() + "|" + l.decision() + "|" + r.group(1))) {
+                out.add(new String[]{ouverts.remove(l.matrice() + "|" + l.decision() + "|" + r.group(1)), "RETRAIT"});
+            } else {
+                out.add(null);
+            }
+        }
+        return out;
+    }
+
     /** Journal des imports, du plus recent au plus ancien. */
     public List<Map<String, Object>> journal() {
         return db.queryForList("""
@@ -199,6 +232,9 @@ public class ImportReferentielDemarches {
         }
         if (r.lignes() == null || r.lignes().isEmpty()) return "Aucune d\u00e9marche dans le corpus.";
         for (ReferentielCorpus.Ligne l : r.lignes()) {
+            if (MatricesDuTicket.rang(l.matrice()) == 0) {
+                return "Matrice inconnue de la plateforme : \u00ab " + l.matrice() + " \u00bb (rang \u00e0 d\u00e9finir).";
+            }
             if (!PHASES.containsKey(l.statut())) {
                 return l.matrice() + " l. " + l.ordre() + " : statut inconnu \u00ab " + l.statut() + " \u00bb.";
             }

@@ -27,7 +27,8 @@ class ReferentielCorpusJsonTest {
         assertThat(r.renvois().get(0).matriceRenvoi()).isEqualTo("R");
         assertThat(r.decisions().get(0).typeDecision()).isEqualTo("T");
         assertThat(r.rapport().lignesParOnglet()).containsEntry("M", 1);
-        assertThat(ImportReferentielDemarches.motifDeRefus(r)).isNull();
+        // Lot L4b (E4) : une matrice sans rang a la plateforme fait refuser l'import.
+        assertThat(ImportReferentielDemarches.motifDeRefus(r)).contains("Matrice inconnue");
         // Comparaison de la creation (E3) : la presentation du corpus n'est pas un ecart.
         assertThat(ImportReferentielDemarches.normaliser("\u2610  Ouverture   du ticket")).isEqualTo("Ouverture du ticket");
         assertThat(ImportReferentielDemarches.normaliser("\u2014")).isEmpty();
