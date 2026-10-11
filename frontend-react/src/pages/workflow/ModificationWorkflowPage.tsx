@@ -2056,6 +2056,7 @@ function ModificationWorkflowPageBody() {
                     values={r.values}
                     rows={r.rows}
                     personLists={personLists}
+                    forme={forme}
                     onField={(key, value) => setResField(r.id, key, value)}
                     onRows={(key, rows) => setResRows(r.id, key, rows)}
                   />
