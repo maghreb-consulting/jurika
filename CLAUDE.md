@@ -199,15 +199,14 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L2 (chargeur du corpus, 2026-10-09) -- dette relevee
 
-- **Ecart du corpus a rapporter au cabinet (L4a, 2026-10-11)** : 13 modeles SARL AU impriment
-  `$ASSOCIE_UNIQUE` (drapeau "oui" / "non", pilote SARL / SARL AU) sous "L'associe unique", a la
-  place de son identite (PV_CREATION_SUCCURSALE_MAROC_SARL_AU, PV_FERMETURE_SUCCURSALE_SARL_AU,
-  PV_APPROBATION_COMPTES_SARL_AU, PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU...). Le document produit porte
-  "oui" sous la signature. Gabarits intouchables : A_DECIDER cabinet (correction du modele).
-- **Ecart du corpus (L4a)** : `FICHE_RENSEIGNEMENTS_CREATION` imprime "Bail commercial consenti par
-  $BAILLEUR_NOM" ; quand le bailleur est une societe, `$BAILLEUR_NOM` est vide (le contrat de bail, lui,
-  distingue $BAILLEUR_TYPE et imprime $BAILLEUR_DENOMINATION). La fiche est alors refusee, donnee nommee.
-  A_DECIDER cabinet (correction du modele).
+- **Ecarts des modeles du cabinet** (L4a, releve complet L4d) : detail par fichier, emplacement, texte
+  imprime et correction proposee dans `~/docs/rapports/ECARTS_MODELES_CABINET.md` : `$ASSOCIE_UNIQUE`
+  (drapeau "oui" / "non") imprime comme identite dans 19 modeles SARL AU ; `$BAILLEUR_NOM` seul dans
+  `FICHE_RENSEIGNEMENTS_CREATION` (vide pour un bailleur societe : fiche refusee, donnee nommee) ;
+  mandataire de `LETTRE_RETRAIT_DEPOT` (creation) ; "-- (procedure interne)" n 47-48 du parcours de
+  creation ; regle "PV multi-resolutions" (modeles d'AGE cites pour toute assemblee) ; variante
+  `PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU` citee par le corpus mais absente (servie par le classpath).
+  Gabarits intouchables : A_DECIDER cabinet (correction des modeles, nouvelle version datee du corpus).
 - **Parcours a basculer sur les modeles du corpus (L4c ; rien de bascule en L4b, seules les annonces et le PV d'approbation SARL AU du corpus ont recu leurs variables D5).** 12 des 15 gabarits du classpath
   absents du corpus ont un equivalent dans `CORPUS_2026-10-03` (STATUTS deterministes,
   CONVOCATION_AG, FEUILLE_PRESENCE_AG, RAPPORT_GESTION, RAPPORT_LIQUIDATION_DIRECTEUR,
@@ -263,8 +262,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **Clauses libres** : pas d'emplacement dans les PV de modification, de dissolution / liquidation
   ni dans les PV SARL AU servis ; les modeles du corpus qui le prevoient (`PV_AG_SARL`,
   `PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU`, `$RESOLUTION_TEXTE_LIBRE`) arrivent avec L4.
-- **Provenance a l'ecran** : etape 7 de la creation et blocs de document ; page de ticket
-  generique en L4.
 
 ### Lot L1 (dossiers et employes, 2026-10-09) -- dette relevee
 
