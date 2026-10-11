@@ -22,7 +22,12 @@ public class FaitsDuTicket {
 
     /** Faits lus ; {@code null} pour une donnee absente (jamais une valeur de repli). */
     public record Faits(String reference, String ouvertLe, String chargeNom,
-                        String annuleLe, String motifAnnulation) {
+                        String annuleLe, String motifAnnulation, String type, String statutAnterieur) {
+
+        /** Faits d'un ticket non annule, sans type connu (tests de la creation). */
+        public Faits(String reference, String ouvertLe, String chargeNom, String annuleLe, String motifAnnulation) {
+            this(reference, ouvertLe, chargeNom, annuleLe, motifAnnulation, null, null);
+        }
     }
 
     private static final ZoneId CASABLANCA = ZoneId.of("Africa/Casablanca");
@@ -34,17 +39,24 @@ public class FaitsDuTicket {
     public Faits lire(UUID workspaceId, UUID ticketId) {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = em.createNativeQuery("""
-                SELECT t.reference, t.created_at, u.first_name, u.last_name, t.annule_at, t.annulation_motif
+                SELECT t.reference, t.created_at, u.first_name, u.last_name, t.annule_at, t.annulation_motif,
+                       t.type,
+                       -- statut atteint a l'annulation ; tickets annules avant ticket V33 : la trace
+                       COALESCE(t.statut_anterieur,
+                                (SELECT c.metadata ->> 'from' FROM ticket_comments c
+                                 WHERE c.ticket_id = t.id AND c.workspace_id = t.workspace_id
+                                   AND c.type = 'ANNULATION' ORDER BY c.created_at DESC LIMIT 1))
                 FROM tickets t
                 LEFT JOIN entreprise_dossiers d ON d.id = t.dossier_id AND d.workspace_id = t.workspace_id
                 LEFT JOIN users u ON u.id = COALESCE(d.responsable_id, t.assigne_id, t.cree_par_id)
                                  AND u.workspace_id = t.workspace_id
                 WHERE t.id = ?1 AND t.workspace_id = ?2
                 """).setParameter(1, ticketId).setParameter(2, workspaceId).getResultList();
-        if (rows.isEmpty()) return new Faits(null, null, null, null, null);
+        if (rows.isEmpty()) return new Faits(null, null, null, null, null, null, null);
         Object[] r = rows.get(0);
         String nom = ((r[2] == null ? "" : r[2]) + " " + (r[3] == null ? "" : r[3])).trim();
-        return new Faits(texte(r[0]), date(r[1]), nom.isEmpty() ? null : nom, date(r[4]), texte(r[5]));
+        return new Faits(texte(r[0]), date(r[1]), nom.isEmpty() ? null : nom, date(r[4]), texte(r[5]),
+                texte(r[6]), texte(r[7]));
     }
 
     private static String texte(Object o) {

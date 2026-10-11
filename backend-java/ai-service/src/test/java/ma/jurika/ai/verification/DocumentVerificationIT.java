@@ -106,9 +106,6 @@ class DocumentVerificationIT {
             // Ecart du CORPUS : la fiche n'imprime que $BAILLEUR_NOM, vide pour un bailleur societe.
             Map.entry("FICHE_RENSEIGNEMENTS_CREATION",
                     "A_DECIDER cabinet : $BAILLEUR_NOM seul imprime, vide quand le bailleur est une societe"),
-            // Documents d'annulation : donnees servies par le ticket (statut atteint, date, depots).
-            Map.entry("NOTE_ANNULATION_DOSSIER", "L4a E5 : donnees d'annulation servies par le ticket"),
-            Map.entry("LETTRE_RETRAIT_DEPOT", "L4a E5 : donnees d'annulation servies par le ticket"),
             // Variables des modeles du corpus que les mappers ne fournissent pas (D5, bascule).
             Map.entry("PV_APPROBATION_COMPTES_SARL_AU", L4B),
             Map.entry("ANNONCE_LEGALE_DISSOLUTION_SARL", L4B),
@@ -124,6 +121,9 @@ class DocumentVerificationIT {
             // "oui" / "non", imprime sous "L'associe unique" a la place de son identite.
             Map.entry("PV_CREATION_SUCCURSALE_MAROC_SARL_AU", ECART_CORPUS),
             Map.entry("PV_FERMETURE_SUCCURSALE_SARL_AU", ECART_CORPUS));
+
+    static final Set<String> DOCUMENTS_ANNULATION =
+            new ma.jurika.ai.workflow.mapper.AnnulationMapper().supportedTemplates();
 
     private static final ObjectMapper JSON = new ObjectMapper()
             .enable(SerializationFeature.INDENT_OUTPUT);
@@ -157,7 +157,10 @@ class DocumentVerificationIT {
                 new MapperBinding("IncidentSeanceMapper", new ma.jurika.ai.workflow.mapper.IncidentSeanceMapper(),
                         "/workflow-fixtures/seance.json", true),
                 new MapperBinding("SeanceDocumentMapper", new ma.jurika.ai.workflow.mapper.SeanceDocumentMapper(),
-                        "/workflow-fixtures/seance.json", true)
+                        "/workflow-fixtures/seance.json", true),
+                // Lot L4a (E5) : documents d'annulation, tous parcours (charge servie par le ticket).
+                new MapperBinding("AnnulationMapper", new ma.jurika.ai.workflow.mapper.AnnulationMapper(),
+                        "/workflow-fixtures/annulation.json", true)
         );
     }
 
@@ -188,6 +191,10 @@ class DocumentVerificationIT {
             Map<String, Object> fixtureRoot = loadFixture(b.fixtureFile());
             Set<String> supported = b.mapper().supportedTemplates();
             for (String templateCode : new TreeSet<>(supported)) {
+                // Lot L4a (E5) : les documents d'annulation se produisent par le parcours
+                // ANNULATION (charge du ticket), controles une seule fois, sous ce mapper.
+                if (!(b.mapper() instanceof ma.jurika.ai.workflow.mapper.AnnulationMapper)
+                        && DOCUMENTS_ANNULATION.contains(templateCode)) continue;
                 Map<String, Object> entry = new LinkedHashMap<>();
                 entry.put("template", templateCode);
                 entry.put("mapper", b.name());

@@ -26,13 +26,16 @@ public class InternalTicketChargeUtileController {
     private final ChargeUtileServeur chargeUtile;
     private final DonneesAttenduesService donneesAttendues;
     private final ma.jurika.workflow.application.ClausesLibresService clausesLibres;
+    private final ma.jurika.workflow.application.ChargeUtileAnnulation chargeAnnulation;
 
     public InternalTicketChargeUtileController(ChargeUtileServeur chargeUtile,
                                                DonneesAttenduesService donneesAttendues,
-                                               ma.jurika.workflow.application.ClausesLibresService clausesLibres) {
+                                               ma.jurika.workflow.application.ClausesLibresService clausesLibres,
+                                               ma.jurika.workflow.application.ChargeUtileAnnulation chargeAnnulation) {
         this.chargeUtile = chargeUtile;
         this.donneesAttendues = donneesAttendues;
         this.clausesLibres = clausesLibres;
+        this.chargeAnnulation = chargeAnnulation;
     }
 
     /** Lot L3 (RG-GEN-06) : clauses libres du ticket, relues a chaque generation. */
@@ -73,4 +76,17 @@ public class InternalTicketChargeUtileController {
             TenantContext.clear();
         }
     }
+
+    /** Lot L4a (E5) : charge utile des documents d'annulation (tous parcours). */
+    @GetMapping("/{ticketId}/charge-utile-annulation")
+    public Map<String, Object> annulation(@PathVariable UUID ticketId, @RequestParam UUID workspaceId,
+                                          @RequestParam UUID employeId) {
+        TenantContext.set(workspaceId);
+        try {
+            return chargeAnnulation.construire(workspaceId, ticketId, employeId);
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
 }

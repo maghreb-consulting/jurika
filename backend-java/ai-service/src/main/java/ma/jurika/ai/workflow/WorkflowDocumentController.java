@@ -5,6 +5,7 @@ import ma.jurika.ai.document.DocxTemplateEngine.DocumentResult;
 import ma.jurika.ai.document.manifest.TemplateManifest;
 import ma.jurika.ai.document.manifest.TemplateManifestLoader;
 import ma.jurika.ai.workflow.identity.SocieteIdentityEnricher;
+import ma.jurika.ai.workflow.mapper.AnnulationMapper;
 import ma.jurika.common.security.AuthenticatedUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -186,6 +187,10 @@ public class WorkflowDocumentController {
         // navigateur n'envoie que l'identifiant du ticket ; toute autre donnee est ignoree.
         if ("CREATION_SARL".equals(workflowCode)) {
             payload = chargeUtileServeur(payload, workspaceId, user == null ? null : user.userId());
+        } else if (AnnulationMapper.WORKFLOW.equals(workflowCode)) {
+            // Lot L4a (E5) : documents d'annulation, charge construite par le serveur ; le
+            // navigateur ne choisit que la lettre (rang de la demarche interrompue).
+            payload = chargeAnnulationServeur(payload, workspaceId, user == null ? null : user.userId());
         }
         Map<String, Object> enriched = identityEnricher.enrich(payload, workspaceId);
 
@@ -292,6 +297,19 @@ public class WorkflowDocumentController {
             }
         }
         reclamation.enregistrer(workspaceId, ticketId, workflowCode, templateCode, donnees);
+    }
+
+    private Map<String, Object> chargeAnnulationServeur(Map<String, Object> payload, UUID workspaceId, UUID employeId) {
+        UUID ticketId = ticketDe(payload);
+        if (ticketId == null || workspaceId == null || employeId == null) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Les documents d'annulation se g\u00e9n\u00e8rent depuis le ticket : rechargez la page.");
+        }
+        Map<String, Object> charge = new java.util.LinkedHashMap<>(
+                chargeUtileCreation.chargerAnnulation(workspaceId, ticketId, employeId));
+        charge.put("ticketId", ticketId.toString());
+        if (payload.get("retraitIndex") != null) charge.put("retraitIndex", payload.get("retraitIndex"));
+        return charge;
     }
 
     private Map<String, Object> chargeUtileServeur(Map<String, Object> payload, UUID workspaceId, UUID employeId) {
