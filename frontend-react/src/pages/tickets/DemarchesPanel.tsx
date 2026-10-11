@@ -332,8 +332,9 @@ function DemarcheRow({
 
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-subtle">
             <Badge variant={d.obligatoire ? 'info' : 'warning'}>
-              {d.obligatoire ? 'Obligatoire' : 'Conditionnelle'}
+              {d.obligatoire ? 'Obligatoire' : d.applicabilite === 'A_APPRECIER' ? 'À apprécier' : 'Conditionnelle'}
             </Badge>
+            {d.decision && <span className="font-mono">{d.decision}</span>}
             {d.organisme && <span>{d.organisme}</span>}
             {d.acteur && <span>· {d.acteur}</span>}
             {d.horsSequence && (
@@ -351,8 +352,27 @@ function DemarcheRow({
             </p>
           )}
 
+          {/* Lot L4b (E4) : pourquoi la ligne du corpus est à apprécier. */}
+          {d.applicabilite === 'A_APPRECIER' && d.raisonApplicabilite && d.etat === 'A_FAIRE' && (
+            <p className="mt-1 text-xs text-warning" data-testid={`raison-${d.ordre}`}>
+              <span className="font-medium">À apprécier : </span>
+              {d.raisonApplicabilite}. Cochez la démarche si elle s’applique, sinon écartez-la avec un motif.
+            </p>
+          )}
+          {d.applicabilite && d.justificatifsTexte && (
+            <p className="mt-1 text-xs text-fg-subtle">
+              <span className="font-medium text-fg">Justificatif : </span>
+              {d.justificatifsTexte}
+            </p>
+          )}
+
+          {/* Lot L4b (E5, RG-DEM-06) : délai d'une ligne du corpus. */}
+          {d.applicabilite && d.delai && (
+            <DelaiCorpus demarche={d} ticketId={ticketId} canAct={canAct} onChanged={onChanged} />
+          )}
+
           {/* Délai : jamais de date fabriquée. */}
-          {d.delai && (
+          {!d.applicabilite && d.delai && (
             <p className="mt-1 text-xs text-fg-subtle">
               <span className="font-medium text-fg">Délai : </span>
               {d.delai}
@@ -577,6 +597,84 @@ const LIBELLE_EVENEMENT: Record<DemarcheEvenement['type'], string> = {
   HORS_PERIMETRE: 'Écartée du dossier',
   REPRISE: 'Remise au périmètre',
 };
+
+/**
+ * Lot L4b (E5, RG-DEM-06) — le délai d'une ligne du corpus. Il se calcule en mois
+ * calendaires depuis un point de départ : la donnée du ticket que la matrice nomme, ou
+ * une date demandée ici. Une date limite « au plus tard le … » se lit ou se saisit de
+ * même. Aucune date n'est déduite.
+ */
+/** Date civile AAAA-MM-JJ affichée JJ/MM/AAAA, sans passer par un fuseau horaire. */
+function jourCivil(iso: string): string {
+  const [a, m, j] = iso.slice(0, 10).split('-');
+  return a && m && j ? `${j}/${m}/${a}` : iso;
+}
+
+function DelaiCorpus({
+  demarche: d,
+  ticketId,
+  canAct,
+  onChanged,
+}: {
+  demarche: LigneDemarche;
+  ticketId: string;
+  canAct: boolean;
+  onChanged: (v: VueDemarches) => void;
+}) {
+  const [date, setDate] = useState('');
+  const [erreur, setErreur] = useState<string | null>(null);
+  const attendu = d.delaiAttendu;
+
+  async function enregistrer() {
+    setErreur(null);
+    try {
+      onChanged(await demarcheService.saisirDelai(ticketId, d.ordre,
+        attendu === 'ECHEANCE' ? { echeance: date } : { depart: date }));
+    } catch (err) {
+      setErreur(extractError(err).message);
+    }
+  }
+
+  return (
+    <div className="mt-1 space-y-1 text-xs text-fg-subtle" data-testid={`delai-${d.ordre}`}>
+      <p>
+        <span className="font-medium text-fg">Délai : </span>
+        {d.delai}
+      </p>
+      {d.echeance && (
+        <p>
+          <span className="font-medium text-fg">Échéance : </span>
+          {jourCivil(d.echeance)}
+          {d.delaiDepart && <> (point de départ le {jourCivil(d.delaiDepart)})</>}
+        </p>
+      )}
+      {attendu && d.etat === 'A_FAIRE' && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="italic">
+            {attendu === 'DEPART'
+              ? `Aucune échéance tant que le point de départ n’est pas connu${d.delaiDonnee ? ` ($${d.delaiDonnee})` : ''} :`
+              : `Aucune alerte tant que la date limite n’est pas connue${d.delaiDonnee ? ` ($${d.delaiDonnee})` : ''} :`}
+          </span>
+          {canAct && (
+            <>
+              <input
+                type="date"
+                aria-label={attendu === 'DEPART' ? 'Point de départ du délai' : 'Date limite'}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="rounded border border-border bg-bg px-2 py-0.5 text-xs"
+              />
+              <Button variant="secondary" disabled={!date} onClick={() => void enregistrer()}>
+                Enregistrer la date
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+      {erreur && <p role="alert" className="text-danger">{erreur}</p>}
+    </div>
+  );
+}
 
 function JournalDemarche({ evenements }: { evenements: DemarcheEvenement[] }) {
   const [ouvert, setOuvert] = useState(false);
