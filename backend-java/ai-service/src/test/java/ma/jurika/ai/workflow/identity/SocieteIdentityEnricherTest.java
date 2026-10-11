@@ -152,4 +152,15 @@ class SocieteIdentityEnricherTest {
         List<Map<String, Object>> kept = (List<Map<String, Object>>) enriched2.get("associes");
         assertEquals("SAISI_SEANCE", kept.get(0).get("nom"));
     }
+
+    /** Lot L4d (E11e) : l'objet social de la fiche alimente le rapport de gestion, sans ressaisie. */
+    @Test
+    void objet_social_repris_de_la_fiche() {
+        Map<String, Object> id = bdIdentity();
+        id.put("objetSocial", "le conseil aux entreprises");
+        Map<String, Object> enriched = new SocieteIdentityEnricher((ws, d) -> id).enrich(thinPayload(), WS);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> societe = (Map<String, Object>) enriched.get("societe");
+        assertEquals("le conseil aux entreprises", societe.get("objetSocial"));
+    }
 }

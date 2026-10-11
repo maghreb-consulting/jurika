@@ -281,7 +281,7 @@ public final class SeancePvVarsBuilder {
         return String.valueOf(p);
     }
 
-    private static List<Map<String, Object>> buildGerantsLoop(List<Map<String, Object>> gerants) {
+    static List<Map<String, Object>> buildGerantsLoop(List<Map<String, Object>> gerants) {
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> g : gerants) {
             if (g == null || g.isEmpty()) continue;

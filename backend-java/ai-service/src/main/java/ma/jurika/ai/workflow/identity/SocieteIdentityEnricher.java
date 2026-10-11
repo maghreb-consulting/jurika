@@ -44,7 +44,9 @@ public class SocieteIdentityEnricher {
             // Lot L3 (RG-VAR-08) : identifiants obtenus en fin de parcours.
             "identifiantTp", "cnssNumero",
             // Lot L4d (E11b) : reference lisible du dossier ($DOSSIER_REFERENCE).
-            "dossierReference");
+            "dossierReference",
+            // Lot L4d (E11e) : objet social de la fiche (rapport de gestion), jamais ressaisi.
+            "objetSocial");
 
     private final SocieteIdentityProvider identityProvider;
 

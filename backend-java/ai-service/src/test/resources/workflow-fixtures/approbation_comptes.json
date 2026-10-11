@@ -210,36 +210,94 @@
     }
   },
   "RAPPORT_GESTION": {
+    "formeJuridique": "SARL",
+    "associeUnique": false,
     "societe": {
       "denomination": "ACME SARL",
       "formeJuridique": "SARL",
       "capitalChiffres": 100000,
-      "adresseSiege": "12 Rue des Hôpitaux, 20000 Casablanca",
+      "siegeSocial": "12 Rue des Hôpitaux, 20000 Casablanca",
+      "nombreParts": 1000,
       "rcNumero": "123456",
+      "villeGreffe": "Casablanca",
       "rcVille": "Casablanca",
-      "ifNumero": "40123456",
-      "iceNumero": "001234567000099",
-      "activiteSociete": "Conseil juridique et fiscal aux entreprises",
       "ice": "001122334000055",
+      "ifNumero": "40998877",
       "ville": "Casablanca",
       "identifiantTp": "35501234",
-      "cnssNumero": "8812345"
+      "cnssNumero": "8812345",
+      "objetSocial": "le conseil juridique et fiscal aux entreprises"
     },
-    "exercice": {
-      "dateCloture": "2025-12-31",
+    "seance": {
+      "type": "ordinaire",
+      "date": "2026-06-15"
+    },
+    "gerants": [
+      {
+        "civilite": "M",
+        "prenom": "Karim",
+        "nom": "BENALI"
+      }
+    ],
+    "approbation": {
+      "exerciceClosDate": "2025-12-31",
+      "commissairePresent": "non",
+      "resultatType": "bénéfice",
       "resultatNet": 250000,
-      "chiffreAffaires": 1200000,
-      "reserveLegale": 12500,
-      "dividendes": 150000,
-      "reportANouveau": 87500,
-      "commentaireActivite": "L'exercice 2025 a été marqué par une croissance soutenue du portefeuille clients.",
-      "evenementsPerspectives": "L'ouverture d'une agence à Tanger est prévue en 2026."
+      "affectations": [
+        {
+          "libelle": "Réserve légale",
+          "montant": 12500
+        },
+        {
+          "libelle": "Dividendes",
+          "montant": 150000
+        },
+        {
+          "libelle": "Report à nouveau",
+          "montant": 87500
+        }
+      ],
+      "dividendeDistribue": "oui",
+      "quitusGerance": "oui",
+      "conventionsReglementees": "non",
+      "dividendeParPart": 150,
+      "dividendeMiseEnPaiementDate": "2026-07-01",
+      "dividendeMontantTotal": 150000
     },
-    "gerant": {
-      "nom": "Karim BENALI"
-    },
-    "signature": {
-      "lieuDateEmission": "Casablanca, le 15 mars 2026"
+    "rapportGestion": {
+      "exerciceDebut": "2025-01-01",
+      "activiteExpose": "La société a développé son activité de conseil auprès de nouveaux clients industriels et a renforcé son équipe de deux consultants.",
+      "faitsMarquants": [
+        {
+          "date": "2025-03-01",
+          "libelle": "ouverture d'un bureau secondaire à Rabat"
+        },
+        {
+          "date": "2025-09-15",
+          "libelle": "signature d'un contrat-cadre avec un groupe industriel"
+        }
+      ],
+      "indicateurs": [
+        {
+          "libelle": "Chiffre d'affaires",
+          "montantExercice": 1200000,
+          "montantExercicePrecedent": 950000
+        },
+        {
+          "libelle": "Résultat net",
+          "montantExercice": 250000,
+          "montantExercicePrecedent": 140000
+        }
+      ],
+      "evolutionCommentaire": "La hausse du chiffre d'affaires résulte principalement des nouveaux contrats signés au second semestre.",
+      "capitauxPropres": 420000,
+      "evenementsPostCloture": "non",
+      "perspectives": "La gérance prévoit la poursuite de la croissance de l'activité au cours de l'exercice 2026.",
+      "rechercheDeveloppement": "non",
+      "reserveLegaleDoteeIntegralement": "non",
+      "lieuSignature": "Casablanca",
+      "date": "2026-05-25"
     }
   }
 }

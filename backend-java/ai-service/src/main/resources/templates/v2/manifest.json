@@ -4,32 +4,11 @@
   "templates": [
     {
       "code": "RAPPORT_GESTION",
-      "file": "RAPPORT_GESTION.docx",
-      "origin": "directeur",
-      "document_kind": "Rapport de gestion annuel du gérant",
+      "origin": "corpus",
+      "document_kind": "Rapport de gestion de la gérance — modèle du corpus du cabinet selon la forme (lot L4d)",
       "workflow": "PV_AGO",
-      "placeholder_style": "uppercase_dollar",
-      "variables": [
-        "ACTIVITE_SOCIETE",
-        "ADRESSE_SIEGE",
-        "CAPITAL_CHIFFRES",
-        "CHIFFRE_AFFAIRES",
-        "COMMENTAIRE_ACTIVITE",
-        "DATE_CLOTURE",
-        "DENOMINATION",
-        "DIVIDENDES",
-        "EVENEMENTS_PERSPECTIVES",
-        "FORME_JURIDIQUE",
-        "GERANT_NOM",
-        "ICE_NUMERO",
-        "IF_NUMERO",
-        "LIEU_DATE_EMISSION",
-        "RC_NUMERO",
-        "RC_VILLE",
-        "REPORT_A_NOUVEAU",
-        "RESERVE_LEGALE",
-        "RESULTAT_MONTANT"
-      ],
+      "note": "Rendu par RAPPORT_GESTION_EXERCICE_SARL ou RAPPORT_GESTION_EXERCICE_SARL_AU du corpus, choisi par le mapper (WorkflowDocumentMapper#gabarit) ; aucun gabarit du classpath.",
+      "variables": [],
       "blocks": []
     },
     {
