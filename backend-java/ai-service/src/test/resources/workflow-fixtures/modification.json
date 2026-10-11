@@ -364,7 +364,7 @@
     }
   },
   "PV_MODIFICATION_SARL": {
-    "_commentaire": "Lot L4a (E1) : charge de production du PV de modification (formulaire de seance commun).",
+    "_commentaire": "Lot L4d (E11c) : charge du PV de modification, rendu par PV_AG_SARL du corpus (formulaire de seance commun).",
     "formeJuridique": "SARL",
     "societe": {
       "denomination": "PARACOSME",
@@ -448,12 +448,16 @@
         "objet": "Changement de dénomination sociale",
         "nouvelleDenomination": "PARACOSME GROUP",
         "dateEffet": "2026-08-01",
-        "articlesModifies": "2"
+        "articlesModifies": "2",
+        "enseigneModifiee": "oui",
+        "certificatNegatifNumero": "2026/123456",
+        "certificatNegatifDate": "2026-06-15"
       }
-    ]
+    ],
+    "nombreOriginaux": "quatre"
   },
   "PV_MODIFICATION_SARL_AU": {
-    "_commentaire": "Lot L4a (E1) : charge de production du PV de modification (associe unique).",
+    "_commentaire": "Lot L4d (E11c) : charge du PV de modification, rendu par PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU du corpus (formulaire de seance commun).",
     "formeJuridique": "SARL_AU",
     "associeUnique": true,
     "societe": {
@@ -521,17 +525,23 @@
         "nouveauSiege": "45 avenue Hassan II, Casablanca",
         "siegeMemePrefecture": "oui",
         "nouvelleVille": "Casablanca",
-        "dateEffet": "2026-08-01",
-        "articlesModifies": "4"
+        "dateEffet": "2026-08-01"
       },
       {
         "type": "modification_denomination",
         "objet": "Changement de dénomination sociale",
         "nouvelleDenomination": "PARACOSME GROUP",
         "dateEffet": "2026-08-01",
-        "articlesModifies": "2"
+        "enseigneModifiee": "oui",
+        "certificatNegatifNumero": "2026/123456",
+        "certificatNegatifDate": "2026-06-15"
       }
-    ]
+    ],
+    "nombreOriginaux": "quatre",
+    "registre": {
+      "numero": "12",
+      "feuillet": "24"
+    }
   },
   "ANNONCE_LEGALE_MODIFICATION_SARL": {
     "_commentaire": "Lot L4a (E1) : charge de production du PV de modification (formulaire de seance commun).",

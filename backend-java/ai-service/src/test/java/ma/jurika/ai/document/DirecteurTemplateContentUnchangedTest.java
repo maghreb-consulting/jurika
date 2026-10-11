@@ -52,9 +52,8 @@ class DirecteurTemplateContentUnchangedTest {
             "PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU.docx",
             "PV_FERMETURE_SUCCURSALE_SARL.docx",
             "PV_FERMETURE_SUCCURSALE_SARL_AU.docx",
-            // Phase E1 — PV de Modification (AGE) à résolutions typées (32 types), SARL & SARL AU.
-            "PV_MODIFICATION_SARL.docx",
-            "PV_MODIFICATION_SARL_AU.docx",
+            // Lot L4d (E11c) : PV_MODIFICATION_SARL(_AU) retires, rendus par PV_AG_SARL et
+            // PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU du corpus.
             // Phase 2 — Annonce légale de modification (avis JAL, boucle DECISIONS), SARL & SARL AU.
             "ANNONCE_LEGALE_MODIFICATION_SARL.docx",
             "ANNONCE_LEGALE_MODIFICATION_SARL_AU.docx",

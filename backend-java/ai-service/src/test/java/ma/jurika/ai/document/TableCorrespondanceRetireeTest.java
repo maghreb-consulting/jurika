@@ -24,12 +24,12 @@ class TableCorrespondanceRetireeTest {
     void la_table_de_correspondance_des_noms_de_variables_n_est_pas_rendue() throws Exception {
         byte[] gabarit;
         try (XWPFDocument doc = new XWPFDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            doc.createParagraph().createRun().setText("Fait à $ASSEMBLEE_LIEU.");
+            doc.createParagraph().createRun().setText("Fait \u00e0 $ASSEMBLEE_LIEU.");
             doc.createParagraph().createRun().setText(
-                    "ANNEXE — TABLE DE CORRESPONDANCE DES NOMS DE VARIABLES");
+                    "ANNEXE \u2014 TABLE DE CORRESPONDANCE DES NOMS DE VARIABLES");
             doc.createParagraph().createRun().setText("| $DATE_AG | $ASSEMBLEE_DATE |");
-            doc.createParagraph().createRun().setText("Variables nouvelles — à ajouter au dictionnaire");
-            doc.createParagraph().createRun().setText("$AG_TYPE — « ordinaire ».");
+            doc.createParagraph().createRun().setText("Variables nouvelles \u2014 \u00e0 ajouter au dictionnaire");
+            doc.createParagraph().createRun().setText("$AG_TYPE \u2014 \u00ab ordinaire \u00bb.");
             doc.write(out);
             gabarit = out.toByteArray();
         }
@@ -41,7 +41,7 @@ class TableCorrespondanceRetireeTest {
         try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(r.bytes()))) {
             for (XWPFParagraph p : doc.getParagraphs()) texte.append(p.getText()).append('\n');
         }
-        assertThat(texte.toString()).contains("Fait à Casablanca.")
+        assertThat(texte.toString()).contains("Fait \u00e0 Casablanca.")
                 .doesNotContain("TABLE DE CORRESPONDANCE").doesNotContain("Variables nouvelles");
         assertThat(r.missingVariables()).isEmpty();
     }

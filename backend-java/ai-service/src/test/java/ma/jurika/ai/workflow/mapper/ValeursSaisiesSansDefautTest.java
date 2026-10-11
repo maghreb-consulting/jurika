@@ -46,7 +46,7 @@ class ValeursSaisiesSansDefautTest {
         p.put("societe", societe());
         p.put("seance", seance());
         p.put("associes", List.of(associe("pr\u00e9sent")));
-        p.put("resolutions", List.of(Map.of("type", "modification_denomination", "nouvelleDenomination", "NOVA")));
+        p.put("resolutions", List.of(Map.of("type", "pouvoirs_formalites")));
 
         assertThatThrownBy(() -> ModificationDirecteurMapper.pvVars("PV_MODIFICATION_SARL", p))
                 .isInstanceOf(GenerationRefuseeException.class)
@@ -63,7 +63,7 @@ class ValeursSaisiesSansDefautTest {
         p.put("societe", societe());
         p.put("seance", seance());
         p.put("associes", List.of(associe(null)));
-        p.put("resolutions", List.of(Map.of("type", "modification_denomination", "nouvelleDenomination", "NOVA")));
+        p.put("resolutions", List.of(Map.of("type", "pouvoirs_formalites")));
 
         // Aucun refus : le PV de l'associe unique n'imprime pas de quorum.
         assertThat(String.valueOf(ModificationDirecteurMapper.pvVars("PV_MODIFICATION_SARL_AU", p)

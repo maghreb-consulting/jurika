@@ -90,6 +90,8 @@ class ChangementDenominationSeanceTest {
                 "objet", "Changement de dénomination sociale",
                 "nouvelleDenomination", NOUVELLE,
                 "dateEffet", "2026-06-01",
+                // Lot L4d (E11c) : choix exige par le modele du corpus (PV_AG_SARL).
+                "enseigneModifiee", "non",
                 "articlesModifies", "2")));
         return p;
     }
@@ -97,8 +99,16 @@ class ChangementDenominationSeanceTest {
     @Test
     @DisplayName("M4 — le PV porte l'ANCIENNE dénomination en en-tête, la NOUVELLE dans ses résolutions")
     void pvDeSeance() throws Exception {
-        String texte = rendre("PV_MODIFICATION_SARL",
-                modification.map("PV_MODIFICATION_SARL", payloadChangementDenomination()));
+        // Lot L4d (E11c) : le PV est rendu par PV_AG_SARL du corpus (corpus reel requis).
+        java.nio.file.Path racine = java.nio.file.Path.of(System.getenv().getOrDefault("JURIKA_CORPUS_REEL",
+                System.getProperty("user.home") + "/corpus/CORPUS_2026-10-11"));
+        org.junit.jupiter.api.Assumptions.assumeTrue(java.nio.file.Files.isDirectory(racine), "corpus reel absent");
+        TemplateManifestLoader loader = new TemplateManifestLoader(new ObjectMapper());
+        loader.load();
+        engine = new DocxTemplateEngine(loader, null, ma.jurika.ai.document.corpus.ChargeurCorpus.charger(racine));
+        Map<String, Object> payload = payloadChangementDenomination();
+        String texte = rendre(modification.gabarit("PV_MODIFICATION_SARL", payload),
+                modification.map("PV_MODIFICATION_SARL", payload));
 
         // L'en-tête décrit la société qui délibère : elle s'appelle encore PARACOSME.
         String enTete = texte.lines().limit(12).reduce("", (a, b) -> a + "\n" + b);

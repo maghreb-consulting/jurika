@@ -34,8 +34,8 @@ class ClausesLibresTest {
     void emplacement_prevu_seulement_par_la_boucle_des_resolutions_a_intitule_et_texte() {
         assertThat(engine.emplacementClausesPrevu("PV_APPROBATION_COMPTES_SARL")).isTrue();
         assertThat(engine.emplacementClausesPrevu("PV_CREATION_SUCCURSALE_MAROC_SARL")).isTrue();
-        // Resolutions typees, sans branche libre : pas d'emplacement (le gabarit n'est pas modifie).
-        assertThat(engine.emplacementClausesPrevu("PV_MODIFICATION_SARL")).isFalse();
+        // Lot L4d (E11c) : PV_MODIFICATION_SARL est rendu par PV_AG_SARL du corpus (voir
+        // le_pv_d_assemblee_du_corpus_prevoit_l_emplacement).
         // Statuts : pas de boucle de resolutions ; les clauses s'y placent apres un article
         // (lot L4d, E10 : ClausesStatuts).
         assertThat(engine.emplacementClausesPrevu("STATUTS_SARL")).isFalse();
