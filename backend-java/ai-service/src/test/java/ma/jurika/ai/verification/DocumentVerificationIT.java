@@ -130,7 +130,9 @@ class DocumentVerificationIT {
             // Ecart du CORPUS (gabarits intouchables, rapporte au cabinet) : $ASSOCIE_UNIQUE, drapeau
             // "oui" / "non", imprime sous "L'associe unique" a la place de son identite.
             Map.entry("PV_CREATION_SUCCURSALE_MAROC_SARL_AU", Map.of(Source.CORPUS, ECART_CORPUS)),
-            Map.entry("PV_FERMETURE_SUCCURSALE_SARL_AU", Map.of(Source.CORPUS, ECART_CORPUS)));
+            Map.entry("PV_FERMETURE_SUCCURSALE_SARL_AU", Map.of(Source.CORPUS, ECART_CORPUS)),
+            // Lot L4d (E11c) : rendu par PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU, meme ecart du cabinet.
+            Map.entry("PV_MODIFICATION_SARL_AU", Map.of(Source.CORPUS, ECART_CORPUS)));
 
     /**
      * Gabarits que seul le corpus reel porte (aucune copie au classpath) : sans corpus reel,
@@ -154,7 +156,11 @@ class DocumentVerificationIT {
             // Lot L4d (E11d) : PV de dissolution et de cloture rendus par PV_DISSOLUTION_ANTICIPEE_*
             // et PV_CLOTURE_LIQUIDATION_* du corpus.
             "PV_DISSOLUTION_LIQUIDATION_SARL",
-            "PV_DISSOLUTION_LIQUIDATION_SARL_AU");
+            "PV_DISSOLUTION_LIQUIDATION_SARL_AU",
+            // Lot L4d (E11c) : PV de modification rendus par PV_AG_SARL et
+            // PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU du corpus.
+            "PV_MODIFICATION_SARL",
+            "PV_MODIFICATION_SARL_AU");
 
     static final Set<String> DOCUMENTS_ANNULATION =
             new ma.jurika.ai.workflow.mapper.AnnulationMapper().supportedTemplates();
