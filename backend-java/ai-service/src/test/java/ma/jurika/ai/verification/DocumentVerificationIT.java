@@ -97,7 +97,6 @@ class DocumentVerificationIT {
      * Lot L4a (E1) : documents dont la non-conformite est CONNUE et traitee dans une passe
      * nommee. Un document liste ici qui devient conforme fait echouer le test (a retirer).
      */
-    private static final String L4B = "L4b : variables des modeles du corpus (D5, bascule)";
 
     private static final String ECART_CORPUS =
             "A_DECIDER cabinet : $ASSOCIE_UNIQUE (oui/non) imprime sous la signature de l'associe unique";
@@ -107,7 +106,7 @@ class DocumentVerificationIT {
             Map.entry("FICHE_RENSEIGNEMENTS_CREATION",
                     "A_DECIDER cabinet : $BAILLEUR_NOM seul imprime, vide quand le bailleur est une societe"),
             // Variables des modeles du corpus que les mappers ne fournissent pas (D5, bascule).
-            Map.entry("PV_APPROBATION_COMPTES_SARL_AU", L4B),
+            Map.entry("PV_APPROBATION_COMPTES_SARL_AU", ECART_CORPUS),
             // Gabarit du classpath qui imprime sa notice de saisie ; bascule sur
             // RAPPORT_GESTION_EXERCICE_SARL(_AU) du corpus.
             Map.entry("RAPPORT_GESTION", "L4b : bascule sur le modele du corpus"),
