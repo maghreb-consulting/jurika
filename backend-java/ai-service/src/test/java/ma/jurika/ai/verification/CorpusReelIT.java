@@ -85,6 +85,7 @@ class CorpusReelIT {
         DocxTemplateEngine apres = new DocxTemplateEngine(loader, null, corpus);
 
         List<Map<String, Object>> temoin = new ArrayList<>();
+        List<String> nonConformesRequis = new ArrayList<>();
         Set<String> vus = new TreeSet<>();
         for (DocumentVerificationIT.MapperBinding b : dv.buildBindings()) {
             Map<String, Object> racineFixture = dv.loadFixture(b.fixtureFile());
@@ -152,6 +153,14 @@ class CorpusReelIT {
                     if (m.find()) residus.add(m.group());
                 }
                 e.put("residus_apres", residus);
+                // Lot L4a (CI) : gabarits que seul le corpus reel porte : controle strict ici
+                // (DocumentVerificationIT les declare CORPUS_REEL_REQUIS sans corpus).
+                if (DocumentVerificationIT.CORPUS_REEL_REQUIS.contains(code)) {
+                    List<String> d = ControleDocumentProduit.defauts(String.join("\n", lb),
+                            DocumentVerificationIT.EXTERNES_ATTENDUES.getOrDefault(code, Set.of()));
+                    e.put("controle_strict", d);
+                    if (!d.isEmpty()) nonConformesRequis.add(code + " : " + d);
+                }
                 e.put("statut", "OK");
                 temoin.add(e);
             }
@@ -169,6 +178,10 @@ class CorpusReelIT {
         assertThat(rapport.nonRendables()).isEmpty();
         assertThat(temoin).isNotEmpty();
         assertThat(temoin).filteredOn(t -> "ECHEC_CORPUS".equals(t.get("statut"))).isEmpty();
+        assertThat(temoin).as("gabarits CORPUS_REEL_REQUIS rendus ici")
+                .filteredOn(t -> DocumentVerificationIT.CORPUS_REEL_REQUIS.contains(t.get("code"))).hasSize(
+                        DocumentVerificationIT.CORPUS_REEL_REQUIS.size());
+        assertThat(nonConformesRequis).as("controle strict des gabarits CORPUS_REEL_REQUIS").isEmpty();
         // Aucun document produit ne garde un marqueur du moteur, une variable brute ou
         // la section de documentation des gabarits.
         assertThat(temoin).filteredOn(t -> t.get("residus_apres") instanceof List<?> l && !l.isEmpty())
