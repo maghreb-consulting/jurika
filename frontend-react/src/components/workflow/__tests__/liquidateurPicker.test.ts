@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildLiquidateurOptions, champsPersonneMorale, emptyLiquidateur, identiteLiquidateur, manqueLiquidateur,
+  buildLiquidateurOptions,
+  emptyLiquidateur,
 } from '../LiquidateurPicker';
+import { champsPersonneMorale, identiteLiquidateur, manqueLiquidateur } from '../../../lib/liquidateur';
 import type { DossierParties } from '../../../services/workflow.service';
 
 /**

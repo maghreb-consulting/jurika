@@ -47,12 +47,10 @@ import { LiquidationAnnoncePanel, type AvisCloture } from '../../components/work
 import {
   LiquidateurPicker,
   buildLiquidateurOptions,
-  champsPersonneMorale,
   emptyLiquidateur,
-  estPersonneMorale,
-  identiteLiquidateur,
   type LiquidateurState,
 } from '../../components/workflow/LiquidateurPicker';
+import { champsPersonneMorale, estPersonneMorale, identiteLiquidateur } from '../../lib/liquidateur';
 import {
   PiecesJointesPanel,
   type PieceJointeEntry,

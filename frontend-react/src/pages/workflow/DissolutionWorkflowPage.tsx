@@ -36,10 +36,8 @@ import {
   buildLiquidateurOptions,
   emptyLiquidateur,
   type LiquidateurState,
-  champsPersonneMorale,
-  identiteLiquidateur,
-  manqueLiquidateur,
 } from '../../components/workflow/LiquidateurPicker';
+import { champsPersonneMorale, identiteLiquidateur, manqueLiquidateur } from '../../lib/liquidateur';
 import {
   PiecesJointesPanel,
   type PieceJointeEntry,
