@@ -6,11 +6,11 @@ import java.util.Map;
 /**
  * Lot L4b (E1, RG-DEM-01) : le referentiel des demarches tel que le corpus du cabinet le
  * porte (onglets "Demarches" des matrices, onglets "Renvois", decisions de l'onglet
- * d'origine), analyse mais jamais complete : une cellule vide reste vide, une condition ou
+ * d'origine ; parcours de creation a part, pour comparaison avec les lignes en service), analyse mais jamais complete : une cellule vide reste vide, une condition ou
  * un delai que l'analyse ne sait pas lire reste en texte et figure au rapport.
  */
 public record ReferentielDemarches(String version, List<Ligne> lignes, List<Renvoi> renvois,
-                                   List<Decision> decisions, Rapport rapport) {
+                                   List<Decision> decisions, List<Ligne> parcoursCreation, Rapport rapport) {
 
     /**
      * Une demarche du corpus.

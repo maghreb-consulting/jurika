@@ -115,6 +115,64 @@ public class ImportReferentielDemarches {
         return journaliser(r, "APPLIQUE", null, acteur);
     }
 
+    /**
+     * Lot L4b (E3) : le parcours de creation du corpus compare, numero par numero, aux lignes
+     * de la creation en service (V24). Chaque ecart est nomme ; aucun n'est aligne en silence :
+     * la creation reste servie par ses lignes en service, et les ecarts vont au rapport.
+     */
+    List<String> ecartsCreation(List<ReferentielCorpus.Ligne> corpus) {
+        if (corpus == null || corpus.isEmpty()) return List.of("Parcours de cr\u00e9ation absent du corpus.");
+        Map<Integer, Map<String, Object>> enService = new LinkedHashMap<>();
+        for (Map<String, Object> l : db.queryForList("""
+                SELECT ordre, statut_ticket, libelle, condition_application, delai, modele_jurika, justificatifs_texte
+                FROM demarches_referentiel WHERE workflow_type = 'CREATION' AND corpus_version IS NULL AND actif
+                ORDER BY ordre
+                """)) {
+            enService.put(((Number) l.get("ordre")).intValue(), l);
+        }
+        List<String> ecarts = new ArrayList<>();
+        Set<Integer> vus = new java.util.HashSet<>();
+        for (ReferentielCorpus.Ligne c : corpus) {
+            int n = c.ordre();
+            vus.add(n);
+            Map<String, Object> s = enService.get(n);
+            if (s == null) {
+                ecarts.add("n\u00b0 " + n + " : ligne du corpus absente des lignes en service (\u00ab " + c.libelle() + " \u00bb)");
+                continue;
+            }
+            comparer(ecarts, n, "statut", s.get("statut_ticket"), c.statut());
+            comparer(ecarts, n, "d\u00e9marche", s.get("libelle"), c.libelle());
+            comparer(ecarts, n, "condition", s.get("condition_application"), c.condition() == null ? null : c.condition().texte());
+            comparer(ecarts, n, "d\u00e9lai", s.get("delai"), c.delai() == null ? null : c.delai().texte());
+            comparer(ecarts, n, "mod\u00e8le", s.get("modele_jurika"), c.modele());
+            comparer(ecarts, n, "justificatif", s.get("justificatifs_texte"), c.justificatif());
+        }
+        for (Integer n : enService.keySet()) {
+            if (!vus.contains(n)) ecarts.add("n\u00b0 " + n + " : ligne en service absente du corpus (\u00ab "
+                    + enService.get(n).get("libelle") + " \u00bb)");
+        }
+        return ecarts;
+    }
+
+    private static void comparer(List<String> ecarts, int n, String champ, Object enService, String corpus) {
+        String a = normaliser(enService);
+        String b = normaliser(corpus);
+        if (!a.equals(b)) {
+            ecarts.add("n\u00b0 " + n + " : " + champ + " : en service \u00ab " + a + " \u00bb, corpus \u00ab " + b + " \u00bb");
+        }
+    }
+
+    /**
+     * Presentation seule : espaces, case "&#9744;" en tete d'une etape, tiret seul pour une
+     * cellule vide. Tout autre ecart de texte est rapporte.
+     */
+    static String normaliser(Object o) {
+        if (o == null) return "";
+        String t = String.valueOf(o).replaceAll("\\s+", " ").trim();
+        if (t.startsWith("\u2610")) t = t.substring(1).trim();
+        return t.equals("\u2014") ? "" : t;
+    }
+
     /** Journal des imports, du plus recent au plus ancien. */
     public List<Map<String, Object>> journal() {
         return db.queryForList("""
@@ -158,6 +216,7 @@ public class ImportReferentielDemarches {
             rapport.put("delaisTextuels", r.rapport().delaisTextuels());
             rapport.put("erreurs", r.rapport().erreurs());
         }
+        if (r != null && "APPLIQUE".equals(statut)) rapport.put("ecartsCreation", ecartsCreation(r.parcoursCreation()));
         int lignes = "APPLIQUE".equals(statut) ? r.lignes().size() : 0;
         int decisions = "APPLIQUE".equals(statut) ? r.decisions().size() : 0;
         int renvois = "APPLIQUE".equals(statut) ? r.renvois().size() : 0;

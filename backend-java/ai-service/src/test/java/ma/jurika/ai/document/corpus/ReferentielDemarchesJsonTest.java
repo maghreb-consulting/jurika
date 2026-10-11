@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ReferentielDemarchesJsonTest {
 
-    static final String CONTRAT = "{\"version\":\"CORPUS_T\",\"lignes\":[{\"matrice\":\"M\",\"famille\":\"F\",\"forme\":\"SARL\",\"ordre\":1,\"decision\":\"reduction_capital\",\"sousCondition\":{\"variable\":\"REDUCTION_MOTIF\",\"operateur\":\"EGAL\",\"valeur\":\"retrait_associe\",\"texte\":null},\"statut\":\"GENERATION_DOCUMENTS\",\"libelle\":\"L\",\"organisme\":\"Cabinet\",\"condition\":{\"variable\":\"CAC_EXISTE\",\"operateur\":\"EGAL\",\"valeur\":\"oui\",\"texte\":\"T\"},\"obligatoire\":false,\"delai\":{\"texte\":\"D\",\"valeur\":30,\"unite\":\"JOURS\",\"depuisVariable\":\"X\",\"echeanceVariable\":\"Y\"},\"justificatif\":\"J\",\"modele\":\"PV_AG_SARL\",\"numeroDecision\":21,\"aCompleter\":null,\"completePlateforme\":null}],\"renvois\":[{\"matrice\":\"M\",\"numero\":1,\"section\":\"A\",\"decision\":\"D\",\"code\":\"approbation_comptes\",\"familleRenvoi\":\"C\",\"matriceRenvoi\":\"R\",\"numeroRenvoi\":1,\"regle\":\"G\"}],\"decisions\":[{\"matrice\":\"M\",\"numero\":13,\"section\":\"D\",\"code\":\"c\",\"libelle\":\"L\",\"typeDecision\":\"T\"}],\"rapport\":{\"lignesParOnglet\":{\"M\":1},\"total\":1,\"conditionsPhrases\":[],\"delaisTextuels\":[],\"erreurs\":[]}}";
+    static final String CONTRAT = "{\"version\":\"CORPUS_T\",\"lignes\":[{\"matrice\":\"M\",\"famille\":\"F\",\"forme\":\"SARL\",\"ordre\":1,\"decision\":\"reduction_capital\",\"sousCondition\":{\"variable\":\"REDUCTION_MOTIF\",\"operateur\":\"EGAL\",\"valeur\":\"retrait_associe\",\"texte\":null},\"statut\":\"GENERATION_DOCUMENTS\",\"libelle\":\"L\",\"organisme\":\"Cabinet\",\"condition\":{\"variable\":\"CAC_EXISTE\",\"operateur\":\"EGAL\",\"valeur\":\"oui\",\"texte\":\"T\"},\"obligatoire\":false,\"delai\":{\"texte\":\"D\",\"valeur\":30,\"unite\":\"JOURS\",\"depuisVariable\":\"X\",\"echeanceVariable\":\"Y\"},\"justificatif\":\"J\",\"modele\":\"PV_AG_SARL\",\"numeroDecision\":21,\"aCompleter\":null,\"completePlateforme\":null}],\"renvois\":[{\"matrice\":\"M\",\"numero\":1,\"section\":\"A\",\"decision\":\"D\",\"code\":\"approbation_comptes\",\"familleRenvoi\":\"C\",\"matriceRenvoi\":\"R\",\"numeroRenvoi\":1,\"regle\":\"G\"}],\"decisions\":[{\"matrice\":\"M\",\"numero\":13,\"section\":\"D\",\"code\":\"c\",\"libelle\":\"L\",\"typeDecision\":\"T\"}],\"parcoursCreation\":[],\"rapport\":{\"lignesParOnglet\":{\"M\":1},\"total\":1,\"conditionsPhrases\":[],\"delaisTextuels\":[],\"erreurs\":[]}}";
 
     @Test
     void le_referentiel_s_ecrit_selon_le_contrat() throws Exception {
@@ -28,6 +28,7 @@ class ReferentielDemarchesJsonTest {
                         new ReferentielDemarches.Delai("D", 30, "JOURS", "X", "Y"), "J", "PV_AG_SARL", 21, null, null)),
                 List.of(new ReferentielDemarches.Renvoi("M", 1, "A", "D", "approbation_comptes", "C", "R", 1, "G")),
                 List.of(new ReferentielDemarches.Decision("M", 13, "D", "c", "L", "T")),
+                List.of(),
                 new ReferentielDemarches.Rapport(Map.of("M", 1), 1, List.of(), List.of(), List.of()));
         JsonNode ecrit = json.readTree(json.writeValueAsString(r));
         assertThat(ecrit).isEqualTo(json.readTree(CONTRAT));

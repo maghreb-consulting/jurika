@@ -8,7 +8,7 @@ import java.util.Map;
  * (miroir de {@code ReferentielDemarches} d'ai-service, champs JSON identiques).
  */
 public record ReferentielCorpus(String version, List<Ligne> lignes, List<Renvoi> renvois,
-                                List<Decision> decisions, Rapport rapport) {
+                                List<Decision> decisions, List<Ligne> parcoursCreation, Rapport rapport) {
 
     public record Ligne(String matrice, String famille, String forme, int ordre, String decision,
                         Condition sousCondition, String statut, String libelle, String organisme,

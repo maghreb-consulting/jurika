@@ -6,6 +6,7 @@ import ma.jurika.ai.document.corpus.ReferentielDemarches.Ligne;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -106,6 +107,15 @@ class LecteurDemarchesTest {
     @Test
     void le_parcours_de_creation_du_corpus_a_51_lignes() {
         Assumptions.assumeTrue(corpusReelPresent(), "corpus reel absent");
-        assertThat(LecteurDemarches.lireParcoursCreation(RACINE)).hasSize(51);
+        List<Ligne> creation = LecteurDemarches.lireParcoursCreation(RACINE);
+        assertThat(creation).hasSize(51);
+        // Valeurs brutes (comparaison avec les lignes en service) : condition non analysee.
+        Ligne un = creation.get(0);
+        assertThat(un.ordre()).isEqualTo(1);
+        assertThat(un.statut()).isEqualTo("CREATION_TICKET");
+        assertThat(un.libelle()).isEqualTo("Ouverture du ticket");
+        assertThat(un.condition().texte()).isEqualTo("Tous dossiers");
+        assertThat(un.delai().texte()).isEqualTo("J0");
+        assertThat(LecteurDemarches.lire(RACINE).parcoursCreation()).hasSize(51);
     }
 }

@@ -34,6 +34,8 @@ export interface RapportImport {
   conditionsPhrases?: string[];
   delaisTextuels?: string[];
   erreurs?: string[];
+  /** Lot L4b (E3) : parcours de creation du corpus compare aux lignes en service. */
+  ecartsCreation?: string[];
 }
 
 export const referentielService = {

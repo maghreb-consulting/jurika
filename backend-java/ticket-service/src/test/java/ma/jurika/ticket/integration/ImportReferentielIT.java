@@ -66,6 +66,9 @@ class ImportReferentielIT {
         pg.stop();
     }
 
+    /** Parcours de creation du corpus pour la comparaison (E3) ; vide sauf mention. */
+    static List<Ligne> creation = List.of();
+
     static ReferentielCorpus version(String v, List<String> erreurs) {
         Ligne depot = new Ligne("MATRICE_COMPTES_RESULTAT_SARL", "03_COMPTES", "SARL", 1, "depot_etats_synthese", null,
                 "DEROULEMENT_DEMARCHE", "D\u00e9p\u00f4t des \u00e9tats de synth\u00e8se au greffe",
@@ -82,6 +85,7 @@ class ImportReferentielIT {
                         "COMPTES", "MATRICE_COMPTES_RESULTAT_SARL", 1, "La matrice de la famille fait foi")),
                 List.of(new Decision("MATRICE_COMPTES_RESULTAT_SARL", 13, "D", "depot_etats_synthese",
                         "D\u00e9p\u00f4t des \u00e9tats de synth\u00e8se", "Formalit\u00e9")),
+                creation,
                 new Rapport(Map.of("MATRICE_COMPTES_RESULTAT_SARL", 1), 2, List.of(), List.of(), erreurs));
     }
 
@@ -130,6 +134,39 @@ class ImportReferentielIT {
     }
 
     @Test
+    @Order(5)
+    @SuppressWarnings("unchecked")
+    void le_parcours_de_creation_du_corpus_est_compare_aux_lignes_en_service() throws Exception {
+        Map<String, Object> un = db.queryForMap("SELECT * FROM demarches_referentiel WHERE workflow_type = 'CREATION' "
+                + "AND corpus_version IS NULL AND ordre = 1");
+        Map<String, Object> deux = db.queryForMap("SELECT * FROM demarches_referentiel WHERE workflow_type = 'CREATION' "
+                + "AND corpus_version IS NULL AND ordre = 2");
+        // Presentation du corpus ignoree : case en tete de l'etape, tiret pour une cellule vide.
+        creation = List.of(ligneCreation(un, "\u2610 " + un.get("libelle")), ligneCreation(deux, "Libell\u00e9 modifi\u00e9 par le cabinet"));
+        source.set(version("CORPUS_C", List.of()));
+        ImportReferentielDemarches.Resultat r = imports.importer(ADMIN);
+        assertThat(r.statut()).isEqualTo("APPLIQUE");
+        String brut = db.queryForObject("SELECT rapport::text FROM referentiel_imports WHERE id = ?", String.class, r.id());
+        List<String> ecarts = (List<String>) new ObjectMapper().readValue(brut, Map.class).get("ecartsCreation");
+        assertThat(ecarts).noneMatch(e -> e.startsWith("n\u00b0 1 :"));
+        assertThat(ecarts).contains("n\u00b0 2 : d\u00e9marche : en service \u00ab " + deux.get("libelle")
+                + " \u00bb, corpus \u00ab Libell\u00e9 modifi\u00e9 par le cabinet \u00bb");
+        assertThat(ecarts).filteredOn(e -> e.contains("absente du corpus")).hasSize(49);
+        creation = List.of();
+    }
+
+    private static Ligne ligneCreation(Map<String, Object> l, String libelle) {
+        String delai = (String) l.get("delai");
+        String cond = (String) l.get("condition_application");
+        return new Ligne("PARCOURS_CREATION", "01_CREATION", null, ((Number) l.get("ordre")).intValue(), "creation", null,
+                (String) l.get("statut_ticket"), libelle, null,
+                cond == null ? null : new Condition(null, "PHRASE", null, cond), true,
+                delai == null ? null : new Delai(delai, null, null, null, null),
+                (String) l.get("justificatifs_texte"), (String) l.get("modele_jurika"),
+                ((Number) l.get("ordre")).intValue(), null, null);
+    }
+
+    @Test
     @Order(3)
     void la_meme_version_n_est_pas_reimportee() {
         source.set(version("CORPUS_A", List.of()));
@@ -148,6 +185,8 @@ class ImportReferentielIT {
         assertThat(imports.versionActive()).isEqualTo("CORPUS_B");
         assertThat(imports.journal()).extracting(m -> m.get("statut"))
                 .containsExactly("APPLIQUE", "REFUSE", "APPLIQUE", "REFUSE");
+        assertThat(db.queryForObject("SELECT rapport->'ecartsCreation'->>0 FROM referentiel_imports "
+                + "WHERE corpus_version = 'CORPUS_B'", String.class)).isEqualTo("Parcours de cr\u00e9ation absent du corpus.");
     }
 
     private void migrer(String emplacement, String historique, String cible) {

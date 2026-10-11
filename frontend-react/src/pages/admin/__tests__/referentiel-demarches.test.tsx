@@ -18,7 +18,8 @@ import { ReferentielDemarchesPage } from '../ReferentielDemarchesPage';
 const imp = (statut: 'APPLIQUE' | 'REFUSE', motif: string | null = null) => ({
   id: statut, corpus_version: 'CORPUS_2026-10-03', statut, lignes: statut === 'APPLIQUE' ? 7006 : 0,
   decisions: 301, renvois: 24, motif, importe_le: '2026-10-11T10:00:00Z',
-  rapport: JSON.stringify({ total: 7006, conditionsPhrases: ['M l. 1 : phrase'], delaisTextuels: [], erreurs: [] }),
+  rapport: JSON.stringify({ total: 7006, conditionsPhrases: ['M l. 1 : phrase'], delaisTextuels: [], erreurs: [],
+    ecartsCreation: ['n° 47 : modèle : en service « », corpus « — (procédure interne) »'] }),
 });
 
 beforeEach(() => {
@@ -45,5 +46,6 @@ describe('Référentiel des démarches', () => {
     expect(await screen.findByText('La version est déjà appliquée.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Voir le rapport' }));
     expect(screen.getByText(/1 conditions rédigées en/)).toBeInTheDocument();
+    expect(screen.getByTestId('ecarts-creation')).toHaveTextContent('1 écart(s)');
   });
 });

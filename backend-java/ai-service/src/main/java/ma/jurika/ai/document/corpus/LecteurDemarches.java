@@ -109,7 +109,14 @@ public final class LecteurDemarches {
             }
         }
         if (parOnglet.isEmpty()) erreurs.add("Aucun onglet \u00ab D\u00e9marches \u00bb lu");
-        return new ReferentielDemarches(absolue.getFileName().toString(), lignes, renvois, decisions,
+        // Parcours de creation : informatif (comparaison), son absence ne bloque pas l'import.
+        List<Ligne> creation = List.of();
+        try {
+            creation = lireParcoursCreation(absolue);
+        } catch (CorpusException ignoree) {
+            delaisTextuels.add(PARCOURS_CREATION + " : " + ignoree.getMessage());
+        }
+        return new ReferentielDemarches(absolue.getFileName().toString(), lignes, renvois, decisions, creation,
                 new Rapport(parOnglet, lignes.size(), phrases, delaisTextuels, erreurs));
     }
 
@@ -137,7 +144,7 @@ public final class LecteurDemarches {
                 String delai = cellule(f, r, 4);
                 out.add(new Ligne(PARCOURS_CREATION, fichier.getParent().getParent().getFileName().toString(),
                         null, Integer.parseInt(n), "creation", null, STATUTS.getOrDefault(statutTexte, statutTexte),
-                        cellule(f, r, 2), null, condition(cellule(f, r, 3)), true,
+                        cellule(f, r, 2), null, conditionBrute(cellule(f, r, 3)), true,
                         delai.isEmpty() ? null : new Delai(delai, null, null, null, null), vide(cellule(f, r, 6)),
                         vide(cellule(f, r, 7)), Integer.parseInt(n), null, vide(cellule(f, r, 8))));
             }
@@ -247,6 +254,11 @@ public final class LecteurDemarches {
             }
         }
         return out;
+    }
+
+    /** Parcours de creation : condition gardee telle quelle (comparaison avec les lignes en service). */
+    static Condition conditionBrute(String brut) {
+        return brut == null || brut.isBlank() ? null : new Condition(null, "PHRASE", null, brut.trim());
     }
 
     static Condition condition(String brut) {

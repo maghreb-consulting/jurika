@@ -136,6 +136,18 @@ export function ReferentielDemarchesPage() {
                         <ul className="list-disc pl-5">{rapport.conditionsPhrases!.map((c) => <li key={c}>{c}</li>)}</ul>
                       </details>
                     )}
+                    {rapport.ecartsCreation && (
+                      <details data-testid="ecarts-creation">
+                        <summary className="inline-flex items-center gap-1">
+                          Création : {rapport.ecartsCreation.length} écart(s) avec les lignes en service
+                          <InfoBulle
+                            libelle="Pourquoi comparer la création ?"
+                            texte="La création reste servie par ses 51 lignes en service, auxquelles sont rattachés les cochages et les formalités. Chaque différence avec le parcours livré par le cabinet est listée ici pour être arbitrée, jamais alignée en silence."
+                          />
+                        </summary>
+                        <ul className="list-disc pl-5">{rapport.ecartsCreation.map((e) => <li key={e}>{e}</li>)}</ul>
+                      </details>
+                    )}
                     {(rapport.delaisTextuels ?? []).length > 0 && (
                       <details>
                         <summary>Délais en texte seul</summary>
