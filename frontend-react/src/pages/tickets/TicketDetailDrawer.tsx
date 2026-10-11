@@ -333,6 +333,12 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
             le cochage n'avait plus d'ecran. Il se fait desormais ici pour l'employe,
             sur un ticket ni clos ni annule ; le ticket clos reste sans action.
           */}
+          {/* Lot L4d (E9) : la page du ticket reunit tout, pour tous les parcours. */}
+          <button type="button" className="text-sm text-accent underline" data-testid="ouvrir-page-ticket"
+            onClick={() => navigate(`/tickets/${ticketId}`)}>
+            Ouvrir la page du ticket (passage de statut, données, documents)
+          </button>
+
           {/* Lot L1 (RG-TKT-07) : note interne du ticket, enregistree automatiquement. */}
           <NoteTicketPanel ticketId={ticketId} statut={ticket.statut} role={user?.role} />
 

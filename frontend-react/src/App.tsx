@@ -30,6 +30,7 @@ import { WorkspaceDetailPage } from './pages/admin/WorkspaceDetailPage';
 import { UsersPage } from './pages/admin/UsersPage';
 import { ReferentielDemarchesPage } from './pages/admin/ReferentielDemarchesPage';
 import { DelaisGreffePage } from './pages/referentiel/DelaisGreffePage';
+import { TicketPage } from './pages/tickets/TicketPage';
 import { BillingPage } from './pages/billing/BillingPage';
 import { BillingSuccessPage } from './pages/billing/BillingSuccessPage';
 import { TeamPage } from './pages/team/TeamPage';
@@ -122,6 +123,8 @@ function App() {
         <Route element={<ProtectedRoute allowed={['SUPERVISEUR', 'EMPLOYE']} />}>
           <Route element={<AppShell />}>
             <Route path="/tickets" element={<TicketsPage />} />
+            {/* Lot L4d (E9) : page du ticket, une seule pour tous les parcours. */}
+            <Route path="/tickets/:ticketId" element={<TicketPage />} />
             <Route path="/workflows/:ticketId" element={<WorkflowPage />} />
             {/* 2026-06-25 — Calendrier repurpose vers les tickets (source A). Gating
                 aligne sur /tickets : le scope own-vs-all vient du backend GET /tickets. */}

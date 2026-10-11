@@ -65,6 +65,15 @@ export const ticketService = {
     return data;
   },
 
+  /**
+   * Lot L4d (E9, RG-TKT-06) : statut suivant du parcours et obstacles au passage, calculés
+   * par les mêmes contrôles que la transition (l'écran dit ce que le serveur refusera).
+   */
+  async passage(id: string): Promise<{ statut: string; suivant: string | null; obstacles: string[] }> {
+    const { data } = await api.get<{ statut: string; suivant: string | null; obstacles: string[] }>(`/tickets/${id}/passage`);
+    return data;
+  },
+
   async transition(id: string, payload: TransitionPayload): Promise<Ticket> {
     const { data } = await api.post<Ticket>(`/tickets/${id}/transition`, payload);
     return data;

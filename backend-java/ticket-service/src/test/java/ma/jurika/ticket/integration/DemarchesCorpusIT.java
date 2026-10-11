@@ -308,6 +308,10 @@ class DemarchesCorpusIT {
                         .contentType("application/json").content("{\"target\":\"GENERATION_DOCUMENTS\"}"))
                 .andExpect(status().isOk());
         JsonNode pv = ligneDe(lire("/api/v1/tickets/" + ticketId + "/demarches"), "PV d'approbation");
+        // Lot L4d (E9, RG-TKT-06) : l'ecran sait AVANT la demande ce que la transition refusera.
+        JsonNode passage = lire("/api/v1/tickets/" + ticketId + "/passage");
+        assertThat(passage.get("suivant").asText()).isEqualTo("DEROULEMENT_DEMARCHE");
+        assertThat(passage.get("obstacles").toString()).contains("G\u00e9n\u00e9ration du PV d'approbation");
         MvcResult refus = mvc.perform(post("/api/v1/tickets/" + ticketId + "/transition").header("Authorization", jeton("EMPLOYE"))
                         .contentType("application/json").content("{\"target\":\"DEROULEMENT_DEMARCHE\"}"))
                 .andExpect(status().is4xxClientError()).andReturn();
@@ -318,6 +322,8 @@ class DemarchesCorpusIT {
                 .andExpect(status().isOk());
         assertThat(owner.queryForObject("SELECT etat FROM ticket_demarches WHERE ticket_id = ? AND demarche_id = ?",
                 String.class, ticketId, UUID.fromString(pv.get("demarcheId").asText()))).isEqualTo("COCHEE");
+        assertThat(lire("/api/v1/tickets/" + ticketId + "/passage").get("obstacles").size())
+                .as("plus d'obstacle : la transition passera").isZero();
         mvc.perform(post("/api/v1/tickets/" + ticketId + "/transition").header("Authorization", jeton("EMPLOYE"))
                         .contentType("application/json").content("{\"target\":\"DEROULEMENT_DEMARCHE\"}"))
                 .andExpect(status().isOk());
