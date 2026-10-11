@@ -150,7 +150,11 @@ class DocumentVerificationIT {
             "RAPPORT_GESTION",
             // Lot L4d (E11b) : convocation et feuille de presence rendues par les modeles du corpus.
             "CONVOCATION_AG",
-            "FEUILLE_PRESENCE_AG");
+            "FEUILLE_PRESENCE_AG",
+            // Lot L4d (E11d) : PV de dissolution et de cloture rendus par PV_DISSOLUTION_ANTICIPEE_*
+            // et PV_CLOTURE_LIQUIDATION_* du corpus.
+            "PV_DISSOLUTION_LIQUIDATION_SARL",
+            "PV_DISSOLUTION_LIQUIDATION_SARL_AU");
 
     static final Set<String> DOCUMENTS_ANNULATION =
             new ma.jurika.ai.workflow.mapper.AnnulationMapper().supportedTemplates();

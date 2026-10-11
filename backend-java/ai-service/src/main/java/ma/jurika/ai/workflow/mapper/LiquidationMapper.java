@@ -66,38 +66,20 @@ public class LiquidationMapper implements WorkflowDocumentMapper {
             return LiquidationAnnonceVarsBuilder.build(templateCode, safe);
         }
         if (TPL_RAPPORT.equals(templateCode)) {
-            return RapportLiquidateurCorpusVarsBuilder.build(gabarit(templateCode, safe), safe);
+            // Lot L4d (E11d) : bascule du rapport non resolue, rapport du classpath conserve.
+            return RapportLiquidationDirecteurVars.rapportVars(safe);
         }
         return CloturePvCorpusVarsBuilder.build(templateCode, safe);
     }
 
     /**
      * Lot L4d (E11d) : modele du corpus rendu pour chaque document (L2_correspondance_gabarits.md).
-     * Le rapport n'a qu'un code a l'ecran : sa variante SARL AU se choisit par la forme de la
-     * societe portee par le parcours.
+     * Le rapport du liquidateur reste rendu par le classpath (bascule non resolue).
      */
     @Override
     public String gabarit(String templateCode, Map<String, Object> payload) {
         if (TPL_PV_SARL.equals(templateCode)) return CloturePvCorpusVarsBuilder.CORPUS_SARL;
         if (TPL_PV_SARL_AU.equals(templateCode)) return CloturePvCorpusVarsBuilder.CORPUS_SARL_AU;
-        if (TPL_RAPPORT.equals(templateCode)) {
-            return associeUnique(payload) ? RapportLiquidateurCorpusVarsBuilder.CORPUS_SARL_AU
-                    : RapportLiquidateurCorpusVarsBuilder.CORPUS_SARL;
-        }
         return templateCode;
-    }
-
-    /** Forme de la societe : drapeau associe unique, sinon forme juridique (SARL_AU). */
-    static boolean associeUnique(Map<String, Object> payload) {
-        Map<String, Object> safe = payload == null ? Map.of() : payload;
-        Object flag = safe.get("associeUnique");
-        if (flag instanceof Boolean b) return b;
-        if (flag != null && !(flag instanceof Map) && !String.valueOf(flag).isBlank()) {
-            return String.valueOf(flag).trim().toLowerCase(Locale.ROOT).startsWith("o")
-                    || "true".equalsIgnoreCase(String.valueOf(flag).trim());
-        }
-        Object forme = safe.get("formeJuridique");
-        if (forme == null && safe.get("societe") instanceof Map<?, ?> s) forme = s.get("formeJuridique");
-        return forme != null && String.valueOf(forme).toUpperCase(Locale.ROOT).replace(' ', '_').endsWith("_AU");
     }
 }

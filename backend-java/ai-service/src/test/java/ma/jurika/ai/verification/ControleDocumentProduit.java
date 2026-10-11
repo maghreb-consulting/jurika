@@ -21,9 +21,13 @@ final class ControleDocumentProduit {
 
     static final Pattern VALEUR_MANQUANTE = Pattern.compile("VALEUR MANQUANTE : ([A-Z0-9_]+)");
     static final Pattern A_OBTENIR = Pattern.compile("\u00c0 OBTENIR : ([A-Z0-9_]+)");
-    /** Mot de liaison immediatement suivi d'une ponctuation : la valeur entre les deux est vide. */
+    /**
+     * Mot de liaison immediatement suivi d'une ponctuation : la valeur entre les deux est vide.
+     * Lot L4d (E11d) : une ligne pointillee (trois points ou plus) est une zone a remplir a la
+     * main voulue par le modele (mention d'enregistrement), pas un blanc.
+     */
     static final Pattern BLANC_APRES_MOT = Pattern.compile(
-            "(?iu)(?<![\\p{L}'\u2019])(de|du|des|d'|\u00e0|a|au|aux|le|la|les|l'|en|par|pour|sur|n\u00b0|num\u00e9ro)\\s+[,.;)]");
+            "(?iu)(?<![\\p{L}'\u2019])(de|du|des|d'|\u00e0|a|au|aux|le|la|les|l'|en|par|pour|sur|n\u00b0|num\u00e9ro)\\s+(?:[,;)]|\\.(?!\\.\\.))");
     static final Pattern DOUBLE_VIRGULE = Pattern.compile(",\\s*,");
     static final Pattern PARENTHESES_VIDES = Pattern.compile("\\(\\s*\\)");
     /** Un drapeau "oui" / "non" imprime seul sur sa ligne : une variable pilote a pris la place d'un texte. */

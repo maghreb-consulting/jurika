@@ -57,4 +57,18 @@ class ControleDocumentProduitTest {
         assertThat(ControleDocumentProduit.defauts("Pour avis.\nNOTES D'EMPLOI (non publi\u00e9es)\nCoh\u00e9rence.", java.util.Set.of()))
                 .contains("documentation du modele imprimee : NOTES D'EMPLOI");
     }
+
+    /**
+     * Lot L4d (E11d) : une ligne pointillee voulue par le modele (mention d'enregistrement,
+     * remplie a la main par le bureau) n'est pas une donnee manquante ; un mot de liaison
+     * suivi d'une ponctuation seule reste un blanc.
+     */
+    @Test
+    void zone_pointillee_a_remplir_a_la_main_n_est_pas_un_blanc() {
+        assertThat(ControleDocumentProduit.defauts(
+                "Enregistr\u00e9 \u00e0 Casablanca, le ............................, sous la r\u00e9f\u00e9rence ......", Set.of()))
+                .isEmpty();
+        assertThat(ControleDocumentProduit.defauts("fait le . Sign\u00e9", Set.of())).isNotEmpty();
+        assertThat(ControleDocumentProduit.defauts("demeurant \u00e0 , titulaire", Set.of())).isNotEmpty();
+    }
 }

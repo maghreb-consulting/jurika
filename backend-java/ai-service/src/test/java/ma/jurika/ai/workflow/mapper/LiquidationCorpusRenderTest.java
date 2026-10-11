@@ -1,9 +1,7 @@
 package ma.jurika.ai.workflow.mapper;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import ma.jurika.ai.document.ControleCompletude;
 import ma.jurika.ai.document.DocxTemplateEngine;
-import ma.jurika.ai.document.GenerationRefuseeException;
 import ma.jurika.ai.document.corpus.ChargeurCorpus;
 import ma.jurika.ai.document.manifest.TemplateManifestLoader;
 import ma.jurika.ai.workflow.WorkflowDocumentMapper;
@@ -23,7 +21,6 @@ import java.util.regex.Pattern;
 import static ma.jurika.ai.workflow.mapper.DissolutionMapperTest.fixture;
 import static ma.jurika.ai.workflow.mapper.DissolutionMapperTest.liquidateurPersonneMorale;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Lot L4d (E11d) : les documents de la dissolution et de la liquidation rendus par les
@@ -145,14 +142,12 @@ class LiquidationCorpusRenderTest {
                 .contains("net revenant \u00e0 l'associ\u00e9 unique 134 000 dirhams");
     }
 
+    // Lot L4d (E11d) : le rapport du liquidateur reste rendu par le classpath (bascule sur
+    // RAPPORT_LIQUIDATEUR_SARL(_AU) non resolue : onze tableaux sans ecran, 54 donnees).
     @Test
-    void rapport_du_liquidateur_refuse_donnees_nommees() {
+    void rapport_du_liquidateur_reste_servi() {
         DocxTemplateEngine.DocumentResult r = rendre(new LiquidationMapper(), "RAPPORT_LIQUIDATION_DIRECTEUR",
                 fixture("liquidation.json"));
-        assertThat(r.manquantesBloquantes()).extracting(m -> m.nom())
-                .contains("REALISATION_BIEN_DESIGNATION", "APUREMENT_CREANCIER", "FRAIS_LIQUIDATION_NATURE",
-                        "DILIGENCE_NATURE", "RAPPORT_LIQUIDATEUR_PERIODE_DEBUT");
-        assertThatThrownBy(() -> ControleCompletude.verifier("RAPPORT_LIQUIDATEUR_SARL", r, engine.dictionnaire()))
-                .isInstanceOf(GenerationRefuseeException.class);
+        assertThat(r.manquantesBloquantes()).isEmpty();
     }
 }

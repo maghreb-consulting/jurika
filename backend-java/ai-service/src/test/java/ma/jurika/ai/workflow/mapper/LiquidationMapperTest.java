@@ -28,12 +28,9 @@ class LiquidationMapperTest {
         assertThat(mapper.workflowCode()).isEqualTo("LIQUIDATION");
         assertThat(mapper.gabarit("PV_DISSOLUTION_LIQUIDATION_SARL", Map.of())).isEqualTo("PV_CLOTURE_LIQUIDATION_SARL");
         assertThat(mapper.gabarit("PV_DISSOLUTION_LIQUIDATION_SARL_AU", Map.of())).isEqualTo("PV_CLOTURE_LIQUIDATION_SARL_AU");
+        // Lot L4d (E11d) : bascule du rapport non resolue, le rapport du classpath reste servi.
         assertThat(mapper.gabarit("RAPPORT_LIQUIDATION_DIRECTEUR", Map.of("formeJuridique", "SARL")))
-                .isEqualTo("RAPPORT_LIQUIDATEUR_SARL");
-        assertThat(mapper.gabarit("RAPPORT_LIQUIDATION_DIRECTEUR", Map.of("formeJuridique", "SARL_AU")))
-                .isEqualTo("RAPPORT_LIQUIDATEUR_SARL_AU");
-        assertThat(mapper.gabarit("RAPPORT_LIQUIDATION_DIRECTEUR", Map.of("associeUnique", true)))
-                .isEqualTo("RAPPORT_LIQUIDATEUR_SARL_AU");
+                .isEqualTo("RAPPORT_LIQUIDATION_DIRECTEUR");
         assertThat(mapper.gabarit("ANNONCE_LEGALE_LIQUIDATION_SARL", Map.of())).isEqualTo("ANNONCE_LEGALE_LIQUIDATION_SARL");
     }
 
@@ -185,10 +182,13 @@ class LiquidationMapperTest {
     }
 
     @Test
-    void rapport_final_du_liquidateur() {
-        Map<String, Object> v = mapper.map("RAPPORT_LIQUIDATION_DIRECTEUR", fixture("liquidation.json"));
-        assertThat(v).containsEntry("RAPPORT_LIQUIDATEUR_NATURE", "final")
-                .containsEntry("LIQUIDATEUR_FORME", "personne physique")
-                .doesNotContainKey("ASSOCIES");
+    void rapport_du_liquidateur_sans_repli_boni() {
+        // Lot L4d (E11d) : le sens du resultat vient de la saisie ou du calcul du parcours ;
+        // absent, il reste vide (la generation le nomme) -- plus de "boni" suppose.
+        Map<String, Object> p = new java.util.HashMap<>(fixture("liquidation.json"));
+        p.put("cloture", Map.of("actifRealise", 100000, "passifRegle", 40000));
+        assertThat(mapper.map("RAPPORT_LIQUIDATION_DIRECTEUR", p).get("RESULTAT_LIQUIDATION_TYPE")).isEqualTo("");
+        p.put("cloture", Map.of("resultatSens", "mali", "resultatMontant", 5000));
+        assertThat(mapper.map("RAPPORT_LIQUIDATION_DIRECTEUR", p)).containsEntry("RESULTAT_LIQUIDATION_TYPE", "mali");
     }
 }

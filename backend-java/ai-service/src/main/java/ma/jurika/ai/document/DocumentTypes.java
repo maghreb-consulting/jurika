@@ -52,7 +52,9 @@ public final class DocumentTypes {
     // Dissolution / Liquidation (Phase C). Lot L4d (E11d) : le PV unifie du classpath et le
     // rapport du liquidateur du directeur sont retires ; les parcours DISSOLUTION et
     // LIQUIDATION rendent les modeles du corpus (PV_DISSOLUTION_ANTICIPEE_*,
-    // PV_CLOTURE_LIQUIDATION_*, RAPPORT_LIQUIDATEUR_*) par leurs mappers.
+    // PV_CLOTURE_LIQUIDATION_*) par leurs mappers. Le rapport du liquidateur reste rendu par
+    // le classpath (bascule sur RAPPORT_LIQUIDATEUR_* non resolue en L4d : 54 donnees sans ecran).
+    public static final String RAPPORT_LIQUIDATION_DIRECTEUR = "RAPPORT_LIQUIDATION_DIRECTEUR";
     // 2026-08-12 — Annonce légale de DISSOLUTION (avis de dissolution anticipée + nomination
     // du liquidateur + siège de la liquidation), modèles directeur déclinés SARL / SARL AU.
     // Premier des deux avis du cycle (l'avis de clôture relève de la Liquidation).
@@ -204,6 +206,7 @@ public final class DocumentTypes {
     public static final String FEUILLE_PRESENCE_AG = "FEUILLE_PRESENCE_AG";
 
     public static final Set<String> ALL = Set.of(
+            RAPPORT_LIQUIDATION_DIRECTEUR,
             STATUTS_CONSTITUTIFS,
             ATTESTATION_BLOCAGE_FONDS, DEMANDE_CERTIFICAT_NEGATIF, ANNONCE_JAL_CONSTITUTION,
             FORMULAIRE_RC_IMMATRICULATION, DECLARATION_EXISTENCE_FISCALE, DECLARATION_AFFILIATION_CNSS,
