@@ -116,14 +116,26 @@ class DissolutionAnnonceRenderTest {
         assertEquals("78945", v.get("DEPOT_LEGAL_NUMERO"));
     }
 
+    /**
+     * L4b (E7) : plus de repli sur le siege social. Non saisi, le siege de la liquidation
+     * reste absent ; "au siege social" choisi, le modele du corpus imprime le siege social.
+     */
     @Test
-    void siegeLiquidation_repliSurSiegeSocial_siNonSaisi() {
+    void siegeLiquidation_sansRepliSurSiegeSocial() {
         Map<String, Object> p = payload("SARL");
         Map<String, Object> l = liquidateur();
         l.remove("siege");
         p.put("liquidateur", l);
         Map<String, Object> v = vars(DissolutionAnnonceVarsBuilder.TPL_SARL, p);
-        assertEquals("12 RUE DES FOULES, CASABLANCA", v.get("SIEGE_LIQUIDATION"));
+        assertEquals("", v.get("SIEGE_LIQUIDATION"));
+        assertFalse(v.containsKey("LIQUIDATION_SIEGE_IDENTIQUE"), "siege de la liquidation non choisi : rien de suppose");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> d = new java.util.LinkedHashMap<>((Map<String, Object>) p.getOrDefault("dissolution", Map.of()));
+        d.put("siegeLiquidationIdentique", "oui");
+        p.put("dissolution", d);
+        v = vars(DissolutionAnnonceVarsBuilder.TPL_SARL, p);
+        assertEquals("oui", v.get("LIQUIDATION_SIEGE_IDENTIQUE"));
+        assertFalse(v.containsKey("LIQUIDATION_SIEGE_ADRESSE"));
     }
 
     @Test

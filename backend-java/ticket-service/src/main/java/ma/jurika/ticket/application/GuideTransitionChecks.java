@@ -1,5 +1,8 @@
 package ma.jurika.ticket.application;
 
+import ma.jurika.ticket.application.referentiel.DemarchesDuTicket;
+import ma.jurika.ticket.application.referentiel.LignesDuTicket;
+import ma.jurika.ticket.application.referentiel.MatricesDuTicket;
 import ma.jurika.ticket.domain.model.Demarche;
 import ma.jurika.ticket.domain.model.DemarcheEtat;
 import ma.jurika.ticket.domain.model.EntrepriseDossier;
@@ -43,8 +46,8 @@ import java.util.function.Function;
  * acceptes » (statut 1) et « facture soldee » (statut 4) — la facturation n'est
  * pas rattachee au ticket dans le modele actuel.
  *
- * <p>Un workflow dont le referentiel est vide ne produit aucun obstacle : les
- * huit autres workflows conservent exactement leur comportement.
+ * <p>Lot L4b (E4) : hors creation, les lignes viennent du corpus selon les decisions du
+ * ticket ; referentiel non charge, forme inconnue ou aucune decision : obstacles nommes.
  */
 @Service
 public class GuideTransitionChecks implements TransitionChecks {
@@ -68,12 +71,29 @@ public class GuideTransitionChecks implements TransitionChecks {
                     "$CNSS_NUMERO", EntrepriseDossier::cnss);
 
     private final DemarcheReferentielRepository referentiel;
+    private final DemarchesDuTicket corpus;
+    private final LignesDuTicket lignes;
     private final TicketDemarcheRepository etats;
     private final DossierRepository dossiers;
 
     public GuideTransitionChecks(DemarcheReferentielRepository referentiel,
                                   TicketDemarcheRepository etats,
                                   DossierRepository dossiers) {
+        this(referentiel, etats, dossiers, null);
+    }
+
+    /**
+     * Lot L4b (E4, RG-TKT-06) : hors creation, les lignes du ticket viennent du corpus selon
+     * ses decisions ; un referentiel non charge, une forme inconnue ou aucune decision sont
+     * des OBSTACLES nommes, jamais l'absence de controle.
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    public GuideTransitionChecks(DemarcheReferentielRepository referentiel,
+                                  TicketDemarcheRepository etats,
+                                  DossierRepository dossiers,
+                                  DemarchesDuTicket corpus) {
+        this.corpus = corpus;
+        this.lignes = corpus == null ? LignesDuTicket.duReferentiel(referentiel) : corpus;
         this.referentiel = referentiel;
         this.etats = etats;
         this.dossiers = dossiers;
@@ -89,12 +109,14 @@ public class GuideTransitionChecks implements TransitionChecks {
         // repris. Le motif est exige par le handler.
         if (ticket.statut() == TicketStatut.ANNULE) return List.of();
 
-        List<Demarche> duStatut = referentiel.findByWorkflowAndStatut(
-                ticket.type().name(), ticket.statut());
-        if (duStatut.isEmpty()) return List.of();
+        List<String> obstacles = new ArrayList<>();
+        if (corpus != null && MatricesDuTicket.servieParLeCorpus(ticket.type())) {
+            obstacles.addAll(corpus.decisions(ticket).manques());
+        }
+        List<Demarche> duStatut = lignes.duStatut(ticket, ticket.statut());
+        if (duStatut.isEmpty()) return obstacles;
 
         Map<UUID, TicketDemarche> parDemarche = etats.findByTicket(ticket.workspaceId(), ticket.id());
-        List<String> obstacles = new ArrayList<>();
 
         for (Demarche d : duStatut) {
             TicketDemarche etat = parDemarche.get(d.id());
@@ -150,7 +172,7 @@ public class GuideTransitionChecks implements TransitionChecks {
      */
     public List<String> variablesNonVerifiables(Ticket ticket) {
         List<String> out = new ArrayList<>();
-        for (Demarche d : referentiel.findByWorkflowAndStatut(ticket.type().name(), ticket.statut())) {
+        for (Demarche d : lignes.duStatut(ticket, ticket.statut())) {
             for (String variable : variablesDe(d)) {
                 if (!RESOLVEURS.containsKey(variable) && !out.contains(variable)) out.add(variable);
             }

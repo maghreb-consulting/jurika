@@ -43,7 +43,7 @@ import { DossierAutocomplete } from '../../components/workflow/DossierAutocomple
 import { SeanceOperationForm } from '../../components/workflow/SeanceOperationForm';
 import { ConvocationPanel, FeuillePresencePanel } from '../../components/workflow/SeanceDocPanels';
 import { IncidentSeancePanel } from '../../components/workflow/IncidentSeancePanel';
-import { LiquidationAnnoncePanel } from '../../components/workflow/LiquidationAnnoncePanel';
+import { LiquidationAnnoncePanel, type AvisCloture } from '../../components/workflow/LiquidationAnnoncePanel';
 import {
   LiquidateurPicker,
   buildLiquidateurOptions,
@@ -209,6 +209,10 @@ function LiquidationWorkflowPageBody() {
   );
   const [annonceValidated, setAnnonceValidated] = useState<boolean>(
     !!(stepData.step2?.annonceValide as boolean),
+  );
+  // L4b (E7, D5) : donnees de l'avis de cloture du corpus (brouillon de l'etape 2).
+  const [avisCloture, setAvisCloture] = useState<AvisCloture>(
+    () => (stepData.step2?.avisCloture as AvisCloture | undefined) ?? {},
   );
   const [depotLegalNumero, setDepotLegalNumero] = useState(
     ((stepData.step2?.depotLegal as { numero?: string } | undefined) ?? {}).numero ?? '',
@@ -569,6 +573,7 @@ function LiquidationWorkflowPageBody() {
           depotLegalNumero || depotLegalDate
             ? { numero: depotLegalNumero || null, date: depotLegalDate || null }
             : undefined,
+        avisCloture,
       });
     } else if (step === 3) {
       // Etape OPTIONNELLE : jamais bloquante, peut etre vide.
@@ -609,12 +614,13 @@ function LiquidationWorkflowPageBody() {
           rapportValide: docsValidated,
           annonceValide: annonceValidated,
           depotLegal: { numero: depotLegalNumero, date: depotLegalDate },
+          avisCloture,
         };
       }
       if (n === 3) return { piecesJointes };
       return null;
     },
-    [dossierId, formeJuridique, dateCloture, dateDissolution, liquidateur, totalActif,
+    [dossierId, formeJuridique, dateCloture, dateDissolution, liquidateur, totalActif, avisCloture,
       totalPassif, convocationDate, convocationHeure, convocationSnapshot, docsValidated,
       annonceValidated, depotLegalNumero, depotLegalDate, piecesJointes],
   );
@@ -1080,6 +1086,9 @@ function LiquidationWorkflowPageBody() {
               denomination={targetDenomination}
               dateCloture={dateCloture}
               liquidateur={liquidateur}
+              avis={avisCloture}
+              onAvisChange={setAvisCloture}
+              dateDissolution={dateDissolution ?? undefined}
               totalActif={totalActif}
               totalPassif={totalPassif}
               depotLegalNumero={depotLegalNumero}

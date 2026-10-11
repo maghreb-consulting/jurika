@@ -98,7 +98,12 @@ public class ApprobationComptesMapper implements WorkflowDocumentMapper {
                 "Conventions r\u00e9glement\u00e9es intervenues au cours de l'exercice (oui ou non)"));
         approbation.put("dividendeDistribue", SaisieExigee.ouiNon(templateCode, approbation.get("dividendeDistribue"),
                 "DIVIDENDE_DISTRIBUE", "Distribution de dividendes (oui ou non)"));
+        // L4b (E7) : la presence d'un commissaire aux comptes est saisie (avant : "non" par
+        // defaut, a l'ecran comme ici ; le PV en retirait le rapport du commissaire).
+        approbation.put("commissairePresent", SaisieExigee.ouiNon(templateCode, approbation.get("commissairePresent"),
+                "COMMISSAIRE_COMPTES_PRESENT", "Commissaire aux comptes en fonction (oui ou non)"));
         vars.putAll(approbationVars(approbation));
+        if (TPL_SARL_AU.equals(templateCode)) mentionsAssocieUnique(vars, approbation, safe);
 
         // 3) Lot DIVERS §E (2026-08-13) — ORDRE DU JOUR et RÉSOLUTIONS DÉRIVÉS.
         //
@@ -115,6 +120,36 @@ public class ApprobationComptesMapper implements WorkflowDocumentMapper {
             vars.put("ORDRE_DU_JOUR", buildOrdreDuJour(approbation));
         }
         return vars;
+    }
+
+    /**
+     * Lot L4b (E7, D5) : mentions du PV des decisions de l'associe unique (modele du corpus).
+     * Saisies : reference du dossier, registre des decisions (numero, feuillet), nombre
+     * d'originaux. Derivees : annee en toutes lettres (date de la decision), qualite du
+     * gerant unique (civilite), date limite du depot au greffe des etats de synthese
+     * (trente jours de l'approbation, delai de la matrice des comptes, art. 95 al. 2 de la
+     * loi 5-96). Rien n'est suppose : une donnee absente reste absente.
+     */
+    static void mentionsAssocieUnique(Map<String, Object> v, Map<String, Object> a, Map<String, Object> payload) {
+        putSi(v, "DOSSIER_REFERENCE", str(a.get("dossierReference")));
+        putSi(v, "REGISTRE_PV_NUMERO", str(a.get("registrePvNumero")));
+        putSi(v, "REGISTRE_PV_FEUILLET", str(a.get("registrePvFeuillet")));
+        putSi(v, "NOMBRE_ORIGINAUX", str(a.get("nombreOriginaux")));
+        LocalDate decision = toDate(asMap(payload.get("seance")).get("date"));
+        if (decision != null) {
+            v.put("ASSEMBLEE_ANNEE", ma.jurika.ai.document.format.FrenchNumberToLetters.numberToLetters(decision.getYear()));
+            v.put("DEPOT_GREFFE_DATE_LIMITE", dateStr(decision.plusDays(30).toString()));
+        }
+        List<Map<String, Object>> gerants = asListOfMaps(payload.get("gerants"));
+        if (gerants.size() == 1) {
+            String c = norm(gerants.get(0).get("civilite"));
+            if (c.startsWith("mme") || c.startsWith("madame") || c.startsWith("mlle")) v.put("GERANT_QUALITE", "g\u00e9rante");
+            else if (c.startsWith("m")) v.put("GERANT_QUALITE", "g\u00e9rant");
+        }
+    }
+
+    private static void putSi(Map<String, Object> v, String k, String val) {
+        if (val != null && !val.isBlank()) v.put(k, val);
     }
 
     // ------------------------------------------------------------------

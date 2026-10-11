@@ -27,7 +27,7 @@ export function ValeurProposee({
   onChange: (valeur: string) => void;
   /** Liste de choix (select) ; sinon un champ libre. */
   options?: { value: string; label: string }[];
-  type?: 'text' | 'number';
+  type?: 'text' | 'number' | 'date';
 }) {
   const confirmee = valeur !== undefined && valeur !== '';
   const affichee = confirmee ? valeur : proposition;

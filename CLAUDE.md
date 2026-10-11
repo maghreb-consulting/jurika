@@ -206,7 +206,7 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   $BAILLEUR_NOM" ; quand le bailleur est une societe, `$BAILLEUR_NOM` est vide (le contrat de bail, lui,
   distingue $BAILLEUR_TYPE et imprime $BAILLEUR_DENOMINATION). La fiche est alors refusee, donnee nommee.
   A_DECIDER cabinet (correction du modele).
-- **Parcours a basculer sur les modeles du corpus (L4).** 12 des 15 gabarits du classpath
+- **Parcours a basculer sur les modeles du corpus (L4c ; rien de bascule en L4b, seules les annonces et le PV d'approbation SARL AU du corpus ont recu leurs variables D5).** 12 des 15 gabarits du classpath
   absents du corpus ont un equivalent dans `CORPUS_2026-10-03` (STATUTS deterministes,
   CONVOCATION_AG, FEUILLE_PRESENCE_AG, RAPPORT_GESTION, RAPPORT_LIQUIDATION_DIRECTEUR,
   PV_DISSOLUTION_LIQUIDATION, PV_MODIFICATION, ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE) :
@@ -226,6 +226,24 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **Nouveau logo**, avec sa variante ivoire en mode sombre.
 - **Super-admin affiche "JURIKA"** (et non un nom de cabinet ou de compte).
 
+### Lot L4b (demarches du corpus, D5, 2026-10-11) -- dette relevee
+
+- **PV de dissolution en service (classpath)** : il ne redige que trois natures ; les quatre autres
+  motifs du corpus (realisation ou extinction de l'objet, cause statutaire, autre) y sont refuses,
+  donnee nommee, jusqu'a la bascule sur `PV_DISSOLUTION_ANTICIPEE_SARL(_AU)` (L4c).
+- **Repli "boni" du resultat de liquidation** quand rien n'est saisi ni calculable
+  (`LiquidationAnnonceVarsBuilder.resolveResultatType`, `DissolutionLiquidationMapper.normBoniMali`) :
+  valeur supposee a retirer (refus nomme).
+- **Type du tribunal de la creation** : ville vide => "Tribunal de premiere instance"
+  (`CreationFormulairesVarsBuilder`) ; a aligner sur `TribunalDerive` (rien deduit sans ville).
+- **Justificatifs du corpus en texte seul** : les lignes du referentiel du corpus n'ont pas de type
+  de document attendu ; leur cochage ne depose aucune piece (RG-DEM-04 partiel).
+- **Conditions des demarches du corpus** lues sur le magasin du ticket, que seules la creation et
+  l'annulation alimentent : hors creation, la plupart des lignes conditionnelles restent "a apprecier"
+  jusqu'a la page generique (L4c).
+- **Liquidateur personne morale** : prevu par les modeles du corpus, non saisissable a l'ecran
+  (A_DECIDER directeur).
+
 ### Lot L4a (controles, annulation, 2026-10-11) -- dette relevee
 
 - **Lettre de retrait : ecart mecanique du corpus** : `LETTRE_RETRAIT_DEPOT` (creation) imprime
@@ -241,9 +259,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **Usages a confirmer par le directeur** (D6, 2026-10-10) : nombre d'originaux et heure de l'acte
   sont desormais des valeurs proposees a l'ecran (composant `ValeurProposee`), confirmees par
   l'employe ; les propositions ("6", "quatre", "10 heures") restent a valider comme usages du cabinet.
-- **Gabarits D3 de dissolution, liquidation et approbation (SARL AU)** : leurs variables du corpus
-  (liquidateur personne morale, dates de decision et d'effet...) ne sont pas fournies par les
-  mappers ; ces actes sont refuses avec les donnees nommees jusqu'a la reecriture des mappers (L4).
 - **Controle d'acces des endpoints workflow** (`save`, `execute-step`, `variables`, `charge-utile`) :
   workspace seulement, pas l'employe en charge du ticket (les endpoints L3 l'exigent).
 - **Champ sans ecran** lu par le projecteur : ville du RC d'un associe personne morale

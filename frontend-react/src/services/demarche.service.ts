@@ -88,4 +88,14 @@ export const demarcheService = {
     );
     return data;
   },
+
+  /** Lot L4b (E5, RG-DEM-06) : point de départ ou date limite attendus par le délai d'une ligne. */
+  async saisirDelai(
+    ticketId: string,
+    ordre: number,
+    dates: { depart?: string; echeance?: string },
+  ): Promise<VueDemarches> {
+    const { data } = await api.put<VueDemarches>(`/tickets/${ticketId}/demarches/${ordre}/delai`, dates);
+    return data;
+  },
 };

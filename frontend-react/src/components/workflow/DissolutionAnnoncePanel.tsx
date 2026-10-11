@@ -36,6 +36,9 @@ export interface AnnonceLiquidateurInput {
   prenom?: string;
   nom?: string;
   adresse?: string;
+  /** L4b (E7) : pièce d'identité imprimée par l'avis du corpus. */
+  pieceType?: string;
+  cin?: string;
 }
 
 export interface DissolutionAnnoncePanelProps {
@@ -50,6 +53,15 @@ export interface DissolutionAnnoncePanelProps {
   motif?: string;
   /** L4a (E2) : nature de la dissolution, saisie. */
   nature?: string;
+  /** L4b (E7) : données de l'avis du corpus saisies à l'étape 1 (aucune n'est supposée). */
+  dissolutionDetail?: {
+    dateEffet?: string;
+    termeDate?: string;
+    exerciceClosDate?: string;
+    clauseArticle?: string;
+    siegeIdentique?: string;
+    mandatDateEffet?: string;
+  };
   liquidateur: AnnonceLiquidateurInput;
   /** Siège de la liquidation (étape 1) = $SIEGE_LIQUIDATION. */
   siegeLiquidation: string;
@@ -85,6 +97,7 @@ export function DissolutionAnnoncePanel({
   dateAGE,
   motif,
   nature,
+  dissolutionDetail,
   liquidateur,
   siegeLiquidation,
   depotLegalNumero,
@@ -126,12 +139,26 @@ export function DissolutionAnnoncePanel({
     // que la dénomination en repli — AUCUNE re-saisie d'identité.
     societe: { denomination: denomination ?? '' },
     seance: { type: 'extraordinaire', date: dateAGE },
-    dissolution: { motif: motif ?? '', nature: nature ?? '', date: dateAGE, dateEffet: dateAGE },
+    // L4b (E7) : la date d'effet est SAISIE (ou proposée puis confirmée), jamais la date
+    // de l'assemblée supposée.
+    dissolution: {
+      motif: motif ?? '',
+      nature: nature ?? '',
+      date: dateAGE,
+      dateEffet: dissolutionDetail?.dateEffet ?? '',
+      termeDate: dissolutionDetail?.termeDate ?? '',
+      exerciceClosDate: dissolutionDetail?.exerciceClosDate ?? '',
+      clauseArticle: dissolutionDetail?.clauseArticle ?? '',
+      siegeLiquidationIdentique: dissolutionDetail?.siegeIdentique ?? '',
+    },
     liquidateur: {
       civilite: liquidateur.civilite ?? '',
       prenom: liquidateur.prenom ?? '',
       nom: liquidateur.nom ?? '',
       adresse: liquidateur.adresse ?? '',
+      pieceType: liquidateur.pieceType ?? '',
+      pieceNumero: liquidateur.cin ?? '',
+      mandatDateEffet: dissolutionDetail?.mandatDateEffet ?? '',
       siege: siegeLiquidation,
     },
     siegeLiquidation,

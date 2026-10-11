@@ -93,8 +93,13 @@ public final class DissolutionLiquidationMapper {
         put(v, "LIQUIDATEUR_REMUNERATION",
                 str(liquidateur.get("remuneration"))); // L4a (E2) : saisie (valeur proposee a l'ecran)
         put(v, "LIQUIDATEUR_SORTANT_NOM", str(liquidateur.get("sortantNom")));
-        put(v, "LIQUIDATION_SIEGE", first(str(liquidateur.get("siege")),
-                str(safe.get("liquidationSiege")), str(asMap(safe.get("societe")).get("siegeSocial"))));
+        // L4b (E7) : le siege social n'est repris que si l'employe a choisi "au siege social" ;
+        // plus de repli silencieux quand l'adresse manque.
+        boolean auSiegeSocial = "oui".equals(norm(first0(liquidateur.get("siegeIdentique"), safe.get("siegeIdentique"),
+                asMap(safe.get("dissolution")).get("siegeLiquidationIdentique"))));
+        put(v, "LIQUIDATION_SIEGE", auSiegeSocial
+                ? first(str(asMap(safe.get("societe")).get("siegeSocial")), str(asMap(safe.get("societe")).get("adresseSiege")))
+                : first(str(liquidateur.get("siege")), str(safe.get("liquidationSiege")), str(safe.get("siegeLiquidation"))));
         put(v, "CESSION_ACTIF_OBJET", str(safe.get("cessionActifObjet")));
 
         // Clôture : résultat (boni / mali) + répartition du boni.
@@ -214,9 +219,18 @@ public final class DissolutionLiquidationMapper {
      */
     static String natureDissolution(String templateCode, Map<String, Object> dissolution) {
         String s = norm(dissolution.get("nature"));
+        // L4b (E7) : motifs du corpus (DISSOLUTION_MOTIF) ; le PV en service n'en redige
+        // que trois. Les autres attendent le PV du corpus (L4c) : refus nomme, jamais une
+        // nature approchee.
         if (s.contains("86")) return "article 86";
         if (s.contains("terme")) return "arriv\u00e9e du terme";
         if (s.startsWith("antic") || s.startsWith("volont")) return "volontaire";
+        if (s.equals("realisation_objet") || s.equals("extinction_objet") || s.equals("cause_statutaire")
+                || s.equals("autre")) {
+            throw SaisieExigee.refus(templateCode, "DISSOLUTION_MOTIF",
+                    "Nature de la dissolution : le proc\u00e8s-verbal en service ne r\u00e9dige que la dissolution "
+                            + "d\u00e9cid\u00e9e par les associ\u00e9s, l'article 86 et l'arriv\u00e9e du terme");
+        }
         throw SaisieExigee.refus(templateCode, "DISSOLUTION_MOTIF",
                 "Nature de la dissolution (anticip\u00e9e, article 86 ou arriv\u00e9e du terme)");
     }

@@ -1,5 +1,6 @@
 package ma.jurika.ticket.application;
 
+import ma.jurika.ticket.application.referentiel.LignesDuTicket;
 import ma.jurika.common.exception.NotFoundException;
 import ma.jurika.common.security.TenantContext;
 import ma.jurika.ticket.domain.model.Demarche;
@@ -60,6 +61,8 @@ import java.util.UUID;
 @Service
 public class RecapitulatifClotureService {
 
+    private final LignesDuTicket lignes;
+
     /** La ligne du parcours qui porte l'énumération des pièces à archiver. */
     private static final int LIGNE_ARCHIVAGE = 47;
 
@@ -76,6 +79,19 @@ public class RecapitulatifClotureService {
                                         DemarcheJournalRepository journal,
                                         DataroomDocumentLookup documents,
                                         DossierRepository dossiers) {
+        this(tickets, referentiel, etats, journal, documents, dossiers, LignesDuTicket.duReferentiel(referentiel));
+    }
+
+    /** Lot L4b (E4) : les lignes du ticket viennent du corpus hors creation. */
+    @org.springframework.beans.factory.annotation.Autowired
+    public RecapitulatifClotureService(TicketRepository tickets,
+                                        DemarcheReferentielRepository referentiel,
+                                        TicketDemarcheRepository etats,
+                                        DemarcheJournalRepository journal,
+                                        DataroomDocumentLookup documents,
+                                        DossierRepository dossiers,
+                                        LignesDuTicket lignes) {
+        this.lignes = lignes;
         this.tickets = tickets;
         this.referentiel = referentiel;
         this.etats = etats;
@@ -151,7 +167,7 @@ public class RecapitulatifClotureService {
         Ticket ticket = tickets.findById(workspaceId, ticketId)
                 .orElseThrow(() -> new NotFoundException("Ticket inconnu"));
 
-        List<Demarche> toutes = referentiel.findByWorkflow(ticket.type().name());
+        List<Demarche> toutes = lignes.toutes(ticket);
         Map<UUID, TicketDemarche> parDemarche = etats.findByTicket(workspaceId, ticketId);
         Map<UUID, List<DemarcheEvenement>> journaux = journal.parDemarche(workspaceId,
                 parDemarche.values().stream().map(TicketDemarche::id)

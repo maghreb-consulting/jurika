@@ -13,6 +13,8 @@ import {
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { Select } from '../../components/ui/Select';
+import { ValeurProposee } from '../../components/workflow/ValeurProposee';
+import { InfoBulle } from '../../components/ui/Aide';
 import { WorkflowShell } from '../../components/workflow/WorkflowShell';
 import type { RoadmapStep } from '../../components/workflow/WorkflowRoadmap';
 import { ticketService } from '../../services/ticket.service';
@@ -336,17 +338,25 @@ function PvAgoWorkflowPageBody() {
 
   // -------- Step 2 — Approbation des comptes --------
   const exerciceClosDefault = exercice ? `${exercice}-12-31` : '';
+  // L4b (E7) : date de cloture PROPOSEE (31 decembre de l'exercice), confirmee par l'employe ;
+  // commissaire aux comptes et sens du resultat CHOISIS (avant : "31/12", "non" et "benefice"
+  // d'office).
   const [exerciceClosDate, setExerciceClosDate] = useState(
-    (stepData.step2?.exerciceClosDate as string) ?? exerciceClosDefault,
+    (stepData.step2?.exerciceClosDate as string) ?? '',
   );
-  const [commissairePresent, setCommissairePresent] = useState<'oui' | 'non'>(
-    (stepData.step2?.commissairePresent as 'oui' | 'non') ?? 'non',
+  const [commissairePresent, setCommissairePresent] = useState<'oui' | 'non' | ''>(
+    (stepData.step2?.commissairePresent as 'oui' | 'non') ?? '',
   );
+  // L4b (E7, D5) : mentions du PV des decisions de l'associe unique (modele du corpus).
+  const [dossierReference, setDossierReference] = useState((stepData.step2?.dossierReference as string) ?? '');
+  const [registrePvNumero, setRegistrePvNumero] = useState((stepData.step2?.registrePvNumero as string) ?? '');
+  const [registrePvFeuillet, setRegistrePvFeuillet] = useState((stepData.step2?.registrePvFeuillet as string) ?? '');
+  const [nombreOriginaux, setNombreOriginaux] = useState((stepData.step2?.nombreOriginaux as string) ?? '');
   const [commissaireNom, setCommissaireNom] = useState(
     (stepData.step2?.commissaireNom as string) ?? '',
   );
-  const [resultatType, setResultatType] = useState<'bénéfice' | 'perte'>(
-    (stepData.step2?.resultatType as 'bénéfice' | 'perte') ?? 'bénéfice',
+  const [resultatType, setResultatType] = useState<'bénéfice' | 'perte' | ''>(
+    (stepData.step2?.resultatType as 'bénéfice' | 'perte') ?? '',
   );
   const [resultatNet, setResultatNet] = useState((stepData.step2?.resultatNet as string) ?? '');
   const [affectations, setAffectations] = useState<Affectation[]>(
@@ -511,6 +521,7 @@ function PvAgoWorkflowPageBody() {
         commissaireNom: commissairePresent === 'oui' ? commissaireNom : '',
         resultatType,
         resultatNet: resultatNetNum,
+        dossierReference, registrePvNumero, registrePvFeuillet, nombreOriginaux,
         // Fix PV2 — on envoie l'affectation EFFECTIVE (ligne « Dividendes » dérivée
         // du bloc dividendes), jamais la saisie brute : le PV ne peut plus porter
         // deux montants de dividende différents.
@@ -559,6 +570,7 @@ function PvAgoWorkflowPageBody() {
     dividendeMontantTotal, dividendeParPart, dividendeMiseEnPaiementDate,
     quitusGerance, conventionsReglementees, conventionsDetail,
     chiffreAffaires, commentaireActivite, perspectives, dateAgo,
+    dossierReference, registrePvNumero, registrePvFeuillet, nombreOriginaux,
   ]);
 
   // Point 3 (audit directeur) — nommage conforme du PV d'approbation des comptes
@@ -640,7 +652,15 @@ function PvAgoWorkflowPageBody() {
       if (!resultatNet || Number.isNaN(Number(resultatNet))) {
         e.resultatNet = 'Résultat net obligatoire (valeur numérique).';
       }
-      if (!exerciceClosDate) e.exerciceClosDate = 'Date de clôture obligatoire.';
+      if (!exerciceClosDate) e.exerciceClosDate = 'Confirmez ou saisissez la date de clôture de l’exercice.';
+      if (!resultatType) e.resultatType = 'Choisissez le sens du résultat (bénéfice ou perte).';
+      if (!commissairePresent) e.commissairePresent = 'Indiquez si un commissaire aux comptes est en fonction.';
+      if (isAU) {
+        if (!dossierReference.trim()) e.dossierReference = 'Confirmez ou saisissez la référence du dossier.';
+        if (!registrePvNumero.trim()) e.registrePvNumero = 'Numéro du registre des décisions obligatoire.';
+        if (!registrePvFeuillet.trim()) e.registrePvFeuillet = 'Feuillet du registre obligatoire.';
+        if (!nombreOriginaux.trim()) e.nombreOriginaux = 'Confirmez ou saisissez le nombre d’originaux.';
+      }
       if (!affectationOk) {
         e.affectation = `Total affectation : ${sumAffectations.toLocaleString('fr-FR')} MAD `
           + `(doit égaler le résultat net : ${resultatNetNum.toLocaleString('fr-FR')} MAD).`;
@@ -670,7 +690,8 @@ function PvAgoWorkflowPageBody() {
     return e;
   }, [
     viewStep, dossierId, exercice, dateAgo, convocationError, resultatNet,
-    exerciceClosDate, affectationOk, sumAffectations, resultatNetNum,
+    exerciceClosDate, affectationOk, sumAffectations, resultatNetNum, resultatType, isAU,
+    dossierReference, registrePvNumero, registrePvFeuillet, nombreOriginaux,
     commissairePresent, commissaireNom, dividendeDistribue, dividendeMontantTotal,
     dividendeParPart, dividendeMiseEnPaiementDate, conventionsReglementees,
     conventionsDetail,
@@ -713,6 +734,7 @@ function PvAgoWorkflowPageBody() {
           commissaireNom: commissairePresent === 'oui' ? commissaireNom : '',
           resultatType,
           resultatNet: resultatNetNum,
+          dossierReference, registrePvNumero, registrePvFeuillet, nombreOriginaux,
           affectations: affectations
             .filter((a) => a.libelle.trim() || a.montant.trim())
             .map((a) => ({ libelle: a.libelle.trim(), montant: num(a.montant) })),
@@ -768,6 +790,7 @@ function PvAgoWorkflowPageBody() {
       if (n === 2) {
         return {
           exerciceClosDate, commissairePresent, commissaireNom, resultatType, resultatNet,
+          dossierReference, registrePvNumero, registrePvFeuillet, nombreOriginaux,
           affectations, dividendeDistribue, dividendeMontantTotal, dividendeParPart,
           dividendeMiseEnPaiementDate, quitusGerance, conventionsReglementees,
           conventionsDetail, chiffreAffaires, commentaireActivite, perspectives,
@@ -792,6 +815,7 @@ function PvAgoWorkflowPageBody() {
     [dossierId, exercice, formeJuridique, dateAgo, convocationDate, convocationHeure,
       denomination, capital, siegeSocial, nombreParts, rcNumero, villeGreffe,
       exerciceClosDate, commissairePresent, commissaireNom, resultatType, resultatNet,
+      dossierReference, registrePvNumero, registrePvFeuillet, nombreOriginaux,
       affectations, dividendeDistribue, dividendeMontantTotal, dividendeParPart,
       dividendeMiseEnPaiementDate, quitusGerance, conventionsReglementees,
       conventionsDetail, chiffreAffaires, commentaireActivite, perspectives,
@@ -1041,22 +1065,29 @@ function PvAgoWorkflowPageBody() {
             <div className="rounded-xl border border-border bg-bg-raised p-4">
               <h3 className="mb-3 text-sm font-semibold text-fg">Comptes et résultat de l'exercice</h3>
               <div className="grid gap-3 md:grid-cols-3">
-                <TextField
-                  label="Date de clôture de l'exercice *"
-                  type="date"
-                  value={exerciceClosDate}
-                  onChange={(e) => setExerciceClosDate(e.target.value)}
-                  onBlur={() => setRevealErrors(true)}
-                  error={showErr('exerciceClosDate')}
-                />
+                <div>
+                  <ValeurProposee
+                    id="pvago-exercice-clos"
+                    label="Date de clôture de l'exercice *"
+                    type="date"
+                    proposition={exerciceClosDefault}
+                    valeur={exerciceClosDate || undefined}
+                    onChange={setExerciceClosDate}
+                  />
+                  {showErr('exerciceClosDate') && (
+                    <p className="mt-1 text-xs text-danger" role="alert">{showErr('exerciceClosDate')}</p>
+                  )}
+                </div>
                 <Select
                   label="Type de résultat"
                   value={resultatType}
-                  onChange={(e) => setResultatType(e.target.value as 'bénéfice' | 'perte')}
+                  onChange={(e) => setResultatType(e.target.value as 'bénéfice' | 'perte' | '')}
                   options={[
+                    { value: '', label: 'Choisir…' },
                     { value: 'bénéfice', label: 'Bénéfice' },
                     { value: 'perte', label: 'Perte' },
                   ]}
+                  error={showErr('resultatType')}
                 />
                 <TextField
                   label="Résultat net (MAD) *"
@@ -1073,8 +1104,9 @@ function PvAgoWorkflowPageBody() {
                 <Select
                   label="Commissaire aux comptes présent ?"
                   value={commissairePresent}
-                  onChange={(e) => setCommissairePresent(e.target.value as 'oui' | 'non')}
-                  options={[{ value: 'non', label: 'Non' }, { value: 'oui', label: 'Oui' }]}
+                  onChange={(e) => setCommissairePresent(e.target.value as 'oui' | 'non' | '')}
+                  options={[{ value: '', label: 'Choisir…' }, { value: 'non', label: 'Non' }, { value: 'oui', label: 'Oui' }]}
+                  error={showErr('commissairePresent')}
                 />
                 {commissairePresent === 'oui' && (
                   <TextField
@@ -1086,6 +1118,34 @@ function PvAgoWorkflowPageBody() {
                 )}
               </div>
             </div>
+
+            {isAU && (
+              <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="pvago-mentions-au">
+                <h3 className="mb-1 flex items-center gap-1 text-sm font-semibold text-fg">
+                  Mentions du procès-verbal de l'associé unique
+                  <InfoBulle
+                    libelle="Pourquoi ces mentions ?"
+                    texte="La décision de l'associé unique est répertoriée au registre des décisions, coté et paraphé (articles 76 et 112 de la loi 5-96) : le procès-verbal en imprime le numéro et le feuillet, la référence du dossier et le nombre d'originaux."
+                  />
+                </h3>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <ValeurProposee id="pvago-dossier-reference" label="Référence du dossier *"
+                      proposition={ticket?.reference ?? ''} valeur={dossierReference || undefined} onChange={setDossierReference} />
+                    {showErr('dossierReference') && <p className="mt-1 text-xs text-danger" role="alert">{showErr('dossierReference')}</p>}
+                  </div>
+                  <div>
+                    <ValeurProposee id="pvago-nombre-originaux" label="Nombre d'originaux *"
+                      proposition="quatre" valeur={nombreOriginaux || undefined} onChange={setNombreOriginaux} />
+                    {showErr('nombreOriginaux') && <p className="mt-1 text-xs text-danger" role="alert">{showErr('nombreOriginaux')}</p>}
+                  </div>
+                  <TextField label="Registre des décisions — numéro *" value={registrePvNumero}
+                    onChange={(e) => setRegistrePvNumero(e.target.value)} error={showErr('registrePvNumero')} />
+                  <TextField label="Registre des décisions — feuillet *" value={registrePvFeuillet}
+                    onChange={(e) => setRegistrePvFeuillet(e.target.value)} error={showErr('registrePvFeuillet')} />
+                </div>
+              </div>
+            )}
 
             {/* Affectation du résultat (liste : la somme doit égaler le résultat net). */}
             <div className="rounded-xl border border-border bg-bg-raised p-4">

@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, AlertTriangle, CheckCircle, Megaphone, Paperclip, Sparkles } from 'lucide-react';
 import { InfoBulle } from '../../components/ui/Aide';
+import { ValeurProposee } from '../../components/workflow/ValeurProposee';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { WorkflowShell } from '../../components/workflow/WorkflowShell';
@@ -95,6 +96,26 @@ const ORDRE_DU_JOUR_DISSOLUTION = [
   'Pouvoirs en vue des formalités légales',
 ];
 
+
+/** L4b (E7) : motifs de dissolution du corpus ($DISSOLUTION_MOTIF), valeurs exactes du modèle. */
+const NATURES_DISSOLUTION = [
+  { value: 'volonte_associes', label: 'Dissolution anticipée décidée par les associés' },
+  { value: 'terme_statutaire', label: 'Arrivée du terme statutaire' },
+  { value: 'realisation_objet', label: "Réalisation de l'objet social" },
+  { value: 'extinction_objet', label: "Extinction de l'objet social" },
+  { value: 'situation_nette_art86', label: 'Capitaux propres inférieurs au quart du capital (article 86)' },
+  { value: 'cause_statutaire', label: 'Cause de dissolution prévue par les statuts' },
+  { value: 'autre', label: 'Autre motif (le motif saisi est publié)' },
+];
+
+/** Valeurs enregistrées avant L4b, relues dans le vocabulaire du corpus. */
+function natureCorpus(v: string): string {
+  if (v === 'anticipée') return 'volonte_associes';
+  if (v === 'article 86') return 'situation_nette_art86';
+  if (v === 'arrivée du terme') return 'terme_statutaire';
+  return v;
+}
+
 export function DissolutionWorkflowPage() {
   return (
     <WorkflowBoot>
@@ -130,7 +151,15 @@ function DissolutionWorkflowPageBody() {
   const [motif, setMotif] = useState((stepData.step1?.motif as string) ?? '');
   // L4a (E2) : nature de la dissolution, SAISIE (le serveur la deduisait du motif libre et
   // supposait "volontaire" ; vide, le modele imprimait la branche "arrivee du terme").
-  const [nature, setNature] = useState((stepData.step1?.nature as string) ?? '');
+  // L4b (E7) : motifs de dissolution du corpus (DISSOLUTION_MOTIF), mot pour mot. Les valeurs
+  // enregistrees avant L4b (« anticipée », « article 86 », « arrivée du terme ») sont relues.
+  const [nature, setNature] = useState(() => natureCorpus((stepData.step1?.nature as string) ?? ''));
+  const [dateEffet, setDateEffet] = useState((stepData.step1?.dateEffet as string) ?? '');
+  const [termeDate, setTermeDate] = useState((stepData.step1?.termeDate as string) ?? '');
+  const [exerciceClosDate, setExerciceClosDate] = useState((stepData.step1?.exerciceClosDate as string) ?? '');
+  const [clauseArticle, setClauseArticle] = useState((stepData.step1?.clauseArticle as string) ?? '');
+  const [siegeIdentique, setSiegeIdentique] = useState((stepData.step1?.siegeIdentique as string) ?? '');
+  const [mandatDateEffet, setMandatDateEffet] = useState((stepData.step1?.mandatDateEffet as string) ?? '');
   const [dateAGE, setDateAGE] = useState((stepData.step1?.dateAGE as string) ?? '');
   const [revealErrors, setRevealErrors] = useState<boolean>(false);
   const [liquidateur, setLiquidateur] = useState<LiquidateurState>(
@@ -275,6 +304,10 @@ function DissolutionWorkflowPageBody() {
     dateAGE?: string;
     motif?: string;
     nature?: string;
+    dateEffet?: string;
+    natureDetail?: string;
+    siegeIdentique?: string;
+    mandatDateEffet?: string;
     liquidateur?: string;
     siegeLiquidation?: string;
     convocation?: string;
@@ -284,6 +317,16 @@ function DissolutionWorkflowPageBody() {
     if (!dossierId.trim()) errs.dossierId = 'Selectionnez la societe a dissoudre.';
     if (!dateAGE) errs.dateAGE = "La date de l'AGE est obligatoire.";
     if (!nature) errs.nature = 'Choisissez la nature de la dissolution.';
+    if (!dateEffet) errs.dateEffet = "Confirmez ou saisissez la date d'effet de la dissolution.";
+    if (nature === 'terme_statutaire' && !termeDate) errs.natureDetail = 'Indiquez la date du terme statutaire.';
+    if (nature === 'situation_nette_art86' && !exerciceClosDate) {
+      errs.natureDetail = "Indiquez la date de clôture de l'exercice dont les états de synthèse constatent les pertes.";
+    }
+    if (nature === 'cause_statutaire' && !clauseArticle.trim()) {
+      errs.natureDetail = "Indiquez l'article des statuts qui prévoit la cause de dissolution.";
+    }
+    if (!siegeIdentique) errs.siegeIdentique = 'Indiquez si le siège de la liquidation est le siège social.';
+    if (!mandatDateEffet) errs.mandatDateEffet = "Confirmez ou saisissez la date d'entrée en fonctions du liquidateur.";
     if (motif.trim().length < MOTIF_MIN_LENGTH) {
       errs.motif = `Le motif est trop court (${motif.trim().length}/${MOTIF_MIN_LENGTH} caracteres minimum) — precisez la cause.`;
     }
@@ -292,12 +335,13 @@ function DissolutionWorkflowPageBody() {
     } else if (!liquidateur.adresse.trim()) {
       errs.liquidateur = "L'adresse du liquidateur est obligatoire : elle figure dans l'annonce legale.";
     }
-    if (!siegeLiquidation.trim()) {
-      errs.siegeLiquidation = 'Le siege de la liquidation est obligatoire.';
+    if (siegeIdentique === 'non' && !siegeLiquidation.trim()) {
+      errs.siegeLiquidation = "Indiquez l'adresse du siège de la liquidation.";
     }
     if (convocationError) errs.convocation = convocationError;
     return errs;
-  }, [dossierId, dateAGE, motif, nature, liquidateur, siegeLiquidation, convocationError]);
+  }, [dossierId, dateAGE, motif, nature, dateEffet, termeDate, exerciceClosDate, clauseArticle, siegeIdentique,
+    mandatDateEffet, liquidateur, siegeLiquidation, convocationError]);
 
   const targetDenomination = dossier?.raisonSociale ?? ticket?.titre ?? '';
 
@@ -338,11 +382,13 @@ function DissolutionWorkflowPageBody() {
           ? 'féminin'
           : 'masculin') as 'masculin' | 'féminin',
         remuneration: liquidateur.remuneration,
-        siege: siegeLiquidation,
+        siege: siegeIdentique === 'non' ? siegeLiquidation : '',
+        siegeIdentique,
+        mandatDateEffet,
       },
       dissolutionDate: dateAGE,
     }),
-    [liquidateur, siegeLiquidation, dateAGE],
+    [liquidateur, siegeLiquidation, siegeIdentique, mandatDateEffet, dateAGE],
   );
 
   if (loading) return <Loader />;
@@ -378,9 +424,16 @@ function DissolutionWorkflowPageBody() {
           cin: liquidateur.cin || undefined,
           adresse: liquidateur.adresse,
           remuneration: liquidateur.remuneration,
-          siege: siegeLiquidation,
+          siege: siegeIdentique === 'non' ? siegeLiquidation : '',
+          mandatDateEffet,
         },
-        siegeLiquidation,
+        siegeLiquidation: siegeIdentique === 'non' ? siegeLiquidation : '',
+        siegeIdentique,
+        nature,
+        dateEffet,
+        termeDate,
+        exerciceClosDate,
+        clauseArticle,
         convocation: convocationPayload(),
       });
     } else if (step === 2) {
@@ -435,6 +488,12 @@ function DissolutionWorkflowPageBody() {
           dossierId,
           motif,
           nature,
+          dateEffet,
+          termeDate,
+          exerciceClosDate,
+          clauseArticle,
+          siegeIdentique,
+          mandatDateEffet,
           dateAGE,
           formeJuridique,
           liquidateur,
@@ -454,7 +513,8 @@ function DissolutionWorkflowPageBody() {
       return null;
     },
     // convocationPayload lit convocationDate/Heure : dependances explicitees.
-    [dossierId, motif, nature, dateAGE, formeJuridique, liquidateur, siegeLiquidation,
+    [dossierId, motif, nature, dateEffet, termeDate, exerciceClosDate, clauseArticle, siegeIdentique,
+      mandatDateEffet, dateAGE, formeJuridique, liquidateur, siegeLiquidation,
       convocationDate, convocationHeure, convocationSnapshot, pvValidated,
       annonceValidated, depotLegalNumero, depotLegalDate, piecesJointes],
   );
@@ -586,13 +646,47 @@ function DissolutionWorkflowPageBody() {
                 className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
               >
                 <option value="">Choisir…</option>
-                <option value="anticipée">Dissolution anticipée (décision des associés)</option>
-                <option value="article 86">Capitaux propres inférieurs au quart du capital (article 86)</option>
-                <option value="arrivée du terme">Arrivée du terme statutaire</option>
+                {NATURES_DISSOLUTION.map((n) => (
+                  <option key={n.value} value={n.value}>{n.label}</option>
+                ))}
               </select>
               {showErr('nature') && (
                 <p className="mt-1 text-xs text-danger" role="alert">{showErr('nature')}</p>
               )}
+            </div>
+
+            {nature === 'terme_statutaire' && (
+              <TextField label="Date du terme statutaire *" type="date" value={termeDate}
+                data-testid="dissolution-terme-date" onChange={(e) => setTermeDate(e.target.value)}
+                error={showErr('natureDetail') ?? undefined} />
+            )}
+            {nature === 'situation_nette_art86' && (
+              <TextField label="Exercice clos le *" type="date" value={exerciceClosDate}
+                data-testid="dissolution-exercice-clos" onChange={(e) => setExerciceClosDate(e.target.value)}
+                error={showErr('natureDetail') ?? undefined}
+                hint="Date de clôture de l'exercice dont les états de synthèse constatent les pertes." />
+            )}
+            {nature === 'cause_statutaire' && (
+              <TextField label="Article des statuts *" value={clauseArticle}
+                data-testid="dissolution-clause-article" onChange={(e) => setClauseArticle(e.target.value)}
+                error={showErr('natureDetail') ?? undefined} hint="Ex. : 34" />
+            )}
+
+            <div>
+              <ValeurProposee
+                id="dissolution-date-effet"
+                label="Date d'effet de la dissolution *"
+                type="date"
+                proposition={dateAGE}
+                valeur={dateEffet || undefined}
+                onChange={setDateEffet}
+              />
+              {showErr('dateEffet') && (
+                <p className="mt-1 text-xs text-danger" role="alert">{showErr('dateEffet')}</p>
+              )}
+              <p className="mt-1 text-[11px] text-fg-subtle">
+                La date de l'assemblée est proposée ; l'avis légal imprime la date d'effet confirmée.
+              </p>
             </div>
 
             <div>
@@ -643,15 +737,53 @@ function DissolutionWorkflowPageBody() {
               error={showErr('liquidateur')}
             />
 
-            <TextField
-              label="Siege de la liquidation *"
-              value={siegeLiquidation}
-              data-testid="dissolution-siege-liquidation"
-              onChange={(e) => setSiegeLiquidation(e.target.value)}
-              onBlur={() => setRevealErrors(true)}
-              error={showErr('siegeLiquidation') ?? undefined}
-              hint="Adresse a laquelle sont notifies les actes de la liquidation (publiee au JAL)."
-            />
+            <div>
+              <ValeurProposee
+                id="dissolution-mandat-date-effet"
+                label="Entrée en fonctions du liquidateur *"
+                type="date"
+                proposition={dateEffet || dateAGE}
+                valeur={mandatDateEffet || undefined}
+                onChange={setMandatDateEffet}
+              />
+              {showErr('mandatDateEffet') && (
+                <p className="mt-1 text-xs text-danger" role="alert">{showErr('mandatDateEffet')}</p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="dissolution-siege-identique" className="mb-1 flex items-center gap-1 text-sm font-medium text-fg-muted">
+                Siège de la liquidation *
+                <InfoBulle
+                  libelle="Où fixer le siège de la liquidation ?"
+                  texte="C'est l'adresse où la correspondance est adressée et où les actes de la liquidation sont notifiés ; l'avis légal la publie. Elle peut être le siège social ou une autre adresse."
+                />
+              </label>
+              <select
+                id="dissolution-siege-identique"
+                value={siegeIdentique}
+                onChange={(e) => setSiegeIdentique(e.target.value)}
+                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
+              >
+                <option value="">Choisir…</option>
+                <option value="oui">Au siège social</option>
+                <option value="non">À une autre adresse</option>
+              </select>
+              {showErr('siegeIdentique') && (
+                <p className="mt-1 text-xs text-danger" role="alert">{showErr('siegeIdentique')}</p>
+              )}
+            </div>
+            {siegeIdentique === 'non' && (
+              <TextField
+                label="Adresse du siège de la liquidation *"
+                value={siegeLiquidation}
+                data-testid="dissolution-siege-liquidation"
+                onChange={(e) => setSiegeLiquidation(e.target.value)}
+                onBlur={() => setRevealErrors(true)}
+                error={showErr('siegeLiquidation') ?? undefined}
+                hint="Adresse à laquelle sont notifiés les actes de la liquidation (publiée au JAL)."
+              />
+            )}
 
             <section className="space-y-3 rounded-xl border border-border bg-bg-raised p-4" data-testid="dissolution-convocation">
               <div className="flex items-center gap-2">
@@ -765,8 +897,9 @@ function DissolutionWorkflowPageBody() {
               dateAGE={dateAGE}
               motif={motif}
               nature={nature}
+              dissolutionDetail={{ dateEffet, termeDate, exerciceClosDate, clauseArticle, siegeIdentique, mandatDateEffet }}
               liquidateur={liquidateur}
-              siegeLiquidation={siegeLiquidation}
+              siegeLiquidation={siegeIdentique === 'non' ? siegeLiquidation : ''}
               depotLegalNumero={depotLegalNumero}
               depotLegalDate={depotLegalDate}
               onDepotLegalNumeroChange={setDepotLegalNumero}

@@ -87,6 +87,17 @@ export interface LigneDemarche {
    * savoir calculer et de ne rien dire. Il sait calculer ; il attend la date.
    */
   delaiDepartManquant: string | null;
+  /** Lot L4b (E4) : décision du ticket qui apporte la ligne (référentiel du corpus), sinon null. */
+  decision?: string | null;
+  /** APPLICABLE ou A_APPRECIER (corpus) ; null pour la création. */
+  applicabilite?: 'APPLICABLE' | 'A_APPRECIER' | null;
+  /** Pourquoi la ligne est à apprécier (donnée non saisie, condition rédigée en phrase). */
+  raisonApplicabilite?: string | null;
+  /** Lot L4b (E5, RG-DEM-06) : point de départ retenu, date limite, date attendue sur la ligne. */
+  delaiDepart?: string | null;
+  echeance?: string | null;
+  delaiAttendu?: 'DEPART' | 'ECHEANCE' | null;
+  delaiDonnee?: string | null;
   justificatifsAttendus: JustificatifAttendu[];
   etat: DemarcheEtat;
   motif: string | null;

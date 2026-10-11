@@ -202,7 +202,11 @@
       ],
       "dividendeDistribue": "non",
       "quitusGerance": "oui",
-      "conventionsReglementees": "non"
+      "conventionsReglementees": "non",
+      "dossierReference": "T-2026-00042",
+      "registrePvNumero": "12",
+      "registrePvFeuillet": "34",
+      "nombreOriginaux": "quatre"
     }
   },
   "RAPPORT_GESTION": {

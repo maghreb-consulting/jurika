@@ -97,7 +97,6 @@ class DocumentVerificationIT {
      * Lot L4a (E1) : documents dont la non-conformite est CONNUE et traitee dans une passe
      * nommee. Un document liste ici qui devient conforme fait echouer le test (a retirer).
      */
-    private static final String L4B = "L4b : variables des modeles du corpus (D5, bascule)";
 
     private static final String ECART_CORPUS =
             "A_DECIDER cabinet : $ASSOCIE_UNIQUE (oui/non) imprime sous la signature de l'associe unique";
@@ -121,16 +120,17 @@ class DocumentVerificationIT {
                     Source.CORPUS, "A_DECIDER cabinet : $BAILLEUR_NOM seul imprime, vide quand le bailleur est une societe",
                     Source.CLASSPATH, "A_DECIDER cabinet : $BAILLEUR_NOM seul imprime (copie du classpath du modele)")),
             // Variables des modeles du corpus que les mappers ne fournissent pas (D5, bascule).
-            Map.entry("PV_APPROBATION_COMPTES_SARL_AU", Map.of(Source.CORPUS, L4B)),
-            Map.entry("ANNONCE_LEGALE_DISSOLUTION_SARL", Map.of(Source.CORPUS, L4B, Source.CLASSPATH, CLASSPATH_PERIME)),
-            Map.entry("ANNONCE_LEGALE_DISSOLUTION_SARL_AU", Map.of(Source.CORPUS, L4B, Source.CLASSPATH, CLASSPATH_PERIME)),
-            Map.entry("ANNONCE_LEGALE_LIQUIDATION_SARL", Map.of(Source.CORPUS, L4B, Source.CLASSPATH, CLASSPATH_PERIME)),
-            Map.entry("ANNONCE_LEGALE_LIQUIDATION_SARL_AU", Map.of(Source.CORPUS, L4B, Source.CLASSPATH, CLASSPATH_PERIME)),
-            Map.entry("ANNONCE_LEGALE_MODIFICATION_SARL", Map.of(Source.CORPUS, L4B, Source.CLASSPATH, CLASSPATH_PERIME)),
-            Map.entry("ANNONCE_LEGALE_MODIFICATION_SARL_AU", Map.of(Source.CORPUS, L4B, Source.CLASSPATH, CLASSPATH_PERIME)),
+            Map.entry("PV_APPROBATION_COMPTES_SARL_AU", Map.of(Source.CORPUS, ECART_CORPUS)),
+            // L4b : avis conformes sur le corpus ; leurs copies du classpath, servies seulement
+            // sans corpus, ne le sont pas.
+            Map.entry("ANNONCE_LEGALE_DISSOLUTION_SARL", Map.of(Source.CLASSPATH, CLASSPATH_PERIME)),
+            Map.entry("ANNONCE_LEGALE_DISSOLUTION_SARL_AU", Map.of(Source.CLASSPATH, CLASSPATH_PERIME)),
+            Map.entry("ANNONCE_LEGALE_LIQUIDATION_SARL", Map.of(Source.CLASSPATH, CLASSPATH_PERIME)),
+            Map.entry("ANNONCE_LEGALE_LIQUIDATION_SARL_AU", Map.of(Source.CLASSPATH, CLASSPATH_PERIME)),
             // Gabarit du classpath qui imprime sa notice de saisie ; bascule sur
             // RAPPORT_GESTION_EXERCICE_SARL(_AU) du corpus.
-            Map.entry("RAPPORT_GESTION", Map.of(Source.CLASSPATH, "L4b : bascule sur le modele du corpus")),
+            Map.entry("RAPPORT_GESTION", Map.of(Source.CLASSPATH,
+                    "L4c : bascule sur RAPPORT_GESTION_EXERCICE_SARL(_AU) du corpus (saisie a refaire)")),
             // Ecart du CORPUS (gabarits intouchables, rapporte au cabinet) : $ASSOCIE_UNIQUE, drapeau
             // "oui" / "non", imprime sous "L'associe unique" a la place de son identite.
             Map.entry("PV_CREATION_SUCCURSALE_MAROC_SARL_AU", Map.of(Source.CORPUS, ECART_CORPUS)),

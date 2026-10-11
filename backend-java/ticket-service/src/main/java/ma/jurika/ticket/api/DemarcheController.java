@@ -43,6 +43,18 @@ public class DemarcheController {
         return demarches.vue(user.workspaceId(), ticketId);
     }
 
+    /** Lot L4b (E5, RG-DEM-06) : date attendue par le delai d'une ligne du corpus. */
+    public record Delai(java.time.LocalDate depart, java.time.LocalDate echeance) {}
+
+    @org.springframework.web.bind.annotation.PutMapping("/{ordre}/delai")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
+    public DemarcheUseCases.Vue delai(@AuthenticationPrincipal AuthenticatedUser user,
+                                      @PathVariable UUID ticketId, @PathVariable int ordre,
+                                      @RequestBody Delai body) {
+        return demarches.saisirDelai(user.workspaceId(), ticketId, ordre,
+                body == null ? null : body.depart(), body == null ? null : body.echeance(), user.userId());
+    }
+
     @PostMapping("/{ordre}/cocher")
     @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
     public DemarcheUseCases.Vue cocher(@AuthenticationPrincipal AuthenticatedUser user,

@@ -16,8 +16,7 @@ import {
   Ticket,
   UserCheck,
   Users,
-  Zap,
-} from 'lucide-react';
+  Zap, ListChecks } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { BrandLogo } from '../ui/BrandLogo';
 import { useChatUnreadStore, useChatUnreadSync } from '../../store/chatUnreadStore';
@@ -64,6 +63,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Workspaces', to: '/admin/workspaces', icon: Building2, roles: ['SUPER_ADMIN'] },
   { label: 'Utilisateurs', to: '/admin/users', icon: Users, roles: ['SUPER_ADMIN'] },
   { label: "Journal d'audit", to: '/admin/audit', icon: ScrollText, roles: ['SUPER_ADMIN'] },
+  { label: 'Référentiel des démarches', to: '/admin/referentiel-demarches', icon: ListChecks, roles: ['SUPER_ADMIN'] },
 ];
 
 /**

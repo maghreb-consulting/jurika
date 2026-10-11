@@ -28,6 +28,7 @@ import { RepriseTicketDialog } from './RepriseTicketDialog';
 import { AnnulationDocumentsPanel } from './AnnulationDocumentsPanel';
 import { DeadlinesPanel } from '../../components/tickets/DeadlinesPanel';
 import { DemarchesPanel } from './DemarchesPanel';
+import { DecisionsTicketPanel } from './DecisionsTicketPanel';
 import { RecapitulatifPanel } from './RecapitulatifPanel';
 import { NoteTicketPanel } from './NoteTicketPanel';
 import { EntityActivityPanel } from '../../components/tracabilite/EntityActivityPanel';
@@ -51,6 +52,8 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
   const [showCancel, setShowCancel] = useState(false);
   // Lot L4a (E6, RG-TKT-05) : sortie d'ANNULE par la seule reprise, au statut anterieur.
   const [showReprise, setShowReprise] = useState(false);
+  /** Lot L4b : recharge les demarches apres un changement de decisions. */
+  const [versionDemarches, setVersionDemarches] = useState(0);
   const [showAddDebours, setShowAddDebours] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Suppression d'un debours : confirmation via ConfirmDialog (remplace le
@@ -319,14 +322,33 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
 
             La regle vaut pour tous les statuts, cloture comprise : un ticket clos
             n'offre donc AUCUNE action.
+
+            Lot L4b (2026-10-11) : REGLE REVUE. Aucun workflow ne montait ce panneau :
+            le cochage n'avait plus d'ecran. Il se fait desormais ici pour l'employe,
+            sur un ticket ni clos ni annule ; le ticket clos reste sans action.
           */}
           {/* Lot L1 (RG-TKT-07) : note interne du ticket, enregistree automatiquement. */}
           <NoteTicketPanel ticketId={ticketId} statut={ticket.statut} role={user?.role} />
 
+          {/*
+            Lot L4b (E4, E6) : hors creation, les decisions du ticket choisissent ses
+            demarches dans le referentiel du cabinet. Le cochage se fait ici, par
+            l'employe, sur un ticket ni clos ni annule (RG-DEM-03) : depuis le lot B,
+            aucun ecran ne le permettait (le panneau etait en lecture seule ici et
+            n'etait monte nulle part ailleurs).
+          */}
+          {ticket.type !== 'CREATION' && (
+            <DecisionsTicketPanel
+              ticketId={ticketId}
+              canAct={canAct && ticket.statut !== 'CLOTURE_DOSSIER' && ticket.statut !== 'ANNULE'}
+              onChanged={() => setVersionDemarches((v) => v + 1)}
+            />
+          )}
           <DemarchesPanel
+            key={versionDemarches}
             ticketId={ticketId}
             dossierId={ticket.dossierId ?? null}
-            canAct={false}
+            canAct={canAct && ticket.statut !== 'CLOTURE_DOSSIER' && ticket.statut !== 'ANNULE'}
           />
 
           {/*
