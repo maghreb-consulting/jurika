@@ -36,7 +36,8 @@ class ClausesLibresTest {
         assertThat(engine.emplacementClausesPrevu("PV_CREATION_SUCCURSALE_MAROC_SARL")).isTrue();
         // Resolutions typees, sans branche libre : pas d'emplacement (le gabarit n'est pas modifie).
         assertThat(engine.emplacementClausesPrevu("PV_MODIFICATION_SARL")).isFalse();
-        // Statuts : emplacement des clauses particulieres a fournir par le cabinet (A_DECIDER).
+        // Statuts : pas de boucle de resolutions ; les clauses s'y placent apres un article
+        // (lot L4d, E10 : ClausesStatuts).
         assertThat(engine.emplacementClausesPrevu("STATUTS_SARL")).isFalse();
     }
 

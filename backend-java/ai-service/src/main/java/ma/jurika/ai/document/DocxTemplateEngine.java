@@ -196,6 +196,13 @@ public class DocxTemplateEngine {
         return ClausesLibres.emplacementPrevu(gabarit);
     }
 
+    /** Lot L4d (E10) : articles numerotes du gabarit (emplacements des clauses des statuts). */
+    public List<ClausesStatuts.Article> articlesDuGabarit(String templateCode) {
+        byte[] gabarit = resolveTemplate(templateCode, Map.of());
+        if (gabarit == null) throw new GabaritIntrouvableException(templateCode);
+        return ClausesStatuts.articles(gabarit);
+    }
+
     /** Lot L3 : dictionnaire unique du corpus charge (libelles des donnees manquantes), ou null. */
     public ma.jurika.ai.document.corpus.DictionnaireUnique dictionnaire() {
         return corpus == null ? null : corpus.dictionnaire();

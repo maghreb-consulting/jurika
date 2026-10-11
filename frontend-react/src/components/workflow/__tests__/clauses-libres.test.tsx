@@ -50,11 +50,51 @@ describe('Clauses libres', () => {
     expect(screen.getByRole('button', { name: 'Qu’est-ce qu’une clause libre ?' })).toBeInTheDocument();
   });
 
-  it('statuts : l emplacement des clauses particulieres attend le cabinet', async () => {
-    ai.emplacementClausesLibres.mockResolvedValue({ possible: false, motif: 'Les statuts n’ont pas encore d’emplacement pour les clauses particulières.' });
+  // Lot L4d (E10), decision du directeur du 11 octobre 2026 : l'emplacement est choisi.
+  it('statuts : la clause se place apres l article choisi, sans quoi elle n est pas enregistree', async () => {
+    ai.emplacementClausesLibres.mockResolvedValue({ possible: true, nature: 'ARTICLE', libelle: 'Après l’article choisi',
+      articles: [{ numero: 1, titre: 'FORME' }, { numero: 2, titre: 'DÉNOMINATION SOCIALE' }] });
+    wf.clausesLibres.mockResolvedValue([]);
+    wf.remplacerClausesLibres.mockImplementation(async (_t: string, c: unknown[]) => c);
+    render(<ClausesLibresPanel ticketId="t-1" workflowCode="CREATION_SARL" templateCode="STATUTS_SARL" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Ajouter une clause' }));
+    expect(screen.queryByLabelText('Résultat du vote')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Titre de la clause'), { target: { value: 'Non-concurrence' } });
+    fireEvent.change(screen.getByLabelText('Texte de la clause'), { target: { value: 'Les associés s’interdisent…' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer les clauses' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Choisissez l’article après lequel placer la clause n° 1');
+    expect(wf.remplacerClausesLibres).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Emplacement de la clause 1'), { target: { value: 'APRES_ARTICLE:2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer les clauses' }));
+    await waitFor(() => expect(wf.remplacerClausesLibres).toHaveBeenCalled());
+    expect(wf.remplacerClausesLibres.mock.calls[0][1]).toEqual([
+      expect.objectContaining({ document: 'STATUTS_SARL', emplacement: 'APRES_ARTICLE:2', titre: 'Non-concurrence' }),
+    ]);
+  });
+
+  it('proces-verbal : la clause peut se placer avant une resolution du modele', async () => {
+    ai.emplacementClausesLibres.mockResolvedValue({ possible: true, nature: 'RESOLUTION', emplacement: 'A_LA_SUITE_DES_RESOLUTIONS' });
+    wf.clausesLibres.mockResolvedValue([]);
+    wf.remplacerClausesLibres.mockImplementation(async (_t: string, c: unknown[]) => c);
+    render(<ClausesLibresPanel ticketId="t-1" workflowCode="PV_AGO" templateCode="PV_APPROBATION_COMPTES_SARL" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Ajouter une clause' }));
+    fireEvent.change(screen.getByLabelText('Emplacement de la clause 1'), { target: { value: 'AVANT' } });
+    fireEvent.change(screen.getByLabelText('Rang de la résolution 1'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('Titre de la clause'), { target: { value: 'Pouvoirs' } });
+    fireEvent.change(screen.getByLabelText('Texte de la clause'), { target: { value: 'Tous pouvoirs.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer les clauses' }));
+    await waitFor(() => expect(wf.remplacerClausesLibres).toHaveBeenCalled());
+    expect(wf.remplacerClausesLibres.mock.calls[0][1]).toEqual([
+      expect.objectContaining({ emplacement: 'AVANT_RESOLUTION:2' }),
+    ]);
+  });
+
+  it('statuts sans articles numerotes : la raison est dite', async () => {
+    ai.emplacementClausesLibres.mockResolvedValue({ possible: false, motif: 'Ce modèle de statuts n’a pas d’articles numérotés.' });
     wf.clausesLibres.mockResolvedValue([]);
     render(<ClausesLibresPanel ticketId="t-1" workflowCode="CREATION_SARL" templateCode="STATUTS_SARL" />);
-    expect(await screen.findByText(/pas encore d’emplacement/)).toBeInTheDocument();
+    expect(await screen.findByText(/pas d’articles numérotés/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ajouter une clause' })).not.toBeInTheDocument();
   });
 

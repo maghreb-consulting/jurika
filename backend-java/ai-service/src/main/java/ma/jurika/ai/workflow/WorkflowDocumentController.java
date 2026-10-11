@@ -204,6 +204,7 @@ public class WorkflowDocumentController {
         refuserSiControleBloquant(workflowCode, templateCode, variables);
 
         DocumentResult result = docxTemplateEngine.generate(templateCode, variables);
+        result = appliquerClausesStatuts(templateCode, result, enriched, workspaceId);
 
         // Lot L2 : gabarit introuvable (corpus et classpath) -> GabaritIntrouvableException,
         // rendue en 404 ; il n'y a plus de document de remplacement a detecter ici.
@@ -238,11 +239,31 @@ public class WorkflowDocumentController {
                 .filter(c -> templateCode.equals(String.valueOf(c.get("document"))))
                 .toList();
         if (clauses.isEmpty()) return variables;
+        // Lot L4d (E10) : les clauses des statuts s'inserent dans le document rendu (articles).
+        if (templateCode.startsWith("STATUTS")) return variables;
         if (!docxTemplateEngine.emplacementClausesPrevu(templateCode)) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "Ce modèle ne prévoit pas d'emplacement pour une clause libre : retirez la clause de ce document.");
         }
-        return ma.jurika.ai.document.ClausesLibres.inserer(variables, clauses);
+        return ma.jurika.ai.document.ClausesLibres.inserer(templateCode, variables, clauses);
+    }
+
+    /**
+     * Lot L4d (E10), decision du directeur du 11 octobre 2026 : clauses particulieres des
+     * statuts, inserees apres l'article choisi ; numerotation et renvois mis a jour, sinon refus.
+     */
+    private DocumentResult appliquerClausesStatuts(String templateCode, DocumentResult result,
+                                                   Map<String, Object> payload, UUID workspaceId) {
+        if (!templateCode.startsWith("STATUTS")) return result;
+        UUID ticketId = ticketDe(payload);
+        if (ticketId == null || workspaceId == null) return result;
+        java.util.List<Map<String, Object>> clauses = clausesLibres.lister(workspaceId, ticketId).stream()
+                .filter(c -> templateCode.equals(String.valueOf(c.get("document"))))
+                .toList();
+        if (clauses.isEmpty()) return result;
+        byte[] bytes = ma.jurika.ai.document.ClausesStatuts.inserer(templateCode, result.bytes(), clauses);
+        return new DocumentResult(bytes, result.contentType(), result.filename(), result.templateFound(),
+                result.missingVariables(), result.manquantes());
     }
 
     private static UUID ticketDe(Map<String, Object> payload) {
@@ -259,15 +280,26 @@ public class WorkflowDocumentController {
     @PreAuthorize("hasAnyAuthority('ROLE_EMPLOYE','ROLE_SUPERVISEUR')")
     public Map<String, Object> emplacementsClausesLibres(@PathVariable String workflowCode,
                                                          @PathVariable String templateCode) {
+        // Lot L4d (E10) : l'employe choisit l'emplacement. Statuts : apres l'article n (articles
+        // du modele) ; PV : avant la resolution n, ou a la suite des resolutions.
         if (templateCode.startsWith("STATUTS")) {
-            return Map.of("possible", false, "motif", ma.jurika.ai.document.ClausesLibres.A_DECIDER_STATUTS);
+            java.util.List<ma.jurika.ai.document.ClausesStatuts.Article> articles =
+                    docxTemplateEngine.articlesDuGabarit(templateCode);
+            if (articles.isEmpty()) {
+                return Map.of("possible", false, "motif",
+                        "Ce mod\u00e8le de statuts n'a pas d'articles num\u00e9rot\u00e9s : la clause ne peut pas y \u00eatre plac\u00e9e.");
+            }
+            return Map.of("possible", true, "nature", "ARTICLE", "articles", articles,
+                    "emplacement", ma.jurika.ai.document.ClausesStatuts.PREFIXE + articles.get(articles.size() - 1).numero(),
+                    "libelle", "Apr\u00e8s l'article choisi");
         }
         boolean possible = docxTemplateEngine.emplacementClausesPrevu(templateCode);
         return possible
-                ? Map.of("possible", true, "emplacement", ma.jurika.ai.document.ClausesLibres.EMPLACEMENT,
+                ? Map.of("possible", true, "nature", "RESOLUTION",
+                        "emplacement", ma.jurika.ai.document.ClausesLibres.EMPLACEMENT,
                         "libelle", ma.jurika.ai.document.ClausesLibres.LIBELLE_EMPLACEMENT)
                 : Map.of("possible", false,
-                        "motif", "Ce modèle ne prévoit pas d'emplacement pour une résolution libre.");
+                        "motif", "Ce mod\u00e8le ne pr\u00e9voit pas d'emplacement pour une r\u00e9solution libre.");
     }
 
     /**

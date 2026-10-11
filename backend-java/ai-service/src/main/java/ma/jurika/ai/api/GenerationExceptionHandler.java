@@ -53,6 +53,15 @@ public class GenerationExceptionHandler {
                         + "Réessayez dans un instant ; si le problème persiste, signalez-le à l'administrateur."));
     }
 
+    /** Lot L4d (E10) : clause libre impossible a placer sans risque ; la raison est donnee. */
+    @ExceptionHandler(ma.jurika.ai.document.ClauseLibreImpossibleException.class)
+    public ResponseEntity<Map<String, Object>> clause(ma.jurika.ai.document.ClauseLibreImpossibleException ex) {
+        log.warn("Clause libre refusee {} : {}", ex.templateCode(), ex.getMessage());
+        Map<String, Object> body = corps("CLAUSE_LIBRE_IMPOSSIBLE", ex.getMessage());
+        body.put("templateCode", ex.templateCode());
+        return reponse(HttpStatus.UNPROCESSABLE_ENTITY, body);
+    }
+
     @ExceptionHandler(GabaritIntrouvableException.class)
     public ResponseEntity<Map<String, Object>> introuvable(GabaritIntrouvableException ex) {
         log.error("{}", ex.getMessage());
