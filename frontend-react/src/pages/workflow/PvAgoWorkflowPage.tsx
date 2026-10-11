@@ -1099,7 +1099,7 @@ function PvAgoWorkflowPageBody() {
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
                     <ValeurProposee id="pvago-dossier-reference" label="Référence du dossier *"
-                      proposition={ticket?.reference ?? ''} valeur={dossierReference || undefined} onChange={setDossierReference} />
+                      proposition={dossier?.reference ?? ''} valeur={dossierReference || undefined} onChange={setDossierReference} />
                     {showErr('dossierReference') && <p className="mt-1 text-xs text-danger" role="alert">{showErr('dossierReference')}</p>}
                   </div>
                   <div>

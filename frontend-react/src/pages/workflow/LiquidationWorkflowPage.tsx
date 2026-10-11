@@ -1136,7 +1136,8 @@ function LiquidationWorkflowPageBody() {
               operation={operationInput}
               initialAssocies={bdAssocies}
               initialGerants={bdGerants}
-              referenceDossier={ticket?.reference ?? ''}
+              // L4d (E6) : reference lisible du dossier (annee, numero, societe), pas celle du ticket.
+              referenceDossier={dossier?.reference ?? ''}
               initialMentions={mentionsPv}
               onMentions={setMentionsPv}
               onReady={setDocsValidated}
