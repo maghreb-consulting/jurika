@@ -111,6 +111,15 @@ public class WorkflowDocumentMappingService {
         return variables == null ? Map.of() : variables;
     }
 
+    /** Lot L4d (E11) : modele a rendre pour (workflow, document), selon la donnee du parcours. */
+    public String gabarit(String workflowCode, String templateCode, Map<String, Object> payload) {
+        Map<String, WorkflowDocumentMapper> templates = byWorkflowAndTemplate.get(workflowCode);
+        WorkflowDocumentMapper mapper = templates == null ? null : templates.get(templateCode);
+        if (mapper == null) return templateCode;
+        String g = mapper.gabarit(templateCode, payload == null ? Map.of() : payload);
+        return g == null || g.isBlank() ? templateCode : g;
+    }
+
     /** Indique si un workflow est connu (utile pour les checks contrôleur). */
     public boolean supportsWorkflow(String workflowCode) {
         return workflowCode != null && byWorkflow.containsKey(workflowCode);

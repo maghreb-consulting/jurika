@@ -199,11 +199,13 @@ public class WorkflowDocumentController {
         // Lot L3 (RG-VAR-03) : variables canoniques de la fiche societe reprises quand le
         // mapper les laisse vides (jamais ecrasees, jamais inventees).
         variables = ma.jurika.ai.workflow.identity.RepriseFicheSociete.completer(variables, enriched);
-        variables = appliquerClausesLibres(templateCode, variables, enriched, workspaceId);
+        variables = appliquerClausesLibres(workflowCode, templateCode, variables, enriched, workspaceId);
 
         refuserSiControleBloquant(workflowCode, templateCode, variables);
 
-        DocumentResult result = docxTemplateEngine.generate(templateCode, variables);
+        // Lot L4d (E11) : modele du corpus choisi par le mapper selon la donnee du parcours.
+        String gabarit = mappingService.gabarit(workflowCode, templateCode, enriched);
+        DocumentResult result = docxTemplateEngine.generate(gabarit, variables);
         result = appliquerClausesStatuts(templateCode, result, enriched, workspaceId);
 
         // Lot L2 : gabarit introuvable (corpus et classpath) -> GabaritIntrouvableException,
@@ -231,7 +233,7 @@ public class WorkflowDocumentController {
      * l'emplacement prevu par le modele ; sans emplacement, la generation le refuse au lieu de
      * les perdre en silence.
      */
-    private Map<String, Object> appliquerClausesLibres(String templateCode, Map<String, Object> variables,
+    private Map<String, Object> appliquerClausesLibres(String workflowCode, String templateCode, Map<String, Object> variables,
                                                        Map<String, Object> payload, UUID workspaceId) {
         UUID ticketId = ticketDe(payload);
         if (ticketId == null || workspaceId == null) return variables;
@@ -241,7 +243,7 @@ public class WorkflowDocumentController {
         if (clauses.isEmpty()) return variables;
         // Lot L4d (E10) : les clauses des statuts s'inserent dans le document rendu (articles).
         if (templateCode.startsWith("STATUTS")) return variables;
-        if (!docxTemplateEngine.emplacementClausesPrevu(templateCode)) {
+        if (!docxTemplateEngine.emplacementClausesPrevu(mappingService.gabarit(workflowCode, templateCode, payload))) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "Ce modèle ne prévoit pas d'emplacement pour une clause libre : retirez la clause de ce document.");
         }
@@ -293,7 +295,8 @@ public class WorkflowDocumentController {
                     "emplacement", ma.jurika.ai.document.ClausesStatuts.PREFIXE + articles.get(articles.size() - 1).numero(),
                     "libelle", "Apr\u00e8s l'article choisi");
         }
-        boolean possible = docxTemplateEngine.emplacementClausesPrevu(templateCode);
+        boolean possible = docxTemplateEngine.emplacementClausesPrevu(
+                mappingService.gabarit(workflowCode, templateCode, Map.of()));
         return possible
                 ? Map.of("possible", true, "nature", "RESOLUTION",
                         "emplacement", ma.jurika.ai.document.ClausesLibres.EMPLACEMENT,

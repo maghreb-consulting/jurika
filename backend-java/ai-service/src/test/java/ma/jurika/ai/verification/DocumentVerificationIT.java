@@ -254,7 +254,10 @@ class DocumentVerificationIT {
                     // Meme chaine que WorkflowDocumentController : mapper, puis reprise de la fiche.
                     Map<String, Object> variables = ma.jurika.ai.workflow.identity.RepriseFicheSociete.completer(
                             b.mapper().map(templateCode, payload), payload);
-                    DocxTemplateEngine.DocumentResult result = engine.generate(templateCode, variables);
+                    // Lot L4d (E11) : meme choix de modele qu'en production (donnee du parcours).
+                    String gabarit = b.mapper().gabarit(templateCode, payload);
+                    entry.put("gabarit", gabarit);
+                    DocxTemplateEngine.DocumentResult result = engine.generate(gabarit, variables);
 
                     byte[] bytes = result.bytes();
                     if (bytes == null || bytes.length == 0) {
@@ -288,7 +291,7 @@ class DocumentVerificationIT {
                             fullText, EXTERNES_ATTENDUES.getOrDefault(templateCode, Set.of())));
                     residualUpperVars.forEach(v -> defauts.add("variable residuelle : " + v));
                     residualBlocks.forEach(v -> defauts.add("marqueur de bloc residuel : " + v));
-                    Source source = corpus != null && corpus.gabarit(templateCode).isPresent()
+                    Source source = corpus != null && corpus.gabarit(gabarit).isPresent()
                             ? Source.CORPUS : Source.CLASSPATH;
                     entry.put("source", source.name());
                     String enAttente = EN_ATTENTE.getOrDefault(templateCode, Map.of()).get(source);
