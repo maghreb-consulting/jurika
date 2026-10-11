@@ -146,6 +146,7 @@ class DemarchesCorpusIT {
 
     private final JdbcTemplate owner = proprietaire();
     private static UUID ticketId;
+    private static UUID importId;
 
     @BeforeEach
     void preparer() {
@@ -197,6 +198,9 @@ class DemarchesCorpusIT {
                         new ReferentielCorpus.Delai("30 jours \u2014 texte de la matrice : dans les trente jours", 30, "JOURS", null, null)),
                 delai(COMPTES, 6, "Inscription (d\u00e9part nomm\u00e9)",
                         new ReferentielCorpus.Delai("1 mois \u00e0 compter de $DATE_APPROBATION", 1, "MOIS", "DATE_APPROBATION", null)),
+                new Ligne("MATRICE_IMPORT_DOSSIER", "07", null, 1, "import_dossier", null, "CREATION_TICKET",
+                        "Collecte de la pi\u00e8ce : Statuts \u00e0 jour", "Client", null, true, null,
+                        "Statuts \u00e0 jour certifi\u00e9s conformes", null, null, null, null),
                 delai(COMPTES, 7, "Annonce (date limite)",
                         new ReferentielCorpus.Delai("au plus tard le $ANNONCE_LEGALE_DATE_LIMITE", null, null, null, "ANNONCE_LEGALE_DATE_LIMITE")));
         return new ReferentielCorpus("CORPUS_IT", lignes,
@@ -206,7 +210,7 @@ class DemarchesCorpusIT {
                         new Decision(MODIF, 30, "C", "transfert_siege", "Transfert du si\u00e8ge social", "AGE"),
                         new Decision(COMPTES, 1, "A", "approbation_comptes", "Approbation des \u00e9tats de synth\u00e8se", "AGO")),
                 List.of(),
-                new Rapport(Map.of(MODIF, 2, COMPTES, 7), 9, List.of(), List.of(), List.of()));
+                new Rapport(Map.of(MODIF, 2, COMPTES, 7, "MATRICE_IMPORT_DOSSIER", 1), 10, List.of(), List.of(), List.of()));
     }
 
     @Test
@@ -218,7 +222,9 @@ class DemarchesCorpusIT {
                                   "companyInfo": { "raisonSociale": "PARACOSME", "formeJuridique": "SARL" } }
                                 """))
                 .andExpect(status().is2xxSuccessful()).andReturn();
-        String dossierId = json.readTree(imp.getResponse().getContentAsString()).get("dossierId").asText();
+        JsonNode importe = json.readTree(imp.getResponse().getContentAsString());
+        importId = UUID.fromString(importe.get("id").asText());
+        String dossierId = importe.get("dossierId").asText();
         MvcResult r = mvc.perform(post("/api/v1/tickets").header("Authorization", jeton("EMPLOYE"))
                         .contentType("application/json").content("""
                                 { "titre": "Approbation 2025", "type": "MODIFICATION", "dossierId": "%s" }
@@ -343,6 +349,38 @@ class DemarchesCorpusIT {
                         .header("Authorization", jeton("EMPLOYE")).contentType("application/json")
                         .content("{\"depart\":\"2026-10-01\"}"))
                 .andExpect(status().isConflict());
+    }
+
+    /** Lot L4c (E1) : la transition demandee par un parcours passe par les memes controles. */
+    @Test
+    @Order(7)
+    void la_transition_demandee_par_un_parcours_suit_les_controles() throws Exception {
+        String sansObjet = mvc.perform(post("/internal/tickets/" + ticketId + "/transition").contentType("application/json")
+                        .content("{\"workspaceId\":\"" + WS_A + "\",\"attendu\":\"GENERATION_DOCUMENTS\","
+                                + "\"cible\":\"DEROULEMENT_DEMARCHE\",\"raison\":\"Parcours\",\"acteurId\":\"" + KARIM + "\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(sansObjet).get("resultat").asText()).isEqualTo("SANS_OBJET");
+        String refus = mvc.perform(post("/internal/tickets/" + ticketId + "/transition").contentType("application/json")
+                        .content("{\"workspaceId\":\"" + WS_A + "\",\"attendu\":\"DEROULEMENT_DEMARCHE\","
+                                + "\"cible\":\"CLOTURE_DOSSIER\",\"raison\":\"Parcours\",\"acteurId\":\"" + KARIM + "\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        JsonNode r = json.readTree(refus);
+        assertThat(r.get("resultat").asText()).isEqualTo("REFUSEE");
+        assertThat(r.get("motif").asText()).contains("non coch");
+        assertThat(owner.queryForObject("SELECT statut FROM tickets WHERE id = ?", String.class, ticketId))
+                .isEqualTo("DEROULEMENT_DEMARCHE");
+    }
+
+    /** Lot L4c (E3) : l'import de dossier n'a qu'une decision ; elle s'applique d'office. */
+    @Test
+    @Order(8)
+    void l_import_de_dossier_porte_sa_decision_unique_d_office() throws Exception {
+        JsonNode d = lire("/api/v1/tickets/" + importId + "/decisions");
+        assertThat(d.get("matrices").toString()).contains("MATRICE_IMPORT_DOSSIER");
+        assertThat(d.get("choisies").toString()).contains("import_dossier");
+        assertThat(d.get("manques").toString()).doesNotContain("Aucune d");
+        assertThat(lire("/api/v1/tickets/" + importId + "/demarches").toString())
+                .contains("Collecte de la pi\u00e8ce : Statuts");
     }
 
     private JsonNode lire(String url) throws Exception {

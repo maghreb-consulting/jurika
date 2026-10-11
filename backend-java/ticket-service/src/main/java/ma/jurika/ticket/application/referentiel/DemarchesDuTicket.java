@@ -205,10 +205,25 @@ public class DemarchesDuTicket implements LignesDuTicket {
     }
 
     public List<Choix> choisies(Ticket t) {
-        return db.query("""
+        List<Choix> enregistrees = db.query("""
                 SELECT matrice, decision_code FROM ticket_decisions
                 WHERE workspace_id = ? AND ticket_id = ? ORDER BY ajoute_le, decision_code
                 """, (rs, i) -> new Choix(rs.getString(1), rs.getString(2)), t.workspaceId(), t.id());
+        if (!enregistrees.isEmpty() || !MatricesDuTicket.servieParLeCorpus(t.type())) return enregistrees;
+        // Lot L4c (E3) : une matrice qui ne propose qu'UNE decision (import de dossier) la
+        // porte d'office ; rien a choisir. Plusieurs decisions possibles : choix de l'employe.
+        Set<String> possibles = new LinkedHashSet<>();
+        for (String m : MatricesDuTicket.matrices(t.type(), forme(t))) {
+            db.queryForList("SELECT code FROM referentiel_decisions WHERE actif AND matrice = ?", String.class, m)
+                    .forEach(c -> possibles.add(m + "|" + c));
+            db.queryForList("""
+                    SELECT DISTINCT decision_code FROM demarches_referentiel
+                    WHERE corpus_version IS NOT NULL AND actif AND matrice = ? AND statut_ticket <> 'ANNULE'
+                    """, String.class, m).forEach(c -> possibles.add(m + "|" + c));
+        }
+        if (possibles.size() != 1) return enregistrees;
+        String[] seule = possibles.iterator().next().split("\\|");
+        return List.of(new Choix(seule[0], seule[1]));
     }
 
     public String versionActive() {
