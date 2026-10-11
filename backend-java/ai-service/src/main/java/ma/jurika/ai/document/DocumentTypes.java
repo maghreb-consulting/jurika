@@ -203,7 +203,8 @@ public final class DocumentTypes {
     public static final String PV_IRREGULARITE_CONVOCATION_SARL_AU = "PV_IRREGULARITE_CONVOCATION_SARL_AU";
 
     // Documents de seance partages (Phase A) — Convocation (debut) + Feuille de presence (apres AG).
-    // Modeles directeur unifies : un seul fichier couvre SARL et SARL AU via $ASSOCIE_UNIQUE.
+    // Lot L4d (E11b) : codes logiques du parcours ; le mapper choisit le modele du corpus
+    // (convocation AGO, AGE ou seconde ; feuille AGO ou AGE). Rien en SARL AU (article 76).
     public static final String CONVOCATION_AG = "CONVOCATION_AG";
     public static final String FEUILLE_PRESENCE_AG = "FEUILLE_PRESENCE_AG";
 

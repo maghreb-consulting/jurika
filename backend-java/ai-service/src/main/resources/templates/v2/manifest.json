@@ -536,89 +536,19 @@
     },
     {
       "code": "CONVOCATION_AG",
-      "file": "CONVOCATION_AG.docx",
-      "origin": "directeur-2026-08",
-      "document_kind": "Convocation à l'assemblée générale",
+      "origin": "placeholder",
+      "document_kind": "Convocation à l'assemblée générale — modèle du corpus choisi par le parcours (AGO, AGE ou seconde convocation ; lot L4d)",
       "workflow": "SEANCE_AG",
-      "placeholder_style": "dollar_nu_directeur",
-      "variables": [
-        "ASSOCIE_UNIQUE",
-        "CAPITAL_CHIFFRES",
-        "DENOMINATION",
-        "RC_NUMERO",
-        "SIEGE_SOCIAL",
-        "VILLE_GREFFE"
-      ],
-      "blocks": [
-        {
-          "name": "ASSOCIES",
-          "variables": [
-            "AG_TYPE",
-            "ASSOCIE_ADRESSE",
-            "ASSOCIE_NOM",
-            "ASSOCIE_UNIQUE",
-            "CONVOCATION_RANG",
-            "DATE_AG",
-            "DATE_AG_PREMIERE",
-            "DATE_CONVOCATION",
-            "DENOMINATION",
-            "GERANT_NOM",
-            "HEURE_AG",
-            "LIEU_AG",
-            "LIEU_SIGNATURE"
-          ]
-        },
-        {
-          "name": "POINTS_ODJ",
-          "variables": [
-            "POINT_ODJ_LIBELLE"
-          ]
-        },
-        {
-          "name": "DOCUMENTS_JOINTS",
-          "variables": [
-            "DOCUMENT_JOINT_LIBELLE"
-          ]
-        }
-      ]
+      "variables": [],
+      "blocks": []
     },
     {
       "code": "FEUILLE_PRESENCE_AG",
-      "file": "FEUILLE_PRESENCE_AG.docx",
-      "origin": "directeur-2026-08",
-      "document_kind": "Feuille de présence à l'assemblée générale",
+      "origin": "placeholder",
+      "document_kind": "Feuille de présence à l'assemblée générale — modèle du corpus choisi par le parcours (AGO ou AGE ; lot L4d)",
       "workflow": "SEANCE_AG",
-      "placeholder_style": "dollar_nu_directeur",
-      "variables": [
-        "AG_TYPE",
-        "ASSOCIE_UNIQUE",
-        "CAPITAL_CHIFFRES",
-        "CONVOCATION_RANG",
-        "DATE_AG",
-        "DATE_AG_PREMIERE",
-        "DENOMINATION",
-        "GERANT_NOM",
-        "NB_ASSOCIES_PRESENTS",
-        "NOMBRE_PARTS",
-        "NOMBRE_PARTS_PRESENTES",
-        "NOMBRE_VOIX_PRESENTES",
-        "PRESIDENT_NOM",
-        "RC_NUMERO",
-        "SIEGE_SOCIAL",
-        "VILLE_GREFFE"
-      ],
-      "blocks": [
-        {
-          "name": "ASSOCIES",
-          "variables": [
-            "ASSOCIE_ADRESSE",
-            "ASSOCIE_MANDATAIRE_NOM",
-            "ASSOCIE_NOM",
-            "ASSOCIE_NOMBRE_PARTS",
-            "ASSOCIE_NOMBRE_VOIX"
-          ]
-        }
-      ]
+      "variables": [],
+      "blocks": []
     },
     {
       "code": "PV_APPROBATION_COMPTES_SARL",

@@ -53,6 +53,6 @@ class CorpusControllerTest {
         assertThat(r.nonRendables()).isEmpty();
         // Les gabarits du classpath sont tous absents du corpus fictif : chacun est signale.
         assertThat(r.horsCorpusClasspath()).contains("ACTE_NOMINATION_GERANT", "ANNONCE_LEGALE_CONSTITUTION")
-                .hasSize(57).isSorted();
+                .hasSize(53).isSorted(); // L4d (E11, E11b) : statuts deterministes, convocation et feuille AG retires
     }
 }
