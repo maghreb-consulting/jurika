@@ -258,9 +258,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L3 (saisie unique, 2026-10-10) -- dette relevee
 
-- **Usages a confirmer par le directeur** (D6, 2026-10-10) : nombre d'originaux et heure de l'acte
-  sont desormais des valeurs proposees a l'ecran (composant `ValeurProposee`), confirmees par
-  l'employe ; les propositions ("6", "quatre", "10 heures") restent a valider comme usages du cabinet.
 - **Champ sans ecran** lu par le projecteur : ville du RC d'un associe personne morale
   (`ASSOCIE_RC_VILLE`).
 - **Clauses libres** : pas d'emplacement dans les PV de modification, de dissolution / liquidation

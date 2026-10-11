@@ -55,6 +55,7 @@ import {
 } from '../../components/workflow/convocationDelai';
 import { formeLabel } from '../../components/workflow/workflowFilename';
 import type { DocumentType, DossierBrief } from '../../types/dataroom';
+import { USAGES_CABINET } from '../../lib/usagesCabinet';
 
 /**
  * Workflow PV AGO — approbation des comptes, en 5 étapes (spec directeur, lot DIVERS §E,
@@ -1136,7 +1137,7 @@ function PvAgoWorkflowPageBody() {
                   </div>
                   <div>
                     <ValeurProposee id="pvago-nombre-originaux" label="Nombre d'originaux *"
-                      proposition="quatre" valeur={nombreOriginaux || undefined} onChange={setNombreOriginaux} />
+                      proposition={USAGES_CABINET.nombreOriginauxEnLettres} valeur={nombreOriginaux || undefined} onChange={setNombreOriginaux} />
                     {showErr('nombreOriginaux') && <p className="mt-1 text-xs text-danger" role="alert">{showErr('nombreOriginaux')}</p>}
                   </div>
                   <TextField label="Registre des décisions — numéro *" value={registrePvNumero}

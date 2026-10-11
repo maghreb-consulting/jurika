@@ -37,6 +37,7 @@ import {
   type SeanceSocieteInput,
 } from './SeanceForm';
 import type { DocumentType } from '../../types/dataroom';
+import { USAGES_CABINET } from '../../lib/usagesCabinet';
 
 type Mode = 'dissolution' | 'liquidation';
 
@@ -343,7 +344,7 @@ export function SeanceOperationForm({
           <ValeurProposee
             id="seance-nombre-originaux"
             label="Nombre d’exemplaires originaux"
-            proposition="quatre"
+            proposition={USAGES_CABINET.nombreOriginauxEnLettres}
             valeur={nombreOriginaux}
             onChange={setNombreOriginaux}
           />
