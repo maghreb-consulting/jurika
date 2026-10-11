@@ -143,6 +143,18 @@ class DossierIdentityQueryServiceTest {
         assertThat(id.get("dossierReference")).isEqualTo("2026-0007 \u2014 PARACOSME");
     }
 
+    /** Lot L4d (E11e) : l'objet social de la fiche est servi aux actes (rapport de gestion). */
+    @Test
+    void l4d_expose_l_objet_social_de_la_fiche() {
+        String fiche = "{\"objetSocial\":\"le conseil aux entreprises\"}";
+        Object[] row = {"ACME", "SARL", null, null, null, "Rabat", null, null, "Rabat", fiche, "ACTIVE", null,
+                null, null};
+        assertThat(withRow(row).identity(WS, DOSSIER).get("objetSocial")).isEqualTo("le conseil aux entreprises");
+        Object[] sansObjet = {"ACME", "SARL", null, null, null, "Rabat", null, null, "Rabat", "{}", "ACTIVE", null,
+                null, null};
+        assertThat(withRow(sansObjet).identity(WS, DOSSIER)).doesNotContainKey("objetSocial");
+    }
+
     @Test
     void l3_une_erreur_de_lecture_n_est_plus_avalee() {
         EntityManager em = mock(EntityManager.class);

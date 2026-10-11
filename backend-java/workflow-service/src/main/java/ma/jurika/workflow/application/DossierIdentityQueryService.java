@@ -101,6 +101,8 @@ public class DossierIdentityQueryService {
             if (fiche != null) {
                 putIfPresent(s, "nombreParts", fiche.get("nombreParts"));
                 putIfPresent(s, "valeurNominalePart", fiche.get("valeurNominale"));
+                // Lot L4d (E11e) : objet social de la fiche (rapport de gestion), jamais ressaisi.
+                putIfPresent(s, "objetSocial", fiche.get("objetSocial"));
                 // Listes brutes — l'appelant ne s'en sert que pour amorcer la présence
                 // quand le formulaire de séance n'a rien saisi (jamais pour écraser).
                 Object associes = fiche.get("associes");
