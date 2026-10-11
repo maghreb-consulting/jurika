@@ -183,7 +183,7 @@ class DissolutionAnnonceRenderTest {
         assertTrue(mapper.supportedTemplates().contains(DissolutionAnnonceVarsBuilder.TPL_SARL));
         assertTrue(mapper.supportedTemplates().contains(DissolutionAnnonceVarsBuilder.TPL_SARL_AU));
         assertTrue(mapper.supportedTemplates()
-                .contains(DissolutionLiquidationMapper.TPL_PV_SARL));
+                .contains(DissolutionMapper.TPL_PV_SARL));
         assertEquals("DISSOLUTION", mapper.workflowCode());
     }
 

@@ -49,15 +49,10 @@ public final class DocumentTypes {
     public static final String ANNONCE_LEGALE_MODIFICATION_SARL = "ANNONCE_LEGALE_MODIFICATION_SARL";
     public static final String ANNONCE_LEGALE_MODIFICATION_SARL_AU = "ANNONCE_LEGALE_MODIFICATION_SARL_AU";
 
-    // Dissolution / Liquidation (Phase C) — modèles directeur.
-    // Un seul PV unifié couvre les trois étapes du cycle (dissolution / cours de
-    // liquidation / clôture) via $PV_ETAPE, décliné SARL vs SARL AU. Le rapport du
-    // liquidateur est un document distinct. Les anciens codes (PV_AGE_DISSOLUTION,
-    // PV_AGE_LIQUIDATION_CLOTURE, RAPPORT_LIQUIDATION, PV_DISSOLUTION_SARL(_AU),
-    // PV_LIQUIDATION_SARL(_AU)) ont été retirés (remplacés).
-    public static final String PV_DISSOLUTION_LIQUIDATION_SARL = "PV_DISSOLUTION_LIQUIDATION_SARL";
-    public static final String PV_DISSOLUTION_LIQUIDATION_SARL_AU = "PV_DISSOLUTION_LIQUIDATION_SARL_AU";
-    public static final String RAPPORT_LIQUIDATION_DIRECTEUR = "RAPPORT_LIQUIDATION_DIRECTEUR";
+    // Dissolution / Liquidation (Phase C). Lot L4d (E11d) : le PV unifie du classpath et le
+    // rapport du liquidateur du directeur sont retires ; les parcours DISSOLUTION et
+    // LIQUIDATION rendent les modeles du corpus (PV_DISSOLUTION_ANTICIPEE_*,
+    // PV_CLOTURE_LIQUIDATION_*, RAPPORT_LIQUIDATEUR_*) par leurs mappers.
     // 2026-08-12 — Annonce légale de DISSOLUTION (avis de dissolution anticipée + nomination
     // du liquidateur + siège de la liquidation), modèles directeur déclinés SARL / SARL AU.
     // Premier des deux avis du cycle (l'avis de clôture relève de la Liquidation).
@@ -216,8 +211,6 @@ public final class DocumentTypes {
             PV_AGE_MODIFICATION, ANNONCE_JAL_MODIFICATIVE, FORMULAIRE_RC_MODIFICATIF,
             PV_MODIFICATION_SARL, PV_MODIFICATION_SARL_AU,
             ANNONCE_LEGALE_MODIFICATION_SARL, ANNONCE_LEGALE_MODIFICATION_SARL_AU,
-            PV_DISSOLUTION_LIQUIDATION_SARL, PV_DISSOLUTION_LIQUIDATION_SARL_AU,
-            RAPPORT_LIQUIDATION_DIRECTEUR,
             ANNONCE_LEGALE_DISSOLUTION_SARL, ANNONCE_LEGALE_DISSOLUTION_SARL_AU,
             ANNONCE_LEGALE_LIQUIDATION_SARL, ANNONCE_LEGALE_LIQUIDATION_SARL_AU,
             ANNONCE_JAL_DISSOLUTION, FORMULAIRE_RC_DISSOLUTION,

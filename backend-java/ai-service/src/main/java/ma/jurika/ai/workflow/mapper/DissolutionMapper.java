@@ -9,30 +9,34 @@ import java.util.Set;
 /**
  * Mapper L4 du workflow {@code DISSOLUTION} (Phase C).
  *
- * <p>Bean mince : délègue au noyau partagé {@link DissolutionLiquidationMapper} qui réutilise
- * le noyau séance d'AG ({@link SeancePvVarsBuilder}). Alimente le PV directeur unifié
- * {@code PV_DISSOLUTION_LIQUIDATION_SARL(/_AU)} à l'étape « dissolution » (décision de
- * dissolution + nomination du liquidateur). Un seul modèle couvre les trois étapes du cycle
- * via {@code $PV_ETAPE} ; l'étape est fixée par le workflow, jamais saisie librement.
+ * <p>Codes demandes par l'ecran et modeles rendus (lot L4d, E11d : modeles du corpus) :
+ * <ul>
+ *   <li>{@code PV_DISSOLUTION_LIQUIDATION_SARL(/_AU)} : proces-verbal de dissolution
+ *       anticipee, d'ouverture de la liquidation et de nomination du liquidateur, rendu par
+ *       {@code PV_DISSOLUTION_ANTICIPEE_SARL(/_AU)} ({@link DissolutionPvCorpusVarsBuilder}) ;</li>
+ *   <li>{@code ANNONCE_LEGALE_DISSOLUTION_SARL(/_AU)} : avis de dissolution
+ *       ({@link DissolutionAnnonceVarsBuilder}).</li>
+ * </ul>
  *
- * <p>Depuis le lot « Dissolution 4 étapes » (2026-08-12), le mapper porte aussi l'<b>annonce
- * légale de dissolution</b> ({@code ANNONCE_LEGALE_DISSOLUTION_SARL(/_AU)}) — avis à publier au
- * journal d'annonces légales — déléguée à {@link DissolutionAnnonceVarsBuilder}.
- *
- * <p>Sélection SARL vs SARL AU par le suffixe du {@code templateCode}. Aucune lecture DB :
- * identité société + associés pré-remplis depuis le dossier par l'appelant (payload).
+ * <p>Le PV unifie du classpath (trois etapes via {@code $PV_ETAPE}) n'est plus servi : la
+ * dissolution et la cloture ont chacune leur modele du corpus (LiquidationMapper pour la
+ * cloture). Aucune lecture DB : identite societe + associes pre-remplis depuis le dossier.
  */
 @Component
 public class DissolutionMapper implements WorkflowDocumentMapper {
 
     private static final String WORKFLOW = "DISSOLUTION";
 
+    /** Codes du PV demandes par l'ecran (dissolution et liquidation) ; jamais rendus tels quels. */
+    static final String TPL_PV_SARL = "PV_DISSOLUTION_LIQUIDATION_SARL";
+    static final String TPL_PV_SARL_AU = "PV_DISSOLUTION_LIQUIDATION_SARL_AU";
+
     static final String TPL_ANNONCE_SARL = DissolutionAnnonceVarsBuilder.TPL_SARL;
     static final String TPL_ANNONCE_SARL_AU = DissolutionAnnonceVarsBuilder.TPL_SARL_AU;
 
     private static final Set<String> TEMPLATES = Set.of(
-            DissolutionLiquidationMapper.TPL_PV_SARL,
-            DissolutionLiquidationMapper.TPL_PV_SARL_AU,
+            TPL_PV_SARL,
+            TPL_PV_SARL_AU,
             TPL_ANNONCE_SARL,
             TPL_ANNONCE_SARL_AU);
 
@@ -55,12 +59,23 @@ public class DissolutionMapper implements WorkflowDocumentMapper {
         }
         Map<String, Object> safe = payload == null ? Map.of() : payload;
 
-        // Annonce légale de dissolution (avis JAL — aucune boucle, aucune condition).
+        // Annonce legale de dissolution (avis JAL).
         if (TPL_ANNONCE_SARL.equals(templateCode) || TPL_ANNONCE_SARL_AU.equals(templateCode)) {
             return DissolutionAnnonceVarsBuilder.build(templateCode, safe);
         }
+        // Lot L4d (E11d) : PV de dissolution anticipee du corpus.
+        return DissolutionPvCorpusVarsBuilder.build(templateCode, safe);
+    }
 
-        return DissolutionLiquidationMapper.pvVars(
-                templateCode, safe, DissolutionLiquidationMapper.ETAPE_DISSOLUTION);
+    /**
+     * Lot L4d (E11d) : le PV de dissolution est rendu par le modele du corpus
+     * {@code PV_DISSOLUTION_ANTICIPEE_SARL(_AU)} (L2_correspondance_gabarits.md). Les autres
+     * documents gardent leur code.
+     */
+    @Override
+    public String gabarit(String templateCode, Map<String, Object> payload) {
+        if (TPL_PV_SARL.equals(templateCode)) return DissolutionPvCorpusVarsBuilder.CORPUS_SARL;
+        if (TPL_PV_SARL_AU.equals(templateCode)) return DissolutionPvCorpusVarsBuilder.CORPUS_SARL_AU;
+        return templateCode;
     }
 }

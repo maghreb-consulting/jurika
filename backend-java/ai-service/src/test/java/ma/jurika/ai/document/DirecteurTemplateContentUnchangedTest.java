@@ -43,10 +43,8 @@ class DirecteurTemplateContentUnchangedTest {
             // Phase B — PV d'approbation des comptes (AGO annuelle).
             "PV_APPROBATION_COMPTES_SARL.docx",
             "PV_APPROBATION_COMPTES_SARL_AU.docx",
-            // Phase C — Dissolution / Liquidation (PV unifié + rapport du liquidateur).
-            "PV_DISSOLUTION_LIQUIDATION_SARL.docx",
-            "PV_DISSOLUTION_LIQUIDATION_SARL_AU.docx",
-            "RAPPORT_LIQUIDATION_DIRECTEUR.docx",
+            // Phase C - Dissolution / Liquidation : lot L4d (E11d), PV unifie et rapport du
+            // liquidateur retires (modeles du corpus).
             // Phase D — Succursales (création MA / étrangère + fermeture, SARL & SARL AU).
             "PV_CREATION_SUCCURSALE_MAROC_SARL.docx",
             "PV_CREATION_SUCCURSALE_MAROC_SARL_AU.docx",

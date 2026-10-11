@@ -225,28 +225,34 @@ class LiquidationAnnonceRenderTest {
         LiquidationMapper mapper = new LiquidationMapper();
         assertTrue(mapper.supportedTemplates().contains(LiquidationAnnonceVarsBuilder.TPL_SARL));
         assertTrue(mapper.supportedTemplates().contains(LiquidationAnnonceVarsBuilder.TPL_SARL_AU));
-        assertTrue(mapper.supportedTemplates().contains(DissolutionLiquidationMapper.TPL_PV_SARL));
-        assertTrue(mapper.supportedTemplates().contains(DissolutionLiquidationMapper.TPL_RAPPORT));
+        assertTrue(mapper.supportedTemplates().contains(LiquidationMapper.TPL_PV_SARL));
+        assertTrue(mapper.supportedTemplates().contains(LiquidationMapper.TPL_RAPPORT));
         assertEquals("LIQUIDATION", mapper.workflowCode());
     }
 
     /**
-     * L'avis et le rapport de liquidation doivent porter le MÊME résultat : les deux lisent
-     * le même bloc {@code cloture} du payload (aucune double saisie possible).
+     * Lot L4d (E11d) : le sens du resultat n'est plus suppose "boni" quand ni le sens ni les
+     * totaux ne sont fournis : la generation est refusee et la donnee nommee.
      */
     @Test
-    void annonceEtRapport_partagentLeMemeResultat() {
+    void sansSensNiComptes_refusNomme_jamaisBoniSuppose() {
         Map<String, Object> p = payload("SARL", 300_000, 500_000);
         @SuppressWarnings("unchecked")
         Map<String, Object> cloture = (Map<String, Object>) p.get("cloture");
-        cloture.put("resultatType", "mali");
-        cloture.put("resultatMontant", 200_000);
-        Map<String, Object> annonce = vars(LiquidationAnnonceVarsBuilder.TPL_SARL, p);
-        Map<String, Object> rapport = vars(DissolutionLiquidationMapper.TPL_RAPPORT, p);
-        assertEquals(rapport.get("RESULTAT_LIQUIDATION_TYPE"),
-                annonce.get("RESULTAT_LIQUIDATION_TYPE"));
-        assertEquals(rapport.get("MALI_LIQUIDATION_CHIFFRES"),
-                annonce.get("MALI_LIQUIDATION_CHIFFRES"));
+        cloture.clear();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> vars(LiquidationAnnonceVarsBuilder.TPL_SARL, p))
+                .isInstanceOf(ma.jurika.ai.document.GenerationRefuseeException.class)
+                .hasMessageContaining("boni ou mali");
+    }
+
+    /** Un sens illisible ne vaut pas "boni" : le signe des comptes decide. */
+    @Test
+    void sensIllisible_leSigneDesComptesDecide() {
+        Map<String, Object> p = payload("SARL", 300_000, 500_000);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> cloture = (Map<String, Object>) p.get("cloture");
+        cloture.put("resultatType", "xyz");
+        assertEquals("mali", vars(LiquidationAnnonceVarsBuilder.TPL_SARL, p).get("RESULTAT_LIQUIDATION_TYPE"));
     }
 
     // ── Rendering helper ───────────────────────────────────────────────────

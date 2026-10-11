@@ -211,6 +211,32 @@ class DissolutionWorkflowTest {
     }
 
     @Test
+    @DisplayName("Step 1 : siege de la liquidation au siege social (choix L4b) \u2192 OK, choix conserve")
+    void step1_siegeLiquidationAuSiegeSocial_ok() {
+        // Lot L4d (E11d) : l'ecran envoie siegeIdentique = "oui" et aucune adresse ; l'etape
+        // etait bloquee ("Le siege de la liquidation est obligatoire").
+        Map<String, Object> p = step1Payload();
+        p.put("siegeLiquidation", "");
+        p.put("siegeIdentique", "oui");
+        StepResult res = run(1, p, "SARL");
+        assertThat(res.canAdvance()).isTrue();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> liq = (Map<String, Object>) res.stepData().get("liquidateur");
+        assertThat(liq).containsEntry("siegeIdentique", "oui");
+    }
+
+    @Test
+    @DisplayName("Step 1 : autre adresse choisie sans adresse \u2192 blocage")
+    void step1_autreAdresseSansAdresse_blocage() {
+        Map<String, Object> p = step1Payload();
+        p.put("siegeLiquidation", "");
+        p.put("siegeIdentique", "non");
+        StepResult res = run(1, p, "SARL");
+        assertThat(res.canAdvance()).isFalse();
+        assertThat(res.message()).contains("siege de la liquidation");
+    }
+
+    @Test
     @DisplayName("Step 1 : siege de la liquidation repris du liquidateur → OK")
     void step1_siegeLiquidationDuLiquidateur_ok() {
         Map<String, Object> p = step1Payload();
