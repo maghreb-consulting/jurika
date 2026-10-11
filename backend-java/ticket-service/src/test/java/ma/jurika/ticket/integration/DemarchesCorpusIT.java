@@ -71,7 +71,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 "jurika.trial.remote.enabled=false",
                 "jurika.audit.async-enabled=false",
                 "jurika.demo-seed=false",
-                "jurika.jwt.algorithm=HS256"
+                "jurika.jwt.algorithm=HS256",
+                // Le scenario part d'un referentiel non charge, puis l'importe lui-meme.
+                "jurika.referentiel.import-initial=false"
         }
 )
 @AutoConfigureMockMvc
