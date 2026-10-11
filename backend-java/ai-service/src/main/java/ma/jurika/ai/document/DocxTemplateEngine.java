@@ -387,6 +387,8 @@ public class DocxTemplateEngine {
             // 2026-10-03) : elle s'imprimait dans l'avis publie. Retiree comme le dictionnaire,
             // du titre a la fin du corps ; le gabarit n'est pas modifie.
             retirerNotesDEmploi(doc);
+            // Lot L4d (E11c) : table de correspondance des noms de variables (PV_AG_SARL).
+            retirerTableCorrespondance(doc);
 
             // PRE-PASS V5 (2026-09 — formulaires DGI / greffe) : cases a cocher
             // ◈ CASE À COCHER … / ☐ option. Doit tourner AVANT l'evaluateur
@@ -1313,10 +1315,27 @@ public class DocxTemplateEngine {
     static final java.util.regex.Pattern NOTES_D_EMPLOI = java.util.regex.Pattern.compile("^\\s*NOTES D.EMPLOI\\b");
 
     private void retirerNotesDEmploi(XWPFDocument doc) {
+        retirerSectionFinale(doc, NOTES_D_EMPLOI, "NOTES D'EMPLOI");
+    }
+
+    /**
+     * Lot L4d (E11c) : section de documentation "ANNEXE -- TABLE DE CORRESPONDANCE DES NOMS DE
+     * VARIABLES" de PV_AG_SARL (corpus 2026-10-11) : anciens et nouveaux noms des variables,
+     * variables a ajouter au dictionnaire. Ce n'est pas un contenu de l'acte ; rendue, elle
+     * imprimait ses $VARIABLES dans le proces-verbal. Retiree du titre a la fin du corps.
+     */
+    static final java.util.regex.Pattern TABLE_CORRESPONDANCE_VARIABLES = java.util.regex.Pattern.compile(
+            "^\\s*ANNEXE\\s*[\\u2014-]\\s*TABLE DE CORRESPONDANCE DES NOMS DE VARIABLES\\b");
+
+    private void retirerTableCorrespondance(XWPFDocument doc) {
+        retirerSectionFinale(doc, TABLE_CORRESPONDANCE_VARIABLES, "TABLE DE CORRESPONDANCE DES NOMS DE VARIABLES");
+    }
+
+    private void retirerSectionFinale(XWPFDocument doc, java.util.regex.Pattern titre, String libelle) {
         List<IBodyElement> elements = doc.getBodyElements();
         int debut = -1;
         for (int i = 0; i < elements.size(); i++) {
-            if (elements.get(i) instanceof XWPFParagraph p && NOTES_D_EMPLOI.matcher(p.getText()).find()) {
+            if (elements.get(i) instanceof XWPFParagraph p && titre.matcher(p.getText()).find()) {
                 debut = i;
                 break;
             }
@@ -1326,7 +1345,7 @@ public class DocxTemplateEngine {
         for (int i = doc.getBodyElements().size() - 1; i >= debut; i--) {
             doc.removeBodyElement(i);
         }
-        log.debug("Section NOTES D'EMPLOI retiree du rendu ({} elements)", total - debut);
+        log.debug("Section {} retiree du rendu ({} elements)", libelle, total - debut);
     }
 
     private int retirerAnnotations(XWPFDocument doc) {
