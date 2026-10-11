@@ -115,13 +115,32 @@ public class TransitionTicketUseCase {
         String contenu = cmd.comment() == null || cmd.comment().isBlank()
                 ? "Transition vers " + cmd.target()
                 : cmd.comment();
+        Map<String, Object> meta = new java.util.LinkedHashMap<>();
+        meta.put("from", previous.name());
+        meta.put("to", cmd.target().name());
+        // Lot L4c (E2, RG-CLO-04) : la cloture met a jour la fiche societe (identifiants
+        // obtenus pendant le parcours, colonnes vides seulement ; ecarts signales).
+        if (cmd.target() == TicketStatut.CLOTURE_DOSSIER && ficheCloture != null) {
+            ma.jurika.ticket.domain.port.FicheCloture.Resultat fiche =
+                    ficheCloture.mettreAJour(cmd.workspaceId(), current.id());
+            meta.put("ficheReprise", fiche.repris());
+            meta.put("ficheEcarts", fiche.ecarts());
+        }
         commentRepository.create(cmd.workspaceId(), current.id(), cmd.actorId(),
-                commentType, contenu, Map.of("from", previous.name(), "to", cmd.target().name()));
+                commentType, contenu, meta);
 
         eventPublisher.publishTicketStatusChanged(updated, previous);
         deadlineHooks.onTransition(updated, previous, cmd.target());
         businessMetrics.ticketStateTransition(previous.name(), cmd.target().name(), cmd.workspaceId());
         return updated;
+    }
+
+    private ma.jurika.ticket.domain.port.FicheCloture ficheCloture;
+
+    /** Lot L4c (E2) : mise a jour de la fiche a la cloture ; absente dans certains tests. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setFicheCloture(ma.jurika.ticket.domain.port.FicheCloture ficheCloture) {
+        this.ficheCloture = ficheCloture;
     }
 
     /** Lot L4a (E4) : ce que l'ecran annonce avant une reprise (statut retrouve, ou pourquoi non). */
