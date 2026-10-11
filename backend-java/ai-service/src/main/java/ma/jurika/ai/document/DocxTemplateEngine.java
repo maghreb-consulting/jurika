@@ -376,7 +376,7 @@ public class DocxTemplateEngine {
             // <CODE> » (92 gabarits du corpus 2026-10-03) : retiree, du titre a la fin
             // du corps. Le gabarit n'est pas modifie (corpus en lecture seule).
             retirerDictionnaireDesVariables(doc);
-            // Lot L4b (E7) : section « NOTES D'EMPLOI (non publiées) » (3 annonces du corpus
+            // Lot L4b (E7) : section "NOTES D'EMPLOI (non publiees)" (3 annonces du corpus
             // 2026-10-03) : elle s'imprimait dans l'avis publie. Retiree comme le dictionnaire,
             // du titre a la fin du corps ; le gabarit n'est pas modifie.
             retirerNotesDEmploi(doc);
@@ -1288,7 +1288,7 @@ public class DocxTemplateEngine {
         log.debug("Section DICTIONNAIRE DES VARIABLES retiree du rendu ({} elements)", elements.size() - debut);
     }
 
-    /** Lot L4b (E7) : titre de la section de documentation « NOTES D'EMPLOI (non publiees) ». */
+    /** Lot L4b (E7) : titre de la section de documentation "NOTES D'EMPLOI (non publiees)". */
     static final java.util.regex.Pattern NOTES_D_EMPLOI = java.util.regex.Pattern.compile("^\\s*NOTES D.EMPLOI\\b");
 
     private void retirerNotesDEmploi(XWPFDocument doc) {
