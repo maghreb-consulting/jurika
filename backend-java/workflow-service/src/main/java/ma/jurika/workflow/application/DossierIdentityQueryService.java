@@ -55,7 +55,7 @@ public class DossierIdentityQueryService {
                     SELECT raison_sociale, forme_juridique, ice, identifiant_fiscal,
                            rc_numero, rc_tribunal, capital_social_mad, adresse_siege,
                            ville, fiche_structuree, statut, date_dissolution,
-                           taxe_professionnelle, cnss
+                           taxe_professionnelle, cnss, numero_annee, numero_ordre
                     FROM entreprise_dossiers
                     WHERE id = ?1 AND workspace_id = ?2
                     """)
@@ -92,6 +92,10 @@ public class DossierIdentityQueryService {
             // Lot L3 (RG-VAR-08) : identifiants obtenus en fin de parcours, servis aux actes suivants.
             putIfPresent(s, "identifiantTp", row[12]);
             putIfPresent(s, "cnssNumero", row[13]);
+            // Lot L4d (E11b) : reference lisible du dossier ("2026-0007 -- SOCIETE"), imprimee
+            // par les documents du corpus ($DOSSIER_REFERENCE) ; absente sans numero.
+            putIfPresent(s, "dossierReference", ma.jurika.common.reference.ReferencesLisibles.dossier(
+                    (Number) row[14], (Number) row[15], row[0] == null ? null : String.valueOf(row[0])));
 
             Map<String, Object> fiche = ficheFromJson(row[9]);
             if (fiche != null) {

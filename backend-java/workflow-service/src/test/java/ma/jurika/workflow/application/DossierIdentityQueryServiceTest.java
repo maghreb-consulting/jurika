@@ -49,7 +49,7 @@ class DossierIdentityQueryServiceTest {
                 "ACME MAROC SARL", "SARL", "001234567000089", "40012345",
                 "RC 123456", "Casablanca", new BigDecimal("100000.00"),
                 "12 rue de la Liberté, Casablanca", "Casablanca", fiche,
-                "ACTIVE", null, null, null
+                "ACTIVE", null, null, null, null, null
         };
 
         Map<String, Object> id = withRow(row).identity(WS, DOSSIER);
@@ -91,7 +91,7 @@ class DossierIdentityQueryServiceTest {
                 "ACME MAROC SARL", "SARL", "001234567000089", "40012345",
                 "RC 123456", "Casablanca", new BigDecimal("100000.00"),
                 "12 rue de la Liberté, Casablanca", "Casablanca", fiche,
-                "DISSOUTE", java.time.LocalDate.of(2026, 5, 15), null, null
+                "DISSOUTE", java.time.LocalDate.of(2026, 5, 15), null, null, null, null
         };
 
         Map<String, Object> id = withRow(row).identity(WS, DOSSIER);
@@ -122,10 +122,25 @@ class DossierIdentityQueryServiceTest {
     @Test
     void l3_expose_taxe_professionnelle_et_cnss() {
         Object[] row = {"ACME", "SARL", null, null, null, "Rabat", null, null, "Rabat", null, "ACTIVE", null,
-                "TP-2026-77", "CNSS-998877"};
+                "TP-2026-77", "CNSS-998877", null, null};
         Map<String, Object> id = withRow(row).identity(WS, DOSSIER);
         assertThat(id.get("identifiantTp")).isEqualTo("TP-2026-77");
         assertThat(id.get("cnssNumero")).isEqualTo("CNSS-998877");
+        // Sans numero de dossier, pas de reference (jamais une reference de repli).
+        assertThat(id).doesNotContainKey("dossierReference");
+    }
+
+    /**
+     * Lot L4d (E11b) : $DOSSIER_REFERENCE des documents de seance du corpus ("Ref. dossier :
+     * ...") est la reference lisible du dossier (annee-numero -- societe), servie avec
+     * l'identite de la societe.
+     */
+    @Test
+    void l4d_expose_la_reference_lisible_du_dossier() {
+        Object[] row = {"PARACOSME", "SARL", null, null, null, "Rabat", null, null, "Rabat", null, "ACTIVE", null,
+                null, null, (short) 2026, 7};
+        Map<String, Object> id = withRow(row).identity(WS, DOSSIER);
+        assertThat(id.get("dossierReference")).isEqualTo("2026-0007 \u2014 PARACOSME");
     }
 
     @Test
