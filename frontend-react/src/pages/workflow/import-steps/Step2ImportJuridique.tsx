@@ -19,6 +19,8 @@ import {
   OcrSuggestionsPanel,
   type OcrSuggestion,
 } from '../../../components/workflow/OcrSuggestionsPanel';
+import { PublicitesSociete } from '../../../components/workflow/PublicitesSociete';
+import { manquePublicite, type Publicite } from '../../../lib/publicites';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -182,6 +184,10 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
     documentId: d.documentId as string | undefined,
   }));
   const [docs, setDocs] = useState<UploadedDoc[]>(initial);
+  // Lot L4d (E8) : publicites de la societe (annonces JAL et Bulletin officiel).
+  const [publicites, setPublicites] = useState<Publicite[]>(
+    (existing?.publicites as Publicite[] | undefined) ?? [],
+  );
   const [dragOver, setDragOver] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   /** Refs vers les blobs originaux -- pas de re-render au stockage. */
@@ -395,6 +401,11 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
         // Garde-fou JS explicite (au moins 1 doc, aucun fichier sans type, pas
         // d'upload en cours) depuis que `noValidate` desactive les bulles natives.
         if (!canSubmit || !dossierId) return;
+        const pubIncomplete = publicites.findIndex((p) => manquePublicite(p) !== null);
+        if (pubIncomplete >= 0) {
+          setGlobalError(`Publicité n° ${pubIncomplete + 1} : ${manquePublicite(publicites[pubIncomplete])}`);
+          return;
+        }
         const documents = docs.map((d) => ({
           id: d.id,
           filename: d.filename,
@@ -423,6 +434,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
         void onSubmit({
           documents,
           documentsJuridiques: documents,
+          publicites,
           juridique: {
             documents,
             piecesUploaded,
@@ -655,6 +667,9 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
           </ul>
         </div>
       )}
+
+      <PublicitesSociete value={publicites} onChange={setPublicites} dossierId={dossierId}
+        societe={denomination || 'Société'} />
 
       <div className="flex items-center justify-end pt-2">
         <button
