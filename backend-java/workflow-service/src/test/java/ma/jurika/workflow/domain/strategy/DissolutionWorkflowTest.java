@@ -165,7 +165,7 @@ class DissolutionWorkflowTest {
     }
 
     @Test
-    @DisplayName("Step 1 : liquidateur personne morale designe par sa denomination → OK")
+    @DisplayName("Step 1 : liquidateur personne morale designe par sa denomination -> OK")
     void step1_liquidateurPersonneMorale_ok() {
         Map<String, Object> p = step1Payload();
         p.put("liquidateur", liquidateurPersonneMorale());
@@ -179,7 +179,7 @@ class DissolutionWorkflowTest {
     }
 
     @Test
-    @DisplayName("Step 1 : liquidateur personne morale sans denomination → blocage nomme")
+    @DisplayName("Step 1 : liquidateur personne morale sans denomination -> blocage nomme")
     void step1_liquidateurPersonneMoraleSansDenomination_blocage() {
         Map<String, Object> p = step1Payload();
         Map<String, Object> l = liquidateurPersonneMorale();
