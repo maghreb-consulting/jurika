@@ -148,6 +148,15 @@ export const workflowService = {
     return data;
   },
 
+  /** Lot L4a (E1d) : saisie d'une donnee attendue d'un organisme ; rend la liste a jour. */
+  async saisirDonneeAttendue(ticketId: string, variable: string, valeur: string): Promise<DonneeAttendue[]> {
+    const { data } = await api.put<DonneeAttendue[]>(
+      `/workflows/${ticketId}/donnees-attendues/${encodeURIComponent(variable)}`,
+      { valeur },
+    );
+    return data;
+  },
+
   /** Lot L3 (RG-VAR-02/03) : variables du magasin du ticket, avec leur provenance. */
   async variables(ticketId: string): Promise<VariableDuMagasin[]> {
     const { data } = await api.get<VariableDuMagasin[]>(`/workflows/${ticketId}/variables`);

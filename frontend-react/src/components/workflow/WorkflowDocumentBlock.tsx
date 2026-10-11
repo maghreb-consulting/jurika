@@ -346,6 +346,7 @@ export function WorkflowDocumentBlock({
           attendues={state.attendues}
           enCours={state.generating}
           onRegenerer={state.generated ? onRegenerate : onGenerate}
+          ticketId={ticketId}
         />
         {ticketId && workflowCode && (
           <ClausesLibresPanel

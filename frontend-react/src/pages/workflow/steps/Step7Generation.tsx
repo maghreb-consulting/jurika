@@ -1636,6 +1636,7 @@ export function Step7Generation({
                     attendues={attendues.filter((a) => a.templateCode === tpl.code)}
                     enCours={st.generating}
                     onRegenerer={() => generateOne(tpl)}
+                    ticketId={ticketId}
                   />
                 )}
                 {!readOnly && ticketId && tpl.code.startsWith('STATUTS') && (
