@@ -148,10 +148,10 @@ class DossierIdentityQueryServiceTest {
     void l4d_expose_l_objet_social_de_la_fiche() {
         String fiche = "{\"objetSocial\":\"le conseil aux entreprises\"}";
         Object[] row = {"ACME", "SARL", null, null, null, "Rabat", null, null, "Rabat", fiche, "ACTIVE", null,
-                null, null};
+                null, null, null, null};
         assertThat(withRow(row).identity(WS, DOSSIER).get("objetSocial")).isEqualTo("le conseil aux entreprises");
         Object[] sansObjet = {"ACME", "SARL", null, null, null, "Rabat", null, null, "Rabat", "{}", "ACTIVE", null,
-                null, null};
+                null, null, null, null};
         assertThat(withRow(sansObjet).identity(WS, DOSSIER)).doesNotContainKey("objetSocial");
     }
 

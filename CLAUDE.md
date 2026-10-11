@@ -192,10 +192,9 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   `DocxToPdfConverterTest.real_conversion_produces_valid_pdf_when_libreoffice_installed`
   (`@EnabledIf("hasLibreOffice")`) et les 3 tests de `HtmlToPdfConverterTest` (assumption
   « LibreOffice absent »). La conversion PDF n'est donc jamais verifiee par `verify -Pit` ici.
-- **Gabarits rendus par deux mappers differents** : `RAPPORT_GESTION` (AnnualReportMapper et
-  ApprobationComptesMapper), `PV_DISSOLUTION_LIQUIDATION_SARL` et
+- **Gabarits rendus par deux mappers differents** : `PV_DISSOLUTION_LIQUIDATION_SARL` et
   `PV_DISSOLUTION_LIQUIDATION_SARL_AU` (DissolutionMapper et LiquidationMapper). Doublon a
-  resorber au lot qui unifie les parcours.
+  resorber au lot qui unifie les parcours (`RAPPORT_GESTION` : resolu en L4d, RapportGestionVarsBuilder).
 
 ### Lot L2 (chargeur du corpus, 2026-10-09) -- dette relevee
 

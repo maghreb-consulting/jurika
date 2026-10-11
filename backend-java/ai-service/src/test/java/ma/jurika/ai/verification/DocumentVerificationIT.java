@@ -127,10 +127,6 @@ class DocumentVerificationIT {
             Map.entry("ANNONCE_LEGALE_DISSOLUTION_SARL_AU", Map.of(Source.CLASSPATH, CLASSPATH_PERIME)),
             Map.entry("ANNONCE_LEGALE_LIQUIDATION_SARL", Map.of(Source.CLASSPATH, CLASSPATH_PERIME)),
             Map.entry("ANNONCE_LEGALE_LIQUIDATION_SARL_AU", Map.of(Source.CLASSPATH, CLASSPATH_PERIME)),
-            // Gabarit du classpath qui imprime sa notice de saisie ; bascule sur
-            // RAPPORT_GESTION_EXERCICE_SARL(_AU) du corpus.
-            Map.entry("RAPPORT_GESTION", Map.of(Source.CLASSPATH,
-                    "L4c : bascule sur RAPPORT_GESTION_EXERCICE_SARL(_AU) du corpus (saisie a refaire)")),
             // Ecart du CORPUS (gabarits intouchables, rapporte au cabinet) : $ASSOCIE_UNIQUE, drapeau
             // "oui" / "non", imprime sous "L'associe unique" a la place de son identite.
             Map.entry("PV_CREATION_SUCCURSALE_MAROC_SARL_AU", Map.of(Source.CORPUS, ECART_CORPUS)),
@@ -149,7 +145,12 @@ class DocumentVerificationIT {
             // Lot L4d (E11) : avis d'ouverture de succursale d'une societe etrangere, rendu par
             // le modele du corpus ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SOCIETE_ETRANGERE.
             "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL",
-            "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL_AU");
+            "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL_AU",
+            // Lot L4d (E11e) : rapport de gestion rendu par RAPPORT_GESTION_EXERCICE_SARL(_AU).
+            "RAPPORT_GESTION",
+            // Lot L4d (E11b) : convocation et feuille de presence rendues par les modeles du corpus.
+            "CONVOCATION_AG",
+            "FEUILLE_PRESENCE_AG");
 
     static final Set<String> DOCUMENTS_ANNULATION =
             new ma.jurika.ai.workflow.mapper.AnnulationMapper().supportedTemplates();
