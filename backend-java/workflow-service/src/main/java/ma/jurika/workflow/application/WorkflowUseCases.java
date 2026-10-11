@@ -371,7 +371,7 @@ public class WorkflowUseCases {
         // = ticket cloture.
         if (finalStepValidated && p.statut() != WorkflowStatut.TERMINE) {
             // Lot L4c (E1, RG-TKT-02, RG-CLO-04) : tout parcours finit au statut 3
-            // « Deroulement de la demarche » ; la cloture est explicite (fiche du ticket),
+            // "Deroulement de la demarche" ; la cloture est explicite (fiche du ticket),
             // apres les demarches. Avant : saut direct a la cloture hors creation.
             autoTransitionTicket(workspaceId, ticketId, userId,
                     "GENERATION_DOCUMENTS", "DEROULEMENT_DEMARCHE", "WORKFLOW_COMPLETED");
