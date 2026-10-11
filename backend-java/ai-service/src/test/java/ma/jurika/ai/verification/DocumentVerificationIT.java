@@ -109,7 +109,7 @@ class DocumentVerificationIT {
             Map.entry("PV_APPROBATION_COMPTES_SARL_AU", ECART_CORPUS),
             // Gabarit du classpath qui imprime sa notice de saisie ; bascule sur
             // RAPPORT_GESTION_EXERCICE_SARL(_AU) du corpus.
-            Map.entry("RAPPORT_GESTION", "L4b : bascule sur le modele du corpus"),
+            Map.entry("RAPPORT_GESTION", "L4c : bascule sur RAPPORT_GESTION_EXERCICE_SARL(_AU) du corpus (saisie a refaire)"),
             // Ecart du CORPUS (gabarits intouchables, rapporte au cabinet) : $ASSOCIE_UNIQUE, drapeau
             // "oui" / "non", imprime sous "L'associe unique" a la place de son identite.
             Map.entry("PV_CREATION_SUCCURSALE_MAROC_SARL_AU", ECART_CORPUS),
