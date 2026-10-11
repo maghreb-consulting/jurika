@@ -31,14 +31,8 @@ class DirecteurTemplateContentUnchangedTest {
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {
-            // Lot A (2026-09-10) — les deux statuts RESTENT : le corpus de création
-            // d'août est parti, mais ces deux gabarits sont ceux que la refonte des
-            // statuts (MODIFICATION, STATUTS_REFONDUS_*) rend encore.
-            // ACTE_NOMINATION_GERANT_modele_deterministe.docx et
-            // ANNONCE_LEGALE_modele_deterministe.docx ont été supprimés avec la voie
-            // création : leurs entrées et leurs baselines sont retirées d'ici.
-            "STATUTS_SARL_modele_deterministe.docx",
-            "STATUTS_SARL_AU_modele_deterministe.docx",
+            // Lot L4d (E11) : les statuts refondus sont rendus par les statuts du corpus ; les
+            // deux gabarits deterministes du directeur et leurs baselines sont retires.
             // Phase 4 — PV de séance (incident) transverses.
             "PV_DEFAUT_QUORUM_SARL.docx",
             "PV_DEFAUT_QUORUM_SARL_AU.docx",

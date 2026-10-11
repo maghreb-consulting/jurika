@@ -157,9 +157,8 @@ public final class DocumentTypes {
     // STATUTS_SARL_AU_DIRECTEUR, ACTE_NOMINATION_GERANT_DIRECTEUR,
     // ANNONCE_LEGALE_DIRECTEUR), retirés du manifeste avec eux.
     //
-    // ⚠ Les gabarits STATUTS_SARL_modele_deterministe.docx et son pendant SARL AU
-    // restent sur le disque : la refonte des statuts (MODIFICATION,
-    // STATUTS_REFONDUS_*) les rend encore, via RefonteStatutsVarsBuilder.
+    // Lot L4d (E11) : la refonte des statuts (STATUTS_REFONDUS_*) rend les statuts du
+    // corpus (alias de code du manifeste) ; les gabarits deterministes sont retires.
     //
     // ⚠ Aucun mapper ne route ces 23 codes : la résolution des variables est
     // l'objet du lot B (253 variables nouvelles, dont 160 à saisir). Jusque-là,
