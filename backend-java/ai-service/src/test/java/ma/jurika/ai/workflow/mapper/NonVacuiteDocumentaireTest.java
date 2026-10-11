@@ -53,7 +53,8 @@ class NonVacuiteDocumentaireTest {
      * saute sans lui.
      */
     private static final java.nio.file.Path CORPUS =
-            java.nio.file.Path.of(System.getProperty("user.home"), "corpus", "CORPUS_2026-10-11");
+            java.nio.file.Path.of(System.getenv().getOrDefault("JURIKA_CORPUS_REEL",
+            System.getProperty("user.home") + "/corpus/CORPUS_2026-10-11"));
 
     @BeforeEach
     void setUp() throws Exception {

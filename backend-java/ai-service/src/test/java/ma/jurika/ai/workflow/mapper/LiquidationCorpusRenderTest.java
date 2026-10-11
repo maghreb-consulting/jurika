@@ -34,7 +34,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class LiquidationCorpusRenderTest {
 
-    private static final Path CORPUS = Path.of(System.getProperty("user.home"), "corpus", "CORPUS_2026-10-11");
+    private static final Path CORPUS = Path.of(System.getenv().getOrDefault("JURIKA_CORPUS_REEL",
+            System.getProperty("user.home") + "/corpus/CORPUS_2026-10-11"));
     private static final Path OUT = Path.of("target", "output", "liquidation-corpus");
     private static final Pattern RESIDU = Pattern.compile("\\$[A-Z][A-Z0-9_]+|[\\u25C7\\u25C6\\u25BC\\u25B2\\u25C8]");
 

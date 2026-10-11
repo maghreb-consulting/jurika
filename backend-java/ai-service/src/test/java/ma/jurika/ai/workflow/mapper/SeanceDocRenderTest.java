@@ -42,7 +42,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  */
 class SeanceDocRenderTest {
 
-    private static final Path CORPUS = Path.of(System.getProperty("user.home"), "corpus", "CORPUS_2026-10-11");
+    private static final Path CORPUS = Path.of(System.getenv().getOrDefault("JURIKA_CORPUS_REEL",
+            System.getProperty("user.home") + "/corpus/CORPUS_2026-10-11"));
     private static final Path SORTIE = Path.of("target", "output", "seance-corpus");
     private static final Pattern BARE_VAR = Pattern.compile("\\$[A-Z][A-Z0-9_]{2,}");
     private static DocxTemplateEngine engine;
