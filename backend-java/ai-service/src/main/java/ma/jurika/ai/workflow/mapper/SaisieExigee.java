@@ -25,7 +25,7 @@ final class SaisieExigee {
     }
 
     static GenerationRefuseeException refus(String templateCode, String variable, String libelle) {
-        return new GenerationRefuseeException(templateCode, libelle + " : non indiqué(e)",
+        return new GenerationRefuseeException(templateCode, libelle + " : non indiqu\u00e9(e)",
                 List.of(new GenerationRefuseeException.DonneeManquante(variable, libelle, null)));
     }
 

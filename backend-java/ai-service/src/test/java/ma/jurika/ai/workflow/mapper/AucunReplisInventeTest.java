@@ -26,7 +26,7 @@ class AucunReplisInventeTest {
         p.put("seance", Map.of("date", "2026-05-15", "quorumAtteint", "oui"));
         p.put("quorumAtteint", "oui");
         p.put("associes", List.of(Map.of("civilite", "M.", "prenom", "Ahmed", "nom", "Alaoui",
-                "nombreParts", 1000, "presence", "présent")));
+                "nombreParts", 1000, "presence", "pr\u00e9sent")));
         return p;
     }
 
@@ -45,7 +45,7 @@ class AucunReplisInventeTest {
             Map<String, Object> p = seance();
             p.put("resolutions", List.of(r));
             Map<String, Object> it = resolution(ModificationDirecteurMapper.pvVars("PV_MODIFICATION_SARL", p));
-            assertThat(it.toString()).doesNotContain("démission", "durée illimitée", "mensuelle",
+            assertThat(it.toString()).doesNotContain("d\u00e9mission", "dur\u00e9e illimit\u00e9e", "mensuelle",
                     "6 et 7", "une succession");
         }
     }
@@ -78,6 +78,6 @@ class AucunReplisInventeTest {
         p.put("dissolution", Map.of("nature", "article 86"));
         Map<String, Object> v = new DissolutionMapper().map("PV_DISSOLUTION_LIQUIDATION_SARL", p);
         assertThat(v).containsEntry("DISSOLUTION_MOTIF", "article 86");
-        assertThat(v.toString()).doesNotContain("exercées à titre gratuit").doesNotContain("volontaire");
+        assertThat(v.toString()).doesNotContain("exerc\u00e9es \u00e0 titre gratuit").doesNotContain("volontaire");
     }
 }
