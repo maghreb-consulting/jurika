@@ -1066,6 +1066,15 @@ public class DocxTemplateEngine {
         if (eq.matches()) {
             String var = eq.group(1);
             String expected = stripGuillemets(eq.group(2));
+            // Lot L4d (E11e) : condition homonyme d'une boucle (ecart mecanique du corpus,
+            // ex. $EVENEMENTS_POST_CLOTURE du rapport de gestion) : la valeur est la liste de
+            // la boucle. Comparee comme texte, elle ne valait jamais "oui" (branche SINON
+            // imprimee en silence) : une liste vaut "oui" si elle a des elements, sinon "non".
+            if (scopeLookup(scope, var) instanceof List<?> liste) {
+                String attendu = normalizeCompare(expected);
+                if (attendu.equals("oui")) return !liste.isEmpty();
+                if (attendu.equals("non")) return liste.isEmpty();
+            }
             String actual = scopeString(scope, var);
             return normalizeCompare(actual).equals(normalizeCompare(expected));
         }
