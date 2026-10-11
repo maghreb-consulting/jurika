@@ -36,6 +36,9 @@ import {
   buildLiquidateurOptions,
   emptyLiquidateur,
   type LiquidateurState,
+  champsPersonneMorale,
+  identiteLiquidateur,
+  manqueLiquidateur,
 } from '../../components/workflow/LiquidateurPicker';
 import {
   PiecesJointesPanel,
@@ -330,11 +333,9 @@ function DissolutionWorkflowPageBody() {
     if (motif.trim().length < MOTIF_MIN_LENGTH) {
       errs.motif = `Le motif est trop court (${motif.trim().length}/${MOTIF_MIN_LENGTH} caracteres minimum) — precisez la cause.`;
     }
-    if (!liquidateur.nom.trim()) {
-      errs.liquidateur = 'Designez le liquidateur (gerant/associe existant ou tiers).';
-    } else if (!liquidateur.adresse.trim()) {
-      errs.liquidateur = "L'adresse du liquidateur est obligatoire : elle figure dans l'annonce legale.";
-    }
+    // Lot L4d (E5) : personne physique ou morale, message nomme.
+    const manque = manqueLiquidateur(liquidateur);
+    if (manque) errs.liquidateur = manque;
     if (siegeIdentique === 'non' && !siegeLiquidation.trim()) {
       errs.siegeLiquidation = "Indiquez l'adresse du siège de la liquidation.";
     }
@@ -382,6 +383,7 @@ function DissolutionWorkflowPageBody() {
           ? 'féminin'
           : 'masculin') as 'masculin' | 'féminin',
         remuneration: liquidateur.remuneration,
+        ...champsPersonneMorale(liquidateur), // L4d (E5)
         siege: siegeIdentique === 'non' ? siegeLiquidation : '',
         siegeIdentique,
         mandatDateEffet,
@@ -424,6 +426,8 @@ function DissolutionWorkflowPageBody() {
           cin: liquidateur.cin || undefined,
           adresse: liquidateur.adresse,
           remuneration: liquidateur.remuneration,
+          ...champsPersonneMorale(liquidateur), // L4d (E5)
+        ...champsPersonneMorale(liquidateur), // L4d (E5)
           siege: siegeIdentique === 'non' ? siegeLiquidation : '',
           mandatDateEffet,
         },
@@ -1048,9 +1052,7 @@ function DissolutionWorkflowPageBody() {
                 <div>
                   <p className="text-xs text-fg-subtle">Identite</p>
                   <p className="text-sm font-medium text-fg">
-                    {[liquidateur.civilite, liquidateur.prenom, liquidateur.nom]
-                      .filter(Boolean)
-                      .join(' ') || '—'}{' '}
+                    {identiteLiquidateur(liquidateur) || '—'}{' '}
                     <span className="text-xs font-normal text-fg-subtle">
                       ({liquidateur.source === 'BD' ? 'partie prenante du dossier' : 'externe'})
                     </span>

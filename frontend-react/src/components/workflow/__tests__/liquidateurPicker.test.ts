@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { buildLiquidateurOptions, emptyLiquidateur } from '../LiquidateurPicker';
+import {
+  buildLiquidateurOptions, champsPersonneMorale, emptyLiquidateur, identiteLiquidateur, manqueLiquidateur,
+} from '../LiquidateurPicker';
 import type { DossierParties } from '../../../services/workflow.service';
 
 /**
@@ -29,10 +31,14 @@ describe('buildLiquidateurOptions', () => {
     expect(opts.filter((o) => o.nom === 'ALAOUI')).toHaveLength(1);
   });
 
-  it('exclut les personnes morales (le liquidateur est une personne physique)', () => {
+  // Lot L4d (E5) : décision du directeur du 11 octobre 2026, le liquidateur peut être une
+  // personne morale (auparavant exclue de la liste).
+  it('propose aussi un associé personne morale, désigné par sa dénomination', () => {
     const opts = buildLiquidateurOptions(parties);
-    expect(opts.some((o) => o.label.includes('HOLDING'))).toBe(false);
-    expect(opts).toHaveLength(2);
+    const pm = opts.find((o) => o.label.includes('HOLDING'));
+    expect(pm).toMatchObject({ morale: true, denomination: 'HOLDING SA', role: 'associe' });
+    expect(pm?.label).toContain('personne morale');
+    expect(opts).toHaveLength(3);
   });
 
   it('reprend civilité, CIN et adresse connus (aucune re-saisie)', () => {
@@ -57,5 +63,29 @@ describe('emptyLiquidateur', () => {
     expect(l.nom).toBe('');
     // L4a (E2) : la rémunération n'est plus supposée ; l'écran la propose, l'employé confirme.
     expect(l.remuneration).toBe('');
+  });
+});
+
+describe('Liquidateur personne morale (lot L4d, E5)', () => {
+  const pm = {
+    ...emptyLiquidateur(), source: 'EXTERNE' as const, forme: 'morale' as const, civilite: '',
+    denomination: 'FIDUCIAIRE ATLAS', siegeSocial: '10 rue d’Agadir, Casablanca', representantNom: 'M. Karim BENNANI',
+    rcNumero: '445566', rcVille: 'Casablanca',
+  };
+
+  it('est désigné par sa dénomination', () => {
+    expect(identiteLiquidateur(pm)).toBe('FIDUCIAIRE ATLAS');
+    expect(manqueLiquidateur(pm)).toBeNull();
+  });
+
+  it('nomme ce qui manque : dénomination, siège, représentant permanent', () => {
+    expect(manqueLiquidateur({ ...pm, denomination: '' })).toMatch(/dénomination/);
+    expect(manqueLiquidateur({ ...pm, siegeSocial: '' })).toMatch(/siège social/);
+    expect(manqueLiquidateur({ ...pm, representantNom: '' })).toMatch(/représentant permanent/);
+  });
+
+  it('transmet ses champs propres, et rien pour une personne physique', () => {
+    expect(champsPersonneMorale(pm)).toMatchObject({ forme: 'morale', denomination: 'FIDUCIAIRE ATLAS', rcNumero: '445566' });
+    expect(champsPersonneMorale(emptyLiquidateur())).toEqual({});
   });
 });

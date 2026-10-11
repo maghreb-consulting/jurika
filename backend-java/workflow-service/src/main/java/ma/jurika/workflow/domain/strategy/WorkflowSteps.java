@@ -114,4 +114,21 @@ public final class WorkflowSteps {
         Object v = m.get(key);
         return (v instanceof List<?> l) ? l : List.of();
     }
+
+    /**
+     * Lot L4d (E5) : le liquidateur est une personne physique (identifiee par son nom) ou
+     * une personne morale (forme = "morale", identifiee par sa denomination).
+     */
+    public static boolean liquidateurPersonneMorale(java.util.Map<String, Object> liquidateur) {
+        Object f = liquidateur == null ? null : liquidateur.get("forme");
+        return f != null && "morale".equalsIgnoreCase(String.valueOf(f).trim());
+    }
+
+    /** Identite du liquidateur (nom, ou denomination d'une personne morale), ou null. */
+    public static String identiteLiquidateur(java.util.Map<String, Object> liquidateur) {
+        if (liquidateur == null) return null;
+        Object v = liquidateurPersonneMorale(liquidateur) ? liquidateur.get("denomination") : liquidateur.get("nom");
+        String s = v == null ? null : String.valueOf(v).trim();
+        return s == null || s.isEmpty() ? null : s;
+    }
 }

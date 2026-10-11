@@ -132,15 +132,21 @@ public final class DissolutionAnnonceVarsBuilder {
         tribunal(v, safe);
     }
 
-    /** Liquidateur : personne physique saisie ; personne morale si sa denomination est donnee. */
+    /**
+     * Liquidateur : personne physique saisie ; personne morale (forme "morale", lot L4d E5, ou
+     * denomination donnee) avec son capital, son ICE et son representant permanent.
+     */
     static void liquidateurCorpus(Map<String, Object> v, Map<String, Object> liquidateur) {
-        if (!str(liquidateur.get("denomination")).isBlank()) {
+        if ("morale".equalsIgnoreCase(str(liquidateur.get("forme")))
+                || !str(liquidateur.get("denomination")).isBlank()) {
             v.put("LIQUIDATEUR_FORME", "personne morale");
             putSi(v, "LIQUIDATEUR_DENOMINATION", str(liquidateur.get("denomination")));
             putSi(v, "LIQUIDATEUR_FORME_JURIDIQUE", str(liquidateur.get("formeJuridique")));
             putSi(v, "LIQUIDATEUR_SIEGE_SOCIAL", str(liquidateur.get("siegeSocial")));
             putSi(v, "LIQUIDATEUR_RC_VILLE", str(liquidateur.get("rcVille")));
             putSi(v, "LIQUIDATEUR_RC_NUMERO", str(liquidateur.get("rcNumero")));
+            putSi(v, "LIQUIDATEUR_CAPITAL_CHIFFRES", str(liquidateur.get("capital")));
+            putSi(v, "LIQUIDATEUR_ICE", str(liquidateur.get("ice")));
             putSi(v, "LIQUIDATEUR_REPRESENTANT_PERMANENT_NOM", str(liquidateur.get("representantNom")));
             putSi(v, "LIQUIDATEUR_REPRESENTANT_PERMANENT_QUALITE", str(liquidateur.get("representantQualite")));
         } else if (!str(liquidateur.get("nom")).isBlank()) {

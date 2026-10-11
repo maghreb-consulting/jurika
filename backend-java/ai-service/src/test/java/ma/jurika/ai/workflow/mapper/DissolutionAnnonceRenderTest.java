@@ -221,4 +221,28 @@ class DissolutionAnnonceRenderTest {
         assertFalse(m.find(), label + " : marqueur condition/boucle résiduel");
         assertFalse(text.contains("VALEUR MANQUANTE"), label + " : variable manquante dans le rendu");
     }
+
+    /** Lot L4d (E5) : liquidateur personne morale, variables du corpus ($LIQUIDATEUR_FORME...). */
+    @Test
+    void liquidateur_personne_morale_alimente_les_variables_du_corpus() {
+        Map<String, Object> l = new HashMap<>();
+        l.put("forme", "morale");
+        l.put("denomination", "FIDUCIAIRE ATLAS");
+        l.put("formeJuridique", "SARL");
+        l.put("capital", "100 000");
+        l.put("siegeSocial", "10 RUE D'AGADIR, CASABLANCA");
+        l.put("rcVille", "Casablanca");
+        l.put("rcNumero", "445566");
+        l.put("ice", "001122334000055");
+        l.put("representantNom", "M. Karim BENNANI");
+        l.put("representantQualite", "gerant");
+        Map<String, Object> v = new HashMap<>();
+        DissolutionAnnonceVarsBuilder.liquidateurCorpus(v, l);
+        assertEquals("personne morale", v.get("LIQUIDATEUR_FORME"));
+        assertEquals("FIDUCIAIRE ATLAS", v.get("LIQUIDATEUR_DENOMINATION"));
+        assertEquals("100 000", v.get("LIQUIDATEUR_CAPITAL_CHIFFRES"));
+        assertEquals("001122334000055", v.get("LIQUIDATEUR_ICE"));
+        assertEquals("M. Karim BENNANI", v.get("LIQUIDATEUR_REPRESENTANT_PERMANENT_NOM"));
+        assertFalse(v.containsKey("LIQUIDATEUR_PIECE_NUMERO"));
+    }
 }
