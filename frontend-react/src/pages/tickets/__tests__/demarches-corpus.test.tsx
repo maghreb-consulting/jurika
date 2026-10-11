@@ -78,8 +78,10 @@ describe('Décisions du ticket', () => {
     fireEvent.click(screen.getByRole('button', { name: /Enregistrer les décisions/ }));
     await waitFor(() => expect(put).toHaveBeenCalledWith('/tickets/t1/decisions',
       { decisions: [{ matrice: M, code: 'approbation_comptes' }] }));
-    expect(recharger).toHaveBeenCalled();
-    expect(screen.queryByTestId('decisions-manques')).toBeNull();
+    // La reponse du serveur met l'etat a jour, puis le rendu suit : on attend l'etat final
+    // (CI L4b #35 : la verification immediate tombait parfois avant le rendu).
+    await waitFor(() => expect(recharger).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByTestId('decisions-manques')).toBeNull());
   });
 
   it('n’offre aucun choix en consultation', async () => {
