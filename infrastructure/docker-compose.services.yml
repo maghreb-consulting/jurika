@@ -143,6 +143,9 @@ services:
       SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
       SMTP_FROM: ${SMTP_FROM:-noreply@jurika.ma}
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-JURIKA}
+      # Liens des courriels (verification d'adresse, confirmation d'un changement de
+      # compte) : adresse publique du front. Sans elle, le lien visait localhost:5173.
+      FRONTEND_URL: ${FRONTEND_URL:-http://${JURIKA_LAN_HOST:-localhost}}
     volumes:
       - ./secrets/jwt:/run/secrets/jwt:ro
     depends_on:

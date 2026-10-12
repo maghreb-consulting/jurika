@@ -89,7 +89,7 @@ public class RegisterWorkspaceUseCase {
                                      LoginEmailService loginEmailService,
                                      TokenIssuer tokenIssuer,
                                      @Value("${jurika.auth.email-verification-ttl-hours:24}") long emailTokenTtlHours,
-                                     @Value("${jurika.email.verification-base-url:http://localhost:5173/auth/verify-email}") String verificationBaseUrl) {
+                                     @Value("${jurika.email.verification-base-url:http://localhost:5173/verify-email}") String verificationBaseUrl) {
         this.workspaceRepository = workspaceRepository;
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;

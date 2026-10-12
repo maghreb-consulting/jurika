@@ -57,7 +57,7 @@ jurika:
   email:
     from: noreply@jurika.ma
     from-name: JURIKA
-    verification-base-url: http://localhost:5173/auth/verify-email
+    verification-base-url: http://localhost:5173/verify-email
 
 logging:
   level:
