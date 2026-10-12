@@ -301,9 +301,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   avant validation (dataroom).
 - **Front : boutons d'action encore visibles au superviseur** alors que le serveur les refuse
   (E5, E5b, E6) ; 46 fichiers du front citent `SUPERVISEUR`.
-- **Chatbot (lot L5)** : corpus RAG range par workspace (`CorpusRetriever`, `WHERE workspace_id
-  = ?`). Les sources du super-admin (seul autorise depuis E24) restent dans son workspace et
-  n'atteignent pas les cabinets : corpus commun a concevoir (migration probable).
 - **Export ZIP du Dossier Juridique** : echec complet (`duplicate entry`) quand deux documents
   d'un meme type portent le meme nom de fichier (`exportSelectionAsZip`).
 - **Dockerfiles Java : `dependency:go-offline ... || true`** (les 10 services) : l'erreur de
