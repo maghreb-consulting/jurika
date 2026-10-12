@@ -7,6 +7,7 @@ import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import { RecoverWithCodePage } from './pages/auth/RecoverWithCodePage';
 import { Setup2FAPage } from './pages/auth/Setup2FAPage';
 import { VerifyEmailPage } from './pages/auth/VerifyEmailPage';
+import { ConfirmerChangementComptePage } from './pages/auth/ConfirmerChangementComptePage';
 import { ForceChangePasswordPage } from './pages/auth/ForceChangePasswordPage';
 import { Choose2faMethodPage } from './pages/auth/Choose2faMethodPage';
 import { ProfileSecurityPage } from './pages/account/ProfileSecurityPage';
@@ -79,6 +80,8 @@ function App() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth/recover-with-code" element={<RecoverWithCodePage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        {/* Lot L5 (E10) : lien de confirmation d'un changement d'adresse ou d'identifiant. */}
+        <Route path="/confirmer-changement-compte" element={<ConfirmerChangementComptePage />} />
         <Route path="/forbidden" element={<ForbiddenPage />} />
 
         {/* Sprint Beta (pricing-deploy) -- pages legales publiques (TASK 6) */}
