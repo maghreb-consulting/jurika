@@ -20,6 +20,7 @@ const svc = {
   mesDroits: vi.fn(),
   getJuridique: vi.fn(),
   deleteJuridiqueDocument: vi.fn(),
+  downloadDocument: vi.fn(),
 };
 vi.mock('../../../services/dataroom.service', () => ({
   // Les autres appels des composants enfants (types de documents, etc.) rendent une liste vide.
@@ -30,9 +31,9 @@ vi.mock('../../../services/dataroom.service', () => ({
     },
   }),
 }));
-const tickets = { listDebours: vi.fn(), downloadDeboursPdf: vi.fn() };
+const tickets = { listDebours: vi.fn(), downloadEtatDebours: vi.fn() };
 vi.mock('../../../services/ticket.service', () => ({
-  ticketService: { listDebours: (...a: unknown[]) => tickets.listDebours(...a), downloadDeboursPdf: (...a: unknown[]) => tickets.downloadDeboursPdf(...a) },
+  ticketService: { listDebours: (...a: unknown[]) => tickets.listDebours(...a), downloadEtatDebours: (...a: unknown[]) => tickets.downloadEtatDebours(...a) },
 }));
 
 import { HistoriqueResponsablesPanel } from '../components/HistoriqueResponsablesPanel';
@@ -125,18 +126,32 @@ describe('3. Debours cote client', () => {
     { ticketId: null, libelle: 'Hors ticket', reference: null, type: null, statut: null, ouvertLe: null, groupes: [], totalDocuments: 0 },
   ] as unknown as DossierTicket[];
 
-  it('affiche les frais et le total de chaque operation, et le PDF', async () => {
-    tickets.listDebours.mockResolvedValue({
-      items: [{ id: 'x', ticketId: 't1', libelle: 'Frais de greffe', categorie: 'FRAIS_TRIBUNAL', montantMad: 350, dateEngagement: '2026-09-02', pieceJointeUrl: null, pieceJointeFilename: null, notes: null, createdAt: '2026-09-02' }],
-      total: 350,
-    });
-    render(<ClientDebours operations={operations} />);
-    expect(await screen.findByText('Frais de greffe')).toBeInTheDocument();
+  const fraisGreffe = { id: 'x', ticketId: 't1', libelle: 'Dépôt au greffe', categorie: 'FRAIS_GREFFE', montantMad: 350, dateEngagement: '2026-09-02', pieceJointeUrl: null, pieceJointeFilename: 'quittance.pdf', pieceDocumentId: 'doc-q', notes: null, createdAt: '2026-09-02' };
+
+  it('affiche les frais, le total, l etat Word et les pieces si le telechargement est permis', async () => {
+    tickets.listDebours.mockResolvedValue({ items: [fraisGreffe], total: 350 });
+    tickets.downloadEtatDebours.mockResolvedValue(undefined);
+    svc.downloadDocument.mockResolvedValue(undefined);
+    render(<ClientDebours operations={operations} canDownload />);
+    expect(await screen.findByText('Dépôt au greffe')).toBeInTheDocument();
     expect(tickets.listDebours).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('table')).toHaveTextContent('Total');
-    fireEvent.click(screen.getByRole('button', { name: 'Télécharger l’état des débours (PDF)' }));
-    expect(tickets.downloadDeboursPdf).toHaveBeenCalledWith('t1', 'T-2026-001');
+    fireEvent.click(screen.getByRole('button', { name: 'Télécharger l’état des débours (Word)' }));
+    expect(tickets.downloadEtatDebours).toHaveBeenCalledWith('t1', 'T-2026-001');
+    fireEvent.click(screen.getByRole('button', { name: /quittance\.pdf/ }));
+    expect(svc.downloadDocument).toHaveBeenCalledWith('doc-q', 'quittance.pdf');
+    expect(screen.queryByText(/PDF\)/)).not.toBeInTheDocument();
     expect(screen.getByRole('note', { name: 'Consulter vos débours' })).toBeInTheDocument();
+  });
+
+  it('sans permission de telecharger : lecture seule, l aide le dit', async () => {
+    tickets.listDebours.mockResolvedValue({ items: [fraisGreffe], total: 350 });
+    render(<ClientDebours operations={operations} canDownload={false} />);
+    expect(await screen.findByText('Dépôt au greffe')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /état des débours/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /quittance/ })).not.toBeInTheDocument();
+    expect(screen.getByText('quittance.pdf')).toBeInTheDocument();
+    expect(screen.getByText(/Le téléchargement n’est pas ouvert sur votre accès/)).toBeInTheDocument();
   });
 
   it('une operation refusee par le serveur affiche le motif', async () => {
@@ -144,7 +159,7 @@ describe('3. Debours cote client', () => {
       status: 403, statusText: 'Forbidden', headers: {}, config: {} as never,
       data: { message: 'La consultation des documents n’est pas autorisée pour votre accès.' },
     }));
-    render(<ClientDebours operations={operations} />);
+    render(<ClientDebours operations={operations} canDownload />);
     expect(await screen.findByText(/n’est pas autorisée/)).toBeInTheDocument();
   });
 });

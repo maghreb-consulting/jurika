@@ -16,6 +16,7 @@ import { DOCUMENT_TYPE_LABELS } from '../../types/dataroom';
 import { referenceDocument } from '../../lib/referencesLisibles';
 import { ProvenanceDonnees } from '../../components/workflow/ProvenanceDonnees';
 import { DecisionsTicketPanel } from './DecisionsTicketPanel';
+import { DeboursPanel } from './DeboursPanel';
 import { DemarchesPanel } from './DemarchesPanel';
 import { NoteTicketPanel } from './NoteTicketPanel';
 import { RecapitulatifPanel } from './RecapitulatifPanel';
@@ -124,7 +125,8 @@ export function TicketPage() {
         <p>
           Tout le ticket est ici, quel que soit le parcours. De haut en bas : ce qui empêche de passer au
           statut suivant, les décisions qui choisissent les démarches, les données déjà saisies et leur
-          provenance, les documents produits ou déposés, les démarches à cocher et la note interne.
+          provenance, les documents produits ou déposés, les débours et leur état, les démarches à
+          cocher et la note interne.
           La saisie et la génération des actes se font sur la page du parcours, ouverte par le bouton
           « Ouvrir le parcours ».
         </p>
@@ -215,6 +217,9 @@ export function TicketPage() {
           </ul>
         )}
       </section>
+
+      <DeboursPanel ticketId={ticketId} reference={ticket.reference} dossierId={ticket.dossierId ?? null}
+        statut={ticket.statut} canAct={canAct} />
 
       <DemarchesPanel key={versionDemarches} ticketId={ticketId} dossierId={ticket.dossierId ?? null} canAct={canAct && actif} />
 

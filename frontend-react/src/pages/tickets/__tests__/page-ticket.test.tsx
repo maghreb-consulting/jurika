@@ -35,6 +35,7 @@ const { stub } = vi.hoisted(() => ({ stub: () => null }));
 vi.mock('../DecisionsTicketPanel', () => ({ DecisionsTicketPanel: stub }));
 vi.mock('../DemarchesPanel', () => ({ DemarchesPanel: stub }));
 vi.mock('../NoteTicketPanel', () => ({ NoteTicketPanel: stub }));
+vi.mock('../DeboursPanel', () => ({ DeboursPanel: stub }));
 vi.mock('../RecapitulatifPanel', () => ({ RecapitulatifPanel: stub }));
 
 import { TicketPage } from '../TicketPage';

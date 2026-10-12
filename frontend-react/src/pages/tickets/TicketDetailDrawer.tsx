@@ -1,28 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Plus, Trash2 } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { Drawer } from '../../components/ui/Drawer';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { TextField } from '../../components/ui/TextField';
-import { Select } from '../../components/ui/Select';
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { ticketService } from '../../services/ticket.service';
 import { useCurrentUser } from '../../store/authStore';
 import { extractError } from '../../lib/api';
-import {
-  firstError,
-  focusFirstError,
-  hasErrors,
-  requiredMsg,
-  type FieldErrors,
-} from '../../lib/formValidation';
-import {
-  CATEGORIE_LABELS,
-  STATUT_LABELS,
-  TICKET_TYPE_LABELS,
-} from '../../types/ticket';
-import type { Debours, DeboursCategorie, Ticket } from '../../types/ticket';
+import { STATUT_LABELS, TICKET_TYPE_LABELS } from '../../types/ticket';
+import type { Ticket } from '../../types/ticket';
 import { CancelTicketDialog } from './CancelTicketDialog';
 import { RepriseTicketDialog } from './RepriseTicketDialog';
 import { AnnulationDocumentsPanel } from './AnnulationDocumentsPanel';
@@ -31,6 +17,7 @@ import { DemarchesPanel } from './DemarchesPanel';
 import { DecisionsTicketPanel } from './DecisionsTicketPanel';
 import { RecapitulatifPanel } from './RecapitulatifPanel';
 import { NoteTicketPanel } from './NoteTicketPanel';
+import { DeboursPanel } from './DeboursPanel';
 import { EntityActivityPanel } from '../../components/tracabilite/EntityActivityPanel';
 
 interface Props {
@@ -52,30 +39,17 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
   const [acces, setAcces] = useState<{ enCharge: boolean; raison: string | null } | null>(null);
   const canAct = user?.role === 'EMPLOYE' && acces?.enCharge === true;
   const [ticket, setTicket] = useState<Ticket | null>(null);
-  const [debours, setDebours] = useState<Debours[]>([]);
-  const [totalDebours, setTotalDebours] = useState(0);
   const [showCancel, setShowCancel] = useState(false);
   // Lot L4a (E6, RG-TKT-05) : sortie d'ANNULE par la seule reprise, au statut anterieur.
   const [showReprise, setShowReprise] = useState(false);
   /** Lot L4b : recharge les demarches apres un changement de decisions. */
   const [versionDemarches, setVersionDemarches] = useState(0);
-  const [showAddDebours, setShowAddDebours] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Suppression d'un debours : confirmation via ConfirmDialog (remplace le
-  // confirm() natif). On memorise le debours cible + l'etat de chargement.
-  const [deboursToDelete, setDeboursToDelete] = useState<Debours | null>(null);
-  const [deletingDebours, setDeletingDebours] = useState(false);
 
   const load = useCallback(async () => {
     ticketService.acces(ticketId).then(setAcces).catch(() => setAcces({ enCharge: false, raison: null }));
     try {
-      const [t, dList] = await Promise.all([
-        ticketService.get(ticketId),
-        ticketService.listDebours(ticketId),
-      ]);
-      setTicket(t);
-      setDebours(dList.items);
-      setTotalDebours(dList.total);
+      setTicket(await ticketService.get(ticketId));
     } catch (err) {
       setError(extractError(err).message);
     }
@@ -92,20 +66,6 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
       await onChanged();
     } catch (err) {
       setError(extractError(err).message);
-    }
-  }
-
-  async function handleDeleteDebours() {
-    if (!deboursToDelete) return;
-    setDeletingDebours(true);
-    try {
-      await ticketService.deleteDebours(ticketId, deboursToDelete.id);
-      setDeboursToDelete(null);
-      await load();
-    } catch (err) {
-      setError(extractError(err).message);
-    } finally {
-      setDeletingDebours(false);
     }
   }
 
@@ -244,74 +204,9 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
             </div>
           )}
 
-          <section>
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-fg">Etat des debours</h3>
-                <p className="text-xs text-fg-subtle">
-                  Total : <span className="font-semibold text-fg">{totalDebours.toLocaleString('fr-FR')} MAD</span>
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={debours.length === 0}
-                  onClick={async () => {
-                    try {
-                      await ticketService.downloadDeboursPdf(ticketId, ticket.reference);
-                    } catch (err) {
-                      console.error('Echec generation PDF debours', err);
-                    }
-                  }}
-                  title={debours.length === 0 ? 'Aucun debours a exporter' : 'Telecharger l etat debours en PDF'}
-                >
-                  Etat PDF
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => setShowAddDebours((v) => !v)}>
-                  <Plus className="mr-1 h-3.5 w-3.5" /> Ajouter
-                </Button>
-              </div>
-            </div>
-
-            {showAddDebours && (
-              <DeboursForm
-                ticketId={ticketId}
-                onCreated={() => {
-                  setShowAddDebours(false);
-                  load();
-                }}
-              />
-            )}
-
-            <ul className="mt-3 divide-y divide-border rounded-lg border border-border">
-              {debours.map((d) => (
-                <li key={d.id} className="flex items-center justify-between px-3 py-2 text-sm">
-                  <div>
-                    <p className="font-medium text-fg">{d.libelle}</p>
-                    <p className="text-xs text-fg-subtle">
-                      {CATEGORIE_LABELS[d.categorie]} — {new Date(d.dateEngagement).toLocaleDateString('fr-FR')}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-semibold text-fg">
-                      {d.montantMad.toLocaleString('fr-FR')} MAD
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setDeboursToDelete(d)}
-                      className="text-rose-500 hover:text-rose-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </li>
-              ))}
-              {debours.length === 0 && (
-                <li className="px-3 py-6 text-center text-xs text-fg-subtle">Aucun debours</li>
-              )}
-            </ul>
-          </section>
+          {/* Lot L5 (E6) : rubrique Debours commune a la page du ticket (saisie, pieces, etat Word). */}
+          <DeboursPanel ticketId={ticketId} reference={ticket.reference} dossierId={ticket.dossierId ?? null}
+            statut={ticket.statut} canAct={canAct} />
 
           {/*
             Lot 1 (2026-09-04) — avancement du parcours et cochage des demarches,
@@ -406,22 +301,6 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
         />
       )}
 
-      <ConfirmDialog
-        open={deboursToDelete !== null}
-        onOpenChange={(o) => {
-          if (!o) setDeboursToDelete(null);
-        }}
-        title="Supprimer ce debours ?"
-        description={
-          deboursToDelete
-            ? `« ${deboursToDelete.libelle} » (${deboursToDelete.montantMad.toLocaleString('fr-FR')} MAD) sera definitivement retire.`
-            : undefined
-        }
-        variant="danger"
-        confirmLabel="Supprimer"
-        loading={deletingDebours}
-        onConfirm={handleDeleteDebours}
-      />
     </>
   );
 }
@@ -444,95 +323,4 @@ function StatutBadge({ s }: { s: Ticket['statut'] }) {
     ANNULE: 'danger',
   }[s] as 'info' | 'warning' | 'success' | 'danger';
   return <Badge variant={variant}>{STATUT_LABELS[s]}</Badge>;
-}
-
-function DeboursForm({ ticketId, onCreated }: { ticketId: string; onCreated: () => void }) {
-  const [libelle, setLibelle] = useState('');
-  const [categorie, setCategorie] = useState<DeboursCategorie>('FRAIS_TRIBUNAL');
-  const [montant, setMontant] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<FieldErrors>({});
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    // Validation JS in-app AVANT l'appel API (aucune bulle native).
-    const nextErrors: FieldErrors = {
-      libelle: requiredMsg(libelle, 'Le libelle est requis.') ?? undefined,
-      montant:
-        firstError(
-          () => requiredMsg(montant, 'Le montant est requis.'),
-          () => {
-            const n = parseFloat(montant);
-            return !Number.isFinite(n) || n <= 0
-              ? 'Veuillez saisir un montant positif.'
-              : null;
-          },
-        ) ?? undefined,
-      date: requiredMsg(date, "La date d'engagement est requise.") ?? undefined,
-    };
-    if (hasErrors(nextErrors)) {
-      setErrors(nextErrors);
-      focusFirstError(nextErrors, ['libelle', 'montant', 'date']);
-      return;
-    }
-    setErrors({});
-    setLoading(true);
-    try {
-      await ticketService.createDebours(ticketId, {
-        libelle,
-        categorie,
-        montant: parseFloat(montant),
-        dateEngagement: date,
-      });
-      onCreated();
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const options = Object.entries(CATEGORIE_LABELS).map(([value, label]) => ({ value, label }));
-
-  return (
-    <form onSubmit={submit} noValidate className="mt-3 grid gap-3 rounded-lg border border-border bg-bg-overlay p-3 md:grid-cols-2">
-      <TextField
-        label="Libelle"
-        name="libelle"
-        value={libelle}
-        onChange={(e) => setLibelle(e.target.value)}
-        error={errors.libelle}
-        required
-      />
-      <Select
-        label="Categorie"
-        value={categorie}
-        onChange={(e) => setCategorie(e.target.value as DeboursCategorie)}
-        options={options}
-      />
-      <TextField
-        label="Montant (MAD)"
-        name="montant"
-        type="number"
-        step="0.01"
-        value={montant}
-        onChange={(e) => setMontant(e.target.value)}
-        error={errors.montant}
-        required
-      />
-      <TextField
-        label="Date engagement"
-        name="date"
-        type="date"
-        value={date}
-        onChange={(e) => setDate(e.target.value)}
-        error={errors.date}
-        required
-      />
-      <div className="md:col-span-2 flex justify-end">
-        <Button type="submit" size="sm" loading={loading}>
-          Enregistrer le debours
-        </Button>
-      </div>
-    </form>
-  );
 }

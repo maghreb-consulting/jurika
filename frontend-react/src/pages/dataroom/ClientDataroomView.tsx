@@ -407,7 +407,7 @@ export function ClientDataroomView() {
               <ClientDepots dossierId={dossier.id} canDepot={canDepot} />
             )}
             {tab === 'debours' && (
-              <ClientDebours operations={juridique?.dossiersParTicket ?? []} />
+              <ClientDebours operations={juridique?.dossiersParTicket ?? []} canDownload={canDownload} />
             )}
             {tab === 'demandes' && (
               <ClientDemandes
