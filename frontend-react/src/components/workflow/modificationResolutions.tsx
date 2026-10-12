@@ -12,7 +12,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
 import { ValeurProposee } from './ValeurProposee';
-import { InfoBulle } from '../ui/Aide';
+import { InfoBulle, TexteAide } from '../ui/Aide';
 
 export type FieldKind = 'text' | 'number' | 'date' | 'textarea' | 'select';
 
@@ -39,6 +39,8 @@ export interface SubListSpec {
   columns: { key: string; label: string; kind: FieldKind }[];
   /** L4d (E11c) : sous-liste propre au proces-verbal d'une forme. */
   seulement?: FormeCible;
+  /** L5 (E5) : aide contextuelle de la liste (InfoBulle). */
+  aide?: string;
 }
 
 export interface TypeSpec {
@@ -55,6 +57,11 @@ export interface TypeSpec {
    * la generation du proces-verbal est refusee ; le texte l'explique avant la saisie.
    */
   nonCouvert?: Partial<Record<FormeCible, string>>;
+  /**
+   * L5 (E5) : texte d'aide de la decision pour une forme (TexteAide, masquable) : ce qu'il faut
+   * saisir, ce qui est calcule, ce qui vient ensuite. `cle` : cle de memorisation du masquage.
+   */
+  note?: Partial<Record<FormeCible, { cle: string; texte: string }>>;
 }
 
 export const OUI_NON = [
@@ -78,8 +85,19 @@ const ARTICLES_AIDE =
 /** L4d (E11c) : textes des decisions que le modele du cabinet ne sait pas encore rediger. */
 const NON_COUVERT_MODELE =
   'Le modèle du cabinet ne permet pas encore de rédiger cette décision sans phrase inexacte : la génération du procès-verbal sera refusée. La correction du modèle est demandée au cabinet.';
-const NON_COUVERT_AU_COMPTES =
-  'Le procès-verbal des décisions de l’associé unique exige pour cette décision des données (réserve légale, retenue à la source…) que cet écran ne recueille pas : la génération sera refusée. Utilisez le parcours d’approbation des comptes.';
+
+/** L5 (E5) : champs du modele des decisions de l'associe unique (retenue a la source). */
+const RETENUE_SOURCE: FieldSpec[] = [
+  { key: 'retenueSourceTaux', label: 'Taux de la retenue à la source (%)', kind: 'text', seulement: 'SARL_AU',
+    placeholder: 'ex. : 10',
+    aide: 'Taux de droit commun applicable à la distribution, en pourcentage. Il n’est jamais prérempli : vérifiez le taux en vigueur. Le montant de la retenue est calculé (montant distribué × taux, au centime).' },
+  { key: 'distributionExerciceOrigine', label: 'Exercice d’origine des sommes distribuées', kind: 'text', seulement: 'SARL_AU',
+    placeholder: 'ex. : 2025',
+    aide: 'Le texte suit « l’exercice d’origine des sommes distribuées étant l’exercice » : saisissez l’année de l’exercice.' },
+  { key: 'retenueSourceExoneration', label: 'Associé unique exonéré de la retenue (société soumise à l’IS) ?', kind: 'select',
+    options: OUI_NON, seulement: 'SARL_AU',
+    aide: 'Oui seulement si l’associé unique est une société résidente soumise à l’impôt sur les sociétés (article 6-I-C-1° du CGI) : la décision rappelle l’exonération et l’attestation de propriété des titres à remettre. Pour une personne physique, la génération refuse « oui ».' },
+];
 
 const MODE_AUGMENTATION = {
   key: 'augcapMode',
@@ -443,13 +461,32 @@ export const RES_SPECS: Record<string, TypeSpec> = {
   },
   affectation_resultat: {
     label: 'Affectation du résultat', family: FAM_COMPTES,
-    nonCouvert: { SARL_AU: NON_COUVERT_AU_COMPTES },
+    note: { SARL_AU: { cle: 'pv-modification-au-affectation', texte:
+      'Indiquez le sens et le montant du résultat. Un bénéfice : précisez si une dotation à la réserve légale est due (quotité, plafond et montant, tels que vous les avez arrêtés), puis répartissez le reste dans la liste des affectations ; le total doit être égal au bénéfice, sinon la génération est refusée. Une perte : elle est affectée en totalité au report à nouveau ; indiquez seulement si la situation nette est devenue inférieure au quart du capital. Les montants en lettres sont calculés. Ensuite : générez le procès-verbal à l’étape suivante.' } },
     fields: [
       { key: 'exerciceClosDate', label: "Date de clôture de l'exercice", kind: 'date' },
+      { key: 'resultatSens', label: 'Résultat', kind: 'select', seulement: 'SARL_AU', options: [
+        { value: 'bénéfice', label: 'Bénéfice' },
+        { value: 'perte', label: 'Perte' },
+      ], aide: 'Bénéfice : la décision affecte le bénéfice net selon la liste ci-dessous. Perte : la décision l’affecte au report à nouveau, sans distribution.' },
       { key: 'resultatMontant', label: 'Montant du résultat (MAD)', kind: 'number' },
+      { key: 'reserveLegaleApplicable', label: 'Dotation à la réserve légale due ? (bénéfice)', kind: 'select', options: OUI_NON,
+        seulement: 'SARL_AU',
+        aide: 'Oui : la décision dote la réserve légale avant les autres affectations. Ne la répétez pas dans la liste des affectations.' },
+      { key: 'reserveLegaleDotationTaux', label: 'Quotité de la dotation (réserve légale)', kind: 'text', seulement: 'SARL_AU',
+        placeholder: 'ex. : 5 %',
+        aide: 'Le texte suit « à hauteur de … du bénéfice net de l’exercice ». La loi n° 5-96 ne fixe pas la réserve légale en SARL : saisissez la quotité retenue par les statuts ou le dossier.' },
+      { key: 'reserveLegalePlafond', label: 'Plafond de la réserve légale', kind: 'text', seulement: 'SARL_AU',
+        placeholder: 'ex. : le dixième du capital social',
+        aide: 'Le texte suit « le prélèvement cessant d’être obligatoire lorsque la réserve atteint » : saisissez le plafond retenu par les statuts.' },
+      { key: 'reserveLegaleDotationMontant', label: 'Montant de la dotation (MAD)', kind: 'number', seulement: 'SARL_AU' },
+      { key: 'capitauxPropresSousQuart', label: 'Situation nette inférieure au quart du capital ? (perte)', kind: 'select',
+        options: OUI_NON, seulement: 'SARL_AU',
+        aide: 'Pour une perte seulement. Oui : la décision rappelle l’obligation de statuer, dans les trois mois de l’approbation des comptes, sur la dissolution anticipée (article 86 de la loi n° 5-96).' },
     ],
     sublist: {
       key: 'affectations', label: 'Affectations',
+      aide: 'Une ligne par poste (« Dividendes », « Autres réserves », « Report à nouveau »…). Pour l’associé unique, la réserve légale se saisit dans ses propres champs ; laissez la liste vide pour une perte.',
       columns: [
         { key: 'poste', label: 'Poste', kind: 'text' },
         { key: 'montant', label: 'Montant (MAD)', kind: 'number' },
@@ -458,22 +495,45 @@ export const RES_SPECS: Record<string, TypeSpec> = {
   },
   distribution_dividendes: {
     label: 'Distribution de dividendes', family: FAM_COMPTES,
-    nonCouvert: { SARL_AU: NON_COUVERT_AU_COMPTES },
+    note: { SARL_AU: { cle: 'pv-modification-au-dividendes', texte:
+      'Saisissez le bénéfice distribuable arrêté au vu des comptes approuvés, le montant distribué, la date de mise en paiement et la retenue à la source. Le montant par part, la date limite légale de mise en paiement (neuf mois après la clôture) et le montant de la retenue sont calculés à la génération ; un montant supérieur au bénéfice distribuable ou une date de paiement au-delà du délai est refusé. Ensuite : générez le procès-verbal à l’étape suivante.' } },
     fields: [
+      { key: 'exerciceClosDate', label: "Date de clôture de l'exercice", kind: 'date', seulement: 'SARL_AU' },
+      { key: 'approbationComptesDate', label: 'Date d’approbation des comptes', kind: 'date', seulement: 'SARL_AU' },
+      { key: 'beneficeDistribuable', label: 'Bénéfice distribuable (MAD)', kind: 'number', seulement: 'SARL_AU',
+        aide: 'Bénéfice distribuable arrêté au vu des états de synthèse approuvés : le montant distribué ne peut pas le dépasser.' },
       { key: 'dividendeTotal', label: 'Dividende global (MAD)', kind: 'number' },
-      { key: 'dividendeParPart', label: 'Dividende par part (MAD)', kind: 'number' },
-      { key: 'dateMisePaiement', label: 'Mise en paiement au plus tard le', kind: 'date' },
+      { key: 'dividendeParPart', label: 'Dividende par part (MAD)', kind: 'number', seulement: 'SARL' },
+      { key: 'dateMisePaiement', label: 'Date de mise en paiement', kind: 'date',
+        aide: 'Au plus tard neuf mois après la clôture de l’exercice (article 83 bis de la loi n° 5-96), sauf prolongation par ordonnance.' },
+      { key: 'prolongationOrdonnance', label: 'Délai prolongé par ordonnance du président du tribunal ?', kind: 'select',
+        options: OUI_NON, seulement: 'SARL_AU',
+        aide: 'Oui : saisissez la date de l’ordonnance et la nouvelle date limite ; le tribunal de commerce est celui du registre de la société.' },
+      { key: 'prolongationOrdonnanceDate', label: 'Date de l’ordonnance (si prolongation)', kind: 'date', seulement: 'SARL_AU' },
+      { key: 'prolongationDateNouvelle', label: 'Nouvelle date limite (si prolongation)', kind: 'date', seulement: 'SARL_AU' },
+      ...RETENUE_SOURCE,
     ],
   },
   distribution_reserves: {
     label: 'Distribution de réserves', family: FAM_COMPTES,
-    nonCouvert: { SARL_AU: NON_COUVERT_AU_COMPTES },
+    note: { SARL_AU: { cle: 'pv-modification-au-reserves', texte:
+      'Listez chaque poste de réserves disponibles prélevé, avec son solde avant le prélèvement. Le total distribué, le solde après prélèvement, le montant par part et la retenue à la source sont calculés à la génération. La réserve légale, indisponible, ne peut pas être distribuée. Ensuite : générez le procès-verbal à l’étape suivante.' } },
     fields: [
-      { key: 'prelevementMontant', label: 'Montant prélevé (MAD)', kind: 'number' },
-      { key: 'prelevementPoste', label: 'Poste de réserve', kind: 'text' },
-      { key: 'dividendeParPart', label: 'Par part (MAD)', kind: 'number' },
-      { key: 'dateMisePaiement', label: 'Mise en paiement au plus tard le', kind: 'date' },
+      { key: 'prelevementMontant', label: 'Montant prélevé (MAD)', kind: 'number', seulement: 'SARL' },
+      { key: 'prelevementPoste', label: 'Poste de réserve', kind: 'text', seulement: 'SARL' },
+      { key: 'dividendeParPart', label: 'Par part (MAD)', kind: 'number', seulement: 'SARL' },
+      { key: 'dateMisePaiement', label: 'Date de mise en paiement', kind: 'date' },
+      ...RETENUE_SOURCE,
     ],
+    sublist: {
+      key: 'reservesPrelevees', label: 'Postes de réserves prélevés', seulement: 'SARL_AU',
+      aide: 'Une ligne par poste : intitulé exact (« Réserves facultatives »…), montant prélevé et solde du poste avant le prélèvement. Le solde après est calculé ; un prélèvement supérieur au solde est refusé.',
+      columns: [
+        { key: 'libelle', label: 'Intitulé du poste', kind: 'text' },
+        { key: 'prelevement', label: 'Prélèvement (MAD)', kind: 'number' },
+        { key: 'soldeAvant', label: 'Solde avant prélèvement (MAD)', kind: 'number' },
+      ],
+    },
   },
   acompte_dividendes: {
     label: 'Acompte sur dividendes', family: FAM_COMPTES,
@@ -768,7 +828,10 @@ export function SubListEditor({
   return (
     <div className="rounded-lg border border-dashed border-border p-3 space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-fg">{spec.label}</span>
+        <span className="inline-flex items-center gap-1 text-sm font-medium text-fg">
+          {spec.label}
+          {spec.aide && <InfoBulle libelle={`Aide : ${spec.label}`} texte={spec.aide} />}
+        </span>
         <button
           type="button"
           onClick={addRow}
@@ -896,12 +959,20 @@ export function ResolutionFieldsEditor({
       ? spec.sublist
       : undefined;
   const nonCouvert = forme ? spec.nonCouvert?.[forme] : undefined;
+  const note = forme ? spec.note?.[forme] : undefined;
   return (
     <>
       {nonCouvert && (
         <p role="alert" className="mb-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
           {nonCouvert}
         </p>
+      )}
+      {note && (
+        <div className="mb-3">
+          <TexteAide cle={note.cle} titre={`${spec.label} : que renseigner ?`}>
+            {note.texte}
+          </TexteAide>
+        </div>
       )}
       {champs.length ? (
         <div className="grid gap-3 md:grid-cols-2">

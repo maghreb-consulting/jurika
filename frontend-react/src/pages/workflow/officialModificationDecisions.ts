@@ -576,6 +576,24 @@ const SARL_AU_DECISIONS: OfficialDecision[] = [
     subGroup: 'Comptes, résultat et distributions',
     resolutionType: 'distribution_dividendes',
   },
+  // L5 (E5) : intitules de la matrice du corpus (MATRICE_DECISIONS_MODIFICATIONS_SARL_AU, lignes 2
+  // et 5), absents de l'inventaire du directeur ; le modele des decisions de l'associe unique a
+  // une branche pour chacune.
+  {
+    id: 'au-ord-affectation-resultat',
+    label: "Affectation du résultat de l'exercice : réserve légale, réserves facultatives, report à nouveau, dividende",
+    group: 'ORDINAIRE',
+    subGroup: 'Comptes, résultat et distributions',
+    resolutionType: 'affectation_resultat',
+  },
+  {
+    id: 'au-ord-distribution-reserves',
+    label:
+      'Distribution exceptionnelle de sommes prélevées sur les réserves facultatives, avec indication des postes de prélèvement',
+    group: 'ORDINAIRE',
+    subGroup: 'Comptes, résultat et distributions',
+    resolutionType: 'distribution_reserves',
+  },
   {
     id: 'au-ord-acompte-dividendes',
     label: "Distribution d'acomptes sur dividendes",

@@ -91,6 +91,23 @@ describe('officialModificationDecisions — catalogue officiel', () => {
     expect(au.map((g) => g.group)).toEqual(GROUP_ORDER.SARL_AU);
   });
 
+  it('L5 (E5) : l’associé unique peut choisir l’affectation du résultat et la distribution de réserves (intitulés de la matrice du corpus)', () => {
+    const affectation = OFFICIAL_DECISIONS.SARL_AU.find((d) => d.resolutionType === 'affectation_resultat');
+    expect(affectation?.label).toBe(
+      "Affectation du résultat de l'exercice : réserve légale, réserves facultatives, report à nouveau, dividende",
+    );
+    const reserves = OFFICIAL_DECISIONS.SARL_AU.find((d) => d.resolutionType === 'distribution_reserves');
+    expect(reserves?.label).toBe(
+      'Distribution exceptionnelle de sommes prélevées sur les réserves facultatives, avec indication des postes de prélèvement',
+    );
+    for (const d of [affectation, reserves]) {
+      expect(d?.group).toBe('ORDINAIRE');
+      expect(d?.subGroup).toBe('Comptes, résultat et distributions');
+    }
+    // L'intitulé de l'inventaire du directeur reste, routé vers les dividendes.
+    expect(findDecision('au-ord-distribution')?.resolutionType).toBe('distribution_dividendes');
+  });
+
   it('conserve les intitulés verbatim des documents officiels', () => {
     expect(findDecision('sarl-age-mise-harmonie')?.label).toBe(
       'Mise en harmonie et refonte des statuts (conformité à la loi n° 5-96)',

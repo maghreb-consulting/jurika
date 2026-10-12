@@ -81,10 +81,10 @@ describe('PV de modification (modèles du corpus) — saisie des résolutions', 
     );
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     rerender(
-      <ResolutionFieldsEditor spec={RES_SPECS.affectation_resultat} values={{}} rows={{}}
+      <ResolutionFieldsEditor spec={RES_SPECS.acompte_dividendes} values={{}} rows={{}}
         forme="SARL_AU" onField={() => {}} onRows={() => {}} />,
     );
-    expect(screen.getByRole('alert')).toHaveTextContent('parcours d’approbation des comptes');
+    expect(screen.getByRole('alert')).toHaveTextContent('ne prévoit pas d’acompte sur dividendes');
   });
 
   it('chaque champ doté d’une aide l’affiche dans une infobulle', () => {
@@ -106,6 +106,90 @@ describe('PV de modification (modèles du corpus) — saisie des résolutions', 
         forme="SARL" onField={() => {}} onRows={() => {}} />,
     );
     expect(screen.queryByText('Conventions approuvées')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Lot L5 (E5) : l'affectation du résultat et les distributions de l'associé unique ne sont plus
+ * refusées faute d'écran : le modèle des décisions de l'associé unique (réserve légale, retenue
+ * à la source, postes de réserves) est saisi ici ; les montants dérivés sont calculés.
+ */
+describe('PV de modification SARL AU — affectation du résultat et distributions', () => {
+  const cles = (type: string, forme: 'SARL' | 'SARL_AU') =>
+    RES_SPECS[type].fields.filter((f) => !f.seulement || f.seulement === forme).map((f) => f.key);
+
+  it('les décisions ne sont plus annoncées comme refusées pour l’associé unique', () => {
+    for (const type of ['affectation_resultat', 'distribution_dividendes', 'distribution_reserves']) {
+      expect(RES_SPECS[type].nonCouvert?.SARL_AU).toBeUndefined();
+    }
+    expect(RES_SPECS.acompte_dividendes.nonCouvert?.SARL_AU).toMatch(/acompte/);
+  });
+
+  it('affectation : sens du résultat, réserve légale et capitaux propres demandés à l’associé unique seulement', () => {
+    const au = cles('affectation_resultat', 'SARL_AU');
+    expect(au).toEqual(expect.arrayContaining(['exerciceClosDate', 'resultatSens', 'resultatMontant',
+      'reserveLegaleApplicable', 'reserveLegaleDotationTaux', 'reserveLegalePlafond',
+      'reserveLegaleDotationMontant', 'capitauxPropresSousQuart']));
+    expect(cles('affectation_resultat', 'SARL')).not.toContain('reserveLegaleApplicable');
+    // Aucune quotité de réserve légale proposée : le corpus n'en fixe aucune.
+    const taux = RES_SPECS.affectation_resultat.fields.find((f) => f.key === 'reserveLegaleDotationTaux');
+    expect(taux?.proposition).toBeUndefined();
+  });
+
+  it('dividendes : données du modèle demandées, montant par part calculé (non saisi) pour l’associé unique', () => {
+    const au = cles('distribution_dividendes', 'SARL_AU');
+    expect(au).toEqual(expect.arrayContaining(['exerciceClosDate', 'approbationComptesDate', 'beneficeDistribuable',
+      'dividendeTotal', 'dateMisePaiement', 'prolongationOrdonnance', 'prolongationOrdonnanceDate',
+      'prolongationDateNouvelle', 'retenueSourceTaux', 'distributionExerciceOrigine', 'retenueSourceExoneration']));
+    expect(au).not.toContain('dividendeParPart');
+    expect(cles('distribution_dividendes', 'SARL')).toContain('dividendeParPart');
+    expect(cles('distribution_dividendes', 'SARL')).not.toContain('retenueSourceTaux');
+  });
+
+  it('réserves : postes prélevés en liste pour l’associé unique, poste unique pour l’assemblée', () => {
+    expect(cles('distribution_reserves', 'SARL_AU')).not.toContain('prelevementPoste');
+    expect(cles('distribution_reserves', 'SARL')).toContain('prelevementPoste');
+    const { rerender } = render(
+      <ResolutionFieldsEditor spec={RES_SPECS.distribution_reserves} values={{}} rows={{}}
+        forme="SARL_AU" onField={() => {}} onRows={() => {}} />,
+    );
+    expect(screen.getByText('Postes de réserves prélevés')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Aide : Postes de réserves prélevés/ })).toBeInTheDocument();
+    rerender(
+      <ResolutionFieldsEditor spec={RES_SPECS.distribution_reserves} values={{}} rows={{}}
+        forme="SARL" onField={() => {}} onRows={() => {}} />,
+    );
+    expect(screen.queryByText('Postes de réserves prélevés')).not.toBeInTheDocument();
+  });
+
+  it('les saisies sont transmises au procès-verbal', () => {
+    const r = newResolution('distribution_reserves', 'd9');
+    r.values = { dateMisePaiement: '2026-07-31', retenueSourceTaux: '10', retenueSourceExoneration: 'non',
+      distributionExerciceOrigine: '2024' };
+    r.rows = { reservesPrelevees: [{ libelle: 'Réserves facultatives', prelevement: '30000', soldeAvant: '80000' }, {}] };
+    expect(flattenResolution(r)).toMatchObject({
+      retenueSourceTaux: '10', retenueSourceExoneration: 'non', distributionExerciceOrigine: '2024',
+      reservesPrelevees: [{ libelle: 'Réserves facultatives', prelevement: '30000', soldeAvant: '80000' }],
+    });
+    const a = newResolution('affectation_resultat', 'd8');
+    a.values = { resultatSens: 'bénéfice', reserveLegaleApplicable: 'oui', reserveLegaleDotationTaux: '5 %' };
+    expect(flattenResolution(a)).toMatchObject({ resultatSens: 'bénéfice', reserveLegaleApplicable: 'oui',
+      reserveLegaleDotationTaux: '5 %' });
+  });
+
+  it('une aide dit ce qui est calculé et ce qui vient ensuite', () => {
+    const { rerender } = render(
+      <ResolutionFieldsEditor spec={RES_SPECS.distribution_dividendes} values={{}} rows={{}}
+        forme="SARL_AU" onField={() => {}} onRows={() => {}} />,
+    );
+    expect(screen.getByRole('note', { name: 'Distribution de dividendes : que renseigner ?' }))
+      .toHaveTextContent('calculés à la génération');
+    expect(screen.getByRole('button', { name: /Aide : Taux de la retenue à la source/ })).toBeInTheDocument();
+    rerender(
+      <ResolutionFieldsEditor spec={RES_SPECS.distribution_dividendes} values={{}} rows={{}}
+        forme="SARL" onField={() => {}} onRows={() => {}} />,
+    );
+    expect(screen.queryByRole('note', { name: 'Distribution de dividendes : que renseigner ?' })).not.toBeInTheDocument();
   });
 });
 
