@@ -209,10 +209,17 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L4d (page de ticket, bascule du corpus, 2026-10-12) -- dette relevee
 
-- **PV de modification non rediges par le modele du corpus** (refus nomme) : incorporation de
-  reserves, elevation du nominal, article 86 en SARL, affectation / distributions / acompte en
-  SARL AU (donnees sans ecran ou branche absente) ; deux resolutions d'un meme type de liste dans
-  un PV. Detail : rapport final L4d.
+- **PV de modification non rediges par le modele du corpus** (refus nomme ; aucune donnee ne
+  manque, c'est la redaction du modele : A_DECIDER cabinet, nouvelle version datee du corpus) :
+  incorporation de reserves et elevation du nominal (PV_AG_SARL et le PV de l'associe unique
+  impriment sans condition la souscription de "parts nouvelles") ; article 86 en SARL
+  (PV_AG_SARL imprime une note de redaction renvoyant a PV_DISSOLUTION_LIQUIDATION_SARL ; la
+  matrice cite `regularisation_capitaux_propres`, le modele `capitaux_propres_art86`) ; acompte
+  sur dividendes en SARL AU (aucune branche ; le modele declare qu'aucun acompte n'est organise
+  par la reglementation marocaine, quand PV_AG_SARL en redige un). Deux resolutions d'un meme type
+  de liste dans un PV : refus (le moteur developpe les boucles imbriquees au niveau global).
+  Affectation du resultat et distributions en SARL AU : faites (L5 E5). Detail : rapports finaux
+  L4d et L5.
 - **Assemblee ordinaire hors approbation des comptes** : la convocation et la feuille AGO du corpus
   sont celles de l'assemblee annuelle ; les parcours succursale, fermeture et modification qui
   tiennent une AGO hors comptes recoivent ces modeles (donnees des comptes demandees). A_DECIDER
