@@ -17,4 +17,16 @@ public interface EmailVerificationTokenJpaRepository
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE EmailVerificationTokenEntity t SET t.usedAt = :when WHERE t.id = :id AND t.usedAt IS NULL")
     int consommer(@Param("id") UUID id, @Param("when") java.time.Instant when);
+
+    /** Lot L5 (E10) : retrait des jetons ouverts d'un utilisateur pour un motif. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE EmailVerificationTokenEntity t SET t.usedAt = :when "
+            + "WHERE t.userId = :userId AND t.purpose = :purpose AND t.usedAt IS NULL")
+    int retirerOuverts(@Param("userId") UUID userId, @Param("purpose") String purpose,
+                       @Param("when") java.time.Instant when);
+
+    /** Lot L5 (E10) : demande en attente la plus recente. */
+    Optional<EmailVerificationTokenEntity>
+        findFirstByUserIdAndPurposeAndUsedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(
+            UUID userId, String purpose, java.time.Instant now);
 }

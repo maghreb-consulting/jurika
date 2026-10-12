@@ -108,6 +108,16 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
+    public void updateName(UUID userId, String firstName, String lastName) {
+        jpa.updateName(userId, firstName, lastName);
+    }
+
+    @Override
+    public void updateLoginEmail(UUID userId, String loginEmail) {
+        jpa.updateLoginEmail(userId, loginEmail.toLowerCase());
+    }
+
+    @Override
     public void updatePasswordHash(UUID userId, String passwordHash) {
         jpa.updatePasswordHash(userId, passwordHash);
     }

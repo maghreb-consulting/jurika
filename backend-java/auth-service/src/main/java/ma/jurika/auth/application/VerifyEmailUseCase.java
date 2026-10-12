@@ -30,6 +30,8 @@ import java.util.UUID;
 @Service
 public class VerifyEmailUseCase {
 
+    private static final String MOTIF_VERIFICATION = "EMAIL_VERIFICATION";
+
     private final EmailVerificationTokenRepository tokenRepository;
     private final WorkspaceRepository workspaceRepository;
     private final UserRepository userRepository;
@@ -56,7 +58,12 @@ public class VerifyEmailUseCase {
     public Result execute(Command cmd) {
         String hash = tokenHasher.hash(cmd.rawToken());
 
+        // Lot L5 (E10) : la table porte aussi les liens de changement d'adresse et
+        // d'identifiant (EMAIL_CHANGE, LOGIN_CHANGE). Sans ce filtre, un tel lien
+        // presente ici etait consomme (et marquait l'adresse verifiee) sans effectuer
+        // le changement.
         StoredToken token = tokenRepository.findByHash(hash)
+                .filter(t -> MOTIF_VERIFICATION.equals(t.purpose()))
                 .orElseThrow(() -> new NotFoundException("Lien de verification invalide"));
 
         if (token.isUsed()) {

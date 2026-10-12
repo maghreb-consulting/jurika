@@ -30,6 +30,19 @@ public interface EmailVerificationTokenRepository {
      */
     boolean markUsed(UUID id, Instant usedAt);
 
+    /**
+     * Lot L5 (E10) : retire les jetons encore ouverts d'un utilisateur pour un
+     * motif (nouvelle demande, ou demande annulee) ; ils deviennent inutilisables.
+     * Renvoie le nombre de jetons retires.
+     */
+    int revokePending(UUID userId, String purpose, Instant when);
+
+    /**
+     * Lot L5 (E10) : demande en attente de confirmation (jeton non utilise, non
+     * expire) la plus recente d'un utilisateur pour un motif.
+     */
+    Optional<StoredToken> findPending(UUID userId, String purpose, Instant now);
+
     record StoredToken(
             UUID id,
             UUID workspaceId,

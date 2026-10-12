@@ -137,6 +137,9 @@ jurika:
     from: ${SMTP_FROM:noreply@jurika.ma}
     from-name: ${SMTP_FROM_NAME:JURIKA}
     verification-base-url: ${FRONTEND_URL:http://localhost:5173}/auth/verify-email
+    # Lot L5 (E10) : page de confirmation d'un changement d'adresse ou d'identifiant
+    # (route publique du front /confirmer-changement-compte).
+    account-change-base-url: ${FRONTEND_URL:http://localhost:5173}/confirmer-changement-compte
   signup:
     # Fix 2026-06-07 : par defaut TRUE = comportement billing (mail welcome
     # differe jusqu'a la validation du paiement, via IssueCredentialsUseCase).

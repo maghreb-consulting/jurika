@@ -33,7 +33,11 @@ public class EmailVerificationTokenRepositoryAdapter implements EmailVerificatio
 
     @Override
     public Optional<StoredToken> findByHash(String tokenHash) {
-        return repo.findByTokenHash(tokenHash).map(e -> new StoredToken(
+        return repo.findByTokenHash(tokenHash).map(EmailVerificationTokenRepositoryAdapter::versDomaine);
+    }
+
+    private static StoredToken versDomaine(EmailVerificationTokenEntity e) {
+        return new StoredToken(
                 e.getId(),
                 e.getWorkspaceId(),
                 e.getUserId(),
@@ -41,7 +45,18 @@ public class EmailVerificationTokenRepositoryAdapter implements EmailVerificatio
                 e.getPurpose(),
                 e.getExpiresAt(),
                 e.getUsedAt()
-        ));
+        );
+    }
+
+    @Override
+    public int revokePending(UUID userId, String purpose, Instant when) {
+        return repo.retirerOuverts(userId, purpose, when);
+    }
+
+    @Override
+    public Optional<StoredToken> findPending(UUID userId, String purpose, Instant now) {
+        return repo.findFirstByUserIdAndPurposeAndUsedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(
+                userId, purpose, now).map(EmailVerificationTokenRepositoryAdapter::versDomaine);
     }
 
     @Override
