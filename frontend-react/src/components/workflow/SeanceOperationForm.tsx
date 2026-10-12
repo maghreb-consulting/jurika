@@ -73,6 +73,11 @@ export interface OperationInput {
    * exercice, article et circonstances, evenement de l'objet, article 86).
    */
   dissolution?: Record<string, unknown>;
+  /**
+   * Lot L5 (E4) : operations de liquidation saisies pour le rapport final du liquidateur
+   * (RAPPORT_LIQUIDATEUR_SARL / _SARL_AU du corpus), bloc `rapportLiquidateur`.
+   */
+  rapportLiquidateur?: Record<string, unknown>;
 }
 
 export interface SeanceOperationFormProps {
@@ -292,6 +297,7 @@ export function SeanceOperationForm({
       liquidateur,
       liquidationSiege: operation ? operation.liquidateur.siege ?? '' : liquidationSiege,
       cloture: mode === 'liquidation' ? { ...(operation?.cloture ?? {}), ...(clotureBlock ?? {}), ...cloturePayload(mentions) } : clotureBlock,
+      rapportLiquidateur: mode === 'liquidation' ? operation?.rapportLiquidateur : undefined,
       mentionsPv: { ...mentionsPayload(mentions), nombreOriginaux: nombreOriginaux ?? '' },
       resolutions: derived.resolutions,
       ordreDuJour: derived.ordreDuJour,
