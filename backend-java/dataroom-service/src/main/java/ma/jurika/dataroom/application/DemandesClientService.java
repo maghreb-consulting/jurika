@@ -194,7 +194,8 @@ public class DemandesClientService {
             String responsableNom = responsableId != null ? nameById.get(responsableId) : null;
             return new DemandeSupervisionRow(e.getId(), e.getDossierId(), raison,
                     responsableId, responsableNom, e.getSujet(), e.getDescription(),
-                    e.getStatut(), directionOf(e), e.getTypeRequete(), e.getCreatedAt());
+                    e.getStatut(), directionOf(e), e.getTypeRequete(), e.getCreatedAt(),
+                    etatSuivi(e));
         }).toList();
     }
 
@@ -410,6 +411,13 @@ public class DemandesClientService {
         return new DemandeSummary(e.getId(), e.getDossierId(), e.getSoumisPar(),
                 e.getSujet(), e.getDescription(), e.getStatut(), e.getTicketId(),
                 e.getPrisEnChargePar(), e.getNoteInterne(), e.getTraiteAt(), e.getCreatedAt(),
-                directionOf(e), e.getTypeRequete(), e.getReponduAt(), e.getClotureAt(), e.getNoteClient());
+                directionOf(e), e.getTypeRequete(), e.getReponduAt(), e.getClotureAt(), e.getNoteClient(),
+                etatSuivi(e));
+    }
+
+    /** Lot L5 (E9, RG-COM-07) : etat de suivi affiche (correspondance documentee dans EtatSuivi). */
+    private static String etatSuivi(DemandeEntity e) {
+        EtatSuivi etat = EtatSuivi.of(directionOf(e), e.getStatut());
+        return etat == null ? null : etat.name();
     }
 }

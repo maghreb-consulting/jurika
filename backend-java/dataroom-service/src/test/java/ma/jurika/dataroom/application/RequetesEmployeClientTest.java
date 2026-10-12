@@ -88,6 +88,7 @@ class RequetesEmployeClientTest {
         DemandeSummary s = service.createRequete(
                 new CreateRequeteRequest("Fournir le RC", "merci", DOSSIER, "PIECE"), RESP, Role.EMPLOYE);
         assertThat(s.statut()).isEqualTo("OUVERTE");
+        assertThat(s.etatSuivi()).isEqualTo("NON_TRAITEE");
         assertThat(s.direction()).isEqualTo("EMPLOYE_TO_CLIENT");
         assertThat(s.typeRequete()).isEqualTo("PIECE");
     }
@@ -106,6 +107,8 @@ class RequetesEmployeClientTest {
         assertThat(s.statut()).isEqualTo("REPONDUE");
         assertThat(s.reponduAt()).isNotNull();
         assertThat(s.noteClient()).isEqualTo("voici la piece");
+        // Lot L5 (E9, RG-COM-07) : reponse recue, a verifier par le cabinet -> en cours.
+        assertThat(s.etatSuivi()).isEqualTo("EN_COURS");
     }
 
     @Test

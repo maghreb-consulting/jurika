@@ -89,6 +89,22 @@ export type DocumentType =
 
 export type DemandeStatut = 'NON_TRAITEE' | 'EN_COURS' | 'TRAITEE';
 
+/**
+ * Lot L5 (E9, RG-COM-07) : état de suivi commun aux demandes des clients et aux
+ * requêtes du cabinet, calculé par le serveur (dataroom, EtatSuivi). Pour une
+ * requête : OUVERTE = non traitée, REPONDUE et A_COMPLETER = en cours,
+ * CLOTUREE = traitée. Absent (null) : statut hors du référentiel.
+ */
+export type EtatSuivi = 'NON_TRAITEE' | 'EN_COURS' | 'TRAITEE';
+
+export const ETAT_SUIVI_ORDRE: EtatSuivi[] = ['NON_TRAITEE', 'EN_COURS', 'TRAITEE'];
+
+export const ETAT_SUIVI_LABELS: Record<EtatSuivi, string> = {
+  NON_TRAITEE: 'Non traitée',
+  EN_COURS: 'En cours',
+  TRAITEE: 'Traitée',
+};
+
 export interface DossierBrief {
   id: string;
   raisonSociale: string;
@@ -273,6 +289,8 @@ export interface DemandeSummary {
   noteInterne: string | null;
   traiteAt: string | null;
   createdAt: string;
+  /** Lot L5 (E9, RG-COM-07) : état de suivi calculé par le serveur. */
+  etatSuivi?: EtatSuivi | null;
 }
 
 export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
@@ -380,9 +398,9 @@ export const DOCUMENT_TYPE_ORDER: DocumentType[] = [
 ];
 
 export const DEMANDE_STATUT_LABELS: Record<DemandeStatut, string> = {
-  NON_TRAITEE: 'Non traitee',
+  NON_TRAITEE: 'Non traitée',
   EN_COURS: 'En cours',
-  TRAITEE: 'Traitee',
+  TRAITEE: 'Traitée',
 };
 
 // Lot AG — « Requetes au client » (direction employe -> client), machine a etats.
@@ -408,6 +426,8 @@ export interface RequeteSummary {
   reponduAt: string | null;
   clotureAt: string | null;
   noteClient: string | null;
+  /** Lot L5 (E9, RG-COM-07) : état de suivi calculé par le serveur. */
+  etatSuivi?: EtatSuivi | null;
 }
 
 export const REQUETE_STATUT_LABELS: Record<RequeteStatut, string> = {
@@ -441,6 +461,8 @@ export interface DemandeSupervisionRow {
   direction: DemandeDirection;
   typeRequete: TypeRequete | null;
   createdAt: string;
+  /** Lot L5 (E9, RG-COM-07) : état de suivi calculé par le serveur. */
+  etatSuivi?: EtatSuivi | null;
 }
 
 export interface CreateRequetePayload {

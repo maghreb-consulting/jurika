@@ -7,9 +7,10 @@ import { dataroomService } from '../../services/dataroom.service';
 import { extractError } from '../../lib/api';
 import { formatDateTime } from '../../lib/date';
 import type { RequeteSummary, TypeRequete } from '../../types/dataroom';
-import { REQUETE_STATUT_LABELS, TYPE_REQUETE_LABELS } from '../../types/dataroom';
+import { ETAT_SUIVI_LABELS, REQUETE_STATUT_LABELS, TYPE_REQUETE_LABELS } from '../../types/dataroom';
 import type { Role } from '../../types/auth';
 import { DataroomReadOnlyHint } from './components/DataroomReadOnlyHint';
+import { InfoBulle } from '../../components/ui/Aide';
 
 /**
  * Lot AG — Section EMPLOYE « Mes requêtes au client » (direction EMPLOYE_TO_CLIENT),
@@ -107,7 +108,13 @@ export function RequetesAuClientSection({
   return (
     <section className="mt-8">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-fg">Mes requêtes au client</h3>
+        <h3 className="flex items-center gap-1 text-sm font-semibold text-fg">
+          Mes requêtes au client
+          <InfoBulle
+            libelle="Aide sur les requêtes au client"
+            texte="Une requête demande au client une pièce, une information ou une signature. Elle est « Non traitée » tant que le client n’a pas répondu, « En cours » quand sa réponse est à vérifier ou qu’un complément lui est demandé, « Traitée » une fois que vous avez validé sa réponse."
+          />
+        </h3>
         {readOnly ? (
           <DataroomReadOnlyHint
             statut={readOnlyStatut}
@@ -140,9 +147,13 @@ export function RequetesAuClientSection({
                     <span className="rounded bg-bg-overlay px-2 py-0.5 text-[10px] font-semibold text-fg-muted">
                       {r.typeRequete ? TYPE_REQUETE_LABELS[r.typeRequete] : 'Requête'}
                     </span>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUT_BADGE[r.statut] ?? ''}`}>
-                      {REQUETE_STATUT_LABELS[r.statut]}
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUT_BADGE[r.statut] ?? ''}`}
+                      data-testid="etat-suivi-requete"
+                    >
+                      {r.etatSuivi ? ETAT_SUIVI_LABELS[r.etatSuivi] : 'État inconnu'}
                     </span>
+                    <span className="text-[10px] text-fg-subtle">{REQUETE_STATUT_LABELS[r.statut]}</span>
                   </div>
                   <p className="truncate text-sm font-medium text-fg">{r.sujet}</p>
                   {r.noteClient && r.statut !== 'CLOTUREE' && (

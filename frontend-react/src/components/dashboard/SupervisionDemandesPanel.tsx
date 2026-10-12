@@ -3,37 +3,32 @@ import { useNavigate } from 'react-router-dom';
 import { Building2, Inbox, MessageSquare, Send, User } from 'lucide-react';
 import { dataroomService } from '../../services/dataroom.service';
 import {
-  DEMANDE_STATUT_LABELS,
+  ETAT_SUIVI_LABELS,
+  ETAT_SUIVI_ORDRE,
   REQUETE_STATUT_LABELS,
   type DemandeSupervisionRow,
+  type EtatSuivi,
 } from '../../types/dataroom';
+import { InfoBulle, TexteAide } from '../ui/Aide';
 
 /**
  * Vue SUPERVISEUR (workspace-wide) : toutes les demandes des clients ET requetes
  * aux clients du cabinet, chaque ligne montrant le nom du dataroom (raison
  * sociale) et l'employe responsable (noms resolus par jointure cote back —
  * jamais d'UUID). Lecture seule (RG-U02-04) : aucune action de mutation ici.
+ *
+ * Lot L5 (E9, RG-COM-07) : demandes et requêtes sont suivies par les trois mêmes
+ * états (non traitée, en cours, traitée), calculés par le serveur ; le statut
+ * détaillé d'une requête reste affiché en second.
  */
 
-const DEMANDE_STATUT_ORDER = ['NON_TRAITEE', 'EN_COURS', 'TRAITEE'];
-const REQUETE_STATUT_ORDER = ['OUVERTE', 'A_COMPLETER', 'REPONDUE', 'CLOTUREE'];
-
-const STATUT_BADGE: Record<string, string> = {
+const ETAT_BADGE: Record<EtatSuivi, string> = {
   NON_TRAITEE: 'bg-danger/10 text-danger',
   EN_COURS: 'bg-accent/10 text-accent',
   TRAITEE: 'bg-emerald-100 text-emerald-700',
-  OUVERTE: 'bg-amber-100 text-amber-700',
-  A_COMPLETER: 'bg-amber-100 text-amber-700',
-  REPONDUE: 'bg-accent/10 text-accent',
-  CLOTUREE: 'bg-emerald-100 text-emerald-700',
 };
 
-function statutLabel(direction: 'CLIENT_TO_EMPLOYE' | 'EMPLOYE_TO_CLIENT', statut: string): string {
-  if (direction === 'EMPLOYE_TO_CLIENT') {
-    return REQUETE_STATUT_LABELS[statut as keyof typeof REQUETE_STATUT_LABELS] ?? statut;
-  }
-  return DEMANDE_STATUT_LABELS[statut as keyof typeof DEMANDE_STATUT_LABELS] ?? statut;
-}
+const SANS_ETAT = 'SANS_ETAT';
 
 export function SupervisionDemandesPanel() {
   const [demandes, setDemandes] = useState<DemandeSupervisionRow[]>([]);
@@ -57,27 +52,34 @@ export function SupervisionDemandesPanel() {
   }, []);
 
   return (
-    <div className="mt-6 grid gap-6 lg:grid-cols-2">
+    <div className="mt-6 space-y-3">
+      <TexteAide cle="supervision-demandes-requetes" titre="Suivi des demandes et des requêtes">
+        Chaque demande d’un client et chaque requête du cabinet est suivie par trois états :
+        « Non traitée » (rien n’a encore été fait), « En cours » (prise en charge, ou réponse du
+        client à vérifier) et « Traitée ». Cette vue est en lecture seule : l’employé responsable
+        du dossier traite la demande ou valide la requête depuis la Data Room ; cliquez sur une
+        ligne pour l’ouvrir.
+      </TexteAide>
+    <div className="grid gap-6 lg:grid-cols-2">
       <SupervisionBlock
         title="Demandes des clients"
         icon={MessageSquare}
         iconColor="text-violet-600"
         direction="CLIENT_TO_EMPLOYE"
-        order={DEMANDE_STATUT_ORDER}
         rows={demandes}
         loading={loading}
         emptyLabel="Aucune demande client dans le cabinet."
       />
       <SupervisionBlock
-        title="Requetes aux clients"
+        title="Requêtes aux clients"
         icon={Send}
         iconColor="text-accent"
         direction="EMPLOYE_TO_CLIENT"
-        order={REQUETE_STATUT_ORDER}
         rows={requetes}
         loading={loading}
-        emptyLabel="Aucune requete envoyee aux clients."
+        emptyLabel="Aucune requête envoyée aux clients."
       />
+    </div>
     </div>
   );
 }
@@ -87,7 +89,6 @@ function SupervisionBlock({
   icon: Icon,
   iconColor,
   direction,
-  order,
   rows,
   loading,
   emptyLabel,
@@ -96,37 +97,47 @@ function SupervisionBlock({
   icon: typeof MessageSquare;
   iconColor: string;
   direction: 'CLIENT_TO_EMPLOYE' | 'EMPLOYE_TO_CLIENT';
-  order: string[];
   rows: DemandeSupervisionRow[];
   loading: boolean;
   emptyLabel: string;
 }) {
   const navigate = useNavigate();
 
-  // Compteurs par statut (repartition) + tri des lignes par statut connu.
+  // Compteurs par etat de suivi (RG-COM-07) + tri des lignes par etat.
   const counts = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const r of rows) map[r.statut] = (map[r.statut] ?? 0) + 1;
+    for (const r of rows) {
+      const k = r.etatSuivi ?? SANS_ETAT;
+      map[k] = (map[k] ?? 0) + 1;
+    }
     return map;
   }, [rows]);
 
   const sorted = useMemo(() => {
-    const rank = (s: string) => {
-      const i = order.indexOf(s);
-      return i === -1 ? order.length : i;
+    const rank = (e: EtatSuivi | null | undefined) => {
+      const i = e ? ETAT_SUIVI_ORDRE.indexOf(e) : -1;
+      return i === -1 ? ETAT_SUIVI_ORDRE.length : i;
     };
     return [...rows].sort(
       (a, b) =>
-        rank(a.statut) - rank(b.statut) ||
+        rank(a.etatSuivi) - rank(b.etatSuivi) ||
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
-  }, [rows, order]);
+  }, [rows]);
 
   return (
     <div className="rounded-xl border border-border bg-bg-raised shadow-sm">
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <h3 className="flex items-center gap-2 text-base font-semibold text-fg">
           <Icon className={`h-5 w-5 ${iconColor}`} /> {title}
+          <InfoBulle
+            libelle={`Aide : ${title}`}
+            texte={
+              direction === 'EMPLOYE_TO_CLIENT'
+                ? 'Requête « Non traitée » : le client n’a pas encore répondu. « En cours » : le client a répondu (à vérifier) ou un complément lui est demandé. « Traitée » : le cabinet a validé la réponse.'
+                : 'Demande « Non traitée » : l’employé responsable ne l’a pas encore prise en charge. « En cours » : prise en charge. « Traitée » : le client a reçu la réponse par courriel.'
+            }
+          />
         </h3>
         <span className="text-xs text-fg-subtle">{rows.length} au total</span>
       </div>
@@ -134,16 +145,22 @@ function SupervisionBlock({
       {/* Repartition par statut (chips de comptage). */}
       {rows.length > 0 && (
         <div className="flex flex-wrap gap-2 border-b border-border px-6 py-2.5">
-          {order
+          {ETAT_SUIVI_ORDRE
             .filter((s) => counts[s])
             .map((s) => (
               <span
                 key={s}
-                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${STATUT_BADGE[s] ?? 'bg-bg-overlay text-fg-muted'}`}
+                data-testid={`compteur-etat-${s}`}
+                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${ETAT_BADGE[s]}`}
               >
-                {statutLabel(direction, s)} · {counts[s]}
+                {ETAT_SUIVI_LABELS[s]} · {counts[s]}
               </span>
             ))}
+          {counts[SANS_ETAT] ? (
+            <span className="rounded-full bg-bg-overlay px-2.5 py-0.5 text-[11px] font-semibold text-fg-muted">
+              État inconnu · {counts[SANS_ETAT]}
+            </span>
+          ) : null}
         </div>
       )}
 
@@ -161,8 +178,8 @@ function SupervisionBlock({
               <tr>
                 <th className="px-6 py-2.5 text-left text-xs font-semibold uppercase text-fg-subtle">Sujet</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-fg-subtle">Dataroom</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-fg-subtle">Employe</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-fg-subtle">Statut</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-fg-subtle">Employé</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-fg-subtle">État</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -195,10 +212,15 @@ function SupervisionBlock({
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUT_BADGE[r.statut] ?? 'bg-bg-overlay text-fg-muted'}`}
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${r.etatSuivi ? ETAT_BADGE[r.etatSuivi] : 'bg-bg-overlay text-fg-muted'}`}
                     >
-                      {statutLabel(direction, r.statut)}
+                      {r.etatSuivi ? ETAT_SUIVI_LABELS[r.etatSuivi] : 'État inconnu'}
                     </span>
+                    {direction === 'EMPLOYE_TO_CLIENT' && (
+                      <p className="mt-0.5 text-[10px] text-fg-subtle">
+                        {REQUETE_STATUT_LABELS[r.statut as keyof typeof REQUETE_STATUT_LABELS] ?? r.statut}
+                      </p>
+                    )}
                   </td>
                 </tr>
               ))}
