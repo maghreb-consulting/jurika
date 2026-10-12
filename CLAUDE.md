@@ -203,15 +203,12 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   creation ; regle "PV multi-resolutions" (modeles d'AGE cites pour toute assemblee) ; variante
   `PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU` citee par le corpus mais absente (servie par le classpath).
   Gabarits intouchables : A_DECIDER cabinet (correction des modeles, nouvelle version datee du corpus).
-- **Bascule des gabarits du classpath sur le corpus (L4d E11, faite)** : restent au classpath
-  `RAPPORT_LIQUIDATION_DIRECTEUR` (bascule sur `RAPPORT_LIQUIDATEUR_SARL(_AU)` non resolue : onze
-  tableaux -- realisation de l'actif, apurement du passif, frais, diligences... -- sans ecran, 54
-  donnees ; a construire avec un ecran de saisie des operations de liquidation) et
-  `PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU` (ecart du cabinet, A_DECIDER directeur).
+- **Bascule des gabarits du classpath sur le corpus (L4d E11, faite ; rapport du liquidateur en
+  L5 E4)** : reste au classpath `PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU` (ecart du cabinet,
+  A_DECIDER directeur).
 
 ### Lot L4d (page de ticket, bascule du corpus, 2026-10-12) -- dette relevee
 
-- **Rapport du liquidateur** : voir "Bascule des gabarits" (classpath conserve, bascule non resolue).
 - **PV de modification non rediges par le modele du corpus** (refus nomme) : incorporation de
   reserves, elevation du nominal, article 86 en SARL, affectation / distributions / acompte en
   SARL AU (donnees sans ecran ou branche absente) ; deux resolutions d'un meme type de liste dans
