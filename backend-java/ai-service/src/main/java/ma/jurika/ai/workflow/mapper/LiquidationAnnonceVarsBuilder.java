@@ -38,10 +38,9 @@ import java.util.Map;
  * <b>APR\u00c8S</b> le d\u00e9p\u00f4t, donc inconnus \u00e0 la g\u00e9n\u00e9ration. Rendus <b>vides</b> si non fournis
  * (aucun marqueur r\u00e9siduel) \u2014 m\u00eame contrat que les annonces de modification et de dissolution.
  *
- * <p>Le calcul boni/mali est align\u00e9 sur {@link DissolutionLiquidationMapper#rapportVars(Map)}
- * (m\u00eames variables, m\u00eames cl\u00e9s de payload) pour que l'avis et le rapport de liquidation
- * affichent toujours le <b>m\u00eame</b> r\u00e9sultat : {@code cloture.resultatType} / {@code resultatSens}
- * s'il est fourni, sinon le sens est d\u00e9duit du signe de {@code actifRealise \u2212 passifRegle}.
+ * <p>Sens du resultat : {@code cloture.resultatType} / {@code resultatSens} s'il est fourni et
+ * lisible, sinon le signe de {@code actifRealise - passifRegle}. Lot L4d (E11d) : sans l'un ni
+ * l'autre, la generation est refusee et la donnee nommee (avant : "boni" suppose).
  */
 public final class LiquidationAnnonceVarsBuilder {
 
@@ -83,7 +82,7 @@ public final class LiquidationAnnonceVarsBuilder {
         corpus(v, safe, cloture, liquidateur, seance);
 
         // 4) R\u00e9sultat de liquidation : d\u00e9riv\u00e9 des comptes finaux (jamais re-saisi).
-        String type = resolveResultatType(cloture);
+        String type = resolveResultatType(templateCode, cloture);
         put(v, "RESULTAT_LIQUIDATION_TYPE", type);
         Long montant = absLong(first0(cloture.get("resultatMontant"), cloture.get("boniMali")));
         Long boni = firstLong(cloture.get("boniMontant"),
@@ -112,6 +111,10 @@ public final class LiquidationAnnonceVarsBuilder {
         put(v, "DEPOT_LEGAL_NUMERO",
                 numeroDepotLegal);
 
+        // Lot L4d (E11) : SARL AU, l'avis imprime $ASSOCIE_UNIQUE comme l'IDENTITE de l'associe
+        // unique ("..., <identite>, associe unique de la societe") ; le drapeau "oui" s'y
+        // imprimait (avis publie). Meme regle que les PV de la famille (LiquidationCorpusCommun).
+        LiquidationCorpusCommun.identiteAssocieUnique(v, safe, templateCode.endsWith("_SARL_AU"));
         return v;
     }
 
@@ -156,18 +159,20 @@ public final class LiquidationAnnonceVarsBuilder {
     // ==================================================================
 
     /**
-     * Sens du r\u00e9sultat : le libell\u00e9 explicite s'il est fourni, sinon le <b>signe du solde</b>
-     * des comptes finaux ({@code actifRealise \u2212 passifRegle}). Un solde nul ou positif est un
-     * boni (coh\u00e9rent avec {@code DissolutionLiquidationMapper.normBoniMali}, dont le d\u00e9faut
-     * est \u00ab boni \u00bb).
+     * Sens du r\u00e9sultat : le libell\u00e9 explicite s'il est fourni et lisible, sinon le <b>signe
+     * du solde</b> des comptes finaux ({@code actifRealise - passifRegle}, un solde nul ou positif
+     * etant un boni). Lot L4d (E11d) : ni l'un ni l'autre, la generation est refusee et la
+     * donnee nommee ; le "boni" n'est plus suppose.
      */
-    private static String resolveResultatType(Map<String, Object> cloture) {
+    private static String resolveResultatType(String templateCode, Map<String, Object> cloture) {
         Object explicite = first0(cloture.get("resultatType"), cloture.get("resultatSens"),
                 cloture.get("sens"));
-        if (explicite != null) return normBoniMali(explicite);
+        String sens = explicite == null ? null : normBoniMali(explicite);
+        if (sens != null) return sens;
         Long solde = soldeComptes(cloture);
         if (solde != null) return solde < 0 ? RESULTAT_MALI : RESULTAT_BONI;
-        return RESULTAT_BONI;
+        throw SaisieExigee.refus(templateCode, "RESULTAT_LIQUIDATION_TYPE",
+                "R\u00e9sultat de la liquidation (boni ou mali) : total de l'actif r\u00e9alis\u00e9 et du passif r\u00e9gl\u00e9");
     }
 
     /** Solde des comptes finaux : {@code actifRealise \u2212 passifRegle} ({@code null} si absent). */
@@ -180,11 +185,13 @@ public final class LiquidationAnnonceVarsBuilder {
         return actif - passif;
     }
 
+    /** "boni" / "mali" ; un libelle illisible ne vaut rien (null), jamais "boni". */
     private static String normBoniMali(Object raw) {
         String s = norm(raw);
         if (s.startsWith("mali") || s.startsWith("perte") || s.startsWith("defic")
                 || s.startsWith("neg")) return RESULTAT_MALI;
-        return RESULTAT_BONI;
+        if (s.startsWith("boni") || s.startsWith("benef") || s.startsWith("posit")) return RESULTAT_BONI;
+        return null;
     }
 
     // ==================================================================

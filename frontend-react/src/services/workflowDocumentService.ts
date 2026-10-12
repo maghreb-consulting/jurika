@@ -151,9 +151,14 @@ export async function generateDocument(
 /** Lot L3 (RG-GEN-05/07) : emplacement de clause libre prevu par le modele, ou motif. */
 export interface EmplacementClauses {
   possible: boolean;
+  /** Emplacement proposé par défaut. */
   emplacement?: string | null;
   libelle?: string;
   motif?: string;
+  /** Lot L4d (E10) : statuts (après un article) ou procès-verbal (parmi les résolutions). */
+  nature?: 'ARTICLE' | 'RESOLUTION';
+  /** Articles numérotés du modèle de statuts, pour choisir l'emplacement. */
+  articles?: { numero: number; titre: string }[];
 }
 
 export async function emplacementClausesLibres(workflowCode: string, templateCode: string): Promise<EmplacementClauses> {

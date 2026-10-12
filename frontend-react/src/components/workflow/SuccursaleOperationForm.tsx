@@ -46,6 +46,7 @@ import {
   type SeanceSocieteInput,
 } from './SeanceForm';
 import type { DocumentType } from '../../types/dataroom';
+import { USAGES_CABINET } from '../../lib/usagesCabinet';
 
 export type SuccursaleMode = 'creation-ma' | 'creation-etr' | 'fermeture';
 
@@ -671,7 +672,7 @@ export function SuccursaleOperationForm({
           <ValeurProposee
             id="succursale-nombre-originaux"
             label="Nombre d’exemplaires originaux"
-            proposition="quatre"
+            proposition={USAGES_CABINET.nombreOriginauxEnLettres}
             valeur={nombreOriginaux}
             onChange={setNombreOriginaux}
           />

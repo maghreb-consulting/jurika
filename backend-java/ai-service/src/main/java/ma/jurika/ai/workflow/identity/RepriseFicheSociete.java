@@ -16,18 +16,21 @@ import java.util.Map;
 public final class RepriseFicheSociete {
 
     /** Variable canonique (dictionnaire unique) -> cle de l'objet {@code societe}. */
-    static final Map<String, String> CANONIQUES = Map.of(
-            "DENOMINATION", "denomination",
-            "SIEGE_SOCIAL", "siegeSocial",
-            "SIEGE_VILLE", "ville",
-            "ICE", "ice",
-            "IDENTIFIANT_FISCAL", "ifNumero",
-            "IDENTIFIANT_TP", "identifiantTp",
-            "CNSS_NUMERO", "cnssNumero",
-            "RC_NUMERO", "rcNumero",
-            "RC_VILLE", "rcVille",
+    static final Map<String, String> CANONIQUES = Map.ofEntries(
+            Map.entry("DENOMINATION", "denomination"),
+            Map.entry("SIEGE_SOCIAL", "siegeSocial"),
+            Map.entry("SIEGE_VILLE", "ville"),
+            Map.entry("ICE", "ice"),
+            Map.entry("IDENTIFIANT_FISCAL", "ifNumero"),
+            Map.entry("IDENTIFIANT_TP", "identifiantTp"),
+            Map.entry("CNSS_NUMERO", "cnssNumero"),
+            Map.entry("RC_NUMERO", "rcNumero"),
+            Map.entry("RC_VILLE", "rcVille"),
             // rc_tribunal : ville du tribunal de commerce ou la societe est immatriculee.
-            "TRIBUNAL_VILLE", "villeGreffe");
+            Map.entry("TRIBUNAL_VILLE", "villeGreffe"),
+            // Lot L4d (E11b) : reference lisible du dossier ("2026-0007 -- SOCIETE"), servie
+            // avec l'identite par workflow-service ; jamais la reference du ticket a sa place.
+            Map.entry("DOSSIER_REFERENCE", "dossierReference"));
 
     private RepriseFicheSociete() {
     }

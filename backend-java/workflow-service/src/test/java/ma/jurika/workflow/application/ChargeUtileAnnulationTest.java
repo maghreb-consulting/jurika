@@ -22,11 +22,13 @@ class ChargeUtileAnnulationTest {
     @Test
     void faits_du_ticket_et_derivees_d_une_modification_annulee() {
         FaitsDuTicket.Faits faits = new FaitsDuTicket.Faits("T-2026-00042", "2026-09-01", "Salma IDRISSI",
-                "2026-10-05", "Le client renonce au transfert du siege.", "MODIFICATION", "DEROULEMENT_DEMARCHE");
+                "2026-10-05", "Le client renonce au transfert du siege.", "MODIFICATION", "DEROULEMENT_DEMARCHE",
+                "2026-0007 \u2014 PARACOSME");
         UUID dossier = UUID.randomUUID();
         Map<String, Object> charge = ChargeUtileAnnulation.assembler(faits, Map.of(), List.of(), dossier);
         Map<String, Object> v = variables(charge);
-        assertThat(v).containsEntry("DOSSIER_NUMERO", "T-2026-00042")
+        // Lot L4d (E6) : la reference du DOSSIER (annee, numero, societe), plus celle du ticket.
+        assertThat(v).containsEntry("DOSSIER_NUMERO", "2026-0007 \u2014 PARACOSME")
                 .containsEntry("DOSSIER_DATE_ANNULATION", "2026-10-05")
                 .containsEntry("DOSSIER_MOTIF_ANNULATION", "Le client renonce au transfert du siege.")
                 .containsEntry("ANNULATION_STATUT_ATTEINT", "D\u00e9roulement de la d\u00e9marche")

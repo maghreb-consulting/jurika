@@ -82,7 +82,8 @@ public class ChargeUtileAnnulation {
     static Map<String, Object> assembler(FaitsDuTicket.Faits faits, Map<String, Object> magasinDuTicket,
                                          List<Map<String, Object>> demarchesSuivies, UUID dossierId) {
         Map<String, Object> variables = new LinkedHashMap<>(magasinDuTicket == null ? Map.of() : magasinDuTicket);
-        putSi(variables, "DOSSIER_NUMERO", faits.reference());
+        // Lot L4d (E6) : reference lisible du dossier (annee, numero, societe), plus celle du ticket.
+        putSi(variables, "DOSSIER_NUMERO", faits.dossierReference());
         putSi(variables, "DOSSIER_DATE_OUVERTURE", faits.ouvertLe());
         putSi(variables, "DOSSIER_CHARGE", faits.chargeNom());
         putSi(variables, "DOSSIER_DATE_ANNULATION", faits.annuleLe());

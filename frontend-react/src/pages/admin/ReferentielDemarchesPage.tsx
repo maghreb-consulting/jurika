@@ -14,7 +14,7 @@ import {
  * Lot L4b (E2, RG-DEM-01) : le referentiel des demarches vient du corpus du cabinet
  * (onglets « Demarches » des matrices). Le super-administrateur l'importe apres chaque
  * livraison ; une version refusee ne change rien, une version appliquee remplace la
- * precedente pour les nouveaux tickets sans toucher aux cochages existants.
+ * precedente ; lot L4d (E3) : l'avancement des tickets en cours suit la nouvelle version (V37).
  */
 export function ReferentielDemarchesPage() {
   const [etat, setEtat] = useState<EtatReferentiel | null>(null);
@@ -65,8 +65,10 @@ export function ReferentielDemarchesPage() {
       <TexteAide cle="referentiel-import" titre="Quand importer le référentiel ?">
         Après chaque livraison du corpus par le cabinet. L'import lit les onglets « Démarches » et « Renvois » et
         les décisions de chaque matrice. Il est refusé si l'analyse relève une erreur (statut inconnu, onglet
-        illisible) : la version précédente reste alors en service. Une version appliquée sert aux nouveaux
-        tickets ; les démarches déjà cochées restent rattachées à leur ligne d'origine. Les délais que la matrice
+        illisible) : la version précédente reste alors en service. Une version appliquée remplace la précédente ;
+        l'avancement des tickets en cours (démarches cochées, délais saisis) suit la ligne de même place dans la
+        nouvelle version, et ce qui ne trouve pas de ligne correspondante est compté au rapport. Une nouvelle
+        version du corpus montée sur le serveur s'importe d'elle-même au démarrage. Les délais que la matrice
         exprime en texte et les conditions rédigées en phrase sont listés au rapport : l'employé les appréciera
         sur la ligne.
       </TexteAide>
@@ -118,6 +120,12 @@ export function ReferentielDemarchesPage() {
                       phrase (à apprécier par l'employé) ; {rapport.delaisTextuels?.length ?? 0} délais en texte seul
                       (point de départ ou durée non chiffrés par la matrice).
                     </p>
+                    {rapport.etatsReportes !== undefined && (
+                      <p data-testid="etats-reportes">
+                        Avancement des tickets en cours : {rapport.etatsReportes} état(s) reporté(s) sur la nouvelle
+                        version ; {rapport.etatsNonReportes ?? 0} sans ligne correspondante (restés sur l'ancienne ligne).
+                      </p>
+                    )}
                     {rapport.lignesParOnglet && (
                       <ul className="list-disc pl-5">
                         {Object.entries(rapport.lignesParOnglet).map(([m, n]) => (

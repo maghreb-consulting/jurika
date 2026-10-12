@@ -37,6 +37,17 @@ import {
   emptyLiquidateur,
   type LiquidateurState,
 } from '../../components/workflow/LiquidateurPicker';
+import { champsPersonneMorale, identiteLiquidateur, manqueLiquidateur } from '../../lib/liquidateur';
+import {
+  champsMandatLiquidateur,
+  dissolutionPv,
+  mandatPv,
+  manqueMandatLiquidateur,
+  manquesDetailPv,
+  type DetailPvDissolution,
+  type MentionsPv,
+} from '../../lib/liquidationPv';
+import { MandatLiquidateurFields, PrecisionsMotifFields } from '../../components/workflow/MandatLiquidateurFields';
 import {
   PiecesJointesPanel,
   type PieceJointeEntry,
@@ -160,6 +171,15 @@ function DissolutionWorkflowPageBody() {
   const [clauseArticle, setClauseArticle] = useState((stepData.step1?.clauseArticle as string) ?? '');
   const [siegeIdentique, setSiegeIdentique] = useState((stepData.step1?.siegeIdentique as string) ?? '');
   const [mandatDateEffet, setMandatDateEffet] = useState((stepData.step1?.mandatDateEffet as string) ?? '');
+  // L4d (E11d) : precisions du motif et mandat du liquidateur, lus par le PV du corpus.
+  const [detailPv, setDetailPv] = useState<DetailPvDissolution>(
+    () => (stepData.step1?.detailPv as DetailPvDissolution | undefined) ?? {},
+  );
+  const changerDetailPv = (patch: DetailPvDissolution) => setDetailPv((d) => ({ ...d, ...patch }));
+  // L4d (E11d) : mentions du PV saisies a l'etape 2 (brouillon de l'etape).
+  const [mentionsPv, setMentionsPv] = useState<MentionsPv>(
+    () => (stepData.step2?.mentionsPv as MentionsPv | undefined) ?? {},
+  );
   const [dateAGE, setDateAGE] = useState((stepData.step1?.dateAGE as string) ?? '');
   const [revealErrors, setRevealErrors] = useState<boolean>(false);
   const [liquidateur, setLiquidateur] = useState<LiquidateurState>(
@@ -311,6 +331,14 @@ function DissolutionWorkflowPageBody() {
     liquidateur?: string;
     siegeLiquidation?: string;
     convocation?: string;
+    mandatLiquidateur?: string;
+    objetEvenement?: string;
+    situationNetteMontant?: string;
+    approbationComptesDate?: string;
+    art86MotifsEcartement?: string;
+    clauseTexte?: string;
+    dureeMandat?: string;
+    redditionPeriodicite?: string;
   };
   const fieldErrors = useMemo<FieldErrors>(() => {
     const errs: FieldErrors = {};
@@ -330,18 +358,20 @@ function DissolutionWorkflowPageBody() {
     if (motif.trim().length < MOTIF_MIN_LENGTH) {
       errs.motif = `Le motif est trop court (${motif.trim().length}/${MOTIF_MIN_LENGTH} caracteres minimum) — precisez la cause.`;
     }
-    if (!liquidateur.nom.trim()) {
-      errs.liquidateur = 'Designez le liquidateur (gerant/associe existant ou tiers).';
-    } else if (!liquidateur.adresse.trim()) {
-      errs.liquidateur = "L'adresse du liquidateur est obligatoire : elle figure dans l'annonce legale.";
-    }
+    // Lot L4d (E5) : personne physique ou morale, message nomme.
+    const manque = manqueLiquidateur(liquidateur);
+    if (manque) errs.liquidateur = manque;
     if (siegeIdentique === 'non' && !siegeLiquidation.trim()) {
       errs.siegeLiquidation = "Indiquez l'adresse du siège de la liquidation.";
     }
     if (convocationError) errs.convocation = convocationError;
+    // L4d (E11d) : donnees du PV de dissolution du corpus, nommees des l'etape 1.
+    const mandat = manqueMandatLiquidateur(liquidateur);
+    if (mandat && !errs.liquidateur) errs.mandatLiquidateur = mandat;
+    Object.assign(errs, manquesDetailPv(nature, detailPv));
     return errs;
   }, [dossierId, dateAGE, motif, nature, dateEffet, termeDate, exerciceClosDate, clauseArticle, siegeIdentique,
-    mandatDateEffet, liquidateur, siegeLiquidation, convocationError]);
+    mandatDateEffet, liquidateur, siegeLiquidation, convocationError, detailPv]);
 
   const targetDenomination = dossier?.raisonSociale ?? ticket?.titre ?? '';
 
@@ -382,13 +412,23 @@ function DissolutionWorkflowPageBody() {
           ? 'féminin'
           : 'masculin') as 'masculin' | 'féminin',
         remuneration: liquidateur.remuneration,
+        ...champsPersonneMorale(liquidateur), // L4d (E5)
+        ...champsMandatLiquidateur(liquidateur), // L4d (E11d)
+        ...mandatPv(detailPv),
         siege: siegeIdentique === 'non' ? siegeLiquidation : '',
         siegeIdentique,
         mandatDateEffet,
       },
       dissolutionDate: dateAGE,
+      // L4d (E11d) : date d'effet confirmee et precisions du motif (PV du corpus).
+      dissolution: {
+        dateEffet, termeDate, exerciceClosDate, clauseArticle,
+        siegeLiquidationIdentique: siegeIdentique,
+        ...dissolutionPv(detailPv),
+      },
     }),
-    [liquidateur, siegeLiquidation, siegeIdentique, mandatDateEffet, dateAGE],
+    [liquidateur, siegeLiquidation, siegeIdentique, mandatDateEffet, dateAGE, dateEffet, termeDate,
+      exerciceClosDate, clauseArticle, detailPv],
   );
 
   if (loading) return <Loader />;
@@ -424,7 +464,11 @@ function DissolutionWorkflowPageBody() {
           cin: liquidateur.cin || undefined,
           adresse: liquidateur.adresse,
           remuneration: liquidateur.remuneration,
+          ...champsPersonneMorale(liquidateur), // L4d (E5)
+          ...champsMandatLiquidateur(liquidateur), // L4d (E11d)
+          ...mandatPv(detailPv),
           siege: siegeIdentique === 'non' ? siegeLiquidation : '',
+          siegeIdentique,
           mandatDateEffet,
         },
         siegeLiquidation: siegeIdentique === 'non' ? siegeLiquidation : '',
@@ -434,6 +478,7 @@ function DissolutionWorkflowPageBody() {
         termeDate,
         exerciceClosDate,
         clauseArticle,
+        detailPv,
         convocation: convocationPayload(),
       });
     } else if (step === 2) {
@@ -452,6 +497,7 @@ function DissolutionWorkflowPageBody() {
       await executeStep(2, {
         pvValide: true,
         annonceValide: true,
+        mentionsPv,
         depotLegal:
           depotLegalNumero || depotLegalDate
             ? { numero: depotLegalNumero || null, date: depotLegalDate || null }
@@ -498,6 +544,7 @@ function DissolutionWorkflowPageBody() {
           formeJuridique,
           liquidateur,
           siegeLiquidation,
+          detailPv,
           convocation: convocationPayload(),
           convocationSnapshot,
         };
@@ -506,6 +553,7 @@ function DissolutionWorkflowPageBody() {
         return {
           pvValide: pvValidated,
           annonceValide: annonceValidated,
+          mentionsPv,
           depotLegal: { numero: depotLegalNumero, date: depotLegalDate },
         };
       }
@@ -514,7 +562,7 @@ function DissolutionWorkflowPageBody() {
     },
     // convocationPayload lit convocationDate/Heure : dependances explicitees.
     [dossierId, motif, nature, dateEffet, termeDate, exerciceClosDate, clauseArticle, siegeIdentique,
-      mandatDateEffet, dateAGE, formeJuridique, liquidateur, siegeLiquidation,
+      mandatDateEffet, dateAGE, formeJuridique, liquidateur, siegeLiquidation, detailPv, mentionsPv,
       convocationDate, convocationHeure, convocationSnapshot, pvValidated,
       annonceValidated, depotLegalNumero, depotLegalDate, piecesJointes],
   );
@@ -604,7 +652,7 @@ function DissolutionWorkflowPageBody() {
               <div className="rounded-lg border border-indigo-200 bg-accent/10 p-3 text-xs text-fg-muted" role="status">
                 Formalisme detecte : <strong>{decisionLabel}</strong> — Modeles :{' '}
                 <code className="rounded bg-bg-overlay px-1.5 py-0.5">
-                  {isAU ? 'PV_DISSOLUTION_LIQUIDATION_SARL_AU' : 'PV_DISSOLUTION_LIQUIDATION_SARL'}
+                  {isAU ? 'PV_DISSOLUTION_ANTICIPEE_SARL_AU' : 'PV_DISSOLUTION_ANTICIPEE_SARL'}
                 </code>{' '}
                 +{' '}
                 <code className="rounded bg-bg-overlay px-1.5 py-0.5">
@@ -671,6 +719,8 @@ function DissolutionWorkflowPageBody() {
                 data-testid="dissolution-clause-article" onChange={(e) => setClauseArticle(e.target.value)}
                 error={showErr('natureDetail') ?? undefined} hint="Ex. : 34" />
             )}
+            <PrecisionsMotifFields nature={nature} valeurs={detailPv} onChange={changerDetailPv}
+              erreur={(cle) => showErr(cle as keyof FieldErrors) ?? undefined} />
 
             <div>
               <ValeurProposee
@@ -724,7 +774,8 @@ function DissolutionWorkflowPageBody() {
                 </p>
               )}
               <p className="mt-1 text-[11px] text-fg-subtle">
-                Le motif figure au proces-verbal ; il n'apparait pas dans l'annonce legale.
+                Le motif est imprimé au procès-verbal lorsque la nature choisie est « Autre motif » ;
+                il est conservé au dossier dans tous les cas et n’apparaît pas dans l’annonce légale.
               </p>
             </div>
 
@@ -750,6 +801,14 @@ function DissolutionWorkflowPageBody() {
                 <p className="mt-1 text-xs text-danger" role="alert">{showErr('mandatDateEffet')}</p>
               )}
             </div>
+
+            <MandatLiquidateurFields valeurs={detailPv} onChange={changerDetailPv}
+              erreur={(cle) => showErr(cle as keyof FieldErrors) ?? undefined} />
+            {showErr('mandatLiquidateur') && (
+              <p className="text-xs text-danger" role="alert" data-testid="dissolution-mandat-liquidateur-erreur">
+                {showErr('mandatLiquidateur')}
+              </p>
+            )}
 
             <div>
               <label htmlFor="dissolution-siege-identique" className="mb-1 flex items-center gap-1 text-sm font-medium text-fg-muted">
@@ -883,6 +942,10 @@ function DissolutionWorkflowPageBody() {
               operation={operationInput}
               initialAssocies={bdAssocies}
               initialGerants={bdGerants}
+              // L4d (E6) : reference lisible du dossier (annee, numero, societe), pas celle du ticket.
+              referenceDossier={dossier?.reference ?? ''}
+              initialMentions={mentionsPv}
+              onMentions={setMentionsPv}
               onReady={setPvValidated}
               versioned
               depositMotif={depositMotif}
@@ -1048,9 +1111,7 @@ function DissolutionWorkflowPageBody() {
                 <div>
                   <p className="text-xs text-fg-subtle">Identite</p>
                   <p className="text-sm font-medium text-fg">
-                    {[liquidateur.civilite, liquidateur.prenom, liquidateur.nom]
-                      .filter(Boolean)
-                      .join(' ') || '—'}{' '}
+                    {identiteLiquidateur(liquidateur) || '—'}{' '}
                     <span className="text-xs font-normal text-fg-subtle">
                       ({liquidateur.source === 'BD' ? 'partie prenante du dossier' : 'externe'})
                     </span>

@@ -52,4 +52,14 @@ public interface WorkflowDocumentMapper {
      * @return un {@code Map<String,Object>} aligné avec les variables du manifest L3.
      */
     Map<String, Object> map(String templateCode, Map<String, Object> payload);
+
+    /**
+     * Lot L4d (E11) : le modele a rendre pour ce document. Par defaut le code demande ; un
+     * mapper dont le document est reparti sur plusieurs modeles du corpus (convocation AGO,
+     * AGE ou seconde ; PV de dissolution ou de cloture...) choisit le modele selon la donnee
+     * du parcours, jamais par simple renommage (L2_correspondance_gabarits.md, obs. 3).
+     */
+    default String gabarit(String templateCode, Map<String, Object> payload) {
+        return templateCode;
+    }
 }

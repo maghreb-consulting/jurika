@@ -6,7 +6,9 @@
  *
  * Les deux réutilisent le sous-formulaire commun {@link SeanceForm} et le
  * pipeline documentaire ({@link useDocumentBlocks}) ; ils appellent le workflow
- * back transverse `SEANCE_AG` (modèles unifiés SARL / SARL AU via $ASSOCIE_UNIQUE).
+ * back transverse `SEANCE_AG`. L4d (E11b) : le serveur rend les modeles du corpus
+ * du cabinet (convocation AGO, AGE ou seconde ; feuille AGO ou AGE). En SARL AU, ni
+ * convocation ni feuille de presence (article 76 de la loi 5-96) : les panneaux le disent.
  * Repliables et fermés par défaut : optionnels, ils ne se mêlent pas aux actes de
  * la page hôte. Dépôt auto dataroom (best-effort) quand un dossier est rattaché.
  */
@@ -34,6 +36,7 @@ import {
   type SeanceSocieteInput,
 } from './SeanceForm';
 import type { DocumentType } from '../../types/dataroom';
+import { TexteAide } from '../ui/Aide';
 
 const WORKFLOW_CODE = 'SEANCE_AG';
 
@@ -301,8 +304,11 @@ const CONVOCATION_SECTIONS: SeanceSections = {
   convocationRang: true,
   ordreDuJour: true,
   documentsJoints: true,
+  // L4d (E11b) : texte des resolutions annexe (AGO), votes de la premiere assemblee (seconde).
+  resolutions: true,
   presence: true,
   voix: false,
+  convocationCorpus: true,
 };
 
 const FEUILLE_SECTIONS: SeanceSections = {
@@ -312,17 +318,41 @@ const FEUILLE_SECTIONS: SeanceSections = {
   convocationRang: true,
   presence: true,
   voix: true,
+  feuilleCorpus: true,
 };
+
+/**
+ * L4d (E11b) : SARL a associe unique. Le corpus du cabinet n'a ni convocation ni feuille de
+ * presence (article 76 de la loi 5-96) : le panneau l'explique au lieu de proposer un
+ * document que le serveur refuserait.
+ */
+function SansObjetAssocieUnique({ document }: { document: 'convocation' | 'feuille' }) {
+  return (
+    <div data-testid={`seance-doc-sans-objet-${document}`}>
+      <TexteAide
+        cle={`seance-au-${document}`}
+        titre={document === 'convocation' ? 'Pas de convocation en SARL à associé unique' : 'Pas de feuille de présence en SARL à associé unique'}
+      >
+        <p>
+          {document === 'convocation'
+            ? 'L’associé unique n’est pas convoqué : il exerce seul les pouvoirs de l’assemblée (article 76 de la loi n° 5-96). Aucune lettre de convocation n’est à produire ; passez directement à la décision de l’associé unique.'
+            : 'L’associé unique décide seul et consigne sa décision au registre (article 76 de la loi n° 5-96) : il n’y a ni quorum ni feuille de présence à faire émarger.'}
+        </p>
+      </TexteAide>
+    </div>
+  );
+}
 
 export function ConvocationPanel(props: SeanceDocPanelBaseProps) {
   const sections = useMemo(() => CONVOCATION_SECTIONS, []);
+  if (props.formeJuridique === 'SARL_AU') return <SansObjetAssocieUnique document="convocation" />;
   return (
     <SeanceDocPanel
       {...props}
       templateCode="CONVOCATION_AG"
       documentType="CONVOCATION"
       title="Convocation à l'assemblée"
-      hint="À proposer AVANT l'assemblée. Renseignez la séance, la convocation, l'ordre du jour et les associés destinataires, puis générez la lettre de convocation (une lettre par associé)."
+      hint="À proposer AVANT l'assemblée. Renseignez la séance, la convocation, l'ordre du jour et les associés destinataires, puis générez la lettre de convocation du cabinet (une lettre par associé) : lettre de l'assemblée annuelle pour une assemblée ordinaire, de l'assemblée extraordinaire sinon, de seconde convocation au rang « Deuxième »."
       filenamePrefix="Convocation"
       icon={<CalendarClock className="h-4 w-4" />}
       sections={sections}
@@ -332,13 +362,14 @@ export function ConvocationPanel(props: SeanceDocPanelBaseProps) {
 
 export function FeuillePresencePanel(props: SeanceDocPanelBaseProps) {
   const sections = useMemo(() => FEUILLE_SECTIONS, []);
+  if (props.formeJuridique === 'SARL_AU') return <SansObjetAssocieUnique document="feuille" />;
   return (
     <SeanceDocPanel
       {...props}
       templateCode="FEUILLE_PRESENCE_AG"
       documentType="FEUILLE_PRESENCE"
       title="Feuille de présence"
-      hint="À proposer APRÈS l'assemblée. Renseignez les présences (parts, voix, mandataire) par associé, puis générez la feuille de présence certifiée par le gérant."
+      hint="À proposer APRÈS l'assemblée. Renseignez les présences (parts, voix, mandataire et date du pouvoir) par associé, puis générez la feuille de présence du cabinet : totaux, quotités et majorité sont calculés d'après ces présences."
       filenamePrefix="Feuille de présence"
       icon={<ClipboardList className="h-4 w-4" />}
       sections={sections}

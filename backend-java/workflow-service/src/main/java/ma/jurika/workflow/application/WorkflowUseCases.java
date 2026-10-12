@@ -2046,6 +2046,11 @@ public class WorkflowUseCases {
         if (fiche.get("nombreParts") == null) {
             putIfNotNull(fiche, "nombreParts", pickBigDecimal(pickStep(data, "capital"), "nombreParts"));
         }
+        // Lot L4d (E8) : publicites de la societe (annonces JAL et Bulletin officiel).
+        Object juridique = pickWrappedRaw(data, "juridique");
+        if (juridique instanceof Map<?, ?> jm && jm.get("publicites") instanceof List<?> pubs && !pubs.isEmpty()) {
+            fiche.put("publicites", pubs);
+        }
         fiche.put("source", "IMPORT");
         return fiche;
     }

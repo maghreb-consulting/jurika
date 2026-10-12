@@ -96,6 +96,8 @@ public class DemarchesDuTicket implements LignesDuTicket {
     public List<LigneCorpus> lignesCorpus(Ticket t) {
         if (!MatricesDuTicket.servieParLeCorpus(t.type())) return List.of();
         Map<String, String> variables = variables(t);
+        // Lot L4d (E7) : delais de depot au greffe ajustes par le cabinet.
+        Map<String, DelaisGreffe.Ajustement> ajustements = DelaisGreffe.ajustements(db, t.workspaceId());
         Map<UUID, LigneCorpus> parId = new LinkedHashMap<>();
         for (Choix c : choisies(t)) {
             List<Map<String, Object>> rangs = renvoi(c);
@@ -113,7 +115,7 @@ public class DemarchesDuTicket implements LignesDuTicket {
             for (Map<String, Object> l : lignes) {
                 UUID id = (UUID) l.get("id");
                 if (parId.containsKey(id)) continue;
-                parId.put(id, evaluer(l, variables));
+                parId.put(id, evaluer(DelaisGreffe.appliquer(l, ajustements), variables));
             }
         }
         List<LigneCorpus> out = new ArrayList<>(parId.values());

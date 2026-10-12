@@ -187,3 +187,21 @@ describe('4. Bouton de suppression d un document', () => {
     expect(svc.mesDroits).not.toHaveBeenCalled();
   });
 });
+
+describe('Références lisibles des documents (lot L4d, E6)', () => {
+  it('chaque document se lit par son type, la société et sa version', async () => {
+    const doc = {
+      id: 'doc2', dossierId: 'd1', ticketId: 't1', documentType: 'STATUTS', title: 'Statuts mis à jour', version: 2,
+      current: true, filename: 'STATUTS_SARL.docx', contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      sizeBytes: 10, createdAt: '2026-09-01', replacedAt: null,
+    };
+    svc.getJuridique.mockResolvedValue(vue({
+      raisonSociale: 'PARACOSME',
+      documentsEnVigueur: [doc],
+      dossiersParTicket: [{ ticketId: 't1', libelle: 'Modification', reference: 'T-1', type: 'MODIFICATION', statut: 'GENERATION_DOCUMENTS', ouvertLe: '2026-09-01', groupes: [{ code: 'ACTES', libelle: 'Actes', documents: [doc] }], totalDocuments: 1 }],
+    } as unknown as Partial<DossierJuridiqueView>));
+    render(<MemoryRouter><DossierJuridiqueTab dossierId="d1" role="SUPERVISEUR" /></MemoryRouter>);
+    const refs = await screen.findAllByTestId('reference-document');
+    expect(refs[0]).toHaveTextContent(/— PARACOSME — version 2$/);
+  });
+});

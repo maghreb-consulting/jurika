@@ -125,6 +125,30 @@ class WorkflowDocumentControllerListTemplatesTest {
         assertFalse(body.stream().anyMatch(t -> "STATUTS_CONSTITUTIFS_SARL".equals(t.code())));
     }
 
+    /**
+     * Lot L4d (E11a) : les statuts refondus sont un alias des statuts du corpus, dont le
+     * workflow est la creation. L'alias declare son propre workflow (MODIFICATION) : il est
+     * liste sous ce workflow, avec son propre libelle, et n'est pas "deprecated".
+     */
+    @Test
+    void alias_du_corpus_liste_sous_son_propre_workflow() {
+        when(mappingService.hasMapper(eq("MODIFICATION"))).thenReturn(true);
+        TemplateManifest.TemplateEntry statuts = entry("STATUTS_SARL", "CREATION_SARL", "corpus",
+                "Statuts SARL", "STATUTS_SARL.docx", null, false);
+        TemplateManifest.TemplateEntry refondus = entry("STATUTS_REFONDUS_SARL", "MODIFICATION", "corpus",
+                "Statuts refondus SARL", null, "STATUTS_SARL", false);
+        when(manifestLoader.allEntries()).thenReturn(List.of(statuts, refondus));
+        when(manifestLoader.resolve("STATUTS_REFONDUS_SARL")).thenReturn(Optional.of(statuts));
+
+        List<TemplateInfo> body = controller.listTemplates("MODIFICATION").getBody();
+        assertNotNull(body);
+        TemplateInfo info = body.stream().filter(t -> "STATUTS_REFONDUS_SARL".equals(t.code()))
+                .findFirst().orElseThrow(() -> new AssertionError("statuts refondus absents : " + body));
+        assertFalse(info.deprecated());
+        assertEquals("Statuts refondus SARL", info.documentKind());
+        assertFalse(body.stream().anyMatch(t -> "STATUTS_SARL".equals(t.code())));
+    }
+
     @Test
     void workflow_sans_mapper_retourne_liste_vide_200() {
         when(mappingService.hasMapper(eq("WORKFLOW_INCONNU"))).thenReturn(false);

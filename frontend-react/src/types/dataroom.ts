@@ -92,6 +92,11 @@ export type DemandeStatut = 'NON_TRAITEE' | 'EN_COURS' | 'TRAITEE';
 export interface DossierBrief {
   id: string;
   raisonSociale: string;
+  /**
+   * Lot L4d (E6) : référence lisible du dossier, « année-numéro — société »
+   * (numéro attribué par cabinet et par année). Absente : dossier sans numéro.
+   */
+  reference?: string | null;
   formeJuridique: string | null;
   ice: string | null;
   ville: string | null;

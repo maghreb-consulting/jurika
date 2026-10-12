@@ -45,6 +45,19 @@ class RepriseFicheSocieteTest {
                 .containsEntry("DENOMINATION", "ACME SARL (valeur du mapper)");
     }
 
+    /**
+     * Lot L4d (E11b) : la reference lisible du dossier (servie avec l'identite de la societe)
+     * alimente $DOSSIER_REFERENCE des modeles du corpus ; sans elle, rien n'est mis a sa place.
+     */
+    @Test
+    void la_reference_lisible_du_dossier_est_reprise() {
+        Map<String, Object> out = RepriseFicheSociete.completer(new HashMap<>(),
+                Map.of("societe", Map.of("dossierReference", "2026-0007 -- PARACOSME")));
+        assertThat(out).containsEntry("DOSSIER_REFERENCE", "2026-0007 -- PARACOSME");
+        assertThat(RepriseFicheSociete.completer(new HashMap<>(), Map.of("societe", Map.of("denomination", "X"))))
+                .doesNotContainKey("DOSSIER_REFERENCE");
+    }
+
     @Test
     void sans_donnee_de_la_societe_rien_n_est_invente() {
         Map<String, Object> out = RepriseFicheSociete.completer(new HashMap<>(), Map.of());

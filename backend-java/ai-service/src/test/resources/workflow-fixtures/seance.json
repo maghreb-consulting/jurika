@@ -1,5 +1,5 @@
 {
-  "_commentaire": "Lot L4a (E1) : charge du formulaire de seance commun (SeanceForm.buildPayload), par modele.",
+  "_commentaire": "Lot L4a (E1) : charge du formulaire de seance commun (SeanceForm.buildPayload), par modele. Lot L4d (E11b) : CONVOCATION_AG et FEUILLE_PRESENCE_AG completes pour les modeles du corpus (convocation AGO / AGE / seconde, feuille AGO / AGE).",
   "PV_DEFAUT_QUORUM_SARL": {
     "formeJuridique": "SARL",
     "associeUnique": false,
@@ -234,7 +234,9 @@
       "ville": "Casablanca",
       "rcVille": "Casablanca",
       "identifiantTp": "35501234",
-      "cnssNumero": "8812345"
+      "cnssNumero": "8812345",
+      "valeurNominalePart": 100,
+      "dossierReference": "2026-0007 — PARACOSME"
     },
     "seance": {
       "type": "ordinaire",
@@ -248,14 +250,26 @@
       "secretaireNom": ""
     },
     "convocation": {
-      "auteur": "la gérance",
+      "auteur": "M. Karim BENALI",
       "date": "2026-05-30",
       "heure": "10H00",
       "mode": "lettre recommandée avec accusé de réception",
       "rang": "première",
       "dateAgPremiere": "2026-06-15",
       "lieuSignature": "Casablanca",
-      "irregulariteNature": "convocation adressée hors délai légal"
+      "irregulariteNature": "convocation adressée hors délai légal",
+      "auteurQualite": "gérant",
+      "auteurType": "gérant",
+      "pouvoirJoint": "oui",
+      "communicationDateEnvoi": "2026-05-30",
+      "modePremiere": "lettre recommandée avec accusé de réception",
+      "datePremiere": "2026-05-15",
+      "heureAgPremiere": "10H00",
+      "lieuAgPremiere": "au siège social",
+      "clauseContraireStatuts": "non",
+      "associeInteressePresent": "non",
+      "documentsJointsSeconde": "oui",
+      "pouvoirsPremiereValables": "oui"
     },
     "secondeAssemblee": {
       "date": "2026-07-01",
@@ -264,12 +278,10 @@
     },
     "suiteAssemblee": "renvoi",
     "ordreDuJour": [
-      "Approbation des comptes de l'exercice 2025",
-      "Affectation du résultat"
+      "Renouvellement du mandat de la gérance"
     ],
     "documentsJoints": [
-      "Texte des résolutions proposées",
-      "Formule de pouvoir"
+      "le tableau d'affectation du résultat proposé"
     ],
     "resolutions": [
       {
@@ -309,7 +321,8 @@
         "mandataireNom": "",
         "pieceType": "CIN",
         "pieceNumero": "BE123456",
-        "nationalite": "marocaine"
+        "nationalite": "marocaine",
+        "pouvoirDate": ""
       },
       {
         "typePersonne": "PHYSIQUE",
@@ -323,9 +336,24 @@
         "mandataireNom": "",
         "pieceType": "CIN",
         "pieceNumero": "BK554433",
-        "nationalite": "marocaine"
+        "nationalite": "marocaine",
+        "pouvoirDate": ""
       }
-    ]
+    ],
+    "exercice": {
+      "dateDebut": "2025-01-01",
+      "dateCloture": "2025-12-31"
+    },
+    "comptes": {
+      "cacDesigne": "non",
+      "conventionsReglementees": "non",
+      "reserveLegale": "oui",
+      "reserveLegaleTaux": "5 %",
+      "reserveLegalePlafond": "le dixième du capital social",
+      "dividendes": "non",
+      "reserves": "non",
+      "quitusGerantVote": "non"
+    }
   },
   "FEUILLE_PRESENCE_AG": {
     "formeJuridique": "SARL",
@@ -343,7 +371,9 @@
       "ville": "Casablanca",
       "rcVille": "Casablanca",
       "identifiantTp": "35501234",
-      "cnssNumero": "8812345"
+      "cnssNumero": "8812345",
+      "valeurNominalePart": 100,
+      "dossierReference": "2026-0007 — PARACOSME"
     },
     "seance": {
       "type": "ordinaire",
@@ -357,14 +387,26 @@
       "secretaireNom": ""
     },
     "convocation": {
-      "auteur": "la gérance",
+      "auteur": "M. Karim BENALI",
       "date": "2026-05-30",
       "heure": "10H00",
       "mode": "lettre recommandée avec accusé de réception",
       "rang": "première",
       "dateAgPremiere": "2026-06-15",
       "lieuSignature": "Casablanca",
-      "irregulariteNature": "convocation adressée hors délai légal"
+      "irregulariteNature": "convocation adressée hors délai légal",
+      "auteurQualite": "gérant",
+      "auteurType": "gérant",
+      "pouvoirJoint": "oui",
+      "communicationDateEnvoi": "2026-05-30",
+      "modePremiere": "lettre recommandée avec accusé de réception",
+      "datePremiere": "2026-05-15",
+      "heureAgPremiere": "10H00",
+      "lieuAgPremiere": "au siège social",
+      "clauseContraireStatuts": "non",
+      "associeInteressePresent": "non",
+      "documentsJointsSeconde": "oui",
+      "pouvoirsPremiereValables": "oui"
     },
     "secondeAssemblee": {
       "date": "2026-07-01",
@@ -377,8 +419,7 @@
       "Affectation du résultat"
     ],
     "documentsJoints": [
-      "Texte des résolutions proposées",
-      "Formule de pouvoir"
+      "le tableau d'affectation du résultat proposé"
     ],
     "resolutions": [
       {
@@ -418,7 +459,8 @@
         "mandataireNom": "",
         "pieceType": "CIN",
         "pieceNumero": "BE123456",
-        "nationalite": "marocaine"
+        "nationalite": "marocaine",
+        "pouvoirDate": ""
       },
       {
         "typePersonne": "PHYSIQUE",
@@ -432,198 +474,23 @@
         "mandataireNom": "",
         "pieceType": "CIN",
         "pieceNumero": "BK554433",
-        "nationalite": "marocaine"
-      }
-    ]
-  },
-  "PV_DEFAUT_QUORUM_SARL_AU": {
-    "formeJuridique": "SARL_AU",
-    "associeUnique": true,
-    "societe": {
-      "denomination": "PARACOSME AU",
-      "formeJuridique": "SARL_AU",
-      "capitalChiffres": 100000,
-      "siegeSocial": "12 rue des Foules, Casablanca",
-      "nombreParts": 1000,
-      "rcNumero": "123456",
-      "villeGreffe": "Casablanca",
-      "ice": "001122334000055",
-      "ifNumero": "40998877",
-      "ville": "Casablanca",
-      "rcVille": "Casablanca",
-      "identifiantTp": "35501234",
-      "cnssNumero": "8812345"
-    },
-    "seance": {
-      "type": "ordinaire",
-      "date": "2026-06-15",
-      "heure": "10H00",
-      "lieu": "au siège social",
-      "heureCloture": "10H30",
-      "presidentNom": "M. Karim BENALI",
-      "presidentQualite": "gérant",
-      "secretairePresent": "non",
-      "secretaireNom": ""
-    },
-    "convocation": {
-      "auteur": "la gérance",
-      "date": "2026-05-30",
-      "heure": "10H00",
-      "mode": "lettre recommandée avec accusé de réception",
-      "rang": "première",
-      "dateAgPremiere": "2026-06-15",
-      "lieuSignature": "Casablanca",
-      "irregulariteNature": "convocation adressée hors délai légal"
-    },
-    "secondeAssemblee": {
-      "date": "2026-07-01",
-      "heure": "10H00",
-      "lieu": "au siège social"
-    },
-    "suiteAssemblee": "renvoi",
-    "ordreDuJour": [
-      "Approbation des comptes de l'exercice 2025",
-      "Affectation du résultat"
-    ],
-    "documentsJoints": [
-      "Texte des résolutions proposées",
-      "Formule de pouvoir"
-    ],
-    "resolutions": [
-      {
-        "intitule": "Approbation des comptes",
-        "texte": "L'assemblée approuve les comptes de l'exercice.",
-        "voixPour": "1000",
-        "voixContre": "0",
-        "abstentions": "0",
-        "resultat": "adoptée"
+        "nationalite": "marocaine",
+        "pouvoirDate": ""
       }
     ],
-    "quorumAtteint": "non",
-    "vote": {
-      "resultat": "adoptée",
-      "majorite": "à l'unanimité",
-      "voixPour": "1000",
-      "voixContre": "0",
-      "abstentions": "0"
+    "exercice": {
+      "dateDebut": "2025-01-01",
+      "dateCloture": "2025-12-31"
     },
-    "gerants": [
-      {
-        "civilite": "M.",
-        "prenom": "Karim",
-        "nom": "BENALI"
-      }
-    ],
-    "associes": [
-      {
-        "typePersonne": "PHYSIQUE",
-        "civilite": "M.",
-        "prenom": "Karim",
-        "nom": "BENALI",
-        "adresse": "5 boulevard Zerktouni, Casablanca",
-        "nombreParts": "1000",
-        "nombreVoix": "1000",
-        "presence": "présent",
-        "mandataireNom": "",
-        "pieceType": "CIN",
-        "pieceNumero": "BE123456",
-        "nationalite": "marocaine"
-      }
-    ]
-  },
-  "PV_IRREGULARITE_CONVOCATION_SARL_AU": {
-    "formeJuridique": "SARL_AU",
-    "associeUnique": true,
-    "societe": {
-      "denomination": "PARACOSME AU",
-      "formeJuridique": "SARL_AU",
-      "capitalChiffres": 100000,
-      "siegeSocial": "12 rue des Foules, Casablanca",
-      "nombreParts": 1000,
-      "rcNumero": "123456",
-      "villeGreffe": "Casablanca",
-      "ice": "001122334000055",
-      "ifNumero": "40998877",
-      "ville": "Casablanca",
-      "rcVille": "Casablanca",
-      "identifiantTp": "35501234",
-      "cnssNumero": "8812345"
-    },
-    "seance": {
-      "type": "ordinaire",
-      "date": "2026-06-15",
-      "heure": "10H00",
-      "lieu": "au siège social",
-      "heureCloture": "10H30",
-      "presidentNom": "M. Karim BENALI",
-      "presidentQualite": "gérant",
-      "secretairePresent": "non",
-      "secretaireNom": ""
-    },
-    "convocation": {
-      "auteur": "la gérance",
-      "date": "2026-05-30",
-      "heure": "10H00",
-      "mode": "lettre recommandée avec accusé de réception",
-      "rang": "première",
-      "dateAgPremiere": "2026-06-15",
-      "lieuSignature": "Casablanca",
-      "irregulariteNature": "convocation adressée hors délai légal"
-    },
-    "secondeAssemblee": {
-      "date": "2026-07-01",
-      "heure": "10H00",
-      "lieu": "au siège social"
-    },
-    "suiteAssemblee": "renvoi",
-    "ordreDuJour": [
-      "Approbation des comptes de l'exercice 2025",
-      "Affectation du résultat"
-    ],
-    "documentsJoints": [
-      "Texte des résolutions proposées",
-      "Formule de pouvoir"
-    ],
-    "resolutions": [
-      {
-        "intitule": "Approbation des comptes",
-        "texte": "L'assemblée approuve les comptes de l'exercice.",
-        "voixPour": "1000",
-        "voixContre": "0",
-        "abstentions": "0",
-        "resultat": "adoptée"
-      }
-    ],
-    "quorumAtteint": "non",
-    "vote": {
-      "resultat": "adoptée",
-      "majorite": "à l'unanimité",
-      "voixPour": "1000",
-      "voixContre": "0",
-      "abstentions": "0"
-    },
-    "gerants": [
-      {
-        "civilite": "M.",
-        "prenom": "Karim",
-        "nom": "BENALI"
-      }
-    ],
-    "associes": [
-      {
-        "typePersonne": "PHYSIQUE",
-        "civilite": "M.",
-        "prenom": "Karim",
-        "nom": "BENALI",
-        "adresse": "5 boulevard Zerktouni, Casablanca",
-        "nombreParts": "1000",
-        "nombreVoix": "1000",
-        "presence": "présent",
-        "mandataireNom": "",
-        "pieceType": "CIN",
-        "pieceNumero": "BE123456",
-        "nationalite": "marocaine"
-      }
-    ]
+    "comptes": {
+      "cacDesigne": "non",
+      "conventionsReglementees": "non",
+      "reserveLegale": "oui",
+      "reserveLegaleTaux": "5 %",
+      "reserveLegalePlafond": "le dixième du capital social",
+      "dividendes": "non",
+      "reserves": "non",
+      "quitusGerantVote": "non"
+    }
   }
 }

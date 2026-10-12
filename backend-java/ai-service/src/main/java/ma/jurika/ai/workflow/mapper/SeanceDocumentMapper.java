@@ -7,19 +7,19 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Mapper L4 du « workflow » transverse {@code SEANCE_AG} : les 2 documents de séance
- * d'assemblée générale <b>partagés</b> et <b>optionnels</b> — la {@code CONVOCATION_AG}
- * (proposée en début de workflow, avant l'AG) et la {@code FEUILLE_PRESENCE_AG}
- * (proposée après l'AG).
+ * Mapper L4 du "workflow" transverse {@code SEANCE_AG} : les 2 documents de seance
+ * d'assemblee generale partages et optionnels -- la {@code CONVOCATION_AG} (proposee en
+ * debut de workflow, avant l'AG) et la {@code FEUILLE_PRESENCE_AG} (proposee apres l'AG).
  *
  * <p>Comme les 2 PV d'incident ({@link IncidentSeanceMapper}), ces documents sont
- * générables depuis TOUT workflow qui tient une assemblée (modification, dissolution,
- * liquidation, PV AGO, …). Les 2 modèles directeur sont <b>unifiés</b> (un seul fichier
- * couvre SARL et SARL AU via {@code $ASSOCIE_UNIQUE}) : il n'y a donc pas de variante
- * {@code _SARL} / {@code _SARL_AU} au niveau du code.
+ * generables depuis tout workflow qui tient une assemblee (modification, dissolution,
+ * liquidation, PV AGO...). Les codes CONVOCATION_AG et FEUILLE_PRESENCE_AG restent les codes
+ * logiques du parcours (ecrans, types de la Data Room).
  *
- * <p>La logique de production des variables vit dans {@link SeancePvVarsBuilder}
- * (réutilisable, double nommage) ; ce mapper ne fait que router + valider.
+ * <p>Lot L4d (E11b) : ils sont rendus par les modeles du corpus du cabinet, choisis selon la
+ * donnee du parcours ({@link SeanceCorpusVarsBuilder#modele}) : convocation AGO, AGE ou
+ * seconde convocation ; feuille de presence AGO ou AGE. En SARL a associe unique, aucun de
+ * ces documents n'existe (article 76 de la loi n 5-96) : la generation est refusee.
  */
 @Component
 public class SeanceDocumentMapper implements WorkflowDocumentMapper {
@@ -27,8 +27,8 @@ public class SeanceDocumentMapper implements WorkflowDocumentMapper {
     private static final String WORKFLOW = "SEANCE_AG";
 
     private static final Set<String> TEMPLATES = Set.of(
-            "CONVOCATION_AG",
-            "FEUILLE_PRESENCE_AG");
+            SeanceCorpusVarsBuilder.CONVOCATION_AG,
+            SeanceCorpusVarsBuilder.FEUILLE_PRESENCE_AG);
 
     @Override
     public String workflowCode() {
@@ -47,6 +47,17 @@ public class SeanceDocumentMapper implements WorkflowDocumentMapper {
                     "Template non supporté par SeanceDocumentMapper : " + templateCode
                             + " (supportés : " + TEMPLATES + ")");
         }
-        return SeancePvVarsBuilder.build(templateCode, payload == null ? Map.of() : payload);
+        return SeanceCorpusVarsBuilder.build(templateCode, payload == null ? Map.of() : payload);
+    }
+
+    /**
+     * Modele du corpus choisi selon le type d'assemblee et le rang de la convocation. Sans
+     * donnee pour le choisir (type absent, SARL AU), le code logique est rendu tel quel :
+     * {@link #map} a deja refuse la generation en le disant.
+     */
+    @Override
+    public String gabarit(String templateCode, Map<String, Object> payload) {
+        String modele = SeanceCorpusVarsBuilder.modele(templateCode, payload);
+        return modele == null ? templateCode : modele;
     }
 }

@@ -63,6 +63,8 @@ public class DossiersController {
                         statusByDossier.getOrDefault(d.getId(), "ACTIVE"),
                         d.getDateDissolution() == null ? null
                                 : d.getDateDissolution().toString(),
-                        d.getOrigine(), d.getPays(), d.getFormeJuridiqueOrigine())).toList();
+                        d.getOrigine(), d.getPays(), d.getFormeJuridiqueOrigine(),
+                        ma.jurika.common.reference.ReferencesLisibles.dossier(
+                                d.getNumeroAnnee(), d.getNumeroOrdre(), d.getRaisonSociale()))).toList();
     }
 }

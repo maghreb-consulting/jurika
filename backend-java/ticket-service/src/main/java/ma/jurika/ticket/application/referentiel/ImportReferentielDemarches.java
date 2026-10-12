@@ -116,7 +116,12 @@ public class ImportReferentielDemarches {
                     famille_renvoi, matrice_renvoi, numero_renvoi, regle)
                 VALUES (?,?,?,?,?,?,?,?,?,?)
                 """, renvois);
-        return journaliser(r, "APPLIQUE", null, acteur);
+        // Lot L4d (E3) : l'avancement des tickets en cours suit la nouvelle version (V37).
+        Map<String, Object> report = db.queryForMap("SELECT * FROM ticket_reporter_etats_demarches(?)", r.version());
+        Map<String, Object> complements = new LinkedHashMap<>();
+        complements.put("etatsReportes", report.get("reportes"));
+        complements.put("etatsNonReportes", report.get("non_reportes"));
+        return journaliser(r, "APPLIQUE", null, acteur, complements);
     }
 
     /**
@@ -215,6 +220,20 @@ public class ImportReferentielDemarches {
                 """);
     }
 
+    /** Lot L4d (E3) : version du corpus monte dans ai-service (nom du dossier date). */
+    public String versionMontee() {
+        ReferentielCorpus r = source.lire();
+        return r == null ? null : r.version();
+    }
+
+    /** Lot L4d (E3) : cette version a-t-elle deja ete refusee (journal des imports) ? */
+    public boolean versionRefusee(String version) {
+        Integer n = db.queryForObject("""
+                SELECT count(*) FROM referentiel_imports WHERE corpus_version = ? AND statut = 'REFUSE'
+                """, Integer.class, version);
+        return n != null && n > 0;
+    }
+
     /** Version du corpus actuellement appliquee, ou null. */
     public String versionActive() {
         List<String> v = db.queryForList("""
@@ -243,6 +262,11 @@ public class ImportReferentielDemarches {
     }
 
     private Resultat journaliser(ReferentielCorpus r, String statut, String motif, UUID acteur) {
+        return journaliser(r, statut, motif, acteur, Map.of());
+    }
+
+    private Resultat journaliser(ReferentielCorpus r, String statut, String motif, UUID acteur,
+                                 Map<String, Object> complements) {
         String version = r == null || r.version() == null ? "?" : r.version();
         Map<String, Object> rapport = new LinkedHashMap<>();
         if (r != null && r.rapport() != null) {
@@ -253,6 +277,7 @@ public class ImportReferentielDemarches {
             rapport.put("erreurs", r.rapport().erreurs());
         }
         if (r != null && "APPLIQUE".equals(statut)) rapport.put("ecartsCreation", ecartsCreation(r.parcoursCreation()));
+        rapport.putAll(complements);
         int lignes = "APPLIQUE".equals(statut) ? r.lignes().size() : 0;
         int decisions = "APPLIQUE".equals(statut) ? r.decisions().size() : 0;
         int renvois = "APPLIQUE".equals(statut) ? r.renvois().size() : 0;

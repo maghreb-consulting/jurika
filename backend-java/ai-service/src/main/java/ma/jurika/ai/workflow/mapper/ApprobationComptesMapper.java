@@ -33,7 +33,9 @@ import java.util.Set;
  * <p>Le mapper couvre aussi {@code RAPPORT_GESTION} (rapport de la gérance — document
  * distinct, optionnel, listé en pièce jointe de la convocation) en déléguant à
  * {@link AnnualReportMapper}, de sorte que le rapport reste générable depuis le même
- * workflow {@code PV_AGO}.
+ * workflow {@code PV_AGO}. Lot L4d (E11e) : variables construites par le seul
+ * {@link RapportGestionVarsBuilder}, modele du corpus choisi par la forme
+ * (RAPPORT_GESTION_EXERCICE_SARL ou _SARL_AU).
  *
  * <p>Sélection SARL vs SARL AU : par le suffixe du {@code templateCode}
  * ({@code _SARL_AU} → associé unique). Aucune lecture DB : tout est dans le payload.
@@ -66,6 +68,13 @@ public class ApprobationComptesMapper implements WorkflowDocumentMapper {
     @Override
     public Set<String> supportedTemplates() {
         return TEMPLATES;
+    }
+
+    @Override
+    public String gabarit(String templateCode, Map<String, Object> payload) {
+        // Lot L4d (E11e) : le rapport de gestion est rendu par le modele du corpus de la forme.
+        if (TPL_RAPPORT.equals(templateCode)) return annualReportMapper.gabarit(templateCode, payload);
+        return templateCode;
     }
 
     @Override

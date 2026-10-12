@@ -174,7 +174,7 @@ public final class ConstructeurChargeUtileCreation {
     };
 
     private static final String[][] TICKET = {
-            {"reference", "DOSSIER_NUMERO"},
+            // Lot L4d (E6) : la reference du ticket n'est plus le numero du dossier.
             {"responsableNom", "DOSSIER_CHARGE"},
             {"createdAt", "DOSSIER_DATE_OUVERTURE"},
             {"dateAnnulation", "DOSSIER_DATE_ANNULATION"},
@@ -390,14 +390,15 @@ public final class ConstructeurChargeUtileCreation {
 
     /**
      * Lot L4a (E1c) : les faits du ticket (reference, ouverture, employe en charge,
-     * annulation), poses comme donnees DERIVEES quand le magasin ne les porte pas. Le numero
-     * du dossier imprime en creation est la reference du TICKET : le dossier n'existe pas
-     * encore (decision a revoir, L4a).
+     * annulation), poses comme donnees DERIVEES quand le magasin ne les porte pas. Lot L4d (E6) :
+     * le numero du dossier imprime est sa reference lisible (annee, numero, societe ; ticket
+     * V38), le dossier existant des le debut de la creation ; plus la reference du ticket.
      */
     public static Map<String, Object> avecFaitsDuTicket(Map<String, Object> variables, FaitsDuTicket.Faits f) {
         Map<String, Object> v = new LinkedHashMap<>(variables == null ? Map.of() : variables);
         if (f == null) return v;
-        putSi(v, "DOSSIER_NUMERO", f.reference());
+        // Lot L4d (E6) : reference lisible du dossier (annee, numero, societe), plus celle du ticket.
+        putSi(v, "DOSSIER_NUMERO", f.dossierReference());
         putSi(v, "DOSSIER_DATE_OUVERTURE", f.ouvertLe());
         putSi(v, "DOSSIER_CHARGE", f.chargeNom());
         putSi(v, "DOSSIER_DATE_ANNULATION", f.annuleLe());

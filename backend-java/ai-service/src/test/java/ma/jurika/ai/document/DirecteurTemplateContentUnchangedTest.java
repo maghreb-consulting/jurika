@@ -31,29 +31,18 @@ class DirecteurTemplateContentUnchangedTest {
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {
-            // Lot A (2026-09-10) — les deux statuts RESTENT : le corpus de création
-            // d'août est parti, mais ces deux gabarits sont ceux que la refonte des
-            // statuts (MODIFICATION, STATUTS_REFONDUS_*) rend encore.
-            // ACTE_NOMINATION_GERANT_modele_deterministe.docx et
-            // ANNONCE_LEGALE_modele_deterministe.docx ont été supprimés avec la voie
-            // création : leurs entrées et leurs baselines sont retirées d'ici.
-            "STATUTS_SARL_modele_deterministe.docx",
-            "STATUTS_SARL_AU_modele_deterministe.docx",
+            // Lot L4d (E11) : les statuts refondus sont rendus par les statuts du corpus ; les
+            // deux gabarits deterministes du directeur et leurs baselines sont retires.
             // Phase 4 — PV de séance (incident) transverses.
             "PV_DEFAUT_QUORUM_SARL.docx",
-            "PV_DEFAUT_QUORUM_SARL_AU.docx",
             "PV_IRREGULARITE_CONVOCATION_SARL.docx",
-            "PV_IRREGULARITE_CONVOCATION_SARL_AU.docx",
-            // Phase A — documents de séance partagés (Convocation + Feuille de présence).
-            "CONVOCATION_AG.docx",
-            "FEUILLE_PRESENCE_AG.docx",
+            // Lot L4d (E11b) : convocation et feuille de presence rendues par les modeles du
+            // corpus ; les gabarits du classpath et leurs baselines sont retires.
             // Phase B — PV d'approbation des comptes (AGO annuelle).
             "PV_APPROBATION_COMPTES_SARL.docx",
             "PV_APPROBATION_COMPTES_SARL_AU.docx",
-            // Phase C — Dissolution / Liquidation (PV unifié + rapport du liquidateur).
-            "PV_DISSOLUTION_LIQUIDATION_SARL.docx",
-            "PV_DISSOLUTION_LIQUIDATION_SARL_AU.docx",
-            "RAPPORT_LIQUIDATION_DIRECTEUR.docx",
+            // Phase C - Dissolution / Liquidation : lot L4d (E11d), PV unifie et rapport du
+            // liquidateur retires (modeles du corpus).
             // Phase D — Succursales (création MA / étrangère + fermeture, SARL & SARL AU).
             "PV_CREATION_SUCCURSALE_MAROC_SARL.docx",
             "PV_CREATION_SUCCURSALE_MAROC_SARL_AU.docx",
@@ -61,33 +50,26 @@ class DirecteurTemplateContentUnchangedTest {
             "PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU.docx",
             "PV_FERMETURE_SUCCURSALE_SARL.docx",
             "PV_FERMETURE_SUCCURSALE_SARL_AU.docx",
-            // Phase E1 — PV de Modification (AGE) à résolutions typées (32 types), SARL & SARL AU.
-            "PV_MODIFICATION_SARL.docx",
-            "PV_MODIFICATION_SARL_AU.docx",
+            // Lot L4d (E11c) : PV_MODIFICATION_SARL(_AU) retires, rendus par PV_AG_SARL et
+            // PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU du corpus.
             // Phase 2 — Annonce légale de modification (avis JAL, boucle DECISIONS), SARL & SARL AU.
             "ANNONCE_LEGALE_MODIFICATION_SARL.docx",
             "ANNONCE_LEGALE_MODIFICATION_SARL_AU.docx",
             // 2026-08-12 — Annonce légale de dissolution (avis simple, sans condition
             // ni boucle : le modèle directeur ne comporte que des $VAR).
-            "ANNONCE_LEGALE_DISSOLUTION_SARL.docx",
-            "ANNONCE_LEGALE_DISSOLUTION_SARL_AU.docx",
             // 2026-08-13 — Annonce légale de CLÔTURE DE LIQUIDATION (second avis du
             // cycle) : avis à condition unique ◇ SI boni / ◇ SINON mali, sans boucle.
-            "ANNONCE_LEGALE_LIQUIDATION_SARL.docx",
-            "ANNONCE_LEGALE_LIQUIDATION_SARL_AU.docx",
             // 2026-08-13 (lot DIVERS) — Annonces légales de SUCCURSALE : ouverture (deux
             // blocs ◇ SI : dotation, responsable) et fermeture (avis linéaire).
             "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL.docx",
             "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL_AU.docx",
             "ANNONCE_LEGALE_FERMETURE_SUCCURSALE_SARL.docx",
             "ANNONCE_LEGALE_FERMETURE_SUCCURSALE_SARL_AU.docx",
-            // 2026-08-13 (lot DIVERS §C) — variante ÉTRANGÈRE de l'avis d'ouverture.
-            // ⚠ origin = derive-jurika : ce contenu n'est PAS du directeur, il est
-            // dérivé du modèle 05_ par scripts/derive-succursale-etrangere-annonce.
-            // La baseline sert ici de garde-fou anti-dérive : le corps repris du
-            // directeur ne doit pas bouger sans regénération explicite.
-            "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL.docx",
-            "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL_AU.docx"})
+            // Lot L4d (E11d) : rapport du liquidateur, toujours rendu par le classpath (bascule
+            // sur RAPPORT_LIQUIDATEUR_* non resolue).
+            "RAPPORT_LIQUIDATION_DIRECTEUR.docx"})
+            // Lot L4d (E11) : la variante etrangere de l'avis d'ouverture (derive-jurika) est
+            // retiree, l'avis est rendu par le modele du corpus.
     void contenu_identique_a_la_reference(String fn) throws Exception {
         List<String> baseline = loadBaseline(fn);
         List<String> current = paragraphTexts("templates/docx/" + fn);

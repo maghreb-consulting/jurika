@@ -104,12 +104,11 @@
     "depotFondsBloque" : "oui"
   },
   "dossier" : {
-    "numero" : "D-2026-00841",
+    "numero" : "2026-0841 — PARACOSME",
     "charge" : "Salma IDRISSI",
     "dateOuverture" : "2026-09-01"
   },
   "ticket" : {
-    "reference" : "D-2026-00841",
     "responsableNom" : "Salma IDRISSI",
     "createdAt" : "2026-09-01",
     "dateAnnulation" : null,
@@ -340,7 +339,7 @@
       "acteFormationNature" : "Réservation de locaux",
       "acteFormationObjet" : "dépôt de garantie du bail"
     } ],
-    "dossierNumero" : "D-2026-00841",
+    "dossierNumero" : "2026-0841 — PARACOSME",
     "dossierDateOuverture" : "2026-09-01",
     "dossierCharge" : "Salma IDRISSI"
   },

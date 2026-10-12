@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, createContext, useContext } from 'react';
 import {
   Download,
   Eye,
@@ -61,6 +61,7 @@ import { DocumentVersionsDropdown } from './components/DocumentVersionsDropdown'
 import { IdentifiantsDrawer } from './components/IdentifiantsDrawer';
 import { FichePreflightModal } from './components/FichePreflightModal';
 import { computeMissingIdentity } from './components/ficheClientPreflight';
+import { nomFichierDocument, referenceDocument } from '../../lib/referencesLisibles';
 
 
 interface Props {
@@ -286,6 +287,7 @@ export function DossierJuridiqueTab({
   if (!view) return null;
 
   return (
+    <SocieteDuDossier.Provider value={view.raisonSociale ?? ''}>
     <div className="space-y-4">
       <Card className="space-y-3 p-4">
         <JuridiqueSearchBar
@@ -631,6 +633,7 @@ export function DossierJuridiqueTab({
         </>
       )}
     </div>
+    </SocieteDuDossier.Provider>
   );
 }
 
@@ -720,6 +723,9 @@ function DossierDeTicket({
   );
 }
 
+/** Lot L4d (E6) : la societe du dossier, pour la reference lisible de chaque document. */
+const SocieteDuDossier = createContext<string>('');
+
 function DocumentRow({
   doc,
   canDelete,
@@ -755,11 +761,14 @@ function DocumentRow({
   const type = String(doc.documentType);
   const label =
     (DOCUMENT_TYPE_LABELS as Record<string, string>)[type] ?? type;
+  const societe = useContext(SocieteDuDossier);
+  const reference = referenceDocument(label, societe, doc.version);
 
   async function download() {
     setDownloading(true);
     try {
-      await dataroomService.downloadDocument(doc.id, doc.filename);
+      // Lot L4d (E6) : le fichier telecharge porte la reference lisible du document.
+      await dataroomService.downloadDocument(doc.id, nomFichierDocument(reference, doc.filename));
     } finally {
       setDownloading(false);
     }
@@ -822,7 +831,7 @@ function DocumentRow({
               <Highlight text={doc.title} query={highlightQuery} />
             </p>
             <p className="text-xs text-fg-subtle">
-              {label} • v{doc.version} •{' '}
+              <span data-testid="reference-document">{reference}</span> •{' '}
               {new Date(doc.createdAt).toLocaleDateString('fr-FR')}
               {highlightQuery && doc.filename && doc.filename !== doc.title && (
                 <>

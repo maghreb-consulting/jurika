@@ -39,7 +39,6 @@ class SeanceVarsCoverageTest {
     private static final Set<String> NON_VARS = Set.of("SI", "SINON", "FIN", "DEBUT", "BOUCLE", "NOM");
 
     private final IncidentSeanceMapper incident = new IncidentSeanceMapper();
-    private final SeanceDocumentMapper seance = new SeanceDocumentMapper();
 
     @Test
     void tous_les_pv_incidents_sont_couverts() {
@@ -47,25 +46,15 @@ class SeanceVarsCoverageTest {
         // deux variantes de payload pour couvrir toutes les variables possibles.
         assertCovered("PV_DEFAUT_QUORUM_SARL",
                 incident.map("PV_DEFAUT_QUORUM_SARL", payloadSarl()));
-        assertCovered("PV_DEFAUT_QUORUM_SARL_AU",
-                incident.map("PV_DEFAUT_QUORUM_SARL_AU", payloadAu()),
-                incident.map("PV_DEFAUT_QUORUM_SARL_AU", payloadAuMorale()));
         assertCovered("PV_IRREGULARITE_CONVOCATION_SARL",
                 incident.map("PV_IRREGULARITE_CONVOCATION_SARL", payloadSarl()));
-        assertCovered("PV_IRREGULARITE_CONVOCATION_SARL_AU",
-                incident.map("PV_IRREGULARITE_CONVOCATION_SARL_AU", payloadAu()),
-                incident.map("PV_IRREGULARITE_CONVOCATION_SARL_AU", payloadAuMorale()));
+        // Lot L4d (E11) : variantes SARL AU retirees (sans objet).
+        org.assertj.core.api.Assertions.assertThat(incident.supportedTemplates())
+                .containsExactlyInAnyOrder("PV_DEFAUT_QUORUM_SARL", "PV_IRREGULARITE_CONVOCATION_SARL");
     }
 
-    @Test
-    void convocation_et_feuille_sont_couvertes() {
-        assertCovered("CONVOCATION_AG",
-                seance.map("CONVOCATION_AG", payloadSarl()),
-                seance.map("CONVOCATION_AG", payloadAu()));
-        assertCovered("FEUILLE_PRESENCE_AG",
-                seance.map("FEUILLE_PRESENCE_AG", payloadSarl()),
-                seance.map("FEUILLE_PRESENCE_AG", payloadAu()));
-    }
+    // Lot L4d (E11b) : convocation et feuille de presence sont rendues par les modeles du
+    // corpus ; leur couverture se verifie sur le document rendu (SeanceDocRenderTest).
 
     @SafeVarargs
     private void assertCovered(String code, Map<String, Object>... produced) {

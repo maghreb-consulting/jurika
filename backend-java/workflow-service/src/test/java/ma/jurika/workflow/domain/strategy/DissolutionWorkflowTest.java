@@ -150,6 +150,46 @@ class DissolutionWorkflowTest {
         assertThat(liq).containsEntry("siege", "12 RUE DES FOULES, CASABLANCA");
     }
 
+    /** Lot L4d (E5) : liquidateur personne morale (decision du directeur, 2026-10-11). */
+    private Map<String, Object> liquidateurPersonneMorale() {
+        Map<String, Object> l = new HashMap<>();
+        l.put("source", "EXTERNE");
+        l.put("forme", "morale");
+        l.put("denomination", "FIDUCIAIRE ATLAS");
+        l.put("formeJuridique", "SARL");
+        l.put("siegeSocial", "10 RUE D'AGADIR, CASABLANCA");
+        l.put("adresse", "10 RUE D'AGADIR, CASABLANCA");
+        l.put("representantNom", "M. Karim BENNANI");
+        l.put("representantQualite", "gerant");
+        return l;
+    }
+
+    @Test
+    @DisplayName("Step 1 : liquidateur personne morale designe par sa denomination -> OK")
+    void step1_liquidateurPersonneMorale_ok() {
+        Map<String, Object> p = step1Payload();
+        p.put("liquidateur", liquidateurPersonneMorale());
+        StepResult res = run(1, p, "SARL");
+        assertThat(res.canAdvance()).isTrue();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> liq = (Map<String, Object>) res.stepData().get("liquidateur");
+        assertThat(liq).containsEntry("denomination", "FIDUCIAIRE ATLAS")
+                .containsEntry("representantNom", "M. Karim BENNANI")
+                .doesNotContainKey("nom");
+    }
+
+    @Test
+    @DisplayName("Step 1 : liquidateur personne morale sans denomination -> blocage nomme")
+    void step1_liquidateurPersonneMoraleSansDenomination_blocage() {
+        Map<String, Object> p = step1Payload();
+        Map<String, Object> l = liquidateurPersonneMorale();
+        l.remove("denomination");
+        p.put("liquidateur", l);
+        StepResult res = run(1, p, "SARL");
+        assertThat(res.canAdvance()).isFalse();
+        assertThat(res.message()).contains("denomination du liquidateur");
+    }
+
     @Test
     @DisplayName("Step 1 : origine du liquidateur inconnue → blocage")
     void step1_sourceLiquidateurInvalide_blocage() {
@@ -165,6 +205,32 @@ class DissolutionWorkflowTest {
     void step1_siegeLiquidationAbsent_blocage() {
         Map<String, Object> p = step1Payload();
         p.remove("siegeLiquidation");
+        StepResult res = run(1, p, "SARL");
+        assertThat(res.canAdvance()).isFalse();
+        assertThat(res.message()).contains("siege de la liquidation");
+    }
+
+    @Test
+    @DisplayName("Step 1 : siege de la liquidation au siege social (choix L4b) \u2192 OK, choix conserve")
+    void step1_siegeLiquidationAuSiegeSocial_ok() {
+        // Lot L4d (E11d) : l'ecran envoie siegeIdentique = "oui" et aucune adresse ; l'etape
+        // etait bloquee ("Le siege de la liquidation est obligatoire").
+        Map<String, Object> p = step1Payload();
+        p.put("siegeLiquidation", "");
+        p.put("siegeIdentique", "oui");
+        StepResult res = run(1, p, "SARL");
+        assertThat(res.canAdvance()).isTrue();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> liq = (Map<String, Object>) res.stepData().get("liquidateur");
+        assertThat(liq).containsEntry("siegeIdentique", "oui");
+    }
+
+    @Test
+    @DisplayName("Step 1 : autre adresse choisie sans adresse \u2192 blocage")
+    void step1_autreAdresseSansAdresse_blocage() {
+        Map<String, Object> p = step1Payload();
+        p.put("siegeLiquidation", "");
+        p.put("siegeIdentique", "non");
         StepResult res = run(1, p, "SARL");
         assertThat(res.canAdvance()).isFalse();
         assertThat(res.message()).contains("siege de la liquidation");

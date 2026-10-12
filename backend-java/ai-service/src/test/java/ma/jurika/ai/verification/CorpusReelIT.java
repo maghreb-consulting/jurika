@@ -51,7 +51,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CorpusReelIT {
 
     static final Path RACINE = Path.of(System.getenv().getOrDefault("JURIKA_CORPUS_REEL",
-            "/home/jurika/corpus/CORPUS_2026-10-03"));
+            "/home/jurika/corpus/CORPUS_2026-10-11"));
     static final Path SORTIE = Path.of("target/corpus-reel");
     static final Pattern VARIABLE = Pattern.compile("\\$[A-Z][A-Z0-9_]*");
     static final Pattern RESIDU_RENDU = Pattern.compile(
@@ -109,7 +109,10 @@ class CorpusReelIT {
                 // mapper, puis reprise des variables canoniques de la fiche societe.
                 Map<String, Object> variables = ma.jurika.ai.workflow.identity.RepriseFicheSociete.completer(
                         b.mapper().map(code, payload), payload);
-                e.put("dans_corpus", corpus.gabarit(code).isPresent());
+                // Lot L4d (E11) : modele du corpus choisi par le mapper (meme chaine qu'en production).
+                String gabarit = b.mapper().gabarit(code, payload);
+                e.put("gabarit", gabarit);
+                e.put("dans_corpus", corpus.gabarit(gabarit).isPresent());
                 // Lot L4a (E5) : un modele propre au corpus (ex. documents d'annulation
                 // _SOCIETE_EXISTANTE) n'a pas de temoin classpath : rendu par le corpus seul.
                 DocumentResult ra;
@@ -123,7 +126,7 @@ class CorpusReelIT {
                 Set<String> horsAvant = apres.codesServisHorsCorpus();
                 DocumentResult rb;
                 try {
-                    rb = apres.generate(code, variables);
+                    rb = apres.generate(gabarit, variables);
                 } catch (RuntimeException ex) {
                     e.put("statut", "ECHEC_CORPUS");
                     e.put("erreur", ex.getClass().getSimpleName() + " : " + ex.getMessage());
@@ -131,7 +134,7 @@ class CorpusReelIT {
                     continue;
                 }
                 boolean servieParCorpus = apres.codesServisHorsCorpus().equals(horsAvant)
-                        && !apres.codesServisHorsCorpus().contains(code);
+                        && !apres.codesServisHorsCorpus().contains(gabarit);
                 e.put("source_apres", servieParCorpus ? "corpus" : "classpath");
                 Files.write(SORTIE.resolve("temoin/corpus/" + code + ".docx"), rb.bytes());
                 List<String> la = ra == null ? List.of() : lignes(ra.bytes());
@@ -142,7 +145,7 @@ class CorpusReelIT {
                 e.put("lignes_retirees", difference(la, lb));
                 e.put("lignes_ajoutees", difference(lb, la));
                 Set<String> va = ra == null ? Set.of() : variablesGabarit(code, loader);
-                Set<String> vb = corpus.gabarit(code).map(GabaritCorpus::variables).orElse(Set.of());
+                Set<String> vb = corpus.gabarit(gabarit).map(GabaritCorpus::variables).orElse(Set.of());
                 e.put("variables_disparues", new TreeSet<>(difference(new ArrayList<>(va), new ArrayList<>(vb))));
                 e.put("variables_apparues", new TreeSet<>(difference(new ArrayList<>(vb), new ArrayList<>(va))));
                 e.put("manquantes_avant", ra == null ? List.of() : ra.missingVariables());
@@ -159,7 +162,15 @@ class CorpusReelIT {
                     List<String> d = ControleDocumentProduit.defauts(String.join("\n", lb),
                             DocumentVerificationIT.EXTERNES_ATTENDUES.getOrDefault(code, Set.of()));
                     e.put("controle_strict", d);
-                    if (!d.isEmpty()) nonConformesRequis.add(code + " : " + d);
+                    // Lot L4d (E11) : un ecart du cabinet declare (EN_ATTENTE, source corpus) doit
+                    // toujours se voir ; devenu conforme, l'entree est a retirer (jamais silencieux).
+                    String declare = DocumentVerificationIT.EN_ATTENTE.getOrDefault(code, Map.of())
+                            .get(DocumentVerificationIT.Source.CORPUS);
+                    if (declare != null) {
+                        if (d.isEmpty()) nonConformesRequis.add(code + " : declare EN_ATTENTE mais conforme, a retirer");
+                    } else if (!d.isEmpty()) {
+                        nonConformesRequis.add(code + " : " + d);
+                    }
                 }
                 e.put("statut", "OK");
                 temoin.add(e);

@@ -25,15 +25,16 @@
   "seance": {
     "type": "extraordinaire",
     "date": "2026-05-15",
-    "heure": "10H00",
+    "heure": "10:00",
     "lieu": "SIEGE SOCIAL",
     "presidentNom": "M. Ahmed Alaoui",
     "presidentQualite": "gérant",
-    "heureCloture": "12H00"
+    "heureCloture": "12:00"
   },
   "convocation": {
     "mode": "lettre recommandée",
-    "date": "2026-04-30"
+    "date": "2026-04-30",
+    "auteur": "la gérance"
   },
   "associes": [
     {
@@ -92,8 +93,32 @@
     "pieceType": "CIN",
     "pieceNumero": "BE123456",
     "genre": "masculin",
-    "remuneration": "exercées à titre gratuit",
     "siege": "20 BOULEVARD ZERKTOUNI, CASABLANCA",
-    "mandatDateEffet": "2026-05-15"
+    "mandatDateEffet": "2026-05-15",
+    "nationalite": "marocaine",
+    "dateNaissance": "1975-03-12",
+    "dureeMandat": "trois ans",
+    "remunerationApplicable": "non",
+    "redditionPeriodicite": "chaque semestre"
+  },
+  "gerants": [
+    {
+      "civilite": "M.",
+      "prenom": "Ahmed",
+      "nom": "Alaoui"
+    }
+  ],
+  "mentionsPv": {
+    "dossierReference": "DOS-2026-0042",
+    "registreFolio": "12",
+    "enregistrementLieu": "Casablanca",
+    "annonceJournal": "LE JOURNAL DES ANNONCES",
+    "quitusGerance": "oui",
+    "cacExiste": "non",
+    "salariesDixOuPlus": "non"
+  },
+  "signature": {
+    "lieu": "Casablanca",
+    "nombreOriginaux": "quatre"
   }
 }

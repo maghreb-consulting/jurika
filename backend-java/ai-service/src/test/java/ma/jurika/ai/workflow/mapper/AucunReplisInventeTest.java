@@ -70,14 +70,20 @@ class AucunReplisInventeTest {
 
     @Test
     void remuneration_du_liquidateur_et_motif_de_dissolution_jamais_supposes() {
-        Map<String, Object> p = seance();
-        p.put("liquidateur", Map.of("civilite", "M.", "prenom", "Karim", "nom", "TAZI"));
-        // Sans nature saisie, la dissolution est refusee (avant : "volontaire" suppose).
+        // Lot L4d (E11d) : PV du corpus. Sans nature saisie, la dissolution est refusee (avant :
+        // "volontaire" suppose) ; sans reponse sur la remuneration, elle l'est aussi (avant :
+        // "exercees a titre gratuit" propose puis imprime).
+        Map<String, Object> p = DissolutionMapperTest.fixture("dissolution.json");
+        DissolutionMapperTest.bloc(p, "dissolution").remove("nature");
         assertThatThrownBy(() -> new DissolutionMapper().map("PV_DISSOLUTION_LIQUIDATION_SARL", p))
                 .isInstanceOf(GenerationRefuseeException.class).hasMessageContaining("Nature de la dissolution");
-        p.put("dissolution", Map.of("nature", "article 86"));
+        DissolutionMapperTest.bloc(p, "dissolution").put("nature", "situation_nette_art86");
+        DissolutionMapperTest.bloc(p, "liquidateur").remove("remunerationApplicable");
+        assertThatThrownBy(() -> new DissolutionMapper().map("PV_DISSOLUTION_LIQUIDATION_SARL", p))
+                .isInstanceOf(GenerationRefuseeException.class).hasMessageContaining("r\u00e9mun\u00e9r\u00e9");
+        DissolutionMapperTest.bloc(p, "liquidateur").put("remunerationApplicable", "non");
         Map<String, Object> v = new DissolutionMapper().map("PV_DISSOLUTION_LIQUIDATION_SARL", p);
-        assertThat(v).containsEntry("DISSOLUTION_MOTIF", "article 86");
+        assertThat(v).containsEntry("DISSOLUTION_MOTIF", "situation_nette_art86");
         assertThat(v.toString()).doesNotContain("exerc\u00e9es \u00e0 titre gratuit").doesNotContain("volontaire");
     }
 }

@@ -335,4 +335,63 @@ class ImportWorkflowTest {
         assertThat(r.canAdvance()).isFalse();
         assertThat(r.message()).contains("Etape 1");
     }
+
+    // ---- Lot L4d (E8) : publicites de la societe (annonces JAL et Bulletin officiel) ----
+
+    private static Map<String, Object> publicite(String nature, String support) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("nature", nature);
+        if ("MODIFICATION".equals(nature)) m.put("objet", "Transfert du siege social");
+        m.put("support", support);
+        if ("JAL".equals(support)) m.put("journal", "L'Economiste");
+        m.put("dateParution", "2020-03-05");
+        m.put("numeroParution", "5712");
+        m.put("documentId", UUID.randomUUID().toString());
+        return m;
+    }
+
+    private Map<String, Object> step7AvecPublicites(List<Map<String, Object>> publicites) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("documents", List.of(Map.of("type", "STATUTS", "filename", "statuts.pdf")));
+        p.put("publicites", publicites);
+        return p;
+    }
+
+    @Test
+    @DisplayName("Step 7 : les publicites de la constitution et des modifications sont conservees")
+    @SuppressWarnings("unchecked")
+    void step7PublicitesConservees() {
+        StepResult r = run(7, step7AvecPublicites(List.of(publicite("CONSTITUTION", "JAL"),
+                publicite("CONSTITUTION", "BO"), publicite("MODIFICATION", "JAL"))), Map.of());
+        assertThat(r.canAdvance()).isTrue();
+        Map<String, Object> juridique = (Map<String, Object>) r.stepData().get("juridique");
+        assertThat((List<?>) juridique.get("publicites")).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("Step 7 : une publicite incomplete est refusee, la donnee manquante nommee")
+    void step7PubliciteIncomplete() {
+        Map<String, Object> jal = publicite("CONSTITUTION", "JAL");
+        jal.remove("journal");
+        StepResult r = run(7, step7AvecPublicites(List.of(jal)), Map.of());
+        assertThat(r.canAdvance()).isFalse();
+        assertThat(r.message()).contains("journal");
+
+        Map<String, Object> modif = publicite("MODIFICATION", "BO");
+        modif.remove("objet");
+        modif.remove("numeroParution");
+        StepResult r2 = run(7, step7AvecPublicites(List.of(modif)), Map.of());
+        assertThat(r2.canAdvance()).isFalse();
+        assertThat(r2.message()).contains("objet de la modification").contains("num\u00e9ro de parution");
+    }
+
+    @Test
+    @DisplayName("Step 7 : sans publicite, rien ne change (liste facultative)")
+    @SuppressWarnings("unchecked")
+    void step7SansPublicite() {
+        StepResult r = run(7, Map.of("documents", List.of(Map.of("type", "STATUTS", "filename", "statuts.pdf"))), Map.of());
+        assertThat(r.canAdvance()).isTrue();
+        Map<String, Object> juridique = (Map<String, Object>) r.stepData().get("juridique");
+        assertThat((List<?>) juridique.get("publicites")).isEmpty();
+    }
 }

@@ -11,8 +11,11 @@ import { workflowService, type ClauseLibre } from '../../services/workflow.servi
 /**
  * Lot L3 (RG-GEN-05 a 07) : clauses libres d'un document.
  *
- * L'employe ajoute une ou plusieurs clauses redigees librement (titre et texte) a
- * l'emplacement prevu par le modele. Chaque clause est une donnee du ticket : elle est
+ * L'employe ajoute une ou plusieurs clauses redigees librement (titre et texte).
+ * Lot L4d (E10, decision du directeur du 11 octobre 2026) : il en choisit l'emplacement
+ * (statuts : apres l'article n ; proces-verbal : avant la resolution n ou a la suite) ; la
+ * numerotation et les renvois sont mis a jour a la generation, sinon elle est refusee avec
+ * la raison. Chaque clause est une donnee du ticket : elle est
  * enregistree au magasin, avec son auteur et sa date, et reutilisee a chaque
  * regeneration. Le correcteur orthographique du navigateur s'applique a la saisie.
  */
@@ -52,22 +55,28 @@ export function ClausesLibresPanel({
 
   if (!emplacement) return erreur ? <p className="text-xs text-danger">{erreur}</p> : null;
   if (!emplacement.possible) {
-    // Seuls les statuts annoncent l'attente du cabinet ; ailleurs, rien a proposer.
+    // Seuls les statuts disent pourquoi ; ailleurs, rien a proposer.
     return templateCode.startsWith('STATUTS') ? (
       <p className="rounded-lg border border-border bg-bg-overlay p-2 text-xs text-fg-subtle">
         Clauses particulières : {emplacement.motif}
       </p>
     ) : null;
   }
+  const statuts = emplacement.nature === 'ARTICLE';
 
   function maj(i: number, patch: Partial<ClauseLibre>) {
     setBrouillon((b) => b.map((c, j) => (j === i ? { ...c, ...patch } : c)));
   }
 
   async function enregistrer() {
+    setSucces(null);
+    const sansPlace = brouillon.findIndex((c) => statuts && !(c.emplacement ?? '').startsWith('APRES_ARTICLE:'));
+    if (sansPlace >= 0) {
+      setErreur(`Choisissez l’article après lequel placer la clause n° ${sansPlace + 1}.`);
+      return;
+    }
     setEnCours(true);
     setErreur(null);
-    setSucces(null);
     try {
       const autres = toutes.filter((x) => x.document !== templateCode);
       const resultat = await workflowService.remplacerClausesLibres(ticketId, [...autres, ...brouillon]);
@@ -86,25 +95,30 @@ export function ClausesLibresPanel({
   return (
     <section aria-label="Clauses libres" className="space-y-2 rounded-lg border border-border bg-bg-overlay p-3">
       <p className="flex items-center gap-1 text-xs font-semibold text-fg">
-        Clauses libres
+        {statuts ? 'Clauses particulières' : 'Clauses libres'}
         <InfoBulle
           libelle="Qu’est-ce qu’une clause libre ?"
-          texte="Une résolution rédigée librement, ajoutée au procès-verbal à l’emplacement prévu par le modèle (à la suite des résolutions). Elle est imprimée telle que saisie, dans la mise en forme du modèle."
+          texte={statuts
+            ? 'Un article rédigé librement, ajouté aux statuts après l’article que vous choisissez. Les articles suivants sont renumérotés et les renvois des statuts (« l’article 14 ci-dessus ») mis à jour.'
+            : 'Une résolution rédigée librement, ajoutée au procès-verbal à l’emplacement que vous choisissez. Les résolutions sont renumérotées et les renvois (« la deuxième résolution ») mis à jour.'}
         />
       </p>
       <TexteAide cle="clauses-libres" titre="Ajouter une clause libre">
         <p>
-          Donnez un titre et un texte, puis le résultat du vote. Relisez le texte : il est imprimé tel
-          quel. La clause est enregistrée avec votre nom et la date, et elle est reprise à chaque
-          régénération du document.
+          Choisissez l’emplacement, donnez un titre et un texte{statuts ? '' : ', puis le résultat du vote'}.
+          Relisez le texte : il est imprimé tel quel. La numérotation et les renvois sont mis à jour à
+          la génération ; si un renvoi ne peut pas l’être sans risque, la génération est refusée et la
+          raison affichée : choisissez alors un autre emplacement. La clause est enregistrée avec votre
+          nom et la date, et reprise à chaque régénération du document.
         </p>
       </TexteAide>
       {brouillon.map((c, i) => (
         <div key={i} className="space-y-2 rounded-md border border-border bg-bg-raised p-2">
           <p className="text-xs text-fg-subtle">
-            {emplacement.libelle}
-            {c.saisieLe ? ` · enregistrée le ${new Date(c.saisieLe).toLocaleString('fr-MA')}` : ' · non enregistrée'}
+            {c.saisieLe ? `Enregistrée le ${new Date(c.saisieLe).toLocaleString('fr-MA')}` : 'Non enregistrée'}
           </p>
+          <ChoixEmplacement emplacement={emplacement} valeur={c.emplacement ?? null} index={i}
+            onChange={(v) => maj(i, { emplacement: v })} />
           <label className="block text-xs text-fg-muted">
             Titre de la clause
             <input className={champ} value={c.titre ?? ''} spellCheck lang="fr" onChange={(e) => maj(i, { titre: e.target.value })} />
@@ -113,6 +127,7 @@ export function ClausesLibresPanel({
             Texte de la clause
             <textarea className={champ} rows={4} value={c.texte ?? ''} spellCheck lang="fr" onChange={(e) => maj(i, { texte: e.target.value })} />
           </label>
+          {!statuts && (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <label className="block text-xs text-fg-muted">
               Résultat du vote
@@ -135,6 +150,7 @@ export function ClausesLibresPanel({
               <input className={champ} value={c.abstentions ?? ''} onChange={(e) => maj(i, { abstentions: e.target.value })} />
             </label>
           </div>
+          )}
           <Button size="sm" variant="ghost" onClick={() => setBrouillon((b) => b.filter((_, j) => j !== i))}>
             Retirer cette clause
           </Button>
@@ -145,7 +161,7 @@ export function ClausesLibresPanel({
           size="sm"
           variant="secondary"
           onClick={() =>
-            setBrouillon((b) => [...b, { document: templateCode, emplacement: emplacement.emplacement ?? null, titre: '', texte: '' }])
+            setBrouillon((b) => [...b, { document: templateCode, emplacement: statuts ? null : emplacement.emplacement ?? null, titre: '', texte: '' }])
           }
         >
           Ajouter une clause
@@ -157,5 +173,50 @@ export function ClausesLibresPanel({
       {succes && <p role="status" className="text-xs text-success">{succes}</p>}
       {erreur && <p role="alert" className="text-xs text-danger">{erreur}</p>}
     </section>
+  );
+}
+
+/** Lot L4d (E10) : choix de l'emplacement d'une clause (article des statuts, ou rang parmi les résolutions). */
+function ChoixEmplacement({ emplacement, valeur, index, onChange }: {
+  emplacement: EmplacementClauses;
+  valeur: string | null;
+  index: number;
+  onChange: (v: string) => void;
+}) {
+  const champ = 'mt-1 block w-full rounded-md border border-border bg-bg-raised p-2 text-sm text-fg';
+  if (emplacement.nature === 'ARTICLE') {
+    return (
+      <label className="block text-xs text-fg-muted">
+        Emplacement
+        <select aria-label={`Emplacement de la clause ${index + 1}`} className={champ} value={valeur ?? ''}
+          onChange={(e) => onChange(e.target.value)}>
+          <option value="">Choisir l’article après lequel placer la clause…</option>
+          {(emplacement.articles ?? []).map((a) => (
+            <option key={a.numero} value={`APRES_ARTICLE:${a.numero}`}>Après l’article {a.numero} — {a.titre}</option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+  const avant = valeur?.startsWith('AVANT_RESOLUTION:') ? valeur.slice('AVANT_RESOLUTION:'.length) : null;
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      <label className="block text-xs text-fg-muted">
+        Emplacement
+        <select aria-label={`Emplacement de la clause ${index + 1}`} className={champ}
+          value={avant === null ? 'SUITE' : 'AVANT'}
+          onChange={(e) => onChange(e.target.value === 'SUITE' ? 'A_LA_SUITE_DES_RESOLUTIONS' : 'AVANT_RESOLUTION:1')}>
+          <option value="SUITE">À la suite des résolutions</option>
+          <option value="AVANT">Avant une résolution du modèle</option>
+        </select>
+      </label>
+      {avant !== null && (
+        <label className="block text-xs text-fg-muted">
+          Avant la résolution n°
+          <input aria-label={`Rang de la résolution ${index + 1}`} inputMode="numeric" className={champ} value={avant}
+            onChange={(e) => onChange(`AVANT_RESOLUTION:${e.target.value.replace(/\D/g, '')}`)} />
+        </label>
+      )}
+    </div>
   );
 }

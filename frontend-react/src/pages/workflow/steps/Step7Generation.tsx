@@ -46,6 +46,7 @@ import {
 } from './documents-creation';
 import { buildDocFilename } from '../../../components/workflow/workflowFilename';
 import type { DocumentType } from '../../../types/dataroom';
+import { USAGES_CABINET } from '../../../lib/usagesCabinet';
 
 /**
  * 2026-06-09 (fix LLM-off) — Plus AUCUN passage par LLM (Groq / Ollama / autre)
@@ -214,9 +215,7 @@ const DOCUMENT_LABELS: Record<string, string> = {
   DECLARATION_EXISTENCE: "Déclaration d'existence",
   DECLARATION_IMMATRICULATION_RC: "Déclaration d'immatriculation au RC (modèle 2)",
   PV_DEFAUT_QUORUM_SARL: 'PV — Défaut de quorum',
-  PV_DEFAUT_QUORUM_SARL_AU: 'PV — Défaut de quorum',
   PV_IRREGULARITE_CONVOCATION_SARL: 'PV — Irrégularité de convocation',
-  PV_IRREGULARITE_CONVOCATION_SARL_AU: 'PV — Irrégularité de convocation',
 };
 
 /**
@@ -1399,18 +1398,18 @@ export function Step7Generation({
                 className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm text-fg"
               />
             </div>
-            {/* Lot L3 (D6) : valeurs d'usage PROPOSEES, transmises une fois confirmees. */}
+            {/* Lot L3 (D6), L4d (E4) : usages du cabinet (directeur, 2026-10-11), PROPOSES puis confirmes. */}
             <ValeurProposee
               id="complement-nombreOriginaux"
               label="Nombre d’exemplaires originaux"
-              proposition="6"
+              proposition={USAGES_CABINET.nombreOriginaux}
               valeur={complements.nombreOriginaux}
               onChange={(v) => setComplements((prev) => ({ ...prev, nombreOriginaux: v }))}
             />
             <ValeurProposee
               id="complement-heureActe"
               label="Heure de l’acte"
-              proposition="10 heures"
+              proposition={USAGES_CABINET.heureActe}
               valeur={complements.heureActe}
               onChange={(v) => setComplements((prev) => ({ ...prev, heureActe: v }))}
             />

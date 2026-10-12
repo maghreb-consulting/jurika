@@ -151,7 +151,8 @@ public final class CreationCorpusVarsBuilder {
     private static void deriverDossier(Map<String, Object> v, Map<String, Object> payload) {
         Map<String, Object> dossier = asMap(payload.get("dossier"));
         Map<String, Object> ticket = asMap(payload.get("ticket"));
-        put(v, "DOSSIER_NUMERO", first(str(dossier.get("numero")), str(ticket.get("reference"))));
+        // Lot L4d (E6) : reference lisible du dossier, sans repli sur celle du ticket.
+        put(v, "DOSSIER_NUMERO", str(dossier.get("numero")));
         put(v, "DOSSIER_DATE_OUVERTURE",
                 dateFr(first(str(dossier.get("dateOuverture")), str(ticket.get("createdAt")))));
         put(v, "DOSSIER_CHARGE",

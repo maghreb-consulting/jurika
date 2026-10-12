@@ -53,6 +53,8 @@ public class TransitionTicketUseCase {
         TenantContext.set(cmd.workspaceId());
         Ticket current = ticketRepository.findById(cmd.workspaceId(), cmd.ticketId())
                 .orElseThrow(() -> new NotFoundException("Ticket inconnu"));
+        // Lot L4d (E2, RG-DOS-01) : seul l'employe en charge fait avancer le ticket.
+        if (enCharge != null) enCharge.exiger(cmd.workspaceId(), current, cmd.actorId());
 
         // Fix 2026-06-07 (BUG 2) — Idempotence : double-annulation no-op.
         // Si le ticket est deja dans le statut cible (typiquement ANNULE
@@ -136,6 +138,13 @@ public class TransitionTicketUseCase {
     }
 
     private ma.jurika.ticket.domain.port.FicheCloture ficheCloture;
+    private EmployeEnChargeTicket enCharge;
+
+    /** Lot L4d (E2) : controle de l'employe en charge ; absent dans certains tests. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setEnCharge(EmployeEnChargeTicket enCharge) {
+        this.enCharge = enCharge;
+    }
 
     /** Lot L4c (E2) : mise a jour de la fiche a la cloture ; absente dans certains tests. */
     @org.springframework.beans.factory.annotation.Autowired(required = false)

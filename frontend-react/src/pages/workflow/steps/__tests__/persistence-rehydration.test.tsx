@@ -180,3 +180,10 @@ describe('Step5 — ré-hydratation gouvernance + signataires « 0 champ perdu �
     ).toBeEnabled();
   });
 });
+
+describe('Signataires — usage du cabinet (lot L4d, E4)', () => {
+  it('dit à l’écran qu’à défaut de signataire désigné, les gérants signent', () => {
+    render(<Step5Dirigeants existing={{}} formeJuridique="SARL" saving={false} onSubmit={vi.fn()} />);
+    expect(screen.getByTestId('aide-signataires')).toHaveTextContent(/À défaut de signataire désigné, les gérants signent/);
+  });
+});

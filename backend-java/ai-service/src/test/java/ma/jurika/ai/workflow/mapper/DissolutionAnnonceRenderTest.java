@@ -44,7 +44,12 @@ class DissolutionAnnonceRenderTest {
     static void setUp() throws Exception {
         TemplateManifestLoader loader = new TemplateManifestLoader(new ObjectMapper());
         loader.load();
-        engine = new DocxTemplateEngine(loader);
+        // Lot L4d (E11) : l'avis est rendu par le modele du corpus (copies du classpath retirees).
+        java.nio.file.Path racine = java.nio.file.Path.of(System.getenv().getOrDefault("JURIKA_CORPUS_REEL",
+                System.getProperty("user.home") + "/corpus/CORPUS_2026-10-11"));
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+                java.nio.file.Files.isRegularFile(racine.resolve("INDEX_CORPUS.xlsx")), "corpus reel absent");
+        engine = new DocxTemplateEngine(loader, null, ma.jurika.ai.document.corpus.ChargeurCorpus.charger(racine));
         Files.createDirectories(OUT);
     }
 
@@ -53,7 +58,7 @@ class DissolutionAnnonceRenderTest {
     private static Map<String, Object> societe() {
         return Map.of("denomination", "PARACOSME", "capitalChiffres", 100_000,
                 "siegeSocial", "12 RUE DES FOULES, CASABLANCA", "nombreParts", 1_000,
-                "rcNumero", "123456", "villeGreffe", "CASABLANCA");
+                "rcNumero", "123456", "villeGreffe", "CASABLANCA", "ville", "Casablanca");
     }
 
     private static Map<String, Object> liquidateur() {
@@ -61,7 +66,10 @@ class DissolutionAnnonceRenderTest {
         l.put("civilite", "M.");
         l.put("prenom", "Ahmed");
         l.put("nom", "ALAOUI");
-        l.put("adresse", "45 BD ZERKTOUNI, CASABLANCA");
+        l.put("adresse", "45 boulevard Zerktouni, Casablanca");
+        l.put("pieceType", "CIN");
+        l.put("pieceNumero", "BE123456");
+        l.put("mandatDateEffet", "2026-06-01");
         l.put("siege", "12 RUE DES FOULES, CASABLANCA");
         return l;
     }
@@ -71,13 +79,21 @@ class DissolutionAnnonceRenderTest {
         p.put("formeJuridique", forme);
         p.put("societe", societe());
         p.put("seance", Map.of("type", "extraordinaire", "date", "2026-05-15"));
-        p.put("dissolution", Map.of("motif", "volontaire", "date", "2026-05-15"));
+        // Lot L4d (E11) : donnees du modele du corpus (avis de dissolution), saisies au parcours.
+        p.put("dissolution", Map.of("motif", "Cessation d'activit\u00e9 d\u00e9cid\u00e9e par les associ\u00e9s.",
+                "nature", "volonte_associes", "date", "2026-05-15", "dateEffet", "2026-06-01"));
+        p.put("siegeLiquidation", "12 rue des Foules, Casablanca");
+        p.put("siegeLiquidationIdentique", "non");
+        p.put("associes", java.util.List.of(Map.of("civilite", "M.", "prenom", "Karim", "nom", "BENALI",
+                "typePersonne", "PHYSIQUE", "nombreParts", 1000)));
         p.put("liquidateur", liquidateur());
         return p;
     }
 
     private static Map<String, Object> vars(String templateCode, Map<String, Object> payload) {
-        return new DissolutionMapper().map(templateCode, payload);
+        // Meme chaine qu'en production : mapper, puis reprise de la fiche de la societe.
+        return ma.jurika.ai.workflow.identity.RepriseFicheSociete.completer(
+                new DissolutionMapper().map(templateCode, payload), payload);
     }
 
     // ── (1) Variables produites ────────────────────────────────────────────
@@ -92,7 +108,7 @@ class DissolutionAnnonceRenderTest {
         assertEquals("M.", v.get("LIQUIDATEUR_CIVILITE"));
         assertEquals("Ahmed", v.get("LIQUIDATEUR_PRENOM"));
         assertEquals("ALAOUI", v.get("LIQUIDATEUR_NOM"));
-        assertEquals("45 BD ZERKTOUNI, CASABLANCA", v.get("LIQUIDATEUR_ADRESSE"));
+        assertEquals("45 boulevard Zerktouni, Casablanca", v.get("LIQUIDATEUR_ADRESSE"));
         assertEquals("12 RUE DES FOULES, CASABLANCA", v.get("SIEGE_LIQUIDATION"));
     }
 
@@ -123,6 +139,8 @@ class DissolutionAnnonceRenderTest {
     @Test
     void siegeLiquidation_sansRepliSurSiegeSocial() {
         Map<String, Object> p = payload("SARL");
+        p.remove("siegeLiquidation");
+        p.remove("siegeLiquidationIdentique");
         Map<String, Object> l = liquidateur();
         l.remove("siege");
         p.put("liquidateur", l);
@@ -155,15 +173,18 @@ class DissolutionAnnonceRenderTest {
         assertTrue(text.contains("PARACOSME"), "dénomination rendue");
         assertTrue(text.contains("assemblée générale extraordinaire"), "chapeau SARL rendu");
         assertTrue(text.contains("Ahmed"), "liquidateur rendu");
-        assertTrue(text.contains("12 RUE DES FOULES, CASABLANCA"), "siège de la liquidation rendu");
+        assertTrue(text.contains("Le si\u00e8ge de la liquidation est fix\u00e9 \u00e0 12 rue des Foules, Casablanca"),
+                "si\u00e8ge de la liquidation rendu");
     }
 
     @Test
     void render_sarlAu_chapeauAssocieUnique() throws Exception {
         String text = render(DissolutionAnnonceVarsBuilder.TPL_SARL_AU, "AU_depot_vide",
                 payload("SARL_AU"));
-        assertTrue(text.contains("l'associé unique"), "chapeau SARL AU rendu");
-        assertTrue(text.contains("SARL AU au capital"), "forme SARL AU rendue");
+        // Lot L4d (E11) : l'identite de l'associe unique, jamais le drapeau "oui".
+        assertTrue(text.contains("M. Karim BENALI, associ\u00e9 unique de la soci\u00e9t\u00e9"), "associ\u00e9 unique nomm\u00e9");
+        assertFalse(text.contains("oui, associ\u00e9 unique"), "drapeau non imprim\u00e9");
+        assertTrue(text.contains("soci\u00e9t\u00e9 \u00e0 responsabilit\u00e9 limit\u00e9e \u00e0 associ\u00e9 unique au capital"), "forme SARL AU rendue");
     }
 
     @Test
@@ -171,8 +192,9 @@ class DissolutionAnnonceRenderTest {
         Map<String, Object> p = payload("SARL");
         p.put("depotLegal", Map.of("date", "2026-06-01", "numero", "78945"));
         String text = render(DissolutionAnnonceVarsBuilder.TPL_SARL, "SARL_depot_renseigne", p);
-        assertTrue(text.contains("78945"), "numéro de dépôt rendu");
-        assertTrue(text.contains("01/06/2026"), "date de dépôt rendue");
+        // Le modele du corpus publie la date du depot, pas son numero.
+        assertTrue(text.contains("Le d\u00e9p\u00f4t l\u00e9gal a \u00e9t\u00e9 effectu\u00e9"), "d\u00e9p\u00f4t rendu");
+        assertTrue(text.contains("01/06/2026"), "date de d\u00e9p\u00f4t rendue");
     }
 
     // ── (3) Routage mapper ─────────────────────────────────────────────────
@@ -183,7 +205,7 @@ class DissolutionAnnonceRenderTest {
         assertTrue(mapper.supportedTemplates().contains(DissolutionAnnonceVarsBuilder.TPL_SARL));
         assertTrue(mapper.supportedTemplates().contains(DissolutionAnnonceVarsBuilder.TPL_SARL_AU));
         assertTrue(mapper.supportedTemplates()
-                .contains(DissolutionLiquidationMapper.TPL_PV_SARL));
+                .contains(DissolutionMapper.TPL_PV_SARL));
         assertEquals("DISSOLUTION", mapper.workflowCode());
     }
 
@@ -220,5 +242,29 @@ class DissolutionAnnonceRenderTest {
         Matcher m = RESIDUAL_MARKER.matcher(text);
         assertFalse(m.find(), label + " : marqueur condition/boucle résiduel");
         assertFalse(text.contains("VALEUR MANQUANTE"), label + " : variable manquante dans le rendu");
+    }
+
+    /** Lot L4d (E5) : liquidateur personne morale, variables du corpus ($LIQUIDATEUR_FORME...). */
+    @Test
+    void liquidateur_personne_morale_alimente_les_variables_du_corpus() {
+        Map<String, Object> l = new HashMap<>();
+        l.put("forme", "morale");
+        l.put("denomination", "FIDUCIAIRE ATLAS");
+        l.put("formeJuridique", "SARL");
+        l.put("capital", "100 000");
+        l.put("siegeSocial", "10 RUE D'AGADIR, CASABLANCA");
+        l.put("rcVille", "Casablanca");
+        l.put("rcNumero", "445566");
+        l.put("ice", "001122334000055");
+        l.put("representantNom", "M. Karim BENNANI");
+        l.put("representantQualite", "gerant");
+        Map<String, Object> v = new HashMap<>();
+        DissolutionAnnonceVarsBuilder.liquidateurCorpus(v, l);
+        assertEquals("personne morale", v.get("LIQUIDATEUR_FORME"));
+        assertEquals("FIDUCIAIRE ATLAS", v.get("LIQUIDATEUR_DENOMINATION"));
+        assertEquals("100 000", v.get("LIQUIDATEUR_CAPITAL_CHIFFRES"));
+        assertEquals("001122334000055", v.get("LIQUIDATEUR_ICE"));
+        assertEquals("M. Karim BENNANI", v.get("LIQUIDATEUR_REPRESENTANT_PERMANENT_NOM"));
+        assertFalse(v.containsKey("LIQUIDATEUR_PIECE_NUMERO"));
     }
 }

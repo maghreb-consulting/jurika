@@ -341,3 +341,14 @@ describe('Étape 7 — une donnée connue n’est jamais redemandée (lot L3, RG
     expect(screen.getByRole('button', { name: 'D’où viennent ces données ?' })).toBeInTheDocument();
   });
 });
+
+describe('Étape 7 — usages du cabinet (lot L4d, E4 : décision du directeur du 11 octobre 2026)', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('propose 4 exemplaires originaux et 10 heures, à confirmer', async () => {
+    rendre();
+    await screen.findByTestId('choix-document-3');
+    expect(document.getElementById('complement-nombreOriginaux')).toHaveValue('4');
+    expect(document.getElementById('complement-heureActe')).toHaveValue('10 heures');
+  });
+});

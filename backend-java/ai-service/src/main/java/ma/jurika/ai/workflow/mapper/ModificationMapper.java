@@ -13,8 +13,9 @@ import java.util.Set;
  * {@code STATUTS_MODIFIES_*} (audit directeur, 2026-08-10) :
  * <ul>
  *     <li>{@code PV_MODIFICATION_SARL} / {@code PV_MODIFICATION_SARL_AU} — PV de
- *         Modification à résolutions typées (modèles directeur, Phase E1) : délégués
- *         au noyau {@link ModificationDirecteurMapper}.</li>
+ *         modification a resolutions typees : delegues au noyau
+ *         {@link ModificationDirecteurMapper}, rendus depuis le lot L4d (E11c) par les
+ *         modeles du corpus PV_AG_SARL et PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU ({@link #gabarit}).</li>
  *     <li>{@code STATUTS_REFONDUS_SARL} / {@code STATUTS_REFONDUS_SARL_AU} — statut
  *         COMPLET refondu par la voie <b>directeur</b> (Phase E2) : délégué à
  *         {@link RefonteStatutsVarsBuilder} (état structuré ⊕ nouvelles valeurs).</li>
@@ -63,6 +64,16 @@ public class ModificationMapper implements WorkflowDocumentMapper {
     @Override
     public Set<String> supportedTemplates() {
         return TEMPLATES;
+    }
+
+    /**
+     * Lot L4d (E11c) : le proces-verbal de modification est rendu par les modeles du corpus
+     * du cabinet (PV_AG_SARL, PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU) ; les codes logiques
+     * PV_MODIFICATION_SARL(_AU) restent ceux de l'ecran et de la Data Room.
+     */
+    @Override
+    public String gabarit(String templateCode, Map<String, Object> payload) {
+        return ModificationDirecteurMapper.gabarit(templateCode);
     }
 
     @Override

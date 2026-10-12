@@ -45,7 +45,12 @@ class LiquidationAnnonceRenderTest {
     static void setUp() throws Exception {
         TemplateManifestLoader loader = new TemplateManifestLoader(new ObjectMapper());
         loader.load();
-        engine = new DocxTemplateEngine(loader);
+        // Lot L4d (E11) : l'avis est rendu par le modele du corpus (copies du classpath retirees).
+        java.nio.file.Path racine = java.nio.file.Path.of(System.getenv().getOrDefault("JURIKA_CORPUS_REEL",
+                System.getProperty("user.home") + "/corpus/CORPUS_2026-10-11"));
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+                java.nio.file.Files.isRegularFile(racine.resolve("INDEX_CORPUS.xlsx")), "corpus reel absent");
+        engine = new DocxTemplateEngine(loader, null, ma.jurika.ai.document.corpus.ChargeurCorpus.charger(racine));
         Files.createDirectories(OUT);
     }
 
@@ -54,7 +59,7 @@ class LiquidationAnnonceRenderTest {
     private static Map<String, Object> societe() {
         return Map.of("denomination", "PARACOSME", "capitalChiffres", 100_000,
                 "siegeSocial", "12 RUE DES FOULES, CASABLANCA", "nombreParts", 1_000,
-                "rcNumero", "123456", "villeGreffe", "CASABLANCA");
+                "rcNumero", "123456", "villeGreffe", "CASABLANCA", "ville", "Casablanca");
     }
 
     /** Liquidateur nommé à la dissolution, relu depuis la BD (jamais re-saisi ici). */
@@ -63,7 +68,9 @@ class LiquidationAnnonceRenderTest {
         l.put("civilite", "M.");
         l.put("prenom", "Ahmed");
         l.put("nom", "ALAOUI");
-        l.put("adresse", "45 BD ZERKTOUNI, CASABLANCA");
+        l.put("adresse", "45 boulevard Zerktouni, Casablanca");
+        l.put("pieceType", "CIN");
+        l.put("pieceNumero", "BE123456");
         return l;
     }
 
@@ -76,7 +83,13 @@ class LiquidationAnnonceRenderTest {
         cloture.put("dateClotureLiquidation", "2026-06-15");
         cloture.put("actifRealise", actif);
         cloture.put("passifRegle", passif);
+        // Lot L4d (E11) : donnees du modele du corpus (avis de cloture), saisies au parcours.
+        cloture.put("dissolutionDateEffet", "2026-03-01");
+        cloture.put("compteDefinitifDate", "2026-06-10");
+        cloture.put("siegeLiquidation", "12 rue des Foules, Casablanca");
         Map<String, Object> p = new HashMap<>();
+        p.put("associes", java.util.List.of(Map.of("civilite", "M.", "prenom", "Karim", "nom", "BENALI",
+                "typePersonne", "PHYSIQUE", "nombreParts", 1000)));
         p.put("formeJuridique", forme);
         p.put("societe", societe());
         p.put("seance", Map.of("type", "extraordinaire", "date", "2026-06-15"));
@@ -86,7 +99,9 @@ class LiquidationAnnonceRenderTest {
     }
 
     private static Map<String, Object> vars(String templateCode, Map<String, Object> payload) {
-        return new LiquidationMapper().map(templateCode, payload);
+        // Meme chaine qu'en production : mapper, puis reprise de la fiche de la societe.
+        return ma.jurika.ai.workflow.identity.RepriseFicheSociete.completer(
+                new LiquidationMapper().map(templateCode, payload), payload);
     }
 
     // ── (1) Variables produites ────────────────────────────────────────────
@@ -177,9 +192,9 @@ class LiquidationAnnonceRenderTest {
         String text = render(LiquidationAnnonceVarsBuilder.TPL_SARL, "SARL_boni",
                 payload("SARL", 500_000, 300_000));
         assertTrue(text.contains("PARACOSME"), "dénomination rendue");
-        assertTrue(text.contains("assemblée générale extraordinaire"), "chapeau SARL rendu");
-        assertTrue(text.contains("boni de liquidation"), "branche boni retenue");
-        assertFalse(text.contains("mali de liquidation"), "branche mali élaguée");
+        // Lot L4d (E11) : l'avis du corpus ne publie pas le resultat (boni ou mali).
+        assertTrue(text.contains("r\u00e9unis en assembl\u00e9e de cl\u00f4ture"), "chapeau SARL rendu");
+        assertTrue(text.contains("ont approuv\u00e9 le compte d\u00e9finitif de la liquidation"), "compte d\u00e9finitif approuv\u00e9");
         assertTrue(text.contains("ALAOUI"), "liquidateur rendu");
     }
 
@@ -187,26 +202,23 @@ class LiquidationAnnonceRenderTest {
     void render_sarl_mali() throws Exception {
         String text = render(LiquidationAnnonceVarsBuilder.TPL_SARL, "SARL_mali",
                 payload("SARL", 300_000, 500_000));
-        assertTrue(text.contains("mali de liquidation"), "branche mali retenue");
-        assertFalse(text.contains("boni de liquidation"), "branche boni élaguée");
-        assertTrue(text.contains("dans la limite de leurs apports"), "clause SARL pluripersonnelle");
+        assertTrue(text.contains("Ils ont d\u00e9charg\u00e9 le liquidateur de son mandat"), "quitus SARL");
     }
 
     @Test
     void render_sarlAu_boni_chapeauAssocieUnique() throws Exception {
         String text = render(LiquidationAnnonceVarsBuilder.TPL_SARL_AU, "AU_boni",
                 payload("SARL_AU", 500_000, 300_000));
-        assertTrue(text.contains("l'associé unique"), "chapeau SARL AU rendu");
-        assertTrue(text.contains("SARL AU au capital"), "forme SARL AU rendue");
-        assertTrue(text.contains("attribué en totalité à l'associé unique"), "boni attribué à l'AU");
+        assertTrue(text.contains("M. Karim BENALI, associ\u00e9 unique de la soci\u00e9t\u00e9"), "associ\u00e9 unique nomm\u00e9");
+        assertFalse(text.contains("oui, associ\u00e9 unique"), "drapeau non imprim\u00e9");
+        assertTrue(text.contains("\u00e0 associ\u00e9 unique en liquidation"), "forme SARL AU rendue");
     }
 
     @Test
     void render_sarlAu_mali() throws Exception {
         String text = render(LiquidationAnnonceVarsBuilder.TPL_SARL_AU, "AU_mali",
                 payload("SARL_AU", 300_000, 500_000));
-        assertTrue(text.contains("mali de liquidation"), "branche mali retenue");
-        assertTrue(text.contains("dans la limite de son apport"), "clause SARL AU");
+        assertTrue(text.contains("L'associ\u00e9 unique a d\u00e9charg\u00e9 le liquidateur de son mandat"), "quitus SARL AU");
     }
 
     @Test
@@ -214,8 +226,9 @@ class LiquidationAnnonceRenderTest {
         Map<String, Object> p = payload("SARL", 500_000, 300_000);
         p.put("depotLegal", Map.of("date", "2026-07-01", "numero", "78945"));
         String text = render(LiquidationAnnonceVarsBuilder.TPL_SARL, "SARL_depot_renseigne", p);
-        assertTrue(text.contains("78945"), "numéro de dépôt rendu");
-        assertTrue(text.contains("01/07/2026"), "date de dépôt rendue");
+        // Le modele du corpus publie la date du depot, pas son numero.
+        assertTrue(text.contains("a \u00e9t\u00e9 effectu\u00e9 au greffe"), "d\u00e9p\u00f4t rendu");
+        assertTrue(text.contains("01/07/2026"), "date de d\u00e9p\u00f4t rendue");
     }
 
     // ── (3) Routage mapper ─────────────────────────────────────────────────
@@ -225,28 +238,34 @@ class LiquidationAnnonceRenderTest {
         LiquidationMapper mapper = new LiquidationMapper();
         assertTrue(mapper.supportedTemplates().contains(LiquidationAnnonceVarsBuilder.TPL_SARL));
         assertTrue(mapper.supportedTemplates().contains(LiquidationAnnonceVarsBuilder.TPL_SARL_AU));
-        assertTrue(mapper.supportedTemplates().contains(DissolutionLiquidationMapper.TPL_PV_SARL));
-        assertTrue(mapper.supportedTemplates().contains(DissolutionLiquidationMapper.TPL_RAPPORT));
+        assertTrue(mapper.supportedTemplates().contains(LiquidationMapper.TPL_PV_SARL));
+        assertTrue(mapper.supportedTemplates().contains(LiquidationMapper.TPL_RAPPORT));
         assertEquals("LIQUIDATION", mapper.workflowCode());
     }
 
     /**
-     * L'avis et le rapport de liquidation doivent porter le MÊME résultat : les deux lisent
-     * le même bloc {@code cloture} du payload (aucune double saisie possible).
+     * Lot L4d (E11d) : le sens du resultat n'est plus suppose "boni" quand ni le sens ni les
+     * totaux ne sont fournis : la generation est refusee et la donnee nommee.
      */
     @Test
-    void annonceEtRapport_partagentLeMemeResultat() {
+    void sansSensNiComptes_refusNomme_jamaisBoniSuppose() {
         Map<String, Object> p = payload("SARL", 300_000, 500_000);
         @SuppressWarnings("unchecked")
         Map<String, Object> cloture = (Map<String, Object>) p.get("cloture");
-        cloture.put("resultatType", "mali");
-        cloture.put("resultatMontant", 200_000);
-        Map<String, Object> annonce = vars(LiquidationAnnonceVarsBuilder.TPL_SARL, p);
-        Map<String, Object> rapport = vars(DissolutionLiquidationMapper.TPL_RAPPORT, p);
-        assertEquals(rapport.get("RESULTAT_LIQUIDATION_TYPE"),
-                annonce.get("RESULTAT_LIQUIDATION_TYPE"));
-        assertEquals(rapport.get("MALI_LIQUIDATION_CHIFFRES"),
-                annonce.get("MALI_LIQUIDATION_CHIFFRES"));
+        cloture.clear();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> vars(LiquidationAnnonceVarsBuilder.TPL_SARL, p))
+                .isInstanceOf(ma.jurika.ai.document.GenerationRefuseeException.class)
+                .hasMessageContaining("boni ou mali");
+    }
+
+    /** Un sens illisible ne vaut pas "boni" : le signe des comptes decide. */
+    @Test
+    void sensIllisible_leSigneDesComptesDecide() {
+        Map<String, Object> p = payload("SARL", 300_000, 500_000);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> cloture = (Map<String, Object>) p.get("cloture");
+        cloture.put("resultatType", "xyz");
+        assertEquals("mali", vars(LiquidationAnnonceVarsBuilder.TPL_SARL, p).get("RESULTAT_LIQUIDATION_TYPE"));
     }
 
     // ── Rendering helper ───────────────────────────────────────────────────

@@ -168,7 +168,9 @@ public class LiquidationWorkflow extends AbstractWorkflow {
         // La BD gagne : un liquidateur enregistre n'est JAMAIS remplace par une saisie.
         Map<String, Object> liquidateur =
                 liquidateurBd.isEmpty() ? liquidateurIn : liquidateurBd;
-        String liquidateurNom = strOrNull(liquidateur.get("nom"));
+        // Lot L4d (E5) : personne physique (nom) ou personne morale (denomination).
+        boolean liquidateurMorale = WorkflowSteps.liquidateurPersonneMorale(liquidateur);
+        String liquidateurNom = WorkflowSteps.identiteLiquidateur(liquidateur);
         if (liquidateurNom == null) {
             return StepResult.blocked(
                     "Aucun liquidateur n'est enregistre pour cette societe : designez-le "
@@ -216,7 +218,7 @@ public class LiquidationWorkflow extends AbstractWorkflow {
         }
         // Liquidateur normalise (identite + origine) — consomme tel quel par les mappers.
         Map<String, Object> liq = new LinkedHashMap<>(liquidateur);
-        liq.put("nom", liquidateurNom);
+        if (!liquidateurMorale) liq.put("nom", liquidateurNom);
         liq.put("source", source == null
                 ? (liquidateurBd.isEmpty() ? "EXTERNE" : "BD")
                 : source.toUpperCase(Locale.ROOT));

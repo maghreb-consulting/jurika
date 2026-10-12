@@ -109,10 +109,6 @@ class DocumentVerificationIT {
      */
     enum Source { CORPUS, CLASSPATH }
 
-    private static final String CLASSPATH_PERIME =
-            "gabarit du classpath, servi seulement sans corpus (le corpus est obligatoire en service) : "
-                    + "non aligne sur les variables du corpus";
-
     static final Map<String, Map<Source, String>> EN_ATTENTE = Map.ofEntries(
             // Ecart du CORPUS : la fiche n'imprime que $BAILLEUR_NOM, vide pour un bailleur societe
             // (meme texte dans la copie du classpath).
@@ -121,20 +117,12 @@ class DocumentVerificationIT {
                     Source.CLASSPATH, "A_DECIDER cabinet : $BAILLEUR_NOM seul imprime (copie du classpath du modele)")),
             // Variables des modeles du corpus que les mappers ne fournissent pas (D5, bascule).
             Map.entry("PV_APPROBATION_COMPTES_SARL_AU", Map.of(Source.CORPUS, ECART_CORPUS)),
-            // L4b : avis conformes sur le corpus ; leurs copies du classpath, servies seulement
-            // sans corpus, ne le sont pas.
-            Map.entry("ANNONCE_LEGALE_DISSOLUTION_SARL", Map.of(Source.CLASSPATH, CLASSPATH_PERIME)),
-            Map.entry("ANNONCE_LEGALE_DISSOLUTION_SARL_AU", Map.of(Source.CLASSPATH, CLASSPATH_PERIME)),
-            Map.entry("ANNONCE_LEGALE_LIQUIDATION_SARL", Map.of(Source.CLASSPATH, CLASSPATH_PERIME)),
-            Map.entry("ANNONCE_LEGALE_LIQUIDATION_SARL_AU", Map.of(Source.CLASSPATH, CLASSPATH_PERIME)),
-            // Gabarit du classpath qui imprime sa notice de saisie ; bascule sur
-            // RAPPORT_GESTION_EXERCICE_SARL(_AU) du corpus.
-            Map.entry("RAPPORT_GESTION", Map.of(Source.CLASSPATH,
-                    "L4c : bascule sur RAPPORT_GESTION_EXERCICE_SARL(_AU) du corpus (saisie a refaire)")),
             // Ecart du CORPUS (gabarits intouchables, rapporte au cabinet) : $ASSOCIE_UNIQUE, drapeau
             // "oui" / "non", imprime sous "L'associe unique" a la place de son identite.
             Map.entry("PV_CREATION_SUCCURSALE_MAROC_SARL_AU", Map.of(Source.CORPUS, ECART_CORPUS)),
-            Map.entry("PV_FERMETURE_SUCCURSALE_SARL_AU", Map.of(Source.CORPUS, ECART_CORPUS)));
+            Map.entry("PV_FERMETURE_SUCCURSALE_SARL_AU", Map.of(Source.CORPUS, ECART_CORPUS)),
+            // Lot L4d (E11c) : rendu par PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU, meme ecart du cabinet.
+            Map.entry("PV_MODIFICATION_SARL_AU", Map.of(Source.CORPUS, ECART_CORPUS)));
 
     /**
      * Gabarits que seul le corpus reel porte (aucune copie au classpath) : sans corpus reel,
@@ -145,7 +133,29 @@ class DocumentVerificationIT {
     static final Set<String> CORPUS_REEL_REQUIS = Set.of(
             "NOTE_ANNULATION_DOSSIER_SOCIETE_EXISTANTE",
             "LETTRE_RETRAIT_DEPOT_SOCIETE_EXISTANTE",
-            "BORDEREAU_REMISE_DOSSIER_SOCIETE_EXISTANTE");
+            "BORDEREAU_REMISE_DOSSIER_SOCIETE_EXISTANTE",
+            // Lot L4d (E11) : avis d'ouverture de succursale d'une societe etrangere, rendu par
+            // le modele du corpus ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SOCIETE_ETRANGERE.
+            "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL",
+            "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL_AU",
+            // Lot L4d (E11e) : rapport de gestion rendu par RAPPORT_GESTION_EXERCICE_SARL(_AU).
+            "RAPPORT_GESTION",
+            // Lot L4d (E11b) : convocation et feuille de presence rendues par les modeles du corpus.
+            "CONVOCATION_AG",
+            "FEUILLE_PRESENCE_AG",
+            // Lot L4d (E11d) : PV de dissolution et de cloture rendus par PV_DISSOLUTION_ANTICIPEE_*
+            // et PV_CLOTURE_LIQUIDATION_* du corpus.
+            "PV_DISSOLUTION_LIQUIDATION_SARL",
+            "PV_DISSOLUTION_LIQUIDATION_SARL_AU",
+            // Lot L4d (E11c) : PV de modification rendus par PV_AG_SARL et
+            // PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU du corpus.
+            "PV_MODIFICATION_SARL",
+            "PV_MODIFICATION_SARL_AU",
+            // Lot L4d (E11) : avis de dissolution et de liquidation, copies du classpath retirees.
+            "ANNONCE_LEGALE_DISSOLUTION_SARL",
+            "ANNONCE_LEGALE_DISSOLUTION_SARL_AU",
+            "ANNONCE_LEGALE_LIQUIDATION_SARL",
+            "ANNONCE_LEGALE_LIQUIDATION_SARL_AU");
 
     static final Set<String> DOCUMENTS_ANNULATION =
             new ma.jurika.ai.workflow.mapper.AnnulationMapper().supportedTemplates();
@@ -254,7 +264,10 @@ class DocumentVerificationIT {
                     // Meme chaine que WorkflowDocumentController : mapper, puis reprise de la fiche.
                     Map<String, Object> variables = ma.jurika.ai.workflow.identity.RepriseFicheSociete.completer(
                             b.mapper().map(templateCode, payload), payload);
-                    DocxTemplateEngine.DocumentResult result = engine.generate(templateCode, variables);
+                    // Lot L4d (E11) : meme choix de modele qu'en production (donnee du parcours).
+                    String gabarit = b.mapper().gabarit(templateCode, payload);
+                    entry.put("gabarit", gabarit);
+                    DocxTemplateEngine.DocumentResult result = engine.generate(gabarit, variables);
 
                     byte[] bytes = result.bytes();
                     if (bytes == null || bytes.length == 0) {
@@ -288,7 +301,7 @@ class DocumentVerificationIT {
                             fullText, EXTERNES_ATTENDUES.getOrDefault(templateCode, Set.of())));
                     residualUpperVars.forEach(v -> defauts.add("variable residuelle : " + v));
                     residualBlocks.forEach(v -> defauts.add("marqueur de bloc residuel : " + v));
-                    Source source = corpus != null && corpus.gabarit(templateCode).isPresent()
+                    Source source = corpus != null && corpus.gabarit(gabarit).isPresent()
                             ? Source.CORPUS : Source.CLASSPATH;
                     entry.put("source", source.name());
                     String enAttente = EN_ATTENTE.getOrDefault(templateCode, Map.of()).get(source);

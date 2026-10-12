@@ -53,6 +53,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Demandes de mon conseiller', to: '/mes-requetes', icon: Inbox, roles: ['CLIENT'] },
   // Lot M (2026-06-30) — Chat retire au CLIENT (experience reduite : Dashboard + Data Room).
   { label: 'Chat', to: '/chat', icon: MessageSquare, roles: ['SUPERVISEUR', 'EMPLOYE'] },
+  // Lot L4d (E7) : delais de depot au greffe (lecture ; ajustement par le superviseur).
+  { label: 'Délais de greffe', to: '/delais-greffe', icon: ListChecks, roles: ['SUPERVISEUR', 'EMPLOYE'] },
   { label: 'ChatBot IA', to: '/chatbot', icon: Bot, roles: ['SUPER_ADMIN', 'SUPERVISEUR', 'EMPLOYE'] },
   // E2 (2026-06-25) — Tracabilite : SUPERVISEUR
   { label: 'Tracabilite', to: '/tracabilite', icon: History, roles: ['SUPERVISEUR'] },

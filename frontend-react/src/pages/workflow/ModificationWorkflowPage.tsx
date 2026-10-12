@@ -80,6 +80,7 @@ import {
   PiecesJointesPanel,
   type PieceJointeEntry,
 } from '../../components/workflow/PiecesJointesPanel';
+import { USAGES_CABINET } from '../../lib/usagesCabinet';
 
 // Phase 1 (2026-08-10) — voie directeur : déclencheurs basés sur le `resolutionType`
 // (snake_case) du catalogue officiel. Miroir de ModificationWorkflow.*_TRIGGERS_RT (backend).
@@ -2055,6 +2056,7 @@ function ModificationWorkflowPageBody() {
                     values={r.values}
                     rows={r.rows}
                     personLists={personLists}
+                    forme={forme}
                     onField={(key, value) => setResField(r.id, key, value)}
                     onRows={(key, rows) => setResRows(r.id, key, rows)}
                   />
@@ -2429,7 +2431,7 @@ function ModificationWorkflowPageBody() {
                   <ValeurProposee
                     id="refonte-nombre-originaux"
                     label="Nombre d’exemplaires originaux"
-                    proposition="6"
+                    proposition={USAGES_CABINET.nombreOriginaux}
                     valeur={statutsRefondus.nombreOriginaux}
                     onChange={(v) => setStatutsRefondus((p) => ({ ...p, nombreOriginaux: v }))}
                   />

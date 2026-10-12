@@ -49,14 +49,11 @@ public final class DocumentTypes {
     public static final String ANNONCE_LEGALE_MODIFICATION_SARL = "ANNONCE_LEGALE_MODIFICATION_SARL";
     public static final String ANNONCE_LEGALE_MODIFICATION_SARL_AU = "ANNONCE_LEGALE_MODIFICATION_SARL_AU";
 
-    // Dissolution / Liquidation (Phase C) — modèles directeur.
-    // Un seul PV unifié couvre les trois étapes du cycle (dissolution / cours de
-    // liquidation / clôture) via $PV_ETAPE, décliné SARL vs SARL AU. Le rapport du
-    // liquidateur est un document distinct. Les anciens codes (PV_AGE_DISSOLUTION,
-    // PV_AGE_LIQUIDATION_CLOTURE, RAPPORT_LIQUIDATION, PV_DISSOLUTION_SARL(_AU),
-    // PV_LIQUIDATION_SARL(_AU)) ont été retirés (remplacés).
-    public static final String PV_DISSOLUTION_LIQUIDATION_SARL = "PV_DISSOLUTION_LIQUIDATION_SARL";
-    public static final String PV_DISSOLUTION_LIQUIDATION_SARL_AU = "PV_DISSOLUTION_LIQUIDATION_SARL_AU";
+    // Dissolution / Liquidation (Phase C). Lot L4d (E11d) : le PV unifie du classpath et le
+    // rapport du liquidateur du directeur sont retires ; les parcours DISSOLUTION et
+    // LIQUIDATION rendent les modeles du corpus (PV_DISSOLUTION_ANTICIPEE_*,
+    // PV_CLOTURE_LIQUIDATION_*) par leurs mappers. Le rapport du liquidateur reste rendu par
+    // le classpath (bascule sur RAPPORT_LIQUIDATEUR_* non resolue en L4d : 54 donnees sans ecran).
     public static final String RAPPORT_LIQUIDATION_DIRECTEUR = "RAPPORT_LIQUIDATION_DIRECTEUR";
     // 2026-08-12 — Annonce légale de DISSOLUTION (avis de dissolution anticipée + nomination
     // du liquidateur + siège de la liquidation), modèles directeur déclinés SARL / SARL AU.
@@ -157,9 +154,8 @@ public final class DocumentTypes {
     // STATUTS_SARL_AU_DIRECTEUR, ACTE_NOMINATION_GERANT_DIRECTEUR,
     // ANNONCE_LEGALE_DIRECTEUR), retirés du manifeste avec eux.
     //
-    // ⚠ Les gabarits STATUTS_SARL_modele_deterministe.docx et son pendant SARL AU
-    // restent sur le disque : la refonte des statuts (MODIFICATION,
-    // STATUTS_REFONDUS_*) les rend encore, via RefonteStatutsVarsBuilder.
+    // Lot L4d (E11) : la refonte des statuts (STATUTS_REFONDUS_*) rend les statuts du
+    // corpus (alias de code du manifeste) ; les gabarits deterministes sont retires.
     //
     // ⚠ Aucun mapper ne route ces 23 codes : la résolution des variables est
     // l'objet du lot B (253 variables nouvelles, dont 160 à saisir). Jusque-là,
@@ -199,16 +195,16 @@ public final class DocumentTypes {
 
     // PV de seance (incident) transverses — generables dans tout workflow tenant une AG (Phase 4)
     public static final String PV_DEFAUT_QUORUM_SARL = "PV_DEFAUT_QUORUM_SARL";
-    public static final String PV_DEFAUT_QUORUM_SARL_AU = "PV_DEFAUT_QUORUM_SARL_AU";
     public static final String PV_IRREGULARITE_CONVOCATION_SARL = "PV_IRREGULARITE_CONVOCATION_SARL";
-    public static final String PV_IRREGULARITE_CONVOCATION_SARL_AU = "PV_IRREGULARITE_CONVOCATION_SARL_AU";
 
     // Documents de seance partages (Phase A) — Convocation (debut) + Feuille de presence (apres AG).
-    // Modeles directeur unifies : un seul fichier couvre SARL et SARL AU via $ASSOCIE_UNIQUE.
+    // Lot L4d (E11b) : codes logiques du parcours ; le mapper choisit le modele du corpus
+    // (convocation AGO, AGE ou seconde ; feuille AGO ou AGE). Rien en SARL AU (article 76).
     public static final String CONVOCATION_AG = "CONVOCATION_AG";
     public static final String FEUILLE_PRESENCE_AG = "FEUILLE_PRESENCE_AG";
 
     public static final Set<String> ALL = Set.of(
+            RAPPORT_LIQUIDATION_DIRECTEUR,
             STATUTS_CONSTITUTIFS,
             ATTESTATION_BLOCAGE_FONDS, DEMANDE_CERTIFICAT_NEGATIF, ANNONCE_JAL_CONSTITUTION,
             FORMULAIRE_RC_IMMATRICULATION, DECLARATION_EXISTENCE_FISCALE, DECLARATION_AFFILIATION_CNSS,
@@ -216,8 +212,6 @@ public final class DocumentTypes {
             PV_AGE_MODIFICATION, ANNONCE_JAL_MODIFICATIVE, FORMULAIRE_RC_MODIFICATIF,
             PV_MODIFICATION_SARL, PV_MODIFICATION_SARL_AU,
             ANNONCE_LEGALE_MODIFICATION_SARL, ANNONCE_LEGALE_MODIFICATION_SARL_AU,
-            PV_DISSOLUTION_LIQUIDATION_SARL, PV_DISSOLUTION_LIQUIDATION_SARL_AU,
-            RAPPORT_LIQUIDATION_DIRECTEUR,
             ANNONCE_LEGALE_DISSOLUTION_SARL, ANNONCE_LEGALE_DISSOLUTION_SARL_AU,
             ANNONCE_LEGALE_LIQUIDATION_SARL, ANNONCE_LEGALE_LIQUIDATION_SARL_AU,
             ANNONCE_JAL_DISSOLUTION, FORMULAIRE_RC_DISSOLUTION,
@@ -246,7 +240,7 @@ public final class DocumentTypes {
             LETTRE_RETRAIT_DEPOT, NOTE_ANNULATION_DOSSIER, NOTE_CONFORMITE_MENTIONS_LEGALES,
             POUVOIR_FORMALITES_CREATION, RAPPORT_COMMISSAIRE_APPORTS,
             DEMANDE_TAXE_PROFESSIONNELLE, DECLARATION_EXISTENCE, DECLARATION_IMMATRICULATION_RC,
-            PV_DEFAUT_QUORUM_SARL, PV_DEFAUT_QUORUM_SARL_AU,
-            PV_IRREGULARITE_CONVOCATION_SARL, PV_IRREGULARITE_CONVOCATION_SARL_AU,
+            PV_DEFAUT_QUORUM_SARL,
+            PV_IRREGULARITE_CONVOCATION_SARL,
             CONVOCATION_AG, FEUILLE_PRESENCE_AG);
 }

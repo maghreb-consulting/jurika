@@ -46,6 +46,8 @@ const ITEMS: SidebarItem[] = [
   { label: 'Demandes de mon conseiller', to: '/mes-requetes', icon: Inbox, roles: ['CLIENT'] },
   // Lot M (2026-06-30) — Chat + ChatBot IA retires au CLIENT (experience reduite : Dashboard + Data Room).
   { label: 'Chat', to: '/chat', icon: MessageSquare, roles: ['SUPERVISEUR', 'EMPLOYE'] },
+  // Lot L4d (E7) : delais de depot au greffe (lecture ; ajustement par le superviseur).
+  { label: 'Délais de greffe', to: '/delais-greffe', icon: ListChecks, roles: ['SUPERVISEUR', 'EMPLOYE'] },
   // ChatBot IA reste ouvert au SUPER_ADMIN (admin des sources fiables du RAG, decision 2026-06-26).
   { label: 'ChatBot IA', to: '/chatbot', icon: Bot, roles: ['SUPER_ADMIN', 'SUPERVISEUR', 'EMPLOYE'] },
   // BUG 6 (2026-06-07) — Equipe : SUPERVISEUR uniquement (en attendant Parametres S5).

@@ -25,15 +25,16 @@
   "seance": {
     "type": "extraordinaire",
     "date": "2026-06-20",
-    "heure": "10H00",
+    "heure": "10:00",
     "lieu": "SIEGE SOCIAL",
     "presidentNom": "M. Ahmed Alaoui",
     "presidentQualite": "gérant",
-    "heureCloture": "12H00"
+    "heureCloture": "12:00"
   },
   "convocation": {
     "mode": "lettre recommandée",
-    "date": "2026-06-05"
+    "date": "2026-06-05",
+    "auteur": "le liquidateur"
   },
   "associes": [
     {
@@ -54,7 +55,9 @@
       "nom": "Bennani",
       "nombreParts": 400,
       "presence": "présent",
-      "boniChiffres": 20000
+      "boniChiffres": 20000,
+      "pieceType": "CIN",
+      "pieceNumero": "BK654321"
     }
   ],
   "ordreDuJour": [
@@ -97,8 +100,13 @@
     "pieceType": "CIN",
     "pieceNumero": "BE123456",
     "genre": "masculin",
-    "remuneration": "exercées à titre gratuit",
-    "siege": "12 RUE DES FOULES, CASABLANCA"
+    "siege": "20 BOULEVARD ZERKTOUNI, CASABLANCA",
+    "nationalite": "marocaine",
+    "dateNaissance": "1975-03-12",
+    "mandatDateEffet": "2026-05-15",
+    "dureeMandat": "trois ans",
+    "remunerationApplicable": "non",
+    "siegeIdentique": "non"
   },
   "cloture": {
     "resultatSens": "boni",
@@ -114,11 +122,44 @@
     "dissolutionDateEffet": "2026-05-15",
     "compteDefinitifDate": "2026-06-10",
     "quitus": "accorde",
-    "siegeLiquidation": "20 BOULEVARD ZERKTOUNI, CASABLANCA"
+    "siegeLiquidation": "20 BOULEVARD ZERKTOUNI, CASABLANCA",
+    "frais": 10000,
+    "dissolutionRcInscriptionDate": "2026-05-25",
+    "annonceJournal": "LE JOURNAL DES ANNONCES",
+    "annoncePublicationDate": "2026-05-28",
+    "convocationAuteur": "liquidateur",
+    "operationsResume": "le fonds de commerce a été cédé et les créances recouvrées, le passif a été réglé à son échéance",
+    "comptesBancairesClotures": "oui",
+    "compteDefinitifApprobation": "approuve",
+    "retenueApplicable": "oui",
+    "retenueAssiette": 40000,
+    "retenueTaux": "15 %",
+    "retenueMontant": 6000,
+    "retenueExonerationInvoquee": "non",
+    "repartitionModalites": "par virement bancaire",
+    "repartitionDateLimite": "2026-07-20",
+    "conservationDepositaireNom": "M. Ahmed Alaoui",
+    "conservationDepositaireQualite": "liquidateur",
+    "conservationLieu": "5 RUE D'ALGER, CASABLANCA",
+    "conservationDuree": "dix ans",
+    "passifEventuelApplicable": "non"
   },
   "signature": {
     "lieu": "CASABLANCA",
     "date": "2026-06-25",
     "nombreOriginaux": "quatre"
+  },
+  "gerants": [
+    {
+      "civilite": "M.",
+      "prenom": "Ahmed",
+      "nom": "Alaoui"
+    }
+  ],
+  "mentionsPv": {
+    "dossierReference": "DOS-2026-0057",
+    "registreFolio": "14",
+    "enregistrementLieu": "Casablanca",
+    "cacExiste": "non"
   }
 }

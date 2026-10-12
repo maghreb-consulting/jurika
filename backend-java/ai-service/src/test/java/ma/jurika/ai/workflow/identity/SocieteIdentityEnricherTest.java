@@ -95,6 +95,17 @@ class SocieteIdentityEnricherTest {
         assertEquals("Casablanca", vars.get("VILLE_GREFFE"), "La valeur BD doit gagner sur le front");
     }
 
+    /** Lot L4d (E11b) : la reference lisible du dossier suit l'identite de la societe. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void la_reference_lisible_du_dossier_suit_l_identite() {
+        Map<String, Object> id = bdIdentity();
+        id.put("dossierReference", "2026-0007 -- ACME MAROC SARL");
+        SocieteIdentityEnricher enricher = new SocieteIdentityEnricher((ws, d) -> id);
+        Map<String, Object> societe = (Map<String, Object>) enricher.enrich(thinPayload(), WS).get("societe");
+        assertEquals("2026-0007 -- ACME MAROC SARL", societe.get("dossierReference"));
+    }
+
     @Test
     void sans_dossierId_le_payload_reste_inchange() {
         Map<String, Object> payload = thinPayload();
@@ -140,5 +151,16 @@ class SocieteIdentityEnricherTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> kept = (List<Map<String, Object>>) enriched2.get("associes");
         assertEquals("SAISI_SEANCE", kept.get(0).get("nom"));
+    }
+
+    /** Lot L4d (E11e) : l'objet social de la fiche alimente le rapport de gestion, sans ressaisie. */
+    @Test
+    void objet_social_repris_de_la_fiche() {
+        Map<String, Object> id = bdIdentity();
+        id.put("objetSocial", "le conseil aux entreprises");
+        Map<String, Object> enriched = new SocieteIdentityEnricher((ws, d) -> id).enrich(thinPayload(), WS);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> societe = (Map<String, Object>) enriched.get("societe");
+        assertEquals("le conseil aux entreprises", societe.get("objetSocial"));
     }
 }

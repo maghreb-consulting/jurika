@@ -1,132 +1,194 @@
 package ma.jurika.ai.workflow.mapper;
 
+import ma.jurika.ai.document.GenerationRefuseeException;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static ma.jurika.ai.workflow.mapper.DissolutionMapperTest.bloc;
+import static ma.jurika.ai.workflow.mapper.DissolutionMapperTest.fixture;
+import static ma.jurika.ai.workflow.mapper.DissolutionMapperTest.txt;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Tests unitaires {@link LiquidationMapper} (sans Spring) — Phase C.
- *
- * <p>Vérifie le workflow {@code LIQUIDATION} : le PV directeur unifié à l'étape « clôture »
- * (délégué au noyau partagé) et le rapport de liquidation (document distinct), avec les deux
- * issues du résultat de liquidation — <b>boni</b> et <b>mali</b>.
+ * Lot L4d (E11d) : {@link LiquidationMapper} rend le PV de cloture par
+ * {@code PV_CLOTURE_LIQUIDATION_SARL(_AU)} et le rapport par {@code RAPPORT_LIQUIDATEUR_SARL(_AU)}.
+ * Compte definitif CALCULE (boni, mali ou nul, jamais suppose), repartition au prorata,
+ * donnees pilotes exigees. Rendu sur le corpus reel : {@link LiquidationCorpusRenderTest}.
  */
 class LiquidationMapperTest {
 
     private final LiquidationMapper mapper = new LiquidationMapper();
 
-    private static Map<String, Object> baseSociete() {
-        return Map.of(
-                "denomination", "PARACOSME",
-                "capitalChiffres", 100_000,
-                "siegeSocial", "12 RUE DES FOULES, CASABLANCA",
-                "nombreParts", 1_000,
-                "rcNumero", "123456",
-                "villeGreffe", "CASABLANCA",
-                "formeJuridique", "SARL");
+    @Test
+    void codes_demandes_et_modeles_du_corpus() {
+        assertThat(mapper.workflowCode()).isEqualTo("LIQUIDATION");
+        assertThat(mapper.gabarit("PV_DISSOLUTION_LIQUIDATION_SARL", Map.of())).isEqualTo("PV_CLOTURE_LIQUIDATION_SARL");
+        assertThat(mapper.gabarit("PV_DISSOLUTION_LIQUIDATION_SARL_AU", Map.of())).isEqualTo("PV_CLOTURE_LIQUIDATION_SARL_AU");
+        // Lot L4d (E11d) : bascule du rapport non resolue, le rapport du classpath reste servi.
+        assertThat(mapper.gabarit("RAPPORT_LIQUIDATION_DIRECTEUR", Map.of("formeJuridique", "SARL")))
+                .isEqualTo("RAPPORT_LIQUIDATION_DIRECTEUR");
+        assertThat(mapper.gabarit("ANNONCE_LEGALE_LIQUIDATION_SARL", Map.of())).isEqualTo("ANNONCE_LEGALE_LIQUIDATION_SARL");
     }
 
     @Test
-    void workflowCodeAndSupportedTemplates() {
-        assertEquals("LIQUIDATION", mapper.workflowCode());
-        assertTrue(mapper.supportedTemplates().contains("PV_DISSOLUTION_LIQUIDATION_SARL"));
-        assertTrue(mapper.supportedTemplates().contains("PV_DISSOLUTION_LIQUIDATION_SARL_AU"));
-        assertTrue(mapper.supportedTemplates().contains("RAPPORT_LIQUIDATION_DIRECTEUR"));
-        // 2026-08-13 — l'annonce légale de clôture de liquidation (SARL / SARL AU) rejoint le mapper.
-        assertTrue(mapper.supportedTemplates().contains("ANNONCE_LEGALE_LIQUIDATION_SARL"));
-        assertTrue(mapper.supportedTemplates().contains("ANNONCE_LEGALE_LIQUIDATION_SARL_AU"));
-        assertEquals(5, mapper.supportedTemplates().size());
-    }
-
-    @Test
-    void unsupportedTemplateThrows() {
-        assertThrows(IllegalArgumentException.class, () -> mapper.map("PV_AGE_SARL", Map.of()));
-        assertThrows(IllegalArgumentException.class, () -> mapper.map(null, Map.of()));
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    void pvClotureEtapeCloture() {
-        Map<String, Object> payload = Map.of(
-                "societe", baseSociete(),
-                "seance", Map.of("type", "extraordinaire", "date", "2026-06-20", "heure", "10H00",
-                        "lieu", "SIEGE", "presidentNom", "M. Ahmed Alaoui", "heureCloture", "12H00"),
-                "associes", List.of(
-                        Map.of("civilite", "M.", "prenom", "Ahmed", "nom", "Alaoui",
-                                "nombreParts", 600, "presence", "présent"),
-                        Map.of("civilite", "Mme", "prenom", "Fatima", "nom", "Bennani",
-                                "nombreParts", 400, "presence", "présent")),
-                "resolutions", List.of(
-                        Map.of("objet", "Approbation des comptes de clôture",
-                                "type", "approbation_comptes_cloture", "resultat", "à l'unanimité"),
-                        Map.of("objet", "Quitus au liquidateur", "type", "quitus_liquidateur"),
-                        Map.of("objet", "Répartition du boni", "type", "repartition_boni")),
-                "liquidateur", Map.of("civilite", "M.", "prenom", "Ahmed", "nom", "Alaoui"),
-                "cloture", Map.of("resultatSens", "boni", "resultatMontant", 50_000,
-                        "boniMontant", 50_000, "boniParPart", 50));
-
-        Map<String, Object> vars = mapper.map("PV_DISSOLUTION_LIQUIDATION_SARL", payload);
-        assertEquals("clôture", vars.get("PV_ETAPE"));
-        assertEquals("boni", vars.get("LIQ_RESULTAT_SENS"));
-        assertEquals("oui", vars.get("BONI_EXISTE"));
-        assertNotNull(vars.get("LIQ_RESULTAT_MONTANT"));
-        List<Map<String, Object>> resolutions = (List<Map<String, Object>>) vars.get("RESOLUTIONS");
-        assertEquals(3, resolutions.size());
-        assertEquals("repartition_boni", resolutions.get(2).get("RESOLUTION_TYPE"));
-    }
-
-    @Test
-    void rapportBoni() {
-        Map<String, Object> payload = Map.of(
-                "societe", baseSociete(),
-                "liquidateur", Map.of("civilite", "M.", "prenom", "Ahmed", "nom", "Alaoui",
-                        "adresse", "5 RUE D'ALGER", "pieceType", "CIN", "pieceNumero", "BE123456",
-                        "genre", "masculin"),
-                "dissolution", Map.of("date", "2026-05-15"),
-                "cloture", Map.of("dateClotureLiquidation", "2026-06-20", "actifRealise", 300_000,
-                        "passifRegle", 150_000, "resultatType", "boni", "boniMontant", 50_000),
-                "associes", List.of(
-                        Map.of("civilite", "M.", "prenom", "Ahmed", "nom", "Alaoui",
-                                "nombreParts", 600, "boniChiffres", 30_000),
-                        Map.of("civilite", "Mme", "prenom", "Fatima", "nom", "Bennani",
-                                "nombreParts", 400, "boniChiffres", 20_000)),
-                "signature", Map.of("lieu", "CASABLANCA", "date", "2026-06-25", "nombreOriginaux", "quatre"));
-
-        Map<String, Object> vars = mapper.map("RAPPORT_LIQUIDATION_DIRECTEUR", payload);
-        assertEquals("boni", vars.get("RESULTAT_LIQUIDATION_TYPE"));
-        assertNotNull(vars.get("ACTIF_REALISE_CHIFFRES"));
-        assertNotNull(vars.get("ACTIF_REALISE_LETTRES"));
-        assertFalse(((String) vars.get("BONI_LIQUIDATION_LETTRES")).isBlank());
-        // Mali vide en cas de boni (branche non rendue, aucun marqueur résiduel).
-        assertEquals("", vars.get("MALI_LIQUIDATION_CHIFFRES"));
+    void compte_definitif_calcule_boni_et_repartition_au_prorata() {
+        Map<String, Object> v = mapper.map("PV_DISSOLUTION_LIQUIDATION_SARL", fixture("liquidation.json"));
+        assertThat(v).containsEntry("LIQUIDATION_RESULTAT_TYPE", "boni")
+                .containsEntry("COMPTE_DEFINITIF_APPROBATION", "approuve")
+                .containsEntry("LIQUIDATION_QUITUS_SENS", "accorde")
+                .containsEntry("CLOTURE_CONVOCATION_AUTEUR", "liquidateur")
+                .containsEntry("DISSOLUTION_DATE_DECISION", "15/05/2026")
+                .containsEntry("PRESCRIPTION_QUINQUENNALE_DATE_TERME", "25/05/2031")
+                .containsEntry("LIQUIDATION_DECLARATION_FINALE_DATE_LIMITE", "04/08/2026")
+                .containsEntry("LIQUIDATION_SIEGE_IDENTIQUE", "non")
+                .containsEntry("PASSIF_EVENTUEL_APPLICABLE", "non")
+                .containsEntry("RETENUE_SOURCE_APPLICABLE", "oui");
+        assertThat(txt(v.get("LIQUIDATION_DISPONIBLE_CHIFFRES"))).isEqualTo("140 000");
+        assertThat(txt(v.get("LIQUIDATION_CAPITAL_REMBOURSE_CHIFFRES"))).isEqualTo("100 000");
+        assertThat(txt(v.get("LIQUIDATION_BONI_CHIFFRES"))).isEqualTo("40 000");
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> associes = (List<Map<String, Object>>) vars.get("ASSOCIES");
-        assertEquals(2, associes.size());
-        assertNotNull(associes.get(0).get("ASSOCIE_BONI_CHIFFRES"));
+        List<Map<String, Object>> lignes = (List<Map<String, Object>>) v.get("REPARTITION_SOLDE");
+        assertThat(lignes).hasSize(2);
+        assertThat(txt(lignes.get(0).get("ASSOCIE_NOMINAL_REMBOURSE_CHIFFRES"))).isEqualTo("60 000");
+        assertThat(txt(lignes.get(0).get("ASSOCIE_SOLDE_BRUT_CHIFFRES"))).isEqualTo("24 000");
+        assertThat(txt(lignes.get(0).get("ASSOCIE_RETENUE_SOURCE_CHIFFRES"))).isEqualTo("3 600");
+        assertThat(txt(lignes.get(0).get("ASSOCIE_SOLDE_NET_CHIFFRES"))).isEqualTo("80 400");
+        assertThat(txt(lignes.get(1).get("ASSOCIE_SOLDE_NET_CHIFFRES"))).isEqualTo("53 600");
     }
 
     @Test
-    void rapportMali() {
-        Map<String, Object> payload = Map.of(
-                "societe", baseSociete(),
-                "liquidateur", Map.of("civilite", "Mme", "prenom", "Fatima", "nom", "Bennani",
-                        "genre", "féminin"),
-                "cloture", Map.of("dateClotureLiquidation", "2026-06-20", "actifRealise", 80_000,
-                        "passifRegle", 120_000, "resultatType", "mali", "maliMontant", 40_000));
+    void associe_unique_net_attribue() {
+        Map<String, Object> v = mapper.map("PV_DISSOLUTION_LIQUIDATION_SARL_AU", fixture("liquidation.json"));
+        assertThat(txt(v.get("ASSOCIE_SOLDE_NET_CHIFFRES"))).isEqualTo("134 000");
+        assertThat(v).containsEntry("ASSOCIE_UNIQUE", "M. Ahmed Alaoui").doesNotContainKey("QUORUM_ATTEINT");
+    }
 
-        Map<String, Object> vars = mapper.map("RAPPORT_LIQUIDATION_DIRECTEUR", payload);
-        assertEquals("mali", vars.get("RESULTAT_LIQUIDATION_TYPE"));
-        assertEquals("féminin", vars.get("LIQUIDATEUR_GENRE"));
-        assertFalse(((String) vars.get("MALI_LIQUIDATION_LETTRES")).isBlank());
-        // Boni vide en cas de mali.
-        assertEquals("", vars.get("BONI_LIQUIDATION_CHIFFRES"));
+    @Test
+    void mali_quand_l_actif_net_ne_couvre_pas_le_capital() {
+        Map<String, Object> p = fixture("liquidation.json");
+        Map<String, Object> c = bloc(p, "cloture");
+        c.put("actifRealise", 120_000);
+        c.put("passifRegle", 50_000);
+        Map<String, Object> v = mapper.map("PV_DISSOLUTION_LIQUIDATION_SARL", p);
+        assertThat(v).containsEntry("LIQUIDATION_RESULTAT_TYPE", "mali").doesNotContainKey("REPARTITION_SOLDE");
+        assertThat(txt(v.get("LIQUIDATION_MALI_CHIFFRES"))).isEqualTo("40 000");
+        assertThat(txt(v.get("LIQUIDATION_CAPITAL_REMBOURSE_CHIFFRES"))).isEqualTo("60 000");
+    }
+
+    @Test
+    void solde_nul() {
+        Map<String, Object> p = fixture("liquidation.json");
+        Map<String, Object> c = bloc(p, "cloture");
+        c.put("actifRealise", 260_000);
+        c.put("passifRegle", 150_000);
+        assertThat(mapper.map("PV_DISSOLUTION_LIQUIDATION_SARL", p)).containsEntry("LIQUIDATION_RESULTAT_TYPE", "nul");
+    }
+
+    @Test
+    void remuneration_du_liquidateur_deduite() {
+        Map<String, Object> p = fixture("liquidation.json");
+        Map<String, Object> l = bloc(p, "liquidateur");
+        l.put("remunerationApplicable", "oui");
+        l.put("remunerationMontant", 20_000);
+        Map<String, Object> v = mapper.map("PV_DISSOLUTION_LIQUIDATION_SARL", p);
+        assertThat(txt(v.get("LIQUIDATION_DISPONIBLE_CHIFFRES"))).isEqualTo("120 000");
+    }
+
+    private void refuse(String variable, Consumer<Map<String, Object>> modification) {
+        Map<String, Object> p = fixture("liquidation.json");
+        modification.accept(p);
+        assertThatThrownBy(() -> mapper.map("PV_DISSOLUTION_LIQUIDATION_SARL", p))
+                .isInstanceOf(GenerationRefuseeException.class)
+                .satisfies(e -> assertThat(((GenerationRefuseeException) e).donnees())
+                        .extracting(GenerationRefuseeException.DonneeManquante::variable).contains(variable));
+    }
+
+    @Test
+    void le_sens_du_solde_ne_se_suppose_pas() {
+        refuse("LIQUIDATION_FRAIS_CHIFFRES", p -> bloc(p, "cloture").remove("frais"));
+        refuse("LIQUIDATION_ACTIF_REALISE_TOTAL_CHIFFRES", p -> bloc(p, "cloture").remove("actifRealise"));
+        refuse("LIQUIDATION_DISPONIBLE_CHIFFRES", p -> bloc(p, "cloture").put("passifRegle", 400_000));
+    }
+
+    @Test
+    void donnees_pilotes_jamais_supposees() {
+        refuse("QUORUM_ATTEINT", p -> p.remove("quorumAtteint"));
+        refuse("CLOTURE_CONVOCATION_AUTEUR", p -> bloc(p, "cloture").remove("convocationAuteur"));
+        refuse("COMPTE_DEFINITIF_APPROBATION", p -> bloc(p, "cloture").remove("compteDefinitifApprobation"));
+        refuse("LIQUIDATION_QUITUS_SENS", p -> bloc(p, "cloture").remove("quitus"));
+        refuse("LIQUIDATION_COMPTES_BANCAIRES_CLOTURES", p -> bloc(p, "cloture").remove("comptesBancairesClotures"));
+        refuse("RETENUE_SOURCE_APPLICABLE", p -> bloc(p, "cloture").remove("retenueApplicable"));
+        refuse("PASSIF_EVENTUEL_APPLICABLE", p -> bloc(p, "cloture").remove("passifEventuelApplicable"));
+        refuse("CAC_EXISTE", p -> bloc(p, "mentionsPv").remove("cacExiste"));
+        refuse("LIQUIDATION_SIEGE_IDENTIQUE", p -> {
+            bloc(p, "liquidateur").remove("siegeIdentique");
+            bloc(p, "liquidateur").remove("siege");
+        });
+        // Exoneration invoquee : la retenue de chacun ne se repartit pas au prorata.
+        refuse("ASSOCIE_RETENUE_SOURCE_CHIFFRES", p -> {
+            bloc(p, "cloture").put("retenueExonerationInvoquee", "oui");
+            bloc(p, "cloture").put("retenueExonerationBeneficiaire", "Mme Fatima Bennani");
+        });
+    }
+
+    @Test
+    void siege_au_siege_social_enregistre_a_la_dissolution() {
+        Map<String, Object> p = fixture("liquidation.json");
+        bloc(p, "liquidateur").put("siegeIdentique", "oui");
+        bloc(p, "liquidateur").remove("siege");
+        assertThat(mapper.map("PV_DISSOLUTION_LIQUIDATION_SARL", p)).containsEntry("LIQUIDATION_SIEGE_IDENTIQUE", "oui")
+                .doesNotContainKey("LIQUIDATION_SIEGE_ADRESSE");
+    }
+
+    @Test
+    void prorata_qui_ne_tombe_pas_juste_refuse() {
+        refuse("ASSOCIE_SOLDE_BRUT_CHIFFRES", p -> {
+            // 1 000 parts : 333 / 667 ; boni 40 001 : quotes-parts non exactes au centime.
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> a = (List<Map<String, Object>>) p.get("associes");
+            a.get(0).put("nombreParts", 333);
+            a.get(1).put("nombreParts", 667);
+            bloc(p, "cloture").put("actifRealise", 300_001);
+        });
+    }
+
+    @Test
+    void compte_refuse_ni_quitus_ni_repartition() {
+        Map<String, Object> p = fixture("liquidation.json");
+        Map<String, Object> c = bloc(p, "cloture");
+        c.put("compteDefinitifApprobation", "refuse");
+        c.put("refusMotifs", "les pi\u00e8ces justificatives n'ont pas \u00e9t\u00e9 produites");
+        c.remove("quitus");
+        Map<String, Object> v = mapper.map("PV_DISSOLUTION_LIQUIDATION_SARL", p);
+        assertThat(v).containsEntry("COMPTE_DEFINITIF_APPROBATION", "refuse").doesNotContainKey("LIQUIDATION_QUITUS_SENS")
+                .doesNotContainKey("REPARTITION_SOLDE");
+    }
+
+    @Test
+    void convocation_par_mandataire_de_justice() {
+        Map<String, Object> p = fixture("liquidation.json");
+        Map<String, Object> c = bloc(p, "cloture");
+        c.put("convocationAuteur", "mandataire");
+        c.put("ordonnance", Map.of("associeDemandeur", "Mme Fatima Bennani", "tribunal", "Casablanca",
+                "numero", "1234/2026", "date", "2026-05-30", "mandataireNom", "Me Karim Tazi"));
+        Map<String, Object> v = mapper.map("PV_DISSOLUTION_LIQUIDATION_SARL", p);
+        assertThat(v).containsEntry("ORDONNANCE_REFERE_NUMERO", "1234/2026")
+                .containsEntry("ORDONNANCE_REFERE_DATE", "30/05/2026")
+                .containsEntry("MANDATAIRE_REFERE_NOM", "Me Karim Tazi");
+    }
+
+    @Test
+    void rapport_du_liquidateur_sans_repli_boni() {
+        // Lot L4d (E11d) : le sens du resultat vient de la saisie ou du calcul du parcours ;
+        // absent, il reste vide (la generation le nomme) -- plus de "boni" suppose.
+        Map<String, Object> p = new java.util.HashMap<>(fixture("liquidation.json"));
+        p.put("cloture", Map.of("actifRealise", 100000, "passifRegle", 40000));
+        assertThat(mapper.map("RAPPORT_LIQUIDATION_DIRECTEUR", p).get("RESULTAT_LIQUIDATION_TYPE")).isEqualTo("");
+        p.put("cloture", Map.of("resultatSens", "mali", "resultatMontant", 5000));
+        assertThat(mapper.map("RAPPORT_LIQUIDATION_DIRECTEUR", p)).containsEntry("RESULTAT_LIQUIDATION_TYPE", "mali");
     }
 }

@@ -21,7 +21,7 @@ import {
 import { Card } from '../../components/ui/Card';
 import { TextField } from '../../components/ui/TextField';
 import { Button } from '../../components/ui/Button';
-import { TexteAide } from '../../components/ui/Aide';
+import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { HistoriqueResponsablesPanel } from './components/HistoriqueResponsablesPanel';
 import { AccesClientPanel } from './components/AccesClientPanel';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -150,7 +150,7 @@ function DataroomManagementView() {
     );
     if (!q) return byStatus;
     return byStatus.filter((d) =>
-      [d.raisonSociale, displayFormeJuridique(d), d.ice, d.ville, d.pays]
+      [d.raisonSociale, d.reference, displayFormeJuridique(d), d.ice, d.ville, d.pays]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q)),
     );
@@ -366,6 +366,11 @@ function DossierCard({
             <h3 className="text-base font-bold text-fg truncate">
               {dossier.raisonSociale}
             </h3>
+            {dossier.reference && (
+              <span className="text-xs text-fg-subtle" data-testid="reference-dossier">
+                {dossier.reference}
+              </span>
+            )}
             <span
               className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                 suspended
@@ -564,6 +569,15 @@ function DataroomDetail({
             <h1 className="text-2xl font-bold text-fg">
               {dossier.raisonSociale}
             </h1>
+            {dossier.reference && (
+              <p className="text-xs text-fg-subtle" data-testid="reference-dossier-entete">
+                Dossier {dossier.reference}{' '}
+                <InfoBulle
+                  libelle="Que signifie la référence du dossier ?"
+                  texte="La référence désigne le dossier dans le cabinet : année de création, numéro d’ordre dans l’année, puis la société. Elle figure sur les actes qui citent le dossier et ne change plus."
+                />
+              </p>
+            )}
             <p className="text-sm text-fg-subtle">
               {displayFormeJuridique(dossier) ?? '—'}
               {dossier.origine === 'ETRANGERE'

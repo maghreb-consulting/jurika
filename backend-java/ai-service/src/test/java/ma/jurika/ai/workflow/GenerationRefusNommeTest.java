@@ -48,6 +48,8 @@ class GenerationRefusNommeTest {
                 mock(TemplateManifestLoader.class), new SocieteIdentityEnricher((ws, id) -> Map.of()), (ws, t, e) -> Map.of(), (w, t, wf, tpl, d) -> { }, (w, t) -> java.util.List.of());
         mvc = MockMvcBuilders.standaloneSetup(c).setControllerAdvice(new GenerationExceptionHandler()).build();
         when(mapping.map(any(), any(), anyMap())).thenReturn(Map.of());
+        // Lot L4d (E11) : modele choisi par le mapper ; ici, le code demande.
+        when(mapping.gabarit(any(), any(), any())).thenAnswer(inv -> inv.getArgument(1));
         when(engine.dictionnaire()).thenReturn(new DictionnaireUnique(Set.of("$SIEGE_VILLE", "$ICE"), Map.of(),
                 Map.of("$SIEGE_VILLE", "Ville du siège social", "$ICE", "Identifiant commun de l'entreprise")));
     }

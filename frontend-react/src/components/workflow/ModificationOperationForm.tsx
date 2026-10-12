@@ -44,6 +44,9 @@ import {
   type ResolutionState,
 } from './modificationResolutions';
 import type { DocumentType } from '../../types/dataroom';
+import { ValeurProposee } from './ValeurProposee';
+import { InfoBulle, TexteAide } from '../ui/Aide';
+import { USAGES_CABINET } from '../../lib/usagesCabinet';
 
 const AG_SECTIONS: SeanceSections = {
   seance: true,
@@ -106,12 +109,16 @@ export interface ModificationOperationFormProps {
   onReady?: (ready: boolean) => void;
 }
 
+/**
+ * L4d (E11c) : le PV de modification est rendu par les modeles du corpus du cabinet
+ * (PV_AG_SARL, PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU) ; le code logique reste PV_MODIFICATION_*.
+ */
 function makeTemplateInfo(code: string): TemplateInfo {
   return {
     code,
     documentKind: 'PV de modification',
     file: `${code}.docx`,
-    origin: 'directeur-2026-08',
+    origin: 'corpus',
     deprecated: false,
     placeholderStyle: 'dollar_nu_directeur',
   };
@@ -162,6 +169,11 @@ export function ModificationOperationForm({
   const [cacPresent, setCacPresent] = useState<'oui' | 'non'>('non');
   const [commissaireComptesNom, setCommissaireComptesNom] = useState('');
   const [gerantEstAssocie, setGerantEstAssocie] = useState<'oui' | 'non'>(isAU ? 'oui' : 'non');
+  // L4d (E11c) : nombre d'originaux PROPOSE (usage du cabinet), transmis une fois confirme ;
+  // registre des decisions de l'associe unique (numero et feuillet) saisi.
+  const [nombreOriginaux, setNombreOriginaux] = useState<string | undefined>(undefined);
+  const [registreNumero, setRegistreNumero] = useState('');
+  const [registreFeuillet, setRegistreFeuillet] = useState('');
 
   const [docs, setDocs] = useState<Record<string, DocState>>({});
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
@@ -182,6 +194,8 @@ export function ModificationOperationForm({
       commissaireComptes: { existe: cacExiste, present: cacPresent, nom: commissaireComptesNom },
       // L3 (D6) : quorumAtteint vient du formulaire de seance (saisi), plus de "oui" impose.
       gerantEstAssocie,
+      nombreOriginaux: nombreOriginaux ?? '',
+      ...(isAU ? { registre: { numero: registreNumero.trim(), feuillet: registreFeuillet.trim() } } : {}),
     };
   };
 
@@ -241,7 +255,12 @@ export function ModificationOperationForm({
       />
 
       {/* Options d'assemblée référencées par les résolutions. */}
-      <Section title="Options de l'assemblée">
+      <Section title={isAU ? "Options des décisions de l'associé unique" : "Options de l'assemblée"}>
+        <TexteAide cle={isAU ? 'pv-modification-options-au' : 'pv-modification-options'} titre="Que renseigner ici ?">
+          {isAU
+            ? 'Confirmez le nombre d’exemplaires originaux et indiquez le numéro et le feuillet du registre des décisions de l’associé unique, que le procès-verbal cite. Sans ces données, la génération est refusée et les nomme. Ensuite, générez le procès-verbal, relisez-le puis validez-le.'
+            : 'Indiquez si un commissaire aux comptes est en fonction et confirmez le nombre d’exemplaires originaux du procès-verbal. Sans ces données, la génération est refusée et les nomme. Ensuite, générez le procès-verbal, relisez-le puis validez-le.'}
+        </TexteAide>
         <div className="grid gap-3 md:grid-cols-2">
           <Select
             label="Commissaire aux comptes ?"
@@ -273,6 +292,37 @@ export function ModificationOperationForm({
               onChange={(e) => setGerantEstAssocie(e.target.value as 'oui' | 'non')}
               options={OUI_NON}
             />
+          )}
+          <ValeurProposee
+            id="pv-modification-nombre-originaux"
+            label="Nombre d’exemplaires originaux"
+            proposition={USAGES_CABINET.nombreOriginauxEnLettres}
+            valeur={nombreOriginaux}
+            onChange={setNombreOriginaux}
+          />
+          {isAU && (
+            <>
+              <div className="flex items-start gap-1">
+                <div className="min-w-0 flex-1">
+                  <TextField
+                    label="N° du registre des décisions"
+                    value={registreNumero}
+                    onChange={(e) => setRegistreNumero(e.target.value)}
+                  />
+                </div>
+                <span className="mt-6">
+                  <InfoBulle
+                    libelle="Aide : registre des décisions"
+                    texte="Le procès-verbal est répertorié au registre des décisions de l’associé unique, coté et paraphé, tenu au siège social (articles 76 et 112 de la loi n° 5-96) : reportez le numéro et le feuillet où il sera transcrit."
+                  />
+                </span>
+              </div>
+              <TextField
+                label="Feuillet du registre"
+                value={registreFeuillet}
+                onChange={(e) => setRegistreFeuillet(e.target.value)}
+              />
+            </>
           )}
         </div>
       </Section>

@@ -49,9 +49,14 @@ class SuccursaleEtrAnnonceRenderTest {
 
     @BeforeAll
     static void setUp() throws Exception {
+        // Lot L4d (E11) : l'avis est rendu par le modele du corpus (copies du classpath retirees).
+        Path racine = Path.of(System.getenv().getOrDefault("JURIKA_CORPUS_REEL",
+                System.getProperty("user.home") + "/corpus/CORPUS_2026-10-11"));
+        org.junit.jupiter.api.Assumptions.assumeTrue(Files.isRegularFile(racine.resolve("INDEX_CORPUS.xlsx")),
+                "corpus reel absent");
         TemplateManifestLoader loader = new TemplateManifestLoader(new ObjectMapper());
         loader.load();
-        engine = new DocxTemplateEngine(loader);
+        engine = new DocxTemplateEngine(loader, null, ma.jurika.ai.document.corpus.ChargeurCorpus.charger(racine));
         Files.createDirectories(OUT);
     }
 
@@ -160,7 +165,8 @@ class SuccursaleEtrAnnonceRenderTest {
             Map<String, Object> p = payload("SARL", false, false);
             p.put("organe", Map.of("competent", organe, "date", "2026-10-05"));
             String text = render(TPL_SARL, "ETR_elision_" + organe.replaceAll("[^a-zA-Z]", ""), p);
-            assertTrue(text.contains("prise par " + organe),
+            // Modele du corpus : « l'organe competent de la societe, a savoir <organe> ».
+            assertTrue(text.contains("à savoir " + organe),
                     "organe « " + organe + " » mal introduit : " + text);
             for (String faute : new String[]{"de le ", "de les ", "à le ", "à les "}) {
                 assertFalse(text.contains(faute),
@@ -214,7 +220,7 @@ class SuccursaleEtrAnnonceRenderTest {
         assertFalse(chapeau.contains("RC N°"),
                 "le chapeau ne doit plus référencer un RC marocain : " + chapeau);
         // La dotation, elle, est bien en dirhams (elle est affectée au Maroc).
-        assertTrue(text.contains("DH"), "la dotation reste libellée en dirhams");
+        assertTrue(text.contains("dirhams"), "la dotation reste libellée en dirhams");
     }
 
     // ── Rendering helper ───────────────────────────────────────────────────
@@ -222,7 +228,7 @@ class SuccursaleEtrAnnonceRenderTest {
     private String render(String templateCode, String sample, Map<String, Object> payload)
             throws Exception {
         DocxTemplateEngine.DocumentResult result =
-                engine.generate(templateCode, vars(templateCode, payload));
+                engine.generate(new SuccursaleEtrMapper().gabarit(templateCode, payload), vars(templateCode, payload));
         assertTrue(result.templateFound(), "template introuvable : " + templateCode);
         assertTrue(result.bytes() != null && result.bytes().length > 0, "0 octet : " + templateCode);
         Files.write(OUT.resolve(sample + ".docx"), result.bytes());

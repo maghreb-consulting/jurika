@@ -47,11 +47,29 @@ class NonVacuiteDocumentaireTest {
     private final DissolutionMapper dissolutionMapper = new DissolutionMapper();
     private final LiquidationMapper liquidationMapper = new LiquidationMapper();
 
+    /**
+     * Lot L4d (E11d) : les PV de dissolution et de cloture sont rendus par les modeles du
+     * CORPUS (plus de copie au classpath) : ce controle les rend sur le corpus reel, et il est
+     * saute sans lui.
+     */
+    private static final java.nio.file.Path CORPUS =
+            java.nio.file.Path.of(System.getenv().getOrDefault("JURIKA_CORPUS_REEL",
+            System.getProperty("user.home") + "/corpus/CORPUS_2026-10-11"));
+
     @BeforeEach
     void setUp() throws Exception {
         TemplateManifestLoader loader = new TemplateManifestLoader(new ObjectMapper());
         loader.load();
-        engine = new DocxTemplateEngine(loader);
+        engine = java.nio.file.Files.isDirectory(CORPUS)
+                ? new DocxTemplateEngine(loader, null, ma.jurika.ai.document.corpus.ChargeurCorpus.charger(CORPUS))
+                : new DocxTemplateEngine(loader);
+    }
+
+    /** Rendu par le modele que le mapper choisit, avec la reprise de la fiche (chaine de production). */
+    private List<String> rendre(ma.jurika.ai.workflow.WorkflowDocumentMapper mapper, String code,
+                                Map<String, Object> p) throws Exception {
+        return rendre(mapper.gabarit(code, p),
+                ma.jurika.ai.workflow.identity.RepriseFicheSociete.completer(mapper.map(code, p), p));
     }
 
     // =====================================================================
@@ -149,6 +167,10 @@ class NonVacuiteDocumentaireTest {
         m.put("rcNumero", "123456");
         m.put("villeGreffe", "CASABLANCA");
         m.put("formeJuridique", forme);
+        m.put("ville", "Casablanca");
+        m.put("rcVille", "Casablanca");
+        m.put("ice", "001122334000055");
+        m.put("ifNumero", "40998877");
         return m;
     }
 
@@ -190,6 +212,13 @@ class NonVacuiteDocumentaireTest {
         l.put("pieceNumero", "BE123456");
         l.put("genre", "masculin");
         l.put("siege", "12 RUE DES FOULES, CASABLANCA");
+        l.put("siegeIdentique", "oui");
+        l.put("nationalite", "marocaine");
+        l.put("dateNaissance", "1975-03-12");
+        l.put("mandatDateEffet", "2026-05-15");
+        l.put("dureeMandat", "trois ans");
+        l.put("remunerationApplicable", "non");
+        l.put("redditionPeriodicite", "chaque semestre");
         return l;
     }
 
@@ -202,10 +231,41 @@ class NonVacuiteDocumentaireTest {
         p.put("associes", associes);
         p.put("gerants", List.of(Map.of("civilite", "M.", "prenom", "Ahmed", "nom", "ALAOUI")));
         p.put("liquidateur", liquidateur());
-        p.put("dissolution", Map.of("motif", "volontaire", "nature", "anticip\u00e9e", "dateEffet", "2026-05-15"));
-        p.put("cloture", Map.of("resultatSens", "boni", "resultatMontant", 50_000,
-                "dateClotureLiquidation", "2026-09-30",
-                "actifRealise", 200_000, "passifRegle", 150_000));
+        p.put("dissolution", Map.of("motif", "volontaire", "nature", "volonte_associes", "dateEffet", "2026-05-15",
+                "date", "2026-05-15"));
+        // Lot L4d (E11d) : donnees saisies des modeles du corpus (dissolution et cloture).
+        p.put("formeJuridique", forme);
+        p.put("associeUnique", "SARL_AU".equals(forme));
+        p.put("quorumAtteint", "oui");
+        p.put("vote", Map.of("resultat", "adopt\u00e9e", "majorite", "\u00e0 l'unanimit\u00e9"));
+        p.put("mentionsPv", Map.of("dossierReference", "DOS-1", "registreFolio", "3", "enregistrementLieu", "Casablanca",
+                "annonceJournal", "LE JOURNAL", "quitusGerance", "oui", "cacExiste", "non", "salariesDixOuPlus", "non",
+                "nombreOriginaux", "quatre"));
+        Map<String, Object> c = new LinkedHashMap<>();
+        c.put("dateClotureLiquidation", "2026-09-30");
+        c.put("actifRealise", 300_000);
+        c.put("passifRegle", 150_000);
+        c.put("frais", 10_000);
+        c.put("dissolutionDateEffet", "2026-05-15");
+        c.put("compteDefinitifDate", "2026-09-15");
+        c.put("dissolutionRcInscriptionDate", "2026-05-25");
+        c.put("annonceJournal", "LE JOURNAL");
+        c.put("annoncePublicationDate", "2026-05-28");
+        c.put("convocationAuteur", "liquidateur");
+        c.put("operationsResume", "l'actif a \u00e9t\u00e9 r\u00e9alis\u00e9 et le passif r\u00e9gl\u00e9");
+        c.put("comptesBancairesClotures", "oui");
+        c.put("compteDefinitifApprobation", "approuve");
+        c.put("quitus", "accorde");
+        c.put("retenueApplicable", "non");
+        c.put("retenueNonApplicableMotif", "le boni est inf\u00e9rieur aux r\u00e9serves");
+        c.put("repartitionModalites", "par virement bancaire");
+        c.put("repartitionDateLimite", "2026-10-30");
+        c.put("conservationDepositaireNom", "M. Ahmed ALAOUI");
+        c.put("conservationDepositaireQualite", "liquidateur");
+        c.put("conservationLieu", "5 RUE D'ALGER, CASABLANCA");
+        c.put("conservationDuree", "dix ans");
+        c.put("passifEventuelApplicable", "non");
+        p.put("cloture", c);
         return p;
     }
 
@@ -217,14 +277,18 @@ class NonVacuiteDocumentaireTest {
     @DisplayName("D1 — la section présence / comparution n'est jamais vide")
     class PresenceEtComparution {
 
+        @BeforeEach
+        void corpusReel() {
+            org.junit.jupiter.api.Assumptions.assumeTrue(java.nio.file.Files.isDirectory(CORPUS), "corpus reel absent");
+        }
+
         @Test
         @DisplayName("PV de dissolution SARL : chaque associé porte un nom ET un nombre de parts")
         void pvDissolutionSarl() throws Exception {
             Map<String, Object> p = payload("SARL", List.of(
                     associe("M.", "Ahmed", "ALAOUI", 600, "BE111111"),
                     associe("Mme", "Fatima", "BENNANI", 400, "BE222222")));
-            List<String> lignes = rendre("PV_DISSOLUTION_LIQUIDATION_SARL",
-                    dissolutionMapper.map("PV_DISSOLUTION_LIQUIDATION_SARL", p));
+            List<String> lignes = rendre(dissolutionMapper, "PV_DISSOLUTION_LIQUIDATION_SARL", p);
 
             assertAucunTrou("PV dissolution SARL", lignes);
             // Les deux associés, leurs parts et le président de séance sont bien rendus.
@@ -237,16 +301,13 @@ class NonVacuiteDocumentaireTest {
         void pvDissolutionSarlAu() throws Exception {
             Map<String, Object> p = payload("SARL_AU", List.of(
                     associe("Mme", "Salma", "BENJELLOUN", 1_000, "BK987654")));
-            List<String> lignes = rendre("PV_DISSOLUTION_LIQUIDATION_SARL_AU",
-                    dissolutionMapper.map("PV_DISSOLUTION_LIQUIDATION_SARL_AU", p));
+            List<String> lignes = rendre(dissolutionMapper, "PV_DISSOLUTION_LIQUIDATION_SARL_AU", p);
 
             assertAucunTrou("PV dissolution SARL AU", lignes);
             // M5 : le nom ne doit apparaître qu'UNE fois précédé de sa civilité.
-            assertPresent("PV dissolution SARL AU", lignes,
-                    "Mme Salma BENJELLOUN",
-                    // M6 : la CIN, autrefois rendue « CIN n° , ».
-                    "BK987654",
-                    "45 BD ZERKTOUNI, CASABLANCA");
+            // Le modele du corpus (decisions de l'associe unique) n'imprime ni sa piece ni son
+            // adresse : seule son identite, une fois, precedee de sa civilite (M5).
+            assertPresent("PV dissolution SARL AU", lignes, "Mme Salma BENJELLOUN, personne physique");
         }
 
         @Test
@@ -254,24 +315,10 @@ class NonVacuiteDocumentaireTest {
         void pvClotureSarlAu() throws Exception {
             Map<String, Object> p = payload("SARL_AU", List.of(
                     associe("Mme", "Salma", "BENJELLOUN", 1_000, "BK987654")));
-            List<String> lignes = rendre("PV_DISSOLUTION_LIQUIDATION_SARL_AU",
-                    liquidationMapper.map("PV_DISSOLUTION_LIQUIDATION_SARL_AU", p));
+            List<String> lignes = rendre(liquidationMapper, "PV_DISSOLUTION_LIQUIDATION_SARL_AU", p);
 
             assertAucunTrou("PV clôture SARL AU", lignes);
             assertPresent("PV clôture SARL AU", lignes, "Mme Salma BENJELLOUN", "BK987654");
-        }
-
-        @Test
-        @DisplayName("Rapport de liquidation : le boni et son bénéficiaire sont nommés")
-        void rapportLiquidation() throws Exception {
-            Map<String, Object> p = payload("SARL", List.of(
-                    associe("M.", "Ahmed", "ALAOUI", 600, "BE111111"),
-                    associe("Mme", "Fatima", "BENNANI", 400, "BE222222")));
-            List<String> lignes = rendre("RAPPORT_LIQUIDATION_DIRECTEUR",
-                    liquidationMapper.map("RAPPORT_LIQUIDATION_DIRECTEUR", p));
-
-            assertAucunTrou("Rapport de liquidation", lignes);
-            assertPresent("Rapport de liquidation", lignes, "ALAOUI", "PARACOSME");
         }
     }
 

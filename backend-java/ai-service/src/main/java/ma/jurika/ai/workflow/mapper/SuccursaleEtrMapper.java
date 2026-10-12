@@ -26,6 +26,13 @@ import java.util.Set;
  * ({@code ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE_SARL(/_AU)}). ⚠ Ces deux modèles
  * sont <b>dérivés</b> ({@code origin = derive-jurika}) des modèles 05_ du directeur, qui
  * ne couvrent que la mère marocaine ; ils <b>doivent être validés par le directeur</b>.
+ *
+ * <p>Lot L4d (E11) : l'avis est desormais rendu par le modele du corpus
+ * {@code ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SOCIETE_ETRANGERE} (sans variante de forme) ; les
+ * copies derivees du classpath sont retirees. Le PV d'organe unique
+ * ({@code PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU}) reste servi par le classpath : le modele
+ * du corpus renvoie a une variante _AU qu'il ne contient pas (ecart du cabinet, A_DECIDER
+ * directeur, ECARTS_MODELES_CABINET.md).
  */
 @Component
 public class SuccursaleEtrMapper implements WorkflowDocumentMapper {
@@ -59,5 +66,14 @@ public class SuccursaleEtrMapper implements WorkflowDocumentMapper {
             return SuccursaleVarsBuilder.ouvertureEtrAnnonceVars(templateCode, payload);
         }
         return SuccursaleVarsBuilder.ouvertureEtrVars(templateCode, payload);
+    }
+
+    /** Lot L4d (E11) : modele du corpus de l'avis d'ouverture (societe etrangere). */
+    static final String ANNONCE_CORPUS = "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SOCIETE_ETRANGERE";
+
+    @Override
+    public String gabarit(String templateCode, Map<String, Object> payload) {
+        if (TPL_ANNONCE_SARL.equals(templateCode) || TPL_ANNONCE_SARL_AU.equals(templateCode)) return ANNONCE_CORPUS;
+        return templateCode;
     }
 }

@@ -447,6 +447,7 @@ public class DemarcheUseCases {
                            UUID acteurId) {
         TenantContext.set(workspaceId);
         Ticket ticket = charger(workspaceId, ticketId);
+        exigerEnCharge(workspaceId, ticket, acteurId); // L4d (E2, RG-DOS-01)
         if (!(lignes instanceof DemarchesDuTicket corpus) || !MatricesDuTicket.servieParLeCorpus(ticket.type())) {
             throw new ConflictException("Les d\u00e9lais de ce parcours se calculent depuis ses \u00e9tapes.");
         }
@@ -460,6 +461,7 @@ public class DemarcheUseCases {
                        List<UUID> documentIds, UUID acteurId) {
         TenantContext.set(workspaceId);
         Ticket ticket = charger(workspaceId, ticketId);
+        exigerEnCharge(workspaceId, ticket, acteurId); // L4d (E2, RG-DOS-01)
         Demarche d = demarcheDuStatutCourant(ticket, ordre);
 
         List<TicketDemarcheRepository.JustificatifDepose> deposes =
@@ -484,6 +486,7 @@ public class DemarcheUseCases {
     public Vue decocher(UUID workspaceId, UUID ticketId, int ordre, String motif, UUID acteurId) {
         TenantContext.set(workspaceId);
         Ticket ticket = charger(workspaceId, ticketId);
+        exigerEnCharge(workspaceId, ticket, acteurId); // L4d (E2, RG-DOS-01)
         // Le decochage n'est possible que tant que le ticket n'a pas quitte le
         // statut dont releve la demarche.
         Demarche d = demarcheDuStatutCourant(ticket, ordre);
@@ -528,6 +531,7 @@ public class DemarcheUseCases {
                                      String motif, UUID acteurId) {
         TenantContext.set(workspaceId);
         Ticket ticket = charger(workspaceId, ticketId);
+        exigerEnCharge(workspaceId, ticket, acteurId); // L4d (E2, RG-DOS-01)
         Demarche d = demarcheDuStatutCourant(ticket, ordre);
 
         if (d.obligatoire()) {
@@ -580,6 +584,7 @@ public class DemarcheUseCases {
                                           boolean geranceStatutaire, UUID acteurId) {
         TenantContext.set(workspaceId);
         Ticket ticket = charger(workspaceId, ticketId);
+        exigerEnCharge(workspaceId, ticket, acteurId); // L4d (E2, RG-DOS-01)
 
         Map<UUID, TicketDemarche> parDemarche = etats.findByTicket(workspaceId, ticketId);
         for (int ordre : ORDRES_ACTE_NOMINATION) {
@@ -660,6 +665,18 @@ public class DemarcheUseCases {
     // =================================================================
     //  Verifications
     // =================================================================
+
+    /** Lot L4d (E2) : seul l'employe en charge agit ; absent dans les tests construits a la main. */
+    private EmployeEnChargeTicket enCharge;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setEnCharge(EmployeEnChargeTicket enCharge) {
+        this.enCharge = enCharge;
+    }
+
+    private void exigerEnCharge(UUID workspaceId, Ticket ticket, UUID acteurId) {
+        if (enCharge != null) enCharge.exiger(workspaceId, ticket, acteurId);
+    }
 
     private Ticket charger(UUID workspaceId, UUID ticketId) {
         return tickets.findById(workspaceId, ticketId)

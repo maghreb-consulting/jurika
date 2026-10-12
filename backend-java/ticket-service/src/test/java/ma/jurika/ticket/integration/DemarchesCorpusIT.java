@@ -49,6 +49,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -156,8 +157,12 @@ class DemarchesCorpusIT {
     }
 
     private static String jeton(String role) {
+        return jeton(KARIM, role);
+    }
+
+    private static String jeton(UUID user, String role) {
         return "Bearer " + Jwts.builder()
-                .claim(JwtClaims.USER_ID, KARIM.toString())
+                .claim(JwtClaims.USER_ID, user.toString())
                 .claim(JwtClaims.WORKSPACE_ID, WS_A.toString())
                 .claim(JwtClaims.ROLE, role)
                 .claim(JwtClaims.EMAIL, "test@rls.test")
@@ -303,6 +308,10 @@ class DemarchesCorpusIT {
                         .contentType("application/json").content("{\"target\":\"GENERATION_DOCUMENTS\"}"))
                 .andExpect(status().isOk());
         JsonNode pv = ligneDe(lire("/api/v1/tickets/" + ticketId + "/demarches"), "PV d'approbation");
+        // Lot L4d (E9, RG-TKT-06) : l'ecran sait AVANT la demande ce que la transition refusera.
+        JsonNode passage = lire("/api/v1/tickets/" + ticketId + "/passage");
+        assertThat(passage.get("suivant").asText()).isEqualTo("DEROULEMENT_DEMARCHE");
+        assertThat(passage.get("obstacles").toString()).contains("G\u00e9n\u00e9ration du PV d'approbation");
         MvcResult refus = mvc.perform(post("/api/v1/tickets/" + ticketId + "/transition").header("Authorization", jeton("EMPLOYE"))
                         .contentType("application/json").content("{\"target\":\"DEROULEMENT_DEMARCHE\"}"))
                 .andExpect(status().is4xxClientError()).andReturn();
@@ -313,6 +322,8 @@ class DemarchesCorpusIT {
                 .andExpect(status().isOk());
         assertThat(owner.queryForObject("SELECT etat FROM ticket_demarches WHERE ticket_id = ? AND demarche_id = ?",
                 String.class, ticketId, UUID.fromString(pv.get("demarcheId").asText()))).isEqualTo("COCHEE");
+        assertThat(lire("/api/v1/tickets/" + ticketId + "/passage").get("obstacles").size())
+                .as("plus d'obstacle : la transition passera").isZero();
         mvc.perform(post("/api/v1/tickets/" + ticketId + "/transition").header("Authorization", jeton("EMPLOYE"))
                         .contentType("application/json").content("{\"target\":\"DEROULEMENT_DEMARCHE\"}"))
                 .andExpect(status().isOk());
@@ -381,6 +392,61 @@ class DemarchesCorpusIT {
         assertThat(d.get("manques").toString()).doesNotContain("Aucune d");
         assertThat(lire("/api/v1/tickets/" + importId + "/demarches").toString())
                 .contains("Collecte de la pi\u00e8ce : Statuts");
+    }
+
+    /** Lot L4d (E2, RG-DOS-01) : seul l'employe responsable agit ; le superviseur lit. */
+    @Test
+    @Order(9)
+    void seul_le_responsable_choisit_les_decisions_et_coche_les_demarches() throws Exception {
+        UUID collegue = UUID.fromString("33333333-3333-3333-3333-0000000000c9");
+        mvc.perform(put("/api/v1/tickets/" + ticketId + "/decisions").header("Authorization", jeton(collegue, "EMPLOYE"))
+                        .contentType("application/json").content("""
+                                { "decisions": [ { "matrice": "%s", "code": "approbation_comptes" } ] }
+                                """.formatted(MODIF)))
+                .andExpect(status().isNotFound());
+        JsonNode pv = ligneDe(lire("/api/v1/tickets/" + ticketId + "/demarches"), "Contr\u00f4le du dossier");
+        mvc.perform(post("/api/v1/tickets/" + ticketId + "/demarches/" + pv.get("ordre").asInt() + "/cocher")
+                        .header("Authorization", jeton(collegue, "EMPLOYE"))
+                        .contentType("application/json").content("{\"documentIds\":[]}"))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/decisions").header("Authorization", jeton("SUPERVISEUR")))
+                .andExpect(status().isOk());
+        mvc.perform(put("/api/v1/tickets/" + ticketId + "/decisions").header("Authorization", jeton("SUPERVISEUR"))
+                        .contentType("application/json").content("{ \"decisions\": [] }"))
+                .andExpect(status().isForbidden());
+    }
+
+    /**
+     * Lot L4d (E7) : referentiel des delais de depot au greffe, lu dans le corpus (sans delai
+     * ni article : a confirmer), ajuste par le superviseur seul, et applique a la ligne de
+     * depot du ticket ; le retrait de l'ajustement retablit la ligne du corpus.
+     */
+    @Test
+    @Order(10)
+    void les_delais_de_depot_au_greffe_se_lisent_dans_le_corpus_et_s_ajustent_par_le_cabinet() throws Exception {
+        JsonNode ref = lire("/api/v1/tickets/delais-greffe");
+        JsonNode nature = null;
+        for (JsonNode n : ref) {
+            if (n.get("matrice").asText().equals(COMPTES) && n.get("decisionCode").asText().equals("approbation_comptes")) nature = n;
+        }
+        assertThat(nature).as("nature d'acte du depot au greffe : " + ref).isNotNull();
+        assertThat(nature.get("statut").asText()).isEqualTo("A_CONFIRMER");
+        assertThat(nature.get("article").isNull()).as("aucun article invente").isTrue();
+
+        String corps = "{\"delaiValeur\":30,\"delaiUnite\":\"JOURS\",\"article\":\"art. 95 de la loi n 5-96\"}";
+        String url = "/api/v1/tickets/delais-greffe/" + COMPTES + "/approbation_comptes";
+        mvc.perform(put(url).header("Authorization", jeton("EMPLOYE")).contentType("application/json").content(corps))
+                .andExpect(status().isForbidden());
+        mvc.perform(put(url).header("Authorization", jeton("SUPERVISEUR")).contentType("application/json").content(corps))
+                .andExpect(status().isNoContent());
+
+        JsonNode depot = ligneDe(lire("/api/v1/tickets/" + ticketId + "/demarches"), "commissaire \u2014 d\u00e9p\u00f4t");
+        assertThat(depot.toString()).contains("ajust\u00e9 par le cabinet").contains("art. 95 de la loi n 5-96");
+        assertThat(lire("/api/v1/tickets/delais-greffe").toString()).contains("\"delaiValeur\":30");
+
+        mvc.perform(delete(url).header("Authorization", jeton("SUPERVISEUR"))).andExpect(status().isNoContent());
+        depot = ligneDe(lire("/api/v1/tickets/" + ticketId + "/demarches"), "commissaire \u2014 d\u00e9p\u00f4t");
+        assertThat(depot.toString()).doesNotContain("ajust\u00e9 par le cabinet");
     }
 
     private JsonNode lire(String url) throws Exception {

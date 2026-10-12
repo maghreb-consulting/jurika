@@ -69,7 +69,9 @@ class TemplateCoverageTest {
             // Certains placeholders (origin=placeholder) peuvent n'avoir aucun
             // fichier : on s'assure juste qu'on n'a pas dimanchee une entree
             // directeur sans fichier.
-            if (!"placeholder".equalsIgnoreCase(entry.origin())) {
+            // Lot L4d (E11e) : origin=corpus sans fichier -- document rendu par un modele du
+            // corpus que le mapper choisit selon la donnee (RAPPORT_GESTION).
+            if (!"placeholder".equalsIgnoreCase(entry.origin()) && !"corpus".equalsIgnoreCase(entry.origin())) {
                 fail("Template " + entry.code() + " : aucun fichier declare et origin != placeholder");
             }
             return;

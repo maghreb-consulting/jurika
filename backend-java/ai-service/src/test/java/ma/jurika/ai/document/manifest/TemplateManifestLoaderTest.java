@@ -83,12 +83,13 @@ class TemplateManifestLoaderTest {
         TemplateManifestLoader loader = newLoaderDefault();
         // Phase E2 : PV_AGE_SARL a été retiré. On vérifie un code direct présent —
         // le statut refondu (voie directeur) pointe sur le docx déterministe directeur.
+        // Lot L4d (E11) : les statuts refondus sont les statuts du corpus (alias de code).
         Optional<TemplateManifest.TemplateEntry> resolved = loader.resolve("STATUTS_REFONDUS_SARL");
         assertTrue(resolved.isPresent());
         TemplateManifest.TemplateEntry entry = resolved.get();
-        assertEquals("STATUTS_REFONDUS_SARL", entry.code());
+        assertEquals("STATUTS_SARL", entry.code());
         assertNotNull(entry.file(), "Le code direct doit exposer un file");
-        assertEquals("STATUTS_SARL_modele_deterministe.docx", entry.file());
+        assertEquals("STATUTS_SARL.docx", entry.file());
     }
 
     @Test

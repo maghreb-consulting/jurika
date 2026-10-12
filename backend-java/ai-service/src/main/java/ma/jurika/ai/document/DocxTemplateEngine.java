@@ -196,6 +196,13 @@ public class DocxTemplateEngine {
         return ClausesLibres.emplacementPrevu(gabarit);
     }
 
+    /** Lot L4d (E10) : articles numerotes du gabarit (emplacements des clauses des statuts). */
+    public List<ClausesStatuts.Article> articlesDuGabarit(String templateCode) {
+        byte[] gabarit = resolveTemplate(templateCode, Map.of());
+        if (gabarit == null) throw new GabaritIntrouvableException(templateCode);
+        return ClausesStatuts.articles(gabarit);
+    }
+
     /** Lot L3 : dictionnaire unique du corpus charge (libelles des donnees manquantes), ou null. */
     public ma.jurika.ai.document.corpus.DictionnaireUnique dictionnaire() {
         return corpus == null ? null : corpus.dictionnaire();
@@ -380,6 +387,8 @@ public class DocxTemplateEngine {
             // 2026-10-03) : elle s'imprimait dans l'avis publie. Retiree comme le dictionnaire,
             // du titre a la fin du corps ; le gabarit n'est pas modifie.
             retirerNotesDEmploi(doc);
+            // Lot L4d (E11c) : table de correspondance des noms de variables (PV_AG_SARL).
+            retirerTableCorrespondance(doc);
 
             // PRE-PASS V5 (2026-09 — formulaires DGI / greffe) : cases a cocher
             // ◈ CASE À COCHER … / ☐ option. Doit tourner AVANT l'evaluateur
@@ -938,9 +947,14 @@ public class DocxTemplateEngine {
     private static final Pattern ATOM_EXISTS = Pattern.compile(
             "\\$([A-Z][A-Z0-9_]*)\\s+existe", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 
-    /** Egalite : {@code $VAR = « valeur »} (guillemets optionnels). */
+    /**
+     * Egalite : {@code $VAR = « valeur »} (guillemets optionnels). Lot L4d (E11b) : aussi
+     * l'egalite ecrite en toutes lettres, {@code $VAR egal valeur} (avec ou sans accent),
+     * employee par quatre modeles du dossier des comptes du corpus ; non reconnue, la
+     * condition valait faux sans bruit.
+     */
     private static final Pattern ATOM_EQUALS = Pattern.compile(
-            "\\$([A-Z][A-Z0-9_]*)\\s*=\\s*(.+)", Pattern.DOTALL);
+            "\\$([A-Z][A-Z0-9_]*)\\s*(?:=|\\s(?:\u00e9|e)gal\\s)\\s*(.+)", Pattern.DOTALL);
 
     /**
      * Classe le texte recompose d'un paragraphe. Ne reconnait le format directeur que
@@ -1054,6 +1068,15 @@ public class DocxTemplateEngine {
         if (eq.matches()) {
             String var = eq.group(1);
             String expected = stripGuillemets(eq.group(2));
+            // Lot L4d (E11e) : condition homonyme d'une boucle (ecart mecanique du corpus,
+            // ex. $EVENEMENTS_POST_CLOTURE du rapport de gestion) : la valeur est la liste de
+            // la boucle. Comparee comme texte, elle ne valait jamais "oui" (branche SINON
+            // imprimee en silence) : une liste vaut "oui" si elle a des elements, sinon "non".
+            if (scopeLookup(scope, var) instanceof List<?> liste) {
+                String attendu = normalizeCompare(expected);
+                if (attendu.equals("oui")) return !liste.isEmpty();
+                if (attendu.equals("non")) return liste.isEmpty();
+            }
             String actual = scopeString(scope, var);
             return normalizeCompare(actual).equals(normalizeCompare(expected));
         }
@@ -1292,10 +1315,27 @@ public class DocxTemplateEngine {
     static final java.util.regex.Pattern NOTES_D_EMPLOI = java.util.regex.Pattern.compile("^\\s*NOTES D.EMPLOI\\b");
 
     private void retirerNotesDEmploi(XWPFDocument doc) {
+        retirerSectionFinale(doc, NOTES_D_EMPLOI, "NOTES D'EMPLOI");
+    }
+
+    /**
+     * Lot L4d (E11c) : section de documentation "ANNEXE -- TABLE DE CORRESPONDANCE DES NOMS DE
+     * VARIABLES" de PV_AG_SARL (corpus 2026-10-11) : anciens et nouveaux noms des variables,
+     * variables a ajouter au dictionnaire. Ce n'est pas un contenu de l'acte ; rendue, elle
+     * imprimait ses $VARIABLES dans le proces-verbal. Retiree du titre a la fin du corps.
+     */
+    static final java.util.regex.Pattern TABLE_CORRESPONDANCE_VARIABLES = java.util.regex.Pattern.compile(
+            "^\\s*ANNEXE\\s*[\\u2014-]\\s*TABLE DE CORRESPONDANCE DES NOMS DE VARIABLES\\b");
+
+    private void retirerTableCorrespondance(XWPFDocument doc) {
+        retirerSectionFinale(doc, TABLE_CORRESPONDANCE_VARIABLES, "TABLE DE CORRESPONDANCE DES NOMS DE VARIABLES");
+    }
+
+    private void retirerSectionFinale(XWPFDocument doc, java.util.regex.Pattern titre, String libelle) {
         List<IBodyElement> elements = doc.getBodyElements();
         int debut = -1;
         for (int i = 0; i < elements.size(); i++) {
-            if (elements.get(i) instanceof XWPFParagraph p && NOTES_D_EMPLOI.matcher(p.getText()).find()) {
+            if (elements.get(i) instanceof XWPFParagraph p && titre.matcher(p.getText()).find()) {
                 debut = i;
                 break;
             }
@@ -1305,7 +1345,7 @@ public class DocxTemplateEngine {
         for (int i = doc.getBodyElements().size() - 1; i >= debut; i--) {
             doc.removeBodyElement(i);
         }
-        log.debug("Section NOTES D'EMPLOI retiree du rendu ({} elements)", total - debut);
+        log.debug("Section {} retiree du rendu ({} elements)", libelle, total - debut);
     }
 
     private int retirerAnnotations(XWPFDocument doc) {

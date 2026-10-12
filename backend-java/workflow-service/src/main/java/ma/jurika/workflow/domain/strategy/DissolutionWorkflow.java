@@ -134,10 +134,13 @@ public class DissolutionWorkflow extends AbstractWorkflow {
 
         // Liquidateur : nomme des l'etape 1 (il alimente le PV ET l'annonce legale).
         Map<String, Object> liquidateur = asMap(p.get("liquidateur"));
-        String liquidateurNom = strOrNull(liquidateur.get("nom"));
+        // Lot L4d (E5) : personne physique (nom) ou personne morale (denomination).
+        boolean liquidateurMorale = WorkflowSteps.liquidateurPersonneMorale(liquidateur);
+        String liquidateurNom = WorkflowSteps.identiteLiquidateur(liquidateur);
         if (liquidateurNom == null) {
-            return StepResult.blocked(
-                    "Designez le liquidateur : choisissez un gerant ou un associe existant, "
+            return StepResult.blocked(liquidateurMorale
+                    ? "Indiquez la denomination du liquidateur personne morale."
+                    : "Designez le liquidateur : choisissez un gerant ou un associe existant, "
                             + "ou saisissez un liquidateur externe.");
         }
         String source = strOrNull(liquidateur.get("source"));
@@ -154,9 +157,13 @@ public class DissolutionWorkflow extends AbstractWorkflow {
         }
 
         // Siege de la liquidation (variable $SIEGE_LIQUIDATION de l'annonce).
+        // Lot L4d (E11d) : l'ecran demande d'abord si le siege de la liquidation est le siege
+        // social (siegeIdentique, lot L4b) ; dans ce cas aucune adresse n'est saisie. Le choix
+        // est conserve avec le liquidateur (les PV du corpus le lisent, cloture comprise).
+        String siegeIdentique = strOrNull(first0(p.get("siegeIdentique"), liquidateur.get("siegeIdentique")));
         String siegeLiquidation = strOrNull(first0(p.get("siegeLiquidation"),
                 liquidateur.get("siege")));
-        if (siegeLiquidation == null) {
+        if (siegeLiquidation == null && !"oui".equals(siegeIdentique)) {
             return StepResult.blocked("Le siege de la liquidation est obligatoire.");
         }
 
@@ -177,12 +184,14 @@ public class DissolutionWorkflow extends AbstractWorkflow {
         }
         // Liquidateur normalise (source + identite) — consomme tel quel par les mappers.
         Map<String, Object> liq = new LinkedHashMap<>(liquidateur);
-        liq.put("nom", liquidateurNom);
+        if (!liquidateurMorale) liq.put("nom", liquidateurNom);
         liq.put("adresse", liquidateurAdresse);
-        liq.put("siege", siegeLiquidation);
+        if (siegeLiquidation != null) liq.put("siege", siegeLiquidation);
+        else liq.remove("siege");
+        if ("oui".equals(siegeIdentique) || "non".equals(siegeIdentique)) liq.put("siegeIdentique", siegeIdentique);
         if (source != null) liq.put("source", source.toUpperCase(java.util.Locale.ROOT));
         out.put("liquidateur", liq);
-        out.put("siegeLiquidation", siegeLiquidation);
+        if (siegeLiquidation != null) out.put("siegeLiquidation", siegeLiquidation);
         Object convocation = p.get("convocation");
         if (convocation != null) out.put("convocation", convocation);
 

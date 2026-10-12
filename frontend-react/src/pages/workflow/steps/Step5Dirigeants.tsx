@@ -19,6 +19,8 @@ import { useStepAutosave } from '../useStepAutosave';
 import type { DirtyGetter } from '../useWorkflow';
 import { BlocageValidation } from '../../../components/workflow/BlocageValidation';
 import { ajouterExtraits, retirerExtraits } from '../provenance';
+import { AIDE_SIGNATAIRES } from '../../../lib/usagesCabinet';
+import { TexteAide } from '../../../components/ui/Aide';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -1171,7 +1173,11 @@ export function Step5Dirigeants({
 
         {/* signataires[] repetables */}
         <div className="mt-4">
-          <p className="mb-2 text-xs font-medium text-fg">Signataires autorises</p>
+          <p className="mb-2 text-xs font-medium text-fg">Signataires autorisés</p>
+          {/* Lot L4d (E4) : regle du cabinet (directeur, 2026-10-11), dite a l'ecran. */}
+          <TexteAide cle="signataires-defaut" titre="Signataires">
+            <p data-testid="aide-signataires">{AIDE_SIGNATAIRES}</p>
+          </TexteAide>
           <datalist id={signataireListId}>
             {signataireCandidates.map((c) => (
               <option key={c} value={c} />

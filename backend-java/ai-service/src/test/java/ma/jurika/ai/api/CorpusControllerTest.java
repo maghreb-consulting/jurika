@@ -52,7 +52,9 @@ class CorpusControllerTest {
         assertThat(r.empreintes()).containsOnlyKeys("ACTE_TEST_SIMPLE", "PV_TEST_SARL", "PV_TEST_SARL_AU");
         assertThat(r.nonRendables()).isEmpty();
         // Les gabarits du classpath sont tous absents du corpus fictif : chacun est signale.
+        // Lot L4d : 57 - 2 statuts deterministes (E11a) - PV unifie de dissolution (2) et
+        // rapport du liquidateur du directeur (E11d), retires au profit du corpus.
         assertThat(r.horsCorpusClasspath()).contains("ACTE_NOMINATION_GERANT", "ANNONCE_LEGALE_CONSTITUTION")
-                .hasSize(57).isSorted();
+                .hasSize(40).isSorted(); // L4d (E11) : 15 gabarits du classpath basculent sur le corpus ou sont retires (rapport de liquidation et PV succursale etrangere AU conserves)
     }
 }

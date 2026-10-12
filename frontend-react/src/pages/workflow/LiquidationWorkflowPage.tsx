@@ -50,6 +50,8 @@ import {
   emptyLiquidateur,
   type LiquidateurState,
 } from '../../components/workflow/LiquidateurPicker';
+import { champsPersonneMorale, estPersonneMorale, identiteLiquidateur } from '../../lib/liquidateur';
+import { champsMandatLiquidateur, type MentionsPv } from '../../lib/liquidationPv';
 import {
   PiecesJointesPanel,
   type PieceJointeEntry,
@@ -127,6 +129,50 @@ function toLiquidateurState(bd: DossierLiquidateur): LiquidateurState {
     cin: String(bd.cin ?? ''),
     adresse: String(bd.adresse ?? ''),
     remuneration: String(bd.remuneration ?? ''), // L4a (E2) : jamais supposee
+    ...mandatBd(bd as Record<string, unknown>),
+    ...personneMoraleBd(bd as Record<string, unknown>),
+  };
+}
+
+/**
+ * Lot L4d (E11d) : donnees du liquidateur enregistrees a la dissolution et lues par le PV
+ * de cloture du corpus (piece, nationalite, remuneration, siege de la liquidation). La
+ * valeur proposee avant L4d ("exercees a titre gratuit") vaut "non remunere".
+ */
+function mandatBd(bd: Record<string, unknown>): Partial<LiquidateurState> {
+  const t = (k: string) => (bd[k] == null ? '' : String(bd[k]));
+  const ouiNon = (k: string): '' | 'oui' | 'non' => (t(k) === 'oui' || t(k) === 'non' ? (t(k) as 'oui' | 'non') : '');
+  let remunerationApplicable = ouiNon('remunerationApplicable');
+  if (!remunerationApplicable && t('remuneration').toLowerCase().includes('gratuit')) remunerationApplicable = 'non';
+  return {
+    pieceType: t('pieceType') || undefined,
+    nationalite: t('nationalite'),
+    dateNaissance: t('dateNaissance'),
+    ancienGerant: ouiNon('ancienGerant'),
+    remunerationApplicable,
+    remunerationMontant: t('remunerationMontant'),
+    remunerationModalites: t('remunerationModalites'),
+    siegeIdentique: t('siegeIdentique'),
+  };
+}
+
+/** Lot L4d (E11d) : mandat fixe a la dissolution, reconduit tel quel quand le liquidateur est renvoye. */
+const CLES_MANDAT_BD = ['mandatDateEffet', 'dureeMandat', 'redditionPeriodicite', 'pouvoirsComplementaires',
+  'pouvoirsLimitation', 'siegeIdentique', 'siege'];
+function mandatConserve(bd: Record<string, unknown> | null | undefined): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of CLES_MANDAT_BD) if (bd && bd[k] != null && bd[k] !== '') out[k] = bd[k];
+  return out;
+}
+
+/** Lot L4d (E5) : liquidateur personne morale enregistre a la dissolution. */
+function personneMoraleBd(bd: Record<string, unknown>): Partial<LiquidateurState> {
+  if (String(bd.forme ?? '') !== 'morale') return {};
+  const t = (k: string) => String(bd[k] ?? '');
+  return {
+    forme: 'morale', civilite: '', denomination: t('denomination'), formeJuridique: t('formeJuridique'),
+    capital: t('capital'), siegeSocial: t('siegeSocial'), rcVille: t('rcVille'), rcNumero: t('rcNumero'),
+    ice: t('ice'), representantNom: t('representantNom'), representantQualite: t('representantQualite'),
   };
 }
 
@@ -217,6 +263,10 @@ function LiquidationWorkflowPageBody() {
   const [depotLegalNumero, setDepotLegalNumero] = useState(
     ((stepData.step2?.depotLegal as { numero?: string } | undefined) ?? {}).numero ?? '',
   );
+  // L4d (E11d) : compte definitif et decisions du PV de cloture (brouillon de l'etape 2).
+  const [mentionsPv, setMentionsPv] = useState<MentionsPv>(
+    () => (stepData.step2?.mentionsPv as MentionsPv | undefined) ?? {},
+  );
   const [depotLegalDate, setDepotLegalDate] = useState(
     ((stepData.step2?.depotLegal as { date?: string } | undefined) ?? {}).date ?? '',
   );
@@ -298,7 +348,7 @@ function LiquidationWorkflowPageBody() {
 
   // ---- Données reprises de la BD (lecture seule) ----
   const liquidateurBd = dossierParties?.liquidateur ?? null;
-  const hasLiquidateurBd = !!liquidateurBd?.nom;
+  const hasLiquidateurBd = !!(liquidateurBd?.nom || (liquidateurBd as Record<string, unknown> | null)?.denomination);
   const dateDissolutionBd =
     dossierParties?.dateDissolution ?? dossier?.dateDissolution ?? null;
   const hasDateDissolutionBd = !!dateDissolutionBd;
@@ -326,13 +376,13 @@ function LiquidationWorkflowPageBody() {
   const liquidateurSeedRef = useRef(false);
   useEffect(() => {
     if (liquidateurSeedRef.current) return;
-    if (!liquidateurBd?.nom) return;
+    if (!hasLiquidateurBd || !liquidateurBd) return;
     liquidateurSeedRef.current = true;
     // Une saisie déjà persistée dans le brouillon prime sur la BD : sinon on
     // effacerait la correction faite au passage précédent.
     if (stepData.step1?.liquidateur) return;
     setLiquidateurSecours(toLiquidateurState(liquidateurBd));
-  }, [liquidateurBd, stepData.step1?.liquidateur]);
+  }, [liquidateurBd, hasLiquidateurBd, stepData.step1?.liquidateur]);
   const siegeLiquidation = dossierParties?.siegeLiquidation ?? '';
 
   const liquidateurOptions = useMemo(
@@ -432,7 +482,7 @@ function LiquidationWorkflowPageBody() {
     } else if (delaiError) {
       errs.dateCloture = delaiError;
     }
-    if (!liquidateur.nom.trim()) {
+    if (!identiteLiquidateur(liquidateur)) {
       errs.liquidateur =
         "Aucun liquidateur n'est enregistre pour cette societe : designez-le (il sera ensuite "
         + 'repris automatiquement).';
@@ -489,10 +539,15 @@ function LiquidationWorkflowPageBody() {
           ? 'féminin'
           : 'masculin') as 'masculin' | 'féminin',
         remuneration: liquidateur.remuneration,
+        ...champsPersonneMorale(liquidateur), // L4d (E5)
+        ...champsMandatLiquidateur(liquidateur), // L4d (E11d)
+        siegeIdentique: liquidateur.siegeIdentique,
         siege: siegeLiquidation || undefined,
       },
       cloture: {
-        resultatSens: (resultatType ?? 'boni') as 'boni' | 'mali',
+        // L4d (E11d) : avis de cloture (quitus, dates) repris par le PV ; plus de "boni" suppose.
+        ...avisCloture,
+        resultatSens: resultatType ?? undefined,
         resultatMontant: boniMali === null ? null : Math.abs(boniMali),
         dateClotureLiquidation: dateCloture || null,
         actifRealise: totalActif || null,
@@ -501,7 +556,7 @@ function LiquidationWorkflowPageBody() {
       dissolutionDate: dateDissolution,
     }),
     [liquidateur, siegeLiquidation, resultatType, boniMali, dateCloture,
-      totalActif, totalPassif, dateDissolution],
+      totalActif, totalPassif, dateDissolution, avisCloture],
   );
 
   if (loading) return <Loader />;
@@ -544,6 +599,9 @@ function LiquidationWorkflowPageBody() {
           cin: liquidateur.cin || undefined,
           adresse: liquidateur.adresse,
           remuneration: liquidateur.remuneration,
+          ...mandatConserve(liquidateurBd as Record<string, unknown> | null), // L4d (E11d)
+          ...champsPersonneMorale(liquidateur), // L4d (E5)
+          ...champsMandatLiquidateur(liquidateur), // L4d (E11d)
         },
         comptesFinaux: {
           totalActif: Number.parseFloat(totalActif),
@@ -574,6 +632,7 @@ function LiquidationWorkflowPageBody() {
             ? { numero: depotLegalNumero || null, date: depotLegalDate || null }
             : undefined,
         avisCloture,
+        mentionsPv,
       });
     } else if (step === 3) {
       // Etape OPTIONNELLE : jamais bloquante, peut etre vide.
@@ -615,12 +674,13 @@ function LiquidationWorkflowPageBody() {
           annonceValide: annonceValidated,
           depotLegal: { numero: depotLegalNumero, date: depotLegalDate },
           avisCloture,
+          mentionsPv,
         };
       }
       if (n === 3) return { piecesJointes };
       return null;
     },
-    [dossierId, formeJuridique, dateCloture, dateDissolution, liquidateur, totalActif, avisCloture,
+    [dossierId, formeJuridique, dateCloture, dateDissolution, liquidateur, totalActif, avisCloture, mentionsPv,
       totalPassif, convocationDate, convocationHeure, convocationSnapshot, docsValidated,
       annonceValidated, depotLegalNumero, depotLegalDate, piecesJointes],
   );
@@ -646,8 +706,7 @@ function LiquidationWorkflowPageBody() {
     revealErrors ? fieldErrors[field] ?? null : null;
 
   const decisionLabel = isAU ? "Decision de l'associe unique" : 'Assemblee Generale Extraordinaire (AGE)';
-  const liquidateurLabel =
-    [liquidateur.civilite, liquidateur.prenom, liquidateur.nom].filter(Boolean).join(' ') || '—';
+  const liquidateurLabel = identiteLiquidateur(liquidateur) || '—';
 
   // Identite complete de la societe : sans elle, les formulaires de seance
   // laissaient vides le lieu de l'assemblee et le lieu de signature (2026-08-14).
@@ -794,9 +853,13 @@ function LiquidationWorkflowPageBody() {
                   {/* Le CIN etait absent de ce recapitulatif : il est publie dans
                       l'annonce, son absence devait donc se voir. */}
                   <div>
-                    <p className="text-xs text-fg-subtle">N° CIN du liquidateur</p>
+                    <p className="text-xs text-fg-subtle">
+                      {estPersonneMorale(liquidateur) ? 'RC du liquidateur' : 'N° CIN du liquidateur'}
+                    </p>
                     <p className="text-sm font-medium text-fg" data-testid="liquidation-liquidateur-cin-bd">
-                      {liquidateur.cin || '— a renseigner ci-dessous —'}
+                      {(estPersonneMorale(liquidateur)
+                        ? [liquidateur.rcNumero, liquidateur.rcVille].filter(Boolean).join(' — ')
+                        : liquidateur.cin) || '— a renseigner ci-dessous —'}
                     </p>
                   </div>
                   {siegeLiquidation && (
@@ -1073,6 +1136,10 @@ function LiquidationWorkflowPageBody() {
               operation={operationInput}
               initialAssocies={bdAssocies}
               initialGerants={bdGerants}
+              // L4d (E6) : reference lisible du dossier (annee, numero, societe), pas celle du ticket.
+              referenceDossier={dossier?.reference ?? ''}
+              initialMentions={mentionsPv}
+              onMentions={setMentionsPv}
               onReady={setDocsValidated}
               versioned
               depositMotif={depositMotif}

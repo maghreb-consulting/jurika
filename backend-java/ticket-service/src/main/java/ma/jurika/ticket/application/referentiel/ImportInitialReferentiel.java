@@ -15,8 +15,12 @@ import org.springframework.stereotype.Component;
  * importe donc lui-meme le corpus monte dans ai-service, par le meme chemin que l'ecran du
  * super-administrateur (journalise, refuse si l'analyse porte une erreur). ai-service peut
  * demarrer apres ticket-service : une tentative par minute, trente au plus. Une version deja
- * appliquee, ou un refus journalise, arrete les tentatives ; les versions suivantes
- * s'importent depuis l'ecran.
+ * appliquee, ou un refus journalise, arrete les tentatives.
+ *
+ * <p>Lot L4d (E3) : la plateforme charge la version MONTEE. Quand le dossier date du corpus
+ * change (ex. CORPUS_2026-10-03 vers CORPUS_2026-10-11), la nouvelle version s'importe au
+ * demarrage par le meme chemin ; une version deja refusee n'est pas retentee (son refus est
+ * au journal de l'ecran, d'ou l'on peut relancer l'import).
  */
 @Component
 @ConditionalOnProperty(name = "jurika.referentiel.import-initial", havingValue = "true", matchIfMissing = true)
@@ -42,7 +46,15 @@ public class ImportInitialReferentiel {
     void tenter() {
         for (int i = 1; i <= TENTATIVES; i++) {
             try {
-                if (imports.versionActive() != null) return;
+                String active = imports.versionActive();
+                String montee = imports.versionMontee();
+                if (montee == null) throw new IllegalStateException("version du corpus monte inconnue");
+                if (montee.equals(active)) return;
+                if (imports.versionRefusee(montee)) {
+                    log.warn("Version {} du corpus deja refusee : import a relancer depuis l'ecran du super-administrateur.",
+                            montee);
+                    return;
+                }
                 ImportReferentielDemarches.Resultat r = imports.importer(null);
                 log.info("Import initial du referentiel des demarches : version {} {} ({} lignes){}", r.version(),
                         r.statut(), r.lignes(), r.motif() == null ? "" : " : " + r.motif());

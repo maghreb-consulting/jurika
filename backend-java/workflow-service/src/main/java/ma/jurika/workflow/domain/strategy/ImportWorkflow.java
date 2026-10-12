@@ -356,9 +356,63 @@ public class ImportWorkflow extends AbstractWorkflow {
                                 + " (attendu : STATUTS, BAIL, DOMICILIATION, CNIE, CN, RC, IF, AUTRE).");
             }
         }
+        // Lot L4d (E8) : publicites de la societe (constitution et chaque modification).
+        List<Map<String, Object>> publicites = new java.util.ArrayList<>();
+        Object pubRaw = p.get("publicites");
+        List<?> pubs = pubRaw instanceof List<?> l ? l : List.of();
+        for (int i = 0; i < pubs.size(); i++) {
+            if (!(pubs.get(i) instanceof Map<?, ?> pm)) {
+                return StepResult.blocked("Publicit\u00e9 n\u00b0 " + (i + 1) + " illisible.");
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> pub = (Map<String, Object>) pm;
+            String manque = manquePublicite(pub);
+            if (manque != null) {
+                return StepResult.blocked("Publicit\u00e9 n\u00b0 " + (i + 1) + " : " + manque);
+            }
+            publicites.add(new HashMap<>(pub));
+        }
         return StepResult.ok(Map.of("juridique", Map.of(
                 "documents", docs,
-                "piecesUploaded", docs)));
+                "piecesUploaded", docs,
+                "publicites", publicites)));
+    }
+
+    /**
+     * Lot L4d (E8) : ce qui manque a une publicite (annonce au journal d'annonces legales ou
+     * publication au Bulletin officiel), ou null. La piece (Data Room) est facultative ici :
+     * elle se depose depuis l'ecran ; son absence reste visible dans la fiche.
+     */
+    static String manquePublicite(Map<String, Object> pub) {
+        List<String> manques = new java.util.ArrayList<>();
+        String nature = texte(pub.get("nature"));
+        if (!"CONSTITUTION".equals(nature) && !"MODIFICATION".equals(nature)) {
+            manques.add("nature (constitution ou modification)");
+        } else if ("MODIFICATION".equals(nature) && texte(pub.get("objet")) == null) {
+            manques.add("objet de la modification");
+        }
+        String support = texte(pub.get("support"));
+        if (!"JAL".equals(support) && !"BO".equals(support)) {
+            manques.add("support (journal d'annonces l\u00e9gales ou Bulletin officiel)");
+        } else if ("JAL".equals(support) && texte(pub.get("journal")) == null) {
+            manques.add("journal d'annonces l\u00e9gales");
+        }
+        String date = texte(pub.get("dateParution"));
+        if (date == null) {
+            manques.add("date de parution");
+        } else {
+            try {
+                java.time.LocalDate.parse(date);
+            } catch (java.time.format.DateTimeParseException e) {
+                manques.add("date de parution (AAAA-MM-JJ)");
+            }
+        }
+        if (texte(pub.get("numeroParution")) == null) manques.add("num\u00e9ro de parution");
+        return manques.isEmpty() ? null : "indiquez " + String.join(", ", manques) + ".";
+    }
+
+    private static String texte(Object o) {
+        return o == null || String.valueOf(o).isBlank() ? null : String.valueOf(o).trim();
     }
 
     /**

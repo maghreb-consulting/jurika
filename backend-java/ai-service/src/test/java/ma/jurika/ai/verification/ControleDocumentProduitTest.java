@@ -57,4 +57,31 @@ class ControleDocumentProduitTest {
         assertThat(ControleDocumentProduit.defauts("Pour avis.\nNOTES D'EMPLOI (non publi\u00e9es)\nCoh\u00e9rence.", java.util.Set.of()))
                 .contains("documentation du modele imprimee : NOTES D'EMPLOI");
     }
+
+    /**
+     * Lot L4d (E11d) : une ligne pointillee voulue par le modele (mention d'enregistrement,
+     * remplie a la main par le bureau) n'est pas une donnee manquante ; un mot de liaison
+     * suivi d'une ponctuation seule reste un blanc.
+     */
+    @Test
+    void zone_pointillee_a_remplir_a_la_main_n_est_pas_un_blanc() {
+        assertThat(ControleDocumentProduit.defauts(
+                "Enregistr\u00e9 \u00e0 Casablanca, le ............................, sous la r\u00e9f\u00e9rence ......", Set.of()))
+                .isEmpty();
+        assertThat(ControleDocumentProduit.defauts("fait le . Sign\u00e9", Set.of())).isNotEmpty();
+        assertThat(ControleDocumentProduit.defauts("demeurant \u00e0 , titulaire", Set.of())).isNotEmpty();
+    }
+
+    /**
+     * Lot L4d (E11) : le drapeau $ASSOCIE_UNIQUE imprime dans une phrase ("..., oui, associe
+     * unique de la societe") echappait au controle, qui ne voyait que "oui" seul sur sa ligne.
+     */
+    @Test
+    void drapeau_associe_unique_imprime_dans_une_phrase() {
+        assertThat(ControleDocumentProduit.defauts(
+                "r\u00e9pertori\u00e9e au registre des d\u00e9cisions, oui, associ\u00e9 unique de la soci\u00e9t\u00e9 PARACOSME", Set.of()))
+                .anyMatch(d -> d.startsWith("drapeau imprime"));
+        assertThat(ControleDocumentProduit.defauts(
+                "M. Ahmed ALAOUI, associ\u00e9 unique de la soci\u00e9t\u00e9 PARACOSME", Set.of())).isEmpty();
+    }
 }
