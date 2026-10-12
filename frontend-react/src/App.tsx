@@ -23,7 +23,8 @@ import { DataroomPage } from './pages/dataroom/DataroomPage';
 import { DemandesKanban } from './pages/demandes/DemandesKanban';
 import { MesRequetes } from './pages/demandes/MesRequetes';
 import { ChatPage } from './pages/chat/ChatPage';
-import { ChatbotPage } from './pages/chat/ChatbotPage';
+import { RedirectionChatbot } from './components/chatbot/RedirectionChatbot';
+import { ChatbotSourcesPage } from './pages/admin/ChatbotSourcesPage';
 import AuditLogPage from './pages/admin/AuditLogPage';
 import { WorkspacesPage } from './pages/admin/WorkspacesPage';
 import { WorkspaceDetailPage } from './pages/admin/WorkspaceDetailPage';
@@ -172,12 +173,11 @@ function App() {
           </Route>
         </Route>
 
-        {/* ChatBot RAG : SUPER_ADMIN + SUPERVISEUR + EMPLOYE.
-            SUPER_ADMIN ajoute (2026-06-26) pour gerer les sources fiables du RAG. */}
+        {/* Lot L5 E8 (RG-COM-01) : le chatbot est un panneau lateral ouvert par la bulle de la
+            mise en page commune. L'ancienne page pleine est supprimee ; /chatbot ouvre le panneau
+            (cabinet) ou mene aux sources communes (super-admin). */}
         <Route element={<ProtectedRoute allowed={['SUPER_ADMIN', 'SUPERVISEUR', 'EMPLOYE']} />}>
-          <Route element={<AppShell />}>
-            <Route path="/chatbot" element={<ChatbotPage />} />
-          </Route>
+          <Route path="/chatbot" element={<RedirectionChatbot />} />
         </Route>
 
         {/* SUPER_ADMIN : gestion plateforme uniquement */}
@@ -188,6 +188,8 @@ function App() {
             <Route path="/admin/users" element={<UsersPage />} />
             <Route path="/admin/audit" element={<AuditLogPage />} />
             <Route path="/admin/referentiel-demarches" element={<ReferentielDemarchesPage />} />
+            {/* Lot L5 E8 : sources fiables communes du chatbot (CDC 3.1, RG-ADM-03). */}
+            <Route path="/admin/chatbot-sources" element={<ChatbotSourcesPage />} />
           </Route>
         </Route>
 

@@ -31,7 +31,7 @@ export interface ChatbotAnswer {
   reponse: string;
   sources: ChatbotSource[];
   confidence: number;
-  /** Mode de réponse : "llm" (génération ancrée) ou "fts" (repli KB+FTS). */
+  /** Mode de réponse (lot L5 E8) : "llm" (rédaction ancrée), "extraits" (passages restitués), "aucune-source". */
   ragMode?: string;
   /** Nombre de passages du corpus effectivement récupérés. */
   chunksRetrieved?: number;

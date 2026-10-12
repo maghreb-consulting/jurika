@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { AppTopNav } from './AppTopNav';
 import { ErrorBoundary } from './ErrorBoundary';
 import { IceReminderBanner } from './IceReminderBanner';
+import { AssistantJuridique } from '../chatbot/AssistantJuridique';
 import { useSessionKeepAlive } from '../../lib/useSessionKeepAlive';
 
 export function AppShell() {
@@ -26,6 +27,8 @@ export function AppShell() {
           </ErrorBoundary>
         </div>
       </main>
+      {/* Lot L5 E8 (RG-COM-01) : bulle du chatbot sur toutes les pages (roles du cabinet et super-admin). */}
+      <AssistantJuridique />
     </div>
   );
 }
