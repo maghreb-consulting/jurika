@@ -1150,7 +1150,11 @@ public class DataroomJuridiqueService {
      * Data Room.
      */
     static boolean visibiliteParDefaut(String documentType) {
-        return !"AUTRE".equals(documentType);
+        // Lot L5 (E7) : la fiche client et la fiche dossier sont des documents internes du
+        // cabinet (jamais accessibles au client a l'ecran) : masquees au client par defaut,
+        // l'employe peut ensuite les rendre visibles.
+        return !"AUTRE".equals(documentType)
+                && !"FICHE_CLIENT".equals(documentType) && !"FICHE_DOSSIER".equals(documentType);
     }
 
     static List<DocumentEntity> visiblesPour(List<DocumentEntity> docs, boolean pourClient) {
