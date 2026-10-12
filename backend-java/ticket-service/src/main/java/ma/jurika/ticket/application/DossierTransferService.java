@@ -292,17 +292,17 @@ public class DossierTransferService {
         notifMeta.put("dossierId", dossierId.toString());
         if (!newResponsable.equals(actorId)) {
             notificationPublisher.notifyUser(newResponsable, workspaceId, "DOSSIER_TRANSFER",
-                    nature == NatureReaffectation.FORCEE ? "Dossier reaffecte" : "Dossier transfere",
-                    "Le dossier « " + dossier.raisonSociale() + " » vous a ete "
-                            + (nature == NatureReaffectation.FORCEE ? "reaffecte par le superviseur." : "transfere."),
+                    nature == NatureReaffectation.FORCEE ? "Dossier réaffecté" : "Dossier transféré",
+                    "Le dossier « " + dossier.raisonSociale() + " » vous a été "
+                            + (nature == NatureReaffectation.FORCEE ? "réaffecté par le superviseur." : "transféré."),
                     "/data-rooms", notifMeta);
         }
         if (nature == NatureReaffectation.FORCEE && ancienResponsable != null
                 && !ancienResponsable.equals(actorId)) {
             notificationPublisher.notifyUser(ancienResponsable, workspaceId, "DOSSIER_TRANSFER",
-                    "Dossier reaffecte",
-                    "Le superviseur a reaffecte le dossier « " + dossier.raisonSociale()
-                            + " » a un autre employe. Motif : " + motif,
+                    "Dossier réaffecté",
+                    "Le superviseur a réaffecté le dossier « " + dossier.raisonSociale()
+                            + " » à un autre employé. Motif : " + motif,
                     "/data-rooms", notifMeta);
         }
 
@@ -347,19 +347,19 @@ public class DossierTransferService {
             String message;
             switch (event) {
                 case "transfer:received" -> {
-                    title = "Demande de transfert recue";
-                    message = "Un collegue vous propose de reprendre le dossier "
+                    title = "Demande de transfert reçue";
+                    message = "Un collègue vous propose de reprendre le dossier "
                             + dossierLabel + ".";
                 }
                 case "transfer:accepted" -> {
-                    title = "Transfert accepte";
+                    title = "Transfert accepté";
                     message = "Votre demande de transfert du dossier " + dossierLabel
-                            + " a ete acceptee.";
+                            + " a été acceptée.";
                 }
                 case "transfer:rejected" -> {
-                    title = "Transfert refuse";
+                    title = "Transfert refusé";
                     message = "Votre demande de transfert du dossier " + dossierLabel
-                            + " a ete refusee.";
+                            + " a été refusée.";
                 }
                 default -> {
                     title = "Transfert de dossier";
