@@ -13,7 +13,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * Recupere les chunks juridiques les plus pertinents pour une question.
@@ -25,8 +24,10 @@ import java.util.UUID;
  *       ({@code rag.enabled} + cle). {@link #searchHybrid} fusionne vecteur + FTS ; a defaut de
  *       vecteur, elle degrade proprement en FTS pur.</li>
  * </ul>
- * Toutes les requetes sont <b>scopees au workspace</b> (isolation multi-tenant) ; un
- * {@code workspaceId} null ne retourne jamais de source.
+ * Toutes les requetes ne lisent que le <b>corpus commun</b> ({@code portee = 'COMMUNE'},
+ * lot L5 E8) : les sources deposees par le super-admin, les memes pour tous les cabinets.
+ * Aucune question d'un cabinet ne peut ramener un passage propre a un cabinet (les
+ * passages archives, deposes par un cabinet avant le lot L0 E24, ne sont jamais lus).
  */
 @Component
 public class CorpusRetriever {
@@ -86,9 +87,7 @@ public class CorpusRetriever {
     private static final double SEUIL_RELATIF = 0.25;
 
     /**
-     * Cherche les top-K chunks dans rag_corpus_chunks, <b>scopes au workspace
-     * courant</b> (isolation multi-tenant). Un {@code workspaceId} null ne retourne
-     * aucune source du corpus uploade. Retourne pour chaque chunk : source, article,
+     * Cherche les top-K chunks du <b>corpus commun</b> de rag_corpus_chunks. Retourne pour chaque chunk : source, article,
      * chunk_text, rank.
      *
      * <p>Trois étages, du plus précis au plus tolérant. On s'arrête au premier qui
@@ -106,9 +105,8 @@ public class CorpusRetriever {
      * L'objectif est de ne jamais rendre 0 passage quand des termes significatifs
      * de la question existent quelque part dans le corpus.
      */
-    public List<Map<String, Object>> search(String question, int limit, UUID workspaceId) {
+    public List<Map<String, Object>> search(String question, int limit) {
         if (question == null || question.isBlank()) return List.of();
-        if (workspaceId == null) return List.of();
 
         List<String> termes = termesSignificatifs(question);
         if (termes.isEmpty()) {
@@ -118,10 +116,10 @@ public class CorpusRetriever {
         }
         if (termes.isEmpty()) return List.of();
 
-        List<Map<String, Object>> hits = interroger(String.join(" ", termes), limit, workspaceId, 0.0);
+        List<Map<String, Object>> hits = interroger(String.join(" ", termes), limit, 0.0);
         if (!hits.isEmpty()) return hits;
 
-        hits = interroger(String.join(" OR ", termes), limit, workspaceId, SEUIL_RELATIF);
+        hits = interroger(String.join(" OR ", termes), limit, SEUIL_RELATIF);
         if (!hits.isEmpty()) return hits;
 
         List<String> porteurs = termes.stream()
@@ -129,11 +127,11 @@ public class CorpusRetriever {
                 .limit(3)
                 .toList();
         if (porteurs.size() < termes.size()) {
-            hits = interroger(String.join(" OR ", porteurs), limit, workspaceId, 0.0);
+            hits = interroger(String.join(" OR ", porteurs), limit, 0.0);
             if (!hits.isEmpty()) return hits;
         }
 
-        return fallbackIlike(question, limit, workspaceId);
+        return fallbackIlike(question, limit);
     }
 
     /**
@@ -145,8 +143,7 @@ public class CorpusRetriever {
      * et ignore silencieusement les mots vides, sans exposer la moindre surface
      * d'injection puisque tout passe en paramètre lié.
      */
-    private List<Map<String, Object>> interroger(String expression, int limit,
-                                                 UUID workspaceId, double seuilRelatif) {
+    private List<Map<String, Object>> interroger(String expression, int limit, double seuilRelatif) {
         if (expression == null || expression.isBlank()) return List.of();
         // En mode « OU » on ratisse plus large avant de filtrer sur le seuil.
         int aChercher = seuilRelatif > 0 ? Math.max(limit * 3, limit) : limit;
@@ -155,14 +152,14 @@ public class CorpusRetriever {
                        ts_rank_cd(search_vector, q) AS rank
                 FROM rag_corpus_chunks,
                      websearch_to_tsquery('french', ?) q
-                WHERE workspace_id = ?
+                WHERE portee = 'COMMUNE'
                   AND search_vector @@ q
                 ORDER BY rank DESC
                 LIMIT ?
                 """;
         List<Map<String, Object>> rows;
         try {
-            rows = jdbc.queryForList(sql, expression, workspaceId, aChercher);
+            rows = jdbc.queryForList(sql, expression, aChercher);
         } catch (Exception ex) {
             // FTS indisponible (migration non jouee, Postgres trop ancien) : le
             // caller retombera sur le repli ILIKE.
@@ -211,32 +208,31 @@ public class CorpusRetriever {
         return out;
     }
 
-    private List<Map<String, Object>> fallbackIlike(String question, int limit, UUID workspaceId) {
+    private List<Map<String, Object>> fallbackIlike(String question, int limit) {
         try {
             String sql = """
                     SELECT source, article, chunk_text, metadata, 0.5 AS rank
                     FROM rag_corpus_chunks
-                    WHERE workspace_id = ?
+                    WHERE portee = 'COMMUNE'
                       AND chunk_text ILIKE ?
                     LIMIT ?
                     """;
-            return jdbc.queryForList(sql, workspaceId, "%" + question + "%", limit);
+            return jdbc.queryForList(sql, "%" + question + "%", limit);
         } catch (Exception ex) {
             return List.of();
         }
     }
 
     /**
-     * Recherche <b>vectorielle</b> (cosine, pgvector) scopee au workspace. La question est
+     * Recherche <b>vectorielle</b> (cosine, pgvector) dans le corpus commun. La question est
      * transformee en embedding puis comparee aux chunks ({@code embedding <=> ?::vector}).
      *
      * <p>Renvoie une liste vide (sans appel reseau ni SQL) si la voie vectorielle est
-     * desactivee, si l'embedding echoue, ou si {@code workspaceId} est null — le caller
+     * desactivee ou si l'embedding echoue — le caller
      * peut alors retomber sur le FTS. Le {@code rank} vaut {@code 1 - distance_cosine}.
      */
-    public List<Map<String, Object>> searchByVector(String question, int limit, UUID workspaceId) {
+    public List<Map<String, Object>> searchByVector(String question, int limit) {
         if (question == null || question.isBlank()) return List.of();
-        if (workspaceId == null) return List.of();
         if (embeddingClient == null || !embeddingClient.isReady()) return List.of();
 
         Optional<float[]> embedded = embeddingClient.embed(question);
@@ -248,13 +244,13 @@ public class CorpusRetriever {
                 SELECT source, article, chunk_text, metadata,
                        1 - (embedding <=> ?::vector) AS rank
                 FROM rag_corpus_chunks
-                WHERE workspace_id = ?
+                WHERE portee = 'COMMUNE'
                   AND embedding IS NOT NULL
                 ORDER BY embedding <=> ?::vector
                 LIMIT ?
                 """;
         try {
-            return jdbc.queryForList(sql, vectorLiteral, workspaceId, vectorLiteral, limit);
+            return jdbc.queryForList(sql, vectorLiteral, vectorLiteral, limit);
         } catch (Exception ex) {
             // Colonne/index vectoriel absent ou incoherent -> pas de vecteur, on laisse le FTS jouer.
             return List.of();
@@ -265,13 +261,11 @@ public class CorpusRetriever {
      * Recherche <b>hybride</b> : privilegie la voie vectorielle quand elle est disponible,
      * complete/replie sur le FTS, puis fusionne en dedupliquant par {@code chunk_text}
      * (les hits vectoriels d'abord). A defaut de vecteur, comportement identique a
-     * {@link #search} (FTS pur). {@code workspaceId} null -> liste vide.
+     * {@link #search} (FTS pur).
      */
-    public List<Map<String, Object>> searchHybrid(String question, int limit, UUID workspaceId) {
-        if (workspaceId == null) return List.of();
-
-        List<Map<String, Object>> vector = searchByVector(question, limit, workspaceId);
-        List<Map<String, Object>> fts = search(question, limit, workspaceId);
+    public List<Map<String, Object>> searchHybrid(String question, int limit) {
+        List<Map<String, Object>> vector = searchByVector(question, limit);
+        List<Map<String, Object>> fts = search(question, limit);
         if (vector.isEmpty()) return fts; // FTS pur (comportement historique).
 
         Map<String, Map<String, Object>> merged = new LinkedHashMap<>();

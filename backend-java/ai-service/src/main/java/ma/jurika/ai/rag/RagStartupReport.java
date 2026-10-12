@@ -43,9 +43,11 @@ public class RagStartupReport {
 
     @EventListener(ApplicationReadyEvent.class)
     public void rapporter() {
-        long passages = compter("SELECT count(*) FROM rag_corpus_chunks");
-        long vecteurs = compter("SELECT count(*) FROM rag_corpus_chunks WHERE embedding IS NOT NULL");
-        long workspaces = compter("SELECT count(DISTINCT workspace_id) FROM rag_corpus_chunks");
+        // Lot L5 E8 : seul le corpus commun (sources du super-admin) est lu par le chatbot.
+        long passages = compter("SELECT count(*) FROM rag_corpus_chunks WHERE portee = 'COMMUNE'");
+        long vecteurs = compter("SELECT count(*) FROM rag_corpus_chunks WHERE portee = 'COMMUNE' AND embedding IS NOT NULL");
+        long sources = compter("SELECT count(DISTINCT doc_id) FROM rag_corpus_chunks WHERE portee = 'COMMUNE'");
+        long archives = compter("SELECT count(*) FROM rag_corpus_chunks WHERE portee <> 'COMMUNE'");
 
         boolean chatPret = chatClient != null && chatClient.isReady();
         boolean embedPret = embeddingClient != null && embeddingClient.isReady();
@@ -53,23 +55,23 @@ public class RagStartupReport {
         log.info("═══ Etat du RAG ═══");
         log.info("  drapeau jurika.rag.enabled : {}", props.enabled());
         log.info("  generation (chat)          : {} — provider={} model={}",
-                chatPret ? "PRETE" : "INACTIVE (repli base de connaissances + FTS)",
+                chatPret ? "PRETE" : "INACTIVE (restitution des passages retrouves)",
                 props.chat().provider(), props.chat().model());
         log.info("  embeddings (vectoriel)     : {} — provider={} model={} dims={}",
                 embedPret ? "PRETS" : "INACTIFS (recherche plein texte seule)",
                 props.embed().provider(), props.embed().model(), props.embed().dimensions());
-        log.info("  corpus                     : {} passage(s) sur {} workspace(s), {} avec vecteur",
-                passages, workspaces, vecteurs);
+        log.info("  corpus commun              : {} source(s), {} passage(s), {} avec vecteur ; {} passage(s) archive(s), jamais lus",
+                sources, passages, vecteurs, archives);
 
         // Les trois pannes silencieuses reellement rencontrees, chacune avec son
         // symptome cote utilisateur.
         if (!props.enabled()) {
-            log.warn("  ⚠ RAG_ENABLED absent du processus : le chatbot repondra depuis sa base de "
-                    + "connaissances interne, jamais depuis les documents du cabinet.");
+            log.warn("  ⚠ RAG_ENABLED absent du processus : le chatbot restituera les passages "
+                    + "retrouves, sans redaction par le modele.");
         }
         if (props.enabled() && !chatPret) {
             log.warn("  ⚠ Generation indisponible (cle absente ou modele retire) : les reponses "
-                    + "seront des fiches generiques, non ancrees sur les passages retrouves.");
+                    + "seront les passages retrouves, sans redaction.");
         }
         if (props.enabled() && embedPret && passages > 0 && vecteurs == 0) {
             log.warn("  ⚠ Embeddings actifs mais AUCUN passage vectorise : le modele d'embedding "
@@ -80,8 +82,8 @@ public class RagStartupReport {
             log.warn("  ⚠ Voie vectorielle inactive : recherche plein texte uniquement.");
         }
         if (passages == 0) {
-            log.warn("  ⚠ Corpus vide : aucune source fiable n'a ete ingeree. Le chatbot ne pourra "
-                    + "citer aucun document.");
+            log.warn("  ⚠ Corpus commun vide : aucune source fiable n'a ete deposee par le super-admin. "
+                    + "Le chatbot repondra qu'il n'a aucune source.");
         }
         log.info("═══════════════════");
     }
