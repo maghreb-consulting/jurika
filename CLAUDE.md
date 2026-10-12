@@ -187,7 +187,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   obligatoire sans repli ; `infrastructure/deployment/docker-compose.staging.yml` (deploiement
   manuel, secrets non configures) ne monte aucun corpus et ne definit pas `JURIKA_CORPUS_ROOT`.
   A traiter avant tout deploiement staging : montage en lecture seule d'un dossier date.
-- DeboursPdfGeneratorTest avale les erreurs d'écriture (catch (Exception ignore)) : à remplacer par un échec ou un journal explicite. (FicheClientPdfTest a été retiré au lot L5 E7, avec la sortie PDF de la fiche client.)
 - **4 tests ai-service ignores faute de LibreOffice sur le serveur Z440** :
   `DocxToPdfConverterTest.real_conversion_produces_valid_pdf_when_libreoffice_installed`
   (`@EnabledIf("hasLibreOffice")`) et les 3 tests de `HtmlToPdfConverterTest` (assumption
