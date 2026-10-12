@@ -3,15 +3,19 @@ package ma.jurika.ticket.api;
 import ma.jurika.common.exception.NotFoundException;
 import ma.jurika.common.security.AuthenticatedUser;
 import ma.jurika.common.security.Role;
+import ma.jurika.ticket.application.AccesDeboursTicket;
 import ma.jurika.ticket.application.DeboursUseCase;
+import ma.jurika.ticket.application.EtatDeboursService;
+import ma.jurika.ticket.domain.port.DossierRepository;
+import ma.jurika.ticket.domain.port.PermissionsClientLookup;
 import ma.jurika.ticket.domain.port.TicketRepository;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
-import java.math.BigDecimal;
-import java.util.List;
+import java.time.Clock;
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,26 +27,37 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Lot L0 (E22) puis lot L1 (E11, RG-DEB-03) : la lecture des debours (liste et
- * export PDF) est ouverte a l'employe, au superviseur et au client ; le controle
- * fin (dossier de l'employe, dossier et permission de consultation du client) est
- * fait par AccesDeboursTicket (AccesDeboursTicketTest). L'equipe JURIKA
- * (SUPER_ADMIN) n'y a pas acces. Gardes evaluees avec le gestionnaire reel.
+ * Lot L0 (E22), lot L1 (E11) puis lot L5 (E6) : la lecture des debours (liste et etat Word)
+ * est ouverte a l'employe, au superviseur et au client ; le controle fin (dossier de
+ * l'employe, dossier et permissions du client) est fait par AccesDeboursTicket
+ * (AccesDeboursTicketTest). L'ecriture est refusee au superviseur, au client et a l'equipe
+ * JURIKA. Gardes evaluees avec le gestionnaire reel.
  */
 class DeboursControllerSecurityTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"list", "exportPdf"})
-    void client_autorise_par_la_garde_super_admin_refuse(String action) {
+    @ValueSource(strings = {"list", "etatWord"})
+    void lecture_client_employe_superviseur_autorises_super_admin_refuse(String action) {
         assertThat(GardesSuperviseurTicketTest.autorise("ROLE_CLIENT", methode(action))).isTrue();
+        assertThat(GardesSuperviseurTicketTest.autorise("ROLE_EMPLOYE", methode(action))).isTrue();
+        assertThat(GardesSuperviseurTicketTest.autorise("ROLE_SUPERVISEUR", methode(action))).isTrue();
         assertThat(GardesSuperviseurTicketTest.autorise("ROLE_SUPER_ADMIN", methode(action))).isFalse();
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"list", "exportPdf"})
-    void employe_et_superviseur_autorises(String action) {
+    @ValueSource(strings = {"create", "update", "delete"})
+    void ecriture_reservee_a_l_employe(String action) {
         assertThat(GardesSuperviseurTicketTest.autorise("ROLE_EMPLOYE", methode(action))).isTrue();
-        assertThat(GardesSuperviseurTicketTest.autorise("ROLE_SUPERVISEUR", methode(action))).isTrue();
+        assertThat(GardesSuperviseurTicketTest.autorise("ROLE_SUPERVISEUR", methode(action))).isFalse();
+        assertThat(GardesSuperviseurTicketTest.autorise("ROLE_CLIENT", methode(action))).isFalse();
+        assertThat(GardesSuperviseurTicketTest.autorise("ROLE_SUPER_ADMIN", methode(action))).isFalse();
+    }
+
+    @Test
+    void sortie_pdf_retiree() {
+        // P5 : l'etat des debours ne sort plus qu'en Word.
+        assertThat(Arrays.stream(DeboursController.class.getDeclaredMethods()).map(Method::getName))
+                .doesNotContain("exportPdf");
     }
 
     @Test
@@ -50,14 +65,13 @@ class DeboursControllerSecurityTest {
         TicketRepository tickets = mock(TicketRepository.class);
         DeboursUseCase debours = mock(DeboursUseCase.class);
         when(tickets.findById(any(), any())).thenReturn(Optional.empty());
-        when(debours.listForTicket(any(), any())).thenReturn(new DeboursUseCase.Summary(List.of(), BigDecimal.ZERO));
-        DeboursController controleur = new DeboursController(debours, tickets, null, null,
-                new ma.jurika.ticket.application.AccesDeboursTicket(tickets,
-                        mock(ma.jurika.ticket.domain.port.DossierRepository.class),
-                        mock(ma.jurika.ticket.domain.port.PermissionsClientLookup.class)));
+        DeboursController controleur = new DeboursController(debours, mock(EtatDeboursService.class), null,
+                new AccesDeboursTicket(tickets, mock(DossierRepository.class), mock(PermissionsClientLookup.class)),
+                Clock.systemUTC());
         AuthenticatedUser employe = new AuthenticatedUser(UUID.randomUUID(), UUID.randomUUID(), "e@a.test", Role.EMPLOYE);
 
         assertThatThrownBy(() -> controleur.list(employe, UUID.randomUUID())).isInstanceOf(NotFoundException.class);
+        assertThatThrownBy(() -> controleur.etatWord(employe, UUID.randomUUID())).isInstanceOf(NotFoundException.class);
         verifyNoInteractions(debours);
     }
 

@@ -239,7 +239,7 @@ class TicketJurikaAppIT {
     void debours_ajout_liste_et_export() throws Exception {
         mvc.perform(post("/api/v1/tickets/" + ticketId + "/debours").header("Authorization", karim())
                         .contentType("application/json").content("""
-                                { "libelle": "Frais de greffe", "categorie": "FRAIS_TRIBUNAL",
+                                { "libelle": "Frais de greffe", "categorie": "FRAIS_GREFFE",
                                   "montant": 350.00, "dateEngagement": "2026-10-01" }
                                 """))
                 .andExpect(status().is2xxSuccessful());
@@ -247,8 +247,34 @@ class TicketJurikaAppIT {
                 .andExpect(status().isOk());
         assertThat(owner.queryForObject("SELECT COUNT(*) FROM ticket_debours WHERE ticket_id = ?",
                 Integer.class, ticketId)).isEqualTo(1);
+        // Lot L5 (E6) : etat Word (P5) ; la sortie PDF n'existe plus.
+        MvcResult etat = mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours/etat-word")
+                        .header("Authorization", karim()))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(etat.getResponse().getContentType())
+                .isEqualTo("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        try (var doc = new org.apache.poi.xwpf.usermodel.XWPFDocument(
+                new java.io.ByteArrayInputStream(etat.getResponse().getContentAsByteArray()))) {
+            String texte = new org.apache.poi.xwpf.extractor.XWPFWordExtractor(doc).getText();
+            assertThat(texte).contains("TROIS CENT CINQUANTE DIRHAMS", "Frais de greffe");
+        }
         mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours/export-pdf").header("Authorization", karim()))
-                .andExpect(status().isOk());
+                .andExpect(status().is4xxClientError());
+        // P7 : l'ajout est trace (ancienne et nouvelle valeur), ressource : le ticket. L'ecriture
+        // de la trace est asynchrone (JdbcAuditEventEmitter) : attente bornee.
+        assertThat(traces("DEBOURS_AJOUTE", "Frais de greffe")).isEqualTo(1);
+    }
+
+    private int traces(String action, String libelleApres) throws InterruptedException {
+        int n = 0;
+        for (int essai = 0; essai < 50 && n == 0; essai++) {
+            if (essai > 0) Thread.sleep(100);
+            n = owner.queryForObject("SELECT COUNT(*) FROM audit_log WHERE action = ? AND entity_type = 'ticket' "
+                    + "AND entity_id = ? AND metadata -> 'apres' ->> 'libelle' = ?", Integer.class,
+                    action, ticketId, libelleApres);
+        }
+        return n;
     }
 
     @Test
@@ -470,6 +496,16 @@ class TicketJurikaAppIT {
         // Sans reglage : consultation permise (valeur par defaut) -> le client lit.
         mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours").header("Authorization", jetonClient))
                 .andExpect(status().isOk());
+        // Lot L5 (E6, RG-DEB-03) : l'etat Word se telecharge si la permission le prevoit...
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours/etat-word").header("Authorization", jetonClient))
+                .andExpect(status().isOk());
+        // ... et non sans la permission de telecharger (la consultation reste ouverte).
+        owner.update("INSERT INTO dataroom_settings (dossier_id, workspace_id, perm_download) VALUES (?, ?, FALSE) "
+                + "ON CONFLICT (dossier_id) DO UPDATE SET perm_download = FALSE", dossierId, WS_A);
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours/etat-word").header("Authorization", jetonClient))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours").header("Authorization", jetonClient))
+                .andExpect(status().isOk());
         // Un autre client du cabinet : rien.
         mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours")
                         .header("Authorization", jeton(UUID.randomUUID(), WS_A, "CLIENT")))
@@ -481,7 +517,7 @@ class TicketJurikaAppIT {
                 .andExpect(status().isForbidden());
         // Le client n'ecrit jamais ; un employe non responsable non plus.
         mvc.perform(post("/api/v1/tickets/" + ticketId + "/debours").header("Authorization", jetonClient)
-                        .contentType("application/json").content("{\"libelle\":\"x\",\"categorie\":\"FRAIS_TRIBUNAL\","
+                        .contentType("application/json").content("{\"libelle\":\"x\",\"categorie\":\"FRAIS_GREFFE\","
                                 + "\"montant\":10,\"dateEngagement\":\"2026-10-01\"}"))
                 .andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours")
