@@ -22,10 +22,10 @@ COPY supervision-service/pom.xml  supervision-service/
 COPY ai-service/pom.xml           ai-service/
 COPY dashboard-service/pom.xml    dashboard-service/
 COPY billing-service/pom.xml      billing-service/
-RUN --mount=type=cache,target=/root/.m2/repository \
+RUN --mount=type=cache,target=/root/.m2/repository,sharing=locked \
     mvn -B -pl :discovery-service -DskipTests dependency:go-offline || true
 COPY discovery-service/src discovery-service/src
-RUN --mount=type=cache,target=/root/.m2/repository \
+RUN --mount=type=cache,target=/root/.m2/repository,sharing=locked \
     mvn -B -pl :discovery-service -DskipTests package
 
 FROM eclipse-temurin:21-jre-jammy

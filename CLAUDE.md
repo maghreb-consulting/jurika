@@ -309,9 +309,11 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   n'atteignent pas les cabinets : corpus commun a concevoir (migration probable).
 - **Export ZIP du Dossier Juridique** : echec complet (`duplicate entry`) quand deux documents
   d'un meme type portent le meme nom de fichier (`exportSelectionAsZip`).
-- **Dockerfile de dashboard** : ignore une erreur Maven pendant le telechargement des
-  dependances (`dependency:go-offline ... || true`, vu en E26 sur une collision du cache
-  partage entre constructions paralleles).
+- **Dockerfiles Java : `dependency:go-offline ... || true`** (les 10 services) : l'erreur de
+  prechargement reste avalee. La cause vue en E26 (collision du cache Maven partage entre
+  constructions paralleles) est levee depuis L5 E1 (`sharing=locked`) ; l'etape `package` echoue
+  toujours bruyamment. Retirer le `|| true` demande de verifier que go-offline passe sur les
+  modules du reacteur (jurika-common non publie).
 - **Exemple d'environnement serveur** : `.env.local.server.example` n'active pas le profil
   compose `mailhog` (`COMPOSE_PROFILES`) alors que `start-local.sh` attend `jurika-mailhog` :
   une installation faite depuis l'exemple n'atteint jamais 18/18.
