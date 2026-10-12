@@ -321,4 +321,50 @@ class EmailTemplateRenderingTest {
         assertThat(html).contains("token=jeton-43");
         assertThat(html).contains("k.benali@jurika.ma").contains("karim.benali@jurika.ma");
     }
+
+    // Lot L5 (E9, RG-COM-09) : les courriels au client indiquent le cabinet a l'origine.
+    @Test
+    @DisplayName("client-invite.html : nomme le cabinet qui invite")
+    void clientInviteNommeLeCabinet() {
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("firstName", "Karim");
+        vars.put("cabinet", "Cabinet Zerhouni Conseil");
+        vars.put("raisonSociale", "ATLAS SARL");
+        vars.put("workspaceCode", "JUR-A4F2K");
+        vars.put("loginEmail", "karim.c1@jurika.ma");
+        vars.put("contactEmail", "karim@example.ma");
+        vars.put("temporaryPassword", "Aa9kL2pMq8");
+        vars.put("loginUrl", "https://app.jurika.ma/login");
+
+        String texte = plainText(render("client-invite", vars));
+
+        assertThat(texte).contains("Cabinet Zerhouni Conseil");
+        assertThat(texte).contains("Votre cabinet <strong>Cabinet Zerhouni Conseil</strong>");
+        assertThat(texte).contains("ATLAS SARL");
+    }
+
+    @Test
+    @DisplayName("client-notification.html : cabinet, annonce, objet et lien")
+    void clientNotificationNommeLeCabinet() {
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("cabinet", "Cabinet Zerhouni Conseil");
+        vars.put("firstName", "Karim");
+        vars.put("titre", "Une requête de votre cabinet");
+        vars.put("annonce", "Votre cabinet Cabinet Zerhouni Conseil vous adresse une requête sur le dossier ATLAS SARL.");
+        vars.put("raisonSociale", "ATLAS SARL");
+        vars.put("objet", "Copie de la CIN du gérant");
+        vars.put("bouton", "Répondre à la requête");
+        vars.put("lienUrl", "https://app.jurika.ma/mes-requetes");
+        vars.put("loginEmail", "karim.c1@jurika.ma");
+        vars.put("contactEmail", "karim@example.ma");
+
+        String html = render("client-notification", vars);
+        String texte = plainText(html);
+
+        assertThat(texte).contains("Message de votre cabinet").contains("Cabinet Zerhouni Conseil");
+        assertThat(texte).contains("vous adresse une requete sur le dossier ATLAS SARL");
+        assertThat(texte).contains("Copie de la CIN du gerant");
+        assertThat(html).contains("href=\"https://app.jurika.ma/mes-requetes\"");
+        assertThat(texte).contains("Maghreb Consulting");
+    }
 }

@@ -112,7 +112,7 @@ export function RequetesAuClientSection({
           Mes requêtes au client
           <InfoBulle
             libelle="Aide sur les requêtes au client"
-            texte="Une requête demande au client une pièce, une information ou une signature. Elle est « Non traitée » tant que le client n’a pas répondu, « En cours » quand sa réponse est à vérifier ou qu’un complément lui est demandé, « Traitée » une fois que vous avez validé sa réponse."
+            texte="Une requête demande au client une pièce, une information ou une signature. Elle est « Non traitée » tant que le client n’a pas répondu, « En cours » quand sa réponse est à vérifier ou qu’un complément lui est demandé, « Traitée » une fois que vous avez validé sa réponse. Le client est averti par courriel de chaque nouvelle requête et de chaque complément demandé ; vous êtes notifié dans la cloche quand il répond."
           />
         </h3>
         {readOnly ? (

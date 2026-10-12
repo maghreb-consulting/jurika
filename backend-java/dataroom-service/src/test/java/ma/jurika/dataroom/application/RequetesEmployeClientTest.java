@@ -52,17 +52,20 @@ class RequetesEmployeClientTest {
     @Mock ClientAccessLogger accessLogger;
     @Mock NotificationPublisher notifier;
     @Mock DossierViewEntity dossier;
+    @Mock ma.jurika.dataroom.domain.port.CourrielsClient courriels;
 
     DemandesClientService service;
 
     @BeforeEach
     void setUp() {
         service = new DemandesClientService(repo, dossiers, users, accessLogger, notifier,
-                org.mockito.Mockito.mock(DossierArchiveGuard.class));
+                org.mockito.Mockito.mock(DossierArchiveGuard.class), courriels);
         TenantContext.set(WS);
         lenient().when(dossiers.findByWorkspaceIdAndId(WS, DOSSIER)).thenReturn(Optional.of(dossier));
         lenient().when(dossier.getClientId()).thenReturn(CLIENT);
         lenient().when(dossier.getResponsableId()).thenReturn(RESP);
+        lenient().when(dossier.getId()).thenReturn(DOSSIER);
+        lenient().when(dossier.getRaisonSociale()).thenReturn("ATLAS SARL");
         lenient().when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -181,5 +184,89 @@ class RequetesEmployeClientTest {
         when(repo.findByWorkspaceIdAndId(WS, e.getId())).thenReturn(Optional.of(e));
         assertThatThrownBy(() -> service.valider(e.getId(), RESP, Role.EMPLOYE))
                 .isInstanceOf(ConflictException.class);
+    }
+
+    // ------------------------------------------------------------------
+    // Lot L5 (E9) : RG-COM-08 (employe notifie dans l'application) et
+    // RG-COM-09 (client averti par courriel, jamais dans l'application).
+    // ------------------------------------------------------------------
+
+    private ma.jurika.common.courriel.CourrielClientEvenement courrielEnvoye() {
+        org.mockito.ArgumentCaptor<ma.jurika.common.courriel.CourrielClientEvenement> c =
+                org.mockito.ArgumentCaptor.forClass(ma.jurika.common.courriel.CourrielClientEvenement.class);
+        org.mockito.Mockito.verify(courriels).demander(c.capture());
+        return c.getValue();
+    }
+
+    @Test
+    void requete_du_cabinet_le_client_est_averti_par_courriel_pas_dans_l_application() {
+        service.createRequete(new CreateRequeteRequest("Fournir le RC", "merci", DOSSIER, "PIECE"), RESP, Role.EMPLOYE);
+        var c = courrielEnvoye();
+        assertThat(c.type()).isEqualTo("REQUETE_CABINET");
+        assertThat(c.clientId()).isEqualTo(CLIENT);
+        assertThat(c.workspaceId()).isEqualTo(WS);
+        assertThat(c.objet()).isEqualTo("Fournir le RC");
+        assertThat(c.raisonSociale()).isEqualTo("ATLAS SARL");
+        org.mockito.Mockito.verify(notifier, org.mockito.Mockito.never())
+                .notifyUser(org.mockito.ArgumentMatchers.eq(CLIENT), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void complement_le_client_est_averti_par_courriel() {
+        DemandeEntity e = requete("REPONDUE");
+        service.complement(e.getId(), new ComplementRequest("page 2"), RESP, Role.EMPLOYE);
+        assertThat(courrielEnvoye().type()).isEqualTo("COMPLEMENT_REQUETE");
+        org.mockito.Mockito.verifyNoInteractions(notifier);
+    }
+
+    @Test
+    void cloture_aucune_notification_au_client() {
+        DemandeEntity e = requete("REPONDUE");
+        service.valider(e.getId(), RESP, Role.EMPLOYE);
+        org.mockito.Mockito.verifyNoInteractions(notifier);
+        org.mockito.Mockito.verifyNoInteractions(courriels);
+    }
+
+    @Test
+    void reponse_du_client_le_responsable_est_notifie_dans_l_application() {
+        DemandeEntity e = requete("OUVERTE");
+        service.repondre(e.getId(), new RepondreRequest("voici"), CLIENT, Role.CLIENT);
+        org.mockito.Mockito.verify(notifier).notifyUser(org.mockito.ArgumentMatchers.eq(RESP),
+                org.mockito.ArgumentMatchers.eq(WS), org.mockito.ArgumentMatchers.eq("DEMANDE_CLIENT"),
+                org.mockito.ArgumentMatchers.eq("Réponse du client à une requête"),
+                org.mockito.ArgumentMatchers.contains("ATLAS SARL"), any(), any());
+        org.mockito.Mockito.verifyNoInteractions(courriels);
+    }
+
+    @Test
+    void nouvelle_demande_du_client_le_responsable_est_notifie() {
+        service.create(new ma.jurika.dataroom.api.dto.DataroomDtos.CreateDemandeRequest("Attestation", null, DOSSIER),
+                CLIENT);
+        org.mockito.Mockito.verify(notifier).notifyUser(org.mockito.ArgumentMatchers.eq(RESP),
+                org.mockito.ArgumentMatchers.eq(WS), org.mockito.ArgumentMatchers.eq("DEMANDE_CLIENT"),
+                org.mockito.ArgumentMatchers.eq("Nouvelle demande du client"),
+                org.mockito.ArgumentMatchers.contains("Attestation"), any(), any());
+    }
+
+    @Test
+    void demande_traitee_le_client_est_averti_par_courriel_une_seule_fois() {
+        DemandeEntity e = new DemandeEntity();
+        e.setId(UUID.randomUUID());
+        e.setWorkspaceId(WS);
+        e.setDossierId(DOSSIER);
+        e.setDirection("CLIENT_TO_EMPLOYE");
+        e.setSujet("Attestation");
+        e.setStatut("EN_COURS");
+        when(repo.findByWorkspaceIdAndId(WS, e.getId())).thenReturn(Optional.of(e));
+        var req = new ma.jurika.dataroom.api.dto.DataroomDtos.UpdateDemandeStatusRequest("TRAITEE", null, null);
+
+        service.updateStatus(e.getId(), req, RESP, Role.EMPLOYE);
+        var c = courrielEnvoye();
+        assertThat(c.type()).isEqualTo("REPONSE_DEMANDE");
+        assertThat(c.objet()).isEqualTo("Attestation");
+
+        // Deja traitee : pas de second courriel.
+        service.updateStatus(e.getId(), req, RESP, Role.EMPLOYE);
+        org.mockito.Mockito.verify(courriels, org.mockito.Mockito.times(1)).demander(any());
     }
 }

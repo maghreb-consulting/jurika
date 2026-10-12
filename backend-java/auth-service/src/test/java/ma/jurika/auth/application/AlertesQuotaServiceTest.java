@@ -1,0 +1,132 @@
+package ma.jurika.auth.application;
+
+import ma.jurika.auth.domain.port.AlertesQuotaRegistre;
+import ma.jurika.common.billing.PlanLimitsService;
+import ma.jurika.common.billing.PlanLimitsService.UsageSnapshot;
+import ma.jurika.common.notification.NotificationPublisher;
+import ma.jurika.common.security.TenantContext;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+/** Lot L5 (E9, RG-COM-08 et RG-PLN-02) : alerte quota approchant au superviseur. */
+@ExtendWith(MockitoExtension.class)
+class AlertesQuotaServiceTest {
+
+    static final UUID WS = UUID.randomUUID();
+    static final UUID SUP = UUID.randomUUID();
+    static final long GO = 1024L * 1024L * 1024L;
+
+    @Mock AlertesQuotaRegistre registre;
+    @Mock PlanLimitsService limites;
+    @Mock NotificationPublisher notifier;
+
+    AlertesQuotaService service;
+
+    @BeforeEach
+    @SuppressWarnings("unchecked")
+    void setUp() {
+        PlatformTransactionManager tm = mock(PlatformTransactionManager.class);
+        lenient().when(tm.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+        ObjectProvider<PlanLimitsService> provider = mock(ObjectProvider.class);
+        lenient().when(provider.getIfAvailable()).thenReturn(limites);
+        // 2026-10-12 a 23:30 UTC = 2026-10-13 a 00:30 a Casablanca (UTC+1) : le mois reste octobre.
+        Clock horloge = Clock.fixed(Instant.parse("2026-10-12T23:30:00Z"), ZoneOffset.UTC);
+        service = new AlertesQuotaService(registre, provider, notifier, tm, horloge);
+        lenient().when(registre.cabinetsActifs()).thenReturn(List.of(WS));
+        lenient().when(registre.superviseursActifs(WS)).thenReturn(List.of(SUP));
+        lenient().when(registre.retenirSiNouvelle(any(), anyString(), anyString())).thenReturn(true);
+    }
+
+    private static UsageSnapshot usage(int users, int maxUsers, int dossiers, int maxDossiers,
+                                       long octets, int maxGo) {
+        return new UsageSnapshot("business", "Business", users, maxUsers, maxUsers < 0,
+                dossiers, maxDossiers, maxDossiers < 0, octets, maxGo, maxGo < 0);
+    }
+
+    @Test
+    void le_seuil_est_celui_du_cahier_des_charges() {
+        assertThat(AlertesQuotaService.SEUIL_ALERTE_POURCENT).isEqualTo(80);
+    }
+
+    @Test
+    void a_80_pourcent_des_dossiers_le_superviseur_est_alerte_dans_l_application() {
+        when(limites.snapshot(WS)).thenReturn(usage(1, 6, 80, 100, 0, 20));
+
+        AlertesQuotaService.Bilan bilan = service.detecter();
+
+        assertThat(bilan.notifications()).isEqualTo(1);
+        verify(registre).retenirSiNouvelle(WS, "DOSSIERS", "2026-10");
+        verify(notifier).notifyUser(eq(SUP), eq(WS), eq("QUOTA_APPROCHANT"), eq("Quota de dossiers presque atteint"),
+                contains("80 dossiers sur 100 (forfait Business), soit 80 %"), eq("/app/billing/change-plan"), anyMap());
+    }
+
+    @Test
+    void sous_le_seuil_aucune_alerte() {
+        when(limites.snapshot(WS)).thenReturn(usage(4, 6, 79, 100, 15 * GO, 20));
+        service.detecter();
+        verify(notifier, never()).notifyUser(any(), any(), any(), any(), any(), any(), any());
+        verify(registre, never()).retenirSiNouvelle(any(), any(), any());
+    }
+
+    @Test
+    void utilisateurs_et_stockage_sont_aussi_surveilles() {
+        when(limites.snapshot(WS)).thenReturn(usage(5, 6, 10, 100, 17 * GO, 20));
+        service.detecter();
+        verify(registre).retenirSiNouvelle(WS, "UTILISATEURS", "2026-10");
+        verify(registre).retenirSiNouvelle(WS, "STOCKAGE", "2026-10");
+        verify(notifier).notifyUser(eq(SUP), eq(WS), eq("QUOTA_APPROCHANT"), eq("Stockage presque plein"),
+                contains("17,0 Go utilisés sur 20 Go"), any(), anyMap());
+    }
+
+    @Test
+    void un_quota_illimite_n_alerte_jamais() {
+        when(limites.snapshot(WS)).thenReturn(usage(500, -1, 9999, -1, 999 * GO, -1));
+        service.detecter();
+        verify(notifier, never()).notifyUser(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void une_alerte_deja_emise_ce_mois_ci_ne_se_repete_pas() {
+        when(limites.snapshot(WS)).thenReturn(usage(1, 6, 90, 100, 0, 20));
+        when(registre.retenirSiNouvelle(WS, "DOSSIERS", "2026-10")).thenReturn(false);
+        service.detecter();
+        verify(notifier, never()).notifyUser(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void l_usage_est_lu_dans_le_cabinet_puis_le_contexte_est_libere() {
+        AtomicReference<UUID> vu = new AtomicReference<>();
+        when(limites.snapshot(WS)).thenAnswer(inv -> {
+            vu.set(TenantContext.get());
+            return usage(1, 6, 1, 100, 0, 20);
+        });
+        service.detecter();
+        assertThat(vu.get()).isEqualTo(WS);
+        assertThat(TenantContext.get()).isNull();
+    }
+}

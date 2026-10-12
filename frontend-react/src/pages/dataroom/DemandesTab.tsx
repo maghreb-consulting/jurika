@@ -19,6 +19,7 @@ import { DEMANDE_STATUT_LABELS } from '../../types/dataroom';
 import type { TicketType, TicketPriorite } from '../../types/ticket';
 import { TICKET_TYPE_LABELS, TYPES_AUTO_DOSSIER } from '../../types/ticket';
 import type { Role } from '../../types/auth';
+import { InfoBulle } from '../../components/ui/Aide';
 
 // Types de ticket creables depuis une demande : on exclut CREATION/IMPORT
 // (qui exigent la creation auto d'un dossier -> companyInfo), car la demande
@@ -114,9 +115,17 @@ export function DemandesTab({
             <MessageSquare className="h-4 w-4" />
           </div>
           <div className="flex items-center gap-2 text-sm text-fg-muted">
-            <Badge variant="info">{counts.NON_TRAITEE} non traitee{counts.NON_TRAITEE > 1 ? 's' : ''}</Badge>
+            <Badge variant="info">{counts.NON_TRAITEE} non traitée{counts.NON_TRAITEE > 1 ? 's' : ''}</Badge>
             <Badge variant="warning">{counts.EN_COURS} en cours</Badge>
-            <Badge variant="success">{counts.TRAITEE} traitee{counts.TRAITEE > 1 ? 's' : ''}</Badge>
+            <Badge variant="success">{counts.TRAITEE} traitée{counts.TRAITEE > 1 ? 's' : ''}</Badge>
+            <InfoBulle
+              libelle="Aide sur les demandes du client"
+              texte={
+                role === 'CLIENT'
+                  ? 'Vos demandes au cabinet sont suivies par trois états : « Non traitée », « En cours » (prise en charge par votre conseiller), « Traitée ». Vous êtes averti par courriel quand votre demande est traitée.'
+                  : 'Chaque demande du client est « Non traitée » jusqu’à sa prise en charge, puis « En cours », puis « Traitée ». Vous êtes notifié dans la cloche d’une nouvelle demande ; quand vous la passez à « Traitée », le client en est averti par courriel.'
+              }
+            />
           </div>
         </div>
         {canCreate && (

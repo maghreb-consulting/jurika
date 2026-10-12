@@ -39,6 +39,20 @@ La région SES dépend de l'hébergement AWS de la mise en production (**A_DECID
   (acceptée par le relais, puis rejetée par le destinataire : rebond compté par le fournisseur).
 - Journal : `docker logs jurika-auth | grep "Courriels :"`.
 
+## 2 bis. Courriels au client (lot L5, E9, RG-COM-09)
+
+Le client est averti **par courriel** (jamais dans l’application) : invitation et identifiants,
+requête du cabinet, complément demandé, document mis à sa disposition, réponse à sa demande.
+Chaque courriel part de l’adresse unique ci-dessus et **nomme le cabinet** à l’origine
+(sujet et corps). Les gestes faits dans la Data Room (dataroom-service) publient un évènement
+`courriel.client.<type>` sur l’échange RabbitMQ `jurika.events`, après validation de la
+transaction ; auth-service le consomme (file `auth.courriels-client`), vérifie le destinataire
+(compte client actif du cabinet) et envoie par son relais.
+
+Un courriel qui ne part pas (destinataire refusé, relais injoignable) est journalisé en ERROR
+(« Courriel client NON envoye ») puis rangé **intact** dans la file `auth.courriels-client.echecs`,
+consultable et rejouable depuis la console RabbitMQ ; il n’est ni perdu ni rejoué en boucle.
+
 ## 3. DNS du domaine jurika.ma (à publier chez le registraire)
 
 Un domaine n'a qu'**un seul** enregistrement SPF : pendant une transition Brevo → SES, les deux

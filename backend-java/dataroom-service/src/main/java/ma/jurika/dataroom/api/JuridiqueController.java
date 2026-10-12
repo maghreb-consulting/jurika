@@ -67,6 +67,8 @@ public class JuridiqueController {
     /** Fix DR4 — conversion Office → PDF pour l'aperçu des versions (.docx directeur). */
     private final OfficePreviewSupport officePreview;
     private final EmployeDataroomGuard employeGuard;
+    /** Lot L5 (E9, RG-COM-09) : courriel au client quand un document lui est mis a disposition. */
+    private final ma.jurika.dataroom.application.AnnonceDocumentsClient annonces;
 
     public JuridiqueController(DataroomJuridiqueService juridique,
                                 FicheClientService ficheClient,
@@ -76,7 +78,9 @@ public class JuridiqueController {
                                 ClientDataroomPermissionGuard permissionGuard,
                                 ObjectStorage storage,
                                 OfficePreviewSupport officePreview,
-                                EmployeDataroomGuard employeGuard) {
+                                EmployeDataroomGuard employeGuard,
+                                ma.jurika.dataroom.application.AnnonceDocumentsClient annonces) {
+        this.annonces = annonces;
         this.juridique = juridique;
         this.ficheClient = ficheClient;
         this.searchJuridique = searchJuridique;
@@ -202,6 +206,8 @@ public class JuridiqueController {
             }
             log.info("uploadJuridique SUCCESS docId={} version={} key={} visibleClient={}",
                     result.id(), result.version(), result.filename(), result.visibleClient());
+            // Lot L5 (E9, RG-COM-09) : visibilite reglee -> courriel au client si visible.
+            annonces.annoncer(List.of(result));
             return result;
         } catch (Exception ex) {
             log.error("uploadJuridique CRASH dossier={} type={} title={} file={} : {} - {}",
@@ -225,7 +231,9 @@ public class JuridiqueController {
         String t = (title == null || title.isBlank())
                 ? files.size() + " documents - " + java.time.LocalDate.now()
                 : title;
-        return juridique.uploadVersionBatch(dossierId, type, t, ticketId, files, user.userId());
+        List<DocumentSummary> deposes = juridique.uploadVersionBatch(dossierId, type, t, ticketId, files, user.userId());
+        annonces.annoncer(deposes); // Lot L5 (E9) : un seul courriel pour le lot
+        return deposes;
     }
 
     @GetMapping("/document-types")
@@ -299,7 +307,9 @@ public class JuridiqueController {
                                              @PathVariable UUID documentId,
                                              @RequestBody(required = false) ValiderBrouillonRequest req) {
         employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
-        return juridique.validerBrouillon(documentId, req == null ? null : req.motif(), user.userId());
+        DocumentSummary valide = juridique.validerBrouillon(documentId, req == null ? null : req.motif(), user.userId());
+        annonces.annoncer(List.of(valide)); // Lot L5 (E9) : acte en vigueur et visible -> courriel au client
+        return valide;
     }
 
     @DeleteMapping("/documents/{documentId}/brouillon")
@@ -344,9 +354,13 @@ public class JuridiqueController {
                                               @PathVariable UUID documentId,
                                               @Valid @RequestBody VisibiliteRequest req) {
         employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
-        return juridique.changerVisibilite(documentId, req.visible(),
+        boolean dejaVisible = annonces.estVisible(documentId);
+        DocumentSummary apres = juridique.changerVisibilite(documentId, req.visible(),
                 req.origine() == null ? "DATAROOM" : req.origine(),
                 user == null ? null : user.userId());
+        // Lot L5 (E9, RG-COM-09) : un document RENDU visible est annonce au client.
+        if (!dejaVisible && apres.visibleClient()) annonces.annoncer(List.of(apres));
+        return apres;
     }
 
     /**

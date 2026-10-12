@@ -40,6 +40,18 @@ public class DataroomRabbitConfig {
         return template;
     }
 
+    /**
+     * Lot L5 (E9, RG-COM-09) : echange partage {@code jurika.events} (declare aussi
+     * par auth-service ; la declaration est idempotente), sur lequel
+     * {@link RabbitCourrielsClient} publie les demandes de courriel au client avec
+     * le gabarit ci-dessus (echange explicite a l'envoi). Pas de second
+     * RabbitTemplate : l'emetteur d'audit s'injecte par type et deviendrait ambigu.
+     */
+    @Bean
+    public TopicExchange jurikaEventsExchange() {
+        return new TopicExchange(ma.jurika.common.courriel.CourrielClientEvenement.ECHANGE, true, false);
+    }
+
     private MessageConverter jacksonConverter() {
         // Jackson2JsonMessageConverter ne s'auto-discover pas si un autre converter
         // est deja primary -- on en cree un local pour ce template.
