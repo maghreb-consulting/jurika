@@ -36,6 +36,14 @@ import java.util.UUID;
 @Service
 public class ChargeUtileAnnulation {
 
+    /** Lot L5 (RG-FIC-04) : fiche reprojetee avant la lecture pour generation (paresseux : pas de cycle). */
+    private WorkflowUseCases rafraichissement;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setRafraichissement(@org.springframework.context.annotation.Lazy WorkflowUseCases rafraichissement) {
+        this.rafraichissement = rafraichissement;
+    }
+
     /** Libelles des statuts, tels que les matrices du cabinet les ecrivent (colonne Statut). */
     static final Map<String, String> LIBELLES_STATUT = Map.of(
             "CREATION_TICKET", "Cr\u00e9ation du ticket et collecte d'information",
@@ -71,6 +79,7 @@ public class ChargeUtileAnnulation {
     @Transactional(readOnly = true)
     public Map<String, Object> construire(UUID workspaceId, UUID ticketId, UUID employeId) {
         employeEnCharge.exiger(workspaceId, ticketId, employeId);
+        rafraichissement.rafraichirFiche(workspaceId, ticketId); // L5 (RG-FIC-04)
         TenantContext.set(workspaceId);
         FaitsDuTicket.Faits faits = faitsDuTicket.lire(workspaceId, ticketId);
         Map<String, Object> magasinDuTicket = magasin.lirePourGeneration(workspaceId, ticketId);

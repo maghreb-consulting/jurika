@@ -215,6 +215,38 @@ public class WorkflowUseCases {
         }
     }
 
+    /**
+     * Lot L5 (RG-FIC-04, RG-VAR-05) : la fiche societe est reprojetee dans le magasin du
+     * ticket avant toute lecture pour generation. Avant, la projection n'avait lieu qu'a
+     * l'execution d'une etape : un identifiant corrige dans la fiche n'atteignait pas un
+     * document regenere sans etape. Une saisie du ticket n'est jamais recouverte
+     * (ProjecteurFicheSociete) ; un ticket clos ou annule n'est pas touche (archive).
+     * Transaction propre : l'appelant lit souvent en lecture seule.
+     *
+     * @return le nombre de variables posees ou mises a jour.
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public int rafraichirFiche(UUID workspaceId, UUID ticketId) {
+        if (projecteurFiche == null) return 0;
+        TenantContext.set(workspaceId);
+        List<?> statut = em.createNativeQuery("SELECT statut FROM tickets WHERE id = ?1 AND workspace_id = ?2")
+                .setParameter(1, ticketId)
+                .setParameter(2, workspaceId)
+                .getResultList();
+        if (statut.isEmpty()) return 0;
+        String s = String.valueOf(statut.get(0));
+        if ("CLOTURE_DOSSIER".equals(s) || "ANNULE".equals(s)) return 0;
+        Map<String, Object> faits = loadDossierFactsByTicket(workspaceId, ticketId);
+        UUID choisi = progressRepository.findByTicket(workspaceId, ticketId)
+                .map(p -> parseUuid(readChosenDossierId(p.data(), 0, null)))
+                .orElse(null);
+        if (choisi != null) {
+            Map<String, Object> faitsChoisis = loadDossierFactsById(workspaceId, choisi);
+            if (!faitsChoisis.isEmpty()) faits = faitsChoisis;
+        }
+        return faits.isEmpty() ? 0 : projecteurFiche.projeter(workspaceId, ticketId, faits);
+    }
+
     @Transactional
     @Auditable(action = "WORKFLOW_STEP_EXECUTED", resourceType = "ticket", resourceIdExpr = "#ticketId")
     public StepExecutionResult executeStep(UUID workspaceId, UUID ticketId, int step,
