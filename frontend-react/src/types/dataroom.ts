@@ -655,6 +655,73 @@ export interface VersionTaxeProfessionnelle {
   enVigueur: boolean;
 }
 
+/** Lot L5 (E7, RG-FIC-01 a 03) : un identifiant de la fiche client et sa provenance. */
+export interface IdentifiantFiche {
+  code: 'DENOMINATION' | 'FORME' | 'CAPITAL' | 'SIEGE' | 'RC' | 'ICE' | 'IF' | 'TP' | 'CNSS';
+  libelle: string;
+  /** Valeur en vigueur mise en forme ; null : non renseignee. */
+  valeur: string | null;
+  provenance: string;
+  origine: 'SAISIE' | 'FIN_PARCOURS' | 'EXTRAITE' | 'OUVERTURE' | 'PARCOURS' | 'NON_TRACEE' | null;
+}
+
+/** Lot L5 (E7, RG-FIC-02) : une version de la taxe professionnelle. */
+export interface VersionTpFiche {
+  numero: string;
+  dateEffet: string | null;
+  enVigueur: boolean;
+  saisieLe: string | null;
+  saisiePar: string;
+}
+
+/** Lot L5 (E7, RG-FIC-04) : une modification tracee d'un identifiant. */
+export interface ModificationFiche {
+  champ: string;
+  libelle: string;
+  ancienneValeur: string | null;
+  nouvelleValeur: string | null;
+  provenance: string;
+  auteur: string;
+  date: string;
+}
+
+export interface FicheClientVue {
+  dossierId: string;
+  cabinet: string;
+  denomination: string | null;
+  identifiants: IdentifiantFiche[];
+  versionsTp: VersionTpFiche[];
+  modifications: ModificationFiche[];
+  modifiable: boolean;
+}
+
+/** Lot L5 (E7, RG-FIC-06) : une operation juridique du dossier (un ticket). */
+export interface OperationFiche {
+  ticketId: string;
+  type: string;
+  typeLabel: string;
+  sousTypeLabel: string | null;
+  reference: string | null;
+  dateOuverture: string | null;
+  dateFin: string | null;
+  natureFin: 'CLOTURE' | 'ANNULATION' | null;
+  statut: string;
+  statutLabel: string;
+  responsable: string;
+}
+
+export interface FicheDossierVue {
+  fiche: FicheClientVue;
+  operations: OperationFiche[];
+  derniereCloture: string | null;
+}
+
+/** Resultat d'une generation Word : conservee dans la Data Room (et sa version) ou non. */
+export interface FicheWordResultat {
+  conservee: boolean;
+  version: number | null;
+}
+
 /** Lot L1 : droits de l'utilisateur sur un dossier (bouton de suppression). */
 export interface DroitsDossier {
   peutSupprimerDocuments: boolean;
