@@ -30,7 +30,7 @@ vi.mock('../../../store/authStore', () => ({
 
 // Stubs des widgets topbar (appels reseau au mount) — hors-scope de ce test nav.
 vi.mock('../DeadlineCountWidget', () => ({ DeadlineCountWidget: () => null }));
-vi.mock('../NotificationBell', () => ({ NotificationBell: () => null }));
+vi.mock('../NotificationBell', () => ({ NotificationBell: () => <span data-testid="cloche" /> }));
 vi.mock('../ThemeToggle', () => ({ ThemeToggle: () => null }));
 
 import { Sidebar } from '../Sidebar';
@@ -110,6 +110,22 @@ describe('Lot M — restrictions de navigation CLIENT', () => {
       renderTopNav();
       expect(screen.getByTestId('topnav-upgrade-cta')).toBeInTheDocument();
       expect(screen.getByText('Chat')).toBeInTheDocument();
+    });
+  });
+
+  // Lot L5 (E9, RG-COM-09) : le client est averti par courriel ; pas de cloche.
+  describe('Cloche des notifications', () => {
+    it('absente pour le CLIENT, presente pour EMPLOYE et SUPERVISEUR', () => {
+      setRole('CLIENT');
+      const { unmount } = renderTopNav();
+      expect(screen.queryByTestId('cloche')).not.toBeInTheDocument();
+      unmount();
+      for (const role of ['EMPLOYE', 'SUPERVISEUR'] as Role[]) {
+        setRole(role);
+        const r = renderTopNav();
+        expect(screen.getByTestId('cloche')).toBeInTheDocument();
+        r.unmount();
+      }
     });
   });
 });

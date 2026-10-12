@@ -173,7 +173,8 @@ export function AppTopNav() {
 
         {/* BUG 10 (2026-06-08) — cloche dynamique : badge = unread-count
             realtime, drawer cliquable, navigation actionUrl. */}
-        <NotificationBell />
+        {/* Lot L5 (E9, RG-COM-09) : le client est averti par courriel, pas dans l'application. */}
+        {user.role !== 'CLIENT' && <NotificationBell />}
 
         <div className="h-6 w-px bg-border-hi" />
 
