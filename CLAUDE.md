@@ -277,9 +277,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   `GET .../settings` et `GET .../settings/client-link` rendent le jeton a tout employe, sans
   controle du responsable. A retirer, ou a concevoir si un acces par lien est voulu (absent du
   CDC). L'ecran "Acces du client" affiche l'adresse de l'espace client, pas ce jeton (D21).
-- **Le test de fumee affirme "SMTP Brevo configure (envoi reel)"** (lecture de variables)
-  alors qu'auth envoie vers `localhost:1025` (MailHog absent du Z440 : "Connection refused" a
-  chaque inscription) : controle silencieusement inoperant (motif 9).
 
 ### Lot L0 (securite serveur, 2026-10-08) -- dette relevee
 
@@ -336,8 +333,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **`start-local.sh` attend `jurika-mailhog` "healthy"** alors que mailhog n'a aucun controle
   de sante (ni compose ni image) : l'attente ne peut pas aboutir quand mailhog tourne
   (corrige dans `base-vierge.yml` le 2026-10-08 : "running" suffit sans controle de sante).
-- **Le test de fumee affiche un prefixe de la cle Stripe** (`scripts/smoke-test.mjs`,
-  controle "Stripe env vars" : `sk_test_51...`) : ne plus afficher aucune partie d'une cle.
 - **Liste des conteneurs attendus dupliquee** entre `start-local.sh` et
   `.github/workflows/base-vierge.yml` : a factoriser.
 - **Messages de commit du lot L0 non ASCII** (24 commits, guillemets francais, signe
