@@ -71,6 +71,10 @@ public final class DocumentTypeCatalogue {
             new String[] {"DEMANDE_ADHESION_SIMPL", "Demande d'adhésion aux téléservices SIMPL"},
             new String[] {"LETTRE_RETRAIT_DEPOT", "Lettre de retrait ou de régularisation"},
             new String[] {"NOTE_ANNULATION", "Note d'annulation du dossier"},
+            // Lot L5 (E7, RG-FIC-05 a 07) : fiches produites par la Data Room, conservees en
+            // versions successives.
+            new String[] {"FICHE_CLIENT", "Fiche client"},
+            new String[] {"FICHE_DOSSIER", "Fiche dossier"},
             // — Justificatifs delivres par les administrations —
             new String[] {"CN", "Certificat négatif"},
             new String[] {"ATTESTATION_ENREGISTREMENT", "Attestation d'enregistrement"},

@@ -1,6 +1,5 @@
 package ma.jurika.ai.rag;
 
-import ma.jurika.ai.infrastructure.ChatbotKnowledgeBase;
 import ma.jurika.common.audit.Auditable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,25 +10,40 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
- * Service RAG (Retrieval-Augmented Generation) pour le chatbot juridique.
+ * Service RAG (Retrieval-Augmented Generation) du chatbot juridique.
  *
- * <p>Strategie en modes cumulatifs :
+ * <p>RG-COM-02 (lot L5 E8) : le chatbot repond <b>uniquement</b> a partir des sources
+ * fiables deposees par le super-admin (corpus commun), et cite ses sources. Trois cas :
  * <ol>
- *     <li><b>KB local</b> : interroge {@link ChatbotKnowledgeBase} (19 entrees hardcodees) — synthese.</li>
- *     <li><b>Retrieval FTS / vectoriel</b> : {@link CorpusRetriever#searchHybrid} sur
- *         {@code rag_corpus_chunks}, strictement scope au workspace (isolation multi-tenant).</li>
- *     <li><b>Generation LLM ancree</b> (si {@code jurika.rag.enabled=true} + cle chat + chunks
- *         recuperes) : {@link RagChatClient} produit une reponse d'assistant fondee UNIQUEMENT
- *         sur le contexte recupere, avec repli automatique KB+FTS a la moindre indisponibilite.</li>
+ *     <li><b>aucun passage pertinent</b> : la reponse le dit, sans source, sans appel au
+ *         modele ({@code ragMode = "aucune-source"}) ;</li>
+ *     <li><b>passages + generation disponible</b> ({@code jurika.rag.enabled=true} + cle) :
+ *         {@link RagChatClient} redige une reponse fondee sur ces seuls passages
+ *         ({@code ragMode = "llm"}) ;</li>
+ *     <li><b>passages sans generation</b> (drapeau coupe, cle absente, fournisseur en
+ *         panne) : la reponse restitue les passages eux-memes, cites
+ *         ({@code ragMode = "extraits"}).</li>
  * </ol>
+ * L'ancienne base de connaissances codee en dur (ChatbotKnowledgeBase, 19 fiches non
+ * deposees par le super-admin, citees comme sources) est retiree : elle repondait meme
+ * sans aucune source.
+ *
+ * <p>La question arrive deja filtree (RG-COM-04, {@link FiltreDonneesPersonnelles}) ; le
+ * filtre est rejoue ici, dernier point avant l'envoi au modele.
  */
 @Service
 public class RagService {
 
-    private final ChatbotKnowledgeBase kb;
+    /** Reponse donnee quand les sources ne contiennent rien sur la question (RG-COM-02). */
+    public static final String REPONSE_SANS_SOURCE =
+            "Les sources fiables déposées sur la plateforme ne contiennent pas de réponse à cette "
+                    + "question. Reformulez-la avec d'autres termes, ou interrogez un juriste du cabinet.";
+
+    private static final String INTRO_EXTRAITS =
+            "Voici les passages des sources fiables qui se rapportent à votre question :";
+
     private final CorpusRetriever retriever;
     /** Optionnel : null quand la voie chat n'est pas câblée (tests, repli sans clé). */
     private final RagChatClient chatClient;
@@ -38,94 +52,91 @@ public class RagService {
 
     /** Nombre max de chunks injectes dans le prompt (borne la taille du contexte). */
     private static final int MAX_CONTEXT_CHUNKS = 6;
+    /** Longueur maximale d'un passage restitue sans generation. */
+    private static final int MAX_EXTRAIT = 600;
     private static final String SYSTEM_PROMPT =
             "Tu es l'assistant juridique de JURIKA (droit des societes au Maroc). "
             + "Reponds en francais, de maniere claire et concise, UNIQUEMENT a partir du CONTEXTE fourni. "
-            + "Si l'information ne figure pas dans le contexte, dis-le explicitement et invite a contacter "
-            + "un expert du cabinet — n'invente jamais. Cite les sources utilisees (reference + article).";
+            + "Si l'information ne figure pas dans le contexte, dis-le explicitement et invite a interroger "
+            + "un juriste du cabinet — n'invente jamais. Cite les sources utilisees (reference + article).";
 
     @Autowired
-    public RagService(ChatbotKnowledgeBase kb,
-                      CorpusRetriever retriever,
+    public RagService(CorpusRetriever retriever,
                       RagChatClient chatClient,
                       @Value("${jurika.rag.enabled:false}") boolean ragLlmEnabled,
                       @Value("${jurika.rag.top-k:5}") int retrieveTopK) {
-        this.kb = kb;
         this.retriever = retriever;
         this.chatClient = chatClient;
         this.ragLlmEnabled = ragLlmEnabled;
         this.retrieveTopK = retrieveTopK;
     }
 
-    /** Constructeur KB+FTS-only (sans generation LLM) — utilise par les tests et le repli sans cle. */
-    public RagService(ChatbotKnowledgeBase kb,
-                      CorpusRetriever retriever,
-                      boolean ragLlmEnabled,
-                      int retrieveTopK) {
-        this(kb, retriever, null, ragLlmEnabled, retrieveTopK);
+    /** Constructeur sans generation (tests, repli sans cle). */
+    public RagService(CorpusRetriever retriever, boolean ragLlmEnabled, int retrieveTopK) {
+        this(retriever, null, ragLlmEnabled, retrieveTopK);
     }
 
     @Auditable(action = "CHATBOT_QUERY")
-    public Map<String, Object> ask(String question, UUID workspaceId) {
+    public Map<String, Object> ask(String question) {
+        // RG-COM-04 : dernier controle avant le modele (le controleur a deja refuse en 422).
+        List<FiltreDonneesPersonnelles.Nature> natures = FiltreDonneesPersonnelles.detecter(question);
+        if (!natures.isEmpty()) {
+            throw new DonneePersonnelleDetecteeException(natures);
+        }
+
         Map<String, Object> response = new HashMap<>();
+        List<Map<String, Object>> chunks = retriever.searchHybrid(question, retrieveTopK);
+        response.put("chunksRetrieved", chunks.size());
 
-        // 1. KB matching (synthese) — toujours disponible, meme sans aucune source.
-        ChatbotKnowledgeBase.Answer kbAnswer = kb.ask(question);
+        if (chunks.isEmpty()) {
+            response.put("reponse", REPONSE_SANS_SOURCE);
+            response.put("confidence", 0.0);
+            response.put("sources", new ArrayList<>());
+            response.put("ragMode", "aucune-source");
+            return response;
+        }
 
-        // 2. Retrieval depuis le corpus du workspace (sources uploadees).
-        //    Hybride : vecteur (cosine) si la voie embeddings est prete, sinon FTS.
-        List<Map<String, Object>> chunks = retriever.searchHybrid(question, retrieveTopK, workspaceId);
-        List<Map<String, Object>> chunkCitations = retriever.asCitations(chunks);
+        List<Map<String, Object>> citations = retriever.asCitations(chunks);
+        response.put("sources", new ArrayList<>(citations));
+        response.put("confidence", retrievalConfidence(chunks));
 
-        // 3. Generation LLM ancree si possible ; sinon repli KB+FTS (aucun appel reseau).
-        boolean llmAnswered = false;
-        if (ragLlmEnabled && chatClient != null && chatClient.isReady() && !chunks.isEmpty()) {
+        if (ragLlmEnabled && chatClient != null && chatClient.isReady()) {
             Optional<String> generated = chatClient.complete(SYSTEM_PROMPT, buildUserPrompt(question, chunks));
             if (generated.isPresent()) {
                 response.put("reponse", generated.get());
-                response.put("confidence", retrievalConfidence(chunks));
-                // Les citations = strictement les chunks recuperes (contexte de la reponse).
-                response.put("sources", new ArrayList<>(chunkCitations));
                 response.put("ragMode", "llm");
-                llmAnswered = true;
+                return response;
             }
         }
 
-        // 4. Repli KB+FTS (comportement historique) si le LLM n'a pas repondu.
-        if (!llmAnswered) {
-            response.put("reponse", kbAnswer.reponse());
-            response.put("confidence", kbAnswer.confidence());
-            List<Map<String, Object>> citations = new ArrayList<>(chunkCitations);
-            for (ChatbotKnowledgeBase.Source s : kbAnswer.sources()) {
-                Map<String, Object> citation = new HashMap<>();
-                citation.put("reference", s.reference());
-                citation.put("article", s.article());
-                citation.put("extract", s.topic());
-                citation.put("rank", null);
-                citations.add(citation);
-            }
-            response.put("sources", citations);
-            response.put("ragMode", "fts");
-        }
-
-        response.put("chunksRetrieved", chunks.size());
-
-        if (!llmAnswered && chunks.isEmpty() && kbAnswer.confidence() < 0.3) {
-            response.put("note",
-                    "Aucune correspondance trouvee dans la base juridique. Reformulez votre question "
-                            + "ou contactez un expert juridique du cabinet.");
-        }
-
+        response.put("reponse", extraits(chunks));
+        response.put("ragMode", "extraits");
         return response;
+    }
+
+    /** Reponse sans generation : les passages eux-memes, numerotes comme leurs citations. */
+    private String extraits(List<Map<String, Object>> chunks) {
+        StringBuilder sb = new StringBuilder(INTRO_EXTRAITS).append("\n\n");
+        int n = Math.min(chunks.size(), MAX_CONTEXT_CHUNKS);
+        for (int i = 0; i < n; i++) {
+            Map<String, Object> c = chunks.get(i);
+            String texte = String.valueOf(c.getOrDefault("chunk_text", "")).strip();
+            if (texte.length() > MAX_EXTRAIT) texte = texte.substring(0, MAX_EXTRAIT - 1) + "…";
+            sb.append(i + 1).append(". **").append(String.valueOf(c.getOrDefault("source", "Source")));
+            Object article = c.get("article");
+            if (article != null) sb.append(" — ").append(article);
+            sb.append("** : ").append(texte).append("\n\n");
+        }
+        return sb.toString().strip();
     }
 
     /**
      * Construit le message utilisateur : CONTEXTE (chunks avec leur reference/article) + QUESTION.
-     * Le contexte ne contient que les chunks du workspace courant -> scope tenant preserve.
+     * Le contexte ne contient que des passages du corpus commun.
      */
     private String buildUserPrompt(String question, List<Map<String, Object>> chunks) {
         StringBuilder sb = new StringBuilder(1024);
-        sb.append("CONTEXTE (passages du corpus juridique du cabinet) :\n\n");
+        sb.append("CONTEXTE (passages des sources fiables de la plateforme) :\n\n");
         int n = Math.min(chunks.size(), MAX_CONTEXT_CHUNKS);
         for (int i = 0; i < n; i++) {
             Map<String, Object> c = chunks.get(i);
@@ -142,7 +153,7 @@ public class RagService {
     /**
      * Confiance derivee du score de retrieval : on prend le meilleur {@code rank} disponible
      * (vecteur : 1 - distance cosine ; FTS : ts_rank) puis on borne dans [0.6, 0.95] — plancher
-     * justifie car la reponse LLM est ancree sur des chunks reellement recuperes.
+     * justifie car la reponse est ancree sur des passages reellement recuperes.
      */
     private double retrievalConfidence(List<Map<String, Object>> chunks) {
         double topRank = chunks.stream()

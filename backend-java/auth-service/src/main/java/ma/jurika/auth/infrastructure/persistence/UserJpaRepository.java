@@ -32,6 +32,17 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
     @Query("UPDATE UserEntity u SET u.contactEmail = :contactEmail WHERE u.id = :id")
     void updateContactEmail(@Param("id") UUID id, @Param("contactEmail") String contactEmail);
 
+    /** Lot L5 (E10) : prenom et nom, RG-CPT-01. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE UserEntity u SET u.firstName = :firstName, u.lastName = :lastName WHERE u.id = :id")
+    void updateName(@Param("id") UUID id, @Param("firstName") String firstName,
+                    @Param("lastName") String lastName);
+
+    /** Lot L5 (E10) : identifiant de connexion confirme ; la colonne historique email suit. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE UserEntity u SET u.loginEmail = :loginEmail, u.email = :loginEmail WHERE u.id = :id")
+    void updateLoginEmail(@Param("id") UUID id, @Param("loginEmail") String loginEmail);
+
     /**
      * Sprint 11 TASK 5 — Premier SUPERVISEUR du workspace (l'admin cree au signup).
      * Utilise par TrialEmailScheduler comme destinataire des emails de sequence trial.

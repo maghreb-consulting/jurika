@@ -124,7 +124,7 @@ public class TransitionTicketUseCase {
         // obtenus pendant le parcours, colonnes vides seulement ; ecarts signales).
         if (cmd.target() == TicketStatut.CLOTURE_DOSSIER && ficheCloture != null) {
             ma.jurika.ticket.domain.port.FicheCloture.Resultat fiche =
-                    ficheCloture.mettreAJour(cmd.workspaceId(), current.id());
+                    ficheCloture.mettreAJour(cmd.workspaceId(), current.id(), cmd.actorId());
             meta.put("ficheReprise", fiche.repris());
             meta.put("ficheEcarts", fiche.ecarts());
         }

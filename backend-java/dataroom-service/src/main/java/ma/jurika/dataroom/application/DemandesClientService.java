@@ -1,5 +1,6 @@
 package ma.jurika.dataroom.application;
 
+import ma.jurika.common.courriel.CourrielClientEvenement;
 import ma.jurika.common.exception.ConflictException;
 import ma.jurika.common.exception.NotFoundException;
 import ma.jurika.common.exception.ValidationException;
@@ -20,6 +21,9 @@ import ma.jurika.dataroom.infrastructure.persistence.DossierViewEntity;
 import ma.jurika.dataroom.infrastructure.persistence.DossierViewJpaRepository;
 import ma.jurika.dataroom.infrastructure.persistence.UserViewEntity;
 import ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository;
+import ma.jurika.dataroom.domain.port.CourrielsClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +39,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class DemandesClientService {
+
+    private static final Logger log = LoggerFactory.getLogger(DemandesClientService.class);
 
     private static final Set<String> STATUTS = Set.of("NON_TRAITEE", "EN_COURS", "TRAITEE");
 
@@ -55,17 +61,23 @@ public class DemandesClientService {
      * client. Les echanges deja ouverts restent consultables et cloturables.
      */
     private final DossierArchiveGuard archiveGuard;
+    /**
+     * Lot L5 (E9, RG-COM-09) : le CLIENT est averti par courriel (requete du
+     * cabinet, complement demande, reponse a sa demande), jamais dans l'application.
+     */
+    private final CourrielsClient courriels;
 
     public DemandesClientService(DemandeJpaRepository repo, DossierViewJpaRepository dossiers,
                                  UserViewJpaRepository users,
                                  ClientAccessLogger accessLogger, NotificationPublisher notifier,
-                                 DossierArchiveGuard archiveGuard) {
+                                 DossierArchiveGuard archiveGuard, CourrielsClient courriels) {
         this.repo = repo;
         this.dossiers = dossiers;
         this.users = users;
         this.accessLogger = accessLogger;
         this.notifier = notifier;
         this.archiveGuard = archiveGuard;
+        this.courriels = courriels;
     }
 
     private static String directionOf(DemandeEntity e) {
@@ -91,6 +103,16 @@ public class DemandesClientService {
         // document). Le compteur "Acces client" ne compte que user_id = client_id,
         // donc une demande creee par un EMPLOYE n'y apparait pas : inoffensif.
         accessLogger.log(req.dossierId(), null, "DEMANDE", ws, userId);
+
+        // Lot L5 (E9, RG-COM-08) : nouvelle demande du client -> l'employe
+        // responsable du dossier (RG-DOS-01) est notifie dans l'application.
+        DossierViewEntity dossier = ws == null ? null
+                : dossiers.findByWorkspaceIdAndId(ws, req.dossierId()).orElse(null);
+        if (dossier != null && userId != null && userId.equals(dossier.getClientId())) {
+            notify(dossier.getResponsableId(), ws, "Nouvelle demande du client",
+                    libelleDossier(dossier) + " : " + req.sujet(),
+                    "/data-rooms?dossier=" + req.dossierId() + "&tab=demandes", e.getId(), req.dossierId());
+        }
         return summary(e);
     }
 
@@ -194,7 +216,8 @@ public class DemandesClientService {
             String responsableNom = responsableId != null ? nameById.get(responsableId) : null;
             return new DemandeSupervisionRow(e.getId(), e.getDossierId(), raison,
                     responsableId, responsableNom, e.getSujet(), e.getDescription(),
-                    e.getStatut(), directionOf(e), e.getTypeRequete(), e.getCreatedAt());
+                    e.getStatut(), directionOf(e), e.getTypeRequete(), e.getCreatedAt(),
+                    etatSuivi(e));
         }).toList();
     }
 
@@ -259,7 +282,8 @@ public class DemandesClientService {
                         "Vous n'etes pas responsable de ce dossier : traitement interdit.");
             }
         }
-        if ("TRAITEE".equals(req.statut()) && !"TRAITEE".equals(e.getStatut())) {
+        boolean devientTraitee = "TRAITEE".equals(req.statut()) && !"TRAITEE".equals(e.getStatut());
+        if (devientTraitee) {
             e.setTraiteAt(Instant.now());
         }
         e.setStatut(req.statut());
@@ -267,6 +291,11 @@ public class DemandesClientService {
         if (req.noteInterne() != null) e.setNoteInterne(req.noteInterne());
         if (req.ticketId() != null) e.setTicketId(req.ticketId());
         repo.save(e);
+        // Lot L5 (E9, RG-COM-09) : la reponse a sa demande est annoncee au client par courriel.
+        if (devientTraitee && CLIENT_TO_EMPLOYE.equals(directionOf(e))) {
+            dossiers.findByWorkspaceIdAndId(wsForUpdate, e.getDossierId()).ifPresent(d ->
+                    courriel(CourrielClientEvenement.TYPE_REPONSE_DEMANDE, wsForUpdate, d, e.getSujet(), "/mes-demandes"));
+        }
         return summary(e);
     }
 
@@ -302,9 +331,8 @@ public class DemandesClientService {
         e.setStatut("OUVERTE");
         repo.save(e);
 
-        // Notifie le client du dossier (best-effort).
-        notify(dossier.getClientId(), ws, "Nouvelle requete de votre conseiller",
-                req.sujet(), "/mes-requetes", e.getId(), req.dossierId());
+        // Lot L5 (E9, RG-COM-09) : le client est averti par courriel (plus dans l'application).
+        courriel(CourrielClientEvenement.TYPE_REQUETE_CABINET, ws, dossier, req.sujet(), "/mes-requetes");
         return summary(e);
     }
 
@@ -327,9 +355,10 @@ public class DemandesClientService {
         repo.save(e);
         // Tracer l'activite client (comme un depot/demande).
         accessLogger.log(e.getDossierId(), null, "DEMANDE", ws, userId);
-        // Notifie le responsable courant.
-        notify(dossier.getResponsableId(), ws, "Requete traitee par le client",
-                e.getSujet(), "/data-rooms?dossier=" + e.getDossierId() + "&tab=demandes",
+        // Lot L5 (E9, RG-COM-08) : requete recue (reponse du client) -> le responsable.
+        notify(dossier.getResponsableId(), ws, "Réponse du client à une requête",
+                libelleDossier(dossier) + " : " + e.getSujet(),
+                "/data-rooms?dossier=" + e.getDossierId() + "&tab=demandes",
                 e.getId(), e.getDossierId());
         return summary(e);
     }
@@ -347,8 +376,8 @@ public class DemandesClientService {
         e.setStatut("CLOTUREE");
         e.setClotureAt(Instant.now());
         repo.save(e);
-        notify(dossier.getClientId(), ws, "Requete cloturee",
-                e.getSujet(), "/mes-requetes", e.getId(), e.getDossierId());
+        // Lot L5 (E9) : plus de notification au client dans l'application ; la
+        // cloture d'une requete n'est pas un des courriels de RG-COM-09.
         return summary(e);
     }
 
@@ -365,8 +394,8 @@ public class DemandesClientService {
         e.setStatut("A_COMPLETER");
         if (req != null && req.note() != null) e.setNoteInterne(req.note());
         repo.save(e);
-        notify(dossier.getClientId(), ws, "Complement demande sur une requete",
-                e.getSujet(), "/mes-requetes", e.getId(), e.getDossierId());
+        // Lot L5 (E9, RG-COM-09) : requete du cabinet (complement) -> courriel au client.
+        courriel(CourrielClientEvenement.TYPE_COMPLEMENT_REQUETE, ws, dossier, e.getSujet(), "/mes-requetes");
         return summary(e);
     }
 
@@ -395,21 +424,48 @@ public class DemandesClientService {
         }
     }
 
+    /** Notification dans l'application, a un employe ou au superviseur seulement (RG-COM-08). */
     private void notify(UUID userId, UUID ws, String title, String message,
                         String actionUrl, UUID demandeId, UUID dossierId) {
         if (userId == null || ws == null) return;
         try {
-            notifier.notifyUser(userId, ws, "DEMANDE_CLIENT", title, message, actionUrl,
-                    Map.of("demandeId", demandeId.toString(), "dossierId", dossierId.toString()));
+            Map<String, Object> meta = new LinkedHashMap<>();
+            if (demandeId != null) meta.put("demandeId", demandeId.toString());
+            if (dossierId != null) meta.put("dossierId", dossierId.toString());
+            notifier.notifyUser(userId, ws, "DEMANDE_CLIENT", title, message, actionUrl, meta);
         } catch (Exception ex) {
-            // Best-effort : une notif ratee ne casse jamais la transition.
+            // Une notification ratee ne casse jamais la transition, mais elle se journalise.
+            log.warn("Notification DEMANDE_CLIENT non emise (destinataire {}, dossier {}) : {}",
+                    userId, dossierId, ex.getMessage());
         }
+    }
+
+    /** Lot L5 (E9, RG-COM-09) : courriel au client du dossier, s'il en a un. */
+    private void courriel(String type, UUID ws, DossierViewEntity dossier, String objet, String lien) {
+        if (ws == null || dossier == null) return;
+        if (dossier.getClientId() == null) {
+            log.info("Courriel client {} sans objet : le dossier {} n'a pas de client", type, dossier.getId());
+            return;
+        }
+        courriels.demander(new CourrielClientEvenement(type, ws, dossier.getId(), dossier.getClientId(),
+                dossier.getRaisonSociale(), objet, lien));
+    }
+
+    private static String libelleDossier(DossierViewEntity d) {
+        return d.getRaisonSociale() == null || d.getRaisonSociale().isBlank() ? "Dossier" : d.getRaisonSociale();
     }
 
     DemandeSummary summary(DemandeEntity e) {
         return new DemandeSummary(e.getId(), e.getDossierId(), e.getSoumisPar(),
                 e.getSujet(), e.getDescription(), e.getStatut(), e.getTicketId(),
                 e.getPrisEnChargePar(), e.getNoteInterne(), e.getTraiteAt(), e.getCreatedAt(),
-                directionOf(e), e.getTypeRequete(), e.getReponduAt(), e.getClotureAt(), e.getNoteClient());
+                directionOf(e), e.getTypeRequete(), e.getReponduAt(), e.getClotureAt(), e.getNoteClient(),
+                etatSuivi(e));
+    }
+
+    /** Lot L5 (E9, RG-COM-07) : etat de suivi affiche (correspondance documentee dans EtatSuivi). */
+    private static String etatSuivi(DemandeEntity e) {
+        EtatSuivi etat = EtatSuivi.of(directionOf(e), e.getStatut());
+        return etat == null ? null : etat.name();
     }
 }

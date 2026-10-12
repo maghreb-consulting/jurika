@@ -35,7 +35,7 @@ import java.util.Optional;
  *
  * <p><b>Robustesse (jamais throw)</b> : clé absente, voie désactivée, erreur HTTP,
  * réseau ou parsing -> {@link Optional#empty()} + {@code log.warn}, ce qui laisse
- * {@link RagService} retomber sur la réponse KB+FTS. Aucun appel réseau n'est émis
+ * {@link RagService} restituer les passages retrouves (lot L5 E8). Aucun appel réseau n'est émis
  * quand la voie chat est désactivée ({@link RagProperties#chatEnabled()} == false).
  * La clé n'est jamais journalisée (seul son état PRESENT/ABSENT l'est).
  */
@@ -102,16 +102,16 @@ public class RagChatClient {
                     url, new HttpEntity<>(body, headers), String.class);
             String raw = resp.getBody();
             if (raw == null || raw.isBlank()) {
-                log.warn("Chat RAG : réponse vide (status={}) — repli KB+FTS", resp.getStatusCode());
+                log.warn("Chat RAG : réponse vide (status={}) — repli sur les passages", resp.getStatusCode());
                 return Optional.empty();
             }
             return parseContent(raw);
         } catch (HttpStatusCodeException e) {
-            log.warn("Chat RAG HTTP {} sur {} : {} — repli KB+FTS", e.getStatusCode().value(), url,
+            log.warn("Chat RAG HTTP {} sur {} : {} — repli sur les passages", e.getStatusCode().value(), url,
                     safeShort(e.getResponseBodyAsString(), 300));
             return Optional.empty();
         } catch (RuntimeException e) {
-            log.warn("Chat RAG erreur réseau / inattendue sur {} : {} — repli KB+FTS", url, e.getMessage());
+            log.warn("Chat RAG erreur réseau / inattendue sur {} : {} — repli sur les passages", url, e.getMessage());
             return Optional.empty();
         }
     }
@@ -125,19 +125,19 @@ public class RagChatClient {
             Map<String, Object> root = mapper.readValue(body, new TypeReference<>() {});
             Object choicesObj = root.get("choices");
             if (!(choicesObj instanceof List<?> choices) || choices.isEmpty()) {
-                log.warn("Chat RAG : réponse sans 'choices' — repli KB+FTS");
+                log.warn("Chat RAG : réponse sans 'choices' — repli sur les passages");
                 return Optional.empty();
             }
             if (!(choices.get(0) instanceof Map<?, ?> firstMap)) return Optional.empty();
             if (!(firstMap.get("message") instanceof Map<?, ?> messageMap)) return Optional.empty();
             Object content = messageMap.get("content");
             if (!(content instanceof String contentStr) || contentStr.isBlank()) {
-                log.warn("Chat RAG : contenu vide — repli KB+FTS");
+                log.warn("Chat RAG : contenu vide — repli sur les passages");
                 return Optional.empty();
             }
             return Optional.of(contentStr.trim());
         } catch (RuntimeException | java.io.IOException e) {
-            log.warn("Chat RAG : parsing réponse échec ({}) — repli KB+FTS", e.getMessage());
+            log.warn("Chat RAG : parsing réponse échec ({}) — repli sur les passages", e.getMessage());
             return Optional.empty();
         }
     }

@@ -187,7 +187,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   obligatoire sans repli ; `infrastructure/deployment/docker-compose.staging.yml` (deploiement
   manuel, secrets non configures) ne monte aucun corpus et ne definit pas `JURIKA_CORPUS_ROOT`.
   A traiter avant tout deploiement staging : montage en lecture seule d'un dossier date.
-- FicheClientPdfTest et DeboursPdfGeneratorTest avalent les erreurs d'écriture (catch (Exception ignore)) : à remplacer par un échec ou un journal explicite.
 - **4 tests ai-service ignores faute de LibreOffice sur le serveur Z440** :
   `DocxToPdfConverterTest.real_conversion_produces_valid_pdf_when_libreoffice_installed`
   (`@EnabledIf("hasLibreOffice")`) et les 3 tests de `HtmlToPdfConverterTest` (assumption
@@ -203,19 +202,65 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   creation ; regle "PV multi-resolutions" (modeles d'AGE cites pour toute assemblee) ; variante
   `PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU` citee par le corpus mais absente (servie par le classpath).
   Gabarits intouchables : A_DECIDER cabinet (correction des modeles, nouvelle version datee du corpus).
-- **Bascule des gabarits du classpath sur le corpus (L4d E11, faite)** : restent au classpath
-  `RAPPORT_LIQUIDATION_DIRECTEUR` (bascule sur `RAPPORT_LIQUIDATEUR_SARL(_AU)` non resolue : onze
-  tableaux -- realisation de l'actif, apurement du passif, frais, diligences... -- sans ecran, 54
-  donnees ; a construire avec un ecran de saisie des operations de liquidation) et
-  `PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU` (ecart du cabinet, A_DECIDER directeur).
+- **Bascule des gabarits du classpath sur le corpus (L4d E11, faite ; rapport du liquidateur en
+  L5 E4)** : reste au classpath `PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU` (ecart du cabinet,
+  A_DECIDER directeur).
+
+### Lot L5 (fonctions metier, 2026-10-12) -- dette relevee
+
+- **RLS inoperante tant que la bascule `jurika_app` n'est pas faite** : ai V16 (corpus commun du
+  chatbot) et le realtime-service (`jurika_user`) ; seul le filtrage applicatif protege.
+- **Realtime** : `/emit` sans authentification ; `HttpNotificationPublisher.publish` n'envoie pas
+  le jeton interne.
+- **Super-admin non alerte a 80 % du quota** (RG-PLN-02) : RG-COM-08 interdit de notifier hors du
+  cabinet, il faut un canal propre au super-admin. `PlanLimitsService.countDossiers` compte tous les
+  dossiers, pas ceux du mois (RG-PLN-01) ; l'alerte de quota en herite.
+- **Fonctions par forfait non gardees** : alertes de delais et messagerie interne (absentes
+  d'Essentiel) ; quota de 20 questions au chatbot (CDC 4) non mis en oeuvre (L7).
+- **Trace des identifiants du dossier modifiable** par `jurika_app` (GRANT global de workflow V14,
+  joue apres ticket V41) : REVOKE pose en dernier, ou declencheur de refus.
+- **CHECK `document_type` (dataroom)** : toute migration qui le redefinit doit reprendre
+  `FICHE_CLIENT` et `FICHE_DOSSIER` (dataroom V36).
+- **`ZipHorodatage`** : la version de jurika-common rend l'archive inchangee si elle est illisible
+  (motif 9) ; la copie de dataroom (`infrastructure/word`) leve une erreur. Unifier sur le
+  comportement strict.
+- **PV de cloture de liquidation** : date de decision de dissolution prise sur la date de
+  dissolution en base (date d'effet) ; impot absent compte 0. `LIQUIDATEUR_CAPITAL_CHIFFRES` non mis
+  en forme dans `DissolutionAnnonceVarsBuilder` ("500000").
+- **PV_AG_SARL** : `dividendeParPart` et `acompteParPart` saisis alors que calculables. Catalogue :
+  `au-ord-distribution` ("dividendes ou reserves") route vers les seuls dividendes ;
+  `OfficialDecision.note` jamais affiche (motif 9). Exoneration de retenue : associe unique personne
+  morale sans ecran d'identite.
+- **Ecrans** : `CabinetTab.tsx` annonce des "PDF generes (fiche client, etat des debours)" ;
+  `ProfileSecurityPage` "Changer mon mot de passe" mene a la page de changement obligatoire ;
+  `Sidebar.tsx` et `AppShellSidebar.tsx` ne sont plus montes (code mort) ; `useLenisScroll` exclut
+  encore `/chatbot` ; `scripts/demo-video/capture-demo.mjs` vise l'ancienne page du chatbot.
+- **Auth** : `InviteEmployeUseCase` cherche les doublons sur l'identifiant et non sur
+  `contact_email` ; gabarits de courriel existants (password-changed, verify-email...) et leurs
+  sujets sans accents ; libelles d'audit `DEBOURS_*` absents de `AuditActionLabels`.
+- **Debours** : lignes anterieures avec `piece_jointe_url` affichees sans lien Data Room ;
+  dependance `io.minio` inutilisee dans le pom de ticket-service.
+- **Fiche** : un auteur d'un autre workspace s'affiche "Compte inconnu".
+- **Lint herite** (`react-hooks/set-state-in-effect` et autres) : LiquidationWorkflowPage,
+  SeanceOperationForm, modificationResolutions (react-refresh), DossierJuridiqueTab,
+  TicketDetailDrawer, ClientDataroomView, ChatPage, NotificationBell, DemandesTab,
+  RequetesAuClientSection, AuditLogPage.
+- **Tests vitest sensibles a la charge** (delais de 5 s) : step7-documents-conditionnels,
+  liquidation-annonce-corpus, LoginPage et d'autres sous charge machine elevee.
 
 ### Lot L4d (page de ticket, bascule du corpus, 2026-10-12) -- dette relevee
 
-- **Rapport du liquidateur** : voir "Bascule des gabarits" (classpath conserve, bascule non resolue).
-- **PV de modification non rediges par le modele du corpus** (refus nomme) : incorporation de
-  reserves, elevation du nominal, article 86 en SARL, affectation / distributions / acompte en
-  SARL AU (donnees sans ecran ou branche absente) ; deux resolutions d'un meme type de liste dans
-  un PV. Detail : rapport final L4d.
+- **PV de modification non rediges par le modele du corpus** (refus nomme ; aucune donnee ne
+  manque, c'est la redaction du modele : A_DECIDER cabinet, nouvelle version datee du corpus) :
+  incorporation de reserves et elevation du nominal (PV_AG_SARL et le PV de l'associe unique
+  impriment sans condition la souscription de "parts nouvelles") ; article 86 en SARL
+  (PV_AG_SARL imprime une note de redaction renvoyant a PV_DISSOLUTION_LIQUIDATION_SARL ; la
+  matrice cite `regularisation_capitaux_propres`, le modele `capitaux_propres_art86`) ; acompte
+  sur dividendes en SARL AU (aucune branche ; le modele declare qu'aucun acompte n'est organise
+  par la reglementation marocaine, quand PV_AG_SARL en redige un). Deux resolutions d'un meme type
+  de liste dans un PV : refus (le moteur developpe les boucles imbriquees au niveau global).
+  Affectation du resultat et distributions en SARL AU : faites (L5 E5). Detail : rapports finaux
+  L4d et L5.
 - **Assemblee ordinaire hors approbation des comptes** : la convocation et la feuille AGO du corpus
   sont celles de l'assemblee annuelle ; les parcours succursale, fermeture et modification qui
   tiennent une AGO hors comptes recoivent ces modeles (donnees des comptes demandees). A_DECIDER
@@ -277,9 +322,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   `GET .../settings` et `GET .../settings/client-link` rendent le jeton a tout employe, sans
   controle du responsable. A retirer, ou a concevoir si un acces par lien est voulu (absent du
   CDC). L'ecran "Acces du client" affiche l'adresse de l'espace client, pas ce jeton (D21).
-- **Le test de fumee affirme "SMTP Brevo configure (envoi reel)"** (lecture de variables)
-  alors qu'auth envoie vers `localhost:1025` (MailHog absent du Z440 : "Connection refused" a
-  chaque inscription) : controle silencieusement inoperant (motif 9).
 
 ### Lot L0 (securite serveur, 2026-10-08) -- dette relevee
 
@@ -304,14 +346,13 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   avant validation (dataroom).
 - **Front : boutons d'action encore visibles au superviseur** alors que le serveur les refuse
   (E5, E5b, E6) ; 46 fichiers du front citent `SUPERVISEUR`.
-- **Chatbot (lot L5)** : corpus RAG range par workspace (`CorpusRetriever`, `WHERE workspace_id
-  = ?`). Les sources du super-admin (seul autorise depuis E24) restent dans son workspace et
-  n'atteignent pas les cabinets : corpus commun a concevoir (migration probable).
 - **Export ZIP du Dossier Juridique** : echec complet (`duplicate entry`) quand deux documents
   d'un meme type portent le meme nom de fichier (`exportSelectionAsZip`).
-- **Dockerfile de dashboard** : ignore une erreur Maven pendant le telechargement des
-  dependances (`dependency:go-offline ... || true`, vu en E26 sur une collision du cache
-  partage entre constructions paralleles).
+- **Dockerfiles Java : `dependency:go-offline ... || true`** (les 10 services) : l'erreur de
+  prechargement reste avalee. La cause vue en E26 (collision du cache Maven partage entre
+  constructions paralleles) est levee depuis L5 E1 (`sharing=locked`) ; l'etape `package` echoue
+  toujours bruyamment. Retirer le `|| true` demande de verifier que go-offline passe sur les
+  modules du reacteur (jurika-common non publie).
 - **Exemple d'environnement serveur** : `.env.local.server.example` n'active pas le profil
   compose `mailhog` (`COMPOSE_PROFILES`) alors que `start-local.sh` attend `jurika-mailhog` :
   une installation faite depuis l'exemple n'atteint jamais 18/18.
@@ -334,8 +375,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **`start-local.sh` attend `jurika-mailhog` "healthy"** alors que mailhog n'a aucun controle
   de sante (ni compose ni image) : l'attente ne peut pas aboutir quand mailhog tourne
   (corrige dans `base-vierge.yml` le 2026-10-08 : "running" suffit sans controle de sante).
-- **Le test de fumee affiche un prefixe de la cle Stripe** (`scripts/smoke-test.mjs`,
-  controle "Stripe env vars" : `sk_test_51...`) : ne plus afficher aucune partie d'une cle.
 - **Liste des conteneurs attendus dupliquee** entre `start-local.sh` et
   `.github/workflows/base-vierge.yml` : a factoriser.
 - **Messages de commit du lot L0 non ASCII** (24 commits, guillemets francais, signe

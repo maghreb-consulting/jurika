@@ -1,7 +1,8 @@
 /**
  * JURIKA Realtime Service (Node.js + Express + Socket.io)
  * Phase 5 V2 :
- *   - Chat employe <-> employe / employe <-> client (rooms par workspace)
+ *   - Messagerie interne superviseur <-> employes d'un meme cabinet (RG-COM-06,
+ *     controles dans messagerie.js ; le client n'y a pas acces)
  *   - Notifications push in-app
  *   - Transfert dossier entre employes (avec acceptation)
  *   - Bridge RabbitMQ/Redis Pub-Sub <-> WebSocket
@@ -15,6 +16,7 @@ const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const { randomUUID } = require('crypto');
 const fs = require('fs');
+const messagerie = require('./messagerie');
 
 // ----------------------------------------------------------------------
 // BUG 10 (2026-06-08) — verification JWT alignee avec auth-service.
@@ -178,6 +180,10 @@ const NOTIFICATION_TYPES = [
   'PAYMENT_VALIDATED',
   'WORKFLOW_COMPLETED',
   'WORKSPACE_EVENT',
+  // Lot L5 (E9, RG-COM-08) : nouvelle demande du client, requete repondue,
+  // quota du forfait approchant.
+  'DEMANDE_CLIENT',
+  'QUOTA_APPROCHANT',
 ];
 
 async function isTypeEnabled(userId, type) {
@@ -196,6 +202,16 @@ async function isTypeEnabled(userId, type) {
 async function createNotification({ workspaceId, userId, type, title, message, actionUrl, metadata }) {
   if (!workspaceId || !userId || !type || !title || !message) {
     throw new Error('createNotification : workspaceId/userId/type/title/message requis');
+  }
+  // Lot L5 (E9, RG-COM-08) : seuls un employe ou le superviseur DU cabinet de
+  // la notification la recoivent dans l'application. Client (averti par
+  // courriel, RG-COM-09), inconnu ou membre d'un autre cabinet : refus.
+  const controle = await messagerie.controlerDestinataireNotification(pgPool, workspaceId, userId);
+  if (!controle.ok) {
+    const err = new Error(`Destinataire refuse (${controle.code})`);
+    err.code = controle.code;
+    err.status = 403;
+    throw err;
   }
   if (!(await isTypeEnabled(userId, type))) {
     return null; // user a opt-out
@@ -221,44 +237,11 @@ async function createNotification({ workspaceId, userId, type, title, message, a
 }
 
 // ----------------------------------------------------------------------
-// BUG 12 (2026-06-08) — verification cross-workspace pour chat:send
-// On stocke en cache 30s le workspace_id de chaque user_id observe pour
-// eviter une query par message. La table chat_messages garde l'historique
-// avec workspace_id du sender, mais on doit valider que la cible appartient
-// au MEME workspace pour eviter un leak via un user_id valide d'un autre
-// cabinet (defense en profondeur — auth/users/contacts filtre deja).
+// Lot L5 (E9, RG-COM-06) : l'ancienne verification cross-workspace (cache des
+// workspaces observes, inconnu = laisse passer) est remplacee par le module
+// messagerie.js : destinataire lu dans `users` DU cabinet de l'expediteur,
+// role EMPLOYE ou SUPERVISEUR, refus par defaut.
 // ----------------------------------------------------------------------
-const peerWorkspaceCache = new Map(); // userId -> { workspaceId, expiresAt }
-
-async function getUserWorkspace(userId) {
-  const cached = peerWorkspaceCache.get(userId);
-  const now = Date.now();
-  if (cached && cached.expiresAt > now) return cached.workspaceId;
-  try {
-    // Le realtime-service ne partage pas la table auth users, mais une session
-    // chat existante prouve l'appartenance via chat_messages.sender_id.
-    // Sinon, on regarde s'il a deja recu une notification (cf createNotification
-    // ci-dessus). Si rien : on accepte et le filtre ultime sera dans
-    // /auth/users/contacts du frontend.
-    const { rows } = await pgPool.query(
-      `SELECT workspace_id FROM chat_messages WHERE sender_id = $1
-        UNION ALL
-       SELECT workspace_id FROM chat_messages WHERE recipient_id = $1
-        UNION ALL
-       SELECT workspace_id FROM notifications WHERE user_id = $1
-        LIMIT 1`,
-      [userId]
-    );
-    if (rows.length) {
-      const wsid = rows[0].workspace_id;
-      peerWorkspaceCache.set(userId, { workspaceId: wsid, expiresAt: now + 30_000 });
-      return wsid;
-    }
-  } catch {
-    /* swallow : fail-open */
-  }
-  return null; // unknown : laisse passer (le frontend filtre /auth/users/contacts)
-}
 
 async function getOrCreateConversation(workspaceId, userA, userB) {
   const [a, b] = orderUsers(userA, userB);
@@ -311,6 +294,7 @@ io.use((socket, next) => {
     socket.workspaceId = decoded.wsid || decoded.workspace_id;
     socket.role = decoded.role;
     socket.email = decoded.email;
+    socket.identite = messagerie.identiteDuJeton(decoded);
     next();
   } catch {
     next(new Error('Token invalide'));
@@ -327,22 +311,25 @@ io.on('connection', (socket) => {
 
   socket.on('ping', () => socket.emit('pong', { timestamp: Date.now() }));
 
-  socket.on('chat:typing', ({ to }) => {
-    if (!to) return;
-    io.to(`user:${to}`).emit('chat:typing', { from: socket.userId });
+  socket.on('chat:typing', async (payload) => {
+    const to = payload && payload.to;
+    try {
+      const controle = await messagerie.controlerCorrespondant(pgPool, socket.identite, to);
+      if (!controle.ok) return; // refus silencieux : simple indicateur de frappe
+      io.to(`user:${to}`).emit('chat:typing', { from: socket.userId });
+    } catch (err) {
+      console.error('chat:typing failed', err.message);
+    }
   });
 
-  socket.on('chat:send', async ({ to, body }, ack) => {
+  socket.on('chat:send', async (payload, ack) => {
+    const { to, body } = payload || {};
     try {
-      if (!to || !body || body.length > 4000) {
-        return ack && ack({ error: 'Payload invalide' });
-      }
-      // BUG 12 — verification cross-workspace : on refuse si la cible est
-      // connue comme appartenant a un autre workspace. Inconnu = laisse
-      // passer (le frontend /auth/users/contacts est la 1ere ligne).
-      const peerWs = await getUserWorkspace(to);
-      if (peerWs && peerWs !== socket.workspaceId) {
-        return ack && ack({ error: 'Destinataire hors workspace' });
+      // Lot L5 (E9, RG-COM-06) : expediteur EMPLOYE ou SUPERVISEUR, destinataire
+      // EMPLOYE ou SUPERVISEUR actif DU MEME cabinet ; tout le reste est refuse.
+      const controle = await messagerie.controlerEnvoi(pgPool, socket.identite, to, body);
+      if (!controle.ok) {
+        return ack && ack({ ok: false, error: controle.message, code: controle.code });
       }
       const conversationId = await getOrCreateConversation(socket.workspaceId, socket.userId, to);
       const id = randomUUID();
@@ -374,10 +361,10 @@ io.on('connection', (socket) => {
         actionUrl: '/chat',
         metadata: { from: socket.userId, conversationId },
       }).catch((err) => console.error('notification CHAT_MESSAGE failed:', err.message));
-      ack && ack({ ok: true, id, conversationId, createdAt });
+      ack && ack({ ok: true, id, conversationId, createdAt, message: msg });
     } catch (err) {
       console.error('chat:send failed', err.message);
-      ack && ack({ error: err.message });
+      ack && ack({ ok: false, error: 'Le message n’a pas pu être envoyé. Réessayez.' });
     }
   });
 
@@ -416,6 +403,10 @@ function userFromToken(req) {
 app.get('/api/v1/chat/conversations', async (req, res) => {
   const user = userFromToken(req);
   if (!user) return res.status(401).json({ error: 'Non authentifie' });
+  // Lot L5 (E9, RG-COM-06) : messagerie reservee au superviseur et aux employes.
+  if (!messagerie.peutUtiliserMessagerie(messagerie.identiteDuJeton(user))) {
+    return res.status(403).json({ error: messagerie.MESSAGES_REFUS.ROLE_REFUSE, code: 'ROLE_REFUSE' });
+  }
   const wsId = user.wsid || user.workspace_id;
   const userId = user.uid || user.sub;
   try {
@@ -453,6 +444,10 @@ app.get('/api/v1/chat/conversations', async (req, res) => {
 app.get('/api/v1/chat/conversations/:id/messages', async (req, res) => {
   const user = userFromToken(req);
   if (!user) return res.status(401).json({ error: 'Non authentifie' });
+  // Lot L5 (E9, RG-COM-06) : messagerie reservee au superviseur et aux employes.
+  if (!messagerie.peutUtiliserMessagerie(messagerie.identiteDuJeton(user))) {
+    return res.status(403).json({ error: messagerie.MESSAGES_REFUS.ROLE_REFUSE, code: 'ROLE_REFUSE' });
+  }
   const userId = user.uid || user.sub;
   try {
     const { rows } = await pgPool.query(
@@ -651,6 +646,11 @@ app.post('/internal/notifications', async (req, res) => {
     if (!payload) return res.status(202).json({ skipped: true, reason: 'OPTED_OUT' });
     res.status(201).json(payload);
   } catch (err) {
+    // Lot L5 (E9) : un destinataire refuse est journalise (jamais en silence).
+    if (err.status === 403) {
+      console.warn(`[realtime] notification ${type} refusee pour ${userId} (ws ${workspaceId}) : ${err.code}`);
+      return res.status(403).json({ error: err.message, code: err.code });
+    }
     res.status(400).json({ error: err.message });
   }
 });

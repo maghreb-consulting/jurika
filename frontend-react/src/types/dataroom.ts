@@ -89,6 +89,22 @@ export type DocumentType =
 
 export type DemandeStatut = 'NON_TRAITEE' | 'EN_COURS' | 'TRAITEE';
 
+/**
+ * Lot L5 (E9, RG-COM-07) : état de suivi commun aux demandes des clients et aux
+ * requêtes du cabinet, calculé par le serveur (dataroom, EtatSuivi). Pour une
+ * requête : OUVERTE = non traitée, REPONDUE et A_COMPLETER = en cours,
+ * CLOTUREE = traitée. Absent (null) : statut hors du référentiel.
+ */
+export type EtatSuivi = 'NON_TRAITEE' | 'EN_COURS' | 'TRAITEE';
+
+export const ETAT_SUIVI_ORDRE: EtatSuivi[] = ['NON_TRAITEE', 'EN_COURS', 'TRAITEE'];
+
+export const ETAT_SUIVI_LABELS: Record<EtatSuivi, string> = {
+  NON_TRAITEE: 'Non traitée',
+  EN_COURS: 'En cours',
+  TRAITEE: 'Traitée',
+};
+
 export interface DossierBrief {
   id: string;
   raisonSociale: string;
@@ -273,6 +289,8 @@ export interface DemandeSummary {
   noteInterne: string | null;
   traiteAt: string | null;
   createdAt: string;
+  /** Lot L5 (E9, RG-COM-07) : état de suivi calculé par le serveur. */
+  etatSuivi?: EtatSuivi | null;
 }
 
 export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
@@ -380,9 +398,9 @@ export const DOCUMENT_TYPE_ORDER: DocumentType[] = [
 ];
 
 export const DEMANDE_STATUT_LABELS: Record<DemandeStatut, string> = {
-  NON_TRAITEE: 'Non traitee',
+  NON_TRAITEE: 'Non traitée',
   EN_COURS: 'En cours',
-  TRAITEE: 'Traitee',
+  TRAITEE: 'Traitée',
 };
 
 // Lot AG — « Requetes au client » (direction employe -> client), machine a etats.
@@ -408,6 +426,8 @@ export interface RequeteSummary {
   reponduAt: string | null;
   clotureAt: string | null;
   noteClient: string | null;
+  /** Lot L5 (E9, RG-COM-07) : état de suivi calculé par le serveur. */
+  etatSuivi?: EtatSuivi | null;
 }
 
 export const REQUETE_STATUT_LABELS: Record<RequeteStatut, string> = {
@@ -441,6 +461,8 @@ export interface DemandeSupervisionRow {
   direction: DemandeDirection;
   typeRequete: TypeRequete | null;
   createdAt: string;
+  /** Lot L5 (E9, RG-COM-07) : état de suivi calculé par le serveur. */
+  etatSuivi?: EtatSuivi | null;
 }
 
 export interface CreateRequetePayload {
@@ -653,6 +675,73 @@ export interface VersionTaxeProfessionnelle {
   saisiLe: string;
   origine: 'SAISIE' | 'REPRISE_V30';
   enVigueur: boolean;
+}
+
+/** Lot L5 (E7, RG-FIC-01 a 03) : un identifiant de la fiche client et sa provenance. */
+export interface IdentifiantFiche {
+  code: 'DENOMINATION' | 'FORME' | 'CAPITAL' | 'SIEGE' | 'RC' | 'ICE' | 'IF' | 'TP' | 'CNSS';
+  libelle: string;
+  /** Valeur en vigueur mise en forme ; null : non renseignee. */
+  valeur: string | null;
+  provenance: string;
+  origine: 'SAISIE' | 'FIN_PARCOURS' | 'EXTRAITE' | 'OUVERTURE' | 'PARCOURS' | 'NON_TRACEE' | null;
+}
+
+/** Lot L5 (E7, RG-FIC-02) : une version de la taxe professionnelle. */
+export interface VersionTpFiche {
+  numero: string;
+  dateEffet: string | null;
+  enVigueur: boolean;
+  saisieLe: string | null;
+  saisiePar: string;
+}
+
+/** Lot L5 (E7, RG-FIC-04) : une modification tracee d'un identifiant. */
+export interface ModificationFiche {
+  champ: string;
+  libelle: string;
+  ancienneValeur: string | null;
+  nouvelleValeur: string | null;
+  provenance: string;
+  auteur: string;
+  date: string;
+}
+
+export interface FicheClientVue {
+  dossierId: string;
+  cabinet: string;
+  denomination: string | null;
+  identifiants: IdentifiantFiche[];
+  versionsTp: VersionTpFiche[];
+  modifications: ModificationFiche[];
+  modifiable: boolean;
+}
+
+/** Lot L5 (E7, RG-FIC-06) : une operation juridique du dossier (un ticket). */
+export interface OperationFiche {
+  ticketId: string;
+  type: string;
+  typeLabel: string;
+  sousTypeLabel: string | null;
+  reference: string | null;
+  dateOuverture: string | null;
+  dateFin: string | null;
+  natureFin: 'CLOTURE' | 'ANNULATION' | null;
+  statut: string;
+  statutLabel: string;
+  responsable: string;
+}
+
+export interface FicheDossierVue {
+  fiche: FicheClientVue;
+  operations: OperationFiche[];
+  derniereCloture: string | null;
+}
+
+/** Resultat d'une generation Word : conservee dans la Data Room (et sa version) ou non. */
+export interface FicheWordResultat {
+  conservee: boolean;
+  version: number | null;
 }
 
 /** Lot L1 : droits de l'utilisateur sur un dossier (bouton de suppression). */

@@ -38,7 +38,8 @@ interface NavItem {
 // RG-U02-04 : SUPERVISEUR consulte tout en lecture seule
 // RG-U08 : EMPLOYE ne voit que ses propres tickets/Data Rooms
 // RG-U09 : CLIENT n'accede qu'a son Data Room + Chat avec son employe
-// RG-U10 : Chatbot reserve SUPERVISEUR + EMPLOYE
+// Lot L5 E8 (RG-COM-01) : le chatbot s'ouvre par la bulle flottante (AssistantJuridique) ;
+// le super-admin gere ses sources communes depuis le menu.
 const NAV_ITEMS: NavItem[] = [
   { label: 'Tableau de bord', to: '/dashboard', icon: Home, roles: ['SUPER_ADMIN', 'SUPERVISEUR', 'EMPLOYE', 'CLIENT'] },
   // SUPERVISEUR -> "Tous les Tickets", EMPLOYE -> "Mes Tickets" (label dynamique)
@@ -55,17 +56,16 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Chat', to: '/chat', icon: MessageSquare, roles: ['SUPERVISEUR', 'EMPLOYE'] },
   // Lot L4d (E7) : delais de depot au greffe (lecture ; ajustement par le superviseur).
   { label: 'Délais de greffe', to: '/delais-greffe', icon: ListChecks, roles: ['SUPERVISEUR', 'EMPLOYE'] },
-  { label: 'ChatBot IA', to: '/chatbot', icon: Bot, roles: ['SUPER_ADMIN', 'SUPERVISEUR', 'EMPLOYE'] },
   // E2 (2026-06-25) — Tracabilite : SUPERVISEUR
   { label: 'Tracabilite', to: '/tracabilite', icon: History, roles: ['SUPERVISEUR'] },
   // Lot L1 (D1) : dossiers dont le responsable a ete designe d'office, a verifier.
   { label: 'Dossiers à vérifier', to: '/dossiers-a-verifier', icon: UserCheck, roles: ['SUPERVISEUR'] },
-  // SUPER_ADMIN : gestion plateforme uniquement (RG-U07). ChatBot IA reste
-  // autorise (admin des sources fiables du RAG, cf. decision 2026-06-26).
+  // SUPER_ADMIN : gestion plateforme uniquement (RG-U07).
   { label: 'Workspaces', to: '/admin/workspaces', icon: Building2, roles: ['SUPER_ADMIN'] },
   { label: 'Utilisateurs', to: '/admin/users', icon: Users, roles: ['SUPER_ADMIN'] },
   { label: "Journal d'audit", to: '/admin/audit', icon: ScrollText, roles: ['SUPER_ADMIN'] },
   { label: 'Référentiel des démarches', to: '/admin/referentiel-demarches', icon: ListChecks, roles: ['SUPER_ADMIN'] },
+  { label: 'Sources du chatbot', to: '/admin/chatbot-sources', icon: Bot, roles: ['SUPER_ADMIN'] },
 ];
 
 /**
@@ -173,7 +173,8 @@ export function AppTopNav() {
 
         {/* BUG 10 (2026-06-08) — cloche dynamique : badge = unread-count
             realtime, drawer cliquable, navigation actionUrl. */}
-        <NotificationBell />
+        {/* Lot L5 (E9, RG-COM-09) : le client est averti par courriel, pas dans l'application. */}
+        {user.role !== 'CLIENT' && <NotificationBell />}
 
         <div className="h-6 w-px bg-border-hi" />
 

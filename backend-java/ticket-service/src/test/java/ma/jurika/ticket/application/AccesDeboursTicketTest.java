@@ -76,6 +76,29 @@ class AccesDeboursTicketTest {
                 .isInstanceOf(AccessDeniedException.class);
     }
 
+    /** Lot L5 (E6, RG-DEB-03) : l'etat Word se telecharge si le client a la permission de telecharger. */
+    @Test
+    void telechargement_client_selon_sa_permission() {
+        when(permissions.consultationPermise(WS, DOSSIER)).thenReturn(true);
+        when(permissions.telechargementPermis(WS, DOSSIER)).thenReturn(true);
+        assertThat(acces.telechargement(u(CLIENT, Role.CLIENT), TICKET).id()).isEqualTo(TICKET);
+
+        when(permissions.telechargementPermis(WS, DOSSIER)).thenReturn(false);
+        assertThatThrownBy(() -> acces.telechargement(u(CLIENT, Role.CLIENT), TICKET))
+                .isInstanceOf(AccessDeniedException.class);
+        // L'employe en charge et le superviseur ne dependent pas des permissions du client.
+        assertThat(acces.telechargement(u(RESPONSABLE, Role.EMPLOYE), TICKET).id()).isEqualTo(TICKET);
+        assertThat(acces.telechargement(u(UUID.randomUUID(), Role.SUPERVISEUR), TICKET).id()).isEqualTo(TICKET);
+    }
+
+    @Test
+    void telechargement_client_sans_consultation_refuse() {
+        when(permissions.consultationPermise(WS, DOSSIER)).thenReturn(false);
+        when(permissions.telechargementPermis(WS, DOSSIER)).thenReturn(true);
+        assertThatThrownBy(() -> acces.telechargement(u(CLIENT, Role.CLIENT), TICKET))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
     @Test
     void autre_client_et_autre_employe_404() {
         assertThatThrownBy(() -> acces.lecture(u(UUID.randomUUID(), Role.CLIENT), TICKET))

@@ -199,13 +199,17 @@ public class InviteClientUseCase {
             vars.put("temporaryPassword", tempPassword == null ? "(votre mot de passe existant)" : tempPassword);
             vars.put("loginUrl", loginUrl);
             vars.put("raisonSociale", raisonSociale);
-            vars.put("subject", "Acces Data Room JURIKA");
-            emailSender.sendTemplated(contactEmail,
-                    "JURIKA - Acces a votre Data Room",
-                    "client-invite", vars);
+            // Lot L5 (E9, RG-COM-09) : le courriel part de l'adresse unique de JURIKA
+            // et nomme le cabinet a l'origine du message (sujet et corps).
+            String cabinet = nomDuCabinet(cmd.workspaceId());
+            vars.put("cabinet", cabinet);
+            vars.put("subject", sujetInvitation(cabinet));
+            emailSender.sendTemplated(contactEmail, sujetInvitation(cabinet), "client-invite", vars);
         } catch (Exception ex) {
-            log.warn("Email invite client echec contact={}: {} -- DEV ONLY tempPassword={}",
-                    contactEmail, ex.getMessage(), tempPassword);
+            // Lot L5 (E9) : echec journalise en ERROR, sans le mot de passe temporaire
+            // (rendu a l'appelant pour transmission par un autre canal).
+            log.error("Courriel d'invitation du client NON envoye (cabinet {}, dossier {}) : {}",
+                    cmd.workspaceId(), cmd.dossierId(), ex.getMessage(), ex);
         }
 
         auditLogger.log(cmd.workspaceId(), cmd.invitedBy(), "CLIENT_INVITED", "dossier",
@@ -216,5 +220,21 @@ public class InviteClientUseCase {
                         "created_new_user", String.valueOf(created)));
 
         return new Result(userId, created, tempPassword, loginEmail, contactEmail);
+    }
+
+    /** Nom du cabinet (workspace) : RG-COM-09, le courriel indique le cabinet a l'origine. */
+    private String nomDuCabinet(UUID workspaceId) {
+        @SuppressWarnings("unchecked")
+        java.util.List<Object> noms = em.createNativeQuery("SELECT name FROM workspaces WHERE id = ?1")
+                .setParameter(1, workspaceId)
+                .getResultList();
+        if (noms.isEmpty() || noms.get(0) == null) {
+            throw new IllegalStateException("Cabinet " + workspaceId + " introuvable : invitation non envoyee");
+        }
+        return String.valueOf(noms.get(0));
+    }
+
+    static String sujetInvitation(String cabinet) {
+        return cabinet + " vous invite sur JURIKA : accès à votre Data Room";
     }
 }

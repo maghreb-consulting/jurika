@@ -10,7 +10,11 @@ export type NotificationType =
   | 'CHAT_MESSAGE'
   | 'PAYMENT_VALIDATED'
   | 'WORKFLOW_COMPLETED'
-  | 'WORKSPACE_EVENT';
+  | 'WORKSPACE_EVENT'
+  // Lot L5 (E9, RG-COM-08) : nouvelle demande du client ou requête répondue,
+  // quota du forfait approchant.
+  | 'DEMANDE_CLIENT'
+  | 'QUOTA_APPROCHANT';
 
 export interface Notification {
   id: string;
@@ -37,13 +41,15 @@ export interface NotificationPreferences {
 
 /** BUG 11 — labels FR pour la page Parametres > Notifications. */
 export const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
-  TICKET_ASSIGNED: 'Ticket assigne',
+  TICKET_ASSIGNED: 'Ticket assigné',
   DOSSIER_TRANSFER: 'Transfert de dossier',
-  DEADLINE_DUE: 'Echeance proche',
-  CHAT_MESSAGE: 'Message recu',
-  PAYMENT_VALIDATED: 'Paiement valide',
-  WORKFLOW_COMPLETED: 'Workflow termine',
-  WORKSPACE_EVENT: 'Evenement workspace',
+  DEADLINE_DUE: 'Délai à échéance',
+  CHAT_MESSAGE: 'Message reçu',
+  PAYMENT_VALIDATED: 'Paiement validé',
+  WORKFLOW_COMPLETED: 'Workflow terminé',
+  WORKSPACE_EVENT: 'Événement du cabinet',
+  DEMANDE_CLIENT: 'Demande ou réponse du client',
+  QUOTA_APPROCHANT: 'Quota du forfait',
 };
 
 /**
@@ -60,6 +66,8 @@ export const NOTIFICATION_TYPES: NotificationType[] = [
   'PAYMENT_VALIDATED',
   'WORKFLOW_COMPLETED',
   'WORKSPACE_EVENT',
+  'DEMANDE_CLIENT',
+  'QUOTA_APPROCHANT',
 ];
 
 /**

@@ -12,7 +12,15 @@
             <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
                    style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
 
-                <th:block th:replace="~{email/_base :: header(title='Acces a votre Data Room')}"/>
+                <th:block th:replace="~{email/_base :: header(title='Accès à votre Data Room')}"/>
+
+                <!-- Lot L5 (E9, RG-COM-09) : le courriel nomme le cabinet a l'origine du message. -->
+                <tr>
+                    <td style="padding:20px 32px 0;">
+                        <p style="margin:0 0 4px;font-size:12px;color:#64748B;text-transform:uppercase;letter-spacing:0.06em;">Invitation de votre cabinet</p>
+                        <p style="margin:0;font-size:17px;font-weight:700;color:#0c1d3f;" th:text="${cabinet}">Cabinet Alaoui &amp; Associ&eacute;s</p>
+                    </td>
+                </tr>
 
                 <tr>
                     <td style="padding:32px;">
@@ -21,7 +29,8 @@
                         </p>
 
                         <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
-                            Votre cabinet a ouvert un espace dedie pour le dossier
+                            Votre cabinet <strong th:text="${cabinet}">Cabinet Alaoui &amp; Associ&eacute;s</strong>
+                            a ouvert un espace d&eacute;di&eacute; pour le dossier
                             <strong th:text="${raisonSociale}">Ma SARL</strong>
                             dans la Data Room JURIKA. Vous pouvez y consulter et deposer vos
                             documents juridiques, comptables et fiscaux en toute securite.

@@ -14,6 +14,13 @@ const ACTION_LABELS: Record<string, string> = {
   LOGIN_FAILED: 'Connexion échouée',
   LOGOUT: 'Déconnexion',
   PASSWORD_CHANGED: 'Mot de passe changé',
+  // Lot L5 (E10) : gestion de son compte.
+  USER_NAME_CHANGED: 'Prénom ou nom modifié',
+  CONTACT_EMAIL_CHANGE_REQUESTED: 'Changement d’adresse demandé',
+  CONTACT_EMAIL_CHANGED: 'Adresse électronique modifiée',
+  LOGIN_EMAIL_CHANGE_REQUESTED: 'Changement d’identifiant demandé',
+  LOGIN_EMAIL_CHANGED: 'Identifiant de connexion modifié',
+  ACCOUNT_CHANGE_CANCELLED: 'Demande de changement annulée',
   WORKSPACE_REGISTER: 'Inscription workspace',
   WORKSPACE_ACTIVATED: 'Workspace activé',
   WORKSPACE_SUSPENDED: 'Workspace suspendu',

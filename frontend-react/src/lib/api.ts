@@ -194,6 +194,7 @@ const PUBLIC_PAGE_PREFIXES = [
   '/register',
   '/reset-password',
   '/verify-email',
+  '/confirmer-changement-compte',
   '/auth/recover-with-code',
   '/forbidden',
   '/cgu',
@@ -235,6 +236,7 @@ const PUBLIC_AUTH_PATHS = [
   '/auth/verify-2fa',
   '/auth/verify-email',
   '/auth/resend-verification',
+  '/auth/compte/confirmer',
   '/auth/password-reset/request',
   '/auth/password-reset/confirm',
 ];

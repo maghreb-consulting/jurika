@@ -12,6 +12,7 @@ import ma.jurika.dataroom.api.dto.DataroomDtos.DossierJuridiqueView;
 import ma.jurika.dataroom.api.dto.DataroomDtos.SearchJuridiqueInput;
 import ma.jurika.dataroom.api.dto.DataroomDtos.SearchJuridiqueOutput;
 import ma.jurika.dataroom.api.dto.DataroomDtos.VersionScope;
+import ma.jurika.dataroom.api.dto.FicheClientDtos;
 import ma.jurika.dataroom.application.OfficePreviewSupport;
 import ma.jurika.dataroom.application.ClientDataroomPermissionGuard;
 import ma.jurika.dataroom.application.DataroomJuridiqueService;
@@ -66,6 +67,8 @@ public class JuridiqueController {
     /** Fix DR4 — conversion Office → PDF pour l'aperçu des versions (.docx directeur). */
     private final OfficePreviewSupport officePreview;
     private final EmployeDataroomGuard employeGuard;
+    /** Lot L5 (E9, RG-COM-09) : courriel au client quand un document lui est mis a disposition. */
+    private final ma.jurika.dataroom.application.AnnonceDocumentsClient annonces;
 
     public JuridiqueController(DataroomJuridiqueService juridique,
                                 FicheClientService ficheClient,
@@ -75,7 +78,9 @@ public class JuridiqueController {
                                 ClientDataroomPermissionGuard permissionGuard,
                                 ObjectStorage storage,
                                 OfficePreviewSupport officePreview,
-                                EmployeDataroomGuard employeGuard) {
+                                EmployeDataroomGuard employeGuard,
+                                ma.jurika.dataroom.application.AnnonceDocumentsClient annonces) {
+        this.annonces = annonces;
         this.juridique = juridique;
         this.ficheClient = ficheClient;
         this.searchJuridique = searchJuridique;
@@ -201,6 +206,8 @@ public class JuridiqueController {
             }
             log.info("uploadJuridique SUCCESS docId={} version={} key={} visibleClient={}",
                     result.id(), result.version(), result.filename(), result.visibleClient());
+            // Lot L5 (E9, RG-COM-09) : visibilite reglee -> courriel au client si visible.
+            annonces.annoncer(List.of(result));
             return result;
         } catch (Exception ex) {
             log.error("uploadJuridique CRASH dossier={} type={} title={} file={} : {} - {}",
@@ -224,7 +231,9 @@ public class JuridiqueController {
         String t = (title == null || title.isBlank())
                 ? files.size() + " documents - " + java.time.LocalDate.now()
                 : title;
-        return juridique.uploadVersionBatch(dossierId, type, t, ticketId, files, user.userId());
+        List<DocumentSummary> deposes = juridique.uploadVersionBatch(dossierId, type, t, ticketId, files, user.userId());
+        annonces.annoncer(deposes); // Lot L5 (E9) : un seul courriel pour le lot
+        return deposes;
     }
 
     @GetMapping("/document-types")
@@ -298,7 +307,9 @@ public class JuridiqueController {
                                              @PathVariable UUID documentId,
                                              @RequestBody(required = false) ValiderBrouillonRequest req) {
         employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
-        return juridique.validerBrouillon(documentId, req == null ? null : req.motif(), user.userId());
+        DocumentSummary valide = juridique.validerBrouillon(documentId, req == null ? null : req.motif(), user.userId());
+        annonces.annoncer(List.of(valide)); // Lot L5 (E9) : acte en vigueur et visible -> courriel au client
+        return valide;
     }
 
     @DeleteMapping("/documents/{documentId}/brouillon")
@@ -343,9 +354,13 @@ public class JuridiqueController {
                                               @PathVariable UUID documentId,
                                               @Valid @RequestBody VisibiliteRequest req) {
         employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
-        return juridique.changerVisibilite(documentId, req.visible(),
+        boolean dejaVisible = annonces.estVisible(documentId);
+        DocumentSummary apres = juridique.changerVisibilite(documentId, req.visible(),
                 req.origine() == null ? "DATAROOM" : req.origine(),
                 user == null ? null : user.userId());
+        // Lot L5 (E9, RG-COM-09) : un document RENDU visible est annonce au client.
+        if (!dejaVisible && apres.visibleClient()) annonces.annoncer(List.of(apres));
+        return apres;
     }
 
     /**
@@ -433,33 +448,64 @@ public class JuridiqueController {
     }
 
     /**
-     * Fiche client (2026-07-14) — remplace l'ancien « Exporter rapport PDF ».
-     * Carte d'identite juridique de la societe (4 sections). Reserve EMPLOYE
-     * (responsable du dossier, verifie en service) / SUPERVISEUR / SUPER_ADMIN.
-     * Le CLIENT est exclu (ni ROLE_CLIENT dans @PreAuthorize, ni acces service).
+     * Lot L5 (E7, RG-FIC-01 a 05) : fiche client a l'ecran -- identifiants de la societe en
+     * vigueur et leur provenance, versions de la taxe professionnelle, trace des
+     * modifications. Employe responsable du dossier, superviseur ; jamais le client.
      */
-    @GetMapping(value = "/dossiers/{dossierId}/juridique/fiche-client-pdf",
-            produces = MediaType.APPLICATION_PDF_VALUE)
+    @GetMapping("/dossiers/{dossierId}/juridique/fiche-client")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN','ROLE_SUPERVISEUR','ROLE_EMPLOYE')")
-    @Operation(summary = "Fiche client PDF (identifiants + operations + documents en vigueur + historique)",
-            description = "Carte d'identite juridique a la charte JURIKA. CLIENT interdit.")
-    @ApiResponse(responseCode = "200", description = "PDF de la Fiche client")
+    @Operation(summary = "Fiche client (identifiants, provenance, versions de la taxe professionnelle)")
     @ApiResponse(responseCode = "403", description = "Employe non responsable du dossier")
     @ApiResponse(responseCode = "404", description = "Dossier inconnu ou hors workspace")
-    public ResponseEntity<byte[]> ficheClientPdf(@AuthenticationPrincipal AuthenticatedUser user,
-                                                 @PathVariable UUID dossierId) {
+    public FicheClientDtos.FicheClientView ficheClient(@AuthenticationPrincipal AuthenticatedUser user,
+                                                       @PathVariable UUID dossierId) {
         employeGuard.assertResponsable(dossierId, user); // Lot L1, RG-DOS-01
-        var view = ficheClient.assemble(dossierId, user.role(), user.userId());
-        byte[] pdf = ficheClient.renderPdf(view);
-        String safe = view.identity().raisonSociale() == null ? "dossier"
-                : view.identity().raisonSociale().replaceAll("[^a-zA-Z0-9_-]", "_");
-        if (safe.length() > 40) safe = safe.substring(0, 40);
-        String filename = "Fiche_Client_" + safe + "_" + java.time.LocalDate.now() + ".pdf";
+        return ficheClient.ficheClient(dossierId, user.role(), user.userId());
+    }
+
+    /** Lot L5 (E7, RG-FIC-06, 07) : fiche dossier a l'ecran (identifiants et operations). */
+    @GetMapping("/dossiers/{dossierId}/juridique/fiche-dossier")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN','ROLE_SUPERVISEUR','ROLE_EMPLOYE')")
+    @Operation(summary = "Fiche dossier (identifiants et operations juridiques du dossier)")
+    public FicheClientDtos.FicheDossierView ficheDossier(@AuthenticationPrincipal AuthenticatedUser user,
+                                                         @PathVariable UUID dossierId) {
+        employeGuard.assertResponsable(dossierId, user);
+        return ficheClient.ficheDossier(dossierId, user.role(), user.userId());
+    }
+
+    /**
+     * Lot L5 (E7, P5) : fiche client au format Word. Generee par l'employe responsable, elle
+     * est conservee dans la Data Room (nouvelle version) ; en-tete {@code X-Fiche-Conservee}.
+     */
+    @PostMapping(value = "/dossiers/{dossierId}/juridique/fiche-client/word")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN','ROLE_SUPERVISEUR','ROLE_EMPLOYE')")
+    @Operation(summary = "Fiche client Word (generee, conservee en version par l'employe responsable)")
+    public ResponseEntity<byte[]> ficheClientWord(@AuthenticationPrincipal AuthenticatedUser user,
+                                                  @PathVariable UUID dossierId) {
+        employeGuard.assertResponsable(dossierId, user);
+        return word(ficheClient.genererFicheClient(dossierId, user.role(), user.userId()));
+    }
+
+    /** Lot L5 (E7, P5) : fiche dossier au format Word (meme regle de conservation). */
+    @PostMapping(value = "/dossiers/{dossierId}/juridique/fiche-dossier/word")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN','ROLE_SUPERVISEUR','ROLE_EMPLOYE')")
+    @Operation(summary = "Fiche dossier Word (generee, conservee en version par l'employe responsable)")
+    public ResponseEntity<byte[]> ficheDossierWord(@AuthenticationPrincipal AuthenticatedUser user,
+                                                   @PathVariable UUID dossierId) {
+        employeGuard.assertResponsable(dossierId, user);
+        return word(ficheClient.genererFicheDossier(dossierId, user.role(), user.userId()));
+    }
+
+    private static ResponseEntity<byte[]> word(FicheClientService.FicheWord fiche) {
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
-                .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(pdf.length))
-                .body(pdf);
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fiche.nomFichier() + "\"")
+                .header(HttpHeaders.CONTENT_TYPE, FicheClientService.DOCX_MIME)
+                .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(fiche.contenu().length))
+                .header("X-Fiche-Conservee", String.valueOf(fiche.conservee()))
+                .header("X-Fiche-Version", fiche.version() == null ? "" : String.valueOf(fiche.version()))
+                .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS,
+                        "X-Fiche-Conservee, X-Fiche-Version, Content-Disposition")
+                .body(fiche.contenu());
     }
 
     // ============================================================

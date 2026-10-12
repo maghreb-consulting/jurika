@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { TextField } from '../../components/ui/TextField';
 import { Badge } from '../../components/ui/Badge';
+import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { chatService } from '../../services/chat.service';
 import { authService } from '../../services/auth.service';
 import { getSocket } from '../../lib/realtimeSocket';
@@ -47,8 +48,9 @@ function formatDate(iso?: string | null): string {
 export function ChatPage() {
   const user = useCurrentUser();
   // 2026-06-26 — Le chat reste OUVERT au superviseur : c'est l'exception voulue
-  // à la règle « superviseur oversight-only » (Lot G). Aucune restriction front
-  // sur l'envoi ; le backend (realtime-service chat:send) n'impose aucun rôle.
+  // à la règle « superviseur oversight-only » (Lot G). Lot L5 (E9, RG-COM-06) :
+  // le realtime-service n'accepte que le superviseur et les employés d'un même
+  // cabinet (refus par défaut) ; son message de refus s'affiche tel quel.
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [contacts, setContacts] = useState<WorkspaceUser[]>([]);
@@ -85,7 +87,7 @@ export function ChatPage() {
     if (!peerId) return '';
     const c = contactsById.get(peerId);
     if (!c) return peerId;
-    return c.role === 'SUPERVISEUR' ? 'Superviseur' : 'Employe';
+    return c.role === 'SUPERVISEUR' ? 'Superviseur' : 'Employé';
   }
   function peerInitials(peerId: string | null | undefined): string {
     if (!peerId) return '??';
@@ -449,7 +451,7 @@ export function ChatPage() {
         <div>
           <h1 className="text-2xl font-bold text-fg">Messagerie</h1>
           <p className="text-sm text-fg-subtle">
-            Conversations internes en temps reel
+            Conversations internes du cabinet, en temps réel
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs">
@@ -464,6 +466,14 @@ export function ChatPage() {
           )}
         </div>
       </header>
+
+      <TexteAide cle="messagerie-interne" titre="Messagerie interne du cabinet">
+        Échangez ici avec le superviseur et les employés de votre cabinet, et uniquement eux :
+        vos clients n’ont pas accès à la messagerie (ils vous écrivent par leurs demandes, dans
+        la Data Room). Choisissez « Nouvelle conversation » pour écrire à un collègue ; une
+        conversation non lue porte un compteur, et le destinataire reçoit une notification
+        dans la cloche.
+      </TexteAide>
 
       <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden md:grid-cols-[320px_1fr]">
         {/* Sidebar */}
@@ -490,6 +500,13 @@ export function ChatPage() {
               <UserPlus className="mr-1.5 h-4 w-4" />
               {showContacts ? 'Fermer la liste' : 'Nouvelle conversation'}
             </Button>
+            <p className="flex items-center gap-1 text-[11px] text-fg-subtle">
+              Collègues de votre cabinet
+              <InfoBulle
+                libelle="Aide sur la liste des collègues"
+                texte="La liste ne montre que les comptes actifs du superviseur et des employés de votre cabinet. Un collègue absent de la liste doit d’abord être invité depuis Paramètres > Équipe, ou son compte réactivé."
+              />
+            </p>
 
             {showContacts && (
               <div
@@ -498,8 +515,8 @@ export function ChatPage() {
               >
                 {contacts.length === 0 ? (
                   <p className="px-3 py-4 text-center text-xs text-fg-subtle">
-                    Aucun contact disponible.<br />
-                    Invitez un collegue depuis Parametres &gt; Equipe.
+                    Aucun collègue disponible.<br />
+                    Invitez un collègue depuis Paramètres &gt; Équipe.
                   </p>
                 ) : (
                   <ul className="divide-y divide-border">
@@ -520,7 +537,7 @@ export function ChatPage() {
                               {c.firstName} {c.lastName}
                             </span>
                             <span className="block truncate text-[10px] text-fg-subtle">
-                              {c.role === 'SUPERVISEUR' ? 'Superviseur' : 'Employe'} · {c.email}
+                              {c.role === 'SUPERVISEUR' ? 'Superviseur' : 'Employé'} · {c.email}
                             </span>
                           </span>
                         </button>

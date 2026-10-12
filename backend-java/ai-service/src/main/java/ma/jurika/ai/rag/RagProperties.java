@@ -87,7 +87,7 @@ public record RagProperties(
     /**
      * Configuration du provider de génération de réponse (chat, API OpenAI-compatible
      * {@code /chat/completions}, TEXTE libre). Défauts orientés Gemini gemini-1.5-flash
-     * (gratuit). La clé reste optionnelle (vide = voie chat désactivée -> repli KB+FTS).
+     * (gratuit). La clé reste optionnelle (vide = voie chat désactivée -> repli sur les passages).
      *
      * @param provider       Identifiant logique (gemini / openai / groq / custom).
      * @param baseUrl        URL de base OpenAI-compatible (sans {@code /chat/completions}).

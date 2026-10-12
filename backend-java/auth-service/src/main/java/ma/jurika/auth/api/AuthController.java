@@ -46,7 +46,6 @@ import ma.jurika.auth.application.ResendVerificationUseCase;
 import ma.jurika.auth.application.ResetPasswordUseCase;
 import ma.jurika.auth.application.SendSmsOtpUseCase;
 import ma.jurika.auth.application.SetUserStatusUseCase;
-import ma.jurika.auth.application.UpdateContactEmailUseCase;
 import ma.jurika.auth.application.Setup2faUseCase;
 import ma.jurika.auth.application.Verify2faUseCase;
 import ma.jurika.auth.application.VerifyEmailUseCase;
@@ -56,7 +55,6 @@ import ma.jurika.auth.api.dto.DossierClientResponse;
 import ma.jurika.auth.api.dto.InviteClientRequest;
 import ma.jurika.auth.api.dto.InviteClientResponse;
 import ma.jurika.auth.api.dto.SetUserStatusRequest;
-import ma.jurika.auth.api.dto.UpdateContactEmailRequest;
 import ma.jurika.auth.api.dto.WorkspaceUserDto;
 import ma.jurika.auth.domain.port.UserRepository;
 import ma.jurika.auth.domain.port.WorkspaceRepository;
@@ -102,7 +100,6 @@ public class AuthController {
     private final GetDossierClientUseCase getDossierClientUseCase;
     private final SetUserStatusUseCase setUserStatusUseCase;
     private final ListWorkspaceUsersUseCase listWorkspaceUsersUseCase;
-    private final UpdateContactEmailUseCase updateContactEmailUseCase;
     private final WorkspaceRepository workspaceRepository;
     private final UserRepository userRepository;
     /** Lot L0 (E13a) : workspace des routes publiques, pose avant la transaction. */
@@ -130,7 +127,6 @@ public class AuthController {
                           GetDossierClientUseCase getDossierClientUseCase,
                           SetUserStatusUseCase setUserStatusUseCase,
                           ListWorkspaceUsersUseCase listWorkspaceUsersUseCase,
-                          UpdateContactEmailUseCase updateContactEmailUseCase,
                           WorkspaceRepository workspaceRepository,
                           UserRepository userRepository,
                           ma.jurika.auth.application.ContexteWorkspacePublic contextePublic) {
@@ -156,7 +152,6 @@ public class AuthController {
         this.getDossierClientUseCase = getDossierClientUseCase;
         this.setUserStatusUseCase = setUserStatusUseCase;
         this.listWorkspaceUsersUseCase = listWorkspaceUsersUseCase;
-        this.updateContactEmailUseCase = updateContactEmailUseCase;
         this.workspaceRepository = workspaceRepository;
         this.userRepository = userRepository;
         this.contextePublic = contextePublic;
@@ -652,31 +647,6 @@ public class AuthController {
         resetPasswordUseCase.confirm(req.token(), req.newPassword(),
                 http.getRemoteAddr(), http.getHeader("User-Agent"));
         return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * BUG 7 (2026-06-08 chore finitions) — Met a jour l'email de notifications
-     * (contact_email) du user courant. Le login_email reste immuable cote API.
-     */
-    @org.springframework.web.bind.annotation.PatchMapping("/me/contact-email")
-    @PreAuthorize("isAuthenticated()")
-    public java.util.Map<String, Object> updateContactEmail(
-            @AuthenticationPrincipal AuthenticatedUser user,
-            @Valid @RequestBody UpdateContactEmailRequest req,
-            HttpServletRequest http) {
-        var r = updateContactEmailUseCase.execute(new UpdateContactEmailUseCase.Command(
-                user.userId(), user.workspaceId(), req.contactEmail(),
-                http.getRemoteAddr(), http.getHeader("User-Agent")));
-        return java.util.Map.of(
-                "userId", r.userId().toString(),
-                "loginEmail", r.loginEmail(),
-                "contactEmail", r.contactEmail(),
-                "previousContactEmail", r.previousContactEmail() == null ? "" : r.previousContactEmail(),
-                "changed", r.changed(),
-                "message", r.changed()
-                        ? "Email de notifications mis a jour."
-                        : "Aucun changement (l'email fourni est deja celui en place)."
-        );
     }
 
     @GetMapping("/me")

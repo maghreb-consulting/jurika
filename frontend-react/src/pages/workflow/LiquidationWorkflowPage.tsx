@@ -52,6 +52,8 @@ import {
 } from '../../components/workflow/LiquidateurPicker';
 import { champsPersonneMorale, estPersonneMorale, identiteLiquidateur } from '../../lib/liquidateur';
 import { champsMandatLiquidateur, type MentionsPv } from '../../lib/liquidationPv';
+import { RapportLiquidateurPanel } from '../../components/workflow/RapportLiquidateurPanel';
+import { rapportPayload, type RapportLiquidateur } from '../../lib/rapportLiquidateur';
 import {
   PiecesJointesPanel,
   type PieceJointeEntry,
@@ -269,6 +271,14 @@ function LiquidationWorkflowPageBody() {
   );
   const [depotLegalDate, setDepotLegalDate] = useState(
     ((stepData.step2?.depotLegal as { date?: string } | undefined) ?? {}).date ?? '',
+  );
+  // L5 (E4) : operations de liquidation du rapport final du liquidateur (brouillon de l'etape 2).
+  const [rapportLiquidateur, setRapportLiquidateur] = useState<RapportLiquidateur>(
+    () => (stepData.step2?.rapportLiquidateur as RapportLiquidateur | undefined) ?? {},
+  );
+  const changerRapport = useCallback(
+    (patch: RapportLiquidateur) => setRapportLiquidateur((r) => ({ ...r, ...patch })),
+    [],
   );
 
   // ---------- Etape 3 : pieces jointes ----------
@@ -554,9 +564,11 @@ function LiquidationWorkflowPageBody() {
         passifRegle: totalPassif || null,
       },
       dissolutionDate: dateDissolution,
+      // L5 (E4) : operations de liquidation saisies pour le rapport du liquidateur.
+      rapportLiquidateur: rapportPayload(rapportLiquidateur),
     }),
     [liquidateur, siegeLiquidation, resultatType, boniMali, dateCloture,
-      totalActif, totalPassif, dateDissolution, avisCloture],
+      totalActif, totalPassif, dateDissolution, avisCloture, rapportLiquidateur],
   );
 
   if (loading) return <Loader />;
@@ -633,6 +645,7 @@ function LiquidationWorkflowPageBody() {
             : undefined,
         avisCloture,
         mentionsPv,
+        rapportLiquidateur,
       });
     } else if (step === 3) {
       // Etape OPTIONNELLE : jamais bloquante, peut etre vide.
@@ -675,12 +688,14 @@ function LiquidationWorkflowPageBody() {
           depotLegal: { numero: depotLegalNumero, date: depotLegalDate },
           avisCloture,
           mentionsPv,
+          rapportLiquidateur,
         };
       }
       if (n === 3) return { piecesJointes };
       return null;
     },
     [dossierId, formeJuridique, dateCloture, dateDissolution, liquidateur, totalActif, avisCloture, mentionsPv,
+      rapportLiquidateur,
       totalPassif, convocationDate, convocationHeure, convocationSnapshot, docsValidated,
       annonceValidated, depotLegalNumero, depotLegalDate, piecesJointes],
   );
@@ -1125,6 +1140,20 @@ function LiquidationWorkflowPageBody() {
                 dataroom juridique.
               </p>
             </header>
+
+            <RapportLiquidateurPanel
+              isAU={isAU}
+              valeurs={rapportLiquidateur}
+              onChange={changerRapport}
+              contexte={{
+                capital: dossierParties?.capitalSocial ?? null,
+                remuneration: liquidateur.remunerationApplicable === 'oui' ? liquidateur.remunerationMontant ?? null : 0,
+                impot: mentionsPv.isMontant ?? null,
+                fraisPv: mentionsPv.frais ?? null,
+                totalActif,
+                totalPassif,
+              }}
+            />
 
             <SeanceOperationForm
               mode="liquidation"

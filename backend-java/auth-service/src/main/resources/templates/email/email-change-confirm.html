@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Confirmation de votre nouvelle adresse - JURIKA</title>
+</head>
+<body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#0F172A;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf6ec;padding:32px 16px;">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+                   style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+
+                <th:block th:replace="~{email/_base :: header(title='Confirmez votre nouvelle adresse')}"/>
+
+                <tr>
+                    <td style="padding:32px;">
+                        <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
+                            Bonjour <strong th:text="${firstName}">Karim</strong>,
+                        </p>
+
+                        <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
+                            Vous avez demand&eacute; que l&rsquo;adresse &eacute;lectronique de votre compte JURIKA
+                            devienne <strong th:text="${nouvelleAdresse}">karim@cabinet.ma</strong>.
+                        </p>
+
+                        <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
+                            Pour confirmer que cette adresse vous appartient, cliquez sur le bouton
+                            ci-dessous. Tant que vous ne l&rsquo;avez pas fait, votre ancienne adresse
+                            reste celle du compte.
+                        </p>
+
+                        <div style="text-align:center;margin:32px 0;">
+                            <a th:href="${confirmationUrl}"
+                               style="display:inline-block;background:#0c1d3f;color:#c8a45c;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px;">
+                                Confirmer ma nouvelle adresse
+                            </a>
+                        </div>
+
+                        <p style="margin:0 0 16px;font-size:13px;color:#64748B;line-height:1.55;">
+                            Ce lien ne sert qu&rsquo;une fois et expire dans
+                            <strong><span th:text="${ttlHours}">24</span>&nbsp;heures</strong>.
+                            Pass&eacute; ce d&eacute;lai, refaites la demande depuis l&rsquo;&eacute;cran
+                            &laquo;&nbsp;Mon compte&nbsp;&raquo;.
+                        </p>
+
+                        <div style="border-top:1px solid #E2E8F0;margin:24px 0 0;padding-top:24px;">
+                            <p style="margin:0;font-size:12px;color:#94A3B8;line-height:1.55;">
+                                Si vous n&rsquo;&ecirc;tes pas &agrave; l&rsquo;origine de cette demande, ignorez ce
+                                courriel : aucune modification ne sera faite.
+                            </p>
+                        </div>
+
+                        <th:block th:replace="~{email/_base :: phishingBox}"/>
+                    </td>
+                </tr>
+
+                <th:block th:replace="~{email/_base :: identityFooter(loginEmail=${loginEmail}, contactEmail=${contactEmail})}"/>
+                <th:block th:replace="~{email/_base :: footer(unsubscribeUrl=${unsubscribeUrl})}"/>
+            </table>
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

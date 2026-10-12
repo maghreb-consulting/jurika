@@ -100,15 +100,18 @@ export const ticketService = {
     await api.delete(`/tickets/${ticketId}/debours/${deboursId}`);
   },
 
-  async downloadDeboursPdf(ticketId: string, reference: string): Promise<void> {
-    const response = await api.get(`/tickets/${ticketId}/debours/export-pdf`, {
+  /** Lot L5 (E6, RG-DEB-02, P5) : état des débours au format Word, régénéré à chaque demande. */
+  async downloadEtatDebours(ticketId: string, reference: string): Promise<void> {
+    const response = await api.get(`/tickets/${ticketId}/debours/etat-word`, {
       responseType: 'blob',
     });
-    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const blob = new Blob([response.data], {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Etat_debours_${reference}.pdf`;
+    link.download = `Etat_des_debours_${reference}.docx`;
     document.body.appendChild(link);
     link.click();
     link.remove();

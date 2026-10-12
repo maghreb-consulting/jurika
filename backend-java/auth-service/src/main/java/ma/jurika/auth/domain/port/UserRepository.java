@@ -77,6 +77,18 @@ public interface UserRepository {
      */
     void updateContactEmail(UUID userId, String contactEmail);
 
+    /**
+     * Lot L5 (E10), RG-CPT-01 : met a jour le prenom et le nom de l'utilisateur.
+     */
+    void updateName(UUID userId, String firstName, String lastName);
+
+    /**
+     * Lot L5 (E10), RG-CPT-02 : remplace l'identifiant de connexion, apres
+     * confirmation du lien. La colonne historique {@code email} suit
+     * ({@code email = login_email}, invariant de V28 et du claim JWT).
+     */
+    void updateLoginEmail(UUID userId, String loginEmail);
+
     void updatePasswordHash(UUID userId, String passwordHash);
 
     /**

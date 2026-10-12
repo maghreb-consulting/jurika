@@ -15,9 +15,9 @@ import java.util.Set;
  *   <li>{@code PV_DISSOLUTION_LIQUIDATION_SARL(/_AU)} : proces-verbal de cloture de la
  *       liquidation, rendu par {@code PV_CLOTURE_LIQUIDATION_SARL(/_AU)}
  *       ({@link CloturePvCorpusVarsBuilder}) ;</li>
- *   <li>{@code RAPPORT_LIQUIDATION_DIRECTEUR} : rapport du liquidateur, rendu par
- *       {@code RAPPORT_LIQUIDATEUR_SARL(/_AU)} selon la forme de la societe
- *       ({@link RapportLiquidateurCorpusVarsBuilder}, non resolu : refus nomme) ;</li>
+ *   <li>{@code RAPPORT_LIQUIDATION_DIRECTEUR} (code logique de l'ecran, D18 du lot L4d) :
+ *       rapport final du liquidateur, rendu par {@code RAPPORT_LIQUIDATEUR_SARL(/_AU)} selon la
+ *       forme de la societe ({@link RapportLiquidateurCorpusVarsBuilder}, lot L5 E4) ;</li>
  *   <li>{@code ANNONCE_LEGALE_LIQUIDATION_SARL(/_AU)} : avis de cloture
  *       ({@link LiquidationAnnonceVarsBuilder}).</li>
  * </ul>
@@ -66,20 +66,21 @@ public class LiquidationMapper implements WorkflowDocumentMapper {
             return LiquidationAnnonceVarsBuilder.build(templateCode, safe);
         }
         if (TPL_RAPPORT.equals(templateCode)) {
-            // Lot L4d (E11d) : bascule du rapport non resolue, rapport du classpath conserve.
-            return RapportLiquidationDirecteurVars.rapportVars(safe);
+            // Lot L5 (E4) : operations de liquidation saisies, totaux et resultat calcules.
+            return RapportLiquidateurCorpusVarsBuilder.build(templateCode, safe);
         }
         return CloturePvCorpusVarsBuilder.build(templateCode, safe);
     }
 
     /**
      * Lot L4d (E11d) : modele du corpus rendu pour chaque document (L2_correspondance_gabarits.md).
-     * Le rapport du liquidateur reste rendu par le classpath (bascule non resolue).
+     * Lot L5 (E4) : le rapport du liquidateur par le modele du corpus de la forme de la societe.
      */
     @Override
     public String gabarit(String templateCode, Map<String, Object> payload) {
         if (TPL_PV_SARL.equals(templateCode)) return CloturePvCorpusVarsBuilder.CORPUS_SARL;
         if (TPL_PV_SARL_AU.equals(templateCode)) return CloturePvCorpusVarsBuilder.CORPUS_SARL_AU;
+        if (TPL_RAPPORT.equals(templateCode)) return RapportLiquidateurCorpusVarsBuilder.modele(payload);
         return templateCode;
     }
 }

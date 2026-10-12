@@ -5,7 +5,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,15 +17,18 @@ import java.util.UUID;
 /**
  * Ingestion de documents sources fiables dans le corpus RAG ({@code rag_corpus_chunks}).
  *
- * <p>Pipeline : extraction texte (PDF/DOCX/TXT) -> chunking -> insertion scopee
- * au workspace courant. L'embedding vectoriel reste optionnel (rempli seulement
- * si {@code jurika.rag.enabled} et un provider d'embedding est cable) ; le
+ * <p>Pipeline : extraction texte (PDF/DOCX/TXT) -> chunking -> insertion dans le
+ * <b>corpus commun</b> (lot L5 E8, CDC 3.1 et RG-COM-02) : une source deposee par le
+ * super-admin est lue par tous les cabinets ({@code portee = 'COMMUNE'}, sans
+ * workspace). Aucun cabinet ne depose de source (garde du controleur).
+ *
+ * <p>L'embedding vectoriel reste optionnel (rempli seulement si {@code jurika.rag.enabled} et un provider d'embedding est cable) ; le
  * Full-Text Search via {@code search_vector} (colonne generee) fonctionne sans
  * aucune cle LLM externe.
  *
- * <p>Les methodes prennent {@code workspaceId} / {@code uploadedBy} en parametres
- * explicites (pas de lecture du SecurityContext) afin de rester testables hors
- * conteneur Spring et de garantir le scoping multi-tenant a chaque appel.
+ * <p>Ajout et retrait passent dans une transaction qui pose
+ * {@code app.rag_sources_admin = 'true'} (local a la transaction) : c'est la
+ * condition des politiques RLS d'ecriture de V16 pour le role jurika_app.
  */
 @Service
 public class SourceIngestionService {
@@ -62,7 +67,7 @@ public class SourceIngestionService {
     public record IngestResult(UUID docId, String source, int chunks) {}
 
     /** Ingestion d'un fichier binaire (pdf/docx/txt). */
-    public IngestResult ingestFile(UUID workspaceId, UUID uploadedBy,
+    public IngestResult ingestFile(UUID uploadedBy,
                                    byte[] bytes, String filename, String contentType) {
         String text = extractor.extract(bytes, filename, contentType);
         String source = (filename == null || filename.isBlank()) ? "document" : filename;
@@ -70,20 +75,20 @@ public class SourceIngestionService {
         meta.put("filename", filename);
         meta.put("contentType", contentType);
         meta.put("kind", extractor.detect(filename, contentType).name());
-        return persist(workspaceId, uploadedBy, source, text, meta);
+        return persist(uploadedBy, source, text, meta);
     }
 
     /** Ingestion d'un texte colle (sans fichier). */
-    public IngestResult ingestText(UUID workspaceId, UUID uploadedBy, String title, String text) {
+    public IngestResult ingestText(UUID uploadedBy, String title, String text) {
         String source = (title == null || title.isBlank()) ? "Note libre" : title;
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("kind", "TEXT");
-        return persist(workspaceId, uploadedBy, source, text, meta);
+        return persist(uploadedBy, source, text, meta);
     }
 
-    private IngestResult persist(UUID workspaceId, UUID uploadedBy,
+    private IngestResult persist(UUID uploadedBy,
                                  String source, String text, Map<String, Object> meta) {
-        if (workspaceId == null) throw new IllegalArgumentException("workspaceId requis");
+        if (uploadedBy == null) throw new IllegalArgumentException("auteur du depot requis");
         if (text == null || text.isBlank()) {
             throw new IllegalArgumentException("Aucun texte exploitable dans le document fourni.");
         }
@@ -108,23 +113,22 @@ public class SourceIngestionService {
         String sql = """
                 INSERT INTO rag_corpus_chunks
                     (source, article, chunk_text, embedding, metadata,
-                     workspace_id, uploaded_by, doc_id, chunk_index)
-                VALUES (?, ?, ?, ?::vector, ?::jsonb, ?, ?, ?, ?)
+                     portee, workspace_id, uploaded_by, doc_id, chunk_index)
+                VALUES (?, ?, ?, ?::vector, ?::jsonb, 'COMMUNE', NULL, ?, ?, ?)
                 """;
 
-        int embedded = 0;
-        for (int i = 0; i < chunks.size(); i++) {
-            String chunkText = chunks.get(i);
-            String article = "Passage " + (i + 1);
-            String vectorLiteral = vectorLiterals.get(i);
-            if (vectorLiteral != null) embedded++;
-            jdbc.update(sql,
-                    source, article, chunkText, vectorLiteral, metaJson,
-                    workspaceId, uploadedBy, docId, i);
-        }
+        int embedded = (int) vectorLiterals.stream().filter(v -> v != null).count();
+        enModeAdministration(() -> {
+            for (int i = 0; i < chunks.size(); i++) {
+                jdbc.update(sql,
+                        source, "Passage " + (i + 1), chunks.get(i), vectorLiterals.get(i), metaJson,
+                        uploadedBy, docId, i);
+            }
+            return null;
+        });
 
-        log.info("RAG source ingeree : workspace={} doc={} source='{}' chunks={} embeddings={}",
-                workspaceId, docId, source, chunks.size(), embedded);
+        log.info("RAG source commune ingeree : doc={} source='{}' chunks={} embeddings={}",
+                docId, source, chunks.size(), embedded);
         return new IngestResult(docId, source, chunks.size());
     }
 
@@ -157,9 +161,8 @@ public class SourceIngestionService {
         return literals;
     }
 
-    /** Liste les sources (documents) du workspace, regroupees par doc_id. */
-    public List<Map<String, Object>> listSources(UUID workspaceId) {
-        if (workspaceId == null) return List.of();
+    /** Liste les sources communes (documents), regroupees par doc_id. */
+    public List<Map<String, Object>> listSources() {
         String sql = """
                 SELECT doc_id,
                        MIN(source)               AS source,
@@ -167,19 +170,32 @@ public class SourceIngestionService {
                        MIN(uploaded_by::text)    AS uploaded_by,
                        MIN(created_at)           AS created_at
                 FROM rag_corpus_chunks
-                WHERE workspace_id = ? AND doc_id IS NOT NULL
+                WHERE portee = 'COMMUNE' AND doc_id IS NOT NULL
                 GROUP BY doc_id
                 ORDER BY MIN(created_at) DESC
                 """;
-        return jdbc.queryForList(sql, workspaceId);
+        return jdbc.queryForList(sql);
     }
 
-    /** Supprime un document (tous ses chunks) du workspace. Scope tenant = isolation. */
-    public int deleteSource(UUID workspaceId, UUID docId) {
-        if (workspaceId == null || docId == null) return 0;
-        return jdbc.update(
-                "DELETE FROM rag_corpus_chunks WHERE workspace_id = ? AND doc_id = ?",
-                workspaceId, docId);
+    /** Retire une source commune (tous ses passages). Un passage archive n'est jamais touche. */
+    public int deleteSource(UUID docId) {
+        if (docId == null) return 0;
+        Integer n = enModeAdministration(() -> jdbc.update(
+                "DELETE FROM rag_corpus_chunks WHERE portee = 'COMMUNE' AND doc_id = ?", docId));
+        return n == null ? 0 : n;
+    }
+
+    /**
+     * Execute l'ecriture dans une transaction qui pose {@code app.rag_sources_admin}
+     * (reglage local : il disparait au commit et ne fuit pas dans le pool).
+     */
+    private <T> T enModeAdministration(java.util.function.Supplier<T> ecriture) {
+        TransactionTemplate tx = new TransactionTemplate(
+                new DataSourceTransactionManager(jdbc.getDataSource()));
+        return tx.execute(status -> {
+            jdbc.queryForObject("SELECT set_config('app.rag_sources_admin', 'true', true)", String.class);
+            return ecriture.get();
+        });
     }
 
     private String writeJson(Map<String, Object> meta) {

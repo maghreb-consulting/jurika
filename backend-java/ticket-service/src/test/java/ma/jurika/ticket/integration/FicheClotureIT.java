@@ -62,7 +62,7 @@ class FicheClotureIT {
                     + "VALUES (?, ?, ?, ?, 'SAISIE', ?)", WS, ticket, v[0], v[1], E1);
         }
 
-        FicheCloture.Resultat r = new FicheClotureJdbc(db).mettreAJour(WS, ticket);
+        FicheCloture.Resultat r = new FicheClotureJdbc(db).mettreAJour(WS, ticket, E1);
 
         assertThat(r.repris()).containsExactly("RC_NUMERO");
         assertThat(r.ecarts()).singleElement().asString().contains("ICE").contains("001234567000089").contains("009999999000011");
@@ -77,9 +77,136 @@ class FicheClotureIT {
         UUID ticket = UUID.randomUUID();
         db.update("INSERT INTO tickets (id, workspace_id, reference, titre, type, statut, priorite, assigne_id, cree_par_id) "
                 + "VALUES (?, ?, 'T-SANS', 'T', 'MODIFICATION', 'DEROULEMENT_DEMARCHE', 'NORMALE', ?, ?)", ticket, WS, E1, E1);
-        FicheCloture.Resultat r = new FicheClotureJdbc(db).mettreAJour(WS, ticket);
+        FicheCloture.Resultat r = new FicheClotureJdbc(db).mettreAJour(WS, ticket, E1);
         assertThat(r.repris()).isEmpty();
         assertThat(r.ecarts()).isEmpty();
+    }
+
+    // ------------------------------------------------------------------------------
+    // Lot L5 (E7, RG-FIC-03, RG-FIC-04) : trace et provenance des identifiants (V41).
+    // ------------------------------------------------------------------------------
+
+    private java.util.List<java.util.Map<String, Object>> trace(UUID dossier, String champ) {
+        return db.queryForList("SELECT ancienne_valeur, nouvelle_valeur, origine, ticket_id, auteur_id "
+                + "FROM dossier_identifiants_historique WHERE dossier_id = ? AND champ = ? ORDER BY modifie_le, id",
+                dossier, champ);
+    }
+
+    private UUID dossier(String rc) {
+        UUID d = UUID.randomUUID();
+        db.update("INSERT INTO entreprise_dossiers (id, workspace_id, raison_sociale, forme_juridique, responsable_id, rc_numero) "
+                + "VALUES (?, ?, ?, 'SARL', ?, ?)", d, WS, "TRACEE " + d, E1, rc);
+        return d;
+    }
+
+    private UUID ticket(UUID dossier, String ref, String type, String statut) {
+        UUID t = UUID.randomUUID();
+        db.update("INSERT INTO tickets (id, workspace_id, reference, titre, type, statut, priorite, dossier_id, assigne_id, cree_par_id) "
+                + "VALUES (?, ?, ?, 'T', ?, ?, 'NORMALE', ?, ?, ?)", t, WS, ref, type, statut, dossier, E1, E1);
+        return t;
+    }
+
+    @Test
+    void la_cloture_trace_l_identifiant_reporte_en_fin_de_parcours_avec_ticket_et_auteur() {
+        UUID dossier = dossier(null);
+        UUID t = ticket(dossier, "T-TR1", "CREATION", "DEROULEMENT_DEMARCHE");
+        db.update("INSERT INTO dossier_variables (workspace_id, ticket_id, variable, valeur, origine, saisie_par_id) "
+                + "VALUES (?, ?, 'RC_NUMERO', '777', 'SAISIE', ?)", WS, t, E1);
+        db.update("INSERT INTO dossier_variables (workspace_id, ticket_id, variable, valeur, origine, saisie_par_id) "
+                + "VALUES (?, ?, 'IDENTIFIANT_FISCAL', 'IF-88', 'EXTRAITE', ?)", WS, t, E1);
+
+        new FicheClotureJdbc(db).mettreAJour(WS, t, E1);
+
+        assertThat(trace(dossier, "rc_numero")).singleElement().satisfies(l -> {
+            assertThat(l.get("ancienne_valeur")).isNull();
+            assertThat(l.get("nouvelle_valeur")).isEqualTo("777");
+            assertThat(l.get("origine")).isEqualTo("FIN_PARCOURS");
+            assertThat(l.get("ticket_id")).isEqualTo(t);
+            assertThat(l.get("auteur_id")).isEqualTo(E1);
+        });
+        assertThat(trace(dossier, "identifiant_fiscal")).singleElement()
+                .satisfies(l -> assertThat(l.get("origine")).as("lu sur une piece et confirme").isEqualTo("EXTRAITE"));
+    }
+
+    @Test
+    void l_ouverture_du_dossier_trace_les_valeurs_initiales() {
+        UUID dossier = dossier("RC-1");
+        assertThat(trace(dossier, "raison_sociale")).singleElement().satisfies(l -> {
+            assertThat(l.get("nouvelle_valeur")).isEqualTo("TRACEE " + dossier);
+            assertThat(l.get("origine")).isEqualTo("OUVERTURE");
+        });
+        assertThat(trace(dossier, "rc_numero")).singleElement()
+                .satisfies(l -> assertThat(l.get("nouvelle_valeur")).isEqualTo("RC-1"));
+        assertThat(trace(dossier, "ice")).as("un champ vide n'a pas de trace").isEmpty();
+    }
+
+    @Test
+    void une_ecriture_de_parcours_sans_declaration_est_rattachee_au_seul_ticket_ouvert() {
+        UUID dossier = dossier("RC-2");
+        UUID ouvert = ticket(dossier, "T-TR3", "MODIFICATION", "GENERATION_DOCUMENTS");
+        ticket(dossier, "T-TR3B", "CREATION", "CLOTURE_DOSSIER");
+
+        db.update("UPDATE entreprise_dossiers SET capital_social_mad = 200000 WHERE id = ?", dossier);
+
+        assertThat(trace(dossier, "capital_social_mad")).singleElement().satisfies(l -> {
+            assertThat(l.get("origine")).isEqualTo("PARCOURS");
+            assertThat(l.get("ticket_id")).isEqualTo(ouvert);
+            assertThat(l.get("auteur_id")).isNull();
+        });
+
+        ticket(dossier, "T-TR3C", "PV_AGO", "CREATION_TICKET");
+        db.update("UPDATE entreprise_dossiers SET adresse_siege = '1 rue Y' WHERE id = ?", dossier);
+        assertThat(trace(dossier, "adresse_siege")).singleElement()
+                .satisfies(l -> assertThat(l.get("ticket_id")).as("deux tickets ouverts : jamais devine").isNull());
+    }
+
+    @Test
+    void la_saisie_declaree_trace_ancienne_et_nouvelle_valeur_et_son_auteur() {
+        UUID dossier = dossier("RC-3");
+        db.execute((java.sql.Connection c) -> {
+            c.setAutoCommit(false);
+            try (java.sql.Statement st = c.createStatement()) {
+                st.execute("SELECT set_config('app.identifiants_origine', 'SAISIE', true), "
+                        + "set_config('app.identifiants_auteur', '" + E1 + "', true)");
+                st.executeUpdate("UPDATE entreprise_dossiers SET rc_numero = 'RC-3B', taxe_professionnelle = 'TP-9' "
+                        + "WHERE id = '" + dossier + "'");
+                st.executeUpdate("UPDATE entreprise_dossiers SET raison_sociale = 'TRACEE " + dossier + "' WHERE id = '" + dossier + "'");
+            }
+            c.commit();
+            c.setAutoCommit(true);
+            return null;
+        });
+
+        assertThat(trace(dossier, "rc_numero")).hasSize(2).last().satisfies(l -> {
+            assertThat(l.get("ancienne_valeur")).isEqualTo("RC-3");
+            assertThat(l.get("nouvelle_valeur")).isEqualTo("RC-3B");
+            assertThat(l.get("origine")).isEqualTo("SAISIE");
+            assertThat(l.get("auteur_id")).isEqualTo(E1);
+        });
+        assertThat(trace(dossier, "taxe_professionnelle")).singleElement()
+                .satisfies(l -> assertThat(l.get("nouvelle_valeur")).isEqualTo("TP-9"));
+        assertThat(trace(dossier, "raison_sociale")).as("valeur inchangee : aucune trace").hasSize(1);
+    }
+
+    @Test
+    void le_role_applicatif_soumis_a_la_rls_ecrit_la_fiche_et_sa_trace() {
+        UUID dossier = dossier("RC-4");
+        DriverManagerDataSource app = new DriverManagerDataSource(pg.getJdbcUrl(), "jurika_app", "jurika_app_it");
+        JdbcTemplate jdbcApp = new JdbcTemplate(app);
+        jdbcApp.execute((java.sql.Connection c) -> {
+            c.setAutoCommit(false);
+            try (java.sql.Statement st = c.createStatement()) {
+                st.execute("SELECT set_config('app.current_workspace_id', '" + WS + "', true)");
+                assertThat(st.executeUpdate("UPDATE entreprise_dossiers SET cnss = 'CNSS-1' WHERE id = '" + dossier + "'"))
+                        .isEqualTo(1);
+            }
+            c.commit();
+            c.setAutoCommit(true);
+            return null;
+        });
+        assertThat(trace(dossier, "cnss")).singleElement()
+                .satisfies(l -> assertThat(l.get("nouvelle_valeur")).isEqualTo("CNSS-1"));
+
     }
 
     private void migrer(String emplacement, String historique, String cible) {

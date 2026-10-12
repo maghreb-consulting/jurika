@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<!--
+  Lot L5 (E9, RG-COM-09) : avertissement du client par courriel (requete du
+  cabinet, complement demande, document mis a disposition, demande traitee).
+  Le courriel part de l'adresse unique de JURIKA et NOMME le cabinet a
+  l'origine du message. Variables : cabinet, firstName, titre, annonce,
+  raisonSociale, objet, bouton, lienUrl, loginEmail, contactEmail.
+-->
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <title th:text="${titre}">Message de votre cabinet</title>
+</head>
+<body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#0F172A;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf6ec;padding:32px 16px;">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+                   style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+
+                <th:block th:replace="~{email/_base :: header(title=${titre})}"/>
+
+                <tr>
+                    <td style="padding:32px;">
+                        <p style="margin:0 0 6px;font-size:12px;color:#64748B;text-transform:uppercase;letter-spacing:0.06em;">
+                            Message de votre cabinet
+                        </p>
+                        <p style="margin:0 0 20px;font-size:17px;font-weight:700;color:#0c1d3f;" th:text="${cabinet}">Cabinet Alaoui &amp; Associ&eacute;s</p>
+
+                        <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
+                            Bonjour <strong th:text="${firstName}">Karim</strong>,
+                        </p>
+
+                        <p style="margin:0 0 16px;font-size:15px;line-height:1.55;" th:text="${annonce}">
+                            Votre cabinet vous adresse une requ&ecirc;te sur le dossier Ma SARL.
+                        </p>
+
+                        <div th:if="${objet != null and !#strings.isEmpty(objet)}"
+                             style="border:1px solid #E2E8F0;border-radius:8px;padding:16px 20px;margin:20px 0;background:#FAFAFA;">
+                            <p style="margin:0 0 4px;color:#64748B;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Objet</p>
+                            <p style="margin:0;font-size:15px;font-weight:600;color:#0F172A;" th:text="${objet}">Copie de la CIN du g&eacute;rant</p>
+                        </div>
+
+                        <p style="margin:24px 0 0;text-align:center;">
+                            <a th:href="${lienUrl}" th:text="${bouton}"
+                               style="display:inline-block;padding:12px 24px;background:#0c1d3f;color:#c8a45c;text-decoration:none;border-radius:8px;font-weight:600;">Ouvrir JURIKA</a>
+                        </p>
+
+                        <p style="margin:24px 0 0;font-size:12px;color:#64748B;line-height:1.55;">
+                            Ce courriel vous est envoy&eacute; par JURIKA, la plateforme qu&rsquo;utilise votre cabinet
+                            <span th:text="${cabinet}">Cabinet Alaoui &amp; Associ&eacute;s</span> pour suivre votre dossier.
+                            Pour toute question, r&eacute;pondez &agrave; votre cabinet depuis votre espace : cette adresse
+                            d&rsquo;envoi ne re&ccedil;oit pas de r&eacute;ponse.
+                        </p>
+
+                        <th:block th:replace="~{email/_base :: phishingBox}"/>
+                    </td>
+                </tr>
+
+                <th:block th:replace="~{email/_base :: identityFooter(loginEmail=${loginEmail}, contactEmail=${contactEmail})}"/>
+                <th:block th:replace="~{email/_base :: footer(unsubscribeUrl=${null})}"/>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

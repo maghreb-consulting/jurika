@@ -27,11 +27,11 @@ COPY ai-service/pom.xml           ai-service/
 COPY dashboard-service/pom.xml    dashboard-service/
 COPY billing-service/pom.xml      billing-service/
 # Pre-resolve deps -> couche cachable
-RUN --mount=type=cache,target=/root/.m2/repository \
+RUN --mount=type=cache,target=/root/.m2/repository,sharing=locked \
     mvn -B -pl :dataroom-service -am -DskipTests dependency:go-offline || true
 COPY jurika-common/src jurika-common/src
 COPY dataroom-service/src dataroom-service/src
-RUN --mount=type=cache,target=/root/.m2/repository \
+RUN --mount=type=cache,target=/root/.m2/repository,sharing=locked \
     mvn -B -pl :dataroom-service -am -DskipTests package
 
 FROM eclipse-temurin:21-jre-jammy

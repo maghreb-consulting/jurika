@@ -60,6 +60,20 @@ public class AccesDeboursTicket {
         return t;
     }
 
+    /**
+     * Lot L5 (E6, RG-DEB-03) : telechargement de l'etat des debours. Memes regles que la
+     * lecture ; le client doit en outre avoir la permission de telecharger (RG-CLI-01).
+     */
+    @Transactional(readOnly = true)
+    public Ticket telechargement(AuthenticatedUser actor, UUID ticketId) {
+        Ticket t = lecture(actor, ticketId);
+        if (actor.role() == Role.CLIENT && !permissions.telechargementPermis(actor.workspaceId(), t.dossierId())) {
+            throw new AccessDeniedException(
+                    "Le telechargement des documents n'est pas autorise pour votre acces.");
+        }
+        return t;
+    }
+
     @Transactional(readOnly = true)
     public Ticket ecriture(AuthenticatedUser actor, UUID ticketId) {
         if (actor.role() != Role.EMPLOYE) {

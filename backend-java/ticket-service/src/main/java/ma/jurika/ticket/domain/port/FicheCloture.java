@@ -12,5 +12,9 @@ public interface FicheCloture {
 
     record Resultat(List<String> repris, List<String> ecarts) {}
 
-    Resultat mettreAJour(UUID workspaceId, UUID ticketId);
+    /**
+     * @param auteurId employe qui cloture : auteur de la trace des identifiants reportes
+     *                 (Lot L5, E7, RG-FIC-04), provenance FIN_PARCOURS ou EXTRAITE.
+     */
+    Resultat mettreAJour(UUID workspaceId, UUID ticketId, UUID auteurId);
 }

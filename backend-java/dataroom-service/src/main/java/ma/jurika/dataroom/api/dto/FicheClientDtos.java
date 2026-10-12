@@ -1,95 +1,61 @@
 package ma.jurika.dataroom.api.dto;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Modele de la « Fiche client » — carte d'identite juridique d'une societe,
- * assemblee cote serveur puis rendue en PDF (charte JURIKA). Quatre sections :
- *   1. Identifiants de la societe ({@link Identity})
- *   2. Operations juridiques subies ({@link Operation})
- *   3. Documents en vigueur (versions courantes)
- *   4. Historique documentaire ({@link DocumentHistoryEntry})
+ * Lot L5 (E7) : fiche client et fiche dossier (cahier des charges 10.2 et 10.3).
  *
- * <p>Reserve EMPLOYE (responsable) / SUPERVISEUR / SUPER_ADMIN — jamais le CLIENT.
+ * <ul>
+ *   <li>Fiche client (RG-FIC-01 a 05) : UNIQUEMENT les identifiants de la societe, a leur
+ *       valeur en vigueur, chacun avec sa provenance ; la taxe professionnelle avec toutes
+ *       ses versions. Aucun historique d'operations.</li>
+ *   <li>Fiche dossier (RG-FIC-06, 07) : les memes identifiants et toutes les operations
+ *       juridiques du dossier (un ticket = une operation).</li>
+ * </ul>
+ * Reserve a l'employe responsable du dossier et au superviseur ; jamais au client.
  */
 public final class FicheClientDtos {
 
     private FicheClientDtos() {}
 
-    /** Section 1 — bloc d'identite brut (valeurs nullables, formatage cote PDF). */
-    public record Identity(
-            String raisonSociale,
-            String formeJuridique,
-            String ice,
-            String rcNumero,
-            String rcTribunal,
-            String identifiantFiscal,
-            String taxeProfessionnelle,
-            String cnss,
-            String adresseSiege,
-            String ville,
-            BigDecimal capitalSocialMad,
-            LocalDate dateConstitution,
-            String statut) {}
+    /**
+     * Un identifiant de la societe.
+     *
+     * @param code           DENOMINATION, FORME, CAPITAL, SIEGE, RC, ICE, IF, TP, CNSS
+     * @param libelle        intitule affiche
+     * @param valeur         valeur en vigueur mise en forme, ou {@code null} si non renseignee
+     * @param provenance     d'ou vient la valeur (RG-FIC-03), en clair
+     * @param origine        code de provenance : SAISIE, FIN_PARCOURS, EXTRAITE, OUVERTURE,
+     *                       PARCOURS, NON_TRACEE, ou {@code null} si la valeur manque
+     */
+    public record Identifiant(String code, String libelle, String valeur, String provenance, String origine) {}
+
+    /** Une version de la taxe professionnelle (RG-FIC-02). {@code dateEffet} null : non renseignee. */
+    public record VersionTp(String numero, LocalDate dateEffet, boolean enVigueur, Instant saisieLe,
+                            String saisiePar) {}
+
+    /** Une modification tracee d'un identifiant (RG-FIC-04). */
+    public record Modification(String champ, String libelle, String ancienneValeur, String nouvelleValeur,
+                               String provenance, String auteur, Instant date) {}
 
     /**
-     * Section 2 — une operation juridique subie par la societe.
+     * Une operation juridique du dossier (RG-FIC-06).
      *
-     * @param type          type brut du ticket (CREATION, MODIFICATION, ...)
-     * @param typeLabel     libelle metier (« Modification statutaire »)
-     * @param sousTypeLabel precision (« changement de gerant ») ou null
-     * @param dateDebut     date d'ouverture du ticket
-     * @param dateFinalisation date de cloture du ticket, ou null si en cours
-     * @param dateActe      date juridique de l'acte issue du workflow, ou null
-     * @param finalisee     true si l'operation est cloturee
+     * @param dateFin    date de cloture, ou d'annulation, ou {@code null} si en cours
+     * @param natureFin  CLOTURE, ANNULATION ou {@code null}
      */
-    public record Operation(
-            String type,
-            String typeLabel,
-            String sousTypeLabel,
-            String reference,
-            Instant dateDebut,
-            Instant dateFinalisation,
-            LocalDate dateActe,
-            boolean finalisee) {}
+    public record Operation(UUID ticketId, String type, String typeLabel, String sousTypeLabel, String reference,
+                            Instant dateOuverture, Instant dateFin, String natureFin, String statut,
+                            String statutLabel, String responsable) {}
 
-    /** Section 3 — un document actuellement en vigueur (version courante). */
-    public record DocumentEnVigueur(
-            String documentType,
-            String title,
-            Instant dateEtablissement,
-            short version) {}
+    /** Fiche client : identifiants, versions de TP, et (a l'ecran seulement) la trace des modifications. */
+    public record FicheClientView(UUID dossierId, String cabinet, String denomination,
+                                  List<Identifiant> identifiants, List<VersionTp> versionsTp,
+                                  List<Modification> modifications, boolean modifiable) {}
 
-    /**
-     * Section 4 — une operation documentaire (ajout ou remplacement).
-     *
-     * @param action AJOUT | REMPLACEMENT | RESTAURATION
-     */
-    public record DocumentHistoryEntry(
-            Instant date,
-            String action,
-            String documentType,
-            String title,
-            short version,
-            String auteur,
-            String motif) {}
-
-    /**
-     * Agregat complet passe au generateur PDF.
-     *
-     * @param cabinet     papier a en-tete du cabinet (logo + coordonnees + mentions)
-     * @param generatedAt horodatage de generation (pied de page)
-     */
-    public record FicheClientView(
-            UUID dossierId,
-            ma.jurika.common.pdf.CabinetIdentity cabinet,
-            Identity identity,
-            List<Operation> operations,
-            List<DocumentEnVigueur> documentsEnVigueur,
-            List<DocumentHistoryEntry> historiqueDocuments,
-            Instant generatedAt) {}
+    /** Fiche dossier : la fiche client et les operations ; a jour de la derniere cloture (RG-CLO-04). */
+    public record FicheDossierView(FicheClientView fiche, List<Operation> operations, Instant derniereCloture) {}
 }

@@ -5,6 +5,7 @@ import { notificationService } from '../../services/notification.service';
 import { getSocket } from '../../lib/realtimeSocket';
 import type { Notification } from '../../types/notification';
 import { NOTIFICATION_TYPE_LABELS } from '../../types/notification';
+import { InfoBulle } from '../ui/Aide';
 
 /**
  * BUG 10 (2026-06-08) — Cloche topbar avec badge dynamique (unread-count)
@@ -14,12 +15,16 @@ import { NOTIFICATION_TYPE_LABELS } from '../../types/notification';
  *
  * Clic sur une notification : marque comme lue + navigue vers
  * {@code actionUrl} si present (ex `/chat` pour CHAT_MESSAGE).
+ *
+ * Lot L5 (E9, RG-COM-08) : centre de notifications de l'employé et du
+ * superviseur (le client est averti par courriel, il n'a pas de cloche) ;
+ * filtre « Toutes / Non lues », aide intégrée.
  */
 function formatRelative(iso: string): string {
   try {
     const d = new Date(iso);
     const diffSec = Math.floor((Date.now() - d.getTime()) / 1000);
-    if (diffSec < 60) return 'a l\'instant';
+    if (diffSec < 60) return 'à l’instant';
     if (diffSec < 3600) return `il y a ${Math.floor(diffSec / 60)} min`;
     if (diffSec < 86_400) return `il y a ${Math.floor(diffSec / 3600)} h`;
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
@@ -34,6 +39,7 @@ export function NotificationBell() {
   const [unread, setUnread] = useState(0);
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [filtre, setFiltre] = useState<'TOUTES' | 'NON_LUES'>('TOUTES');
   const panelRef = useRef<HTMLDivElement>(null);
 
   // 2026-06-22 — coupe-circuit : si le backend temps réel (port 3000) est down,
@@ -132,6 +138,11 @@ export function NotificationBell() {
     }
   }
 
+  const affichees = useMemo(
+    () => (filtre === 'NON_LUES' ? items.filter((n) => !n.readAt) : items),
+    [items, filtre],
+  );
+
   const headerLabel = useMemo(
     () => (unread > 0 ? `${unread} non lue${unread > 1 ? 's' : ''}` : 'Tout est lu'),
     [unread],
@@ -161,7 +172,13 @@ export function NotificationBell() {
         <div className="absolute right-0 top-full z-50 mt-2 w-96 overflow-hidden rounded-lg border border-border-hi bg-bg-overlay shadow-card-lifted">
           <div className="flex items-center justify-between border-b border-border-hi px-4 py-3">
             <div>
-              <p className="text-sm font-semibold text-fg">Notifications</p>
+              <p className="flex items-center gap-1 text-sm font-semibold text-fg">
+                Notifications
+                <InfoBulle
+                  libelle="Aide sur les notifications"
+                  texte="Vous êtes averti ici des délais de démarches qui approchent ou sont dépassés, des nouvelles demandes et réponses de vos clients, des transferts de dossier proposés ou acceptés, des messages de vos collègues et, pour le superviseur, du quota du forfait qui approche. Cliquez sur une notification pour ouvrir l’élément concerné : elle passe alors en lue."
+                />
+              </p>
               <p className="text-[10px] uppercase tracking-wide text-fg-subtle">
                 {headerLabel}
               </p>
@@ -178,19 +195,38 @@ export function NotificationBell() {
             )}
           </div>
 
+          <div className="flex gap-1 border-b border-border-hi px-4 py-2" role="tablist" aria-label="Filtrer les notifications">
+            {(['TOUTES', 'NON_LUES'] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                role="tab"
+                aria-selected={filtre === f}
+                onClick={() => setFiltre(f)}
+                className={`rounded px-2 py-0.5 text-xs transition ${
+                  filtre === f ? 'bg-accent/15 font-semibold text-accent' : 'text-fg-muted hover:text-fg'
+                }`}
+              >
+                {f === 'TOUTES' ? 'Toutes' : 'Non lues'}
+              </button>
+            ))}
+          </div>
+
           <div className="max-h-96 overflow-y-auto">
             {loading && items.length === 0 ? (
               <div className="flex h-32 items-center justify-center">
                 <Loader2 className="h-5 w-5 animate-spin text-fg-subtle" />
               </div>
-            ) : items.length === 0 ? (
+            ) : affichees.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-10 text-center text-fg-subtle">
                 <Inbox className="h-8 w-8" />
-                <p className="text-sm">Aucune notification.</p>
+                <p className="text-sm">
+                  {filtre === 'NON_LUES' ? 'Aucune notification non lue.' : 'Aucune notification.'}
+                </p>
               </div>
             ) : (
               <ul className="divide-y divide-border-hi">
-                {items.map((n) => (
+                {affichees.map((n) => (
                   <li key={n.id}>
                     <button
                       type="button"
@@ -203,7 +239,11 @@ export function NotificationBell() {
                       <div className="flex w-full items-start justify-between gap-2">
                         <span className="text-sm font-medium text-fg">{n.title}</span>
                         {!n.readAt && (
-                          <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-accent" />
+                          <span
+                            className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-accent"
+                            aria-label="Non lue"
+                            data-testid="notification-non-lue"
+                          />
                         )}
                       </div>
                       <span className="line-clamp-2 text-xs text-fg-muted">{n.message}</span>

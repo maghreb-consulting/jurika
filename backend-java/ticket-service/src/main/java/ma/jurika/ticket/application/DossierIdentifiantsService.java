@@ -12,6 +12,7 @@ import ma.jurika.ticket.api.dto.DossierIdentifiantsDtos.DossierIdentifiantsView;
 import ma.jurika.ticket.api.dto.DossierIdentifiantsDtos.UpdateIdentifiantsRequest;
 import ma.jurika.ticket.domain.model.TaxeProfessionnelleVersion;
 import ma.jurika.ticket.domain.port.TaxeProfessionnelleVersionRepository;
+import ma.jurika.ticket.domain.port.TraceIdentifiants;
 import ma.jurika.ticket.infrastructure.persistence.DossierEntity;
 import ma.jurika.ticket.infrastructure.persistence.DossierJpaRepository;
 import org.slf4j.Logger;
@@ -52,15 +53,18 @@ public class DossierIdentifiantsService {
     private final DossierJpaRepository dossiers;
     private final DeadlineUseCase deadlineUseCase;
     private final TaxeProfessionnelleVersionRepository versionsTp;
+    private final TraceIdentifiants trace;
 
     @PersistenceContext
     private EntityManager em;
 
     public DossierIdentifiantsService(DossierJpaRepository dossiers, DeadlineUseCase deadlineUseCase,
-                                      TaxeProfessionnelleVersionRepository versionsTp) {
+                                      TaxeProfessionnelleVersionRepository versionsTp,
+                                      TraceIdentifiants trace) {
         this.dossiers = dossiers;
         this.deadlineUseCase = deadlineUseCase;
         this.versionsTp = versionsTp;
+        this.trace = trace;
     }
 
     /**
@@ -105,6 +109,11 @@ public class DossierIdentifiantsService {
         if (capital != null && capital.signum() < 0) {
             throw new ValidationException("Le capital social ne peut pas etre negatif.");
         }
+
+        // Lot L5 (E7, RG-FIC-03/04) : provenance SAISIE et auteur declares avant toute
+        // ecriture ; le declencheur de ticket V41 trace chaque champ change (ancienne et
+        // nouvelle valeur, auteur, date).
+        trace.declarerSaisie(userId);
 
         // "RC obtenu" : detection de l'immatriculation (numero RC passant de vide a renseigne).
         // C'est le seul evenement metier disponible ici pour ancrer l'echeance CNSS.

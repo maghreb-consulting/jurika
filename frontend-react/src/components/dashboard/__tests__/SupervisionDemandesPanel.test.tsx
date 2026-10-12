@@ -20,13 +20,13 @@ const demande: DemandeSupervisionRow = {
   id: 'dem1', dossierId: 'd1', raisonSociale: 'ACME SARL', responsableId: 'u1',
   responsableNom: 'Karim Benani', sujet: 'Besoin K-bis', description: null,
   statut: 'NON_TRAITEE', direction: 'CLIENT_TO_EMPLOYE', typeRequete: null,
-  createdAt: '2026-07-20',
+  createdAt: '2026-07-20', etatSuivi: 'NON_TRAITEE',
 };
 const requete: DemandeSupervisionRow = {
   id: 'req1', dossierId: 'd2', raisonSociale: 'BETA SAS', responsableId: 'u2',
   responsableNom: 'Sara Alaoui', sujet: 'Fournir bail', description: null,
   statut: 'OUVERTE', direction: 'EMPLOYE_TO_CLIENT', typeRequete: 'PIECE',
-  createdAt: '2026-07-21',
+  createdAt: '2026-07-21', etatSuivi: 'NON_TRAITEE',
 };
 
 describe('SupervisionDemandesPanel', () => {
@@ -42,7 +42,7 @@ describe('SupervisionDemandesPanel', () => {
     renderPanel();
 
     await waitFor(() => expect(screen.getByText('Demandes des clients')).toBeInTheDocument());
-    expect(screen.getByText('Requetes aux clients')).toBeInTheDocument();
+    expect(screen.getByText('Requêtes aux clients')).toBeInTheDocument();
 
     // Demande : sujet + dataroom (raison sociale, pas l'UUID) + employe.
     expect(screen.getByText('Besoin K-bis')).toBeInTheDocument();
@@ -67,6 +67,47 @@ describe('SupervisionDemandesPanel', () => {
     await waitFor(() =>
       expect(screen.getByText(/Aucune demande client dans le cabinet/i)).toBeInTheDocument(),
     );
-    expect(screen.getByText(/Aucune requete envoyee aux clients/i)).toBeInTheDocument();
+    expect(screen.getByText(/Aucune requête envoyée aux clients/i)).toBeInTheDocument();
+  });
+
+  // Lot L5 (E9, RG-COM-07) : les requetes sont comptees sur les trois etats de
+  // suivi rendus par le serveur ; le statut detaille reste lisible en second.
+  it('compte demandes et requetes sur les trois etats de suivi', async () => {
+    const repondue: DemandeSupervisionRow = {
+      ...requete, id: 'req2', sujet: 'Signer le PV', statut: 'REPONDUE', etatSuivi: 'EN_COURS',
+    };
+    const completer: DemandeSupervisionRow = {
+      ...requete, id: 'req3', sujet: 'Bail signe', statut: 'A_COMPLETER', etatSuivi: 'EN_COURS',
+    };
+    const close: DemandeSupervisionRow = {
+      ...requete, id: 'req4', sujet: 'CIN', statut: 'CLOTUREE', etatSuivi: 'TRAITEE',
+    };
+    listSupervisionDemandes.mockImplementation((direction: string) =>
+      Promise.resolve(direction === 'CLIENT_TO_EMPLOYE' ? [demande] : [requete, repondue, completer, close]),
+    );
+
+    renderPanel();
+
+    await waitFor(() => expect(screen.getByText('Signer le PV')).toBeInTheDocument());
+    const enCours = screen.getAllByTestId('compteur-etat-EN_COURS');
+    expect(enCours).toHaveLength(1);
+    expect(enCours[0]).toHaveTextContent('En cours · 2');
+    expect(screen.getAllByTestId('compteur-etat-TRAITEE')[0]).toHaveTextContent('Traitée · 1');
+    expect(screen.getAllByTestId('compteur-etat-NON_TRAITEE')).toHaveLength(2);
+    // Statut detaille de la requete, en second.
+    expect(screen.getByText('En attente de validation')).toBeInTheDocument();
+    expect(screen.getByText('À compléter')).toBeInTheDocument();
+    // Aide de l'ecran.
+    expect(screen.getByRole('note', { name: 'Suivi des demandes et des requêtes' })).toBeInTheDocument();
+  });
+
+  it('un statut sans etat de suivi est montre comme inconnu, jamais range d office', async () => {
+    listSupervisionDemandes.mockImplementation((direction: string) =>
+      Promise.resolve(direction === 'CLIENT_TO_EMPLOYE' ? [] : [{ ...requete, statut: 'ETRANGE', etatSuivi: null }]),
+    );
+    renderPanel();
+    await waitFor(() => expect(screen.getByText('Fournir bail')).toBeInTheDocument());
+    expect(screen.getByText('État inconnu · 1')).toBeInTheDocument();
+    expect(screen.queryByTestId('compteur-etat-NON_TRAITEE')).not.toBeInTheDocument();
   });
 });

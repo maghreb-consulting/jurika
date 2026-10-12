@@ -111,4 +111,29 @@ describe('<ChatPage>', () => {
     await waitFor(() => expect(screen.queryByText('3')).not.toBeInTheDocument());
     expect(await screen.findByTestId('chat-message-input')).toBeInTheDocument();
   });
+
+  // Lot L5 (E9, RG-COM-06) : le serveur refuse un destinataire hors cabinet ;
+  // son message s'affiche tel quel et le brouillon est rendu a l'utilisateur.
+  it('affiche le refus du serveur et rend le message a la saisie', async () => {
+    const refus = 'Ce destinataire n’appartient pas à votre cabinet.';
+    fakeSocket.emit.mockImplementation((event: string, _payload: unknown, ack?: (r: unknown) => void) => {
+      if (event === 'chat:send' && ack) ack({ ok: false, error: refus, code: 'DESTINATAIRE_INCONNU' });
+    });
+    render(<ChatPage />);
+    fireEvent.click(await screen.findByTestId('chat-new-conversation'));
+    fireEvent.click(await screen.findByTestId('chat-contact-item'));
+    const input = await screen.findByTestId('chat-message-input');
+    fireEvent.change(input, { target: { value: 'Message refuse' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(await screen.findByText(refus)).toBeInTheDocument();
+    expect((input as HTMLTextAreaElement).value).toBe('Message refuse');
+    fakeSocket.emit.mockReset();
+  });
+
+  it("porte l'aide de la messagerie interne", async () => {
+    render(<ChatPage />);
+    expect(await screen.findByRole('note', { name: 'Messagerie interne du cabinet' })).toBeInTheDocument();
+    expect(screen.getByText(/vos clients n’ont pas accès à la messagerie/)).toBeInTheDocument();
+  });
 });

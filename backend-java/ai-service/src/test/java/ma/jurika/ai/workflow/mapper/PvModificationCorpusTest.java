@@ -406,16 +406,156 @@ class PvModificationCorpusTest {
 
     @Test
     void au_decisions_non_couvertes_refusees_donnees_nommees() {
-        for (String type : List.of("affectation_resultat", "distribution_dividendes", "distribution_reserves",
-                "acompte_dividendes")) {
-            assertThatThrownBy(() -> mapper.map("PV_MODIFICATION_SARL_AU", pvAu(List.of(res(type)))))
-                    .isInstanceOf(GenerationRefuseeException.class)
-                    .satisfies(e -> assertThat(((GenerationRefuseeException) e).donnees()).isNotEmpty());
-        }
+        // Le modele de l'associe unique ne prevoit pas d'acompte ("Aucun acompte sur dividendes
+        // n'est organise par la reglementation marocaine") : refus nomme.
+        assertRefus(pvAu(List.of(ajout(res("acompte_dividendes"), "acompteMontant", 20_000))), "RESOLUTION_TYPE");
         // Decisions du seul PV d'assemblee : refusees en SARL AU.
         assertThatThrownBy(() -> mapper.map("PV_MODIFICATION_SARL_AU", pvAu(List.of(ajout(res("agrement_cession"),
                 "cessionnaireTiers", "oui")))))
                 .isInstanceOf(GenerationRefuseeException.class);
+    }
+
+    // -- SARL AU : affectation du resultat et distributions (lot L5, E5) --
+
+    private static Map<String, Object> affectationAu() {
+        return ajout(res("affectation_resultat"), "exerciceClosDate", "2025-12-31", "resultatSens", "b\u00e9n\u00e9fice",
+                "resultatMontant", 200_000, "reserveLegaleApplicable", "oui", "reserveLegaleDotationTaux", "5 %",
+                "reserveLegalePlafond", "le cinqui\u00e8me du capital social", "reserveLegaleDotationMontant", 10_000,
+                "affectations", List.of(Map.of("poste", "Dividendes", "montant", 150_000),
+                        Map.of("poste", "Report \u00e0 nouveau", "montant", 40_000)));
+    }
+
+    private static Map<String, Object> dividendesAu() {
+        return ajout(res("distribution_dividendes"), "exerciceClosDate", "2025-12-31",
+                "approbationComptesDate", "2026-05-10", "beneficeDistribuable", 180_000, "dividendeTotal", 150_000,
+                "dateMisePaiement", "2026-07-31", "prolongationOrdonnance", "non", "retenueSourceTaux", "10",
+                "distributionExerciceOrigine", "2025", "retenueSourceExoneration", "non");
+    }
+
+    private static Map<String, Object> reservesAu() {
+        return ajout(res("distribution_reserves"), "dateMisePaiement", "2026-07-31", "retenueSourceTaux", "10",
+                "distributionExerciceOrigine", "2024", "retenueSourceExoneration", "non",
+                "reservesPrelevees", List.of(
+                        Map.of("libelle", "R\u00e9serves facultatives", "prelevement", 30_000, "soldeAvant", 80_000),
+                        Map.of("libelle", "Autres r\u00e9serves", "prelevement", 20_000, "soldeAvant", 20_000)));
+    }
+
+    @Test
+    void au_affectation_du_benefice_rendue() throws Exception {
+        corpusRequis();
+        assertThat(au("affectation_benefice", affectationAu())).contains(
+                "affecter le b\u00e9n\u00e9fice net de l'exercice clos le 31/12/2025, s'\u00e9levant \u00e0 200\u202f000 dirhams (DEUX CENT MILLE)",
+                "dotation \u00e0 la r\u00e9serve l\u00e9gale, \u00e0 hauteur de 5 % du b\u00e9n\u00e9fice net de l'exercice, le pr\u00e9l\u00e8vement cessant d'\u00eatre obligatoire lorsque la r\u00e9serve atteint le cinqui\u00e8me du capital social, soit 10\u202f000 dirhams ;",
+                "Dividendes : 150\u202f000 dirhams (CENT CINQUANTE MILLE) ;",
+                "Report \u00e0 nouveau : 40\u202f000 dirhams (QUARANTE MILLE) ;");
+        String sansReserve = au("affectation_benefice_sans_reserve", ajout(affectationAu(),
+                "reserveLegaleApplicable", "non", "reserveLegaleDotationMontant", "",
+                "affectations", List.of(Map.of("poste", "Report \u00e0 nouveau", "montant", 200_000))));
+        assertThat(sansReserve).contains("Report \u00e0 nouveau : 200\u202f000 dirhams").doesNotContain("r\u00e9serve l\u00e9gale");
+    }
+
+    @Test
+    void au_affectation_de_la_perte_rendue() throws Exception {
+        corpusRequis();
+        assertThat(au("affectation_perte", ajout(res("affectation_resultat"), "exerciceClosDate", "2025-12-31",
+                "resultatSens", "perte", "resultatMontant", 12_000, "capitauxPropresSousQuart", "oui")))
+                .contains("affecter la perte nette de l'exercice clos le 31/12/2025, s'\u00e9levant \u00e0 12\u202f000 dirhams (DOUZE MILLE), au compte de report \u00e0 nouveau",
+                        "la situation nette de la soci\u00e9t\u00e9 est devenue inf\u00e9rieure au quart du capital social");
+    }
+
+    @Test
+    void au_distribution_de_dividendes_rendue() throws Exception {
+        corpusRequis();
+        String t = au("distribution_dividendes", dividendesAu());
+        assertThat(t).contains(
+                "approuv\u00e9s le 10/05/2026, s'\u00e9l\u00e8ve \u00e0 180\u202f000 dirhams (CENT QUATRE-VINGT MILLE)",
+                "la somme de 150\u202f000 dirhams (CENT CINQUANTE MILLE), soit 150 dirhams par part sociale",
+                "la totalit\u00e9 des 1\u202f000 parts sociales",
+                "mis en paiement le 31/07/2026",
+                "soit au plus tard le 30/09/2026",
+                "au taux de 10 %, l'exercice d'origine des sommes distribu\u00e9es \u00e9tant l'exercice 2025, soit une retenue de 15\u202f000 dirhams")
+                .doesNotContain("prolong\u00e9 par ordonnance").doesNotContain("exon\u00e9r\u00e9s de la retenue");
+        // Prolongation par ordonnance, associe unique societe exoneree.
+        Map<String, Object> pv = pvAu(List.of(ajout(dividendesAu(), "prolongationOrdonnance", "oui",
+                "prolongationOrdonnanceDate", "2026-09-15", "prolongationDateNouvelle", "2026-12-31",
+                "dateMisePaiement", "2026-11-30", "retenueSourceExoneration", "oui", "retenueSourceTaux", "11,25")));
+        pv.put("associes", List.of(Map.of("typePersonne", "MORALE", "denomination", "HOLDING ATLAS SA",
+                "nombreParts", 1_000, "presence", "pr\u00e9sent")));
+        String p = rendreSansControle("PV_MODIFICATION_SARL_AU", "SARL_AU_distribution_dividendes_prolongation", pv);
+        assertThat(p).contains("tribunal de commerce de Casablanca, statuant en r\u00e9f\u00e9r\u00e9, en date du 15/09/2026, jusqu'au 31/12/2026",
+                "au taux de 11,25 %", "soit une retenue de 16\u202f875 dirhams", "exon\u00e9r\u00e9s de la retenue \u00e0 la source");
+    }
+
+    @Test
+    void au_distribution_de_reserves_rendue() throws Exception {
+        corpusRequis();
+        assertThat(au("distribution_reserves", reservesAu())).contains(
+                "une somme globale de 50\u202f000 dirhams, pr\u00e9lev\u00e9e sur les postes de r\u00e9serves disponibles suivants",
+                "R\u00e9serves facultatives : pr\u00e9l\u00e8vement de 30\u202f000 dirhams, le poste \u00e9tant ramen\u00e9 de 80\u202f000 dirhams \u00e0 50\u202f000 dirhams ;",
+                "Autres r\u00e9serves : pr\u00e9l\u00e8vement de 20\u202f000 dirhams, le poste \u00e9tant ramen\u00e9 de 20\u202f000 dirhams \u00e0 0 dirhams ;",
+                "soit 50 dirhams par part sociale", "mise en paiement le 31/07/2026",
+                "l'exercice d'origine des r\u00e9serves distribu\u00e9es \u00e9tant l'exercice 2024, soit une retenue de 5\u202f000 dirhams");
+    }
+
+    /** Les montants derives sont calcules (jamais saisis deux fois) ; mode CI, sans corpus. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void au_distributions_montants_derives() {
+        Map<String, Object> d = ((List<Map<String, Object>>) mapper.map("PV_MODIFICATION_SARL_AU",
+                pvAu(List.of(dividendesAu()))).get("RESOLUTIONS")).get(0);
+        assertThat(d).containsEntry("RESOLUTION_TYPE", "distribution_dividendes")
+                .containsEntry("DISTRIBUTION_MONTANT_PAR_PART", "150")
+                .containsEntry("DIVIDENDES_DATE_LIMITE_PAIEMENT", "30/09/2026")
+                .containsEntry("RETENUE_SOURCE_TAUX", "10 %")
+                .containsEntry("RETENUE_SOURCE_MONTANT", "15\u202f000");
+        Map<String, Object> vars = mapper.map("PV_MODIFICATION_SARL_AU", pvAu(List.of(reservesAu())));
+        Map<String, Object> r = ((List<Map<String, Object>>) vars.get("RESOLUTIONS")).get(0);
+        assertThat(r).containsEntry("RESERVES_PRELEVEMENT_TOTAL", "50\u202f000")
+                .containsEntry("DISTRIBUTION_MONTANT_PAR_PART", "50");
+        assertThat((List<Map<String, Object>>) vars.get("RESERVES_PRELEVEES")).extracting(m -> m.get("RESERVE_POSTE_SOLDE_APRES"))
+                .containsExactly("50\u202f000", "0");
+        // Retenue au centime : 33 000 x 11,25 % = 3 712,50.
+        Map<String, Object> c = ((List<Map<String, Object>>) mapper.map("PV_MODIFICATION_SARL_AU",
+                pvAu(List.of(ajout(dividendesAu(), "dividendeTotal", 33_000, "retenueSourceTaux", "11,25")))).get("RESOLUTIONS")).get(0);
+        assertThat(c).containsEntry("RETENUE_SOURCE_MONTANT", "3\u202f712,50").containsEntry("DISTRIBUTION_MONTANT_PAR_PART", "33");
+        Map<String, Object> a = ((List<Map<String, Object>>) mapper.map("PV_MODIFICATION_SARL_AU",
+                pvAu(List.of(affectationAu()))).get("RESOLUTIONS")).get(0);
+        assertThat(a).containsEntry("RESOLUTION_TYPE", "affectation_resultat").containsEntry("RESULTAT_NET_CHIFFRES", "200\u202f000");
+    }
+
+    /** Donnees qui pilotent une branche ou contredisent le calcul : refusees, nommees ; mode CI. */
+    @Test
+    void au_distributions_refus_nommes() {
+        assertRefus(pvAu(List.of(ajout(affectationAu(), "resultatSens", ""))), "RESULTAT_NET_SENS");
+        assertRefus(pvAu(List.of(ajout(affectationAu(), "reserveLegaleApplicable", ""))), "RESERVE_LEGALE_APPLICABLE");
+        assertRefus(pvAu(List.of(ajout(affectationAu(), "resultatMontant", 210_000))), "AFFECTATION_RESULTAT");
+        assertRefus(pvAu(List.of(ajout(affectationAu(), "affectations",
+                List.of(Map.of("poste", "R\u00e9serve l\u00e9gale", "montant", 10_000),
+                        Map.of("poste", "Dividendes", "montant", 180_000))))), "RESERVE_LEGALE_APPLICABLE");
+        assertRefus(pvAu(List.of(ajout(affectationAu(), "reserveLegaleApplicable", "non",
+                "reserveLegaleDotationMontant", "", "affectations", List.of()))), "AFFECTATION_RESULTAT");
+        assertRefus(pvAu(List.of(ajout(res("affectation_resultat"), "exerciceClosDate", "2025-12-31",
+                "resultatSens", "perte", "resultatMontant", 12_000))), "CAPITAUX_PROPRES_SOUS_QUART");
+
+        assertRefus(pvAu(List.of(ajout(dividendesAu(), "prolongationOrdonnance", ""))), "DISTRIBUTION_PROLONGATION_ORDONNANCE");
+        assertRefus(pvAu(List.of(ajout(dividendesAu(), "retenueSourceExoneration", ""))), "RETENUE_SOURCE_EXONERATION_APPLICABLE");
+        assertRefus(pvAu(List.of(ajout(dividendesAu(), "dividendeTotal", 190_000))), "DISTRIBUTION_MONTANT_CHIFFRES");
+        assertRefus(pvAu(List.of(ajout(dividendesAu(), "dateMisePaiement", "2026-10-15"))), "DIVIDENDE_DATE_MISE_EN_PAIEMENT");
+        assertRefus(pvAu(List.of(ajout(dividendesAu(), "dividendeTotal", 100_001))), "DISTRIBUTION_MONTANT_PAR_PART");
+        assertRefus(pvAu(List.of(ajout(dividendesAu(), "retenueSourceTaux", "abc"))), "RETENUE_SOURCE_TAUX");
+        // L'exoneration ne vise qu'un associe unique societe : refusee pour une personne physique.
+        assertRefus(pvAu(List.of(ajout(dividendesAu(), "retenueSourceExoneration", "oui"))),
+                "RETENUE_SOURCE_EXONERATION_APPLICABLE");
+
+        assertRefus(pvAu(List.of(ajout(reservesAu(), "reservesPrelevees", List.of()))), "RESERVES_PRELEVEES");
+        assertRefus(pvAu(List.of(ajout(reservesAu(), "reservesPrelevees",
+                List.of(Map.of("libelle", "R\u00e9serve l\u00e9gale", "prelevement", 10_000, "soldeAvant", 20_000))))),
+                "RESERVE_POSTE_LIBELLE");
+        assertRefus(pvAu(List.of(ajout(reservesAu(), "reservesPrelevees",
+                List.of(Map.of("libelle", "R\u00e9serves facultatives", "prelevement", 90_000, "soldeAvant", 80_000))))),
+                "RESERVE_POSTE_PRELEVEMENT");
+        // Deux distributions de reserves : une seule liste RESERVES_PRELEVEES par proces-verbal.
+        assertRefus(pvAu(List.of(reservesAu(), reservesAu())), "RESERVES_PRELEVEES");
     }
 
     // -- Refus : choix exiges, incoherences, boucles ----------------------
@@ -519,6 +659,24 @@ class PvModificationCorpusTest {
         assertThat(v.find()).describedAs("%s : variable residuelle %s", nom, v.reset().find() ? v.group() : "").isFalse();
         assertThat(RESIDUAL_MARKER.matcher(texte).find()).describedAs("%s : marqueur de bloc residuel", nom).isFalse();
         assertThat(texte).doesNotContain("VALEUR MANQUANTE").doesNotContain("TABLE DE CORRESPONDANCE");
+        return texte;
+    }
+
+    /**
+     * Rendu sans le controle des variables manquantes : l'associe unique personne morale n'a pas
+     * encore d'ecran d'identite (forme, siege, RC : dette L4d), seule la decision est relue.
+     */
+    private String rendreSansControle(String code, String nom, Map<String, Object> payload) throws Exception {
+        Map<String, Object> vars = RepriseFiche.completer(mapper.map(code, payload), payload);
+        DocxTemplateEngine.DocumentResult r = engine.generate(mapper.gabarit(code, payload), vars);
+        Files.write(OUT.resolve(nom + ".docx"), r.bytes());
+        StringBuilder sb = new StringBuilder();
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(r.bytes()))) {
+            for (XWPFParagraph p : doc.getParagraphs()) sb.append(p.getText()).append('\n');
+        }
+        String texte = sb.toString();
+        Files.writeString(OUT.resolve(nom + ".txt"), texte);
+        assertThat(RESIDUAL_MARKER.matcher(texte).find()).describedAs("%s : marqueur de bloc residuel", nom).isFalse();
         return texte;
     }
 

@@ -129,6 +129,23 @@ services:
       # Lot L0 (E13c) : role d'execution jurika_app (la RLS s'applique). Mot de
       # passe dedie, obligatoire : Compose echoue bruyamment s'il manque.
       JURIKA_APP_PASSWORD: "${JURIKA_APP_PASSWORD:?JURIKA_APP_PASSWORD absent, .env.local doit le definir}"
+      # Lot L5 (E2) : relais SMTP des courriels (bienvenue, identifiants, alertes de
+      # securite). SANS ces lignes, auth retombait sur le repli d'application.yml
+      # (localhost:1025) : chaque courriel echouait alors que .env.local designait
+      # Brevo. Le fournisseur (Brevo aujourd'hui, Amazon SES demain) ne change que
+      # par ces variables : voir infrastructure/COURRIELS.md.
+      JURIKA_EMAIL_PROVIDER: ${JURIKA_EMAIL_PROVIDER:-smtp}
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_AUTH: ${SMTP_AUTH:-false}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
+      SMTP_FROM: ${SMTP_FROM:-noreply@jurika.ma}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-JURIKA}
+      # Liens des courriels (verification d'adresse, confirmation d'un changement de
+      # compte) : adresse publique du front. Sans elle, le lien visait localhost:5173.
+      FRONTEND_URL: ${FRONTEND_URL:-http://${JURIKA_LAN_HOST:-localhost}}
     volumes:
       - ./secrets/jwt:/run/secrets/jwt:ro
     depends_on:

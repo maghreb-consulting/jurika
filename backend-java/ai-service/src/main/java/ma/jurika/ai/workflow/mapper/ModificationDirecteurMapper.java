@@ -4,6 +4,8 @@ import ma.jurika.ai.document.GenerationRefuseeException;
 import ma.jurika.ai.document.GenerationRefuseeException.DonneeManquante;
 import ma.jurika.ai.document.format.FrenchNumberToLetters;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -98,6 +100,10 @@ public final class ModificationDirecteurMapper {
      */
     static final Map<String, String> TYPES_AU = Map.ofEntries(
             Map.entry("approbation_comptes", "approbation_comptes"),
+            // Lot L5 (E5) : l'affectation d'une perte est "affectation_resultat_deficitaire" (voir typeAu).
+            Map.entry("affectation_resultat", "affectation_resultat"),
+            Map.entry("distribution_dividendes", "distribution_dividendes"),
+            Map.entry("distribution_reserves", "distribution_reserves"),
             Map.entry("nomination_gerant", "nomination_gerant"),
             Map.entry("renouvellement_gerant", "renouvellement_gerant"),
             Map.entry("revocation_gerant", "revocation_gerant"),
@@ -123,29 +129,12 @@ public final class ModificationDirecteurMapper {
             Map.entry("pouvoirs_formalites", "pouvoirs_formalites"));
 
     /**
-     * Decisions que le modele de l'associe unique redige avec des donnees que l'ecran de la
-     * modification ne recueille pas : refusees, donnees nommees (non resolu, lot L4d).
+     * Decisions que le modele de l'associe unique ne redige pas : refusees, donnees nommees.
+     * Lot L5 (E5) : l'affectation du resultat et les distributions sont desormais saisies ;
+     * reste l'acompte, que le modele exclut ("Aucun acompte sur dividendes n'est organise par la
+     * reglementation marocaine").
      */
     static final Map<String, List<DonneeManquante>> NON_COUVERTS_AU = Map.of(
-            "affectation_resultat", List.of(
-                    dm("RESERVE_LEGALE_APPLICABLE", "Dotation \u00e0 la r\u00e9serve l\u00e9gale applicable (oui ou non)"),
-                    dm("RESERVE_LEGALE_DOTATION_TAUX", "Taux de dotation \u00e0 la r\u00e9serve l\u00e9gale"),
-                    dm("RESERVE_LEGALE_PLAFOND", "Plafond de la r\u00e9serve l\u00e9gale"),
-                    dm("RESERVE_LEGALE_DOTATION_MONTANT", "Montant de la dotation \u00e0 la r\u00e9serve l\u00e9gale")),
-            "distribution_dividendes", List.of(
-                    dm("ASSEMBLEE_APPROBATION_COMPTES_DATE", "Date d'approbation des comptes"),
-                    dm("BENEFICE_DISTRIBUABLE_CHIFFRES", "B\u00e9n\u00e9fice distribuable"),
-                    dm("DISTRIBUTION_PROLONGATION_ORDONNANCE", "Prolongation du d\u00e9lai de paiement par ordonnance (oui ou non)"),
-                    dm("RETENUE_SOURCE_TAUX", "Taux de la retenue \u00e0 la source"),
-                    dm("RETENUE_SOURCE_MONTANT", "Montant de la retenue \u00e0 la source"),
-                    dm("DISTRIBUTION_EXERCICE_ORIGINE", "Exercice d'origine des sommes distribu\u00e9es"),
-                    dm("RETENUE_SOURCE_EXONERATION_APPLICABLE", "Exon\u00e9ration de la retenue \u00e0 la source (oui ou non)")),
-            "distribution_reserves", List.of(
-                    dm("RESERVES_PRELEVEES", "Postes de r\u00e9serves pr\u00e9lev\u00e9s (libell\u00e9, pr\u00e9l\u00e8vement, soldes avant et apr\u00e8s)"),
-                    dm("RETENUE_SOURCE_TAUX", "Taux de la retenue \u00e0 la source"),
-                    dm("RETENUE_SOURCE_MONTANT", "Montant de la retenue \u00e0 la source"),
-                    dm("DISTRIBUTION_EXERCICE_ORIGINE", "Exercice d'origine des r\u00e9serves distribu\u00e9es"),
-                    dm("RETENUE_SOURCE_EXONERATION_APPLICABLE", "Exon\u00e9ration de la retenue \u00e0 la source (oui ou non)")),
             "acompte_dividendes", List.of(
                     dm("RESOLUTION_TYPE", "Le mod\u00e8le des d\u00e9cisions de l'associ\u00e9 unique ne pr\u00e9voit pas d'acompte sur dividendes")));
 
@@ -213,7 +202,7 @@ public final class ModificationDirecteurMapper {
         }
 
         Ctx ctx = new Ctx(templateCode, isAu, capital, nbParts, vnActuelle, villeGreffe, dateActe,
-                associeUniqueNom(safe));
+                associeUniqueNom(safe), associeUniqueMorale(safe));
 
         // 3) Boucle RESOLUTIONS + boucles imbriquees (une resolution porteuse par proces-verbal).
         List<Map<String, Object>> resolutions = asListOfMaps(safe.get("resolutions"));
@@ -276,6 +265,12 @@ public final class ModificationDirecteurMapper {
                     + " : le mod\u00e8le des d\u00e9cisions de l'associ\u00e9 unique exige des donn\u00e9es que cet \u00e9cran ne recueille pas",
                     manquantes);
         }
+        if ("affectation_resultat".equals(type)) {
+            // "affecter le benefice net" ou "affecter la perte nette" : deux branches du modele.
+            String sens = choix(templateCode, r.get("resultatSens"), "RESULTAT_NET_SENS",
+                    "R\u00e9sultat de l'exercice (b\u00e9n\u00e9fice ou perte)", ModificationDirecteurMapper::normResultatSens);
+            return "perte".equals(sens) ? "affectation_resultat_deficitaire" : "affectation_resultat";
+        }
         if ("commissaire_comptes".equals(type)) {
             String action = choix(templateCode, r.get("cacAction"), "CAC_ACTION",
                     "Action sur le commissaire aux comptes", ModificationDirecteurMapper::normCacAction);
@@ -301,7 +296,8 @@ public final class ModificationDirecteurMapper {
 
     /** Donnees communes a toutes les resolutions d'un proces-verbal. */
     private record Ctx(String templateCode, boolean isAu, Long capital, Long nbParts, Long vnActuelle,
-                       String villeGreffe, LocalDate dateActe, String associeUniqueNom) {}
+                       String villeGreffe, LocalDate dateActe, String associeUniqueNom,
+                       Boolean associeUniqueMorale) {}
 
     private static void fillTypeVars(Map<String, Object> it, String type, Map<String, Object> r, Ctx c,
                                      Map<String, Object> boucles, Map<String, String> porteuses) {
@@ -317,8 +313,7 @@ public final class ModificationDirecteurMapper {
                     put(it, "RESULTAT_NET_LETTRES", lettres(r.get("resultatMontant")));
                     // Le depot des etats de synthese se fait au greffe du tribunal de commerce du
                     // registre : deduit de la ville du greffe (rien deduit hors tribunal de commerce).
-                    put(it, "TRIBUNAL_VILLE", "Tribunal de commerce".equals(TribunalDerive.type(c.villeGreffe()))
-                            ? c.villeGreffe() : "");
+                    put(it, "TRIBUNAL_VILLE", tribunalCommerce(c));
                     // "dans les trente jours qui suivent la presente approbation, soit au plus tard le".
                     put(it, "DEPOT_GREFFE_DATE_LIMITE", c.dateActe() == null ? "" : c.dateActe().plusDays(30).format(DATE_FR));
                 } else {
@@ -327,17 +322,29 @@ public final class ModificationDirecteurMapper {
                 }
             }
             case "affectation_resultat" -> {
+                if (c.isAu()) {
+                    affectationAu(it, r, c, boucles, porteuses);
+                    return;
+                }
                 porteuse(tc, porteuses, "AFFECTATIONS", type);
                 putDate(it, "EXERCICE_CLOS_DATE", r.get("exerciceClosDate"));
                 putAmount(it, "RESULTAT_MONTANT", r.get("resultatMontant"));
                 boucles.put("AFFECTATIONS", buildAffectations(r.get("affectations")));
             }
             case "distribution_dividendes" -> {
+                if (c.isAu()) {
+                    dividendesAu(it, r, c);
+                    return;
+                }
                 putAmount(it, "DIVIDENDE_TOTAL", r.get("dividendeTotal"));
                 putAmount(it, "DIVIDENDE_PAR_PART", r.get("dividendeParPart"));
                 putDate(it, "DATE_MISE_PAIEMENT", r.get("dateMisePaiement"));
             }
             case "distribution_reserves" -> {
+                if (c.isAu()) {
+                    reservesAu(it, r, c, boucles, porteuses);
+                    return;
+                }
                 putAmount(it, "PRELEVEMENT_MONTANT", r.get("prelevementMontant"));
                 put(it, "PRELEVEMENT_POSTE", str(r.get("prelevementPoste")));
                 putAmount(it, "DIVIDENDE_PAR_PART", r.get("dividendeParPart"));
@@ -551,6 +558,233 @@ public final class ModificationDirecteurMapper {
         put(it, "CESSION_CEDANT_NOM", str(r.get("cedantNom")));
         put(it, "CESSION_CESSIONNAIRE_NOM", str(r.get("cessionnaireNom")));
         putAmount(it, "CESSION_PRIX_TOTAL", r.get("cessionPrix"));
+    }
+
+    // ------------------------------------------------------------------
+    // SARL AU : affectation du resultat et distributions (lot L5, E5)
+    // ------------------------------------------------------------------
+
+    /**
+     * PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU, branches "affectation_resultat" (benefice) et
+     * "affectation_resultat_deficitaire" (perte, choisie par {@link #typeAu}). La reserve legale
+     * (applicable, quotite, plafond, montant) est SAISIE : la loi n 5-96 ne la regle pas en SARL
+     * et le corpus ne fixe aucun chiffre (dictionnaire). Le total affecte doit egaler le benefice.
+     */
+    private static void affectationAu(Map<String, Object> it, Map<String, Object> r, Ctx c,
+                                      Map<String, Object> boucles, Map<String, String> porteuses) {
+        String tc = c.templateCode();
+        putDate(it, "EXERCICE_CLOS_DATE", r.get("exerciceClosDate"));
+        Long resultat = toLong(r.get("resultatMontant"));
+        put(it, "RESULTAT_NET_CHIFFRES", resultat == null ? "" : formatAmount(resultat));
+        put(it, "RESULTAT_NET_LETTRES", lettres(resultat));
+        List<Map<String, Object>> saisies = asListOfMaps(r.get("affectations"));
+        if ("affectation_resultat_deficitaire".equals(it.get("RESOLUTION_TYPE"))) {
+            if (!saisies.isEmpty()) {
+                refusIncoherence(tc, "AFFECTATION_RESULTAT", "Affectations",
+                        "la perte est affect\u00e9e en totalit\u00e9 au report \u00e0 nouveau par le mod\u00e8le : retirez les lignes d'affectation");
+            }
+            put(it, "CAPITAUX_PROPRES_SOUS_QUART", SaisieExigee.ouiNon(tc, r.get("capitauxPropresSousQuart"),
+                    "CAPITAUX_PROPRES_SOUS_QUART",
+                    "Situation nette devenue inf\u00e9rieure au quart du capital social (oui ou non)"));
+            return;
+        }
+        porteuse(tc, porteuses, "AFFECTATION_RESULTAT", "affectation_resultat");
+        String reserve = SaisieExigee.ouiNon(tc, r.get("reserveLegaleApplicable"), "RESERVE_LEGALE_APPLICABLE",
+                "Dotation \u00e0 la r\u00e9serve l\u00e9gale due au titre de l'exercice (oui ou non)");
+        put(it, "RESERVE_LEGALE_APPLICABLE", reserve);
+        Long dotation = null;
+        if ("oui".equals(reserve)) {
+            put(it, "RESERVE_LEGALE_DOTATION_TAUX", str(r.get("reserveLegaleDotationTaux")).trim());
+            put(it, "RESERVE_LEGALE_PLAFOND", str(r.get("reserveLegalePlafond")).trim());
+            dotation = toLong(r.get("reserveLegaleDotationMontant"));
+            put(it, "RESERVE_LEGALE_DOTATION_MONTANT", dotation == null ? "" : formatAmount(dotation));
+        }
+        List<Map<String, Object>> lignes = new ArrayList<>();
+        Long total = "oui".equals(reserve) ? dotation : Long.valueOf(0L);
+        for (Map<String, Object> a : saisies) {
+            if (a == null || a.isEmpty()) continue;
+            String poste = str(a.get("poste")).trim();
+            if ("oui".equals(reserve) && norm(poste).contains("reserve legale")) {
+                refusIncoherence(tc, "RESERVE_LEGALE_APPLICABLE", "R\u00e9serve l\u00e9gale",
+                        "la dotation \u00e0 la r\u00e9serve l\u00e9gale se saisit dans ses propres champs, pas dans la liste des affectations");
+            }
+            Long montant = toLong(first0(a.get("montant"), a.get("montantChiffres")));
+            Map<String, Object> l = new LinkedHashMap<>();
+            l.put("AFFECTATION_LIBELLE", poste);
+            l.put("AFFECTATION_MONTANT_CHIFFRES", montant == null ? "" : formatAmount(montant));
+            l.put("AFFECTATION_MONTANT_LETTRES", lettres(montant));
+            lignes.add(l);
+            total = (total == null || montant == null) ? null : total + montant;
+        }
+        if (lignes.isEmpty() && dotation == null) {
+            throw new GenerationRefuseeException(tc, "Affectation du b\u00e9n\u00e9fice non indiqu\u00e9e",
+                    List.of(dm("AFFECTATION_RESULTAT", "Affectations du b\u00e9n\u00e9fice (poste, montant)")));
+        }
+        if (total != null && resultat != null && !total.equals(resultat)) {
+            refusIncoherence(tc, "AFFECTATION_RESULTAT", "Total des affectations",
+                    "affect\u00e9 " + formatAmount(total) + " dirhams pour un b\u00e9n\u00e9fice de " + formatAmount(resultat) + " dirhams");
+        }
+        boucles.put("AFFECTATION_RESULTAT", lignes);
+    }
+
+    /** PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU, branche "distribution_dividendes". */
+    private static void dividendesAu(Map<String, Object> it, Map<String, Object> r, Ctx c) {
+        String tc = c.templateCode();
+        putDate(it, "EXERCICE_CLOS_DATE", r.get("exerciceClosDate"));
+        LocalDate clos = toDate(r.get("exerciceClosDate"));
+        LocalDate approbation = toDate(r.get("approbationComptesDate"));
+        putDate(it, "ASSEMBLEE_APPROBATION_COMPTES_DATE", r.get("approbationComptesDate"));
+        if (clos != null && approbation != null && !approbation.isAfter(clos)) {
+            refusIncoherence(tc, "ASSEMBLEE_APPROBATION_COMPTES_DATE", "Date d'approbation des comptes",
+                    "les comptes de l'exercice clos le " + clos.format(DATE_FR) + " ne peuvent \u00eatre approuv\u00e9s le "
+                            + approbation.format(DATE_FR));
+        }
+        if (approbation != null && c.dateActe() != null && c.dateActe().isBefore(approbation)) {
+            refusIncoherence(tc, "ASSEMBLEE_APPROBATION_COMPTES_DATE", "Date d'approbation des comptes",
+                    "la distribution du " + c.dateActe().format(DATE_FR) + " pr\u00e9c\u00e8de l'approbation du "
+                            + approbation.format(DATE_FR));
+        }
+        Long benefice = toLong(r.get("beneficeDistribuable"));
+        put(it, "BENEFICE_DISTRIBUABLE_CHIFFRES", benefice == null ? "" : formatAmount(benefice));
+        put(it, "BENEFICE_DISTRIBUABLE_LETTRES", lettres(benefice));
+        Long montant = toLong(r.get("dividendeTotal"));
+        put(it, "DISTRIBUTION_MONTANT_CHIFFRES", montant == null ? "" : formatAmount(montant));
+        put(it, "DISTRIBUTION_MONTANT_LETTRES", lettres(montant));
+        if (montant != null && benefice != null && montant > benefice) {
+            refusIncoherence(tc, "DISTRIBUTION_MONTANT_CHIFFRES", "Montant distribu\u00e9",
+                    formatAmount(montant) + " dirhams d\u00e9passent le b\u00e9n\u00e9fice distribuable de "
+                            + formatAmount(benefice) + " dirhams");
+        }
+        parPart(it, tc, montant, c, r.get("dividendeParPart"));
+
+        // Article 83 bis : mise en paiement dans les neuf mois de la cloture (date deduite).
+        LocalDate limite = clos == null ? null : clos.plusMonths(9);
+        put(it, "DIVIDENDES_DATE_LIMITE_PAIEMENT", limite == null ? "" : limite.format(DATE_FR));
+        String prolongation = SaisieExigee.ouiNon(tc, r.get("prolongationOrdonnance"),
+                "DISTRIBUTION_PROLONGATION_ORDONNANCE",
+                "D\u00e9lai de mise en paiement prolong\u00e9 par ordonnance du pr\u00e9sident du tribunal (oui ou non)");
+        put(it, "DISTRIBUTION_PROLONGATION_ORDONNANCE", prolongation);
+        LocalDate echeance = limite;
+        if ("oui".equals(prolongation)) {
+            // L'ordonnance est rendue par le president du tribunal de commerce du siege (deduit).
+            put(it, "TRIBUNAL_VILLE", tribunalCommerce(c));
+            putDate(it, "DISTRIBUTION_PROLONGATION_ORDONNANCE_DATE", r.get("prolongationOrdonnanceDate"));
+            putDate(it, "DISTRIBUTION_PROLONGATION_DATE_NOUVELLE", r.get("prolongationDateNouvelle"));
+            LocalDate nouvelle = toDate(r.get("prolongationDateNouvelle"));
+            if (nouvelle != null && limite != null && !nouvelle.isAfter(limite)) {
+                refusIncoherence(tc, "DISTRIBUTION_PROLONGATION_DATE_NOUVELLE", "Date prolong\u00e9e",
+                        "le " + nouvelle.format(DATE_FR) + " ne prolonge pas le d\u00e9lai l\u00e9gal du " + limite.format(DATE_FR));
+            }
+            echeance = nouvelle;
+        }
+        putDate(it, "DIVIDENDE_DATE_MISE_EN_PAIEMENT", r.get("dateMisePaiement"));
+        LocalDate mise = toDate(r.get("dateMisePaiement"));
+        if (mise != null && echeance != null && mise.isAfter(echeance)) {
+            refusIncoherence(tc, "DIVIDENDE_DATE_MISE_EN_PAIEMENT", "Date de mise en paiement",
+                    "le " + mise.format(DATE_FR) + " d\u00e9passe la date limite du " + echeance.format(DATE_FR));
+        }
+        retenueSource(it, tc, montant, r, c);
+    }
+
+    /** PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU, branche "distribution_reserves" (boucle RESERVES_PRELEVEES). */
+    private static void reservesAu(Map<String, Object> it, Map<String, Object> r, Ctx c,
+                                   Map<String, Object> boucles, Map<String, String> porteuses) {
+        String tc = c.templateCode();
+        porteuse(tc, porteuses, "RESERVES_PRELEVEES", "distribution_reserves");
+        List<Map<String, Object>> lignes = new ArrayList<>();
+        Long total = 0L;
+        for (Map<String, Object> p : asListOfMaps(r.get("reservesPrelevees"))) {
+            if (p == null || p.isEmpty()) continue;
+            String libelle = str(p.get("libelle")).trim();
+            if (norm(libelle).contains("reserve legale")) {
+                // "La reserve legale, indisponible, n'est pas mise en distribution."
+                refusIncoherence(tc, "RESERVE_POSTE_LIBELLE", "Poste de r\u00e9serves pr\u00e9lev\u00e9",
+                        "la r\u00e9serve l\u00e9gale est indisponible et ne peut \u00eatre distribu\u00e9e");
+            }
+            Long prelevement = toLong(p.get("prelevement"));
+            Long avant = toLong(p.get("soldeAvant"));
+            if (prelevement != null && avant != null && prelevement > avant) {
+                refusIncoherence(tc, "RESERVE_POSTE_PRELEVEMENT", "Pr\u00e9l\u00e8vement sur \u00ab " + libelle + " \u00bb",
+                        formatAmount(prelevement) + " dirhams d\u00e9passent le solde du poste, " + formatAmount(avant) + " dirhams");
+            }
+            Long apres = (prelevement == null || avant == null) ? null : avant - prelevement;
+            Map<String, Object> l = new LinkedHashMap<>();
+            l.put("RESERVE_POSTE_LIBELLE", libelle);
+            l.put("RESERVE_POSTE_PRELEVEMENT", prelevement == null ? "" : formatAmount(prelevement));
+            l.put("RESERVE_POSTE_SOLDE_AVANT", avant == null ? "" : formatAmount(avant));
+            l.put("RESERVE_POSTE_SOLDE_APRES", apres == null ? "" : formatAmount(apres));
+            lignes.add(l);
+            total = (total == null || prelevement == null) ? null : total + prelevement;
+        }
+        if (lignes.isEmpty()) {
+            throw new GenerationRefuseeException(tc, "Postes de r\u00e9serves pr\u00e9lev\u00e9s non indiqu\u00e9s",
+                    List.of(dm("RESERVES_PRELEVEES",
+                            "Postes de r\u00e9serves pr\u00e9lev\u00e9s (intitul\u00e9, pr\u00e9l\u00e8vement, solde avant)")));
+        }
+        boucles.put("RESERVES_PRELEVEES", lignes);
+        put(it, "RESERVES_PRELEVEMENT_TOTAL", total == null ? "" : formatAmount(total));
+        parPart(it, tc, total, c, r.get("dividendeParPart"));
+        putDate(it, "DIVIDENDE_DATE_MISE_EN_PAIEMENT", r.get("dateMisePaiement"));
+        retenueSource(it, tc, total, r, c);
+    }
+
+    /**
+     * "soit $DISTRIBUTION_MONTANT_PAR_PART dirhams par part sociale" : deduit du montant et du
+     * nombre de parts (l'associe unique les detient toutes). Un montant qui ne se repartit pas
+     * au centime pres est refuse (aucun arrondi imprime comme exact).
+     */
+    private static void parPart(Map<String, Object> it, String tc, Long montant, Ctx c, Object saisi) {
+        if (montant == null || c.nbParts() == null || c.nbParts() <= 0) {
+            put(it, "DISTRIBUTION_MONTANT_PAR_PART", "");
+            return;
+        }
+        BigDecimal parPart = BigDecimal.valueOf(montant)
+                .divide(BigDecimal.valueOf(c.nbParts()), 6, RoundingMode.HALF_UP).stripTrailingZeros();
+        if (parPart.scale() > 2) {
+            refusIncoherence(tc, "DISTRIBUTION_MONTANT_PAR_PART", "Montant par part",
+                    formatAmount(montant) + " dirhams ne se r\u00e9partissent pas au centime pr\u00e8s entre "
+                            + formatAmount(c.nbParts()) + " parts");
+        }
+        BigDecimal s = toDecimal(saisi);
+        if (s != null && s.compareTo(parPart) != 0) {
+            refusIncoherence(tc, "DISTRIBUTION_MONTANT_PAR_PART", "Montant par part",
+                    "saisi " + formatDecimal(s) + ", calcul\u00e9 " + formatDecimal(parPart));
+        }
+        put(it, "DISTRIBUTION_MONTANT_PAR_PART", formatDecimal(parPart));
+    }
+
+    /**
+     * Retenue a la source : taux SAISI (jamais ecrit en dur, dictionnaire), montant deduit
+     * (montant distribue x taux, arrondi au centime), exercice d'origine saisi, exoneration
+     * exigee. Le modele ne vise l'exoneration que pour un associe unique SOCIETE soumise a l'IS :
+     * elle est refusee si l'associe unique n'est pas connu comme personne morale.
+     */
+    private static void retenueSource(Map<String, Object> it, String tc, Long montant, Map<String, Object> r, Ctx c) {
+        Object brut = r.get("retenueSourceTaux");
+        BigDecimal taux = toDecimal(brut);
+        if (!str(brut).isBlank()
+                && (taux == null || taux.signum() <= 0 || taux.compareTo(BigDecimal.valueOf(100)) > 0)) {
+            throw SaisieExigee.refus(tc, "RETENUE_SOURCE_TAUX",
+                    "Taux de la retenue \u00e0 la source (valeur \u00ab " + brut + " \u00bb non reconnue)");
+        }
+        put(it, "RETENUE_SOURCE_TAUX", taux == null ? "" : formatDecimal(taux) + " %");
+        BigDecimal retenue = (taux == null || montant == null) ? null
+                : BigDecimal.valueOf(montant).multiply(taux).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        put(it, "RETENUE_SOURCE_MONTANT", retenue == null ? "" : formatDecimal(retenue));
+        put(it, "DISTRIBUTION_EXERCICE_ORIGINE", str(r.get("distributionExerciceOrigine")).trim());
+        String exoneration = SaisieExigee.ouiNon(tc, r.get("retenueSourceExoneration"),
+                "RETENUE_SOURCE_EXONERATION_APPLICABLE",
+                "Associ\u00e9 unique soci\u00e9t\u00e9 r\u00e9sidente soumise \u00e0 l'IS, exon\u00e9r\u00e9e de la retenue (oui ou non)");
+        if ("oui".equals(exoneration) && !Boolean.TRUE.equals(c.associeUniqueMorale())) {
+            refusIncoherence(tc, "RETENUE_SOURCE_EXONERATION_APPLICABLE", "Exon\u00e9ration de la retenue \u00e0 la source",
+                    "elle ne vise qu'un associ\u00e9 unique soci\u00e9t\u00e9 soumise \u00e0 l'imp\u00f4t sur les soci\u00e9t\u00e9s");
+        }
+        put(it, "RETENUE_SOURCE_EXONERATION_APPLICABLE", exoneration);
+    }
+
+    /** Tribunal de commerce du registre de la societe (rien deduit hors ville de tribunal de commerce). */
+    private static String tribunalCommerce(Ctx c) {
+        return "Tribunal de commerce".equals(TribunalDerive.type(c.villeGreffe())) ? c.villeGreffe() : "";
     }
 
     // ------------------------------------------------------------------
@@ -838,6 +1072,18 @@ public final class ModificationDirecteurMapper {
         put(v, "REGISTRE_PV_FEUILLET", first(str(registre.get("feuillet")), str(safe.get("registrePvFeuillet"))));
     }
 
+    /** Associe unique personne morale ? (null : inconnu). */
+    private static Boolean associeUniqueMorale(Map<String, Object> safe) {
+        List<Map<String, Object>> associes = asListOfMaps(safe.get("associes"));
+        Map<String, Object> a = associes.isEmpty() ? asMap(safe.get("associeUnique")) : associes.get(0);
+        String type = norm(a.get("typePersonne"));
+        if (type.startsWith("moral")) return true;
+        if (type.startsWith("physi")) return false;
+        if (!str(a.get("denomination")).isBlank()) return true;
+        if (!str(a.get("prenom")).isBlank() || !str(a.get("nom")).isBlank()) return false;
+        return null;
+    }
+
     private static String associeUniqueNom(Map<String, Object> safe) {
         List<Map<String, Object>> associes = asListOfMaps(safe.get("associes"));
         Map<String, Object> a = associes.isEmpty() ? asMap(safe.get("associeUnique")) : associes.get(0);
@@ -1118,6 +1364,26 @@ public final class ModificationDirecteurMapper {
 
     private static String formatAmount(long n) {
         return String.format(Locale.FRANCE, "%,d", n);
+    }
+
+    /** Montant decimal : entier sans decimales, sinon deux decimales ("3 712,50"). */
+    private static String formatDecimal(BigDecimal d) {
+        BigDecimal s = d.stripTrailingZeros();
+        if (s.scale() <= 0) return formatAmount(s.longValueExact());
+        return String.format(Locale.FRANCE, "%,.2f", d.setScale(2, RoundingMode.HALF_UP));
+    }
+
+    /** "10", "11,25", "11.25", "10 %" : nombre ; null si absent ou illisible. */
+    private static BigDecimal toDecimal(Object o) {
+        if (o == null) return null;
+        if (o instanceof Number n) return new BigDecimal(n.toString());
+        String s = String.valueOf(o).replaceAll("[\\s\\u00A0\\u202F%]", "").replace(',', '.');
+        if (s.isEmpty()) return null;
+        try {
+            return new BigDecimal(s);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     private static String dateStr(Object o) {

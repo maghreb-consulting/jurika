@@ -271,6 +271,45 @@ class WorkflowJurikaAppIT {
         assertThat(origine("DENOMINATION")).isEqualTo("NOVA INDUSTRIE MAROC/FICHE");
     }
 
+    /**
+     * Lot L5 (RG-FIC-04, RG-VAR-05) : une correction de la fiche societe sert aux actes
+     * suivants des la generation, sans attendre l'execution d'une etape (constat de L5 E7 :
+     * la charge utile relisait l'ancienne valeur tant qu'aucune etape n'etait rejouee).
+     * Une saisie du ticket reste prioritaire.
+     */
+    @Test
+    void l5_une_correction_de_la_fiche_sert_a_la_generation_suivante_sans_etape() throws Exception {
+        jdbc.update("UPDATE tickets SET dossier_id = ? WHERE id = ?", dossierId, ticketId);
+        jdbc.update("UPDATE entreprise_dossiers SET ice = '001234567000089' WHERE id = ?", dossierId);
+        dansLeWorkspace(() -> workflows.rafraichirFiche(workspaceId, ticketId));
+        assertThat(origine("ICE")).isEqualTo("001234567000089/FICHE");
+
+        // L'employe corrige l'ICE dans la fiche, puis regenere sans executer d'etape.
+        jdbc.update("UPDATE entreprise_dossiers SET ice = '009999999000011' WHERE id = ?", dossierId);
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/internal/tickets/{t}/charge-utile-creation", ticketId)
+                        .param("workspaceId", workspaceId.toString()).param("employeId", EMPLOYE.toString()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.societe.iceNumero").value("009999999000011"));
+
+        // Une saisie du ticket n'est jamais recouverte par la fiche.
+        dansLeWorkspace(() -> {
+            magasin.poser(workspaceId, ticketId, "ICE", "001111111000022", VariableDuDossier.Origine.SAISIE,
+                    EMPLOYE, "etape-1");
+            return null;
+        });
+        jdbc.update("UPDATE entreprise_dossiers SET ice = '008888888000033' WHERE id = ?", dossierId);
+        dansLeWorkspace(() -> workflows.rafraichirFiche(workspaceId, ticketId));
+        assertThat(origine("ICE")).isEqualTo("001111111000022/SAISIE");
+
+        // Ticket clos : son magasin est une archive, la fiche ne le touche plus.
+        jdbc.update("UPDATE tickets SET statut = 'CLOTURE_DOSSIER' WHERE id = ?", ticketId);
+        jdbc.update("UPDATE entreprise_dossiers SET raison_sociale = 'APRES CLOTURE' WHERE id = ?", dossierId);
+        dansLeWorkspace(() -> workflows.rafraichirFiche(workspaceId, ticketId));
+        assertThat(origine("DENOMINATION")).isNotEqualTo("APRES CLOTURE/FICHE");
+    }
+
     @Test
     void l3_valeur_extraite_et_confirmee_marquee_extraite_et_decocher_n_efface_rien() {
         Map<String, Object> gerant = new java.util.LinkedHashMap<>();

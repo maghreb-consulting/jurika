@@ -20,6 +20,9 @@ import type {
   UpdateIdentifiantsPayload,
   ReaffectationVue,
   VersionTaxeProfessionnelle,
+  FicheClientVue,
+  FicheDossierVue,
+  FicheWordResultat,
   DroitsDossier,
   SearchJuridiqueParams,
   SearchJuridiqueResult,
@@ -495,23 +498,46 @@ export const dataroomService = {
     triggerDownload(blob, `juridique_${dossierId.slice(0, 8)}_${today}.zip`);
   },
 
+  /** Lot L5 (E7, RG-FIC-01 a 05) : fiche client a l'ecran (identifiants, provenance, versions de TP). */
+  async ficheClient(dossierId: string): Promise<FicheClientVue> {
+    const { data } = await api.get<FicheClientVue>(
+      `/dataroom/dossiers/${dossierId}/juridique/fiche-client`,
+    );
+    return data;
+  },
+
+  /** Lot L5 (E7, RG-FIC-06, 07) : fiche dossier a l'ecran (identifiants et operations). */
+  async ficheDossier(dossierId: string): Promise<FicheDossierVue> {
+    const { data } = await api.get<FicheDossierVue>(
+      `/dataroom/dossiers/${dossierId}/juridique/fiche-dossier`,
+    );
+    return data;
+  },
+
   /**
-   * Fiche client (2026-07-14) — remplace « Exporter rapport PDF ». Genere la
-   * carte d'identite juridique de la societe (PDF charte JURIKA). Reserve
-   * EMPLOYE responsable / SUPERVISEUR / SUPER_ADMIN (CLIENT -> 403).
+   * Lot L5 (E7, P5) : genere la fiche au format Word et la telecharge. Generee par
+   * l'employe responsable, elle est conservee dans la Data Room (nouvelle version).
    */
-  async exportFicheClientPdf(
+  async genererFicheWord(
     dossierId: string,
-    raisonSociale: string,
-  ): Promise<void> {
-    const response = await api.get(
-      `/dataroom/dossiers/${dossierId}/juridique/fiche-client-pdf`,
+    fiche: 'fiche-client' | 'fiche-dossier',
+  ): Promise<FicheWordResultat> {
+    const response = await api.post(
+      `/dataroom/dossiers/${dossierId}/juridique/${fiche}/word`,
+      null,
       { responseType: 'blob' },
     );
-    const blob = response.data as Blob;
-    const today = new Date().toISOString().slice(0, 10);
-    const safeName = raisonSociale.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 40);
-    triggerDownload(blob, `Fiche_Client_${safeName}_${today}.pdf`);
+    const entetes = (response.headers ?? {}) as Record<string, unknown>;
+    const disposition = String(entetes['content-disposition'] ?? '');
+    const nom =
+      /filename="([^"]+)"/.exec(disposition)?.[1] ??
+      (fiche === 'fiche-client' ? 'Fiche_client.docx' : 'Fiche_dossier.docx');
+    triggerDownload(response.data as Blob, nom);
+    const version = String(entetes['x-fiche-version'] ?? '');
+    return {
+      conservee: String(entetes['x-fiche-conservee']) === 'true',
+      version: version === '' ? null : Number(version),
+    };
   },
 
   /**

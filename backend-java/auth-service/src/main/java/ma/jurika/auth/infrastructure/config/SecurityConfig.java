@@ -47,6 +47,9 @@ public class SecurityConfig {
                                 new AntPathRequestMatcher("/api/v1/auth/verify-recovery-code"),
                                 new AntPathRequestMatcher("/api/v1/auth/verify-email"),
                                 new AntPathRequestMatcher("/api/v1/auth/resend-verification"),
+                                // Lot L5 (E10) : confirmation d'un changement d'adresse ou
+                                // d'identifiant, le lien recu par courriel est la preuve.
+                                new AntPathRequestMatcher("/api/v1/auth/compte/confirmer"),
                                 new AntPathRequestMatcher("/api/v1/auth/refresh"),
                                 new AntPathRequestMatcher("/api/v1/auth/password-reset/**"),
                                 new AntPathRequestMatcher("/api/v1/public/**"),

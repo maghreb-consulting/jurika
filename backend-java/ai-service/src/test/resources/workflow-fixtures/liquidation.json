@@ -106,7 +106,8 @@
     "mandatDateEffet": "2026-05-15",
     "dureeMandat": "trois ans",
     "remunerationApplicable": "non",
-    "siegeIdentique": "non"
+    "siegeIdentique": "non",
+    "ancienGerant": "oui"
   },
   "cloture": {
     "resultatSens": "boni",
@@ -161,5 +162,98 @@
     "registreFolio": "14",
     "enregistrementLieu": "Casablanca",
     "cacExiste": "non"
+  },
+  "rapportLiquidateur": {
+    "periodeDebut": "2026-05-15",
+    "periodeFin": "2026-06-10",
+    "dissolutionOrgane": "l'assemblée générale extraordinaire des associés",
+    "dissolutionDateDecision": "2026-05-15",
+    "dissolutionMotifLibelle": "la cessation de l'activité commerciale décidée par les associés",
+    "dissolutionRcInscriptionNumero": "45678",
+    "inventaireDateArrete": "2026-05-20",
+    "prolongee": "non",
+    "realisations": [
+      {
+        "designation": "Fonds de commerce exploité au 12 rue des Foules, Casablanca",
+        "mode": "cession de gré à gré",
+        "acquereur": "ATLAS DISTRIBUTION SARL",
+        "prix": 250000,
+        "date": "2026-05-29",
+        "valeurInventaire": 220000,
+        "observations": "prix payé comptant"
+      },
+      {
+        "designation": "Créances clients",
+        "mode": "recouvrement amiable",
+        "acquereur": "clients de la société",
+        "prix": 50000,
+        "date": "2026-06-05",
+        "valeurInventaire": 55000,
+        "observations": "néant"
+      }
+    ],
+    "apurements": [
+      {
+        "creancier": "BANQUE POPULAIRE",
+        "nature": "emprunt bancaire",
+        "montantAdmis": 100000,
+        "montantRegle": 100000,
+        "dateReglement": "2026-06-02",
+        "modeReglement": "virement bancaire",
+        "observations": "néant"
+      },
+      {
+        "creancier": "Direction générale des impôts",
+        "nature": "impôts et taxes",
+        "montantAdmis": 50000,
+        "montantRegle": 50000,
+        "dateReglement": "2026-06-03",
+        "modeReglement": "virement bancaire",
+        "observations": "néant"
+      }
+    ],
+    "creancesIrrecouvrablesExistent": "non",
+    "passifsContestesExistent": "non",
+    "cessionsRestreintesExistent": "non",
+    "frais": [
+      {
+        "nature": "Honoraires de l'expert-comptable",
+        "beneficiaire": "CABINET FIDUCIAIRE MAGHREB",
+        "montant": 7000,
+        "date": "2026-06-08",
+        "statut": "réglé"
+      },
+      {
+        "nature": "Frais de publication",
+        "beneficiaire": "LE JOURNAL DES ANNONCES",
+        "montant": 3000,
+        "date": "2026-05-28",
+        "statut": "réglé"
+      }
+    ],
+    "fraisRembourses": 0,
+    "personnelExiste": "non",
+    "contratsExistent": "non",
+    "diligences": [
+      {
+        "nature": "Déclaration de cessation d'activité",
+        "organisme": "Direction générale des impôts",
+        "referenceTexte": "article 150 du code général des impôts",
+        "dateLimite": "2026-06-29",
+        "dateAccomplissement": "2026-06-01",
+        "etat": "accomplie",
+        "observations": "néant"
+      }
+    ],
+    "tvaAssujettie": "oui",
+    "tvaCessationDateLimite": "2026-07-15",
+    "tpCessationDateLimite": "2026-07-15",
+    "cnssRadiationDateLimite": "2026-07-15",
+    "attestationsEtat": "attestations de non-redevance demandées le 10/06/2026",
+    "annexes": [
+      "Compte définitif de la liquidation",
+      "Inventaire d'ouverture de la liquidation"
+    ],
+    "dateSignature": "2026-06-12"
   }
 }

@@ -137,7 +137,9 @@ public final class DataroomDtos {
                                   UUID prisEnChargePar, String noteInterne,
                                   Instant traiteAt, Instant createdAt,
                                   String direction, String typeRequete,
-                                  Instant reponduAt, Instant clotureAt, String noteClient) {}
+                                  Instant reponduAt, Instant clotureAt, String noteClient,
+                                  /** Lot L5 (E9, RG-COM-07) : NON_TRAITEE, EN_COURS ou TRAITEE (voir EtatSuivi). */
+                                  String etatSuivi) {}
 
     /**
      * Vue SUPERVISEUR enrichie (workspace-wide) d'une demande ou requete : le
@@ -149,7 +151,9 @@ public final class DataroomDtos {
                                         UUID responsableId, String responsableNom,
                                         String sujet, String description, String statut,
                                         String direction, String typeRequete,
-                                        Instant createdAt) {}
+                                        Instant createdAt,
+                                        /** Lot L5 (E9, RG-COM-07) : etat de suivi (voir EtatSuivi). */
+                                        String etatSuivi) {}
 
     public record SettingsView(UUID dossierId, String accessStatus, boolean permDownload,
                                 boolean permPrint, boolean permDepot, UUID clientLinkToken, int accessCount,

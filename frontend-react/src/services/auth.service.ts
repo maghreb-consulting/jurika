@@ -83,6 +83,18 @@ export interface SignupCabinetResponse {
 
 export type SmsOtpPurpose = 'PHONE_VERIFICATION' | '2FA_SETUP' | '2FA_LOGIN' | 'PASSWORD_RESET';
 
+/** Lot L5 (E10) : demande de changement en attente de confirmation. */
+export interface DemandeCompte {
+  nouvelleValeur: string;
+  /** Instant ISO-8601 d'expiration du lien. */
+  expireLe: string;
+}
+
+export interface DemandesCompte {
+  adresse: DemandeCompte | null;
+  identifiant: DemandeCompte | null;
+}
+
 export const authService = {
   async checkWorkspace(workspaceCode: string): Promise<WorkspaceCheckResponse> {
     const { data } = await api.post<WorkspaceCheckResponse>('/auth/workspace-check', { workspaceCode });
@@ -367,20 +379,46 @@ export const authService = {
   },
 
   /**
-   * BUG 7 (chore 2026-06-08) — Met a jour le contact_email du user courant.
-   * Le login_email reste immuable cote API. Retourne {changed:false} si
-   * l'email fourni est deja celui en place. Erreur 409 si on essaie de mettre
-   * contact_email = login_email (interdit, UX confus).
+   * Lot L5 (E10), RG-CPT-01 : prenom et nom de l'utilisateur courant.
    */
-  async updateContactEmail(contactEmail: string): Promise<{
-    userId: string;
-    loginEmail: string;
-    contactEmail: string;
-    previousContactEmail: string;
-    changed: boolean;
-    message: string;
-  }> {
-    const { data } = await api.patch('/auth/me/contact-email', { contactEmail });
+  async modifierNom(firstName: string, lastName: string): Promise<void> {
+    await api.patch('/auth/me/nom', { firstName, lastName });
+  },
+
+  /**
+   * Lot L5 (E10), RG-CPT-02 : demande de changement de l'adresse electronique.
+   * Rien ne change avant la confirmation du lien envoye a la nouvelle adresse.
+   */
+  async demanderChangementAdresse(nouvelleAdresse: string): Promise<DemandeCompte> {
+    const { data } = await api.post<DemandeCompte>('/auth/me/adresse', { nouvelleAdresse });
+    return data;
+  },
+
+  /**
+   * Lot L5 (E10), RG-CPT-02 : demande de changement de l'identifiant de connexion.
+   * Le lien de confirmation part a l'adresse electronique du compte.
+   */
+  async demanderChangementIdentifiant(nouvelIdentifiant: string): Promise<DemandeCompte> {
+    const { data } = await api.post<DemandeCompte>('/auth/me/identifiant', { nouvelIdentifiant });
+    return data;
+  },
+
+  /** Lot L5 (E10) : demandes en attente de confirmation. */
+  async getDemandesCompte(): Promise<DemandesCompte> {
+    const { data } = await api.get<DemandesCompte>('/auth/me/demandes');
+    return data;
+  },
+
+  /** Lot L5 (E10) : annule la demande en attente (le lien deja envoye ne sert plus). */
+  async annulerDemandeCompte(motif: 'adresse' | 'identifiant'): Promise<void> {
+    await api.delete(`/auth/me/demandes/${motif}`);
+  },
+
+  /** Lot L5 (E10) : confirmation publique du lien recu par courriel. */
+  async confirmerChangementCompte(
+    token: string,
+  ): Promise<{ motif: 'adresse' | 'identifiant'; nouvelleValeur: string }> {
+    const { data } = await api.post('/auth/compte/confirmer', { token });
     return data;
   },
 

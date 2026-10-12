@@ -184,7 +184,8 @@ class DataroomTenantIsolationTest {
     @Test
     void demandesListByDossier_returnsEmpty_whenNoTenant() {
         TenantContext.clear();
-        DemandesClientService svc = new DemandesClientService(demandeRepo, dossierRepo, org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository.class), accessLogger, org.mockito.Mockito.mock(ma.jurika.common.notification.NotificationPublisher.class), org.mockito.Mockito.mock(DossierArchiveGuard.class));
+        DemandesClientService svc = new DemandesClientService(demandeRepo, dossierRepo, org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository.class), accessLogger, org.mockito.Mockito.mock(ma.jurika.common.notification.NotificationPublisher.class), org.mockito.Mockito.mock(DossierArchiveGuard.class),
+                org.mockito.Mockito.mock(ma.jurika.dataroom.domain.port.CourrielsClient.class));
 
         assertThat(svc.listByDossier(UUID.randomUUID(), UUID.randomUUID(), Role.SUPERVISEUR)).isEmpty();
 
@@ -200,7 +201,8 @@ class DataroomTenantIsolationTest {
         when(demandeRepo.findAllByWorkspaceIdAndDossierIdOrderByCreatedAtDesc(ws, dossier))
                 .thenReturn(List.of());
 
-        DemandesClientService svc = new DemandesClientService(demandeRepo, dossierRepo, org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository.class), accessLogger, org.mockito.Mockito.mock(ma.jurika.common.notification.NotificationPublisher.class), org.mockito.Mockito.mock(DossierArchiveGuard.class));
+        DemandesClientService svc = new DemandesClientService(demandeRepo, dossierRepo, org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository.class), accessLogger, org.mockito.Mockito.mock(ma.jurika.common.notification.NotificationPublisher.class), org.mockito.Mockito.mock(DossierArchiveGuard.class),
+                org.mockito.Mockito.mock(ma.jurika.dataroom.domain.port.CourrielsClient.class));
         // SUPERVISEUR : non restreint -> le test cible bien le contrat
         // "findByWorkspaceIdAnd..." sans dependre de l'ownership du dossier.
         svc.listByDossier(dossier, UUID.randomUUID(), Role.SUPERVISEUR);
@@ -220,7 +222,8 @@ class DataroomTenantIsolationTest {
         when(d.getResponsableId()).thenReturn(responsable);
         when(dossierRepo.findByWorkspaceIdAndId(ws, dossier)).thenReturn(Optional.of(d));
 
-        DemandesClientService svc = new DemandesClientService(demandeRepo, dossierRepo, org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository.class), accessLogger, org.mockito.Mockito.mock(ma.jurika.common.notification.NotificationPublisher.class), org.mockito.Mockito.mock(DossierArchiveGuard.class));
+        DemandesClientService svc = new DemandesClientService(demandeRepo, dossierRepo, org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository.class), accessLogger, org.mockito.Mockito.mock(ma.jurika.common.notification.NotificationPublisher.class), org.mockito.Mockito.mock(DossierArchiveGuard.class),
+                org.mockito.Mockito.mock(ma.jurika.dataroom.domain.port.CourrielsClient.class));
 
         // Un EMPLOYE qui n'est PAS le responsable du dossier -> 403, et ne lit
         // JAMAIS les demandes (la fuite "la demande arrive aux 2 employes").
@@ -242,7 +245,8 @@ class DataroomTenantIsolationTest {
         when(demandeRepo.findAllByWorkspaceIdAndDossierIdOrderByCreatedAtDesc(ws, dossier))
                 .thenReturn(List.of());
 
-        DemandesClientService svc = new DemandesClientService(demandeRepo, dossierRepo, org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository.class), accessLogger, org.mockito.Mockito.mock(ma.jurika.common.notification.NotificationPublisher.class), org.mockito.Mockito.mock(DossierArchiveGuard.class));
+        DemandesClientService svc = new DemandesClientService(demandeRepo, dossierRepo, org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository.class), accessLogger, org.mockito.Mockito.mock(ma.jurika.common.notification.NotificationPublisher.class), org.mockito.Mockito.mock(DossierArchiveGuard.class),
+                org.mockito.Mockito.mock(ma.jurika.dataroom.domain.port.CourrielsClient.class));
         svc.listByDossier(dossier, responsable, Role.EMPLOYE); // ne throw pas
 
         verify(demandeRepo, times(1))
@@ -260,7 +264,8 @@ class DataroomTenantIsolationTest {
         when(d.getClientId()).thenReturn(owner);
         when(dossierRepo.findByWorkspaceIdAndId(ws, dossier)).thenReturn(Optional.of(d));
 
-        DemandesClientService svc = new DemandesClientService(demandeRepo, dossierRepo, org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository.class), accessLogger, org.mockito.Mockito.mock(ma.jurika.common.notification.NotificationPublisher.class), org.mockito.Mockito.mock(DossierArchiveGuard.class));
+        DemandesClientService svc = new DemandesClientService(demandeRepo, dossierRepo, org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository.class), accessLogger, org.mockito.Mockito.mock(ma.jurika.common.notification.NotificationPublisher.class), org.mockito.Mockito.mock(DossierArchiveGuard.class),
+                org.mockito.Mockito.mock(ma.jurika.dataroom.domain.port.CourrielsClient.class));
 
         assertThatThrownBy(() -> svc.listByDossier(dossier, autreClient, Role.CLIENT))
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
@@ -271,7 +276,8 @@ class DataroomTenantIsolationTest {
     @Test
     void demandeUpdateStatus_blockedWhenNoTenant() {
         TenantContext.clear();
-        DemandesClientService svc = new DemandesClientService(demandeRepo, dossierRepo, org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository.class), accessLogger, org.mockito.Mockito.mock(ma.jurika.common.notification.NotificationPublisher.class), org.mockito.Mockito.mock(DossierArchiveGuard.class));
+        DemandesClientService svc = new DemandesClientService(demandeRepo, dossierRepo, org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository.class), accessLogger, org.mockito.Mockito.mock(ma.jurika.common.notification.NotificationPublisher.class), org.mockito.Mockito.mock(DossierArchiveGuard.class),
+                org.mockito.Mockito.mock(ma.jurika.dataroom.domain.port.CourrielsClient.class));
 
         assertThatThrownBy(() -> svc.updateStatus(
                 UUID.randomUUID(),
@@ -295,7 +301,8 @@ class DataroomTenantIsolationTest {
         when(demandeRepo.findByWorkspaceIdAndId(ws, demandeId)).thenReturn(Optional.of(e));
         when(demandeRepo.save(any())).thenReturn(e);
 
-        DemandesClientService svc = new DemandesClientService(demandeRepo, dossierRepo, org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository.class), accessLogger, org.mockito.Mockito.mock(ma.jurika.common.notification.NotificationPublisher.class), org.mockito.Mockito.mock(DossierArchiveGuard.class));
+        DemandesClientService svc = new DemandesClientService(demandeRepo, dossierRepo, org.mockito.Mockito.mock(ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository.class), accessLogger, org.mockito.Mockito.mock(ma.jurika.common.notification.NotificationPublisher.class), org.mockito.Mockito.mock(DossierArchiveGuard.class),
+                org.mockito.Mockito.mock(ma.jurika.dataroom.domain.port.CourrielsClient.class));
         // Role SUPER_ADMIN : pas de controle d'ownership -> le test cible bien le
         // contrat "findByWorkspaceIdAndId" sans dependre du responsable du dossier.
         svc.updateStatus(

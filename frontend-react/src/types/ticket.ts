@@ -57,14 +57,14 @@ export const PARCOURS_STATUTS: TicketStatut[] = [
 
 export type TicketPriorite = 'BASSE' | 'NORMALE' | 'HAUTE' | 'URGENTE';
 
+/** Lot L5 (E6, RG-DEB-01) : les sept types de frais du cahier des charges, exactement. */
 export type DeboursCategorie =
-  | 'FRAIS_TRIBUNAL'
-  | 'FRAIS_NOTARIE'
-  | 'FRAIS_ENREGISTREMENT'
-  | 'PUBLICATION_JAL'
-  | 'PUBLICATION_BO'
-  | 'HONORAIRES'
-  | 'TRANSPORT'
+  | 'DROITS_ENREGISTREMENT'
+  | 'FRAIS_GREFFE'
+  | 'ANNONCE_LEGALE'
+  | 'TIMBRES'
+  | 'LEGALISATION'
+  | 'FRAIS_ORGANISME'
   | 'AUTRE';
 
 export interface Ticket {
@@ -123,6 +123,10 @@ export interface Debours {
   pieceJointeFilename: string | null;
   notes: string | null;
   createdAt: string;
+  /** Lot L5 (V40) : ancienne catégorie reprise (null si aucune). */
+  categorieReprise?: string | null;
+  /** Lot L5 : pièce justificative déposée en Data Room du dossier. */
+  pieceDocumentId?: string | null;
 }
 
 export interface PageResponse<T> {
@@ -162,8 +166,9 @@ export interface DeboursPayload {
   categorie: DeboursCategorie;
   montant: number;
   dateEngagement: string;
-  pieceJointeUrl?: string;
-  pieceJointeFilename?: string;
+  /** Lot L5 : pièce justificative déposée d’abord en Data Room du dossier. */
+  pieceDocumentId?: string | null;
+  pieceJointeFilename?: string | null;
   notes?: string;
 }
 
@@ -206,13 +211,12 @@ export const PRIORITE_LABELS: Record<TicketPriorite, string> = {
 };
 
 export const CATEGORIE_LABELS: Record<DeboursCategorie, string> = {
-  FRAIS_TRIBUNAL: 'Frais tribunal',
-  FRAIS_NOTARIE: 'Frais notarie',
-  FRAIS_ENREGISTREMENT: 'Frais enregistrement',
-  PUBLICATION_JAL: 'Publication JAL',
-  PUBLICATION_BO: 'Publication BO',
-  HONORAIRES: 'Honoraires',
-  TRANSPORT: 'Transport',
+  DROITS_ENREGISTREMENT: 'Droits d’enregistrement',
+  FRAIS_GREFFE: 'Frais de greffe',
+  ANNONCE_LEGALE: 'Annonce légale',
+  TIMBRES: 'Timbres',
+  LEGALISATION: 'Légalisation',
+  FRAIS_ORGANISME: 'Frais d’organisme',
   AUTRE: 'Autre',
 };
 

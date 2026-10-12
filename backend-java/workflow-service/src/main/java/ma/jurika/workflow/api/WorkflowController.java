@@ -171,6 +171,7 @@ public class WorkflowController {
     public Map<String, Object> chargeUtile(@AuthenticationPrincipal AuthenticatedUser actor,
                                             @PathVariable UUID ticketId) {
         lectureEnCharge(actor, ticketId); // L4d (E2, RG-DOS-01) : superviseur en lecture
+        useCases.rafraichirFiche(actor.workspaceId(), ticketId); // L5 (RG-FIC-04)
         return ConstructeurChargeUtileCreation.construire(
                 magasin.lirePourGeneration(actor.workspaceId(), ticketId));
     }

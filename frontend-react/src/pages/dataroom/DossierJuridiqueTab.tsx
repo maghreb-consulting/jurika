@@ -9,7 +9,6 @@ import {
   ChevronRight,
   History,
   IdCard,
-  Loader2,
   Lock,
   Search,
   Trash2,
@@ -59,7 +58,7 @@ import { UploadDocumentDialog } from './components/UploadDocumentDialog';
 import { MultiUploadDrawer } from './components/MultiUploadDrawer';
 import { DocumentVersionsDropdown } from './components/DocumentVersionsDropdown';
 import { IdentifiantsDrawer } from './components/IdentifiantsDrawer';
-import { FichePreflightModal } from './components/FichePreflightModal';
+import { FichesSocieteDrawer } from './components/FichesSocieteDrawer';
 import { computeMissingIdentity } from './components/ficheClientPreflight';
 import { nomFichierDocument, referenceDocument } from '../../lib/referencesLisibles';
 
@@ -156,36 +155,14 @@ export function DossierJuridiqueTab({
     }
   }
 
-  // Fiche client (2026-07-14) — remplace « Exporter rapport PDF ».
-  const [fichePreflightOpen, setFichePreflightOpen] = useState(false);
+  // Lot L5 (E7) : fiche client et fiche dossier (ecran, provenance, Word conserve).
+  const [fichesOpen, setFichesOpen] = useState(false);
   const [identifiantsOpen, setIdentifiantsOpen] = useState(false);
-  const [ficheBusy, setFicheBusy] = useState(false);
+  const [versionIdentifiants, setVersionIdentifiants] = useState(0);
 
   const canFiche =
     role === 'EMPLOYE' || role === 'SUPERVISEUR' || role === 'SUPER_ADMIN';
   const missingIdentity = view ? computeMissingIdentity(view) : [];
-
-  async function generateFiche() {
-    if (!view) return;
-    setFicheBusy(true);
-    try {
-      await dataroomService.exportFicheClientPdf(dossierId, view.raisonSociale);
-      setFichePreflightOpen(false);
-    } catch (err) {
-      setError(extractError(err).message);
-    } finally {
-      setFicheBusy(false);
-    }
-  }
-
-  function onFicheClick() {
-    if (!view) return;
-    if (missingIdentity.length > 0) {
-      setFichePreflightOpen(true);
-    } else {
-      void generateFiche();
-    }
-  }
 
   const isSearchActive = useMemo(() => {
     return (
@@ -436,16 +413,12 @@ export function DossierJuridiqueTab({
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={onFicheClick}
-                  loading={ficheBusy}
-                  title="Générer la Fiche client (carte d'identité juridique)"
+                  onClick={() => setFichesOpen(true)}
+                  data-testid="open-fiches"
+                  title="Fiche client et fiche dossier : consulter, modifier, générer en Word"
                 >
-                  {ficheBusy ? (
-                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                  ) : (
-                    <FileDown className="mr-1 h-4 w-4" />
-                  )}
-                  Fiche client
+                  <FileDown className="mr-1 h-4 w-4" />
+                  Fiche client et fiche dossier
                 </Button>
               )}
               {canUpload && (
@@ -607,19 +580,16 @@ export function DossierJuridiqueTab({
         }}
       />
 
-      {/* Fiche client — preflight identifiants + formulaire d'édition */}
+      {/* Lot L5 (E7) : fiche client et fiche dossier, formulaire des identifiants */}
       {view && (
         <>
-          <FichePreflightModal
-            open={fichePreflightOpen}
-            onOpenChange={setFichePreflightOpen}
-            missing={missingIdentity}
-            generating={ficheBusy}
-            onComplete={() => {
-              setFichePreflightOpen(false);
-              setIdentifiantsOpen(true);
-            }}
-            onGenerateAnyway={() => void generateFiche()}
+          <FichesSocieteDrawer
+            open={fichesOpen}
+            dossierId={dossierId}
+            raisonSociale={view.raisonSociale}
+            onClose={() => setFichesOpen(false)}
+            onModifier={() => setIdentifiantsOpen(true)}
+            versionDonnees={versionIdentifiants}
           />
           <IdentifiantsDrawer
             open={identifiantsOpen}
@@ -627,6 +597,7 @@ export function DossierJuridiqueTab({
             readOnly={role !== 'EMPLOYE'}
             onClose={() => setIdentifiantsOpen(false)}
             onSaved={async () => {
+              setVersionIdentifiants((v) => v + 1);
               await load();
             }}
           />

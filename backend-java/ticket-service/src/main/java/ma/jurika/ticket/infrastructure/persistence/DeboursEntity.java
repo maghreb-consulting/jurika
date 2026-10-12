@@ -36,6 +36,12 @@ public class DeboursEntity {
     private String pieceJointeFilename;
     @Column(columnDefinition = "TEXT")
     private String notes;
+    /** Lot L5 (V40) : categorie anterieure conservee par la reprise. */
+    @Column(name = "categorie_reprise", length = 40)
+    private String categorieReprise;
+    /** Lot L5 (V40) : piece justificative deposee en Data Room du dossier. */
+    @Column(name = "piece_document_id")
+    private UUID pieceDocumentId;
     @Column(name = "created_by_id", nullable = false)
     private UUID createdById;
     @Column(name = "created_at", nullable = false)
@@ -76,6 +82,10 @@ public class DeboursEntity {
     public void setPieceJointeFilename(String v) { this.pieceJointeFilename = v; }
     public String getNotes() { return notes; }
     public void setNotes(String v) { this.notes = v; }
+    public String getCategorieReprise() { return categorieReprise; }
+    public void setCategorieReprise(String v) { this.categorieReprise = v; }
+    public UUID getPieceDocumentId() { return pieceDocumentId; }
+    public void setPieceDocumentId(UUID v) { this.pieceDocumentId = v; }
     public UUID getCreatedById() { return createdById; }
     public void setCreatedById(UUID v) { this.createdById = v; }
     public Instant getCreatedAt() { return createdAt; }

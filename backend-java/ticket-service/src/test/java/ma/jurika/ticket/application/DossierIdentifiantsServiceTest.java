@@ -7,6 +7,7 @@ import ma.jurika.ticket.api.dto.DossierIdentifiantsDtos.DossierIdentifiantsView;
 import ma.jurika.ticket.api.dto.DossierIdentifiantsDtos.UpdateIdentifiantsRequest;
 import ma.jurika.ticket.domain.model.DeadlineRule;
 import ma.jurika.ticket.domain.port.TaxeProfessionnelleVersionRepository;
+import ma.jurika.ticket.domain.port.TraceIdentifiants;
 import ma.jurika.ticket.infrastructure.persistence.DossierEntity;
 import ma.jurika.ticket.infrastructure.persistence.DossierJpaRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -38,6 +39,7 @@ class DossierIdentifiantsServiceTest {
     private final DossierJpaRepository dossiers = mock(DossierJpaRepository.class);
     private final DeadlineUseCase deadlineUseCase = mock(DeadlineUseCase.class);
     private final TaxeProfessionnelleVersionRepository versionsTp = mock(TaxeProfessionnelleVersionRepository.class);
+    private final TraceIdentifiants trace = mock(TraceIdentifiants.class);
     private DossierIdentifiantsService service;
 
     private final UUID ws = UUID.randomUUID();
@@ -46,7 +48,7 @@ class DossierIdentifiantsServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DossierIdentifiantsService(dossiers, deadlineUseCase, versionsTp);
+        service = new DossierIdentifiantsService(dossiers, deadlineUseCase, versionsTp, trace);
         TenantContext.set(ws);
         when(dossiers.save(any(DossierEntity.class))).thenAnswer(inv -> inv.getArgument(0));
     }
@@ -251,5 +253,26 @@ class DossierIdentifiantsServiceTest {
         DossierIdentifiantsView v = service.update(ws, Role.EMPLOYE, responsable, dossierId, req());
 
         assertThat(v.rcNumero()).isEqualTo("RC-99"); // best-effort : la mise a jour aboutit
+    }
+
+    // Lot L5 (E7, RG-FIC-04) : la saisie de l'employe est declaree avant toute ecriture,
+    // pour que la trace de V41 porte la provenance SAISIE et son auteur.
+    @Test
+    void la_saisie_du_responsable_est_declaree_avec_son_auteur_avant_l_ecriture() {
+        when(dossiers.findByWorkspaceIdAndId(ws, dossierId)).thenReturn(Optional.of(existing()));
+
+        service.update(ws, Role.EMPLOYE, responsable, dossierId, req());
+
+        org.mockito.InOrder ordre = org.mockito.Mockito.inOrder(trace, dossiers);
+        ordre.verify(trace).declarerSaisie(responsable);
+        ordre.verify(dossiers).save(any(DossierEntity.class));
+    }
+
+    @Test
+    void un_refus_ne_declare_aucune_saisie() {
+        when(dossiers.findByWorkspaceIdAndId(ws, dossierId)).thenReturn(Optional.of(existing()));
+        assertThatThrownBy(() -> service.update(ws, Role.SUPERVISEUR, responsable, dossierId, req()))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(trace, never()).declarerSaisie(any());
     }
 }

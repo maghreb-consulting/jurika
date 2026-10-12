@@ -54,7 +54,8 @@ class DemandesEmployeeScopingTest {
 
     private DemandesClientService service() {
         return new DemandesClientService(demandeRepo, dossierRepo, userRepo, accessLogger, notifier,
-                org.mockito.Mockito.mock(DossierArchiveGuard.class));
+                org.mockito.Mockito.mock(DossierArchiveGuard.class),
+                org.mockito.Mockito.mock(ma.jurika.dataroom.domain.port.CourrielsClient.class));
     }
 
     @AfterEach
@@ -218,8 +219,11 @@ class DemandesEmployeeScopingTest {
         when(demandeRepo.findByWorkspaceIdAndId(ws, demandeId)).thenReturn(Optional.of(e));
         when(demandeRepo.save(any())).thenReturn(e);
 
+        // Lot L5 (E9) : EN_COURS et non TRAITEE -- le passage a TRAITEE lit le dossier
+        // pour avertir le client par courriel (RG-COM-09), ce qui n'est pas un controle
+        // d'appartenance ; ce test garde le seul controle d'appartenance.
         service().updateStatus(
-                demandeId, new UpdateDemandeStatusRequest("TRAITEE", null, null),
+                demandeId, new UpdateDemandeStatusRequest("EN_COURS", null, null),
                 UUID.randomUUID(), Role.SUPER_ADMIN);
 
         // Pas de resolution du responsable pour un SUPER_ADMIN.

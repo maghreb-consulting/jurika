@@ -126,7 +126,7 @@ final class CloturePvCorpusVarsBuilder {
     }
 
     /** Siege de la liquidation : choix enregistre a la dissolution, ou adresse connue. */
-    private static void siegeLiquidation(String templateCode, Map<String, Object> v, Map<String, Object> l,
+    static void siegeLiquidation(String templateCode, Map<String, Object> v, Map<String, Object> l,
                                          Map<String, Object> societe, Map<String, Object> safe) {
         String identique = norm(first0(l.get("siegeIdentique"), safe.get("siegeIdentique")));
         String adresse = str(first0(l.get("siege"), safe.get("liquidationSiege"), safe.get("siegeLiquidation"))).trim();

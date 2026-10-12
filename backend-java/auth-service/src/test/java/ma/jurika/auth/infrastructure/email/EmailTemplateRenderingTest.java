@@ -267,4 +267,104 @@ class EmailTemplateRenderingTest {
         assertThat(plainText(html)).contains("preferences de notification");
         assertThat(plainText(html)).doesNotContain("Gerer mes notifications");
     }
+    // Lot L5 (E10) : gestion de son compte (RG-CPT-02, RG-COM-10).
+
+    private static Map<String, Object> varsCompte() {
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("firstName", "Karim");
+        vars.put("loginEmail", "karim.benali@jurika.ma");
+        vars.put("contactEmail", "karim@cabinet.ma");
+        vars.put("unsubscribeUrl", null);
+        vars.put("ttlHours", "24");
+        vars.put("requestedAt", "12/10/2026 14:32");
+        vars.put("ipAddress", "196.12.34.56");
+        return vars;
+    }
+
+    @Test
+    @DisplayName("email-change-confirm.html : lien de confirmation et nouvelle adresse")
+    void renderEmailChangeConfirm() {
+        Map<String, Object> vars = varsCompte();
+        vars.put("nouvelleAdresse", "perso-7@exemple.ma");
+        vars.put("confirmationUrl", "https://app.jurika.ma/confirmer-changement-compte?token=jeton-42");
+
+        String html = render("email-change-confirm", vars);
+
+        assertThat(html).contains("href=\"https://app.jurika.ma/confirmer-changement-compte?token=jeton-42\"");
+        assertThat(html).contains("perso-7@exemple.ma");
+        assertThat(plainText(html)).contains("expire dans").contains("24");
+        assertThat(plainText(html).replaceAll("\\s+", " ")).contains("ancienne adresse reste celle du compte");
+    }
+
+    @Test
+    @DisplayName("email-change-notice.html : avis a l'ancienne adresse, sans lien de confirmation")
+    void renderEmailChangeNotice() {
+        Map<String, Object> vars = varsCompte();
+        vars.put("nouvelleAdresse", "perso-7@exemple.ma");
+
+        String html = render("email-change-notice", vars);
+
+        assertThat(html).contains("perso-7@exemple.ma").contains("196.12.34.56").contains("12/10/2026 14:32");
+        assertThat(html).doesNotContain("token=");
+        assertThat(plainText(html).replaceAll("\\s+", " ")).contains("Tant que ce lien n").contains("rien ne change");
+    }
+
+    @Test
+    @DisplayName("login-change-confirm.html : lien, nouvel identifiant et identifiant actuel")
+    void renderLoginChangeConfirm() {
+        Map<String, Object> vars = varsCompte();
+        vars.put("nouvelIdentifiant", "k.benali@jurika.ma");
+        vars.put("confirmationUrl", "https://app.jurika.ma/confirmer-changement-compte?token=jeton-43");
+
+        String html = render("login-change-confirm", vars);
+
+        assertThat(html).contains("token=jeton-43");
+        assertThat(html).contains("k.benali@jurika.ma").contains("karim.benali@jurika.ma");
+    }
+
+    // Lot L5 (E9, RG-COM-09) : les courriels au client indiquent le cabinet a l'origine.
+    @Test
+    @DisplayName("client-invite.html : nomme le cabinet qui invite")
+    void clientInviteNommeLeCabinet() {
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("firstName", "Karim");
+        vars.put("cabinet", "Cabinet Zerhouni Conseil");
+        vars.put("raisonSociale", "ATLAS SARL");
+        vars.put("workspaceCode", "JUR-A4F2K");
+        vars.put("loginEmail", "karim.c1@jurika.ma");
+        vars.put("contactEmail", "karim@example.ma");
+        vars.put("temporaryPassword", "Aa9kL2pMq8");
+        vars.put("loginUrl", "https://app.jurika.ma/login");
+
+        String texte = plainText(render("client-invite", vars));
+
+        assertThat(texte).contains("Cabinet Zerhouni Conseil");
+        assertThat(texte).contains("Votre cabinet <strong>Cabinet Zerhouni Conseil</strong>");
+        assertThat(texte).contains("ATLAS SARL");
+    }
+
+    @Test
+    @DisplayName("client-notification.html : cabinet, annonce, objet et lien")
+    void clientNotificationNommeLeCabinet() {
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("cabinet", "Cabinet Zerhouni Conseil");
+        vars.put("firstName", "Karim");
+        vars.put("titre", "Une requête de votre cabinet");
+        vars.put("annonce", "Votre cabinet Cabinet Zerhouni Conseil vous adresse une requête sur le dossier ATLAS SARL.");
+        vars.put("raisonSociale", "ATLAS SARL");
+        vars.put("objet", "Copie de la CIN du gérant");
+        vars.put("bouton", "Répondre à la requête");
+        vars.put("lienUrl", "https://app.jurika.ma/mes-requetes");
+        vars.put("loginEmail", "karim.c1@jurika.ma");
+        vars.put("contactEmail", "karim@example.ma");
+
+        String html = render("client-notification", vars);
+        String texte = plainText(html);
+
+        assertThat(texte).contains("Message de votre cabinet").contains("Cabinet Zerhouni Conseil");
+        assertThat(texte).contains("vous adresse une requete sur le dossier ATLAS SARL");
+        assertThat(texte).contains("Copie de la CIN du gerant");
+        assertThat(html).contains("href=\"https://app.jurika.ma/mes-requetes\"");
+        assertThat(texte).contains("Maghreb Consulting");
+    }
 }

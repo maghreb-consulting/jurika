@@ -196,11 +196,18 @@ async function checkPricing() {
 // ─── 3+4) Signup -> trial + plan limit users ──────────────────────────
 let TEST_WORKSPACE_CODE = null;
 let TEST_ADMIN_TOKEN = null;
+// Lot L5 (E3) : resultat REEL de l'envoi du courriel de bienvenue (reponse d'inscription).
+let SIGNUP_EMAIL_DELIVERED = null;
 
 async function checkSignupAndPlanLimit() {
     const ts = Math.floor(Date.now() / 1000);
     const wsName = `SmokeTest Cabinet ${ts}`;
-    const adminEmail = `admin+smoke-${ts}@jurika.test`;
+    // Lot L5 (E3) : le courriel de bienvenue part a l'adresse `email` (le formulaire n'en saisit
+    // plus qu'une). Destinataire reel facultatif : SMOKE_CONTACT_EMAIL (.env.local), sous-adresse
+    // "+smoke-<horodatage>" ; a defaut, une adresse @jurika.test (acceptee par le relais, puis
+    // rejetee par le destinataire).
+    const reel = (process.env.SMOKE_CONTACT_EMAIL || '').match(/^([^@\s+]+)@([^@\s]+)$/);
+    const adminEmail = reel ? `${reel[1]}+smoke-${ts}@${reel[2]}` : `admin+smoke-${ts}@jurika.test`;
     // Payload aligne sur SignupCabinetRequest.java (DTO sprint 11 wizard) :
     //   contactEmail (cabinet) != email (admin) ; phone +212[5-7]\d{8} ; rcNumber digits only ;
     //   cguAccepted (et pas consentTerms) ; pas de prefix adminX.
@@ -226,6 +233,9 @@ async function checkSignupAndPlanLimit() {
         return;
     }
     TEST_WORKSPACE_CODE = res.body?.workspaceCode;
+    // La route publique d'inscription rend le resultat de l'envoi sous `verifyEmailSent`
+    // (PublicSignupController) ; `emailDelivered` est le nom des autres routes d'auth.
+    SIGNUP_EMAIL_DELIVERED = (res.body?.verifyEmailSent ?? res.body?.emailDelivered) === true;
     record('Signup -> trial 14j', 'PASS', `workspace=${TEST_WORKSPACE_CODE}`);
 
     // Pour le check plan-limit, il faut un login admin + ajouter des users.
@@ -264,8 +274,9 @@ async function checkStripe() {
         record('Stripe env vars (4 prices)', 'FAIL', 'STRIPE_PRICE_ESSENTIEL_MONTHLY placeholder');
         return;
     }
+    // Lot L5 (E3) : aucune partie d'une cle n'est affichee (backlog L0).
     record('Stripe env vars (sk + 4 prices configures)', 'PASS',
-        sk.slice(0, 12) + '... + 4 price IDs');
+        'cle secrete et identifiants de prix presents (valeurs non affichees)');
 
     // Test que billing-service repond en healthcheck. Lot L0 (E16e) : son port
     // n'est publie que sur 127.0.0.1 (comme les autres services, cf. checkHealth) :
@@ -278,31 +289,53 @@ async function checkStripe() {
 }
 
 // ─── 6) Email ──────────────────────────────────────────────────────────
+// Lot L5 (E3) : le controle lisait seulement SMTP_HOST et annoncait "envoi reel" alors
+// qu'auth envoyait vers localhost:1025 (backlog L1, motif 9). Il juge desormais le
+// resultat de l'envoi du courriel de bienvenue rendu par l'inscription.
 async function checkEmail() {
-    const smtpHost = process.env.SMTP_HOST || 'mailhog';
-    if (smtpHost === 'mailhog' || smtpHost === 'localhost') {
-        // Tente l'UI MailHog. Lot L0 (E16e) : port publie sur 127.0.0.1 seulement.
-        const mhBase = `http://127.0.0.1:${process.env.MAILHOG_UI_PORT || 8025}`;
-        const res = await http('GET', '/api/v2/messages?limit=5', { base: mhBase });
-        if (res.ok && res.body?.items?.length >= 0) {
-            const count = res.body.items.length;
-            record('MailHog accessible (UI joignable)', 'PASS',
-                `${count} email(s) capture(s) recemment`);
-        } else {
-            record('MailHog UI joignable', 'FAIL', `status=${res.status}`);
-        }
+    const relais = `${process.env.SMTP_HOST || '?'}:${process.env.SMTP_PORT || '?'}`;
+    if (SIGNUP_EMAIL_DELIVERED === null) {
+        record('Courriel de bienvenue envoye', 'SKIP', 'inscription KO, aucun envoi a juger');
+    } else if (SIGNUP_EMAIL_DELIVERED) {
+        record('Courriel de bienvenue envoye', 'PASS', `relais ${relais} (accepte par le relais)`);
     } else {
-        record('SMTP Brevo configure', 'PASS', `host=${smtpHost} (envoi reel)`);
+        record('Courriel de bienvenue envoye', 'FAIL',
+            `emailDelivered=false (relais ${relais}) : voir docker logs jurika-auth | grep "Courriels :"`);
     }
 }
 
 // ─── 7) Cleanup (workspace test) ──────────────────────────────────────
+// Lot L5 (E3) : le cabinet de test est supprime (scripts/supprimer-cabinets-de-test.sql,
+// par l'entree standard de psql dans jurika-postgres ; garde-fou sur le nom
+// "SmokeTest Cabinet <horodatage>"), puis son absence est verifiee.
+function psql(sql, extraArgs = []) {
+    const user = process.env.POSTGRES_USER || 'jurika_user';
+    return spawnSync('docker', ['exec', '-i', 'jurika-postgres', 'psql', '-U', user, '-d', 'jurika_db',
+                                '-v', 'ON_ERROR_STOP=1', '-tA', ...extraArgs],
+                     { input: sql, encoding: 'utf8' });
+}
+
 async function cleanup() {
-    if (SKIP_CLEANUP || !TEST_WORKSPACE_CODE) return;
-    // Pour le cleanup propre il faudrait passer par TestSeedController
-    // (cf Sprint 14 ter). Ici on log uniquement le code workspace.
-    console.log(`${COLORS.dim}\nℹ️  Workspace test cree : ${TEST_WORKSPACE_CODE}.`);
-    console.log(`   Pour le supprimer manuellement : DELETE FROM workspaces WHERE code='${TEST_WORKSPACE_CODE}';${COLORS.reset}`);
+    if (!TEST_WORKSPACE_CODE) return;
+    if (SKIP_CLEANUP) {
+        record('Cabinet de test supprime', 'SKIP', `--skip-cleanup : ${TEST_WORKSPACE_CODE} conserve`);
+        return;
+    }
+    if (!/^JUR-[A-Z0-9]+$/.test(TEST_WORKSPACE_CODE)) {
+        record('Cabinet de test supprime', 'FAIL', `code inattendu : ${TEST_WORKSPACE_CODE}`);
+        return;
+    }
+    const sql = await readFile(join(PROJECT_ROOT, 'scripts', 'supprimer-cabinets-de-test.sql'), 'utf8');
+    const del = psql(sql, ['-v', `code=${TEST_WORKSPACE_CODE}`]);
+    const reste = psql(`SELECT count(*) FROM workspaces WHERE code = '${TEST_WORKSPACE_CODE}';`);
+    const n = (reste.stdout || '').trim();
+    if (del.status === 0 && reste.status === 0 && n === '0') {
+        record('Cabinet de test supprime', 'PASS', TEST_WORKSPACE_CODE);
+    } else {
+        const err = ((del.stderr || '') + (reste.stderr || '')).split('\n').filter(l => /ERROR|erreur/i.test(l)).join(' ');
+        record('Cabinet de test supprime', 'FAIL',
+            `${TEST_WORKSPACE_CODE} (reste=${n || '?'}) ${err}`.trim());
+    }
 }
 
 // ─── Main ──────────────────────────────────────────────────────────────

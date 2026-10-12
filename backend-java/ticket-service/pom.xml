@@ -93,12 +93,12 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         </dependency>
-        <!-- PDF generation pour etat debours — Apache PDFBox (Apache 2.0) via le
-             theme partage ma.jurika.common.pdf (migration 2026-07-14, ex-iText AGPL). -->
+        <!-- Lot L5 (E6, P5) : etat des debours au format Word (Apache POI XWPF, meme
+             version que l'ai-service). La sortie PDFBox de l'etat des debours est retiree. -->
         <dependency>
-            <groupId>org.apache.pdfbox</groupId>
-            <artifactId>pdfbox</artifactId>
-            <version>3.0.3</version>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.3.0</version>
         </dependency>
         <!-- Phase 2 V2 : MinIO pour pieces jointes debours (justificatifs) -->
         <dependency>

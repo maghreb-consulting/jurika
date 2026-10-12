@@ -33,7 +33,9 @@ public enum GroupeDocument {
             "ATTESTATION_SOUSCRIPTION_LIBERATION", "DEMANDE_AFFILIATION_CNSS",
             "DECLARATION_BENEFICIAIRES_EFFECTIFS", "DEMANDE_DEBLOCAGE_CAPITAL",
             "DECLARATION_CNDP", "DEMANDE_ADHESION_SIMPL", "LETTRE_RETRAIT_DEPOT",
-            "NOTE_ANNULATION");
+            "NOTE_ANNULATION",
+            // Lot L5 (E7) : fiche client et fiche dossier, produites par JURIKA.
+            "FICHE_CLIENT", "FICHE_DOSSIER");
 
     private static final Set<String> JUSTIFICATIFS = Set.of(
             "RC", "ICE", "TP", "CNSS", "CN", "APOSTILLE", "BULLETIN_IF", "ACCUSE_RBE",
