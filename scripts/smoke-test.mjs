@@ -202,15 +202,18 @@ let SIGNUP_EMAIL_DELIVERED = null;
 async function checkSignupAndPlanLimit() {
     const ts = Math.floor(Date.now() / 1000);
     const wsName = `SmokeTest Cabinet ${ts}`;
-    const adminEmail = `admin+smoke-${ts}@jurika.test`;
+    // Lot L5 (E3) : le courriel de bienvenue part a l'adresse `email` (le formulaire n'en saisit
+    // plus qu'une). Destinataire reel facultatif : SMOKE_CONTACT_EMAIL (.env.local), sous-adresse
+    // "+smoke-<horodatage>" ; a defaut, une adresse @jurika.test (acceptee par le relais, puis
+    // rejetee par le destinataire).
+    const reel = (process.env.SMOKE_CONTACT_EMAIL || '').match(/^([^@\s+]+)@([^@\s]+)$/);
+    const adminEmail = reel ? `${reel[1]}+smoke-${ts}@${reel[2]}` : `admin+smoke-${ts}@jurika.test`;
     // Payload aligne sur SignupCabinetRequest.java (DTO sprint 11 wizard) :
     //   contactEmail (cabinet) != email (admin) ; phone +212[5-7]\d{8} ; rcNumber digits only ;
     //   cguAccepted (et pas consentTerms) ; pas de prefix adminX.
     const payload = {
         workspaceName: wsName,
-        // Lot L5 (E3) : destinataire reel facultatif (SMOKE_CONTACT_EMAIL, .env.local) ;
-        // a defaut, une adresse @jurika.test (acceptee par le relais, rejetee ensuite).
-        contactEmail: process.env.SMOKE_CONTACT_EMAIL || `contact+smoke-${ts}@jurika.test`,
+        contactEmail: `contact+smoke-${ts}@jurika.test`,
         ice: '999999999000099',
         ifFiscal: '99999999',
         rcNumber: '12345678',  // 1-20 digits regex
@@ -230,7 +233,9 @@ async function checkSignupAndPlanLimit() {
         return;
     }
     TEST_WORKSPACE_CODE = res.body?.workspaceCode;
-    SIGNUP_EMAIL_DELIVERED = res.body?.emailDelivered === true;
+    // La route publique d'inscription rend le resultat de l'envoi sous `verifyEmailSent`
+    // (PublicSignupController) ; `emailDelivered` est le nom des autres routes d'auth.
+    SIGNUP_EMAIL_DELIVERED = (res.body?.verifyEmailSent ?? res.body?.emailDelivered) === true;
     record('Signup -> trial 14j', 'PASS', `workspace=${TEST_WORKSPACE_CODE}`);
 
     // Pour le check plan-limit, il faut un login admin + ajouter des users.
