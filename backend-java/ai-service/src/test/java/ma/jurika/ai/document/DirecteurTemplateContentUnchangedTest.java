@@ -64,10 +64,9 @@ class DirecteurTemplateContentUnchangedTest {
             "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL.docx",
             "ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL_AU.docx",
             "ANNONCE_LEGALE_FERMETURE_SUCCURSALE_SARL.docx",
-            "ANNONCE_LEGALE_FERMETURE_SUCCURSALE_SARL_AU.docx",
-            // Lot L4d (E11d) : rapport du liquidateur, toujours rendu par le classpath (bascule
-            // sur RAPPORT_LIQUIDATEUR_* non resolue).
-            "RAPPORT_LIQUIDATION_DIRECTEUR.docx"})
+            "ANNONCE_LEGALE_FERMETURE_SUCCURSALE_SARL_AU.docx"})
+            // Lot L5 (E4) : le rapport du liquidateur du directeur est retire, rendu par
+            // RAPPORT_LIQUIDATEUR_SARL(_AU) du corpus.
             // Lot L4d (E11) : la variante etrangere de l'avis d'ouverture (derive-jurika) est
             // retiree, l'avis est rendu par le modele du corpus.
     void contenu_identique_a_la_reference(String fn) throws Exception {

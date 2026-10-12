@@ -147,6 +147,8 @@ class DocumentVerificationIT {
             // et PV_CLOTURE_LIQUIDATION_* du corpus.
             "PV_DISSOLUTION_LIQUIDATION_SARL",
             "PV_DISSOLUTION_LIQUIDATION_SARL_AU",
+            // Lot L5 (E4) : rapport du liquidateur rendu par RAPPORT_LIQUIDATEUR_SARL(_AU) du corpus.
+            "RAPPORT_LIQUIDATION_DIRECTEUR",
             // Lot L4d (E11c) : PV de modification rendus par PV_AG_SARL et
             // PV_DECISIONS_ASSOCIE_UNIQUE_SARL_AU du corpus.
             "PV_MODIFICATION_SARL",

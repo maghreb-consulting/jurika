@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -29,8 +31,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * variable ni balise residuelle ; le texte produit est ecrit sous
  * {@code target/output/liquidation-corpus/} pour lecture. Sans corpus reel, le test est saute.
  *
- * <p>Le rapport du liquidateur n'est pas resolu au lot L4d : sa generation est refusee et les
- * donnees manquantes sont nommees (aucun document incomplet ne sort).
+ * <p>Lot L5 (E4) : le rapport final du liquidateur est rendu par RAPPORT_LIQUIDATEUR_SARL(_AU),
+ * operations saisies, totaux et resultat calcules.
  */
 class LiquidationCorpusRenderTest {
 
@@ -143,12 +145,57 @@ class LiquidationCorpusRenderTest {
                 .contains("net revenant \u00e0 l'associ\u00e9 unique 134 000 dirhams");
     }
 
-    // Lot L4d (E11d) : le rapport du liquidateur reste rendu par le classpath (bascule sur
-    // RAPPORT_LIQUIDATEUR_SARL(_AU) non resolue : onze tableaux sans ecran, 54 donnees).
+    // Lot L5 (E4) : rapport final du liquidateur rendu par RAPPORT_LIQUIDATEUR_SARL(_AU) du corpus,
+    // operations saisies, totaux et resultat calcules.
     @Test
-    void rapport_du_liquidateur_reste_servi() {
-        DocxTemplateEngine.DocumentResult r = rendre(new LiquidationMapper(), "RAPPORT_LIQUIDATION_DIRECTEUR",
-                fixture("liquidation.json"));
-        assertThat(r.manquantesBloquantes()).isEmpty();
+    void rapport_du_liquidateur_sarl_boni_reparti() throws Exception {
+        String t = complet(new LiquidationMapper(), "RAPPORT_LIQUIDATION_DIRECTEUR", fixture("liquidation.json"),
+                "RAPPORT_LIQUIDATEUR_SARL_boni");
+        assertThat(t).contains("RAPPORT FINAL DU LIQUIDATEUR")
+                .contains("Total des produits de r\u00e9alisation encaiss\u00e9s : 300 000 dirhams (TROIS CENT MILLE)")
+                .contains("Total des plus-values de r\u00e9alisation : 30 000 dirhams")
+                .contains("Total des moins-values de r\u00e9alisation : 5 000 dirhams")
+                .contains("R\u00e9sultat de la r\u00e9alisation : plus-value d'un montant de 30 000 dirhams")
+                .contains("Total du passif r\u00e9gl\u00e9 : 150 000 dirhams (CENT CINQUANTE MILLE)")
+                .contains("Tr\u00e9sorerie disponible \u00e0 la date d'arr\u00eat\u00e9 des comptes : 140 000 dirhams")
+                .contains("Total des frais et honoraires de liquidation, tel qu'arr\u00eat\u00e9 par le dossier : 10 000 dirhams (DIX MILLE)")
+                .contains("remboursement du capital social \u00e0 concurrence de 100 000 dirhams")
+                .contains("boni de liquidation d'un montant de 40 000 dirhams (QUARANTE MILLE)")
+                .contains("M. Ahmed Alaoui, titulaire de 600 parts sociales : 24 000 dirhams.")
+                .contains("Mme Fatima Bennani, titulaire de 400 parts sociales : 16 000 dirhams.")
+                .contains("au taux de 15 %, pour un montant de 6 000 dirhams")
+                .contains("Fait \u00e0 CASABLANCA, le 12/06/2026, en quatre exemplaires originaux.")
+                .doesNotContain("mali de liquidation d'un montant");
+    }
+
+    @Test
+    void rapport_du_liquidateur_sarl_au_mali_liquidateur_personne_morale() throws Exception {
+        Map<String, Object> p = fixture("liquidation.json");
+        DissolutionMapperTest.bloc(p, "societe").put("formeJuridique", "SARL_AU");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> associes = (List<Map<String, Object>>) p.get("associes");
+        associes.remove(1);
+        p.put("liquidateur", liquidateurPersonneMorale());
+        // Liquidateur remunere (20 000, compris dans les frais) ; actif realise 200 000 ;
+        // disponible 200 000 - 150 000 - 30 000 = 20 000 : mali de 80 000.
+        Map<String, Object> r = DissolutionMapperTest.bloc(p, "rapportLiquidateur");
+        DissolutionMapperTest.bloc(p, "cloture").put("actifRealise", 200_000);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> real = (List<Map<String, Object>>) r.get("realisations");
+        real.get(0).put("prix", 150_000);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> frais = (List<Map<String, Object>>) r.get("frais");
+        frais.add(new LinkedHashMap<>(Map.of("nature", "R\u00e9mun\u00e9ration du liquidateur",
+                "beneficiaire", "FIDUCIAIRE ATLAS", "montant", 20_000, "date", "2026-06-10", "statut", "\u00e0 r\u00e9gler")));
+        r.put("maliObservations", "le fonds de commerce a \u00e9t\u00e9 c\u00e9d\u00e9 en dessous de sa valeur d'inventaire");
+        String t = complet(new LiquidationMapper(), "RAPPORT_LIQUIDATION_DIRECTEUR", p, "RAPPORT_LIQUIDATEUR_SARL_AU_mali");
+        assertThat(t).contains("mali de liquidation d'un montant de 80 000 dirhams (QUATRE-VINGT MILLE)")
+                .contains("demeure \u00e0 la charge de l'associ\u00e9 unique")
+                .contains("R\u00e9sultat de la r\u00e9alisation : moins-value d'un montant de 70 000 dirhams")
+                .contains("Total des frais et honoraires de liquidation, tel qu'arr\u00eat\u00e9 par le dossier : 30 000 dirhams (TRENTE MILLE)")
+                .contains("remboursement du capital social \u00e0 concurrence de 20 000 dirhams")
+                .contains("M. Ahmed Alaoui, associ\u00e9 unique")
+                .contains("FIDUCIAIRE ATLAS, repr\u00e9sent\u00e9e par Mme Salma Idrissi")
+                .doesNotContain("boni de liquidation d'un montant");
     }
 }

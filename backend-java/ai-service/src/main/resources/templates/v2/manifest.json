@@ -4,51 +4,12 @@
   "templates": [
     {
       "code": "RAPPORT_LIQUIDATION_DIRECTEUR",
-      "file": "RAPPORT_LIQUIDATION_DIRECTEUR.docx",
-      "origin": "directeur-2026-08",
-      "document_kind": "Rapport de liquidation (rapport final du liquidateur) — SARL & SARL AU",
+      "origin": "corpus",
+      "document_kind": "Rapport final du liquidateur — modèle du corpus du cabinet selon la forme (lot L5)",
       "workflow": "LIQUIDATION",
-      "placeholder_style": "dollar_nu_directeur",
-      "variables": [
-        "ACTIF_REALISE_CHIFFRES",
-        "ACTIF_REALISE_LETTRES",
-        "ASSOCIE_NOM",
-        "ASSOCIE_UNIQUE",
-        "BONI_LIQUIDATION_CHIFFRES",
-        "BONI_LIQUIDATION_LETTRES",
-        "CAPITAL_CHIFFRES",
-        "DATE_CLOTURE_LIQUIDATION",
-        "DATE_DISSOLUTION",
-        "DATE_SIGNATURE",
-        "DENOMINATION",
-        "LIEU_SIGNATURE",
-        "LIQUIDATEUR_ADRESSE",
-        "LIQUIDATEUR_CIVILITE",
-        "LIQUIDATEUR_GENRE",
-        "LIQUIDATEUR_NOM",
-        "LIQUIDATEUR_PIECE_NUMERO",
-        "LIQUIDATEUR_PIECE_TYPE",
-        "LIQUIDATEUR_PRENOM",
-        "MALI_LIQUIDATION_CHIFFRES",
-        "MALI_LIQUIDATION_LETTRES",
-        "NOMBRE_ORIGINAUX",
-        "PASSIF_REGLE_CHIFFRES",
-        "PASSIF_REGLE_LETTRES",
-        "RC_NUMERO",
-        "RESULTAT_LIQUIDATION_TYPE",
-        "SIEGE_SOCIAL",
-        "VILLE_GREFFE"
-      ],
-      "blocks": [
-        {
-          "name": "ASSOCIES",
-          "variables": [
-            "ASSOCIE_BONI_CHIFFRES",
-            "ASSOCIE_NOM",
-            "ASSOCIE_NOMBRE_PARTS"
-          ]
-        }
-      ]
+      "note": "Rendu par RAPPORT_LIQUIDATEUR_SARL ou RAPPORT_LIQUIDATEUR_SARL_AU du corpus, choisi par le mapper (WorkflowDocumentMapper#gabarit) ; aucun gabarit du classpath.",
+      "variables": [],
+      "blocks": []
     },
     {
       "code": "RAPPORT_GESTION",
