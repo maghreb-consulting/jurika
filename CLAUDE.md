@@ -206,6 +206,48 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   L5 E4)** : reste au classpath `PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU` (ecart du cabinet,
   A_DECIDER directeur).
 
+### Lot L5 (fonctions metier, 2026-10-12) -- dette relevee
+
+- **RLS inoperante tant que la bascule `jurika_app` n'est pas faite** : ai V16 (corpus commun du
+  chatbot) et le realtime-service (`jurika_user`) ; seul le filtrage applicatif protege.
+- **Realtime** : `/emit` sans authentification ; `HttpNotificationPublisher.publish` n'envoie pas
+  le jeton interne.
+- **Super-admin non alerte a 80 % du quota** (RG-PLN-02) : RG-COM-08 interdit de notifier hors du
+  cabinet, il faut un canal propre au super-admin. `PlanLimitsService.countDossiers` compte tous les
+  dossiers, pas ceux du mois (RG-PLN-01) ; l'alerte de quota en herite.
+- **Fonctions par forfait non gardees** : alertes de delais et messagerie interne (absentes
+  d'Essentiel) ; quota de 20 questions au chatbot (CDC 4) non mis en oeuvre (L7).
+- **Trace des identifiants du dossier modifiable** par `jurika_app` (GRANT global de workflow V14,
+  joue apres ticket V41) : REVOKE pose en dernier, ou declencheur de refus.
+- **CHECK `document_type` (dataroom)** : toute migration qui le redefinit doit reprendre
+  `FICHE_CLIENT` et `FICHE_DOSSIER` (dataroom V36).
+- **`ZipHorodatage`** : la version de jurika-common rend l'archive inchangee si elle est illisible
+  (motif 9) ; la copie de dataroom (`infrastructure/word`) leve une erreur. Unifier sur le
+  comportement strict.
+- **PV de cloture de liquidation** : date de decision de dissolution prise sur la date de
+  dissolution en base (date d'effet) ; impot absent compte 0. `LIQUIDATEUR_CAPITAL_CHIFFRES` non mis
+  en forme dans `DissolutionAnnonceVarsBuilder` ("500000").
+- **PV_AG_SARL** : `dividendeParPart` et `acompteParPart` saisis alors que calculables. Catalogue :
+  `au-ord-distribution` ("dividendes ou reserves") route vers les seuls dividendes ;
+  `OfficialDecision.note` jamais affiche (motif 9). Exoneration de retenue : associe unique personne
+  morale sans ecran d'identite.
+- **Ecrans** : `CabinetTab.tsx` annonce des "PDF generes (fiche client, etat des debours)" ;
+  `ProfileSecurityPage` "Changer mon mot de passe" mene a la page de changement obligatoire ;
+  `Sidebar.tsx` et `AppShellSidebar.tsx` ne sont plus montes (code mort) ; `useLenisScroll` exclut
+  encore `/chatbot` ; `scripts/demo-video/capture-demo.mjs` vise l'ancienne page du chatbot.
+- **Auth** : `InviteEmployeUseCase` cherche les doublons sur l'identifiant et non sur
+  `contact_email` ; gabarits de courriel existants (password-changed, verify-email...) et leurs
+  sujets sans accents ; libelles d'audit `DEBOURS_*` absents de `AuditActionLabels`.
+- **Debours** : lignes anterieures avec `piece_jointe_url` affichees sans lien Data Room ;
+  dependance `io.minio` inutilisee dans le pom de ticket-service.
+- **Fiche** : un auteur d'un autre workspace s'affiche "Compte inconnu".
+- **Lint herite** (`react-hooks/set-state-in-effect` et autres) : LiquidationWorkflowPage,
+  SeanceOperationForm, modificationResolutions (react-refresh), DossierJuridiqueTab,
+  TicketDetailDrawer, ClientDataroomView, ChatPage, NotificationBell, DemandesTab,
+  RequetesAuClientSection, AuditLogPage.
+- **Tests vitest sensibles a la charge** (delais de 5 s) : step7-documents-conditionnels,
+  liquidation-annonce-corpus, LoginPage et d'autres sous charge machine elevee.
+
 ### Lot L4d (page de ticket, bascule du corpus, 2026-10-12) -- dette relevee
 
 - **PV de modification non rediges par le modele du corpus** (refus nomme ; aucune donnee ne
