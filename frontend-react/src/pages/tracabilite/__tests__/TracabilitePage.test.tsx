@@ -64,7 +64,7 @@ describe('TracabilitePage — filtres par nom + acteurs actifs/retires', () => {
     // L'option de l'utilisateur (par nom) apparait une fois l'annuaire charge.
     await waitFor(() => expect(screen.getByRole('option', { name: 'Karim Alaoui' })).toBeInTheDocument());
 
-    await user.selectOptions(screen.getByLabelText('Acteur'), USER_UUID);
+    await user.selectOptions(screen.getByLabelText('Auteur'), USER_UUID);
     await user.click(screen.getByRole('button', { name: /Filtrer/i }));
 
     await waitFor(() =>
@@ -91,7 +91,7 @@ describe('TracabilitePage — filtres par nom + acteurs actifs/retires', () => {
     render(<TracabilitePage />);
     await waitFor(() => expect(search).toHaveBeenCalled());
 
-    await user.selectOptions(screen.getByLabelText("Statut de l'acteur"), 'RETIRED');
+    await user.selectOptions(screen.getByLabelText('Statut de l’auteur'), 'RETIRED');
     await user.click(screen.getByRole('button', { name: /Filtrer/i }));
 
     await waitFor(() =>
@@ -113,7 +113,7 @@ describe('TracabilitePage — filtres par nom + acteurs actifs/retires', () => {
     // Le nom (pas l'UUID) apparait + badge "retire".
     await waitFor(() => expect(screen.getByText('Old Employe')).toBeInTheDocument());
     const row = screen.getByText('Old Employe').closest('td') as HTMLElement;
-    expect(within(row).getByText(/retire/i)).toBeInTheDocument();
+    expect(within(row).getByText(/retiré/i)).toBeInTheDocument();
   });
 
   it('un acteur purge (absent de l\'annuaire) s\'affiche "Utilisateur supprime"', async () => {
@@ -140,10 +140,10 @@ describe('TracabilitePage — filtres par nom + acteurs actifs/retires', () => {
     await waitFor(() => expect(search).toHaveBeenCalled());
 
     // 1) choisir le type d'entite "Dossier" (active le <Select> entite)
-    await user.selectOptions(screen.getByLabelText("Type d'entite"), 'dossier');
+    await user.selectOptions(screen.getByLabelText('Type d’élément'), 'dossier');
     // 2) l'option du dossier (par nom) apparait
     await waitFor(() => expect(screen.getByRole('option', { name: 'ATLAS SARL' })).toBeInTheDocument());
-    await user.selectOptions(screen.getByLabelText('Entite'), DOSSIER_UUID);
+    await user.selectOptions(screen.getByLabelText('Élément'), DOSSIER_UUID);
     await user.click(screen.getByRole('button', { name: /Filtrer/i }));
 
     await waitFor(() =>

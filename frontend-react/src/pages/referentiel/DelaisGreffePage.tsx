@@ -130,6 +130,11 @@ export function DelaisGreffePage() {
           Aucun délai : le référentiel des démarches n’est pas encore importé.
         </p>
       )}
+      {natures && natures.length > 0 && visibles.length === 0 && (
+        <p className="text-sm text-fg-subtle">
+          Aucune nature d’acte ne correspond à « {filtre.trim()} ». Vérifiez l’orthographe ou effacez la recherche.
+        </p>
+      )}
 
       <ul className="divide-y divide-border rounded-xl border border-border bg-bg-raised">
         {visibles.map((n) => {
