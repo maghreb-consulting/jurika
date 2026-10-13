@@ -27,25 +27,16 @@ import { ETAPES_PV_AGO, etapesRoadmap } from './aidesParcours';
 import { useDossierParties, useEtatReinitialise } from './parcoursHooks';
 import { DossierAutocomplete } from '../../components/workflow/DossierAutocomplete';
 import { dataroomService } from '../../services/dataroom.service';
-import {
-  WorkflowDocumentBlock,
-  freshDocState,
-  useDocumentBlocks,
-  type DocState,
-} from '../../components/workflow/WorkflowDocumentBlock';
+import { WorkflowDocumentBlock, type DocState } from '../../components/workflow/WorkflowDocumentBlock';
+import { freshDocState, useDocumentBlocks } from '../../components/workflow/documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
 } from '../../services/workflowDocumentService';
 import { IncidentSeancePanel } from '../../components/workflow/IncidentSeancePanel';
 import { ConvocationPanel, FeuillePresencePanel } from '../../components/workflow/SeanceDocPanels';
-import {
-  SeanceFormFields,
-  sanitizeFilename,
-  useSeanceForm,
-  type AssocieInput,
-  type GerantInput,
-} from '../../components/workflow/SeanceForm';
+import { SeanceFormFields, type AssocieInput, type GerantInput } from '../../components/workflow/SeanceForm';
+import { sanitizeFilename, useSeanceForm } from '../../components/workflow/seanceFormEtat';
 import {
   PiecesJointesPanel,
   type PieceJointeEntry,

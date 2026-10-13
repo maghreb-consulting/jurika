@@ -21,10 +21,6 @@ import { EXTERNE_KEY, type LiquidateurOption, type LiquidateurState } from './li
 
 export type { LiquidateurOption, LiquidateurSource, LiquidateurState } from './liquidateurOptions';
 export { EXTERNE_KEY } from './liquidateurOptions';
-// Compatibilite (L6) : DissolutionWorkflowPage et LiquidationWorkflowPage importent encore
-// ces fonctions d'ici. A retirer des que ces pages les importeront depuis
-// './liquidateurOptions' (hors perimetre de l'etape E8).
-export { buildLiquidateurOptions, emptyLiquidateur } from './liquidateurOptions';
 
 export interface LiquidateurPickerProps {
   value: LiquidateurState;

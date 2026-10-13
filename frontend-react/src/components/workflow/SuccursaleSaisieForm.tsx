@@ -38,10 +38,6 @@ export type {
   SuccursaleSaisieErrors,
   SuccursaleSaisieState,
 } from './succursaleSaisie';
-// Compatibilite (L6) : SuccursaleMaWorkflowPage et SuccursaleEtrWorkflowPage importent encore
-// ces fonctions d'ici. A retirer des que ces pages les importeront depuis './succursaleSaisie'
-// (hors perimetre de l'etape E8).
-export { emptySuccursaleSaisie, succursaleSaisieErrors, toSuccursalePayload } from './succursaleSaisie';
 
 export interface SuccursaleSaisieFormProps {
   value: SuccursaleSaisieState;

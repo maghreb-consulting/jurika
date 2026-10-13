@@ -43,13 +43,8 @@ import { bornesDateSeance, useDossierParties, useEtatReinitialise } from './parc
 import { DossierAutocomplete } from '../../components/workflow/DossierAutocomplete';
 import { SuccursaleOperationForm } from '../../components/workflow/SuccursaleOperationForm';
 import { SuccursaleAnnoncePanel } from '../../components/workflow/SuccursaleAnnoncePanel';
-import {
-  SuccursaleSaisieForm,
-  emptySuccursaleSaisie,
-  succursaleSaisieErrors,
-  toSuccursalePayload,
-  type SuccursaleSaisieState,
-} from '../../components/workflow/SuccursaleSaisieForm';
+import { SuccursaleSaisieForm, type SuccursaleSaisieState } from '../../components/workflow/SuccursaleSaisieForm';
+import { emptySuccursaleSaisie, succursaleSaisieErrors, toSuccursalePayload } from '../../components/workflow/succursaleSaisie';
 import { ConvocationPanel, FeuillePresencePanel } from '../../components/workflow/SeanceDocPanels';
 import { IncidentSeancePanel } from '../../components/workflow/IncidentSeancePanel';
 import {

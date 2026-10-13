@@ -6,7 +6,7 @@ import { TextField } from '../../components/ui/TextField';
 import { Select } from '../../components/ui/Select';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { RetourGeneration } from '../../components/workflow/RetourGeneration';
-import { triggerBrowserDownload } from '../../components/workflow/WorkflowDocumentBlock';
+import { triggerBrowserDownload } from '../../components/workflow/documentBlocks';
 import {
   generateDocument,
   GenerationRefuseeError,

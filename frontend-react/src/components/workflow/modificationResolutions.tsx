@@ -33,16 +33,6 @@ export type {
   SubListSpec,
   TypeSpec,
 } from './modificationResolutionsSpecs';
-// Compatibilite (L6) : ModificationWorkflowPage importe encore ces fonctions et constantes
-// d'ici. A retirer des que la page les importera depuis './modificationResolutionsSpecs'
-// (hors perimetre de l'etape E8).
-export {
-  RES_SPECS,
-  flattenResolution,
-  oldValuesFor,
-  personNames,
-  seedResolutions,
-} from './modificationResolutionsSpecs';
 
 // --------------------------------------------------------------------------
 // Composants d'édition réutilisables

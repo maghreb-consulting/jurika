@@ -60,16 +60,8 @@ import {
   type ModForme,
   type OfficialDecision,
 } from './officialModificationDecisions';
-import {
-  RES_SPECS,
-  ResolutionFieldsEditor,
-  flattenResolution,
-  oldValuesFor,
-  personNames,
-  seedResolutions,
-  type PersonLists,
-  type ResolutionState,
-} from '../../components/workflow/modificationResolutions';
+import { ResolutionFieldsEditor, type PersonLists, type ResolutionState } from '../../components/workflow/modificationResolutions';
+import { RES_SPECS, flattenResolution, oldValuesFor, personNames, seedResolutions } from '../../components/workflow/modificationResolutionsSpecs';
 import { IdentityExtractor } from '../../components/identity/IdentityExtractor';
 import { GeneratedDocPreview } from '../../components/document/GeneratedDocPreview';
 import { DocumentEditModal } from '../../components/document/DocumentEditModal';

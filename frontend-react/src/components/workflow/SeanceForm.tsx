@@ -46,9 +46,6 @@ export type {
   UseSeanceFormOptions,
   SeanceFormApi,
 } from './seanceFormEtat';
-// Compatibilite (L6) : PvAgoWorkflowPage importe encore ces deux fonctions d'ici. A retirer
-// des que la page les importera depuis './seanceFormEtat' (hors perimetre de l'etape E8).
-export { sanitizeFilename, useSeanceForm } from './seanceFormEtat';
 
 /** Modes d'envoi tels que les modeles du corpus les testent (libelles exacts). */
 const MODES_CONVOCATION = [

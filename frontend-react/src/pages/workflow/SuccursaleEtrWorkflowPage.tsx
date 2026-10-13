@@ -45,13 +45,8 @@ import { DossierAutocomplete } from '../../components/workflow/DossierAutocomple
 import { SuccursaleOperationForm } from '../../components/workflow/SuccursaleOperationForm';
 import { SuccursaleAnnoncePanel } from '../../components/workflow/SuccursaleAnnoncePanel';
 import { ConvocationPanel } from '../../components/workflow/SeanceDocPanels';
-import {
-  SuccursaleSaisieForm,
-  emptySuccursaleSaisie,
-  succursaleSaisieErrors,
-  toSuccursalePayload,
-  type SuccursaleSaisieState,
-} from '../../components/workflow/SuccursaleSaisieForm';
+import { SuccursaleSaisieForm, type SuccursaleSaisieState } from '../../components/workflow/SuccursaleSaisieForm';
+import { emptySuccursaleSaisie, succursaleSaisieErrors, toSuccursalePayload } from '../../components/workflow/succursaleSaisie';
 import {
   PiecesJointesPanel,
   type PieceJointeEntry,

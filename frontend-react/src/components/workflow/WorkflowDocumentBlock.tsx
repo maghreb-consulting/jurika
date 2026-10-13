@@ -33,10 +33,6 @@ import { DocumentEditModal } from '../document/DocumentEditModal';
 import type { DocState } from './documentBlocks';
 
 export type { DocState, UseDocumentBlocksParams } from './documentBlocks';
-// Compatibilite (L6) : PvAgoWorkflowPage et AnnulationDocumentsPanel importent encore ces
-// fonctions d'ici. A retirer des que ces fichiers les importeront depuis './documentBlocks'
-// (hors perimetre de l'etape E8).
-export { freshDocState, triggerBrowserDownload, useDocumentBlocks } from './documentBlocks';
 
 // ============================================================================
 // Bloc visuel — utilise par les pages workflow MODIFICATION/DISSOLUTION/LIQUIDATION

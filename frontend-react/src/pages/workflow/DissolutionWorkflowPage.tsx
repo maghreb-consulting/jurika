@@ -34,12 +34,8 @@ import { SeanceOperationForm } from '../../components/workflow/SeanceOperationFo
 import { ConvocationPanel, FeuillePresencePanel } from '../../components/workflow/SeanceDocPanels';
 import { IncidentSeancePanel } from '../../components/workflow/IncidentSeancePanel';
 import { DissolutionAnnoncePanel } from '../../components/workflow/DissolutionAnnoncePanel';
-import {
-  LiquidateurPicker,
-  buildLiquidateurOptions,
-  emptyLiquidateur,
-  type LiquidateurState,
-} from '../../components/workflow/LiquidateurPicker';
+import { LiquidateurPicker, type LiquidateurState } from '../../components/workflow/LiquidateurPicker';
+import { buildLiquidateurOptions, emptyLiquidateur } from '../../components/workflow/liquidateurOptions';
 import { champsPersonneMorale, identiteLiquidateur, manqueLiquidateur } from '../../lib/liquidateur';
 import {
   champsMandatLiquidateur,
