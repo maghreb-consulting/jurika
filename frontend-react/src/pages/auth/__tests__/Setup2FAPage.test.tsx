@@ -72,7 +72,7 @@ describe('Setup2FAPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByAltText('QR code 2FA')).toBeInTheDocument();
+      expect(screen.getByAltText(/QR code à scanner/)).toBeInTheDocument();
     });
     expect(screen.getByText('ABCDEF123456')).toBeInTheDocument();
   });
@@ -86,7 +86,7 @@ describe('Setup2FAPage', () => {
     confirm2fa.mockRejectedValue(
       Object.assign(new Error('Bad code'), {
         isAxiosError: true,
-        response: { data: { message: 'Code 2FA invalide' } },
+        response: { data: { message: 'Code de double authentification incorrect.' } },
       }),
     );
 
@@ -98,7 +98,7 @@ describe('Setup2FAPage', () => {
     await user.click(screen.getByRole('button', { name: /Confirmer et activer/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Code 2FA invalide/i)).toBeInTheDocument();
+      expect(screen.getByText(/Code de double authentification incorrect/i)).toBeInTheDocument();
     });
   });
 
@@ -129,7 +129,7 @@ describe('Setup2FAPage', () => {
     await user.click(screen.getByRole('button', { name: /Confirmer et activer/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/2FA activee — vos codes de recuperation/i)).toBeInTheDocument();
+      expect(screen.getByText(/Double authentification activée : vos codes de récupération/i)).toBeInTheDocument();
     });
     expect(screen.getByTestId('recovery-codes-display')).toBeInTheDocument();
     // Hotfix 2026-06-04 — tokenStorage.setTokens DOIT etre appele AVANT

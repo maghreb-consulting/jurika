@@ -46,10 +46,9 @@ export function ConfirmerChangementComptePage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-bg via-bg-raised to-accent/10 px-4">
       <div className="w-full max-w-md">
-        <div className="mb-8 flex items-center justify-center gap-2">
-          <BrandLogo size={40} />
-          <span className="font-heading text-2xl font-semibold text-fg">JURIKA</span>
-        </div>
+        <Link to="/" className="mb-8 flex items-center justify-center" aria-label="JURIKA, retour à l’accueil">
+          <BrandLogo variant="full" size={48} />
+        </Link>
 
         <Card className="p-8">
           {etat === 'confirmation' && (
@@ -93,7 +92,7 @@ export function ConfirmerChangementComptePage() {
               </p>
               <TexteAide cle="confirmer-changement-compte" titre="Et maintenant ?">
                 Aucune modification n’a été faite : vos valeurs actuelles restent actives. Connectez-vous,
-                puis refaites la demande depuis l’écran « Mon compte » (Paramètres, Profil) ; seul le
+                puis refaites la demande depuis l’écran « Mon compte » (menu de votre compte, en haut à droite) ; seul le
                 dernier lien reçu est valable.
               </TexteAide>
               <Link to="/login">

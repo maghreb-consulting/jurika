@@ -5,23 +5,23 @@ interface StepperProps {
 }
 
 /**
- * 3-step horizontal indicator for login flow.
- * Maquette: blue active, green completed, gray pending.
+ * Indicateur des trois etapes de la connexion (code du workspace, identifiants,
+ * double authentification). Etape en cours : or ; etapes faites : vert.
  */
 export function Stepper({ currentStep }: StepperProps) {
   const steps = [
     { number: 1, label: 'Code workspace' },
     { number: 2, label: 'Identifiants' },
-    { number: 3, label: 'Verification 2FA' },
+    { number: 3, label: 'Double authentification' },
   ] as const;
 
   return (
-    <div className="mb-10 flex items-center justify-center gap-2">
+    <ol aria-label="Étapes de la connexion" className="mb-10 flex items-center justify-center gap-2">
       {steps.map((step, index) => {
         const completed = step.number < currentStep;
         const active = step.number === currentStep;
         return (
-          <div key={step.number} className="flex items-center">
+          <li key={step.number} className="flex items-center" aria-current={active ? 'step' : undefined}>
             <div className="flex items-center gap-2">
               <div
                 className={[
@@ -32,7 +32,7 @@ export function Stepper({ currentStep }: StepperProps) {
                 ].join(' ')}
               >
                 {completed ? (
-                  <Check className="h-5 w-5 text-bg-raised" />
+                  <Check className="h-5 w-5 text-bg-raised" aria-label="faite" />
                 ) : (
                   <span
                     className={`text-sm font-semibold ${
@@ -53,11 +53,11 @@ export function Stepper({ currentStep }: StepperProps) {
             </div>
 
             {index < steps.length - 1 && (
-              <div className="mx-3 text-fg-subtle">→</div>
+              <div className="mx-3 text-fg-subtle" aria-hidden="true">→</div>
             )}
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }

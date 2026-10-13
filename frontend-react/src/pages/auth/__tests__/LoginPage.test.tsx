@@ -52,7 +52,7 @@ describe('LoginPage', () => {
   it('rend l\'etape "workspace" en premier avec un input vide', () => {
     renderLogin();
 
-    expect(screen.getByText(/Accedez a votre espace/i)).toBeInTheDocument();
+    expect(screen.getByText(/Accédez à votre espace/i)).toBeInTheDocument();
     expect(champWorkspace().value).toBe('');
   });
 
