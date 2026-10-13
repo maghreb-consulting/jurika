@@ -20,6 +20,8 @@ import type {
   PricingTier,
 } from '../../types/billing';
 import { formatMadCents } from '../../types/billing';
+import { extractError } from '../../lib/api';
+import { TexteAide } from '../../components/ui/Aide';
 
 /**
  * BUG 14 (2026-06-07) — page de paiement multi-moyens entre le choix du
@@ -71,7 +73,7 @@ export function PaymentPage() {
 
   async function submit() {
     if (!user) {
-      setError('Session expiree — reconnectez-vous.');
+      setError('Votre session a expiré : reconnectez-vous, puis recommencez.');
       return;
     }
     setError(null);
@@ -88,11 +90,10 @@ export function PaymentPage() {
       setResult(res);
       if (res.method === 'CARD' && res.checkoutUrl) {
         // Redirection vers le checkout Stripe.
-        window.location.href = res.checkoutUrl;
+        window.location.assign(res.checkoutUrl);
       }
     } catch (err) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      setError(e?.response?.data?.message ?? e?.message ?? 'Erreur lors de la preparation du paiement');
+      setError(`Le paiement n’a pas pu être préparé : ${extractError(err).message}`);
     } finally {
       setSubmitting(false);
     }
@@ -107,7 +108,7 @@ export function PaymentPage() {
           <h1 className="font-heading text-2xl font-semibold text-fg">Paiement en attente de validation</h1>
           <p className="mt-2 text-sm text-fg-muted">{result.userMessage}</p>
           <p className="mt-3 text-xs text-fg-subtle">
-            Reference paiement : <code className="rounded bg-bg-overlay px-2 py-0.5 font-mono">PAY-{result.paymentId}</code>
+            Référence du paiement : <code className="rounded bg-bg-overlay px-2 py-0.5 font-mono">PAY-{result.paymentId}</code>
           </p>
         </header>
 
@@ -124,13 +125,13 @@ export function PaymentPage() {
         </section>
 
         <p className="text-xs text-fg-subtle">
-          Vos identifiants de connexion (code workspace + mot de passe temporaire) vous seront envoyes par email
-          des que ce paiement aura ete valide par notre equipe.
+          Vos identifiants de connexion (code du cabinet et mot de passe temporaire) vous seront envoyés
+          par courriel dès que ce paiement aura été validé par notre équipe.
         </p>
 
         <div className="flex gap-3">
           <Link to="/app/billing" className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-raised px-4 py-2 text-sm font-medium text-fg-muted hover:bg-bg-overlay">
-            Retour facturation
+            Retour à la facturation
           </Link>
         </div>
       </div>
@@ -145,16 +146,25 @@ export function PaymentPage() {
           onClick={() => navigate(-1)}
           className="mb-3 inline-flex items-center gap-1 text-xs text-fg-subtle hover:text-fg"
         >
-          <ArrowLeft className="h-3 w-3" /> Etape precedente
+          <ArrowLeft className="h-3 w-3" /> Étape précédente
         </button>
         <h1 className="font-heading text-2xl font-semibold text-fg">Paiement</h1>
         <p className="mt-1 text-sm text-fg-muted">
-          Forfait <strong>{tier?.label ?? planCode}</strong> — periode <strong>{period === 'yearly' ? 'annuelle' : 'mensuelle'}</strong>
+          Forfait <strong>{tier?.label ?? planCode}</strong> — période <strong>{period === 'yearly' ? 'annuelle' : 'mensuelle'}</strong>
           {amountMadCents !== null && (
             <> — montant <strong>{formatMadCents(amountMadCents)}</strong> HT</>
           )}
         </p>
       </header>
+
+      <TexteAide cle="paiement" titre="Comment payer">
+        <p>
+          Choisissez un moyen de paiement, puis confirmez. Par carte, vous êtes redirigé vers la page de
+          paiement sécurisée et l’abonnement s’active aussitôt. Par virement, chèque ou espèces, la
+          plateforme vous affiche les instructions (bénéficiaire, référence à indiquer) ; l’abonnement
+          s’active quand notre équipe a validé le paiement.
+        </p>
+      </TexteAide>
 
       {error && (
         <div role="alert" className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger" data-testid="payment-error">
@@ -197,7 +207,7 @@ export function PaymentPage() {
         {/* Champ optionnel reference pour BANK_TRANSFER */}
         {method === 'BANK_TRANSFER' && (
           <label className="mt-4 block text-sm">
-            <span className="mb-1 block text-fg-muted">Reference de votre virement (si deja effectue)</span>
+            <span className="mb-1 block text-fg-muted">Référence de votre virement (s’il est déjà effectué)</span>
             <input
               type="text"
               value={bankReference}
@@ -227,8 +237,8 @@ export function PaymentPage() {
       </section>
 
       <p className="text-xs text-fg-subtle">
-        Paiement securise. Les paiements hors-ligne (virement / cheque / especes) sont valides manuellement par
-        notre equipe sous 24-48h.
+        Paiement sécurisé. Les paiements hors ligne (virement, chèque, espèces) sont validés manuellement
+        par notre équipe sous 24 à 48 heures.
       </p>
     </div>
   );
@@ -240,26 +250,26 @@ const METHOD_CARDS: ReadonlyArray<{
   description: string;
   icon: typeof CreditCard;
 }> = [
-  { value: 'CARD', label: 'Carte bancaire', description: 'Paiement immediat via Stripe (Visa, Mastercard, CIH).', icon: CreditCard },
-  { value: 'BANK_TRANSFER', label: 'Virement bancaire', description: 'RIB Maghreb Consulting. Activation sous 24-48h.', icon: Banknote },
-  { value: 'CHEQUE', label: 'Cheque', description: 'A l\'ordre de Maghreb Consulting, envoye au siege.', icon: ScrollText },
-  { value: 'CASH', label: 'Especes au siege', description: 'Reglement au comptant a Casablanca.', icon: Coins },
+  { value: 'CARD', label: 'Carte bancaire', description: 'Paiement immédiat par Stripe (Visa, Mastercard, CIH).', icon: CreditCard },
+  { value: 'BANK_TRANSFER', label: 'Virement bancaire', description: 'RIB de Maghreb Consulting. Activation sous 24 à 48 heures.', icon: Banknote },
+  { value: 'CHEQUE', label: 'Chèque', description: 'À l’ordre de Maghreb Consulting, envoyé au siège.', icon: ScrollText },
+  { value: 'CASH', label: 'Espèces au siège', description: 'Règlement au comptant à Casablanca.', icon: Coins },
 ];
 
 function labelKey(key: string): string {
   return ({
     checkoutUrl: 'URL de paiement',
-    paymentRef: 'Reference paiement',
-    beneficiary: 'Beneficiaire',
+    paymentRef: 'Référence du paiement',
+    beneficiary: 'Bénéficiaire',
     bank: 'Banque',
     rib: 'RIB',
     iban: 'IBAN',
     swift: 'SWIFT/BIC',
-    reference: 'Reference a indiquer',
-    amount: 'Montant a verser',
-    mailingAddress: 'Adresse d\'envoi',
+    reference: 'Référence à indiquer',
+    amount: 'Montant à verser',
+    mailingAddress: 'Adresse d’envoi',
     instruction: 'Instruction',
-    siegeAddress: 'Adresse du siege',
+    siegeAddress: 'Adresse du siège',
     hours: 'Horaires',
   } as Record<string, string>)[key] ?? key;
 }

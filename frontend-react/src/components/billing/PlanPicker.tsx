@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, ExternalLink, Loader2, Mail } from 'lucide-react';
 import { billingService } from '../../services/billing.service';
+import { extractError } from '../../lib/api';
 import type {
   BillingPeriod,
   CheckoutPlanCode,
   CheckoutSessionRequest,
-  ContactSalesRequest,
   PlanCode,
   PricingTier,
 } from '../../types/billing';
@@ -52,10 +52,10 @@ const FALLBACK_TIERS: PricingTier[] = [
     features: [
       '2 utilisateurs',
       '30 dossiers actifs',
-      'Tous les workflows',
+      'Tous les parcours',
       'Data Room 5 Go',
-      'Chat client-employe',
-      'Generation de documents par IA',
+      'Messagerie entre le client et le cabinet',
+      'Génération automatique des documents',
     ],
     featured: false, quoteOnly: false,
   },
@@ -70,29 +70,29 @@ const FALLBACK_TIERS: PricingTier[] = [
     features: [
       '6 utilisateurs',
       '100 dossiers actifs',
-      'Tous les workflows',
+      'Tous les parcours',
       'Data Room 20 Go',
-      'Chat client-employe',
-      'Generation de documents par IA',
-      'Chatbot RAG (assistant juridique)',
+      'Messagerie entre le client et le cabinet',
+      'Génération automatique des documents',
+      'Assistant juridique (chatbot à réponses sourcées)',
     ],
-    featured: true, ribbon: 'Recommande', quoteOnly: false,
+    featured: true, ribbon: 'Recommandé', quoteOnly: false,
   },
   {
     id: 'entreprise', code: 'entreprise', label: 'Entreprise',
-    target: 'Reseaux & cabinets multi-sites',
+    target: 'Réseaux et cabinets multisites',
     currency: 'MAD', price: null, annualPrice: null, period: 'mois',
     quotas: { maxUsers: -1, maxDossiers: -1, maxStorageGb: -1,
       usersUnlimited: true, dossiersUnlimited: true, storageUnlimited: true },
     features: [
-      'Utilisateurs illimites',
+      'Utilisateurs illimités',
       'Plus de 100 dossiers',
-      'Tous les workflows',
+      'Tous les parcours',
       'Data Room sur mesure',
-      'Chat client-employe',
-      'Generation de documents par IA',
-      'Chatbot RAG',
-      'Accompagnement dedie',
+      'Messagerie entre le client et le cabinet',
+      'Génération automatique des documents',
+      'Assistant juridique (chatbot à réponses sourcées)',
+      'Accompagnement dédié',
     ],
     featured: false, quoteOnly: true,
   },
@@ -162,8 +162,7 @@ export function PlanPicker(props: PlanPickerProps) {
       try {
         await props.onPickPlan(planCode, period);
       } catch (err) {
-        const msg = (err as Error)?.message ?? 'Erreur lors de la selection du plan';
-        setError(msg);
+        setError(`Le choix du forfait n’a pas abouti : ${extractError(err).message}`);
       } finally {
         setLoading(null);
       }
@@ -178,16 +177,15 @@ export function PlanPicker(props: PlanPickerProps) {
         workspaceName: props.workspaceName,
       };
       const res = await billingService.createCheckoutSession(req);
-      window.location.href = res.checkoutUrl;
+      window.location.assign(res.checkoutUrl);
     } catch (err) {
-      const msg = (err as Error)?.message ?? 'Erreur lors de la creation du checkout';
-      setError(msg);
+      setError(`La page de paiement n’a pas pu être ouverte : ${extractError(err).message}`);
       setLoading(null);
     }
   }
 
   function priceLabelFor(tier: PricingTier): { main: string; sub: string } {
-    if (tier.quoteOnly) return { main: 'Sur devis', sub: 'Tarif personnalise' };
+    if (tier.quoteOnly) return { main: 'Sur devis', sub: 'Tarif personnalisé' };
     const slice = period === 'yearly' ? tier.yearly : tier.monthly;
     if (!slice) return { main: '—', sub: '' };
     return period === 'yearly'
@@ -197,9 +195,9 @@ export function PlanPicker(props: PlanPickerProps) {
 
   function quotasLine(tier: PricingTier): string {
     const q = tier.quotas;
-    const users = q.usersUnlimited ? 'Utilisateurs illimites' : `${q.maxUsers} utilisateurs`;
+    const users = q.usersUnlimited ? 'Utilisateurs illimités' : `${q.maxUsers} utilisateurs`;
     const dossiers = q.dossiersUnlimited
-      ? 'Dossiers illimites'
+      ? 'Dossiers illimités'
       : tier.code === 'entreprise'
         ? '> 100 dossiers'
         : `${q.maxDossiers} dossiers`;
@@ -315,7 +313,7 @@ export function PlanPicker(props: PlanPickerProps) {
                     <ExternalLink className="h-4 w-4" />
                   )}
                   {loading === tier.code
-                    ? 'Redirection Stripe...'
+                    ? 'Redirection vers le paiement…'
                     : `Choisir ${tier.label}`}
                 </button>
               )}
@@ -325,8 +323,4 @@ export function PlanPicker(props: PlanPickerProps) {
       </div>
     </div>
   );
-}
-
-export async function submitContactSales(req: ContactSalesRequest) {
-  return billingService.contactSales(req);
 }

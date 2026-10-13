@@ -4,6 +4,7 @@ import { CheckCircle2, Loader2 } from 'lucide-react';
 import { billingService } from '../../services/billing.service';
 import { emitBusinessEvent } from '../../services/analytics.service';
 import type { SubscriptionDto } from '../../types/billing';
+import { libelleForfait } from '../../lib/adminLabels';
 
 /**
  * Sprint 12 — page /billing/success?session_id=xxx (RG-BL04).
@@ -63,13 +64,13 @@ export function BillingSuccessPage() {
         {subscription ? (
           <>
             <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
-            <h1 className="mt-4 font-heading text-2xl font-semibold text-fg">Bienvenue dans {subscription.planCode} !</h1>
+            <h1 className="mt-4 font-heading text-2xl font-semibold text-fg">Bienvenue au forfait {libelleForfait(subscription.planCode)} !</h1>
             <p className="mt-2 text-sm text-fg-muted">
-              Votre abonnement est actif. Vous avez maintenant acces a toutes les fonctionnalites de JURIKA.
+              Votre abonnement est actif. Vous avez maintenant accès à toutes les fonctionnalités de JURIKA.
             </p>
             <div className="mt-6 flex justify-center gap-3">
               <Link to="/app/dashboard" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-bg hover:bg-accent-hover">
-                Acceder au dashboard
+                Accéder au tableau de bord
               </Link>
               <Link to="/app/billing" className="rounded-lg border border-border-hi bg-bg-raised px-4 py-2 text-sm font-medium text-fg-muted hover:bg-bg-overlay">
                 Voir mon abonnement
@@ -79,15 +80,18 @@ export function BillingSuccessPage() {
         ) : (
           <>
             <Loader2 className="mx-auto h-12 w-12 animate-spin text-accent" />
-            <h1 className="mt-4 font-heading text-xl font-semibold text-fg">Activation en cours...</h1>
+            <h1 className="mt-4 font-heading text-xl font-semibold text-fg">Activation en cours…</h1>
             <p className="mt-2 text-sm text-fg-muted">
-              Nous synchronisons votre abonnement avec Stripe. Cela prend quelques secondes (tentative {attempts}/{MAX_ATTEMPTS}).
+              Nous vérifions votre paiement auprès de Stripe. Cela prend quelques secondes (vérification {attempts} sur {MAX_ATTEMPTS}).
+              Ne fermez pas cette page.
             </p>
             {done && (
               <p className="mt-4 text-sm text-amber-700">
-                Activation plus longue qu'attendu. <button onClick={() => navigate('/app/billing')} className="underline">
-                Rafraichir manuellement
-                </button>.
+                L’activation prend plus de temps que prévu. Ouvrez{' '}
+                <button type="button" onClick={() => navigate('/app/billing')} className="underline">
+                  la page de facturation
+                </button>{' '}
+                pour vérifier l’état de votre abonnement.
               </p>
             )}
           </>

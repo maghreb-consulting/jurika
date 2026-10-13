@@ -10,6 +10,9 @@ import type {
   PricingTier,
   SubscriptionDto,
 } from '../../types/billing';
+import { extractError } from '../../lib/api';
+import { libelleForfait } from '../../lib/adminLabels';
+import { TexteAide } from '../../components/ui/Aide';
 
 /**
  * BUG 8 (2026-06-07) — page "Changer de forfait" pour un workspace deja
@@ -47,7 +50,7 @@ export function ChangePlanPage() {
         setTiers(pricing.tiers);
         if (sub?.planCode === 'business') setPeriod('monthly');
       } catch (err) {
-        if (!cancelled) setError((err as Error)?.message ?? 'Erreur de chargement');
+        if (!cancelled) setError(`Les forfaits n’ont pas pu être chargés : ${extractError(err).message}`);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -94,7 +97,7 @@ export function ChangePlanPage() {
 
   async function confirmChange(tier: PricingTier) {
     if (tier.quoteOnly) {
-      window.location.href = `mailto:contact@jurika.ai?subject=Plan Entreprise — ${encodeURIComponent(user?.email ?? '')}`;
+      window.location.assign(`mailto:contact@jurika.ai?subject=Forfait Entreprise — ${encodeURIComponent(user?.email ?? '')}`);
       return;
     }
     setError(null);
@@ -105,7 +108,9 @@ export function ChangePlanPage() {
         targetPlanCode: tier.code as PlanCode,
         billingPeriod: period,
       });
-      setSuccess(`Forfait change : ${res.previousPlanCode} → ${res.newPlanCode} (${res.billingPeriod}). Proration appliquee.`);
+      setSuccess(
+        `Forfait changé : ${libelleForfait(res.previousPlanCode)} → ${libelleForfait(res.newPlanCode)} (${res.billingPeriod === 'yearly' ? 'annuel' : 'mensuel'}). Le montant a été ajusté au prorata des jours restants.`,
+      );
       // Refresh subscription apres 1s pour reflet visuel.
       setTimeout(async () => {
         try {
@@ -114,8 +119,7 @@ export function ChangePlanPage() {
         } catch { /* silent */ }
       }, 800);
     } catch (err) {
-      const e = err as { response?: { data?: { message?: string; code?: string } }; message?: string };
-      setError(e?.response?.data?.message ?? e?.message ?? 'Echec du changement de plan');
+      setError(`Le changement de forfait a échoué : ${extractError(err).message}`);
     } finally {
       setSubmitting(null);
     }
@@ -135,8 +139,9 @@ export function ChangePlanPage() {
     return (
       <div className="space-y-4" data-testid="change-plan-no-sub">
         <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
-          Vous n'avez pas encore d'abonnement actif. Choisissez un forfait depuis l'ecran principal,
-          puis selectionnez votre moyen de paiement (carte, virement, cheque, especes).
+          Vous n’avez pas encore d’abonnement actif. Choisissez un forfait depuis l’écran
+          « Abonnement et facturation », puis sélectionnez votre moyen de paiement (carte, virement,
+          chèque, espèces).
         </p>
         <Link
           to="/app/billing"
@@ -156,11 +161,20 @@ export function ChangePlanPage() {
         </Link>
         <h1 className="font-heading text-2xl font-semibold text-fg">Changer de forfait</h1>
         <p className="mt-1 text-sm text-fg-muted">
-          Vous etes actuellement sur le forfait <strong>{currentPlanCode}</strong>. Selectionnez
-          un nouveau plan ci-dessous. Les changements (upgrade/downgrade) sont appliques
-          immediatement avec proration au prorata des jours restants.
+          Vous êtes actuellement au forfait <strong>{libelleForfait(currentPlanCode)}</strong>.
+          Sélectionnez un nouveau forfait ci-dessous. Le changement, à la hausse comme à la baisse,
+          s’applique immédiatement ; le montant est ajusté au prorata des jours restants.
         </p>
       </header>
+
+      <TexteAide cle="changer-forfait" titre="Changer de forfait">
+        <p>
+          Choisissez d’abord la périodicité (mensuelle ou annuelle), puis le forfait. « Passer à… »
+          utilise la carte déjà enregistrée ; « Payer par un autre moyen » vous mène au choix du
+          paiement (virement, chèque, espèces ou nouvelle carte). Un passage à un forfait inférieur
+          peut être bloqué si votre cabinet dépasse ses limites : la raison s’affiche sur la carte.
+        </p>
+      </TexteAide>
 
       {error && (
         <div role="alert" className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger" data-testid="change-plan-error">
@@ -211,7 +225,7 @@ export function ChangePlanPage() {
                 <h3 className="font-heading text-lg font-semibold text-fg">{tier.label}</h3>
                 {isCurrent ? (
                   <span className="rounded-full bg-success/20 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-success">
-                    Plan actuel
+                    Forfait actuel
                   </span>
                 ) : tier.featured && tier.ribbon ? (
                   <span className="rounded-full bg-gradient-to-r from-accent to-accent-hover px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-bg shadow-card">
@@ -237,8 +251,8 @@ export function ChangePlanPage() {
               {/* Preview info */}
               {preview && !isCurrent && (
                 <p className="mb-2 rounded-lg bg-bg-overlay px-3 py-2 text-xs font-medium text-fg-muted" data-testid={`change-plan-${tier.code}-preview`}>
-                  {preview.isUpgrade && '⬆ Upgrade — proration calculee par Stripe a la confirmation.'}
-                  {preview.isDowngrade && preview.downgradeAllowed && '⬇ Downgrade — credit prorata genere.'}
+                  {preview.isUpgrade && '⬆ Forfait supérieur : le complément au prorata est calculé à la confirmation.'}
+                  {preview.isDowngrade && preview.downgradeAllowed && '⬇ Forfait inférieur : un avoir au prorata est généré.'}
                   {blocked && (
                     <span className="flex items-start gap-1.5 text-warning">
                       <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" />
@@ -264,7 +278,7 @@ export function ChangePlanPage() {
                   className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-bg-overlay px-4 py-2 text-sm font-medium text-fg-subtle"
                   data-testid={`change-plan-${tier.code}-current`}
                 >
-                  Plan actuel
+                  Forfait actuel
                 </button>
               ) : tier.quoteOnly ? (
                 <button
@@ -290,8 +304,8 @@ export function ChangePlanPage() {
                       <ExternalLink className="h-4 w-4" />
                     )}
                     {submitting === tier.code
-                      ? 'Application en cours...'
-                      : blocked ? 'Downgrade bloque' : `Passer a ${tier.label} (CB existante)`}
+                      ? 'Application en cours…'
+                      : blocked ? 'Changement impossible' : `Passer à ${tier.label} (carte enregistrée)`}
                   </button>
                   {/* BUG 14 — alternative : route vers PaymentPage pour
                       payer ce nouveau plan par un autre moyen (virement, cheque,
@@ -304,7 +318,7 @@ export function ChangePlanPage() {
                     className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-bg-raised px-4 py-2 text-xs font-medium text-fg-muted hover:bg-bg-overlay disabled:opacity-50"
                     data-testid={`change-plan-${tier.code}-payment-page`}
                   >
-                    <Banknote className="h-3.5 w-3.5" /> Payer par autre moyen
+                    <Banknote className="h-3.5 w-3.5" /> Payer par un autre moyen
                   </button>
                 </div>
               )}
