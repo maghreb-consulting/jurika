@@ -206,6 +206,20 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   L5 E4)** : reste au classpath `PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU` (ecart du cabinet,
   A_DECIDER directeur).
 
+### Lot L5b (corrections, 2026-10-13) -- dette relevee
+
+- **Titres des PDF de synthese en Times non embarque** (police standard 14, choisie pour une couche
+  texte exacte) : le rendu PDFBox du serveur la remplace par une police aux chasses differentes
+  (espacement irregulier sur les apercus PNG). A verifier dans un vrai lecteur et a l'impression ;
+  sinon embarquer une serif sans ligatures.
+- **Conversations du chatbot jamais purgees** : duree de conservation A_DECIDER directeur (CNDP).
+- **`chatbotService.ask` (front)** n'est plus appele par aucun ecran (garde pour
+  `scripts/rag-quality-check.mjs`).
+- **Commentaire de dataroom V36** parle encore de Word (migration appliquee, intouchable).
+- **`~/.m2` du Z440** : un `mvn install` de jurika-common (SNAPSHOT) y a ete pose pendant le lot ;
+  un build sans `-am` pourrait le resoudre au lieu du reacteur. Les verifications du depot passent
+  toutes par le reacteur complet.
+
 ### Lot L5 (fonctions metier, 2026-10-12) -- dette relevee
 
 - **RLS inoperante tant que la bascule `jurika_app` n'est pas faite** : ai V16 (corpus commun du
