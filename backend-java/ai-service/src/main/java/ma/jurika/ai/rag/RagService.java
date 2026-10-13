@@ -39,7 +39,7 @@ public class RagService {
     /** Reponse donnee quand les sources ne contiennent rien sur la question (RG-COM-02). */
     public static final String REPONSE_SANS_SOURCE =
             "Les sources fiables déposées sur la plateforme ne contiennent pas de réponse à cette "
-                    + "question. Reformulez-la avec d'autres termes, ou interrogez un juriste du cabinet.";
+                    + "question. Reformulez-la avec d\u2019autres termes, ou interrogez un juriste du cabinet.";
 
     private static final String INTRO_EXTRAITS =
             "Voici les passages des sources fiables qui se rapportent à votre question :";
@@ -55,10 +55,10 @@ public class RagService {
     /** Longueur maximale d'un passage restitue sans generation. */
     private static final int MAX_EXTRAIT = 600;
     private static final String SYSTEM_PROMPT =
-            "Tu es l'assistant juridique de JURIKA (droit des societes au Maroc). "
-            + "Reponds en francais, de maniere claire et concise, UNIQUEMENT a partir du CONTEXTE fourni. "
-            + "Si l'information ne figure pas dans le contexte, dis-le explicitement et invite a interroger "
-            + "un juriste du cabinet — n'invente jamais. Cite les sources utilisees (reference + article).";
+            "Tu es l\u2019assistant juridique de JURIKA (droit des soci\u00e9t\u00e9s au Maroc). "
+            + "R\u00e9ponds en fran\u00e7ais, de mani\u00e8re claire et concise, UNIQUEMENT \u00e0 partir du CONTEXTE fourni. "
+            + "Si l\u2019information ne figure pas dans le contexte, dis-le explicitement et invite \u00e0 interroger "
+            + "un juriste du cabinet \u2014 n\u2019invente jamais. Cite les sources utilis\u00e9es (r\u00e9f\u00e9rence + article).";
 
     @Autowired
     public RagService(CorpusRetriever retriever,

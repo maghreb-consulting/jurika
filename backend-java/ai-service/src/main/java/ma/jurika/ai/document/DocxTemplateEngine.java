@@ -475,7 +475,7 @@ public class DocxTemplateEngine {
                 if (!deja) {
                     detail = new ArrayList<>(detail);
                     detail.add(new MissingVariableMarker.Manquante(
-                            v, "case a cocher non renseignee", false));
+                            v, "case \u00e0 cocher non renseign\u00e9e", false));
                 }
             }
             List<String> missing = new ArrayList<>(detail.size());

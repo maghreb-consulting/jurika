@@ -46,7 +46,7 @@ public class TemplateDocumentFactory implements DocumentFactory {
 
     private Map<String, Object> generateActeNomination(Map<String, Object> data) {
         Map<String, Object> out = base("ACTE_NOMINATION", data);
-        out.put("titre", "Acte de nomination du gerant");
+        out.put("titre", "Acte de nomination du g\u00e9rant");
         return out;
     }
 

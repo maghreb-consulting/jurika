@@ -28,7 +28,7 @@ public class RemoteReclamationDonnees implements ReclamationDonnees {
                     Map.of("workflowCode", workflowCode, "templateCode", templateCode, "donnees", donnees));
         } catch (FeignException e) {
             throw new IdentiteSocieteIndisponibleException(
-                    "La reclamation des donnees a obtenir n'a pas pu etre enregistree (ticket " + ticketId + ")", e);
+                    "La r\u00e9clamation des donn\u00e9es \u00e0 obtenir n\u2019a pas pu \u00eatre enregistr\u00e9e (ticket " + ticketId + ")", e);
         }
     }
 }

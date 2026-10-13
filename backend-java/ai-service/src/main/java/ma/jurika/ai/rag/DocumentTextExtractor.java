@@ -36,7 +36,7 @@ public class DocumentTextExtractor {
             };
         } catch (Exception ex) {
             throw new IllegalArgumentException(
-                    "Impossible d'extraire le texte du document (" + kind + ") : " + ex.getMessage(), ex);
+                    "Impossible d\u2019extraire le texte du document (" + kind + ") : " + ex.getMessage(), ex);
         }
     }
 

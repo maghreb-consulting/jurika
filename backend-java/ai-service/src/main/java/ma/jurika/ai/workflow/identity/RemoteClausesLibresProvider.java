@@ -24,7 +24,7 @@ public class RemoteClausesLibresProvider implements ClausesLibresProvider {
             return l == null ? List.of() : l;
         } catch (FeignException e) {
             throw new IdentiteSocieteIndisponibleException(
-                    "Les clauses libres du ticket n'ont pas pu etre lues (ticket " + ticketId + ")", e);
+                    "Les clauses libres du ticket n\u2019ont pas pu \u00eatre lues (ticket " + ticketId + ")", e);
         }
     }
 }

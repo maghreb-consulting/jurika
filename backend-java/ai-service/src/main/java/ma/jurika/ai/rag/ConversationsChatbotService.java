@@ -240,7 +240,7 @@ public class ConversationsChatbotService {
         if (Boolean.TRUE.equals(conversation.get("archivee"))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Cette conversation est archivée : vous pouvez la consulter, mais pour y poser une "
-                            + "question, désarchivez-la d'abord.");
+                            + "question, d\u00e9sarchivez-la d\u2019abord.");
         }
         return null;
     }
@@ -288,7 +288,7 @@ public class ConversationsChatbotService {
         try {
             return JSON.readValue(json, LISTE_SOURCES);
         } catch (Exception ex) {
-            throw new IllegalStateException("Sources d'un echange illisibles", ex);
+            throw new IllegalStateException("Sources d\u2019un echange illisibles", ex);
         }
     }
 
@@ -296,7 +296,7 @@ public class ConversationsChatbotService {
         try {
             return JSON.writeValueAsString(valeur);
         } catch (Exception ex) {
-            throw new IllegalStateException("Sources d'un echange non serialisables", ex);
+            throw new IllegalStateException("Sources d\u2019un echange non serialisables", ex);
         }
     }
 }

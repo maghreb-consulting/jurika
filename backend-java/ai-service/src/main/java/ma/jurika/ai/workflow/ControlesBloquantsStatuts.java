@@ -76,10 +76,10 @@ public final class ControlesBloquantsStatuts {
             Map<String, Object> a = associes.get(i);
             String qui = rang(i + 1) + " associé";
             if (vide(a.get("ASSOCIE_PIECE_TYPE"))) {
-                manques.add("le type de pièce d'identité du " + qui + " ($ASSOCIE_PIECE_TYPE)");
+                manques.add("le type de pi\u00e8ce d\u2019identit\u00e9 du " + qui + " ($ASSOCIE_PIECE_TYPE)");
             }
             if (vide(a.get("ASSOCIE_PIECE_NUMERO"))) {
-                manques.add("le numéro de pièce d'identité du " + qui + " ($ASSOCIE_PIECE_NUMERO)");
+                manques.add("le num\u00e9ro de pi\u00e8ce d\u2019identit\u00e9 du " + qui + " ($ASSOCIE_PIECE_NUMERO)");
             }
             // Un associé personne morale ne produit pas une pièce d'identité mais
             // son immatriculation et le nom de son représentant : c'est là que se
@@ -101,10 +101,10 @@ public final class ControlesBloquantsStatuts {
             Map<String, Object> g = gerants.get(i);
             String qui = rang(i + 1) + " gérant";
             if (vide(g.get("GERANT_PIECE_TYPE"))) {
-                manques.add("le type de pièce d'identité du " + qui + " ($GERANT_PIECE_TYPE)");
+                manques.add("le type de pi\u00e8ce d\u2019identit\u00e9 du " + qui + " ($GERANT_PIECE_TYPE)");
             }
             if (vide(g.get("GERANT_PIECE_NUMERO"))) {
-                manques.add("le numéro de pièce d'identité du " + qui + " ($GERANT_PIECE_NUMERO)");
+                manques.add("le num\u00e9ro de pi\u00e8ce d\u2019identit\u00e9 du " + qui + " ($GERANT_PIECE_NUMERO)");
             }
         }
 
