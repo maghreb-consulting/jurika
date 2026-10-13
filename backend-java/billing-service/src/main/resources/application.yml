@@ -99,7 +99,7 @@ jurika:
   billing:
     tva-rate-percent: ${BILLING_TVA_RATE_PERCENT:20.00}
     sales-email: ${BILLING_SALES_EMAIL:contact@jurika.ai}
-    from-email: ${SMTP_FROM:noreply@jurika.ma}
+    from-email: ${SMTP_FROM:}
     # BUG 14 (2026-06-07) — autorise la methode TEST_BYPASS pour le wizard
     # signup. EN PROD : forcer false. En local/staging : true pour tester
     # le flow signup -> plan -> recap -> paiement -> activation sans Stripe.

@@ -44,7 +44,7 @@ public class SmtpEmailSender implements EmailSender {
 
     public SmtpEmailSender(JavaMailSender mailSender,
                            SpringTemplateEngine templateEngine,
-                           @Value("${jurika.email.from:noreply@jurika.ma}") String fromAddress,
+                           @Value("${jurika.email.from:}") String fromAddress,
                            @Value("${jurika.email.from-name:JURIKA}") String fromName) {
         this.mailSender = mailSender;
         this.templateEngine = templateEngine;
@@ -54,6 +54,12 @@ public class SmtpEmailSender implements EmailSender {
 
     @Override
     public void sendTemplated(String to, String subject, String templateName, Map<String, Object> variables) {
+        // Lot L6 (E5) : pas d'expediteur par defaut (jurika.ma n'est pas deploye avant la mise en
+        // production). Sans SMTP_FROM, rien ne part et l'erreur le dit.
+        if (fromAddress == null || fromAddress.isBlank()) {
+            log.error("Courriel '{}' non envoye : aucune adresse d'expediteur (SMTP_FROM)", templateName);
+            throw new EmailDeliveryException("Aucune adresse d'expediteur configuree (SMTP_FROM) : courriel non envoye", null);
+        }
         Context ctx = new Context();
         ctx.setVariables(variables);
         String html = templateEngine.process("email/" + templateName, ctx);
