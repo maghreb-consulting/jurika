@@ -203,7 +203,7 @@ async function createNotification({ workspaceId, userId, type, title, message, a
   // courriel, RG-COM-09), inconnu ou membre d'un autre cabinet : refus.
   const controle = await messagerie.controlerDestinataireNotification(pgPool, workspaceId, userId);
   if (!controle.ok) {
-    const err = new Error(`Destinataire refuse (${controle.code})`);
+    const err = new Error(`Destinataire refusé (${controle.code})`);
     err.code = controle.code;
     err.status = 403;
     throw err;
@@ -376,7 +376,7 @@ function diffuserMessage(msg) {
  */
 app.post('/api/v1/chat/messages', async (req, res) => {
   const user = userFromToken(req);
-  if (!user) return res.status(401).json({ error: 'Non authentifie' });
+  if (!user) return res.status(401).json({ error: 'Non authentifié' });
   const identite = messagerie.identiteDuJeton(user);
   if (!messagerie.peutUtiliserMessagerie(identite)) {
     return res.status(403).json({ error: messagerie.MESSAGES_REFUS.ROLE_REFUSE, code: 'ROLE_REFUSE' });
@@ -399,7 +399,7 @@ app.post('/api/v1/chat/messages', async (req, res) => {
 
 app.get('/api/v1/chat/conversations', async (req, res) => {
   const user = userFromToken(req);
-  if (!user) return res.status(401).json({ error: 'Non authentifie' });
+  if (!user) return res.status(401).json({ error: 'Non authentifié' });
   // Lot L5 (E9, RG-COM-06) : messagerie reservee au superviseur et aux employes.
   if (!messagerie.peutUtiliserMessagerie(messagerie.identiteDuJeton(user))) {
     return res.status(403).json({ error: messagerie.MESSAGES_REFUS.ROLE_REFUSE, code: 'ROLE_REFUSE' });
@@ -440,7 +440,7 @@ app.get('/api/v1/chat/conversations', async (req, res) => {
 
 app.get('/api/v1/chat/conversations/:id/messages', async (req, res) => {
   const user = userFromToken(req);
-  if (!user) return res.status(401).json({ error: 'Non authentifie' });
+  if (!user) return res.status(401).json({ error: 'Non authentifié' });
   // Lot L5 (E9, RG-COM-06) : messagerie reservee au superviseur et aux employes.
   if (!messagerie.peutUtiliserMessagerie(messagerie.identiteDuJeton(user))) {
     return res.status(403).json({ error: messagerie.MESSAGES_REFUS.ROLE_REFUSE, code: 'ROLE_REFUSE' });
@@ -490,7 +490,7 @@ app.get('/api/v1/chat/conversations/:id/messages', async (req, res) => {
 // ----------------------------------------------------------------------
 app.get('/api/v1/notifications', async (req, res) => {
   const user = userFromToken(req);
-  if (!user) return res.status(401).json({ error: 'Non authentifie' });
+  if (!user) return res.status(401).json({ error: 'Non authentifié' });
   const userId = user.uid || user.sub;
   const wsId = user.wsid || user.workspace_id;
   const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
@@ -528,7 +528,7 @@ app.get('/api/v1/notifications', async (req, res) => {
 
 app.get('/api/v1/notifications/unread-count', async (req, res) => {
   const user = userFromToken(req);
-  if (!user) return res.status(401).json({ error: 'Non authentifie' });
+  if (!user) return res.status(401).json({ error: 'Non authentifié' });
   const userId = user.uid || user.sub;
   const wsId = user.wsid || user.workspace_id;
   try {
@@ -545,7 +545,7 @@ app.get('/api/v1/notifications/unread-count', async (req, res) => {
 
 app.patch('/api/v1/notifications/:id/read', async (req, res) => {
   const user = userFromToken(req);
-  if (!user) return res.status(401).json({ error: 'Non authentifie' });
+  if (!user) return res.status(401).json({ error: 'Non authentifié' });
   const userId = user.uid || user.sub;
   try {
     const { rows } = await pgPool.query(
@@ -563,7 +563,7 @@ app.patch('/api/v1/notifications/:id/read', async (req, res) => {
 
 app.patch('/api/v1/notifications/read-all', async (req, res) => {
   const user = userFromToken(req);
-  if (!user) return res.status(401).json({ error: 'Non authentifie' });
+  if (!user) return res.status(401).json({ error: 'Non authentifié' });
   const userId = user.uid || user.sub;
   const wsId = user.wsid || user.workspace_id;
   try {
@@ -580,7 +580,7 @@ app.patch('/api/v1/notifications/read-all', async (req, res) => {
 
 app.get('/api/v1/notifications/preferences', async (req, res) => {
   const user = userFromToken(req);
-  if (!user) return res.status(401).json({ error: 'Non authentifie' });
+  if (!user) return res.status(401).json({ error: 'Non authentifié' });
   const userId = user.uid || user.sub;
   try {
     const { rows } = await pgPool.query(
@@ -601,11 +601,11 @@ app.get('/api/v1/notifications/preferences', async (req, res) => {
 
 app.patch('/api/v1/notifications/preferences', async (req, res) => {
   const user = userFromToken(req);
-  if (!user) return res.status(401).json({ error: 'Non authentifie' });
+  if (!user) return res.status(401).json({ error: 'Non authentifié' });
   const userId = user.uid || user.sub;
   const updates = req.body && req.body.preferences;
   if (!updates || typeof updates !== 'object') {
-    return res.status(400).json({ error: 'preferences requis (objet type->bool)' });
+    return res.status(400).json({ error: 'Préférences requises (objet associant chaque type à vrai ou faux).' });
   }
   try {
     for (const [type, enabled] of Object.entries(updates)) {
@@ -659,7 +659,7 @@ app.post('/internal/notifications', async (req, res) => {
  */
 app.post('/api/v1/notifications/self-test', async (req, res) => {
   const user = userFromToken(req);
-  if (!user) return res.status(401).json({ error: 'Non authentifie' });
+  if (!user) return res.status(401).json({ error: 'Non authentifié' });
   const userId = user.uid || user.sub;
   const wsId = user.wsid || user.workspace_id;
   try {
