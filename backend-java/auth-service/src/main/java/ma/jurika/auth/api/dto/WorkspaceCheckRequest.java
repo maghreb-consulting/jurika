@@ -5,6 +5,6 @@ import jakarta.validation.constraints.Pattern;
 
 public record WorkspaceCheckRequest(
         @NotBlank
-        @Pattern(regexp = "^JUR-[A-Z0-9]{5}$", message = "Format attendu : JUR-XXXXX")
+        @Pattern(regexp = "^JUR-[A-Z0-9]{5}$", message = "Format attendu : JUR-XXXXX.")
         String workspaceCode
 ) {}

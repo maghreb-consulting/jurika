@@ -134,6 +134,6 @@ public class CompteController {
                     case "identifiant" -> GestionCompteUseCase.MOTIF_IDENTIFIANT;
                     default -> null;
                 })
-                .orElseThrow(() -> new NotFoundException("Demande inconnue"));
+                .orElseThrow(() -> new NotFoundException("Demande inconnue."));
     }
 }

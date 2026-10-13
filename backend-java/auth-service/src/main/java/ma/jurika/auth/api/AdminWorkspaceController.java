@@ -153,13 +153,13 @@ public class AdminWorkspaceController {
             UUID workspaceId, String newStatus, String auditAction,
             AuthenticatedUser admin, HttpServletRequest http) {
         if (!VALID_STATUSES.contains(newStatus)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Statut invalide");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Statut non valide.");
         }
         int updated = jdbc.update(
                 "UPDATE workspaces SET status = ?, updated_at = NOW() WHERE id = ?",
                 newStatus, workspaceId);
         if (updated == 0) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace introuvable");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace introuvable.");
         }
         Map<String, Object> meta = new HashMap<>();
         meta.put("newStatus", newStatus);
@@ -210,7 +210,7 @@ public class AdminWorkspaceController {
                             rs.getString("subscription_status")),
                     workspaceId);
         } catch (EmptyResultDataAccessException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace introuvable");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace introuvable.");
         }
 
         // Repartition des utilisateurs par role + compteurs equipe / clients.
@@ -311,8 +311,8 @@ public class AdminWorkspaceController {
         return ResponseEntity.ok(Map.of(
                 "emailDelivered", r.emailDelivered(),
                 "message", r.emailDelivered()
-                        ? "Email renvoye avec un nouveau mot de passe temporaire."
-                        : "Echec d'envoi — verifier la config SMTP et reessayer."
+                        ? "Courriel renvoy\u00e9 avec un nouveau mot de passe temporaire."
+                        : "L\u2019envoi a \u00e9chou\u00e9 : v\u00e9rifiez la configuration de la messagerie, puis r\u00e9essayez."
         ));
     }
 

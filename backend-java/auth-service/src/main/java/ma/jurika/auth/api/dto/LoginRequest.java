@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Pattern;
 
 public record LoginRequest(
         @NotBlank
-        @Pattern(regexp = "^JUR-[A-Z0-9]{5}$", message = "Format attendu : JUR-XXXXX")
+        @Pattern(regexp = "^JUR-[A-Z0-9]{5}$", message = "Format attendu : JUR-XXXXX.")
         String workspaceCode,
         @NotBlank @Email String email,
         @NotBlank String password

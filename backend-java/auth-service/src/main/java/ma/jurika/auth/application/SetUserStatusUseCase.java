@@ -74,17 +74,17 @@ public class SetUserStatusUseCase {
         }
 
         User target = userRepository.findById(cmd.targetUserId())
-                .orElseThrow(() -> new NotFoundException("Utilisateur introuvable"));
+                .orElseThrow(() -> new NotFoundException("Utilisateur introuvable."));
 
         if (!target.workspaceId().equals(cmd.workspaceId())) {
             // Cross-tenant : on traite comme non-trouve pour ne pas leak l'existence.
-            throw new NotFoundException("Utilisateur introuvable");
+            throw new NotFoundException("Utilisateur introuvable.");
         }
 
         if (!ALLOWED_TARGET_ROLES.contains(target.role())) {
             throw new ConflictException(
-                    "Ce flux ne gere que les comptes EMPLOYE et SUPERVISEUR. "
-                            + "Pour un CLIENT, utiliser DELETE /auth/dossiers/{id}/client.");
+                    "Seuls les comptes employ\u00e9 et superviseur sont concern\u00e9s ici. "
+                            + "L\u2019acc\u00e8s d\u2019un client se retire depuis son dossier.");
         }
 
         UserStatus previous = target.status();
@@ -113,8 +113,8 @@ public class SetUserStatusUseCase {
                     .count();
             if (otherSupervisors >= 1) {
                 throw new ConflictException(
-                        "Un seul SUPERVISEUR est autorise par cabinet. "
-                                + "Desactivez l'actuel avant de reactiver celui-ci.");
+                        "Un cabinet n\u2019a qu\u2019un seul superviseur. "
+                                + "D\u00e9sactivez le superviseur actuel avant de r\u00e9activer celui-ci.");
             }
         }
 

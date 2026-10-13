@@ -15,6 +15,7 @@ import ma.jurika.auth.domain.service.LoginEmailService;
 import ma.jurika.auth.domain.service.TemporaryPasswordGenerator;
 import ma.jurika.auth.domain.service.VerificationTokenHasher;
 import ma.jurika.auth.domain.service.WorkspaceCodeGenerator;
+import ma.jurika.common.exception.BusinessException;
 import ma.jurika.common.exception.ConflictException;
 import ma.jurika.common.exception.ValidationException;
 import ma.jurika.common.security.Role;
@@ -149,8 +150,8 @@ public class RegisterWorkspaceUseCase {
     private static String planLabel(String code) {
         if (code == null) return null;
         return switch (ma.jurika.common.billing.PlanCatalog.normalize(code)) {
-            case "essentiel" -> "Essentiel (499 DH/mois)";
-            case "business"  -> "Business (1 199 DH/mois)";
+            case "essentiel" -> "Essentiel (499 DH par mois)";
+            case "business"  -> "Business (1 199 DH par mois)";
             case "entreprise" -> "Entreprise (sur devis)";
             default -> code;
         };
@@ -191,7 +192,7 @@ public class RegisterWorkspaceUseCase {
         // 2. RG-AU36 : validation phone format E.164 international
         if (cmd.phone() != null && !cmd.phone().isBlank()
                 && !PHONE_E164_PATTERN.matcher(cmd.phone()).matches()) {
-            throw new ValidationException("PHONE_FORMAT_INVALID");
+            throw new BusinessException("PHONE_FORMAT_INVALID", "T\u00e9l\u00e9phone : format international attendu (par exemple +212612345678).");
         }
 
         // 3. RG-AU26/27 : creation workspace PENDING_VERIFICATION (pas ACTIVE)
@@ -211,7 +212,7 @@ public class RegisterWorkspaceUseCase {
 
         // 4. Verif email unique
         if (userRepository.findByWorkspaceAndEmail(workspace.id(), cmd.email()).isPresent()) {
-            throw new ConflictException("EMAIL_ALREADY_REGISTERED");
+            throw new ConflictException("Cette adresse \u00e9lectronique est d\u00e9j\u00e0 enregistr\u00e9e : connectez-vous, ou utilisez une autre adresse.");
         }
 
         // 5. RG-AU05 : MDP temporaire 12 chars (le password fourni dans cmd est ignore)
@@ -254,8 +255,8 @@ public class RegisterWorkspaceUseCase {
         emailVars.put("verificationUrl", verifLink);
         emailVars.put("ttlHours", String.valueOf(emailTokenTtlHours));
         emailVars.put("phishingWarning",
-                "JURIKA ne vous demandera JAMAIS votre mot de passe par email, SMS ou telephone. "
-                        + "En cas de message suspect, contactez immediatement support@jurika.ma.");
+                "JURIKA ne vous demandera jamais votre mot de passe, ni par courriel, ni par SMS, ni par t\u00e9l\u00e9phone. "
+                        + "En cas de message suspect, \u00e9crivez imm\u00e9diatement \u00e0 support@jurika.ma.");
         emailVars.put("subject", "Activez votre compte JURIKA");
         emailVars.put("planLabel", planLabel(cmd.selectedPlan()));
         boolean emailDelivered;
@@ -271,7 +272,7 @@ public class RegisterWorkspaceUseCase {
         } else try {
             emailSender.sendTemplated(
                     contactEmail,
-                    "Bienvenue chez JURIKA - Activez votre compte",
+                    "Bienvenue sur JURIKA - activez votre compte",
                     "welcome",
                     emailVars);
             emailDelivered = true;

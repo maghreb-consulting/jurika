@@ -135,7 +135,7 @@ public class SignupCabinetUseCase {
         // 1) Rate limit (RG-SU03)
         String key = cmd.ipAddress() == null || cmd.ipAddress().isBlank() ? "unknown" : cmd.ipAddress();
         if (!rateLimiter.tryAcquire("signup-cabinet", key)) {
-            throw new TooManyRequestsException("RATE_LIMITED", "Trop de tentatives de creation. Reessayez dans 1 heure.");
+            throw new TooManyRequestsException("RATE_LIMITED", "Trop de tentatives de cr\u00e9ation : r\u00e9essayez dans une heure.");
         }
 
         // 2) Validation plan
@@ -195,7 +195,7 @@ public class SignupCabinetUseCase {
         // 4) Enrichissement workspace : plan + ICE (optionnel) + ville + activation immediate.
         // IF/RC retires du signup (2026-07-13) — n'etaient lus nulle part.
         WorkspaceEntity workspace = workspaceJpaRepository.findById(base.workspaceId())
-                .orElseThrow(() -> new NotFoundException("Workspace introuvable apres creation : " + base.workspaceId()));
+                .orElseThrow(() -> new NotFoundException("Workspace introuvable apr\u00e8s sa cr\u00e9ation : " + base.workspaceId()));
 
         String ice = (cmd.ice() == null || cmd.ice().isBlank()) ? null : cmd.ice().trim();
         workspace.setSelectedPlan(plan);

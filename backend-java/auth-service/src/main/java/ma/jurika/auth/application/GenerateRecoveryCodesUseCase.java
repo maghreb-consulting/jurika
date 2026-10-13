@@ -104,7 +104,7 @@ public class GenerateRecoveryCodesUseCase {
             vars.put("contactEmail", user.contactEmail());
             // BUG 7 (2026-06-08) — notif vers contact_email.
             emailSender.sendTemplated(user.contactEmail(),
-                    "JURIKA - codes de recuperation regeneres",
+                    "JURIKA - codes de r\u00e9cup\u00e9ration r\u00e9g\u00e9n\u00e9r\u00e9s",
                     "recovery-codes-regenerated",
                     vars);
         } catch (RuntimeException ex) {

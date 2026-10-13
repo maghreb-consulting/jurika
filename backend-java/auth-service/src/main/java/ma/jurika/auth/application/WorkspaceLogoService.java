@@ -44,7 +44,7 @@ public class WorkspaceLogoService {
             throw new ValidationException("Fichier vide.");
         }
         if (bytes.length > MAX_BYTES) {
-            throw new ValidationException("Logo trop volumineux (1 Mo maximum).");
+            throw new ValidationException("Logo trop volumineux (1 Mo au plus).");
         }
         String ct = normalizeContentType(contentType, originalFilename);
         if (ct == null) {
@@ -57,11 +57,11 @@ public class WorkspaceLogoService {
             img = null;
         }
         if (img == null) {
-            throw new ValidationException("Image illisible ou corrompue.");
+            throw new ValidationException("Image illisible ou endommag\u00e9e.");
         }
         if (img.getWidth() < 1 || img.getHeight() < 1
                 || img.getWidth() > MAX_DIM || img.getHeight() > MAX_DIM) {
-            throw new ValidationException("Dimensions du logo non valides (" + MAX_DIM + " px max).");
+            throw new ValidationException("Dimensions du logo non valides (" + MAX_DIM + " px au plus).");
         }
 
         WorkspaceLogoEntity e = repo.findById(workspaceId)

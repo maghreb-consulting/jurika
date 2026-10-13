@@ -30,15 +30,15 @@ public class SignupCabinetRequest {
     // CENTRE_AFFAIRES) — cette regle conditionnelle (qui depend de
     // professionalType) est appliquee dans SignupCabinetUseCase, qui pose aussi
     // le fallback serveur « Prenom Nom ». On borne juste la longueur ici.
-    @Size(max = 150, message = "Denomination : 150 caracteres maximum.")
+    @Size(max = 150, message = "D\u00e9nomination : 150 caract\u00e8res au plus.")
     private String workspaceName;
 
     // ICE optionnel : vide tolere (completable plus tard). Si renseigne : 15 chiffres.
-    @Pattern(regexp = "^(\\d{15})?$", message = "ICE : 15 chiffres requis.")
+    @Pattern(regexp = "^(\\d{15})?$", message = "ICE : 15 chiffres attendus.")
     private String ice;
 
     @NotBlank(message = "Ville obligatoire.")
-    @Size(min = 2, max = 80, message = "Ville : 2 a 80 caracteres.")
+    @Size(min = 2, max = 80, message = "Ville : de 2 \u00e0 80 caract\u00e8res.")
     private String city;
 
     // Type de profil (onboarding 2026-06-24). Le nouveau front envoie toujours
@@ -46,11 +46,11 @@ public class SignupCabinetRequest {
     // anciens clients qui n'envoient pas ce champ (NULL tolere cote base V29) ;
     // @Pattern accepte null mais rejette toute valeur hors des 8 ProfessionalType.
     @Pattern(regexp = "^(COMPTABLE_AGREE|CONSEILLER_JURIDIQUE|CENTRE_AFFAIRES|EXPERT_COMPTABLE|ENTREPRISE|AVOCAT|NOTAIRE|AUTRE)$",
-             message = "Type de profil invalide.")
+             message = "Type de profil non valide.")
     private String professionalType;
 
     // Titulaire (compte SUPERVISEUR)
-    @NotBlank(message = "Prenom obligatoire.")
+    @NotBlank(message = "Pr\u00e9nom obligatoire.")
     @Size(min = 1, max = 80)
     private String firstName;
 
@@ -59,8 +59,8 @@ public class SignupCabinetRequest {
     private String lastName;
 
     // Email professionnel unique : sert d'identifiant de contact (workspace + user).
-    @NotBlank(message = "Email professionnel obligatoire.")
-    @Email(message = "Email professionnel invalide.")
+    @NotBlank(message = "Adresse \u00e9lectronique professionnelle obligatoire.")
+    @Email(message = "Adresse \u00e9lectronique professionnelle non valide.")
     @Size(max = 150)
     private String email;
 
@@ -69,15 +69,15 @@ public class SignupCabinetRequest {
     // accepte donc tout E.164 valide (7 a 15 chiffres). La validation fine par
     // pays (longueur/plage) est faite cote front (libphonenumber-js). La logique
     // 2FA-SMS reste, elle, restreinte aux indicatifs supportes par le fournisseur.
-    @NotBlank(message = "Telephone obligatoire.")
+    @NotBlank(message = "T\u00e9l\u00e9phone obligatoire.")
     @Pattern(regexp = "^\\+[1-9]\\d{6,14}$",
-             message = "Telephone : format international E.164 requis (ex. +212612345678).")
+             message = "T\u00e9l\u00e9phone : format international attendu (par exemple +212612345678).")
     private String phone;
 
     // Step 5 - Plan (lu depuis ?plan= querystring landing OU defaut)
     // Spec directeur 2026-06-02 : essentiel | business | entreprise.
     @Pattern(regexp = "^(essentiel|business|entreprise)$",
-             message = "Plan : essentiel | business | entreprise.")
+             message = "Forfait inconnu : Essentiel, Business ou Entreprise.")
     private String selectedPlan;
 
     // Step 5 - CGU

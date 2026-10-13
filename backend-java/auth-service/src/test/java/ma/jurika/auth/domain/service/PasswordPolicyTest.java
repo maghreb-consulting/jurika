@@ -20,7 +20,7 @@ class PasswordPolicyTest {
         // V2 : min 12 chars (etait 10 en V1)
         assertThatThrownBy(() -> policy.check("Sh@rt12345"))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("12 caracteres");
+                .hasMessageContaining("12 caract\u00e8res");
     }
 
     @Test
@@ -34,6 +34,6 @@ class PasswordPolicyTest {
     void rejectsNoSpecial() {
         assertThatThrownBy(() -> policy.check("NoSpecial2026"))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("special");
+                .hasMessageContaining("sp\u00e9cial");
     }
 }

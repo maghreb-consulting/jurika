@@ -92,7 +92,7 @@ public class InviteClientUseCase {
     @Transactional
     public Result execute(Command cmd) {
         if (cmd.email() == null || !cmd.email().contains("@")) {
-            throw new ValidationException("Email invalide");
+            throw new ValidationException("Adresse \u00e9lectronique non valide.");
         }
         TenantContext.set(cmd.workspaceId());
 
@@ -106,7 +106,7 @@ public class InviteClientUseCase {
                 .setParameter(2, cmd.workspaceId())
                 .getResultList();
         if (dossierRows.isEmpty()) {
-            throw new NotFoundException("Dossier introuvable");
+            throw new NotFoundException("Dossier introuvable.");
         }
         Object[] dossier = dossierRows.get(0);
         String raisonSociale = String.valueOf(dossier[1]);
@@ -123,9 +123,9 @@ public class InviteClientUseCase {
             UUID targetUserId = maybeExisting.map(User::id).orElse(null);
             if (targetUserId == null || !targetUserId.equals(existingClientId)) {
                 throw new ConflictException(
-                        "Le dossier '" + raisonSociale + "' est deja lie a un autre client. "
-                                + "Un dossier ne peut avoir qu'UN seul client a la fois. "
-                                + "Detacher l'ancien client avant d'en inviter un nouveau.");
+                        "Le dossier \u00ab " + raisonSociale + " \u00bb est d\u00e9j\u00e0 rattach\u00e9 \u00e0 un autre client. "
+                                + "Un dossier n\u2019a qu\u2019un seul client \u00e0 la fois. "
+                                + "Retirez l\u2019acc\u00e8s de l\u2019ancien client avant d\u2019en inviter un nouveau.");
             }
         }
 
@@ -142,7 +142,7 @@ public class InviteClientUseCase {
             User u = existing.get();
             if (u.role() != Role.CLIENT) {
                 throw new ConflictException(
-                        "Cet email est deja utilise par un compte " + u.role() + " (non-client)");
+                        "Cette adresse \u00e9lectronique est d\u00e9j\u00e0 utilis\u00e9e par un compte " + u.role() + " (hors client).");
             }
             userId = u.id();
             loginEmail = u.loginEmail();

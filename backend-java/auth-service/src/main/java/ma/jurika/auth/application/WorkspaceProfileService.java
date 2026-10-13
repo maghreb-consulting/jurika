@@ -63,7 +63,7 @@ public class WorkspaceProfileService {
         if (cmd.ice() != null) {
             String trimmed = cmd.ice().isBlank() ? null : cmd.ice().trim();
             if (trimmed != null && !trimmed.matches("\\d{15}")) {
-                throw new ValidationException("ICE : 15 chiffres requis.");
+                throw new ValidationException("ICE : 15 chiffres attendus.");
             }
             w.setIce(trimmed);
         }
@@ -72,7 +72,7 @@ public class WorkspaceProfileService {
         if (cmd.city() != null && !cmd.city().isBlank()) {
             String c = cmd.city().trim();
             if (c.length() < 2 || c.length() > 80) {
-                throw new ValidationException("Ville : 2 a 80 caracteres.");
+                throw new ValidationException("Ville : de 2 \u00e0 80 caract\u00e8res.");
             }
             w.setCity(c);
         }
@@ -81,7 +81,7 @@ public class WorkspaceProfileService {
         if (cmd.nomAfficheDocuments() != null) {
             String n = blankToNull(cmd.nomAfficheDocuments());
             if (n != null && n.length() > 150) {
-                throw new ValidationException("Nom affiche : 150 caracteres max.");
+                throw new ValidationException("Nom affich\u00e9 : 150 caract\u00e8res au plus.");
             }
             w.setNomAfficheDocuments(n);
         }
@@ -114,7 +114,7 @@ public class WorkspaceProfileService {
     private static String trimTo(String s, int max, String label) {
         String v = blankToNull(s);
         if (v != null && v.length() > max) {
-            throw new ValidationException(label + " : " + max + " caracteres max.");
+            throw new ValidationException(label + " : " + max + " caract\u00e8res au plus.");
         }
         return v;
     }

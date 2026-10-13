@@ -76,7 +76,7 @@ public class ResetPasswordUseCase {
     @Transactional
     public Optional<RequestResult> request(String workspaceCode, String email, String ip, String ua) {
         Workspace workspace = workspaceRepository.findByCode(workspaceCode)
-                .orElseThrow(() -> new NotFoundException("Code workspace inconnu"));
+                .orElseThrow(() -> new NotFoundException("Code workspace inconnu : v\u00e9rifiez le code de votre cabinet."));
         TenantContext.set(workspace.id());
 
         Optional<User> userOpt = userRepository.findByWorkspaceAndEmail(workspace.id(), email);
@@ -107,14 +107,14 @@ public class ResetPasswordUseCase {
         emailVars.put("ttlMinutes", String.valueOf(ttlMinutesConfigured));
         emailVars.put("ipAddress", ip == null ? "-" : ip);
         emailVars.put("userAgent", ua == null ? "-" : ua);
-        emailVars.put("subject", "Reinitialiser votre mot de passe JURIKA");
+        emailVars.put("subject", "R\u00e9initialisez votre mot de passe JURIKA");
         // BUG 7 (chore 2026-06-08) — fragment identityFooter + notif vers contact_email.
         emailVars.put("loginEmail", user.loginEmail());
         emailVars.put("contactEmail", user.contactEmail());
         try {
             emailSender.sendTemplated(
                     user.contactEmail(),
-                    "Reinitialiser votre mot de passe JURIKA",
+                    "R\u00e9initialisez votre mot de passe JURIKA",
                     "password-reset-link",
                     emailVars);
         } catch (RuntimeException ex) {
@@ -132,16 +132,16 @@ public class ResetPasswordUseCase {
         passwordPolicy.check(newPassword);
         String hash = sha256Hex(resetToken);
         StoredResetToken stored = resetTokenRepository.findByHash(hash)
-                .orElseThrow(() -> new UnauthorizedException("Token invalide"));
+                .orElseThrow(() -> new UnauthorizedException("Lien non valide : demandez-en un nouveau."));
         if (!stored.isUsable(Instant.now())) {
-            throw new UnauthorizedException("Token expire ou deja utilise");
+            throw new UnauthorizedException("Ce lien a expir\u00e9 ou a d\u00e9j\u00e0 \u00e9t\u00e9 utilis\u00e9 : demandez-en un nouveau.");
         }
 
         TenantContext.set(stored.workspaceId());
         // Lot L0 (E12b) : le jeton est consomme de facon ATOMIQUE et AVANT tout
         // effet ; deux confirmations simultanees ne changent le mot de passe qu'une fois.
         if (!resetTokenRepository.markUsed(hash, Instant.now())) {
-            throw new UnauthorizedException("Token expire ou deja utilise");
+            throw new UnauthorizedException("Ce lien a expir\u00e9 ou a d\u00e9j\u00e0 \u00e9t\u00e9 utilis\u00e9 : demandez-en un nouveau.");
         }
         userRepository.updatePasswordHash(stored.userId(), passwordHasher.hash(newPassword));
         refreshTokenRepository.revokeAllForUser(stored.userId(), Instant.now());

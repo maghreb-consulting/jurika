@@ -17,5 +17,5 @@ import java.util.UUID;
 public record Verify2faRequest(
         @NotNull UUID userId,
         @NotNull UUID workspaceId,
-        @NotBlank @Size(min = 6, max = 8) @Pattern(regexp = "^[0-9 ]{6,8}$", message = "Code 2FA invalide") String code
+        @NotBlank @Size(min = 6, max = 8) @Pattern(regexp = "^[0-9 ]{6,8}$", message = "Code de double authentification incorrect.") String code
 ) {}

@@ -9,6 +9,7 @@ import ma.jurika.auth.domain.port.RefreshTokenRepository;
 import ma.jurika.auth.domain.port.TokenIssuer;
 import ma.jurika.auth.domain.port.UserRepository;
 import ma.jurika.auth.domain.service.PasswordPolicy;
+import ma.jurika.common.exception.BusinessException;
 import ma.jurika.common.exception.NotFoundException;
 import ma.jurika.common.exception.UnauthorizedException;
 import ma.jurika.common.exception.ValidationException;
@@ -97,22 +98,25 @@ class ChangePasswordUseCaseTest {
     }
 
     @Test
-    @DisplayName("confirmation differente -> ValidationException")
+    @DisplayName("confirmation differente -> refus nomme (PASSWORD_CONFIRMATION_MISMATCH)")
     void mismatchConfirmation() {
         assertThatThrownBy(() -> useCase.execute(new ChangePasswordUseCase.Command(
                 user.id(), workspaceId, oldPassword, newPassword, "OtherPwd@2026", "ip", "ua")))
-                .isInstanceOf(ValidationException.class);
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("confirmation ne correspond pas")
+                .extracting(e -> ((BusinessException) e).code()).isEqualTo("PASSWORD_CONFIRMATION_MISMATCH");
 
         verify(userRepository, never()).updatePasswordHashAndClearMustChange(any(), any());
         verify(tokenIssuer, never()).issue(any());
     }
 
     @Test
-    @DisplayName("nouveau == ancien -> ValidationException")
+    @DisplayName("nouveau == ancien -> refus nomme (NEW_PASSWORD_SAME_AS_OLD)")
     void sameAsOld() {
         assertThatThrownBy(() -> useCase.execute(new ChangePasswordUseCase.Command(
                 user.id(), workspaceId, newPassword, newPassword, newPassword, "ip", "ua")))
-                .isInstanceOf(ValidationException.class);
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).code()).isEqualTo("NEW_PASSWORD_SAME_AS_OLD");
         verify(tokenIssuer, never()).issue(any());
     }
 

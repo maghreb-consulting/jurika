@@ -82,7 +82,7 @@ public class Setup2faUseCase {
     @Transactional(readOnly = true)
     public SetupOptions getSetupOptions(UUID userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Utilisateur inconnu"));
+                .orElseThrow(() -> new NotFoundException("Utilisateur introuvable."));
         boolean hasPhone = user.phone() != null && !user.phone().isBlank();
         return new SetupOptions(true, hasPhone, hasPhone ? maskPhone(user.phone()) : null);
     }
@@ -96,7 +96,7 @@ public class Setup2faUseCase {
     @Transactional
     public InitResult initiate(UUID userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Utilisateur inconnu"));
+                .orElseThrow(() -> new NotFoundException("Utilisateur introuvable."));
 
         // HIGH-7 (audit 2026-06-02) : refuser si TOTP deja active (anti-takeover).
         // Avant ce fix, n'importe quel detenteur d'un access token (legitime ou XSS)
@@ -105,8 +105,8 @@ public class Setup2faUseCase {
         // dedie change-2fa-method exigeant re-auth (cf. backlog).
         if (user.totpEnabled() && "TOTP".equals(user.twofaMethod())) {
             throw new ValidationException(
-                    "2FA_ALREADY_CONFIGURED : le 2FA TOTP est deja configure pour ce compte. "
-                            + "Pour changer, passez par /auth/2fa/change-method (re-auth requise).");
+                    "La double authentification par application est d\u00e9j\u00e0 configur\u00e9e pour ce compte. "
+                            + "Pour changer de m\u00e9thode, passez par la page S\u00e9curit\u00e9 de votre compte.");
         }
 
         // HIGH-10 (audit 2026-06-02) : refuser si email non verifie. Le wizard Sprint 11
@@ -115,8 +115,8 @@ public class Setup2faUseCase {
         // configurer son propre 2FA sur le compte.
         if (!user.isEmailVerified()) {
             throw new ValidationException(
-                    "EMAIL_VERIFICATION_REQUIRED : verifiez votre adresse email "
-                            + "(clic sur le lien recu) avant de configurer le 2FA.");
+                    "V\u00e9rifiez d\u2019abord votre adresse \u00e9lectronique "
+                            + "(lien re\u00e7u par courriel) avant d\u2019activer la double authentification.");
         }
 
         String secret = totpService.generateSecret();
@@ -154,16 +154,16 @@ public class Setup2faUseCase {
     @Transactional
     public AuthTokens confirm(UUID userId, int totpCode, String ipAddress, String userAgent) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Utilisateur inconnu"));
+                .orElseThrow(() -> new NotFoundException("Utilisateur introuvable."));
         if (user.totpSecretEncrypted() == null) {
-            throw new ValidationException("Aucun setup 2FA en cours, appelez d'abord /setup-2fa");
+            throw new ValidationException("Aucune configuration de double authentification en cours : recommencez depuis le d\u00e9but.");
         }
         String secret = encryptionService.decrypt(user.totpSecretEncrypted());
         // Lot L0 (E10d), anti-rejeu : meme regle que la connexion, le pas du code
         // de confirmation est consomme de facon atomique.
         OptionalLong pas = totpService.pasDuCode(secret, totpCode);
         if (pas.isEmpty() || !userRepository.consommerPasTotp(user.id(), pas.getAsLong())) {
-            throw new ValidationException("Code 2FA invalide");
+            throw new ValidationException("Code de double authentification incorrect.");
         }
         userRepository.updateTotpSecret(user.id(), user.totpSecretEncrypted(), true);
         // Active TOTP comme methode 2FA preferentielle
@@ -184,7 +184,7 @@ public class Setup2faUseCase {
             vars.put("contactEmail", user.contactEmail());
             // BUG 7 (2026-06-08) — notif vers contact_email.
             emailSender.sendTemplated(user.contactEmail(),
-                    "JURIKA - double authentification activee",
+                    "JURIKA - double authentification activ\u00e9e",
                     "2fa-enabled",
                     vars);
         } catch (RuntimeException ex) {
@@ -197,7 +197,7 @@ public class Setup2faUseCase {
         // totpEnabled=true (donc renvoie false) et que tokenIssuer.issue()
         // mette le claim r2s=false.
         User refreshed = userRepository.findById(user.id())
-                .orElseThrow(() -> new NotFoundException("Utilisateur disparu apres update"));
+                .orElseThrow(() -> new NotFoundException("Utilisateur introuvable apr\u00e8s la mise \u00e0 jour."));
 
         // BUG 6 (decision 2026-06-08 chore) — Fin d'onboarding atteinte : si le
         // user est encore PENDING ET a fini son change-MDP (mcp=false) ET vient
@@ -213,7 +213,7 @@ public class Setup2faUseCase {
                     ipAddress, userAgent,
                     Map.of("previousStatus", "PENDING", "onboardingStep", "2fa_confirm_totp"));
             refreshed = userRepository.findById(refreshed.id())
-                    .orElseThrow(() -> new NotFoundException("Utilisateur disparu apres setStatus"));
+                    .orElseThrow(() -> new NotFoundException("Utilisateur introuvable apr\u00e8s le changement de statut."));
         }
 
         AuthTokens tokens = tokenIssuer.issue(refreshed);
@@ -231,7 +231,7 @@ public class Setup2faUseCase {
     @Transactional
     public byte[] getQrCodePng(UUID userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Utilisateur inconnu"));
+                .orElseThrow(() -> new NotFoundException("Utilisateur introuvable."));
 
         String secret;
         if (user.totpSecretEncrypted() == null) {

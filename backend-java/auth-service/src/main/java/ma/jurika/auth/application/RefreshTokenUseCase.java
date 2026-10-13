@@ -46,7 +46,7 @@ public class RefreshTokenUseCase {
     public AuthTokens execute(String rawRefreshToken, String userAgent, String ipAddress) {
         TokenIssuer.ParsedRefreshToken parsed = tokenIssuer.parseRefreshToken(rawRefreshToken);
         StoredRefreshToken stored = refreshTokenRepository.findByHash(parsed.hash())
-                .orElseThrow(() -> new UnauthorizedException("Refresh token inconnu"));
+                .orElseThrow(() -> new UnauthorizedException("Session inconnue : reconnectez-vous."));
 
         Instant now = Instant.now();
         // Motifs distincts pour que le frontend affiche le bon message :
@@ -55,24 +55,24 @@ public class RefreshTokenUseCase {
         // - SESSION_EXPIRED   : refresh token arrive a son terme absolu
         if (stored.revokedAt() != null) {
             throw new UnauthorizedException("SESSION_REVOKED",
-                    "Votre session a ete ouverte sur un autre appareil");
+                    "Votre session a \u00e9t\u00e9 ouverte sur un autre appareil : reconnectez-vous.");
         }
         if (!stored.expiresAt().isAfter(now)) {
             throw new UnauthorizedException("SESSION_EXPIRED",
-                    "Session expiree, veuillez vous reconnecter");
+                    "Votre session a expir\u00e9 : reconnectez-vous.");
         }
         if (stored.isInactive(now, inactivityWindow)) {
             // On revoque explicitement pour que le token idle ne reste pas rejouable.
             refreshTokenRepository.revoke(parsed.hash(), now);
             throw new UnauthorizedException("SESSION_INACTIVITY",
-                    "Session expiree pour inactivite");
+                    "Votre session a expir\u00e9 apr\u00e8s une p\u00e9riode d\u2019inactivit\u00e9 : reconnectez-vous.");
         }
 
         TenantContext.set(stored.workspaceId());
         User user = userRepository.findById(stored.userId())
-                .orElseThrow(() -> new UnauthorizedException("Utilisateur introuvable"));
+                .orElseThrow(() -> new UnauthorizedException("Utilisateur introuvable."));
         if (!user.active()) {
-            throw new UnauthorizedException("Compte desactive");
+            throw new UnauthorizedException("Ce compte est d\u00e9sactiv\u00e9 : adressez-vous \u00e0 votre cabinet.");
         }
 
         refreshTokenRepository.revoke(parsed.hash(), now);

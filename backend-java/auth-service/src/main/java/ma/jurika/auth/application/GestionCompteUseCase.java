@@ -105,7 +105,7 @@ public class GestionCompteUseCase {
 
     @Transactional
     public void modifierNom(Demandeur d, String prenom, String nom) {
-        String p = exigerNom(prenom, "PRENOM_OBLIGATOIRE", "Le prenom est obligatoire.");
+        String p = exigerNom(prenom, "PRENOM_OBLIGATOIRE", "Le pr\u00e9nom est obligatoire.");
         String n = exigerNom(nom, "NOM_OBLIGATOIRE", "Le nom est obligatoire.");
         User u = chargerSonCompte(d);
         if (p.equals(u.firstName()) && n.equals(u.lastName())) {
@@ -129,7 +129,7 @@ public class GestionCompteUseCase {
         User u = chargerSonCompte(d);
         if (nouvelle.equalsIgnoreCase(u.contactEmail())) {
             throw new BusinessException("ADRESSE_INCHANGEE",
-                    "Cette adresse est deja celle du compte.");
+                    "Cette adresse est d\u00e9j\u00e0 celle du compte.");
         }
         Demande dem = ouvrirDemande(d, u, MOTIF_ADRESSE, nouvelle);
 
@@ -163,7 +163,7 @@ public class GestionCompteUseCase {
         User u = chargerSonCompte(d);
         if (nouveau.equalsIgnoreCase(u.loginEmail())) {
             throw new BusinessException("IDENTIFIANT_INCHANGE",
-                    "Cet identifiant est deja celui du compte.");
+                    "Cet identifiant est d\u00e9j\u00e0 celui du compte.");
         }
         exigerIdentifiantLibre(u, nouveau);
         Demande dem = ouvrirDemande(d, u, MOTIF_IDENTIFIANT, nouveau);
@@ -190,7 +190,7 @@ public class GestionCompteUseCase {
     @Transactional
     public void annulerDemande(Demandeur d, String motif) {
         if (!MOTIF_ADRESSE.equals(motif) && !MOTIF_IDENTIFIANT.equals(motif)) {
-            throw new BusinessException("MOTIF_INCONNU", "Motif de demande inconnu.");
+            throw new BusinessException("MOTIF_INCONNU", "Demande inconnue.");
         }
         User u = chargerSonCompte(d);
         int retires = tokenRepository.revokePending(u.id(), motif, horloge.instant());
@@ -222,21 +222,21 @@ public class GestionCompteUseCase {
     @Transactional
     public Confirmation confirmer(String jetonBrut, String ipAddress, String userAgent) {
         if (jetonBrut == null || jetonBrut.isBlank()) {
-            throw new NotFoundException("Lien de confirmation invalide");
+            throw new NotFoundException("Lien de confirmation non valide.");
         }
         StoredToken t = tokenRepository.findByHash(tokenHasher.hash(jetonBrut.trim()))
                 .filter(x -> MOTIF_ADRESSE.equals(x.purpose()) || MOTIF_IDENTIFIANT.equals(x.purpose()))
-                .orElseThrow(() -> new NotFoundException("Lien de confirmation invalide"));
+                .orElseThrow(() -> new NotFoundException("Lien de confirmation non valide."));
         if (t.isUsed()) {
-            throw new BusinessException("LIEN_DEJA_UTILISE", "Ce lien a deja ete utilise ou remplace.");
+            throw new BusinessException("LIEN_DEJA_UTILISE", "Ce lien a d\u00e9j\u00e0 \u00e9t\u00e9 utilis\u00e9 ou remplac\u00e9 par un plus r\u00e9cent.");
         }
         if (horloge.instant().isAfter(t.expiresAt())) {
-            throw new BusinessException("LIEN_EXPIRE", "Ce lien a expire.");
+            throw new BusinessException("LIEN_EXPIRE", "Ce lien a expir\u00e9 : refaites la demande depuis \u00ab Mon compte \u00bb.");
         }
         TenantContext.set(t.workspaceId());
         User u = userRepository.findById(t.userId())
                 .filter(x -> x.workspaceId().equals(t.workspaceId()))
-                .orElseThrow(() -> new NotFoundException("Lien de confirmation invalide"));
+                .orElseThrow(() -> new NotFoundException("Lien de confirmation non valide."));
         boolean identifiant = MOTIF_IDENTIFIANT.equals(t.purpose());
         if (identifiant) {
             // L'identifiant a pu etre pris entre la demande et la confirmation.
@@ -244,7 +244,7 @@ public class GestionCompteUseCase {
         }
         // Consommation ATOMIQUE avant tout effet (meme regle que VerifyEmailUseCase).
         if (!tokenRepository.markUsed(t.id(), horloge.instant())) {
-            throw new BusinessException("LIEN_DEJA_UTILISE", "Ce lien a deja ete utilise ou remplace.");
+            throw new BusinessException("LIEN_DEJA_UTILISE", "Ce lien a d\u00e9j\u00e0 \u00e9t\u00e9 utilis\u00e9 ou remplac\u00e9 par un plus r\u00e9cent.");
         }
         Map<String, Object> meta = new HashMap<>();
         meta.put("tokenId", String.valueOf(t.id()));
@@ -286,9 +286,9 @@ public class GestionCompteUseCase {
     private User chargerSonCompte(Demandeur d) {
         TenantContext.set(d.workspaceId());
         User u = userRepository.findById(d.userId())
-                .orElseThrow(() -> new NotFoundException("Utilisateur introuvable"));
+                .orElseThrow(() -> new NotFoundException("Utilisateur introuvable."));
         if (!u.workspaceId().equals(d.workspaceId())) {
-            throw new NotFoundException("Utilisateur introuvable");
+            throw new NotFoundException("Utilisateur introuvable.");
         }
         return u;
     }
@@ -299,7 +299,7 @@ public class GestionCompteUseCase {
                 || userRepository.findByWorkspaceAndEmail(u.workspaceId(), identifiant)
                 .filter(autre -> !autre.id().equals(u.id())).isPresent();
         if (pris) {
-            throw new ConflictException("IDENTIFIANT_DEJA_UTILISE");
+            throw new ConflictException("Cet identifiant est d\u00e9j\u00e0 utilis\u00e9 par un autre compte du cabinet.");
         }
     }
 
@@ -309,7 +309,7 @@ public class GestionCompteUseCase {
             throw new BusinessException(code, message);
         }
         if (v.length() > LONGUEUR_MAX_NOM) {
-            throw new BusinessException(code, "100 caracteres au plus.");
+            throw new BusinessException(code, "100 caract\u00e8res au plus.");
         }
         return v;
     }
@@ -317,7 +317,7 @@ public class GestionCompteUseCase {
     private static String exigerAdresse(String valeur) {
         String v = valeur == null ? "" : valeur.trim().toLowerCase();
         if (v.isEmpty() || v.length() > LONGUEUR_MAX_ADRESSE || !FORME_ADRESSE.matcher(v).matches()) {
-            throw new BusinessException("ADRESSE_INVALIDE", "Adresse electronique invalide.");
+            throw new BusinessException("ADRESSE_INVALIDE", "Adresse \u00e9lectronique non valide.");
         }
         return v;
     }
@@ -341,7 +341,7 @@ public class GestionCompteUseCase {
         } catch (RuntimeException ex) {
             log.warn("Echec d'envoi du courriel {} pour user={} : {}", gabarit, u.id(), ex.getClass().getSimpleName());
             throw new BusinessException("ENVOI_IMPOSSIBLE",
-                    "Le courriel n'a pas pu etre envoye ; aucune modification n'a ete enregistree.");
+                    "Le courriel n\u2019a pas pu \u00eatre envoy\u00e9 ; aucune modification n\u2019a \u00e9t\u00e9 enregistr\u00e9e.");
         }
     }
 

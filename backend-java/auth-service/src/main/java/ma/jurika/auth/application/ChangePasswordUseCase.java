@@ -9,6 +9,7 @@ import ma.jurika.auth.domain.port.RefreshTokenRepository;
 import ma.jurika.auth.domain.port.TokenIssuer;
 import ma.jurika.auth.domain.port.UserRepository;
 import ma.jurika.auth.domain.service.PasswordPolicy;
+import ma.jurika.common.exception.BusinessException;
 import ma.jurika.common.exception.NotFoundException;
 import ma.jurika.common.exception.UnauthorizedException;
 import ma.jurika.common.exception.ValidationException;
@@ -98,10 +99,10 @@ public class ChangePasswordUseCase {
     @Transactional
     public AuthTokens execute(Command cmd) {
         if (!cmd.newPassword().equals(cmd.confirmPassword())) {
-            throw new ValidationException("PASSWORD_CONFIRMATION_MISMATCH");
+            throw new BusinessException("PASSWORD_CONFIRMATION_MISMATCH", "La confirmation ne correspond pas au nouveau mot de passe.");
         }
         if (cmd.newPassword().equals(cmd.oldPassword())) {
-            throw new ValidationException("NEW_PASSWORD_SAME_AS_OLD");
+            throw new BusinessException("NEW_PASSWORD_SAME_AS_OLD", "Le nouveau mot de passe doit \u00eatre diff\u00e9rent de l\u2019actuel.");
         }
 
         passwordPolicy.check(cmd.newPassword());
@@ -109,10 +110,10 @@ public class ChangePasswordUseCase {
         TenantContext.set(cmd.workspaceId());
 
         User user = userRepository.findById(cmd.userId())
-                .orElseThrow(() -> new NotFoundException("Utilisateur inconnu"));
+                .orElseThrow(() -> new NotFoundException("Utilisateur introuvable."));
 
         if (!passwordHasher.matches(cmd.oldPassword(), user.passwordHash())) {
-            throw new UnauthorizedException("Ancien mot de passe incorrect");
+            throw new UnauthorizedException("Mot de passe actuel incorrect.");
         }
 
         // Snapshot du flag AVANT update — l'audit log doit dire si c'etait un
@@ -139,7 +140,7 @@ public class ChangePasswordUseCase {
             vars.put("contactEmail", user.contactEmail());
             // BUG 7 (2026-06-08) — notif vers contact_email (perso) pas login_email.
             emailSender.sendTemplated(user.contactEmail(),
-                    "JURIKA - votre mot de passe a ete modifie",
+                    "JURIKA - votre mot de passe a \u00e9t\u00e9 modifi\u00e9",
                     "password-changed",
                     vars);
         } catch (RuntimeException ex) {
@@ -152,7 +153,7 @@ public class ChangePasswordUseCase {
         // valeurs DB (must_change_password=FALSE) et non les flags de l'objet
         // en memoire dans cette transaction.
         User refreshed = userRepository.findById(user.id())
-                .orElseThrow(() -> new NotFoundException("Utilisateur disparu apres update"));
+                .orElseThrow(() -> new NotFoundException("Utilisateur introuvable apr\u00e8s la mise \u00e0 jour."));
         AuthTokens tokens = tokenIssuer.issue(refreshed);
         TokenIssuer.ParsedRefreshToken parsed = tokenIssuer.parseRefreshToken(tokens.refreshToken());
         refreshTokenRepository.store(refreshed.id(), refreshed.workspaceId(),

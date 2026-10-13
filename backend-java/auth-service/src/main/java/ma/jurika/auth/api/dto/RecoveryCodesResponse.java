@@ -13,6 +13,6 @@ public record RecoveryCodesResponse(List<String> codes, String warning) {
     public static RecoveryCodesResponse of(List<String> codes) {
         return new RecoveryCodesResponse(codes,
                 "Conservez ces codes en lieu sur. Ils ne seront plus jamais affiches. " +
-                "Chaque code est utilisable une seule fois en cas de perte d'acces a votre 2FA.");
+                "Chaque code ne sert qu\u2019une fois, si vous perdez l\u2019acc\u00e8s \u00e0 votre double authentification.");
     }
 }

@@ -6,6 +6,7 @@ import ma.jurika.auth.domain.port.EmailVerificationTokenRepository.StoredToken;
 import ma.jurika.auth.domain.port.UserRepository;
 import ma.jurika.auth.domain.port.WorkspaceRepository;
 import ma.jurika.auth.domain.service.VerificationTokenHasher;
+import ma.jurika.common.exception.BusinessException;
 import ma.jurika.common.exception.NotFoundException;
 import ma.jurika.common.exception.ValidationException;
 import ma.jurika.common.security.TenantContext;
@@ -64,13 +65,13 @@ public class VerifyEmailUseCase {
         // le changement.
         StoredToken token = tokenRepository.findByHash(hash)
                 .filter(t -> MOTIF_VERIFICATION.equals(t.purpose()))
-                .orElseThrow(() -> new NotFoundException("Lien de verification invalide"));
+                .orElseThrow(() -> new NotFoundException("Lien de v\u00e9rification non valide : demandez-en un nouveau depuis la page de connexion."));
 
         if (token.isUsed()) {
-            throw new ValidationException("EMAIL_VERIFICATION_ALREADY_USED");
+            throw new BusinessException("EMAIL_VERIFICATION_ALREADY_USED", "Ce lien de v\u00e9rification a d\u00e9j\u00e0 \u00e9t\u00e9 utilis\u00e9 : connectez-vous directement.");
         }
         if (token.isExpired()) {
-            throw new ValidationException("EMAIL_VERIFICATION_EXPIRED");
+            throw new BusinessException("EMAIL_VERIFICATION_EXPIRED", "Ce lien de v\u00e9rification a expir\u00e9 : demandez-en un nouveau depuis la page de connexion.");
         }
 
         TenantContext.set(token.workspaceId());
@@ -79,7 +80,7 @@ public class VerifyEmailUseCase {
         // verification) ; un lien rejoue ou presente deux fois en meme temps
         // n'est accepte qu'une fois.
         if (!tokenRepository.markUsed(token.id(), Instant.now())) {
-            throw new ValidationException("EMAIL_VERIFICATION_ALREADY_USED");
+            throw new BusinessException("EMAIL_VERIFICATION_ALREADY_USED", "Ce lien de v\u00e9rification a d\u00e9j\u00e0 \u00e9t\u00e9 utilis\u00e9 : connectez-vous directement.");
         }
         workspaceRepository.activate(token.workspaceId());
         userRepository.markEmailVerified(token.userId(), Instant.now());
