@@ -50,7 +50,7 @@ public class BillingQueryService {
     public BillingDtos.SubscriptionDto getCurrentSubscription(UUID workspaceId) {
         SubscriptionEntity sub = subscriptionRepo
                 .findFirstByWorkspaceIdOrderByCreatedAtDesc(workspaceId)
-                .orElseThrow(() -> new NotFoundException("Aucune souscription pour ce workspace"));
+                .orElseThrow(() -> new NotFoundException("Aucun abonnement pour ce cabinet."));
         PaymentMethodEntity pm = paymentMethodRepo
                 .findFirstByWorkspaceIdAndIsDefaultTrue(workspaceId).orElse(null);
         return BillingDtos.SubscriptionDto.from(sub, pm);
@@ -74,10 +74,10 @@ public class BillingQueryService {
     @Transactional(readOnly = true)
     public String getInvoicePdfUrl(UUID workspaceId, Long invoiceId) {
         InvoiceEntity invoice = invoiceRepo.findByIdAndWorkspaceId(invoiceId, workspaceId)
-                .orElseThrow(() -> new NotFoundException("Facture introuvable"));
+                .orElseThrow(() -> new NotFoundException("Facture introuvable."));
         if (invoice.getInvoicePdfUrl() == null || invoice.getInvoicePdfUrl().isBlank()) {
             throw new BusinessException("INVOICE_PDF_MISSING",
-                    "PDF non disponible chez Stripe pour cette facture");
+                    "Le PDF de cette facture n\u2019est pas encore disponible chez Stripe.");
         }
         return invoice.getInvoicePdfUrl();
     }
@@ -91,14 +91,14 @@ public class BillingQueryService {
         SubscriptionEntity sub = subscriptionRepo
                 .findFirstByWorkspaceIdOrderByCreatedAtDesc(workspaceId)
                 .orElseThrow(() -> new NotFoundException(
-                        "Aucun customer Stripe pour ce workspace — souscris d'abord."));
+                        "Aucun compte de paiement Stripe pour ce cabinet : souscrivez d\u2019abord un abonnement."));
         try {
             Session session = stripeService.createCustomerPortalSession(
                     sub.getStripeCustomerId(), workspaceId,
                     billingProperties.getPortal().getReturnUrl());
             return session.getUrl();
         } catch (StripeException e) {
-            throw new BusinessException("STRIPE_ERROR", "Stripe portal error: " + e.getMessage());
+            throw new BusinessException("STRIPE_ERROR", "Le portail de paiement Stripe est indisponible : " + e.getMessage());
         }
     }
 }

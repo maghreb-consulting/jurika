@@ -71,7 +71,7 @@ public class ValidatePaymentUseCase {
         }
         if (!"PENDING".equals(p.getStatus())) {
             throw new BusinessException("PAYMENT_INVALID_TRANSITION",
-                    "Paiement non validable depuis le statut " + p.getStatus());
+                    "Ce paiement ne peut pas \u00eatre valid\u00e9 depuis le statut " + p.getStatus());
         }
 
         p.setStatus("COMPLETED");

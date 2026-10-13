@@ -73,7 +73,7 @@ class SubscribeUseCaseTest {
         assertThatThrownBy(() -> useCase.subscribe(new SubscribeUseCase.Command(
                 WS, "admin@cab.ma", "Cabinet X", "enterprise")))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("contact-sales");
+                .hasMessageContaining("demande de contact commercial");
     }
 
     @Test
@@ -83,7 +83,7 @@ class SubscribeUseCaseTest {
         assertThatThrownBy(() -> useCase.subscribe(new SubscribeUseCase.Command(
                 WS, "admin@cab.ma", "Cabinet X", "essentiel")))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Customer Portal");
+                .hasMessageContaining("portail de paiement");
     }
 
     @Test

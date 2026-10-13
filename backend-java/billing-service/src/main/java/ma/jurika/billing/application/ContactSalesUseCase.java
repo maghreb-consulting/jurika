@@ -40,13 +40,13 @@ public class ContactSalesUseCase {
             mailSender.send(message);
             log.info("Contact-sales envoye workspace={} contact={}", workspaceId, req.contactEmail());
             return new BillingDtos.ContactSalesResponse(true,
-                    "Demande recue. L'equipe commerciale reviendra vers vous sous 24h ouvrees.");
+                    "Demande re\u00e7ue. L\u2019\u00e9quipe commerciale reviendra vers vous sous 24 heures ouvr\u00e9es.");
         } catch (RuntimeException e) {
             // Best-effort : si SMTP KO en dev, on log et on retourne accepted=false
             // pour que l'UI puisse afficher un fallback mailto:.
             log.warn("Echec envoi contact-sales workspace={} : {}", workspaceId, e.getMessage());
             return new BillingDtos.ContactSalesResponse(false,
-                    "Erreur temporaire. Ecris-nous directement a " + billingProperties.getSalesEmail());
+                    "Erreur temporaire. \u00c9crivez-nous directement \u00e0 " + billingProperties.getSalesEmail());
         }
     }
 
@@ -75,5 +75,5 @@ public class ContactSalesUseCase {
         );
     }
 
-    private static String safe(String s) { return s == null ? "(non renseigne)" : s; }
+    private static String safe(String s) { return s == null ? "(non renseign\u00e9)" : s; }
 }

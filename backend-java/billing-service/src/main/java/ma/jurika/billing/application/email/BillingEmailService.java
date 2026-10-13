@@ -62,22 +62,22 @@ public class BillingEmailService {
 
     @Async
     public void sendPaymentFailed(String to, Map<String, Object> vars) {
-        send(to, "[URGENT] Echec de paiement — mettez a jour votre carte", "email/paiement-echec", vars);
+        send(to, "[URGENT] \u00c9chec de paiement : mettez \u00e0 jour votre carte", "email/paiement-echec", vars);
     }
 
     @Async
     public void sendConversionActive(String to, Map<String, Object> vars) {
-        send(to, "Bienvenue dans JURIKA — votre abonnement est actif", "email/conversion-active", vars);
+        send(to, "Bienvenue dans JURIKA : votre abonnement est actif", "email/conversion-active", vars);
     }
 
     @Async
     public void sendCancellation(String to, Map<String, Object> vars) {
-        send(to, "Confirmation d'annulation de votre abonnement JURIKA", "email/annulation", vars);
+        send(to, "Confirmation d\u2019annulation de votre abonnement JURIKA", "email/annulation", vars);
     }
 
     @Async
     public void sendReactivation(String to, Map<String, Object> vars) {
-        send(to, "Votre abonnement JURIKA est reactive", "email/reactivation", vars);
+        send(to, "Votre abonnement JURIKA est r\u00e9activ\u00e9", "email/reactivation", vars);
     }
 
     private void send(String to, String subject, String templatePath, Map<String, Object> vars) {

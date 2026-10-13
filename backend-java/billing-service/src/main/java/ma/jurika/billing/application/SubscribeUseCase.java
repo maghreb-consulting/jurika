@@ -88,7 +88,7 @@ public class SubscribeUseCase {
         validateCommand(cmd);
         if (subscriptionRepo.findFirstByWorkspaceIdAndStatusOrderByCreatedAtDesc(cmd.workspaceId(), "active").isPresent()) {
             throw new BusinessException("BILLING_ALREADY_ACTIVE",
-                    "Workspace deja sous abonnement actif. Use Customer Portal pour changer de plan.");
+                    "Ce cabinet a d\u00e9j\u00e0 un abonnement actif. Utilisez le portail de paiement pour changer de formule.");
         }
 
         BillingPeriod period = cmd.billingPeriod() != null ? cmd.billingPeriod() : BillingPeriod.MONTHLY;
@@ -105,7 +105,7 @@ public class SubscribeUseCase {
         } catch (StripeException e) {
             log.error("Erreur Stripe lors du subscribe workspace={} plan={}",
                     cmd.workspaceId(), cmd.planCode(), e);
-            throw new BusinessException("STRIPE_ERROR", "Stripe error: " + e.getStripeError().getMessage());
+            throw new BusinessException("STRIPE_ERROR", "Erreur du service de paiement Stripe : " + e.getStripeError().getMessage());
         }
     }
 
@@ -154,7 +154,7 @@ public class SubscribeUseCase {
         String normalized = PlanCatalog.normalize(cmd.planCode());
         if ("entreprise".equals(normalized)) {
             throw new BusinessException("BILLING_ENTERPRISE_NOT_STRIPE",
-                    "Plan entreprise sur devis — utilise POST /api/v1/billing/contact-sales (RG-BL10)");
+                    "La formule Entreprise est sur devis : utilisez la demande de contact commercial.");
         }
     }
 }

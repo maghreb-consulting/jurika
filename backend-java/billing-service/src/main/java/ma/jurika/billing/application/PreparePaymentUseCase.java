@@ -86,15 +86,15 @@ public class PreparePaymentUseCase {
         // sauf si property explicitement activee.
         if ("TEST_BYPASS".equals(method) && !billingProperties.isTestBypassEnabled()) {
             throw new BusinessException("TEST_BYPASS_DISABLED",
-                    "La methode TEST_BYPASS n'est pas autorisee. "
-                            + "Activer jurika.billing.test-bypass-enabled=true en dev/staging si necessaire.");
+                    "La m\u00e9thode TEST_BYPASS n\u2019est pas autoris\u00e9e. "
+                            + "Activez jurika.billing.test-bypass-enabled=true en d\u00e9veloppement ou en pr\u00e9production si n\u00e9cessaire.");
         }
         String planCode = PlanCatalog.normalize(req.planCode());
         Plan plan = PlanCatalog.findByCode(planCode)
-                .orElseThrow(() -> new BusinessException("PLAN_UNKNOWN", "Plan inconnu: " + req.planCode()));
+                .orElseThrow(() -> new BusinessException("PLAN_UNKNOWN", "Formule inconnue : " + req.planCode()));
         if (plan.quoteOnly()) {
             throw new BusinessException("PLAN_QUOTE_ONLY",
-                    "Plan Entreprise sur devis — utilisez la demande contact-sales.");
+                    "La formule Entreprise est sur devis : utilisez la demande de contact commercial.");
         }
         BillingPeriod period = BillingPeriod.fromString(req.billingPeriod());
         int priceMad = period == BillingPeriod.YEARLY
@@ -129,7 +129,7 @@ public class PreparePaymentUseCase {
                         ? e.getStripeError().getMessage() : e.getMessage()));
                 paymentRepo.save(payment);
                 throw new BusinessException("STRIPE_ERROR",
-                        "Service de paiement indisponible. Reessayez ou choisissez un autre moyen.");
+                        "Service de paiement indisponible. R\u00e9essayez ou choisissez un autre moyen de paiement.");
             }
         } else if ("TEST_BYPASS".equals(method)) {
             // BUG 14 — bypass instantane : on cree direct le Payment en
@@ -155,8 +155,8 @@ public class PreparePaymentUseCase {
                     null,
                     java.util.List.of(
                             new PaymentInstructionsDto("paymentRef", "PAY-" + payment.getId()),
-                            new PaymentInstructionsDto("mode", "TEST BYPASS (dev only) — workspace active, identifiants envoyes par email.")),
-                    "Paiement valide instantanement (mode test). Verifiez votre boite mail pour les identifiants.");
+                            new PaymentInstructionsDto("mode", "TEST BYPASS (d\u00e9veloppement uniquement) : cabinet activ\u00e9, identifiants envoy\u00e9s par courriel.")),
+                    "Paiement valid\u00e9 instantan\u00e9ment (mode test). Consultez votre bo\u00eete de r\u00e9ception pour les identifiants.");
         }
 
         paymentRepo.save(payment);
@@ -209,7 +209,7 @@ public class PreparePaymentUseCase {
         }
         if (req.method() == null || !ALLOWED_METHODS.contains(req.method().toUpperCase())) {
             throw new BusinessException("PAYMENT_METHOD_UNKNOWN",
-                    "Methode de paiement non supportee : " + req.method()
+                    "Moyen de paiement non pris en charge : " + req.method()
                             + " (attendu : CARD | BANK_TRANSFER | CHEQUE | CASH)");
         }
     }
@@ -274,22 +274,22 @@ public class PreparePaymentUseCase {
             case "CHEQUE" -> {
                 out.add(new PaymentInstructionsDto("beneficiary", "Maghreb Consulting SARL"));
                 out.add(new PaymentInstructionsDto("mailingAddress",
-                        "Maghreb Consulting — Service Comptabilite\n45 Rue Mohammed Diouri, 20250 Casablanca"));
+                        "Maghreb Consulting \u2014 Service Comptabilit\u00e9\n45 Rue Mohammed Diouri, 20250 Casablanca"));
                 out.add(new PaymentInstructionsDto("reference",
                         "JURIKA-" + payment.getWorkspaceId().toString().substring(0, 8).toUpperCase() + "-" + payment.getId()));
                 out.add(new PaymentInstructionsDto("amount", formatMad(payment.getAmountMadCents())));
                 out.add(new PaymentInstructionsDto("instruction",
-                        "Mentionnez la reference au dos du cheque et envoyez-nous une photo via le bouton ci-dessous."));
+                        "Mentionnez la r\u00e9f\u00e9rence au dos du ch\u00e8que et envoyez-nous une photo avec le bouton ci-dessous."));
             }
             case "CASH" -> {
                 out.add(new PaymentInstructionsDto("siegeAddress",
                         "Maghreb Consulting — 45 Rue Mohammed Diouri, 20250 Casablanca"));
-                out.add(new PaymentInstructionsDto("hours", "Lundi-Vendredi 9h-17h, Samedi 9h-12h"));
+                out.add(new PaymentInstructionsDto("hours", "Du lundi au vendredi de 9 h \u00e0 17 h, le samedi de 9 h \u00e0 12 h"));
                 out.add(new PaymentInstructionsDto("amount", formatMad(payment.getAmountMadCents())));
                 out.add(new PaymentInstructionsDto("reference",
                         "JURIKA-" + payment.getWorkspaceId().toString().substring(0, 8).toUpperCase() + "-" + payment.getId()));
                 out.add(new PaymentInstructionsDto("instruction",
-                        "Presentez la reference au comptoir. Un recu vous sera remis."));
+                        "Pr\u00e9sentez la r\u00e9f\u00e9rence au comptoir. Un re\u00e7u vous sera remis."));
             }
             default -> { /* validated upstream */ }
         }
@@ -298,10 +298,10 @@ public class PreparePaymentUseCase {
 
     private static String userMessageFor(String method) {
         return switch (method) {
-            case "CARD" -> "Redirection vers la page securisee Stripe...";
-            case "BANK_TRANSFER" -> "Votre paiement est enregistre. Il sera active sous 24-48h apres reception du virement.";
-            case "CHEQUE" -> "Votre paiement est enregistre. Il sera active a reception et encaissement du cheque (5-7 jours).";
-            case "CASH" -> "Votre paiement est enregistre. Il sera active immediatement apres reglement au siege.";
+            case "CARD" -> "Redirection vers la page s\u00e9curis\u00e9e de Stripe\u2026";
+            case "BANK_TRANSFER" -> "Votre paiement est enregistr\u00e9. Il sera activ\u00e9 sous 24 \u00e0 48 heures apr\u00e8s r\u00e9ception du virement.";
+            case "CHEQUE" -> "Votre paiement est enregistr\u00e9. Il sera activ\u00e9 \u00e0 r\u00e9ception et encaissement du ch\u00e8que (5 \u00e0 7 jours).";
+            case "CASH" -> "Votre paiement est enregistr\u00e9. Il sera activ\u00e9 d\u00e8s le r\u00e8glement au si\u00e8ge.";
             default -> "Paiement en attente de validation.";
         };
     }
