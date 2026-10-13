@@ -45,14 +45,6 @@ export function NotificationBell() {
   // 2026-06-22 — coupe-circuit : si le backend temps réel (port 3000) est down,
   // on arrête de poller après quelques échecs pour ne pas inonder la console.
   const failuresRef = useRef(0);
-  const refreshCount = useCallback(async () => {
-    try {
-      setUnread(await notificationService.unreadCount());
-      failuresRef.current = 0;
-    } catch {
-      failuresRef.current += 1;
-    }
-  }, []);
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -67,18 +59,29 @@ export function NotificationBell() {
     }
   }, []);
 
-  // Initial + polling 60s (s'arrête après 3 échecs consécutifs).
+  // Initial + polling 60s (s'arrête après 3 échecs consécutifs). Le compteur
+  // n'est mis a jour qu'a la reponse du serveur (jamais dans le corps de l'effet).
   useEffect(() => {
-    void refreshCount();
+    const rafraichir = () =>
+      notificationService.unreadCount().then(
+        (n) => {
+          setUnread(n);
+          failuresRef.current = 0;
+        },
+        () => {
+          failuresRef.current += 1;
+        },
+      );
+    void rafraichir();
     const t = setInterval(() => {
       if (failuresRef.current >= 3) {
         clearInterval(t);
         return;
       }
-      void refreshCount();
+      void rafraichir();
     }, 60_000);
     return () => clearInterval(t);
-  }, [refreshCount]);
+  }, []);
 
   // Realtime push
   useEffect(() => {
@@ -106,10 +109,6 @@ export function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
 
-  // Charge la liste a l'ouverture
-  useEffect(() => {
-    if (open) void loadList();
-  }, [open, loadList]);
 
   async function handleItemClick(n: Notification) {
     if (!n.readAt) {
@@ -155,9 +154,14 @@ export function NotificationBell() {
         className="relative p-2 text-fg-subtle transition hover:text-fg"
         aria-label={`Notifications${unread > 0 ? ` (${unread} non lues)` : ''}`}
         title="Notifications"
-        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        onClick={() => {
+          // Charge la liste a l'ouverture (gestionnaire d'evenement, pas d'effet).
+          if (!open) void loadList();
+          setOpen(!open);
+        }}
       >
-        <Bell className="h-5 w-5" />
+        <Bell className="h-5 w-5" aria-hidden="true" />
         {unread > 0 && (
           <span
             data-testid="notification-badge"

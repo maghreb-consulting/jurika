@@ -37,7 +37,6 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     // Log non bloquant — visible en console pour diagnostic, ne casse rien.
-    // eslint-disable-next-line no-console
     console.error('[ErrorBoundary] rendu interrompu :', error, info.componentStack);
   }
 

@@ -4,6 +4,7 @@ import { AlertCircle, CheckCircle, Clock, KeyRound, Loader2, Lock, Mail, User } 
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
+import { ReafficherAides } from '../../components/ui/ReafficherAides';
 import { authService, type DemandeCompte, type DemandesCompte } from '../../services/auth.service';
 import { extractError, tokenStorage } from '../../lib/api';
 import { emailMsg } from '../../lib/formValidation';
@@ -147,6 +148,9 @@ export function ProfilePage() {
       />
 
       <BlocMotDePasse />
+
+      {/* Lot L6 (E6, CDC 15.4) : reafficher les aides masquees et la visite guidee. */}
+      <ReafficherAides />
     </div>
   );
 }
