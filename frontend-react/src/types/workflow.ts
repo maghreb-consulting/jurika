@@ -39,15 +39,15 @@ export interface WorkflowCatalog {
 }
 
 export const STEP_LABELS_CREATION: Record<number, string> = {
-  1: 'Denomination',
-  2: 'Siege social',
+  1: 'Dénomination',
+  2: 'Siège social',
   3: 'Capital',
-  4: 'Activite',
+  4: 'Activité',
   5: 'Dirigeants',
-  6: 'Associes',
-  7: 'Generation IA',
-  8: 'Pieces jointes',
-  9: 'Synthese',
+  6: 'Associés',
+  7: 'Documents',
+  8: 'Pièces jointes',
+  9: 'Synthèse',
 };
 
 export const TICKET_TO_WORKFLOW: Record<TicketType, WorkflowType> = {

@@ -32,15 +32,15 @@ export function isDossierArchived(statut?: string | null): boolean {
 export function archivedStatutLabel(statut?: string | null): string {
   switch (statut) {
     case 'DISSOUTE':
-      return 'Societe dissoute';
+      return 'Société dissoute';
     case 'EN_LIQUIDATION':
-      return 'Societe en liquidation';
+      return 'Société en liquidation';
     case 'LIQUIDEE':
-      return 'Societe liquidee';
+      return 'Société liquidée';
     case 'RADIE':
-      return 'Societe radiee';
+      return 'Société radiée';
     default:
-      return 'Societe archivee';
+      return 'Société archivée';
   }
 }
 
@@ -55,8 +55,8 @@ export function dataroomReadOnlyMessage(statut?: string | null): string {
  */
 export function dataroomReadOnlyReason(statut?: string | null): string {
   return (
-    `${archivedStatutLabel(statut)} : la Data Room est une archive legale. ` +
-    'Consultation et telechargement restent possibles ; ajout, remplacement et ' +
-    'suppression sont desactives.'
+    `${archivedStatutLabel(statut)} : la Data Room est une archive légale. ` +
+    'Consultation et téléchargement restent possibles ; ajout, remplacement et ' +
+    'suppression sont désactivés.'
   );
 }

@@ -14,7 +14,7 @@ interface ErrorStateProps {
  */
 export function ErrorState({
   title = "Une erreur est survenue",
-  message = "Impossible de charger les donnees. Verifiez votre connexion ou reessayez.",
+  message = "Impossible de charger les données. Vérifiez votre connexion, puis réessayez.",
   onRetry,
   className,
 }: ErrorStateProps) {
@@ -38,7 +38,7 @@ export function ErrorState({
           className="mt-4 inline-flex h-8 items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-raised)] px-3 text-sm font-medium text-[var(--color-fg)] hover:border-[var(--color-border-hi)]"
         >
           <RefreshCw className="h-3.5 w-3.5" />
-          Reessayer
+          Réessayer
         </button>
       )}
     </div>

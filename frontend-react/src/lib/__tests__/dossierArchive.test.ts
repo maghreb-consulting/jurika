@@ -40,22 +40,22 @@ describe('dossierArchive', () => {
   });
 
   it('libelle chaque statut archivant', () => {
-    expect(archivedStatutLabel('DISSOUTE')).toBe('Societe dissoute');
-    expect(archivedStatutLabel('EN_LIQUIDATION')).toBe('Societe en liquidation');
-    expect(archivedStatutLabel('LIQUIDEE')).toBe('Societe liquidee');
-    expect(archivedStatutLabel('RADIE')).toBe('Societe radiee');
-    expect(archivedStatutLabel('INCONNU')).toBe('Societe archivee');
+    expect(archivedStatutLabel('DISSOUTE')).toBe('Société dissoute');
+    expect(archivedStatutLabel('EN_LIQUIDATION')).toBe('Société en liquidation');
+    expect(archivedStatutLabel('LIQUIDEE')).toBe('Société liquidée');
+    expect(archivedStatutLabel('RADIE')).toBe('Société radiée');
+    expect(archivedStatutLabel('INCONNU')).toBe('Société archivée');
   });
 
   it('produit le bandeau demande par la spec', () => {
     expect(dataroomReadOnlyMessage('DISSOUTE')).toBe(
-      'Societe dissoute — Data Room en lecture seule',
+      'Société dissoute — Data Room en lecture seule',
     );
   });
 
   it('explique ce qui reste possible dans la raison', () => {
     const reason = dataroomReadOnlyReason('DISSOUTE');
-    expect(reason).toContain('Consultation et telechargement restent possibles');
-    expect(reason).toContain('desactives');
+    expect(reason).toContain('Consultation et téléchargement restent possibles');
+    expect(reason).toContain('désactivés');
   });
 });

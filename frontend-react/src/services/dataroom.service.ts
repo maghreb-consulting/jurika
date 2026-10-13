@@ -184,11 +184,11 @@ export const dataroomService = {
       }
     }
     if (errors.length === files.length) {
-      throw new Error(`Tous les uploads ont echoue :\n${errors.join('\n')}`);
+      throw new Error(`Aucun fichier n’a pu être déposé :\n${errors.join('\n')}`);
     }
     if (errors.length > 0) {
       throw new Error(
-        `${files.length - errors.length}/${files.length} uploades. Echecs :\n${errors.join('\n')}`,
+        `${files.length - errors.length} fichier(s) déposé(s) sur ${files.length}. Échecs :\n${errors.join('\n')}`,
       );
     }
   },
