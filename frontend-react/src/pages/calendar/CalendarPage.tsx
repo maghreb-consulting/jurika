@@ -25,6 +25,11 @@ import {
 } from '../../lib/calendarBucketing';
 import { STATUT_LABELS, TICKET_TYPE_LABELS } from '../../types/ticket';
 import { TicketDetailDrawer } from '../tickets/TicketDetailDrawer';
+import { TexteAide } from '../../components/ui/Aide';
+
+/** Lot L6 (E9) : libelles des codes d'une echeance (jamais le code brut a l'ecran). */
+const STATUT_ECHEANCE: Record<string, string> = { OUVERTE: 'Ouverte', TERMINEE: 'Traitée', IGNOREE: 'Ignorée' };
+const SOURCE_ECHEANCE: Record<string, string> = { AUTO: 'Automatique (règle du cabinet)', MANUAL: 'Saisie manuelle' };
 
 /**
  * Page Calendrier (2026-06-25 — repurposing tickets).
@@ -234,8 +239,8 @@ export function CalendarPage() {
           </h1>
           <p className="text-sm text-fg-muted">
             {source === 'tickets'
-              ? 'Echeances des tickets — separees par priorite. Cliquez un jour pour la liste, un ticket pour le detail.'
-              : 'Echeances metier ouvertes du workspace — cliquez une carte pour la traiter ou l ignorer.'}
+              ? 'Les échéances des tickets, par priorité. Cliquez sur un jour pour en voir la liste, sur un ticket pour son détail.'
+              : 'Les échéances ouvertes du cabinet (délais légaux, formalités). Cliquez sur une échéance pour la marquer traitée ou l’ignorer.'}
           </p>
         </div>
 
@@ -260,7 +265,7 @@ export function CalendarPage() {
               }`}
               data-testid="cal-source-deadlines"
             >
-              Echeances metier
+              Échéances du cabinet
             </button>
           </div>
 
@@ -292,16 +297,18 @@ export function CalendarPage() {
               variant="secondary"
               size="sm"
               onClick={() => (view === 'month' ? navMonth(-1) : navWeek(-1))}
+              aria-label="Période précédente"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button variant="secondary" size="sm" onClick={() => setCursor(new Date())}>
-              Aujourd'hui
+              Aujourd’hui
             </Button>
             <Button
               variant="secondary"
               size="sm"
               onClick={() => (view === 'month' ? navMonth(1) : navWeek(1))}
+              aria-label="Période suivante"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -311,6 +318,15 @@ export function CalendarPage() {
           </span>
         </div>
       </header>
+
+      <TexteAide cle="calendrier" titre="Lire le calendrier">
+        <p>
+          La vue « Tickets » place chaque ticket à sa date d’échéance, coloré selon sa priorité ; un
+          ticket clos ou annulé est barré. La vue « Échéances du cabinet » réunit les délais à
+          surveiller : marquez une échéance traitée une fois la formalité accomplie. Les flèches
+          changent de mois ou de semaine ; « Aujourd’hui » y revient.
+        </p>
+      </TexteAide>
 
       {/* Legende */}
       <div className="flex flex-wrap items-center gap-3 text-xs text-fg-muted">
@@ -380,7 +396,7 @@ export function CalendarPage() {
       <Drawer
         open={selectedDay != null}
         onClose={() => setSelectedDay(null)}
-        title="Echeances du jour"
+        title="Échéances du jour"
         subtitle={selectedDay ? selectedDay.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : undefined}
         width="md"
       >
@@ -420,7 +436,7 @@ export function CalendarPage() {
             })}
           </div>
         ) : (
-          <p className="py-8 text-center text-sm text-fg-subtle">Aucun ticket ce jour.</p>
+          <p className="py-8 text-center text-sm text-fg-subtle">Aucun ticket n’arrive à échéance ce jour.</p>
         )}
       </Drawer>
 
@@ -437,7 +453,7 @@ export function CalendarPage() {
       <Drawer
         open={!!selectedDeadline}
         onClose={() => setSelectedDeadline(null)}
-        title="Detail de l'echeance"
+        title="Détail de l’échéance"
         subtitle={selectedDeadline ? new Date(selectedDeadline.dueAt).toLocaleString('fr-FR') : undefined}
         width="md"
       >
@@ -462,17 +478,17 @@ export function CalendarPage() {
             <dl className="space-y-2 rounded-lg border border-border bg-bg-overlay p-3 text-sm">
               <div className="flex justify-between gap-3">
                 <dt className="text-fg-subtle">Statut</dt>
-                <dd className="font-medium text-fg">{selectedDeadline.statut}</dd>
+                <dd className="font-medium text-fg">{STATUT_ECHEANCE[selectedDeadline.statut] ?? selectedDeadline.statut}</dd>
               </div>
               {selectedDeadline.ruleKey && (
                 <div className="flex justify-between gap-3">
-                  <dt className="text-fg-subtle">Regle</dt>
+                  <dt className="text-fg-subtle">Règle</dt>
                   <dd className="font-mono text-xs text-fg">{selectedDeadline.ruleKey}</dd>
                 </div>
               )}
               <div className="flex justify-between gap-3">
                 <dt className="text-fg-subtle">Source</dt>
-                <dd className="text-fg">{selectedDeadline.source}</dd>
+                <dd className="text-fg">{SOURCE_ECHEANCE[selectedDeadline.source] ?? selectedDeadline.source}</dd>
               </div>
               {selectedDeadline.ticketId && (
                 <div className="flex justify-between gap-3">
@@ -490,7 +506,7 @@ export function CalendarPage() {
                   disabled={acting}
                   data-testid="cal-action-complete"
                 >
-                  <Check className="mr-1 h-4 w-4" /> Marquer traitee
+                  <Check className="mr-1 h-4 w-4" /> Marquer comme traitée
                 </Button>
                 <Button
                   variant="secondary"

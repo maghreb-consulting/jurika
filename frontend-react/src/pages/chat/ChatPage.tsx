@@ -350,7 +350,7 @@ export function ChatPage() {
   function handleStartConversationWith(peerId: string) {
     if (!peerId) return;
     if (peerId === user?.userId) {
-      setError('Vous ne pouvez pas demarrer une conversation avec vous-meme.');
+      setError('Vous ne pouvez pas démarrer une conversation avec vous-même.');
       return;
     }
     // Si une conversation existe deja avec ce peer, on bascule simplement
@@ -494,7 +494,7 @@ export function ChatPage() {
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-fg-subtle" />
               <TextField
-                placeholder="Rechercher un correspondant..."
+                placeholder="Rechercher un correspondant…"
                 value={searchPeer}
                 onChange={(e) => setSearchPeer(e.target.value)}
                 className="pl-9"
@@ -568,7 +568,7 @@ export function ChatPage() {
               </div>
             ) : visibleConversations.length === 0 ? (
               <div className="p-6 text-center text-sm text-fg-subtle">
-                Aucune conversation pour le moment.
+                Aucune conversation pour le moment. Cliquez sur « Nouvelle conversation » pour écrire à un collègue.
               </div>
             ) : (
               <ul className="divide-y divide-border">
@@ -627,10 +627,10 @@ export function ChatPage() {
             <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-fg-subtle">
               <MessageSquarePlus className="mb-3 h-10 w-10 text-fg-subtle" />
               <p className="text-sm font-medium text-fg-muted">
-                Selectionne une conversation...
+                Sélectionnez une conversation.
               </p>
               <p className="mt-1 text-xs text-fg-subtle">
-                Ou demarre-en une nouvelle depuis la colonne de gauche.
+                Ou démarrez-en une nouvelle avec « Nouvelle conversation », dans la colonne de gauche.
               </p>
             </div>
           ) : (
@@ -643,7 +643,7 @@ export function ChatPage() {
                   <p className="text-xs text-fg-subtle">{activeConversationSubtitle}</p>
                 </div>
                 {typingFrom === activePeer && (
-                  <span className="text-xs italic text-accent">en train d'ecrire...</span>
+                  <span className="text-xs italic text-accent">est en train d’écrire…</span>
                 )}
               </div>
 
@@ -654,7 +654,7 @@ export function ChatPage() {
                   </div>
                 ) : activeMessages.length === 0 ? (
                   <p className="mt-8 text-center text-sm text-fg-subtle">
-                    Aucun message echange. Envoie le premier.
+                    Aucun message échangé. Écrivez le premier ci-dessous.
                   </p>
                 ) : (
                   activeMessages.map((m) => {
@@ -678,7 +678,7 @@ export function ChatPage() {
                             }`}
                           >
                             {formatTime(m.createdAt)}
-                            {m.pending && ' • envoi...'}
+                            {m.pending && ' • envoi…'}
                           </p>
                         </div>
                       </div>
@@ -699,7 +699,7 @@ export function ChatPage() {
                 <textarea
                   ref={inputRef}
                   data-testid="chat-message-input"
-                  placeholder="Ecrire un message..."
+                  placeholder="Écrire un message…"
                   value={draftBody}
                   onChange={(e) => setDraftBody(e.target.value)}
                   onInput={(e) => autoGrow(e.currentTarget)}

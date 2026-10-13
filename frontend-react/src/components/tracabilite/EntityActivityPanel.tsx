@@ -16,7 +16,7 @@ interface Props {
  * Panneau "Activite" contextuel (E2) — historique audit_log d'une entite precise
  * (dossier / ticket). Ouvert a EMPLOYE + SUPERVISEUR.
  */
-export function EntityActivityPanel({ entityType, entityId, title = 'Activite' }: Props) {
+export function EntityActivityPanel({ entityType, entityId, title = 'Activité' }: Props) {
   const [items, setItems] = useState<TracabiliteEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

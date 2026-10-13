@@ -120,7 +120,7 @@ const CIN_FIELD_LABELS: Record<keyof IdentityPhysiqueValues, string> = {
   cin: 'N° CIN',
   date_naissance: 'Date de naissance',
   lieu_naissance: 'Lieu de naissance',
-  date_validite: "CIN valable jusqu'au",
+  date_validite: "CIN valable jusqu’au",
   adresse: 'Adresse',
   sexe: 'Sexe (M / F)',
   nationalite: 'Nationalité',
@@ -147,7 +147,7 @@ const CN_FIELD_LABELS: Record<keyof IdentityCnValues, string> = {
   beneficiaire: 'Bénéficiaire',
   activite: 'Activité',
   tribunal: 'Tribunal',
-  date_expiration: "Date d'expiration",
+  date_expiration: "Date d’expiration",
   date_delivrance: 'Date de délivrance',
 };
 
@@ -385,7 +385,7 @@ export function IdentityExtractor({
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 503) {
         setError(
-          "Service d'extraction indisponible. Vous pouvez saisir les informations manuellement ci-dessous.",
+          "Service d’extraction indisponible. Vous pouvez saisir les informations manuellement ci-dessous.",
         );
       } else if (status === 400) {
         setError(
@@ -393,7 +393,7 @@ export function IdentityExtractor({
             ?.detail ?? 'Requête invalide.',
         );
       } else if (status === 403) {
-        setError("Action refusée : vous n'avez pas le droit d'archiver dans la Data Room.");
+        setError("Action refusée : vous n’avez pas le droit d’archiver dans la Data Room.");
       } else {
         setError(
           "Extraction impossible. La saisie manuelle reste disponible ci-dessous.",
@@ -458,13 +458,13 @@ export function IdentityExtractor({
           <h4 className="flex items-center gap-2 text-sm font-bold text-fg">
             <Sparkles className="h-4 w-4 text-accent" />
             {mode === 'cn'
-              ? "Assistant d'extraction CN (carte / registre)"
-              : "Assistant d'extraction CIN"}
+              ? "Assistant d’extraction CN (carte / registre)"
+              : "Assistant d’extraction CIN"}
           </h4>
           <p className="text-[11px] text-fg-subtle">
             {mode === 'cn'
-              ? "Téléversez la carte / le registre, l'assistant pré-remplit les champs. La saisie manuelle reste possible."
-              : "Téléversez recto + verso, l'assistant pré-remplit les champs. La saisie manuelle reste possible — chaque champ extrait est éditable."}
+              ? "Téléversez la carte / le registre, l’assistant pré-remplit les champs. La saisie manuelle reste possible."
+              : "Téléversez recto + verso, l’assistant pré-remplit les champs. La saisie manuelle reste possible — chaque champ extrait est éditable."}
           </p>
         </div>
       </header>
@@ -522,7 +522,7 @@ export function IdentityExtractor({
             <FilePreview file={verso} onClear={() => { setVerso(null); resetExtraction(); }} label="Verso" />
           ) : (
             <DropZone
-              label="Verso (optionnel)"
+              label="Verso (facultatif)"
               inputId="id-verso-input"
               onFile={(f) => { setVerso(f); resetExtraction(); }}
             />

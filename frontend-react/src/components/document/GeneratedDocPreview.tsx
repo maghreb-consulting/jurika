@@ -34,7 +34,7 @@ export function GeneratedDocPreview({ blob, title, filename }: GeneratedDocPrevi
         <button
           type="button"
           onClick={() => setFullScreen(true)}
-          title="Ouvrir l'aperçu en plein écran"
+          title="Ouvrir l’aperçu en plein écran"
           className="inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[11px] text-fg-subtle hover:border-accent hover:text-fg"
         >
           <Maximize2 className="h-3 w-3" /> Plein écran

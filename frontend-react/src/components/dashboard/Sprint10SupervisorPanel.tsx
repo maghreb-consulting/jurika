@@ -68,9 +68,9 @@ export function Sprint10SupervisorPanel() {
     <div className="mt-6 space-y-4">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard label="Tickets ouverts" value={data.ticketsOuverts} variant="warning" />
-        <KpiCard label="Clos 30j" value={data.ticketsClos30d} variant="success" />
+        <KpiCard label="Clos sur 30 jours" value={data.ticketsClos30d} variant="success" />
         <KpiCard
-          label="Temps moyen clôture"
+          label="Temps moyen de clôture"
           value={`${data.tempsMoyenClotureHeures.toFixed(1)} h`}
         />
         <KpiCard
@@ -117,7 +117,7 @@ export function Sprint10SupervisorPanel() {
         </ChartCard>
 
         <ChartCard
-          title="Demandes clients par statut"
+          title="Demandes des clients par statut"
           icon={<Inbox className="h-4 w-4" />}
           empty={demandes.length === 0}
         >
@@ -127,7 +127,7 @@ export function Sprint10SupervisorPanel() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-border bg-bg-raised p-4">
-          <h4 className="mb-2 text-sm font-semibold text-fg">Évolution tickets (30j)</h4>
+          <h4 className="mb-2 text-sm font-semibold text-fg">Évolution des tickets (30 jours)</h4>
           {data.evolutionTickets30j.length === 0 ? (
             <p className="py-8 text-center text-xs text-fg-subtle">Aucune donnée</p>
           ) : (

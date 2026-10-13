@@ -56,7 +56,7 @@ export function CollaboraEditor({ documentId, titre, onClose, onEdited }: Props)
       })
       .catch((e: unknown) => {
         if (annule) return;
-        setErreur(e instanceof Error ? e.message : "Impossible d'ouvrir l'éditeur");
+        setErreur(e instanceof Error ? e.message : "Impossible d’ouvrir l’éditeur");
       });
     return () => {
       annule = true;
@@ -108,7 +108,7 @@ export function CollaboraEditor({ documentId, titre, onClose, onEdited }: Props)
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
         <AlertTriangle className="h-6 w-6 text-danger" />
-        <p className="text-sm text-fg">L'éditeur n'a pas pu s'ouvrir.</p>
+        <p className="text-sm text-fg">L’éditeur n’a pas pu s’ouvrir.</p>
         <p className="max-w-lg text-xs text-fg-subtle">{erreur}</p>
         <button
           type="button"
@@ -125,7 +125,7 @@ export function CollaboraEditor({ documentId, titre, onClose, onEdited }: Props)
     return (
       <div className="flex h-full items-center justify-center gap-2 text-sm text-fg-subtle">
         <Loader className="h-4 w-4 animate-spin" />
-        Ouverture de l'éditeur…
+        Ouverture de l’éditeur…
       </div>
     );
   }
@@ -176,13 +176,13 @@ export function CollaboraEditor({ documentId, titre, onClose, onEdited }: Props)
                 })}`
               : ''}
             . Vos modifications ne seraient pas enregistrées. Rouvrez l'acte une fois
-            qu'il aura refermé son éditeur.
+            qu’il aura refermé son éditeur.
           </span>
         ) : seance.canWrite ? (
           <span>
             Vos modifications sont enregistrées au fil de la frappe.{' '}
-            <strong className="text-fg">Il n'y a pas d'annulation après coup</strong> : la
-            première modification crée une nouvelle version du document. Rien n'est
+            <strong className="text-fg">Il n’y a pas d’annulation après coup</strong> : la
+            première modification crée une nouvelle version du document. Rien n’est
             perdu pour autant — la version précédente reste consultable dans
             «&nbsp;Anciennes versions&nbsp;», et vous pouvez la restaurer.
           </span>

@@ -684,7 +684,7 @@ function DossierDeTicket({
 
       {ouvert && horsTicket && (
         <p className="border-b border-border bg-bg-overlay/30 px-5 py-2 text-xs text-fg-subtle">
-          Documents antérieurs au classement par ticket, ou déposés hors workflow.
+          Documents antérieurs au classement par ticket, ou déposés en dehors d’un parcours.
           Ils restent consultables et téléchargeables.
         </p>
       )}
@@ -815,7 +815,7 @@ function DocumentRow({
               onChange={onToggleSelect}
               onClick={(e) => e.stopPropagation()}
               className="h-4 w-4 cursor-pointer accent-indigo-600"
-              aria-label={`Selectionner ${doc.title}`}
+              aria-label={`Sélectionner ${doc.title}`}
             />
           )}
           <div className="rounded-lg bg-bg-overlay p-2">

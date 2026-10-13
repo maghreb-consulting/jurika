@@ -68,16 +68,17 @@ export function MesRequetes() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h2 className="font-heading text-2xl font-semibold text-fg">Demandes de mon conseiller</h2>
+        <h2 className="font-heading text-2xl font-semibold text-fg">Requêtes du cabinet</h2>
         <p className="text-sm text-fg-subtle">
-          Les requêtes de votre conseiller. Répondez ou fournissez ce qui est demandé ; il valide ensuite.
+          Ce que votre conseiller attend de vous : une pièce à fournir ou une réponse. Répondez à chaque
+          requête « À faire » ; votre conseiller valide ensuite votre réponse.
         </p>
       </div>
 
       {requetes.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg-raised py-16 text-center">
           <Inbox className="mb-3 h-10 w-10 text-fg-subtle" />
-          <p className="text-sm text-fg-muted">Aucune requête pour le moment.</p>
+          <p className="text-sm text-fg-muted">Aucune requête pour le moment : votre conseiller n’attend rien de vous.</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-3">
@@ -94,7 +95,7 @@ export function MesRequetes() {
               <div className="space-y-3">
                 {byColumn[col.key].length === 0 && (
                   <div className="rounded-lg border border-dashed border-border bg-bg-raised p-4 text-center text-xs text-fg-subtle">
-                    Rien ici
+                    Aucune requête
                   </div>
                 )}
                 {byColumn[col.key].map((r) => (
@@ -186,7 +187,7 @@ function RepondreModal({
       await dataroomService.repondreRequete(requete.id, { noteClient: note.trim() || undefined });
       onDone();
     } catch {
-      setError("L'envoi de votre réponse a échoué. Réessayez.");
+      setError("L’envoi de votre réponse a échoué. Réessayez.");
       setSubmitting(false);
     }
   };
@@ -211,7 +212,7 @@ function RepondreModal({
           <div className="mb-3 rounded-lg bg-accent/5 p-3 text-xs text-fg-muted">
             <p className="flex items-start gap-2">
               <FileUp className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
-              Pièce à fournir : déposez d'abord le document dans votre espace « Dépôts », puis
+              Pièce à fournir : déposez d’abord le document dans votre Data Room, onglet « Dépôts du client », puis
               confirmez ci-dessous. Votre conseiller validera ensuite.
             </p>
             <button
@@ -225,13 +226,13 @@ function RepondreModal({
         )}
 
         <label className="mb-1 block text-xs font-medium text-fg-subtle">
-          {estPiece ? 'Message (optionnel)' : 'Votre réponse'}
+          {estPiece ? 'Message (facultatif)' : 'Votre réponse'}
         </label>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={4}
-          placeholder={estPiece ? 'Ex. : document déposé dans mes Dépôts.' : 'Votre réponse…'}
+          placeholder={estPiece ? 'Exemple : document déposé dans mes dépôts.' : 'Votre réponse…'}
           className="w-full resize-none rounded-lg border border-border bg-bg-raised px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
         />
 

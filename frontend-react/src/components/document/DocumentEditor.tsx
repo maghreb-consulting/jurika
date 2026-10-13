@@ -220,7 +220,7 @@ export function DocumentEditor({
   if (mode === 'edition' && !editor) {
     return (
       <div className="border border-slate-200 bg-slate-50 p-4 rounded text-sm text-slate-600">
-        Chargement de l'éditeur…
+        Chargement de l’éditeur…
       </div>
     );
   }
@@ -286,7 +286,7 @@ export function DocumentEditor({
           <span className="ml-auto text-[11px] text-slate-500">
             {mode === 'fidele'
               ? 'Styles Word préservés (polices, marges, hiérarchie).'
-              : 'Modifications libres — l\'export reflète ce qui est affiché.'}
+              : 'Modifications libres — l’export reflète ce qui est affiché.'}
           </span>
         </div>
       )}

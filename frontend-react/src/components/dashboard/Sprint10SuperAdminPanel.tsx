@@ -62,18 +62,18 @@ export function Sprint10SuperAdminPanel() {
     <div className="mt-6 space-y-4">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard
-          label="Workspaces actifs (30j)"
+          label="Workspaces actifs (30 j)"
           value={data.activeWorkspaces30d}
           icon={<Users className="h-4 w-4" />}
         />
         <KpiCard
-          label="Signups (30j)"
+          label="Inscriptions (30 j)"
           value={data.signups30d.reduce((acc, d) => acc + d.count, 0)}
         />
         <KpiCard
           label="Documents stockés"
           value={data.storage.fileCount}
-          hint={`${bytesToGB(data.storage.totalBytes)} GB`}
+          hint={`${bytesToGB(data.storage.totalBytes)} Go`}
           icon={<HardDrive className="h-4 w-4" />}
         />
         <KpiCard
@@ -118,16 +118,16 @@ export function Sprint10SuperAdminPanel() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-border bg-bg-raised p-4">
-          <h4 className="mb-2 text-sm font-semibold text-fg">Signups 30j</h4>
+          <h4 className="mb-2 text-sm font-semibold text-fg">Inscriptions sur 30 jours</h4>
           {data.signups30d.length === 0 ? (
-            <p className="py-8 text-center text-xs text-fg-subtle">Aucun signup récent</p>
+            <p className="py-8 text-center text-xs text-fg-subtle">Aucune inscription récente</p>
           ) : (
             <EvolutionChart data={data.signups30d} color="#10B981" />
           )}
         </div>
 
         <div className="rounded-xl border border-border bg-bg-raised p-4">
-          <h4 className="mb-2 text-sm font-semibold text-fg">Santé services</h4>
+          <h4 className="mb-2 text-sm font-semibold text-fg">Santé des services</h4>
           <ul className="grid grid-cols-2 gap-2">
             {Object.entries(data.servicesHealth).map(([svc, status]) => (
               <li key={svc} className="flex items-center gap-2 text-xs">

@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { EmployeeDashboard } from '../EmployeeDashboard';
 
@@ -97,16 +97,16 @@ describe('EmployeeDashboard', () => {
     // « sur 0 de mes tickets ».)
     //
     // On attend donc un texte qui n'existe QUE si les donnees sont arrivees.
-    await screen.findByText('1 dossier a moi');
+    await screen.findByText('1 dossier à vous');
     expect(screen.getByText('Dossiers actifs')).toBeInTheDocument();
     expect(screen.getByText('Tickets en cours')).toBeInTheDocument();
-    expect(screen.getByText('Taches urgentes')).toBeInTheDocument();
-    expect(screen.getByText('Cloturees')).toBeInTheDocument();
+    expect(screen.getByText('Tâches urgentes')).toBeInTheDocument();
+    expect(screen.getByText('Clôturés')).toBeInTheDocument();
 
     // Dossiers actifs = 1 (mon unique dossier), PAS un total workspace.
     const dossiersCard = screen.getByText('Dossiers actifs').closest('div')?.parentElement;
     expect(dossiersCard).toHaveTextContent('1');
-    expect(dossiersCard).toHaveTextContent('1 dossier a moi');
+    expect(dossiersCard).toHaveTextContent('1 dossier à vous');
     // Aucun "23" (ou tout autre total global) ne doit apparaitre.
     expect(screen.queryByText('23')).not.toBeInTheDocument();
   });
@@ -143,7 +143,7 @@ describe('EmployeeDashboard', () => {
 
     await waitFor(() => expect(screen.getByText('Besoin K-bis')).toBeInTheDocument());
     // Le nom du dataroom (raison sociale) est resolu, pas l'UUID.
-    expect(screen.getByText(/Dataroom : ACME SARL/i)).toBeInTheDocument();
+    expect(screen.getByText(/Data Room : ACME SARL/i)).toBeInTheDocument();
   });
 
   it('affiche la section « Mes requetes au client » avec le dataroom et le badge a valider', async () => {
@@ -165,9 +165,35 @@ describe('EmployeeDashboard', () => {
     // au premier paint, la requete elle-meme arrive avec la promesse. On attend
     // donc le SUJET de la requete, qui n'apparait qu'une fois la donnee la.
     await screen.findByText('Fournir bail');
-    expect(screen.getByText('Mes requetes au client')).toBeInTheDocument();
+    expect(screen.getByText('Requêtes du cabinet au client')).toBeInTheDocument();
     // Nom du dataroom present sur la carte requete + badge « a valider » (REPONDUE).
-    expect(screen.getByText(/Dataroom : BETA SAS/i)).toBeInTheDocument();
-    expect(screen.getByText(/1 a valider/i)).toBeInTheDocument();
+    expect(screen.getByText(/Data Room : BETA SAS/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 à valider/i)).toBeInTheDocument();
+  });
+
+  it('la carte d une requete ouvre l onglet « Requêtes du cabinet » de la Data Room (lot L6)', async () => {
+    list.mockResolvedValue({ items: [] });
+    listDossiers.mockResolvedValue([{ id: 'd1', raisonSociale: 'BETA SAS', formeJuridique: 'SAS', ice: null, ville: 'Rabat', statut: 'ACTIF' }]);
+    listDemandes.mockResolvedValue([]);
+    listMesRequetes.mockResolvedValue([
+      { id: 'r1', dossierId: 'd1', soumisPar: 'u1', sujet: 'Fournir bail', description: null,
+        statut: 'OUVERTE', ticketId: null, prisEnChargePar: 'u1', noteInterne: null, traiteAt: null,
+        createdAt: '2026-07-21', direction: 'EMPLOYE_TO_CLIENT', typeRequete: 'PIECE',
+        reponduAt: null, clotureAt: null, noteClient: null },
+    ]);
+    function Lieu() {
+      const l = useLocation();
+      return <p data-testid="lieu">{l.pathname + l.search}</p>;
+    }
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="/" element={<EmployeeDashboard />} />
+          <Route path="/data-rooms" element={<Lieu />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    fireEvent.click(await screen.findByText('Fournir bail'));
+    expect(await screen.findByTestId('lieu')).toHaveTextContent('/data-rooms?dossier=d1&tab=requetes');
   });
 });

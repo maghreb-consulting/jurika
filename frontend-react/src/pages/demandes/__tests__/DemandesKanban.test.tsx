@@ -99,7 +99,7 @@ describe('DemandesKanban', () => {
     const dialog = await screen.findByRole('dialog');
 
     fireEvent.change(
-      within(dialog).getByPlaceholderText(/Modification de l'objet social/i),
+      within(dialog).getByPlaceholderText(/modification de l’objet social/i),
       { target: { value: 'Nouveau sujet' } },
     );
     fireEvent.click(within(dialog).getByRole('button', { name: /Envoyer/i }));

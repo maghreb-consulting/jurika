@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { SupervisionDemandesPanel } from '../SupervisionDemandesPanel';
 import type { DemandeSupervisionRow } from '../../../types/dataroom';
@@ -42,7 +42,7 @@ describe('SupervisionDemandesPanel', () => {
     renderPanel();
 
     await waitFor(() => expect(screen.getByText('Demandes des clients')).toBeInTheDocument());
-    expect(screen.getByText('Requêtes aux clients')).toBeInTheDocument();
+    expect(screen.getByText('Requêtes du cabinet aux clients')).toBeInTheDocument();
 
     // Demande : sujet + dataroom (raison sociale, pas l'UUID) + employe.
     expect(screen.getByText('Besoin K-bis')).toBeInTheDocument();
@@ -109,5 +109,30 @@ describe('SupervisionDemandesPanel', () => {
     await waitFor(() => expect(screen.getByText('Fournir bail')).toBeInTheDocument());
     expect(screen.getByText('État inconnu · 1')).toBeInTheDocument();
     expect(screen.queryByTestId('compteur-etat-NON_TRAITEE')).not.toBeInTheDocument();
+  });
+
+  it('une requete s ouvre sur l onglet « Requêtes du cabinet », une demande sur « Demandes du client » (lot L6)', async () => {
+    listSupervisionDemandes.mockImplementation((direction: string) =>
+      Promise.resolve(direction === 'CLIENT_TO_EMPLOYE' ? [demande] : [requete]),
+    );
+    function Lieu() {
+      const l = useLocation();
+      return <p data-testid="lieu">{l.pathname + l.search}</p>;
+    }
+    const monter = () => render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="/" element={<SupervisionDemandesPanel />} />
+          <Route path="/data-rooms" element={<Lieu />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    const { unmount } = monter();
+    fireEvent.click(await screen.findByText('Fournir bail'));
+    expect(await screen.findByTestId('lieu')).toHaveTextContent('/data-rooms?dossier=d2&tab=requetes');
+    unmount();
+    monter();
+    fireEvent.click(await screen.findByText('Besoin K-bis'));
+    expect(await screen.findByTestId('lieu')).toHaveTextContent('/data-rooms?dossier=d1&tab=demandes');
   });
 });
