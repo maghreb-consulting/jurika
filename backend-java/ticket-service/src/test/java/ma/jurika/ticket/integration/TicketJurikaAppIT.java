@@ -247,18 +247,18 @@ class TicketJurikaAppIT {
                 .andExpect(status().isOk());
         assertThat(owner.queryForObject("SELECT COUNT(*) FROM ticket_debours WHERE ticket_id = ?",
                 Integer.class, ticketId)).isEqualTo(1);
-        // Lot L5 (E6) : etat Word (P5) ; la sortie PDF n'existe plus.
-        MvcResult etat = mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours/etat-word")
+        // Lot L5b (E3, RG-DEB-02, RG-FIC-08) : etat des debours en PDF a la charte ; plus de Word.
+        MvcResult etat = mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours/etat-pdf")
                         .header("Authorization", karim()))
                 .andExpect(status().isOk())
                 .andReturn();
-        assertThat(etat.getResponse().getContentType())
-                .isEqualTo("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-        try (var doc = new org.apache.poi.xwpf.usermodel.XWPFDocument(
-                new java.io.ByteArrayInputStream(etat.getResponse().getContentAsByteArray()))) {
-            String texte = new org.apache.poi.xwpf.extractor.XWPFWordExtractor(doc).getText();
+        assertThat(etat.getResponse().getContentType()).isEqualTo("application/pdf");
+        try (var doc = org.apache.pdfbox.Loader.loadPDF(etat.getResponse().getContentAsByteArray())) {
+            String texte = new org.apache.pdfbox.text.PDFTextStripper().getText(doc);
             assertThat(texte).contains("TROIS CENT CINQUANTE DIRHAMS", "Frais de greffe");
         }
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours/etat-word").header("Authorization", karim()))
+                .andExpect(status().is4xxClientError());
         mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours/export-pdf").header("Authorization", karim()))
                 .andExpect(status().is4xxClientError());
         // P7 : l'ajout est trace (ancienne et nouvelle valeur), ressource : le ticket. L'ecriture
@@ -496,13 +496,13 @@ class TicketJurikaAppIT {
         // Sans reglage : consultation permise (valeur par defaut) -> le client lit.
         mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours").header("Authorization", jetonClient))
                 .andExpect(status().isOk());
-        // Lot L5 (E6, RG-DEB-03) : l'etat Word se telecharge si la permission le prevoit...
-        mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours/etat-word").header("Authorization", jetonClient))
+        // Lot L5 (E6, RG-DEB-03) : l'etat (PDF depuis L5b E3) se telecharge si la permission le prevoit...
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours/etat-pdf").header("Authorization", jetonClient))
                 .andExpect(status().isOk());
         // ... et non sans la permission de telecharger (la consultation reste ouverte).
         owner.update("INSERT INTO dataroom_settings (dossier_id, workspace_id, perm_download) VALUES (?, ?, FALSE) "
                 + "ON CONFLICT (dossier_id) DO UPDATE SET perm_download = FALSE", dossierId, WS_A);
-        mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours/etat-word").header("Authorization", jetonClient))
+        mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours/etat-pdf").header("Authorization", jetonClient))
                 .andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/tickets/" + ticketId + "/debours").header("Authorization", jetonClient))
                 .andExpect(status().isOk());

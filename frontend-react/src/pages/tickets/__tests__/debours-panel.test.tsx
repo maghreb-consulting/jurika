@@ -5,7 +5,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 /**
  * Lot L5 (E6) : rubrique Débours du ticket (cahier des charges 10.1). Saisie par l'employé en
  * charge (une ligne par frais, sept types, pièce déposée en Data Room du dossier), lecture
- * seule pour le superviseur et sur un ticket clos ou annulé, état des débours en Word.
+ * seule pour le superviseur et sur un ticket clos ou annulé, état des débours en PDF (lot L5b E3).
  */
 const { tickets, dataroom } = vi.hoisted(() => ({
   tickets: {
@@ -114,10 +114,10 @@ describe('Débours du ticket (RG-DEB-01 à 03)', () => {
     await waitFor(() => expect(tickets.deleteDebours).toHaveBeenCalledWith('t1', 'l2'));
   });
 
-  it('télécharge l’état des débours en Word', async () => {
+  it('télécharge l’état des débours en PDF', async () => {
     tickets.downloadEtatDebours.mockResolvedValue(undefined);
     monter(false);
-    fireEvent.click(await screen.findByRole('button', { name: /État des débours \(Word\)/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /État des débours \(PDF\)/ }));
     expect(tickets.downloadEtatDebours).toHaveBeenCalledWith('t1', 'T-2026-00012');
   });
 
@@ -135,14 +135,14 @@ describe('Débours du ticket (RG-DEB-01 à 03)', () => {
     expect(await screen.findByText('Dépôt au greffe')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Ajouter un frais/ })).toBeNull();
     expect(screen.getByRole('note', { name: 'Comment tenir les débours ?' })).toHaveTextContent(/lecture seule/);
-    expect(screen.getByRole('button', { name: /État des débours \(Word\)/ })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /État des débours \(PDF\)/ })).toBeEnabled();
   });
 
   it('sans débours, l’état ne peut pas être téléchargé', async () => {
     tickets.listDebours.mockResolvedValue({ items: [], total: 0 });
     monter(true);
     expect(await screen.findByText('Aucun débours saisi pour ce ticket.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /État des débours \(Word\)/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /État des débours \(PDF\)/ })).toBeDisabled();
   });
 
   it('ticket sans dossier : la pièce ne peut pas être déposée, l’écran le dit', async () => {

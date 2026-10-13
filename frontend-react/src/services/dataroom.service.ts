@@ -22,7 +22,7 @@ import type {
   VersionTaxeProfessionnelle,
   FicheClientVue,
   FicheDossierVue,
-  FicheWordResultat,
+  FichePdfResultat,
   DroitsDossier,
   SearchJuridiqueParams,
   SearchJuridiqueResult,
@@ -515,15 +515,16 @@ export const dataroomService = {
   },
 
   /**
-   * Lot L5 (E7, P5) : genere la fiche au format Word et la telecharge. Generee par
-   * l'employe responsable, elle est conservee dans la Data Room (nouvelle version).
+   * Lot L5b (E3, RG-FIC-05, 07, 08) : genere la fiche au format PDF a la charte JURIKA et la
+   * telecharge (plus de Word). Generee par l'employe responsable, elle est conservee dans la
+   * Data Room (nouvelle version).
    */
-  async genererFicheWord(
+  async genererFichePdf(
     dossierId: string,
     fiche: 'fiche-client' | 'fiche-dossier',
-  ): Promise<FicheWordResultat> {
+  ): Promise<FichePdfResultat> {
     const response = await api.post(
-      `/dataroom/dossiers/${dossierId}/juridique/${fiche}/word`,
+      `/dataroom/dossiers/${dossierId}/juridique/${fiche}/pdf`,
       null,
       { responseType: 'blob' },
     );
@@ -531,7 +532,7 @@ export const dataroomService = {
     const disposition = String(entetes['content-disposition'] ?? '');
     const nom =
       /filename="([^"]+)"/.exec(disposition)?.[1] ??
-      (fiche === 'fiche-client' ? 'Fiche_client.docx' : 'Fiche_dossier.docx');
+      (fiche === 'fiche-client' ? 'Fiche_client.pdf' : 'Fiche_dossier.pdf');
     triggerDownload(response.data as Blob, nom);
     const version = String(entetes['x-fiche-version'] ?? '');
     return {

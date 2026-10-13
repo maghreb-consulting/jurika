@@ -12,20 +12,24 @@ import type {
 } from '../../../types/dataroom';
 
 /**
- * Lot L5 (E7) : fiche client et fiche dossier (cahier des charges 10.2 et 10.3).
+ * Lot L5 (E7) puis lot L5b (E3) : fiche client OU fiche dossier (cahier des charges 10.2
+ * et 10.3). Deux documents distincts, chacun son bouton, son panneau et son PDF
+ * (RG-FIC-05, RG-FIC-07) :
  *
  * - Fiche client : les identifiants de la societe en vigueur et leur provenance
- *   (RG-FIC-01, 03), les versions de la taxe professionnelle (RG-FIC-02), la trace des
- *   modifications (RG-FIC-04).
+ *   (RG-FIC-01, 03), les versions de la taxe professionnelle (RG-FIC-02) ; a l'ecran
+ *   seulement, la trace des modifications (RG-FIC-04).
  * - Fiche dossier : les memes identifiants et toutes les operations du dossier (RG-FIC-06).
- * - Generation Word a la demande (P5), conservee dans la Data Room quand l'employe
- *   responsable la produit (versions successives).
+ * - Telechargement PDF a la charte JURIKA (RG-FIC-08 ; plus de Word), conserve dans la
+ *   Data Room quand l'employe responsable le produit (versions successives).
  */
 
-type Onglet = 'client' | 'dossier';
+export type TypeFiche = 'client' | 'dossier';
 
 interface Props {
   open: boolean;
+  /** Fiche affichee : client ou dossier (deux panneaux distincts). */
+  type: TypeFiche;
   dossierId: string;
   raisonSociale: string;
   onClose: () => void;
@@ -38,29 +42,37 @@ interface Props {
 const formatDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('fr-MA', { timeZone: 'Africa/Casablanca' }) : '—';
 
-export function FichesSocieteDrawer({
+export function FicheSocieteDrawer({
   open,
+  type,
   dossierId,
   raisonSociale,
   onClose,
   onModifier,
   versionDonnees = 0,
 }: Props) {
-  const [onglet, setOnglet] = useState<Onglet>('client');
-  const [vue, setVue] = useState<FicheDossierVue | null>(null);
+  const [fiche, setFiche] = useState<FicheClientVue | null>(null);
+  const [dossier, setDossier] = useState<FicheDossierVue | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
-  const [generation, setGeneration] = useState<Onglet | null>(null);
+  const [generation, setGeneration] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   // Relue a chaque ouverture et apres chaque enregistrement des identifiants.
   useEffect(() => {
     if (!open) return undefined;
     let actif = true;
-    dataroomService
-      .ficheDossier(dossierId)
-      .then((v) => {
+    // Un panneau par type de fiche (cle "type" chez le parent) : rien a vider ici.
+    const lecture: Promise<FicheClientVue> =
+      type === 'client'
+        ? dataroomService.ficheClient(dossierId)
+        : dataroomService.ficheDossier(dossierId).then((v) => {
+            if (actif) setDossier(v);
+            return v.fiche;
+          });
+    lecture
+      .then((f) => {
         if (!actif) return;
-        setVue(v);
+        setFiche(f);
         setErreur(null);
       })
       .catch((err: unknown) => {
@@ -69,38 +81,38 @@ export function FichesSocieteDrawer({
     return () => {
       actif = false;
     };
-  }, [open, dossierId, versionDonnees]);
+  }, [open, type, dossierId, versionDonnees]);
 
-  async function generer(type: Onglet) {
-    setGeneration(type);
+  async function telecharger() {
+    setGeneration(true);
     setMessage(null);
     setErreur(null);
     try {
-      const r = await dataroomService.genererFicheWord(
+      const r = await dataroomService.genererFichePdf(
         dossierId,
         type === 'client' ? 'fiche-client' : 'fiche-dossier',
       );
       const nom = type === 'client' ? 'La fiche client' : 'La fiche dossier';
       setMessage(
         r.conservee
-          ? `${nom} a été téléchargée et conservée dans la Data Room du dossier (version ${r.version ?? '—'}).`
-          : `${nom} a été téléchargée. Elle n’est pas conservée dans la Data Room : seul l’employé responsable conserve les fiches, et une société archivée n’en reçoit plus.`,
+          ? `${nom} (PDF) a été téléchargée et conservée dans la Data Room du dossier (version ${r.version ?? '—'}).`
+          : `${nom} (PDF) a été téléchargée. Elle n’est pas conservée dans la Data Room : seul l’employé responsable conserve les fiches, et une société archivée n’en reçoit plus.`,
       );
     } catch (err) {
       setErreur(extractError(err).message);
     } finally {
-      setGeneration(null);
+      setGeneration(false);
     }
   }
 
-  const fiche: FicheClientVue | null = vue?.fiche ?? null;
   const manquants = fiche ? fiche.identifiants.filter((i) => i.valeur === null) : [];
+  const titre = type === 'client' ? 'Fiche client' : 'Fiche dossier';
 
   return (
     <Drawer
       open={open}
       onClose={onClose}
-      title="Fiche client et fiche dossier"
+      title={titre}
       subtitle={raisonSociale}
       width="xl"
       footer={
@@ -113,45 +125,40 @@ export function FichesSocieteDrawer({
           )}
           <Button
             size="sm"
-            onClick={() => void generer(onglet)}
-            loading={generation === onglet}
-            disabled={!vue}
+            onClick={() => void telecharger()}
+            loading={generation}
+            disabled={!fiche}
             data-testid="fiche-generer"
           >
             <FileDown className="mr-1 h-4 w-4" />
-            {onglet === 'client' ? 'Générer la fiche client (Word)' : 'Générer la fiche dossier (Word)'}
+            {type === 'client' ? 'Télécharger la fiche client (PDF)' : 'Télécharger la fiche dossier (PDF)'}
           </Button>
+          <InfoBulle
+            libelle="Quel document est téléchargé ?"
+            texte="Un PDF à la charte JURIKA (logo, couleurs marine et or), établi à partir des informations affichées ici. Il n’est pas modifiable : corrigez d’abord les identifiants, puis téléchargez-le de nouveau. Chaque téléchargement par l’employé responsable est conservé dans la Data Room, en versions successives."
+          />
         </div>
       }
     >
-      <TexteAide cle="fiches-societe" titre="À quoi servent ces fiches ?">
-        <p>
-          La <strong>fiche client</strong> présente uniquement les identifiants de la société, à leur
-          valeur en vigueur. La <strong>fiche dossier</strong> y ajoute toutes les opérations
-          juridiques du dossier. Les deux se remplissent seules à partir des données connues ;
-          chaque information indique d’où elle vient. Générez-les en Word quand vous en avez
-          besoin : chaque génération est conservée dans la Data Room, en versions successives.
-        </p>
-      </TexteAide>
-
-      <div role="tablist" aria-label="Fiches" className="mt-4 flex gap-1 border-b border-border">
-        {(['client', 'dossier'] as const).map((o) => (
-          <button
-            key={o}
-            type="button"
-            role="tab"
-            aria-selected={onglet === o}
-            onClick={() => setOnglet(o)}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
-              onglet === o
-                ? 'border-accent text-fg'
-                : 'border-transparent text-fg-subtle hover:text-fg'
-            }`}
-          >
-            {o === 'client' ? 'Fiche client' : 'Fiche dossier'}
-          </button>
-        ))}
-      </div>
+      {type === 'client' ? (
+        <TexteAide cle="fiche-client" titre="À quoi sert la fiche client ?">
+          <p>
+            La <strong>fiche client</strong> présente uniquement les identifiants de la société, à
+            leur valeur en vigueur, sans aucun historique d’opérations. Elle se remplit seule à
+            partir des données connues ; chaque information indique d’où elle vient. Corrigez ici ce
+            qui manque ou ce qui est faux, puis téléchargez-la en PDF quand vous en avez besoin.
+          </p>
+        </TexteAide>
+      ) : (
+        <TexteAide cle="fiche-dossier" titre="À quoi sert la fiche dossier ?">
+          <p>
+            La <strong>fiche dossier</strong> reprend les identifiants de la société et y ajoute
+            toutes les opérations juridiques du dossier : type, dates d’ouverture et de clôture ou
+            d’annulation, statut et employé responsable. Elle est à jour de la dernière clôture.
+            Téléchargez-la en PDF pour la transmettre ou l’archiver.
+          </p>
+        </TexteAide>
+      )}
 
       {erreur && (
         <p role="alert" className="mt-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
@@ -163,7 +170,7 @@ export function FichesSocieteDrawer({
           {message}
         </p>
       )}
-      {!vue && !erreur && <p className="mt-4 text-sm text-fg-subtle">Chargement de la fiche…</p>}
+      {!fiche && !erreur && <p className="mt-4 text-sm text-fg-subtle">Chargement de la fiche…</p>}
 
       {fiche && (
         <div className="mt-4 space-y-6">
@@ -174,7 +181,7 @@ export function FichesSocieteDrawer({
               {fiche.modifiable
                 ? 'Saisissez-les avec « Modifier les identifiants », ou attendez qu’elles arrivent en fin de parcours.'
                 : 'L’employé responsable du dossier peut les saisir.'}{' '}
-              Elles figurent « non renseignées » sur la fiche générée.
+              Elles figurent « non renseignées » sur le PDF.
             </p>
           )}
 
@@ -229,13 +236,13 @@ export function FichesSocieteDrawer({
             )}
           </section>
 
-          {onglet === 'client' && (
+          {type === 'client' && (
             <section aria-labelledby="fiche-modifications">
               <h3 id="fiche-modifications" className="mb-2 flex items-center gap-1 text-sm font-semibold text-fg">
                 Modifications des identifiants
                 <InfoBulle
                   libelle="Qu’est-ce qui est tracé ?"
-                  texte="Toute modification d’un identifiant est tracée : auteur, date, ancienne et nouvelle valeur, provenance. Cette trace s’affiche ici ; elle ne figure pas sur la fiche client générée, qui ne présente que les identifiants."
+                  texte="Toute modification d’un identifiant est tracée : auteur, date, ancienne et nouvelle valeur, provenance. Cette trace s’affiche ici ; elle ne figure pas sur le PDF de la fiche client, qui ne présente que les identifiants."
                 />
               </h3>
               {fiche.modifications.length === 0 ? (
@@ -258,7 +265,7 @@ export function FichesSocieteDrawer({
             </section>
           )}
 
-          {onglet === 'dossier' && vue && (
+          {type === 'dossier' && dossier && (
             <section aria-labelledby="fiche-operations">
               <h3 id="fiche-operations" className="mb-2 flex items-center gap-1 text-sm font-semibold text-fg">
                 Opérations juridiques du dossier
@@ -268,11 +275,11 @@ export function FichesSocieteDrawer({
                 />
               </h3>
               <p className="mb-2 text-xs text-fg-subtle">
-                {vue.derniereCloture
-                  ? `À jour de la dernière clôture, le ${formatDate(vue.derniereCloture)}.`
+                {dossier.derniereCloture
+                  ? `À jour de la dernière clôture, le ${formatDate(dossier.derniereCloture)}.`
                   : 'Aucune opération clôturée à ce jour.'}
               </p>
-              {vue.operations.length === 0 ? (
+              {dossier.operations.length === 0 ? (
                 <p className="text-sm text-fg-subtle">Aucune opération enregistrée.</p>
               ) : (
                 <table className="w-full text-sm" data-testid="fiche-operations-table">
@@ -287,7 +294,7 @@ export function FichesSocieteDrawer({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {vue.operations.map((o) => (
+                    {dossier.operations.map((o) => (
                       <tr key={o.ticketId}>
                         <td className="py-1 pr-2">
                           {o.typeLabel}
@@ -311,9 +318,9 @@ export function FichesSocieteDrawer({
           )}
 
           <p className="text-xs text-fg-subtle">
-            Ensuite : générez la fiche en Word pour la transmettre ou l’archiver. Les fiches
-            générées se retrouvent dans les documents en vigueur du dossier, avec leurs versions
-            précédentes.
+            Ensuite : téléchargez la {type === 'client' ? 'fiche client' : 'fiche dossier'} en PDF pour
+            la transmettre ou l’archiver. Les fiches téléchargées par l’employé responsable se
+            retrouvent dans les documents en vigueur du dossier, avec leurs versions précédentes.
           </p>
         </div>
       )}

@@ -739,7 +739,7 @@ export interface FicheDossierVue {
 }
 
 /** Resultat d'une generation Word : conservee dans la Data Room (et sa version) ou non. */
-export interface FicheWordResultat {
+export interface FichePdfResultat {
   conservee: boolean;
   version: number | null;
 }

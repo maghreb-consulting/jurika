@@ -17,7 +17,8 @@ import type { Debours, DeboursCategorie, TicketStatut } from '../../types/ticket
  * - RG-DEB-01 : une ligne par frais (libellé, montant en DH, type parmi les sept du cahier
  *   des charges, pièce justificative déposée en Data Room du dossier) ; ajout, modification,
  *   suppression par l'employé en charge seulement (le serveur le recontrôle) ;
- * - RG-DEB-02 : état des débours au format Word, régénéré à chaque téléchargement ;
+ * - RG-DEB-02 : état des débours au format PDF à la charte JURIKA (lot L5b E3), régénéré à
+ *   chaque téléchargement ;
  * - RG-TKT-11 : ticket clos ou annulé, lecture seule (garde serveur aussi).
  */
 
@@ -120,11 +121,11 @@ export function DeboursPanel({ ticketId, reference, dossierId, statut, canAct }:
             disabled={items.length === 0 || telechargement}
             title={items.length === 0 ? 'Aucun débours : l’état ne peut pas être établi.' : undefined}
           >
-            <Download className="mr-1 h-3.5 w-3.5" /> État des débours (Word)
+            <Download className="mr-1 h-3.5 w-3.5" /> État des débours (PDF)
           </Button>
           <InfoBulle
             libelle="Que contient l’état des débours ?"
-            texte="Un document Word régénéré à chaque téléchargement à partir des lignes ci-dessous : en-tête du cabinet, société et ticket, tableau des frais, total en chiffres et en lettres, liste des pièces justificatives. Le client peut le télécharger depuis son espace si ses permissions le prévoient."
+            texte="Un document PDF à la charte JURIKA, régénéré à chaque téléchargement à partir des lignes ci-dessous : en-tête du cabinet, société et ticket, tableau des frais, total en chiffres et en lettres, liste des pièces justificatives. Il n’est pas modifiable : corrigez une ligne ci-dessous, puis téléchargez-le de nouveau. Le client peut le télécharger depuis son espace si ses permissions le prévoient."
           />
           {modifiable && edition === null && (
             <Button size="sm" onClick={() => setEdition('nouveau')}>
@@ -139,7 +140,7 @@ export function DeboursPanel({ ticketId, reference, dossierId, statut, canAct }:
           <p>
             Ajoutez une ligne pour chaque frais payé pour le client et joignez sa pièce justificative.
             Une ligne sans pièce est signalée ici et dans l’état des débours. Téléchargez ensuite
-            l’état des débours (Word) pour le remettre au client ; il se régénère à tout moment.
+            l’état des débours (PDF) pour le remettre au client ; il se régénère à tout moment.
           </p>
         ) : ferme ? (
           <p>

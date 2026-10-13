@@ -27,7 +27,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Lot L0 (E22), lot L1 (E11) puis lot L5 (E6) : la lecture des debours (liste et etat Word)
+ * Lot L0 (E22), lot L1 (E11), lot L5 (E6) puis L5b (E3) : la lecture des debours (liste et etat PDF)
  * est ouverte a l'employe, au superviseur et au client ; le controle fin (dossier de
  * l'employe, dossier et permissions du client) est fait par AccesDeboursTicket
  * (AccesDeboursTicketTest). L'ecriture est refusee au superviseur, au client et a l'equipe
@@ -36,7 +36,7 @@ import static org.mockito.Mockito.when;
 class DeboursControllerSecurityTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"list", "etatWord"})
+    @ValueSource(strings = {"list", "etatPdf"})
     void lecture_client_employe_superviseur_autorises_super_admin_refuse(String action) {
         assertThat(GardesSuperviseurTicketTest.autorise("ROLE_CLIENT", methode(action))).isTrue();
         assertThat(GardesSuperviseurTicketTest.autorise("ROLE_EMPLOYE", methode(action))).isTrue();
@@ -54,10 +54,11 @@ class DeboursControllerSecurityTest {
     }
 
     @Test
-    void sortie_pdf_retiree() {
-        // P5 : l'etat des debours ne sort plus qu'en Word.
+    void sortie_word_retiree() {
+        // Lot L5b (E3, RG-FIC-08) : l'etat des debours ne sort qu'en PDF a la charte, plus en Word.
         assertThat(Arrays.stream(DeboursController.class.getDeclaredMethods()).map(Method::getName))
-                .doesNotContain("exportPdf");
+                .doesNotContain("exportPdf", "etatWord")
+                .contains("etatPdf");
     }
 
     @Test
@@ -71,7 +72,7 @@ class DeboursControllerSecurityTest {
         AuthenticatedUser employe = new AuthenticatedUser(UUID.randomUUID(), UUID.randomUUID(), "e@a.test", Role.EMPLOYE);
 
         assertThatThrownBy(() -> controleur.list(employe, UUID.randomUUID())).isInstanceOf(NotFoundException.class);
-        assertThatThrownBy(() -> controleur.etatWord(employe, UUID.randomUUID())).isInstanceOf(NotFoundException.class);
+        assertThatThrownBy(() -> controleur.etatPdf(employe, UUID.randomUUID())).isInstanceOf(NotFoundException.class);
         verifyNoInteractions(debours);
     }
 

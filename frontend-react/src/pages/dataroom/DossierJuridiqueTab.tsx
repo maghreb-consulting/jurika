@@ -58,7 +58,7 @@ import { UploadDocumentDialog } from './components/UploadDocumentDialog';
 import { MultiUploadDrawer } from './components/MultiUploadDrawer';
 import { DocumentVersionsDropdown } from './components/DocumentVersionsDropdown';
 import { IdentifiantsDrawer } from './components/IdentifiantsDrawer';
-import { FichesSocieteDrawer } from './components/FichesSocieteDrawer';
+import { FicheSocieteDrawer, type TypeFiche } from './components/FichesSocieteDrawer';
 import { computeMissingIdentity } from './components/ficheClientPreflight';
 import { nomFichierDocument, referenceDocument } from '../../lib/referencesLisibles';
 
@@ -155,8 +155,9 @@ export function DossierJuridiqueTab({
     }
   }
 
-  // Lot L5 (E7) : fiche client et fiche dossier (ecran, provenance, Word conserve).
-  const [fichesOpen, setFichesOpen] = useState(false);
+  // Lot L5 (E7) : fiche client et fiche dossier (ecran, provenance ; PDF conserve depuis L5b E3).
+  // Lot L5b (E3, RG-FIC-05, 07) : fiche client et fiche dossier, deux panneaux distincts.
+  const [ficheOuverte, setFicheOuverte] = useState<TypeFiche | null>(null);
   const [identifiantsOpen, setIdentifiantsOpen] = useState(false);
   const [versionIdentifiants, setVersionIdentifiants] = useState(0);
 
@@ -410,16 +411,32 @@ export function DossierJuridiqueTab({
                 </Button>
               )}
               {canFiche && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setFichesOpen(true)}
-                  data-testid="open-fiches"
-                  title="Fiche client et fiche dossier : consulter, modifier, générer en Word"
-                >
-                  <FileDown className="mr-1 h-4 w-4" />
-                  Fiche client et fiche dossier
-                </Button>
+                <>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setFicheOuverte('client')}
+                    data-testid="open-fiche-client"
+                    title="Fiche client : identifiants de la société, à consulter, corriger et télécharger en PDF"
+                  >
+                    <FileDown className="mr-1 h-4 w-4" />
+                    Fiche client
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setFicheOuverte('dossier')}
+                    data-testid="open-fiche-dossier"
+                    title="Fiche dossier : identifiants et opérations juridiques du dossier, à télécharger en PDF"
+                  >
+                    <FileDown className="mr-1 h-4 w-4" />
+                    Fiche dossier
+                  </Button>
+                  <InfoBulle
+                    libelle="Fiche client ou fiche dossier ?"
+                    texte="La fiche client ne présente que les identifiants de la société (aucun historique). La fiche dossier y ajoute toutes les opérations juridiques du dossier. Ce sont deux documents distincts, chacun téléchargeable en PDF."
+                  />
+                </>
               )}
               {canUpload && (
                 <>
@@ -583,11 +600,13 @@ export function DossierJuridiqueTab({
       {/* Lot L5 (E7) : fiche client et fiche dossier, formulaire des identifiants */}
       {view && (
         <>
-          <FichesSocieteDrawer
-            open={fichesOpen}
+          <FicheSocieteDrawer
+            key={ficheOuverte ?? 'fermee'}
+            open={ficheOuverte !== null}
+            type={ficheOuverte ?? 'client'}
             dossierId={dossierId}
             raisonSociale={view.raisonSociale}
-            onClose={() => setFichesOpen(false)}
+            onClose={() => setFicheOuverte(null)}
             onModifier={() => setIdentifiantsOpen(true)}
             versionDonnees={versionIdentifiants}
           />
