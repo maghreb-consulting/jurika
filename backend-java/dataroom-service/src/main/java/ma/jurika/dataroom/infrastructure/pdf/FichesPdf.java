@@ -109,11 +109,13 @@ public final class FichesPdf {
             doc.note("Aucune op\u00e9ration enregistr\u00e9e.");
             return;
         }
+        // Lot L5b : la colonne de reference tient une reference de ticket entiere
+        // (T-AAAA-NNNNN) ; plus etroite, elle la coupait sur deux lignes.
         PdfTable t = new PdfTable()
-                .column("Op\u00e9ration", 2.2f, PdfTable.Align.LEFT)
-                .column("R\u00e9f\u00e9rence", 1.2f, PdfTable.Align.LEFT)
-                .column("Ouverture", 1.3f, PdfTable.Align.LEFT)
-                .column("Cl\u00f4ture ou annulation", 1.7f, PdfTable.Align.LEFT)
+                .column("Op\u00e9ration", 2.0f, PdfTable.Align.LEFT)
+                .column("R\u00e9f\u00e9rence", 1.9f, PdfTable.Align.LEFT)
+                .column("Ouverture", 1.2f, PdfTable.Align.LEFT)
+                .column("Cl\u00f4ture ou annulation", 1.6f, PdfTable.Align.LEFT)
                 .column("Statut", 1.5f, PdfTable.Align.LEFT)
                 .column("Responsable", 1.5f, PdfTable.Align.LEFT);
         for (Operation o : operations) {
