@@ -38,7 +38,7 @@ export function StepDepotPieces({ dossierId, existing, saving, onSubmit }: Props
     async (fichiers: FileList | null) => {
       if (!fichiers || fichiers.length === 0) return;
       if (!dossierId) {
-        setErreur("Le ticket n'a pas de dossier rattache : le depot est impossible.");
+        setErreur('Aucun dossier n’est rattaché à ce ticket : le dépôt est impossible. Revenez à la liste des tickets et rouvrez le parcours.');
         return;
       }
       setErreur(null);
@@ -69,16 +69,16 @@ export function StepDepotPieces({ dossierId, existing, saving, onSubmit }: Props
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-fg">Pieces comptables et fiscales</h2>
+        <h2 className="text-lg font-semibold text-fg">Pièces comptables et fiscales</h2>
         <p className="mt-1 text-sm text-fg-subtle">
-          Etape optionnelle. Les fichiers sont deposes tels quels dans « Depot client »,
-          sans classement ni traitement.
+          Étape facultative. Les fichiers sont déposés tels quels dans l’espace « Dépôt client »
+          de la Data Room, sans classement ni traitement.
         </p>
       </div>
 
       {!dossierId && (
         <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-fg">
-          Le ticket n&apos;a pas de dossier rattache : le depot est desactive.
+          Aucun dossier n’est rattaché à ce ticket : le dépôt est désactivé. Revenez à la liste des tickets et rouvrez le parcours.
         </p>
       )}
 
@@ -89,7 +89,7 @@ export function StepDepotPieces({ dossierId, existing, saving, onSubmit }: Props
       >
         <FolderUp className="h-6 w-6 text-fg-subtle" />
         <span className="text-sm font-medium text-fg">Choisir des fichiers</span>
-        <span className="text-xs text-fg-subtle">Plusieurs fichiers a la fois, tous formats</span>
+        <span className="text-xs text-fg-subtle">Plusieurs fichiers à la fois, tous formats</span>
         <input
           type="file"
           multiple
@@ -117,7 +117,7 @@ export function StepDepotPieces({ dossierId, existing, saving, onSubmit }: Props
               {p.etat === 'ECHEC' && <AlertTriangle className="h-4 w-4 text-danger" />}
               <span className="flex-1 truncate text-fg">{p.nom}</span>
               {p.etat === 'ECHEC' && (
-                <span className="text-xs text-danger">{p.erreur ?? 'Echec du depot'}</span>
+                <span className="text-xs text-danger">{p.erreur ?? 'Échec du dépôt : réessayez.'}</span>
               )}
             </li>
           ))}
@@ -127,8 +127,8 @@ export function StepDepotPieces({ dossierId, existing, saving, onSubmit }: Props
       <div className="flex items-center justify-between pt-2">
         <p className="text-sm text-fg-subtle">
           {deposees.length === 0
-            ? 'Aucune piece deposee'
-            : `${deposees.length} piece${deposees.length > 1 ? 's' : ''} deposee${deposees.length > 1 ? 's' : ''}`}
+            ? 'Aucune pièce déposée : vous pouvez continuer sans dépôt.'
+            : `${deposees.length} pièce${deposees.length > 1 ? 's' : ''} déposée${deposees.length > 1 ? 's' : ''}`}
         </p>
         <Button
           disabled={saving}

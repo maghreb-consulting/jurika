@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { extractError } from '../../lib/api';
 import { ticketService } from '../../services/ticket.service';
 import type { Ticket } from '../../types/ticket';
@@ -49,8 +49,13 @@ export function WorkflowPage() {
 
   if (!ticket) {
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger">
-        {error ?? 'Ticket introuvable'}
+      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+        <p>
+          {error ?? 'Ticket introuvable : il a peut-être été supprimé, ou vous n’y avez pas accès.'}
+        </p>
+        <Link to="/tickets" className="mt-2 inline-block font-medium underline">
+          Revenir à la liste des tickets
+        </Link>
       </div>
     );
   }
