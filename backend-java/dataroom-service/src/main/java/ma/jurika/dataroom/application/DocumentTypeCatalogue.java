@@ -54,38 +54,38 @@ public final class DocumentTypeCatalogue {
             // Lot 5 (2026-09-07) — formulaires administratifs DEPOSES par le cabinet.
             // A ne pas confondre avec les documents RECUS qu'ils font obtenir (TP,
             // BULLETIN_IF, RC), qui figurent plus bas parmi les justificatifs.
-            new String[] {"DEMANDE_TAXE_PROFESSIONNELLE", "Demande d'inscription à la taxe professionnelle"},
-            new String[] {"DECLARATION_EXISTENCE", "Déclaration d'existence"},
-            new String[] {"DECLARATION_IMMATRICULATION_RC", "Déclaration d'immatriculation au RC (modèle 2)"},
+            new String[] {"DEMANDE_TAXE_PROFESSIONNELLE", "Demande d\u2019inscription \u00e0 la taxe professionnelle"},
+            new String[] {"DECLARATION_EXISTENCE", "D\u00e9claration d\u2019existence"},
+            new String[] {"DECLARATION_IMMATRICULATION_RC", "D\u00e9claration d\u2019immatriculation au RC (mod\u00e8le 2)"},
             // Lot B (2026-09-11) — les huit documents du corpus du 9 septembre que
             // JURIKA produit. Sans entree ici, la base les acceptait mais le menu ne
             // les proposait pas : ils n'etaient rangeables que sous « Autre », et
             // deux « Autre » de meme titre se dedupliquent.
             new String[] {"ATTESTATION_SOUSCRIPTION_LIBERATION",
                     "Déclaration de souscription et de versement"},
-            new String[] {"DEMANDE_AFFILIATION_CNSS", "Demande d'affiliation CNSS"},
+            new String[] {"DEMANDE_AFFILIATION_CNSS", "Demande d\u2019affiliation CNSS"},
             new String[] {"DECLARATION_BENEFICIAIRES_EFFECTIFS",
                     "Déclaration des bénéficiaires effectifs"},
             new String[] {"DEMANDE_DEBLOCAGE_CAPITAL", "Demande de déblocage du capital"},
             new String[] {"DECLARATION_CNDP", "Déclaration CNDP"},
-            new String[] {"DEMANDE_ADHESION_SIMPL", "Demande d'adhésion aux téléservices SIMPL"},
+            new String[] {"DEMANDE_ADHESION_SIMPL", "Demande d\u2019adh\u00e9sion aux t\u00e9l\u00e9services SIMPL"},
             new String[] {"LETTRE_RETRAIT_DEPOT", "Lettre de retrait ou de régularisation"},
-            new String[] {"NOTE_ANNULATION", "Note d'annulation du dossier"},
+            new String[] {"NOTE_ANNULATION", "Note d\u2019annulation du dossier"},
             // Lot L5 (E7, RG-FIC-05 a 07) : fiches produites par la Data Room, conservees en
             // versions successives.
             new String[] {"FICHE_CLIENT", "Fiche client"},
             new String[] {"FICHE_DOSSIER", "Fiche dossier"},
             // — Justificatifs delivres par les administrations —
             new String[] {"CN", "Certificat négatif"},
-            new String[] {"ATTESTATION_ENREGISTREMENT", "Attestation d'enregistrement"},
+            new String[] {"ATTESTATION_ENREGISTREMENT", "Attestation d\u2019enregistrement"},
             new String[] {"ATTESTATION_BLOCAGE_CAPITAL", "Attestation de blocage du capital"},
             new String[] {"RC", "Registre du commerce"},
             new String[] {"ICE", "Identifiant ICE"},
             new String[] {"TP", "Taxe professionnelle"},
-            new String[] {"BULLETIN_IF", "Bulletin d'identification fiscale"},
+            new String[] {"BULLETIN_IF", "Bulletin d\u2019identification fiscale"},
             new String[] {"CNSS", "CNSS"},
             new String[] {"ACCUSE_RBE", "Accusé bénéficiaires effectifs"},
-            new String[] {"JOURNAL_ANNONCE", "Journal d'annonces légales"},
+            new String[] {"JOURNAL_ANNONCE", "Journal d\u2019annonces l\u00e9gales"},
             new String[] {"PUBLICATION_BO", "Publication au Bulletin officiel"},
             new String[] {"LIVRES_LEGAUX", "Livres légaux cotés et paraphés"},
             new String[] {"AUTORISATION_SECTORIELLE", "Autorisation sectorielle"},
@@ -99,13 +99,13 @@ public final class DocumentTypeCatalogue {
             // indisponibilite. Deux pieces, deux moments du parcours.
             new String[] {"RECEPISSE_DEPOT", "Récépissé de dépôt"},
             new String[] {"AVIS_VERSEMENT_BANQUE", "Avis de versement de la banque"},
-            new String[] {"INVESTISSEMENT_ETRANGER", "Formulaire d'investissement étranger"},
+            new String[] {"INVESTISSEMENT_ETRANGER", "Formulaire d\u2019investissement \u00e9tranger"},
             new String[] {"ACCUSE_RETRAIT_DEPOT", "Accusé de réception (retrait ou régularisation)"},
             // — Pieces fournies par le client —
             new String[] {"CIN_NOUVELLE", "CIN (nouvelle)"},
             new String[] {"CIN_ANCIENNE", "CIN (ancienne)"},
             new String[] {"CNIE_GERANT", "CNIE du gérant"},
-            new String[] {"PIECE_IDENTITE", "Pièce d'identité"},
+            new String[] {"PIECE_IDENTITE", "Pi\u00e8ce d\u2019identit\u00e9"},
             new String[] {"CONTRAT_BAIL", "Contrat de bail"},
             new String[] {"CONTRAT_DOMICILIATION", "Contrat de domiciliation"},
             new String[] {"TITRE_PROPRIETE", "Titre de propriété"},

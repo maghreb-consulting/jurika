@@ -144,7 +144,7 @@ public class DataroomDepotService {
     @Transactional(readOnly = true)
     public DepotEntity getForStream(UUID id, UUID userId, Role role) {
         DepotEntity e = repo.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new NotFoundException("Depot inconnu"));
+                .orElseThrow(() -> new NotFoundException("D\u00e9p\u00f4t inconnu."));
         assertCanAccessDossier(e.getDossierId(), userId, role);
         return e;
     }
@@ -154,13 +154,13 @@ public class DataroomDepotService {
     @Auditable(action = "DEPOT_DELETED", resourceType = "depot", resourceIdExpr = "#id")
     public void softDelete(UUID id, UUID userId, Role role) {
         DepotEntity e = repo.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new NotFoundException("Depot inconnu"));
+                .orElseThrow(() -> new NotFoundException("D\u00e9p\u00f4t inconnu."));
         assertCanAccessDossier(e.getDossierId(), userId, role);
         // §A — societe archivee : la Data Room est figee, on ne supprime plus.
         ensureDossierIsActive(e.getDossierId());
         int n = repo.softDelete(id, Instant.now());
         if (n == 0) {
-            throw new NotFoundException("Depot deja supprime ou inconnu");
+            throw new NotFoundException("D\u00e9p\u00f4t d\u00e9j\u00e0 supprim\u00e9 ou inconnu.");
         }
     }
 
@@ -192,8 +192,8 @@ public class DataroomDepotService {
                 .orElse(null);
         if (userId == null || !userId.equals(owner)) {
             throw new AccessDeniedException(role == Role.CLIENT
-                    ? "Acces refuse a ce dossier (RG-DR15 : un client n'a acces qu'a SON dossier)."
-                    : "Vous n'etes pas responsable de ce dossier : acces aux depots interdit.");
+                    ? "Acc\u00e8s refus\u00e9 \u00e0 ce dossier (RG-DR15 : un client n\u2019a acc\u00e8s qu\u2019\u00e0 son dossier)."
+                    : "Vous n\u2019\u00eates pas responsable de ce dossier : acc\u00e8s aux d\u00e9p\u00f4ts interdit.");
         }
     }
 

@@ -226,7 +226,7 @@ class WopiSecuriteTest {
 
             assertThatThrownBy(() -> wopi.checkFileInfo(DOC, jeton, null))
                     .isInstanceOf(WopiService.WopiAccesRefuse.class)
-                    .hasMessageContaining("expiree");
+                    .hasMessageContaining("expir\u00e9e");
             assertThatThrownBy(() -> wopi.getFile(DOC, jeton))
                     .isInstanceOf(WopiService.WopiAccesRefuse.class);
             assertThatThrownBy(() -> wopi.putFile(DOC, jeton, null, "x".getBytes(), false, false))
@@ -432,7 +432,7 @@ class WopiSecuriteTest {
 
             assertThatThrownBy(() -> wopi.putFile(DOC, jeton, null, "trop tard".getBytes(), false, true))
                     .isInstanceOf(WopiService.WopiAccesRefuse.class)
-                    .hasMessageContaining("grace");
+                    .hasMessageContaining("gr\u00e2ce");
             aucuneEcriture();
         }
 

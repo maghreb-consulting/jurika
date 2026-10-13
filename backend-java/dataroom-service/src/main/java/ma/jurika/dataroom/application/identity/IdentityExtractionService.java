@@ -118,7 +118,7 @@ public class IdentityExtractionService {
         return switch (type) {
             case NOUVELLE -> "cin_nouv_verso";
             case ANCIENNE -> "cin_anc_verso";
-            case CN       -> throw new IllegalArgumentException("CN n'a pas de verso");
+            case CN       -> throw new IllegalArgumentException("CN n\u2019a pas de verso");
         };
     }
 

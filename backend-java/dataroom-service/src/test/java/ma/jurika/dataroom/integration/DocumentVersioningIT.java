@@ -167,7 +167,7 @@ class DocumentVersioningIT {
         assertThatThrownBy(() -> juridique.replaceAsNewVersion(v1.id(),
                 pdf("v3.pdf", "v3"), null, uploaderId))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("n'est plus la version active");
+                .hasMessageContaining("n\u2019est plus la version active");
     }
 
     // ─── 2. listVersions ─────────────────────────────────────────────────

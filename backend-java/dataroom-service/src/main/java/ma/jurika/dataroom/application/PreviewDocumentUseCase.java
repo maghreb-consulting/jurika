@@ -91,7 +91,7 @@ public class PreviewDocumentUseCase {
                 dossiers.findById(doc.getDossierId())
                         .orElseThrow(() -> new NotFoundException("Dossier introuvable : " + doc.getDossierId()));
             } else if ("SUSPENDED".equals(s.getAccessStatus())) {
-                throw new ValidationException("Data Room suspendu : apercu indisponible");
+                throw new ValidationException("Data Room suspendue : aper\u00e7u indisponible.");
             }
         }
 

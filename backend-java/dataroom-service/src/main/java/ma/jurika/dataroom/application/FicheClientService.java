@@ -426,10 +426,10 @@ public class FicheClientService {
                 .orElseThrow(() -> new NotFoundException("Dossier inconnu"));
         // Defense en profondeur : le CLIENT est deja exclu au controleur.
         if (role == Role.CLIENT) {
-            throw new AccessDeniedException("La fiche client n'est pas accessible au client.");
+            throw new AccessDeniedException("La fiche client n\u2019est pas accessible au client.");
         }
         if (role == Role.EMPLOYE && (d.getResponsableId() == null || !d.getResponsableId().equals(userId))) {
-            throw new AccessDeniedException("Seul l'employé responsable du dossier consulte ses fiches.");
+            throw new AccessDeniedException("Seul l\u2019employ\u00e9 responsable du dossier consulte ses fiches.");
         }
         return d;
     }
