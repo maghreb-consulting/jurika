@@ -268,7 +268,7 @@ class DemarcheUseCasesTest {
 
         assertThatThrownBy(() -> useCases.cocher(WS, TICKET, 21, List.of(ailleurs), ACTEUR))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("n'est pas rattache a ce ticket");
+                .hasMessageContaining("n\u2019est pas rattach\u00e9 \u00e0 ce ticket");
     }
 
     @Test
@@ -344,8 +344,8 @@ class DemarcheUseCasesTest {
 
         assertThatThrownBy(() -> useCases.cocher(WS, TICKET, 8, List.of(statuts), ACTEUR))
                 .isInstanceOf(ConflictException.class)
-                .hasMessageContaining("releve du statut GENERATION_DOCUMENTS")
-                .hasMessageContaining("le ticket est au statut DEROULEMENT_DEMARCHE");
+                .hasMessageContaining("rel\u00e8ve du statut \u00ab G\u00e9n\u00e9ration des documents \u00bb")
+                .hasMessageContaining("le ticket est au statut \u00ab D\u00e9roulement de la d\u00e9marche \u00bb");
     }
 
     // =================================================================
@@ -866,7 +866,7 @@ class DemarcheUseCasesTest {
 
         assertThatThrownBy(() -> useCases.decocher(WS, TICKET, 15, "un motif", ACTEUR))
                 .isInstanceOf(ConflictException.class)
-                .hasMessageContaining("rien a annuler");
+                .hasMessageContaining("rien \u00e0 annuler");
     }
 
     // =================================================================

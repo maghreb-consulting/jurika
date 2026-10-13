@@ -246,7 +246,7 @@ public class ImportReferentielDemarches {
     static String motifDeRefus(ReferentielCorpus r) {
         if (r == null || r.version() == null || r.version().isBlank()) return "Version du corpus absente.";
         if (r.rapport() != null && r.rapport().erreurs() != null && !r.rapport().erreurs().isEmpty()) {
-            return "Le rapport d'analyse comporte " + r.rapport().erreurs().size() + " erreur(s) : "
+            return "Le rapport d\u2019analyse comporte " + r.rapport().erreurs().size() + " erreur(s) : "
                     + String.join(" ; ", r.rapport().erreurs().subList(0, Math.min(5, r.rapport().erreurs().size())));
         }
         if (r.lignes() == null || r.lignes().isEmpty()) return "Aucune d\u00e9marche dans le corpus.";

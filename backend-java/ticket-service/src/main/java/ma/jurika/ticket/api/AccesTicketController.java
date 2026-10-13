@@ -44,11 +44,11 @@ public class AccesTicketController {
         TenantContext.set(user.workspaceId());
         Ticket t = tickets.findById(user.workspaceId(), ticketId).orElseThrow(() -> new NotFoundException("Ticket inconnu"));
         if (user.role() != Role.EMPLOYE) {
-            return new Acces(false, false, "Consultation : seul l'employé responsable du dossier agit sur le ticket.");
+            return new Acces(false, false, "Consultation : seul l\u2019employ\u00e9 responsable du dossier agit sur le ticket.");
         }
         boolean responsable = enCharge.estEnCharge(user.workspaceId(), t, user.userId());
         if (!responsable) {
-            return new Acces(false, false, "Ce ticket relève d'un dossier dont vous n'êtes pas le responsable.");
+            return new Acces(false, false, "Ce ticket rel\u00e8ve d\u2019un dossier dont vous n\u2019\u00eates pas le responsable.");
         }
         if (t.statut() == TicketStatut.CLOTURE_DOSSIER) {
             return new Acces(true, false, "Ticket clos : lecture seule.");

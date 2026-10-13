@@ -43,7 +43,7 @@ public class GenerationDocumentsHandler extends ParcoursHandler {
         // ce garde-fou couvre les appels qui ne passeraient pas par lui.
         if (current.statut() == TicketStatut.CREATION_TICKET && current.assigneId() == null) {
             throw new ConflictException(
-                    "Le ticket doit etre assigne avant de passer en generation des documents");
+                    "Le ticket doit \u00eatre assign\u00e9 avant de passer en g\u00e9n\u00e9ration des documents");
         }
     }
 }

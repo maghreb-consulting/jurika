@@ -46,8 +46,8 @@ public class UpdateTicketUseCase {
         // changement d'assigne passe par le transfert du dossier (accepte par le
         // destinataire) ou la reaffectation d'office du superviseur, plus par PATCH.
         if (cmd.assigneId() != null && !cmd.assigneId().equals(current.assigneId())) {
-            throw new ValidationException("Le responsable d'un ticket est celui de son dossier : "
-                    + "transferer le dossier pour en changer");
+            throw new ValidationException("Le responsable d\u2019un ticket est celui de son dossier : "
+                    + "transf\u00e9rer le dossier pour en changer");
         }
         Ticket updated = ticketRepository.updateAssignment(current.id(),
                 null, cmd.priorite(), cmd.deadline(), cmd.titre(), cmd.description());

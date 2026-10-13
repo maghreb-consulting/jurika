@@ -130,9 +130,9 @@ class GuideTransitionChecksTest {
 
         assertThat(obstacles).hasSize(1);
         assertThat(obstacles.get(0))
-                .contains("Demarche 24")
+                .contains("D\u00e9marche 24")
                 .contains("obligatoire")
-                .contains("non cochee");
+                .contains("non coch\u00e9e");
     }
 
     @Test
@@ -145,7 +145,7 @@ class GuideTransitionChecksTest {
 
         assertThat(obstacles).singleElement().asString()
                 .contains("conditionnelle")
-                .contains("ni cochee ni ecartee");
+                .contains("ni coch\u00e9e ni \u00e9cart\u00e9e");
     }
 
     @Test
@@ -191,7 +191,7 @@ class GuideTransitionChecksTest {
                 ticket(TicketStatut.GENERATION_DOCUMENTS), TicketStatut.DEROULEMENT_DEMARCHE);
 
         assertThat(obstacles).as("seule la demarche non traitee bloque, pas sa variable")
-                .singleElement().asString().contains("ni cochee ni ecartee");
+                .singleElement().asString().contains("ni coch\u00e9e ni \u00e9cart\u00e9e");
     }
 
     @Test

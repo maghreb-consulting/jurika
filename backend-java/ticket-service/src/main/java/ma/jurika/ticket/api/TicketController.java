@@ -287,6 +287,6 @@ public class TicketController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<Void> hardDelete(@PathVariable UUID id) {
-        throw new UnsupportedOperationException("Suppression interdite — utilisez l'annulation");
+        throw new UnsupportedOperationException("Suppression interdite \u2014 utilisez l\u2019annulation");
     }
 }

@@ -52,10 +52,10 @@ public class AccesDeboursTicket {
                 }
                 if (!permissions.consultationPermise(actor.workspaceId(), d.id())) {
                     throw new AccessDeniedException(
-                            "La consultation des documents n'est pas autorisee pour votre acces.");
+                            "La consultation des documents n\u2019est pas autoris\u00e9e pour votre acc\u00e8s.");
                 }
             }
-            default -> throw new AccessDeniedException("Acces refuse");
+            default -> throw new AccessDeniedException("Acc\u00e8s refus\u00e9");
         }
         return t;
     }
@@ -69,7 +69,7 @@ public class AccesDeboursTicket {
         Ticket t = lecture(actor, ticketId);
         if (actor.role() == Role.CLIENT && !permissions.telechargementPermis(actor.workspaceId(), t.dossierId())) {
             throw new AccessDeniedException(
-                    "Le telechargement des documents n'est pas autorise pour votre acces.");
+                    "Le t\u00e9l\u00e9chargement des documents n\u2019est pas autoris\u00e9 pour votre acc\u00e8s.");
         }
         return t;
     }
@@ -77,7 +77,7 @@ public class AccesDeboursTicket {
     @Transactional(readOnly = true)
     public Ticket ecriture(AuthenticatedUser actor, UUID ticketId) {
         if (actor.role() != Role.EMPLOYE) {
-            throw new AccessDeniedException("Seul l'employe en charge modifie les debours");
+            throw new AccessDeniedException("Seul l\u2019employ\u00e9 en charge modifie les d\u00e9bours.");
         }
         Ticket t = ticket(actor, ticketId);
         exigerEnCharge(actor, t);

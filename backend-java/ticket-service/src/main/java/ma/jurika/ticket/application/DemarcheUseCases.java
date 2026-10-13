@@ -475,7 +475,7 @@ public class DemarcheUseCases {
         journal.enregistrer(workspaceId, ligneId, DemarcheEvenement.Type.COCHAGE,
                 null, acteurId, deposes.size());
         journaliser(workspaceId, ticketId, acteurId, d,
-                "Demarche " + d.ordre() + " cochee : " + d.libelle(),
+                "D\u00e9marche " + d.ordre() + " coch\u00e9e : " + d.libelle(),
                 Map.of("ordre", d.ordre(), "etat", DemarcheEtat.COCHEE.name(),
                         "justificatifs", deposes.size()));
         return vue(workspaceId, ticketId);
@@ -497,14 +497,14 @@ public class DemarcheUseCases {
         // le plus consulte.
         if (motif == null || motif.isBlank()) {
             throw new ValidationException("Motif obligatoire pour annuler le cochage de la "
-                    + "demarche " + d.ordre() + " : " + d.libelle());
+                    + "d\u00e9marche " + d.ordre() + " : " + d.libelle());
         }
 
         Map<UUID, TicketDemarche> avant = etats.findByTicket(workspaceId, ticketId);
         TicketDemarche precedent = avant.get(d.id());
         if (precedent == null || precedent.etat() == DemarcheEtat.A_FAIRE) {
-            throw new ConflictException("La demarche " + d.ordre()
-                    + " n'est ni cochee ni ecartee : il n'y a rien a annuler.");
+            throw new ConflictException("La d\u00e9marche " + d.ordre()
+                    + " n\u2019est ni coch\u00e9e ni \u00e9cart\u00e9e : il n\u2019y a rien \u00e0 annuler.");
         }
         // Annuler un cochage et reprendre une demarche ecartee sont deux gestes
         // differents, et le journal doit les distinguer : le premier revient sur un
@@ -519,7 +519,7 @@ public class DemarcheUseCases {
                 motif.trim(), acteurId, List.of());
         journal.enregistrer(workspaceId, ligneId, type, motif.trim(), acteurId, 0);
         journaliser(workspaceId, ticketId, acteurId, d,
-                "Demarche " + d.ordre() + " decochee : " + motif.trim(),
+                "D\u00e9marche " + d.ordre() + " d\u00e9coch\u00e9e : " + motif.trim(),
                 Map.of("ordre", d.ordre(), "etat", DemarcheEtat.A_FAIRE.name(),
                         "type", type.name()));
         return vue(workspaceId, ticketId);
@@ -535,21 +535,21 @@ public class DemarcheUseCases {
         Demarche d = demarcheDuStatutCourant(ticket, ordre);
 
         if (d.obligatoire()) {
-            throw new ConflictException("La demarche " + d.ordre()
-                    + " est obligatoire dans tous les dossiers : elle ne peut pas etre "
+            throw new ConflictException("La d\u00e9marche " + d.ordre()
+                    + " est obligatoire dans tous les dossiers : elle ne peut pas \u00eatre "
                     + "marquee non applicable.");
         }
         if (motif == null || motif.isBlank()) {
-            throw new ValidationException("Motif obligatoire pour ecarter la demarche "
+            throw new ValidationException("Motif obligatoire pour \u00e9carter la d\u00e9marche "
                     + d.ordre() + ". Condition du guide : "
-                    + (d.conditionApplication() == null ? "non precisee" : d.conditionApplication()));
+                    + (d.conditionApplication() == null ? "non pr\u00e9cis\u00e9e" : d.conditionApplication()));
         }
         UUID ligneId = etats.upsert(workspaceId, ticketId, d.id(), DemarcheEtat.NON_APPLICABLE,
                 motif.trim(), acteurId, List.of());
         journal.enregistrer(workspaceId, ligneId, DemarcheEvenement.Type.HORS_PERIMETRE,
                 motif.trim(), acteurId, 0);
         journaliser(workspaceId, ticketId, acteurId, d,
-                "Demarche " + d.ordre() + " ecartee : " + motif.trim(),
+                "D\u00e9marche " + d.ordre() + " \u00e9cart\u00e9e : " + motif.trim(),
                 Map.of("ordre", d.ordre(), "etat", DemarcheEtat.NON_APPLICABLE.name()));
         return vue(workspaceId, ticketId);
     }
@@ -604,7 +604,7 @@ public class DemarcheUseCases {
                 journal.enregistrer(workspaceId, ligneId, DemarcheEvenement.Type.HORS_PERIMETRE,
                         MOTIF_GERANCE_STATUTAIRE, acteurId, 0);
                 journaliser(workspaceId, ticketId, acteurId, d,
-                        "Demarche " + d.ordre() + " ecartee automatiquement : "
+                        "D\u00e9marche " + d.ordre() + " \u00e9cart\u00e9e automatiquement : "
                                 + MOTIF_GERANCE_STATUTAIRE,
                         Map.of("ordre", d.ordre(), "etat", DemarcheEtat.NON_APPLICABLE.name(),
                                 "origine", "CONDITION_GERANCE"));
@@ -617,8 +617,8 @@ public class DemarcheUseCases {
                 journal.enregistrer(workspaceId, ligneId, DemarcheEvenement.Type.REPRISE,
                         MOTIF_REPRISE_GERANCE, acteurId, 0);
                 journaliser(workspaceId, ticketId, acteurId, d,
-                        "Demarche " + d.ordre() + " redevenue applicable : la gerance "
-                                + "n'est pas designee dans les statuts",
+                        "D\u00e9marche " + d.ordre() + " redevenue applicable : la g\u00e9rance "
+                                + "n\u2019est pas d\u00e9sign\u00e9e dans les statuts",
                         Map.of("ordre", d.ordre(), "etat", DemarcheEtat.A_FAIRE.name(),
                                 "origine", "CONDITION_GERANCE"));
             }
@@ -651,7 +651,7 @@ public class DemarcheUseCases {
      * qu'un geste de l'employé.
      */
     private static final String MOTIF_REPRISE_GERANCE =
-            "La gerance n'est pas designee dans les statuts : la demarche redevient applicable.";
+            "La g\u00e9rance n\u2019est pas d\u00e9sign\u00e9e dans les statuts : la d\u00e9marche redevient applicable.";
 
     /**
      * Motif système. Sert AUSSI de signature : seul un écartement portant ce motif
@@ -686,10 +686,11 @@ public class DemarcheUseCases {
     private Demarche demarcheDuStatutCourant(Ticket ticket, int ordre) {
         Demarche d = lignes.parOrdre(ticket, ordre)
                 .orElseThrow(() -> new NotFoundException(
-                        "Aucune demarche " + ordre + " au referentiel du workflow " + ticket.type()));
+                        "Aucune d\u00e9marche " + ordre + " au r\u00e9f\u00e9rentiel du parcours " + ticket.type() + "."));
         if (d.statutTicket() != ticket.statut()) {
-            throw new ConflictException("La demarche " + ordre + " releve du statut "
-                    + d.statutTicket() + " ; le ticket est au statut " + ticket.statut() + ".");
+            throw new ConflictException("La d\u00e9marche " + ordre + " rel\u00e8ve du statut \u00ab "
+                    + d.statutTicket().libelle() + " \u00bb ; le ticket est au statut \u00ab "
+                    + ticket.statut().libelle() + " \u00bb.");
         }
         return d;
     }
@@ -714,28 +715,28 @@ public class DemarcheUseCases {
 
         if (d.sansJustificatifDocumentaire()) {
             if (!ids.isEmpty()) {
-                throw new ValidationException("La demarche " + d.ordre()
-                        + " n'attend aucune piece a televerser ("
+                throw new ValidationException("La d\u00e9marche " + d.ordre()
+                        + " n\u2019attend aucune pi\u00e8ce \u00e0 t\u00e9l\u00e9verser ("
                         + d.justificatifsTexte() + ").");
             }
             return List.of();
         }
         if (ids.isEmpty()) {
-            throw new ValidationException("La demarche " + d.ordre()
+            throw new ValidationException("La d\u00e9marche " + d.ordre()
                     + " exige un justificatif : " + d.justificatifsTexte());
         }
 
         List<DataroomDocumentLookup.DocumentVu> vus = documents.findByIds(workspaceId, ids);
         if (vus.size() != ids.size()) {
             throw new ValidationException(
-                    "Un justificatif cite n'existe pas dans la Data Room de ce cabinet.");
+                    "Un justificatif cit\u00e9 n\u2019existe pas dans la Data Room de ce cabinet.");
         }
 
         List<TicketDemarcheRepository.JustificatifDepose> deposes = new ArrayList<>();
         for (DataroomDocumentLookup.DocumentVu doc : vus) {
             if (doc.ticketId() == null || !doc.ticketId().equals(ticketId)) {
                 throw new ValidationException("Le document « " + doc.title()
-                        + " » n'est pas rattache a ce ticket : il ne peut pas justifier la demarche "
+                        + " \u00bb n\u2019est pas rattach\u00e9 \u00e0 ce ticket : il ne peut pas justifier la d\u00e9marche "
                         + d.ordre() + ".");
             }
             Optional<JustificatifAttendu> attendu = d.justificatifsAttendus().stream()
@@ -743,7 +744,7 @@ public class DemarcheUseCases {
                     .findFirst();
             if (attendu.isEmpty()) {
                 throw new ValidationException("Le document « " + doc.title() + " » est de type "
-                        + doc.documentType() + ", qui n'est pas attendu par la demarche "
+                        + doc.documentType() + ", qui n\u2019est pas attendu par la d\u00e9marche "
                         + d.ordre() + " (attendu : " + typesAttendus(d) + ").");
             }
             deposes.add(new TicketDemarcheRepository.JustificatifDepose(
@@ -757,7 +758,7 @@ public class DemarcheUseCases {
                         .filter(a -> a.alternativeGroupe() == groupe)
                         .map(JustificatifAttendu::documentType)
                         .reduce((a, b) -> a + " ou " + b).orElse("?");
-                throw new ValidationException("Justificatif manquant pour la demarche "
+                throw new ValidationException("Justificatif manquant pour la d\u00e9marche "
                         + d.ordre() + " : " + manquants + ".");
             }
         }

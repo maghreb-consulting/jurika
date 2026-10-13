@@ -185,10 +185,10 @@ public class DemarchesDuTicket implements LignesDuTicket {
     /** Remplace les decisions du ticket (employe ; ticket ni clos ni annule). */
     public void choisir(Ticket t, List<Choix> choix, UUID acteur) {
         if (!MatricesDuTicket.servieParLeCorpus(t.type())) {
-            throw new ConflictException("La cr\u00e9ation suit son parcours : elle n'a pas de d\u00e9cisions \u00e0 choisir.");
+            throw new ConflictException("La cr\u00e9ation suit son parcours : elle n\u2019a pas de d\u00e9cisions \u00e0 choisir.");
         }
         if (t.statut() == TicketStatut.CLOTURE_DOSSIER || t.statut() == TicketStatut.ANNULE) {
-            throw new ConflictException("Les d\u00e9cisions d'un ticket clos ou annul\u00e9 ne se modifient plus.");
+            throw new ConflictException("Les d\u00e9cisions d\u2019un ticket clos ou annul\u00e9 ne se modifient plus.");
         }
         Set<String> permises = new LinkedHashSet<>();
         decisions(t).proposees().forEach(p -> permises.add(p.matrice() + "|" + p.code()));
@@ -282,7 +282,7 @@ public class DemarchesDuTicket implements LignesDuTicket {
     /** Saisie, sur la ligne, du point de depart ou de la date limite attendus (RG-DEM-06). */
     public void saisirDelai(Ticket t, int ordre, java.time.LocalDate depart, java.time.LocalDate echeance, UUID acteur) {
         if (t.statut() == TicketStatut.CLOTURE_DOSSIER || t.statut() == TicketStatut.ANNULE) {
-            throw new ConflictException("Les d\u00e9lais d'un ticket clos ou annul\u00e9 ne se modifient plus.");
+            throw new ConflictException("Les d\u00e9lais d\u2019un ticket clos ou annul\u00e9 ne se modifient plus.");
         }
         LigneCorpus ligne = lignesCorpus(t).stream().filter(l -> l.demarche().ordre() == ordre).findFirst()
                 .orElseThrow(() -> new ConflictException("Aucune d\u00e9marche " + ordre + " sur ce ticket."));
@@ -290,7 +290,7 @@ public class DemarchesDuTicket implements LignesDuTicket {
         boolean attendDepart = ligne.demarche().delaiValeur() != null && ligne.demarche().delaiUnite() != null;
         boolean attendEcheance = !attendDepart && ligne.echeanceDonnee() != null;
         if (d == null || (!attendDepart && !attendEcheance)) {
-            throw new ConflictException("Cette d\u00e9marche n'a pas de d\u00e9lai \u00e0 calculer.");
+            throw new ConflictException("Cette d\u00e9marche n\u2019a pas de d\u00e9lai \u00e0 calculer.");
         }
         if ((attendDepart && depart == null) || (attendEcheance && echeance == null)) {
             throw new ConflictException(attendDepart ? "Indiquez le point de d\u00e9part du d\u00e9lai."

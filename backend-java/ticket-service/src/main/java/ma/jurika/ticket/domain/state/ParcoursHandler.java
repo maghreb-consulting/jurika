@@ -37,18 +37,19 @@ abstract class ParcoursHandler implements TicketStatutHandler {
         if (source == TicketStatut.ANNULE) {
             // Reprise d'un ticket annule : transition sensible, motif obligatoire.
             if (ctx.comment() == null || ctx.comment().trim().isEmpty()) {
-                throw new ValidationException("Motif obligatoire pour reprendre un ticket annule");
+                throw new ValidationException("Motif obligatoire pour reprendre un ticket annul\u00e9");
             }
             return;
         }
         if (predecesseur() == null || source != predecesseur()) {
-            throw new ConflictException("Seul un ticket au statut "
-                    + (predecesseur() == null ? "ANNULE" : predecesseur())
-                    + " peut passer au statut " + statut() + " (statut actuel : " + source + ")");
+            throw new ConflictException("Seul un ticket au statut \u00ab "
+                    + (predecesseur() == null ? TicketStatut.ANNULE : predecesseur()).libelle()
+                    + " \u00bb peut passer au statut \u00ab " + statut().libelle() + " \u00bb (statut actuel : \u00ab "
+                    + source.libelle() + " \u00bb).");
         }
         List<String> obstacles = checks.obstacles(current, statut());
         if (!obstacles.isEmpty()) {
-            throw new ConflictException("Passage au statut " + statut() + " impossible : "
+            throw new ConflictException("Passage au statut \u00ab " + statut().libelle() + " \u00bb impossible : "
                     + String.join(" | ", obstacles));
         }
     }

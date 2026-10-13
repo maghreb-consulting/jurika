@@ -115,12 +115,12 @@ public class DelaisGreffe {
             throw new ValidationException("Indiquez le d\u00e9lai ajust\u00e9 (nombre de jours ou de mois, sup\u00e9rieur \u00e0 z\u00e9ro).");
         }
         if (!"JOURS".equals(s.delaiUnite()) && !"MOIS".equals(s.delaiUnite())) {
-            throw new ValidationException("Indiquez l'unit\u00e9 du d\u00e9lai : jours ou mois.");
+            throw new ValidationException("Indiquez l\u2019unit\u00e9 du d\u00e9lai : jours ou mois.");
         }
         boolean connue = referentiel(workspaceId).stream()
                 .anyMatch(n -> n.matrice().equals(matrice) && n.decisionCode().equals(decisionCode));
         if (!connue) {
-            throw new ValidationException("Nature d'acte inconnue du r\u00e9f\u00e9rentiel : " + matrice + " / " + decisionCode + ".");
+            throw new ValidationException("Nature d\u2019acte inconnue du r\u00e9f\u00e9rentiel : " + matrice + " / " + decisionCode + ".");
         }
         db.update("""
                 INSERT INTO delais_greffe_cabinet (workspace_id, matrice, decision_code, delai_valeur, delai_unite,

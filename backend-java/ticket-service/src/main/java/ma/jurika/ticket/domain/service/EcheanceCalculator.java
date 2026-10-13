@@ -33,7 +33,7 @@ public final class EcheanceCalculator {
     /** Date limite, a partir d'une date de depart deja civile. */
     public static LocalDate echeance(LocalDate depart, int valeur, DelaiUnite unite) {
         if (depart == null || unite == null) {
-            throw new IllegalArgumentException("Depart et unite obligatoires");
+            throw new IllegalArgumentException("D\u00e9part et unit\u00e9 obligatoires");
         }
         return unite == DelaiUnite.MOIS ? depart.plusMonths(valeur) : depart.plusDays(valeur);
     }
