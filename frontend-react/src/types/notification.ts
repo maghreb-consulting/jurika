@@ -46,7 +46,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
   DEADLINE_DUE: 'Délai à échéance',
   CHAT_MESSAGE: 'Message reçu',
   PAYMENT_VALIDATED: 'Paiement validé',
-  WORKFLOW_COMPLETED: 'Workflow terminé',
+  WORKFLOW_COMPLETED: 'Parcours terminé',
   WORKSPACE_EVENT: 'Événement du cabinet',
   DEMANDE_CLIENT: 'Demande ou réponse du client',
   QUOTA_APPROCHANT: 'Quota du forfait',

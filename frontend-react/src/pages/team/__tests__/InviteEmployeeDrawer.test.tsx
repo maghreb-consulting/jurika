@@ -36,7 +36,7 @@ describe('InviteEmployeeDrawer — validation in-app', () => {
 
     await user.click(screen.getByRole('button', { name: /Inviter$/i }));
 
-    expect(await screen.findByText(/Le prenom est requis/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Le prénom est obligatoire/i)).toBeInTheDocument();
     expect(inviteEmployee).not.toHaveBeenCalled();
   });
 
@@ -44,9 +44,9 @@ describe('InviteEmployeeDrawer — validation in-app', () => {
     const user = userEvent.setup();
     renderDrawer();
 
-    await user.type(screen.getByLabelText('Prenom'), 'Amine');
+    await user.type(screen.getByLabelText('Prénom'), 'Amine');
     await user.type(screen.getByLabelText('Nom'), 'Benali');
-    await user.type(screen.getByLabelText('Email professionnel'), 'pas-un-email');
+    await user.type(screen.getByLabelText('Adresse électronique professionnelle'), 'pas-un-email');
     await user.click(screen.getByRole('button', { name: /Inviter$/i }));
 
     expect(await screen.findByText(/Adresse e-mail invalide/i)).toBeInTheDocument();
@@ -62,9 +62,9 @@ describe('InviteEmployeeDrawer — validation in-app', () => {
     const user = userEvent.setup();
     renderDrawer();
 
-    await user.type(screen.getByLabelText('Prenom'), 'Amine');
+    await user.type(screen.getByLabelText('Prénom'), 'Amine');
     await user.type(screen.getByLabelText('Nom'), 'Benali');
-    await user.type(screen.getByLabelText('Email professionnel'), 'amine.benali@cabinet.ma');
+    await user.type(screen.getByLabelText('Adresse électronique professionnelle'), 'amine.benali@cabinet.ma');
     await user.click(screen.getByRole('button', { name: /Inviter$/i }));
 
     await waitFor(() => expect(inviteEmployee).toHaveBeenCalledTimes(1));

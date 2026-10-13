@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, Power, RefreshCw, Trash2, UserPlus, Users } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
@@ -38,28 +38,33 @@ export function TeamPage() {
   // Lot L1 : employes qui ont le droit de suppression en Data Room.
   const [droitsSuppression, setDroitsSuppression] = useState<Set<string>>(new Set());
 
-  async function reload() {
-    setError(null);
-    try {
-      const [u, usageSnap, droits] = await Promise.all([
+  // Recuperation seule : les mises a jour d'etat suivent la reponse (appelee au montage).
+  const recuperer = useCallback(
+    () =>
+      Promise.all([
         authService.listWorkspaceUsers(),
         billingService.getUsage(),
         authService.listDroitsSuppressionDataroom(),
-      ]);
-      setUsers(u);
-      setUsage(usageSnap);
-      setDroitsSuppression(new Set(droits));
-    } catch (err) {
-      setError(extractError(err).message);
-    } finally {
-      setLoading(false);
-    }
-  }
+      ])
+        .then(([u, usageSnap, droits]) => {
+          setUsers(u);
+          setUsage(usageSnap);
+          setDroitsSuppression(new Set(droits));
+          setError(null);
+        })
+        .catch((err) => setError(extractError(err).message))
+        .finally(() => setLoading(false)),
+    [],
+  );
 
   useEffect(() => {
-    reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    void recuperer();
+  }, [recuperer]);
+
+  async function reload() {
+    setError(null);
+    await recuperer();
+  }
 
   async function handleToggle(target: WorkspaceUser) {
     if (target.userId === me?.userId) return; // garde-fou UI (le back refuse 403)
@@ -141,7 +146,7 @@ export function TeamPage() {
           <Button
             onClick={() => setDrawerOpen(true)}
             disabled={quotaFull}
-            title={quotaFull ? 'Quota d’employés atteint : passez à un plan supérieur.' : undefined}
+            title={quotaFull ? 'Quota d’employés atteint : passez à un forfait supérieur.' : undefined}
           >
             <UserPlus className="mr-1 h-3.5 w-3.5" /> Inviter un membre
           </Button>
@@ -153,7 +158,7 @@ export function TeamPage() {
         <div className="flex flex-col gap-3 rounded-2xl border border-border bg-bg-raised p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-wide text-fg-subtle">
-              Plan {usage.planLabel}
+              Forfait {usage.planLabel}
             </p>
             <p className="mt-1 text-lg font-semibold text-fg">
               {employeUsage.active}
@@ -168,11 +173,20 @@ export function TeamPage() {
               to="/app/billing"
               className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
             >
-              Quota atteint : changer de plan
+              Quota atteint : changer de forfait
             </Link>
           )}
         </div>
       )}
+
+      <TexteAide cle="equipe-invitation" titre="Inviter et gérer les membres">
+        <p>
+          Cliquez sur « Inviter un membre » : il reçoit par courriel ses identifiants et un mot de
+          passe temporaire, et apparaît « En attente » jusqu’à sa première connexion. « Désactiver »
+          coupe son accès sans rien effacer ; « Réactiver » le lui rend. Les clients ne figurent pas
+          ici : ils se gèrent depuis la Data Room de leur dossier.
+        </p>
+      </TexteAide>
 
       <TexteAide cle="equipe-droit-suppression" titre="Le droit de supprimer des documents">
         <p>
@@ -184,7 +198,7 @@ export function TeamPage() {
       </TexteAide>
 
       {(error || actionError) && (
-        <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+        <div role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           {actionError || error}
         </div>
       )}

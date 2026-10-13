@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Shield, KeyRound, Smartphone, RefreshCw } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -9,6 +9,7 @@ import { RecoveryCodesDisplay } from '../../components/auth/RecoveryCodesDisplay
 import { useCurrentUser } from '../../store/authStore';
 import { authService } from '../../services/auth.service';
 import { extractError } from '../../lib/api';
+import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 
 /**
  * RG-AU38 : ecran "Profile &gt; Securite" pour changer la methode 2FA
@@ -21,6 +22,11 @@ import { extractError } from '../../lib/api';
 export function ProfileSecurityPage() {
   const user = useCurrentUser();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Changement VOLONTAIRE du mot de passe : bloc « Mot de passe » de « Mon compte »
+  // (et non la page de changement OBLIGATOIRE /account/change-password, reservee au
+  // premier mot de passe et aux mots de passe temporaires ; dette L5).
+  const cheminMonCompte = location.pathname.startsWith('/settings') ? '/settings/profile' : '/profile';
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [regenCodes, setRegenCodes] = useState<string[] | null>(null);
@@ -33,7 +39,7 @@ export function ProfileSecurityPage() {
     try {
       navigate('/account/2fa-choose?reset=1');
     } catch (e) {
-      setError((e as Error).message || 'Erreur');
+      setError((e as Error).message || 'Le changement de méthode n’a pas pu démarrer. Réessayez.');
     } finally {
       setBusy(false);
     }
@@ -47,7 +53,7 @@ export function ProfileSecurityPage() {
       const { codes } = await authService.generateRecoveryCodes();
       setRegenCodes(codes);
     } catch (e) {
-      setError(extractError(e).message || 'Echec generation codes');
+      setError(extractError(e).message || 'Échec de la génération des codes.');
     } finally {
       setBusy(false);
     }
@@ -57,37 +63,49 @@ export function ProfileSecurityPage() {
     <div className="mx-auto max-w-2xl space-y-4 py-6">
       <header className="flex items-center gap-3">
         <Shield className="h-6 w-6 text-accent" />
-        <h1 className="text-xl font-semibold text-fg">Profile &gt; Securite</h1>
+        <h1 className="text-xl font-semibold text-fg">Sécurité du compte</h1>
       </header>
+
+      <TexteAide cle="securite-compte" titre="Protéger votre compte">
+        <p>
+          La double authentification confirme chaque connexion par un code à 6 chiffres. Vous pouvez
+          changer de méthode (votre méthode actuelle vous sera demandée) et générer de nouveaux codes
+          de récupération : gardez-les en lieu sûr, ils servent si vous perdez votre téléphone. Pour
+          changer votre mot de passe, passez par « Mon compte ».
+        </p>
+      </TexteAide>
 
       <Card className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-fg">Methode 2FA</h2>
+            <h2 className="flex items-center gap-1 text-sm font-semibold text-fg">
+              Double authentification
+              <InfoBulle
+                libelle="Aide : codes de récupération"
+                texte="Chaque code de récupération ne sert qu’une fois et remplace le code à 6 chiffres si vous n’avez plus accès à votre méthode. En générer de nouveaux rend les anciens inutilisables."
+              />
+            </h2>
             <p className="mt-1 text-xs text-fg-subtle">
               {user?.role === 'CLIENT'
-                ? 'Le 2FA est optionnel pour les comptes Client (RG-CA05).'
-                : 'Une methode 2FA active est requise pour acceder a la plateforme.'}
+                ? 'La double authentification est facultative pour les comptes clients.'
+                : 'La double authentification est obligatoire pour accéder à la plateforme.'}
             </p>
           </div>
-          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-            Active
-          </span>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Button size="sm" variant="secondary" onClick={startChange2fa} loading={busy}>
             <Smartphone className="mr-1 h-4 w-4" />
-            Changer ma methode 2FA
+            Changer de méthode
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setConfirmRegen(true)} loading={busy}>
             <RefreshCw className="mr-1 h-4 w-4" />
-            Regenerer codes de recuperation
+            Générer de nouveaux codes de récupération
           </Button>
         </div>
 
         {error && (
-          <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          <p role="alert" className="mt-3 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
             {error}
           </p>
         )}
@@ -99,28 +117,30 @@ export function ProfileSecurityPage() {
           <h2 className="text-sm font-semibold text-fg">Mot de passe</h2>
         </div>
         <p className="mt-1 text-xs text-fg-subtle">
-          Changez votre mot de passe si vous suspectez une compromission.
+          Changez votre mot de passe à tout moment, en particulier si vous pensez qu’il a pu être
+          découvert. Le changement se fait dans « Mon compte » : votre mot de passe actuel vous sera
+          demandé.
         </p>
         <Button
           size="sm"
           variant="secondary"
           className="mt-3"
-          onClick={() => navigate('/account/change-password?reset=1')}
+          onClick={() => navigate(cheminMonCompte)}
         >
           Changer mon mot de passe
         </Button>
       </Card>
 
       <p className="text-center text-[11px] text-fg-subtle">
-        RG-AU38 — Toute modification 2FA necessite une confirmation avec la methode actuelle.
+        Tout changement de méthode de double authentification demande une confirmation avec la méthode actuelle.
       </p>
 
       <ConfirmDialog
         open={confirmRegen}
         onOpenChange={setConfirmRegen}
-        title="Regenerer les codes de recuperation"
-        description="Generer 10 nouveaux codes de recuperation ? Les anciens seront immediatement invalides."
-        confirmLabel="Regenerer"
+        title="Générer de nouveaux codes de récupération"
+        description="Générer 10 nouveaux codes de récupération ? Les anciens deviendront aussitôt inutilisables."
+        confirmLabel="Générer"
         variant="danger"
         loading={busy}
         onConfirm={regenerateRecoveryCodes}
@@ -132,15 +152,15 @@ export function ProfileSecurityPage() {
           /* fermeture seulement via "J'ai sauvegarde + Continuer" pour eviter
              les fermetures accidentelles. On laisse onClose vide. */
         }}
-        title="Nouveaux codes de recuperation"
-        subtitle="Vos anciens codes sont desormais invalides — sauvegardez ceux-ci immediatement."
+        title="Nouveaux codes de récupération"
+        subtitle="Vos anciens codes ne sont plus valables : conservez ceux-ci dès maintenant en lieu sûr."
         width="md"
       >
         {regenCodes && (
           <RecoveryCodesDisplay
             codes={regenCodes}
             context="REGENERATION"
-            continueLabel="J'ai sauvegarde, fermer"
+            continueLabel="Je les ai conservés, fermer"
             onContinue={() => setRegenCodes(null)}
           />
         )}

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
-import { InfoBulle } from '../../components/ui/Aide';
+import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { workspaceService, type WorkspaceProfile } from '../../services/workspace.service';
 import { extractError } from '../../lib/api';
 import { PROFESSIONAL_TYPE_LABELS, isProfessionalType } from '../../types/professional';
@@ -84,7 +84,6 @@ export function CabinetTab() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Revoke l'object-URL du logo au demontage.
@@ -97,12 +96,12 @@ export function CabinetTab() {
     // Validation JS AVANT l'appel API (form noValidate : pas de bulle native).
     const trimmedIce = ice.trim();
     if (trimmedIce !== '' && !/^\d{15}$/.test(trimmedIce)) {
-      setFormError('ICE : 15 chiffres requis (ou laissez vide).');
+      setFormError('ICE : saisissez ses 15 chiffres, ou laissez le champ vide.');
       document.querySelector<HTMLElement>('[data-testid="cabinet-ice-input"]')?.focus();
       return;
     }
     if (city.trim().length < 2) {
-      setFormError('Ville : 2 caracteres minimum.');
+      setFormError('Ville du siège : saisissez au moins 2 caractères.');
       document.querySelector<HTMLElement>('[data-testid="cabinet-city-input"]')?.focus();
       return;
     }
@@ -197,6 +196,14 @@ export function CabinetTab() {
         </p>
       </div>
 
+      <TexteAide cle="parametres-cabinet" titre="Compléter la fiche du cabinet">
+        <p>
+          Renseignez les coordonnées du cabinet (la ville du siège est obligatoire), puis cliquez sur
+          « Enregistrer ». L’aperçu se met à jour pendant la saisie. Le logo s’enregistre dès qu’il est
+          choisi. La dénomination et l’adresse de contact s’affichent ici en lecture seule.
+        </p>
+      </TexteAide>
+
       {profile.iceMissing && (
         <div
           className="flex items-start gap-2 rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-fg"
@@ -204,8 +211,8 @@ export function CabinetTab() {
         >
           <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning" />
           <span>
-            Votre ICE n'est pas encore renseigne. Completez-le ci-dessous : il sera
-            requis pour les documents et dossiers de vos clients.
+            L’ICE du cabinet n’est pas encore renseigné. Complétez-le ci-dessous : il sera exigé pour
+            les documents et les dossiers de vos clients.
           </span>
         </div>
       )}
@@ -271,7 +278,7 @@ export function CabinetTab() {
             loading={logoBusy}
             onClick={() => fileInput.current?.click()}
           >
-            <Upload className="mr-1.5 h-4 w-4" /> {profile.hasLogo ? 'Remplacer' : 'Televerser'}
+            <Upload className="mr-1.5 h-4 w-4" /> {profile.hasLogo ? 'Remplacer' : 'Téléverser'}
           </Button>
           {profile.hasLogo && (
             <Button
@@ -296,11 +303,11 @@ export function CabinetTab() {
 
       {/* Lecture seule */}
       <section className="rounded-2xl border border-border bg-bg-raised p-5">
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-fg-subtle">Identite</h3>
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-fg-subtle">Identité</h3>
         <dl className="space-y-2 text-sm">
-          <ReadOnly icon={<Building className="h-3.5 w-3.5" />} label="Denomination" value={profile.name} />
+          <ReadOnly icon={<Building className="h-3.5 w-3.5" />} label="Dénomination" value={profile.name} />
           <ReadOnly label="Type de profil" value={typeLabel} />
-          <ReadOnly icon={<Mail className="h-3.5 w-3.5" />} label="Email de contact" value={profile.contactEmail ?? '—'} />
+          <ReadOnly icon={<Mail className="h-3.5 w-3.5" />} label="Adresse électronique de contact" value={profile.contactEmail ?? '—'} />
         </dl>
       </section>
 
@@ -311,8 +318,8 @@ export function CabinetTab() {
         </h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <TextField
-            label="Nom affiche sur les documents"
-            hint="En-tete des PDF. Vide = denomination du cabinet."
+            label="Nom affiché sur les documents"
+            hint="En-tête des PDF. Laissé vide, la dénomination du cabinet s’affiche."
             value={docName}
             onChange={(e) => setDocName(e.target.value.slice(0, 150))}
             placeholder={profile.name}
@@ -321,7 +328,7 @@ export function CabinetTab() {
           />
           <TextField
             label="ICE (15 chiffres)"
-            hint="Laissez vide si vous ne l'avez pas encore."
+            hint="Laissez vide si vous ne l’avez pas encore."
             value={ice}
             onChange={(e) => setIce(e.target.value.replace(/\D/g, '').slice(0, 15))}
             placeholder="002345678000089"
@@ -347,7 +354,7 @@ export function CabinetTab() {
             data-testid="cabinet-if-input"
           />
           <TextField
-            label="Telephone"
+            label="Téléphone"
             value={telephone}
             onChange={(e) => setTelephone(e.target.value.slice(0, 30))}
             placeholder="+212 5 22 00 00 00"
@@ -363,7 +370,8 @@ export function CabinetTab() {
             data-testid="cabinet-web-input"
           />
           <TextField
-            label="Ville du siege"
+            label="Ville du siège"
+            required
             value={city}
             onChange={(e) => setCity(e.target.value)}
             placeholder="Casablanca"
@@ -372,7 +380,7 @@ export function CabinetTab() {
           />
           <div className="sm:col-span-2">
             <TextField
-              label="Adresse du siege"
+              label="Adresse du siège"
               value={adresse}
               onChange={(e) => setAdresse(e.target.value.slice(0, 300))}
               placeholder="12, rue des Consultants, Maarif, Casablanca"
@@ -389,7 +397,7 @@ export function CabinetTab() {
         )}
         {saved && (
           <p className="flex items-center gap-1.5 text-sm text-success" data-testid="cabinet-saved">
-            <CheckCircle2 className="h-4 w-4" /> Informations enregistrees.
+            <CheckCircle2 className="h-4 w-4" /> Informations enregistrées.
           </p>
         )}
 
