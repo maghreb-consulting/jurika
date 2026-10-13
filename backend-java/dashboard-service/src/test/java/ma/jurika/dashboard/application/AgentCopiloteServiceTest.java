@@ -72,8 +72,25 @@ class AgentCopiloteServiceTest {
         // Les signaux bruts sont toujours renseignes.
         assertThat(b.signaux().counts().echeances()).isEqualTo(2);
         assertThat(b.signaux().counts().echeancesDepassees()).isEqualTo(1);
-        assertThat(b.summary()).contains("echeance");
+        assertThat(b.summary()).contains("\u00e9ch\u00e9ance");
         verify(repository).save(any(AgentBriefingEntity.class));
+    }
+
+    /** L6 E11 : la justification d'un ticket nomme son statut en clair, jamais le code interne. */
+    @Test
+    void laJustificationDuTicketNommeLeStatutEnClair() {
+        when(reasoning.reason(any(), any())).thenReturn(Optional.empty());
+
+        AgentBriefing b = service.generateBriefing(ws, emp);
+
+        assertThat(b.planDuJour())
+                .filteredOn(p -> "TICKET".equals(p.type()))
+                .singleElement()
+                .satisfies(p -> {
+                    assertThat(p.justification())
+                            .startsWith("Ticket au statut \u00ab G\u00e9n\u00e9ration des documents \u00bb depuis 4 j");
+                    assertThat(p.justification()).doesNotContain("GENERATION_DOCUMENTS");
+                });
     }
 
     @Test

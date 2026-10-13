@@ -8,11 +8,11 @@ class AuditActionLabelsTest {
 
     @Test
     void mapsKnownActionsToFrench() {
-        assertThat(AuditActionLabels.label("TICKET_CREATED")).isEqualTo("Ticket cree");
-        assertThat(AuditActionLabels.label("DOSSIER_TRANSFERE")).isEqualTo("Dossier transfere");
-        assertThat(AuditActionLabels.label("TICKET_ASSIGNED")).isEqualTo("Ticket reassigne");
-        assertThat(AuditActionLabels.label("TICKET_UPDATED")).isEqualTo("Ticket modifie");
-        assertThat(AuditActionLabels.label("FISCAL_UPLOADED")).isEqualTo("Document fiscal depose");
+        assertThat(AuditActionLabels.label("TICKET_CREATED")).isEqualTo("Ticket cr\u00e9\u00e9");
+        assertThat(AuditActionLabels.label("DOSSIER_TRANSFERE")).isEqualTo("Dossier transf\u00e9r\u00e9");
+        assertThat(AuditActionLabels.label("TICKET_ASSIGNED")).isEqualTo("Ticket r\u00e9assign\u00e9");
+        assertThat(AuditActionLabels.label("TICKET_UPDATED")).isEqualTo("Ticket modifi\u00e9");
+        assertThat(AuditActionLabels.label("FISCAL_UPLOADED")).isEqualTo("Document fiscal d\u00e9pos\u00e9");
     }
 
     @Test

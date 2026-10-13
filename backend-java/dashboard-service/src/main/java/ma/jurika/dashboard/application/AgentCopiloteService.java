@@ -200,10 +200,10 @@ public class AgentCopiloteService {
         for (EcheanceSignal e : s.echeances()) {
             String urgence = e.depassee() ? "CRITIQUE" : "HAUTE";
             String just = e.depassee()
-                    ? "Echeance depassee de " + Math.abs(e.joursRestants()) + " j (" + e.dossierNom() + ")"
-                    : "Echeance dans " + e.joursRestants() + " j (" + e.dossierNom() + ")";
+                    ? "\u00c9ch\u00e9ance d\u00e9pass\u00e9e de " + Math.abs(e.joursRestants()) + " j (" + e.dossierNom() + ")"
+                    : "\u00c9ch\u00e9ance dans " + e.joursRestants() + " j (" + e.dossierNom() + ")";
             scored.add(new Scored(urgence, e.joursRestants(), new PlanItem(
-                    0, urgence, "Traiter l'echeance : " + e.intitule(), just,
+                    0, urgence, "Traiter l\u2019\u00e9ch\u00e9ance : " + e.intitule(), just,
                     "ECHEANCE", e.refId(), e.dossierId(), e.lien())));
         }
         for (TacheSignal t : s.resteAFaire()) {
@@ -212,9 +212,9 @@ public class AgentCopiloteService {
                     ? (t.ancienneteJours() > DEMANDE_ANCIENNE_JOURS ? "HAUTE" : "MOYENNE")
                     : "MOYENNE";
             String action = demande
-                    ? "Repondre a la demande client : " + t.sujet()
+                    ? "R\u00e9pondre \u00e0 la demande du client : " + t.sujet()
                     : "Avancer le ticket " + (t.reference() == null ? "" : t.reference() + " ") + t.sujet();
-            String just = (demande ? "Demande non traitee" : "Ticket " + t.statut())
+            String just = (demande ? "Demande non trait\u00e9e" : "Ticket au statut \u00ab " + libelleStatut(t.statut()) + " \u00bb")
                     + " depuis " + t.ancienneteJours() + " j (" + t.dossierNom() + ")";
             // secondary negatif => plus ancien = plus prioritaire dans un tri asc
             scored.add(new Scored(urgence, -t.ancienneteJours(), new PlanItem(
@@ -234,21 +234,34 @@ public class AgentCopiloteService {
         return plan;
     }
 
+    /** Libelles des statuts du ticket (ceux de l'ecran du ticket) : jamais le code brut. */
+    private static final Map<String, String> STATUT_LIBELLES = Map.of(
+            "CREATION_TICKET", "Cr\u00e9ation du ticket et collecte d\u2019information",
+            "GENERATION_DOCUMENTS", "G\u00e9n\u00e9ration des documents",
+            "DEROULEMENT_DEMARCHE", "D\u00e9roulement de la d\u00e9marche",
+            "CLOTURE_DOSSIER", "Cl\u00f4ture de dossier",
+            "ANNULE", "Ticket annul\u00e9");
+
+    static String libelleStatut(String statut) {
+        if (statut == null || statut.isBlank()) return "inconnu";
+        return STATUT_LIBELLES.getOrDefault(statut, statut);
+    }
+
     private String buildSummary(AgentSignals s) {
         AgentCounts c = s.counts();
         if (c.echeances() == 0 && c.tickets() == 0 && c.demandes() == 0) {
-            return "Rien a signaler aujourd'hui — vos dossiers sont a jour.";
+            return "Rien \u00e0 signaler aujourd\u2019hui : vos dossiers sont \u00e0 jour.";
         }
         StringBuilder sb = new StringBuilder();
         if (c.echeances() > 0) {
-            sb.append(c.echeances()).append(" echeance(s)");
-            if (c.echeancesDepassees() > 0) sb.append(" (").append(c.echeancesDepassees()).append(" depassee(s))");
+            sb.append(c.echeances()).append(" \u00e9ch\u00e9ance(s)");
+            if (c.echeancesDepassees() > 0) sb.append(" (").append(c.echeancesDepassees()).append(" d\u00e9pass\u00e9e(s))");
             sb.append(" · ");
         }
         if (c.tickets() > 0) sb.append(c.tickets()).append(" ticket(s) · ");
         if (c.demandes() > 0) sb.append(c.demandes()).append(" demande(s) · ");
         String out = sb.toString();
-        return out.endsWith(" · ") ? out.substring(0, out.length() - 3) + " a traiter." : out + " a traiter.";
+        return out.endsWith(" \u00b7 ") ? out.substring(0, out.length() - 3) + " \u00e0 traiter." : out + " \u00e0 traiter.";
     }
 
     /**
