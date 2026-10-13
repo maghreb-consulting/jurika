@@ -214,7 +214,10 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   texte exacte) : le rendu PDFBox du serveur la remplace par une police aux chasses differentes
   (espacement irregulier sur les apercus PNG). A verifier dans un vrai lecteur et a l'impression ;
   sinon embarquer une serif sans ligatures.
-- **Conversations du chatbot jamais purgees** : duree de conservation A_DECIDER directeur (CNDP).
+- **Conversations du chatbot : conservation** (decision du 2026-10-13) : gardees tant que le compte
+  existe, puis elles suivent le sort des donnees du cabinet. A faire en L7 / L8 : inclure
+  `chatbot_conversations` et `chatbot_echanges` (ai, colonne `workspace_id`) dans l'archivage a
+  l'arret du forfait et dans la suppression des donnees d'un cabinet sur sa demande.
 - **`chatbotService.ask` (front)** n'est plus appele par aucun ecran (garde pour
   `scripts/rag-quality-check.mjs`).
 - **Commentaire de dataroom V36** parle encore de Word (migration appliquee, intouchable).
