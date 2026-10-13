@@ -210,10 +210,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L5b (corrections, 2026-10-13) -- dette relevee
 
-- **Titres des PDF de synthese en Times non embarque** (police standard 14, choisie pour une couche
-  texte exacte) : le rendu PDFBox du serveur la remplace par une police aux chasses differentes
-  (espacement irregulier sur les apercus PNG). A verifier dans un vrai lecteur et a l'impression ;
-  sinon embarquer une serif sans ligatures.
 - **Conversations du chatbot : conservation** (decision du 2026-10-13) : gardees tant que le compte
   existe, puis elles suivent le sort des donnees du cabinet. A faire en L7 / L8 : inclure
   `chatbot_conversations` et `chatbot_echanges` (ai, colonne `workspace_id`) dans l'archivage a

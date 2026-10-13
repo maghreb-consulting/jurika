@@ -1,0 +1,8 @@
+Polices embarquees dans les PDF de synthese (fiche client, fiche dossier, etat des debours).
+
+Inter (Inter-Regular.ttf, Inter-Bold.ttf), de Rasmus Andersson.
+Licence : SIL Open Font License 1.1 (police libre ; embarquement dans des documents autorise).
+https://openfontlicense.org - https://github.com/rsms/inter
+
+Lot L6 (E1) : toutes les polices des PDF sont embarquees (titres compris) ; aucune police
+standard non embarquee (rendu identique sur tous les ordinateurs et a l'impression).
