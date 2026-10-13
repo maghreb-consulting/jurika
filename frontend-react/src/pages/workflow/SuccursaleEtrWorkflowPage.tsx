@@ -15,7 +15,7 @@
  * de rattacher la succursale créée. Une mère déjà enregistrée est réutilisée, jamais
  * re-saisie.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
@@ -38,6 +38,9 @@ import { CancelTicketDialog } from '../tickets/CancelTicketDialog';
 import { useWorkflow } from './useWorkflow';
 import { useStepAutosave } from './useStepAutosave';
 import { WorkflowBoot } from './WorkflowBoot';
+import { AideEtape } from './AideEtape';
+import { ETAPES_SUCCURSALE_ETR, etapesRoadmap } from './aidesParcours';
+import { bornesDateSeance, useEtatReinitialise } from './parcoursHooks';
 import { DossierAutocomplete } from '../../components/workflow/DossierAutocomplete';
 import { SuccursaleOperationForm } from '../../components/workflow/SuccursaleOperationForm';
 import { SuccursaleAnnoncePanel } from '../../components/workflow/SuccursaleAnnoncePanel';
@@ -62,13 +65,7 @@ import { buildDocFilename } from '../../components/workflow/workflowFilename';
 import type { TemplateInfo } from '../../services/workflowDocumentService';
 import type { DossierBrief } from '../../types/dataroom';
 
-const STEPS: RoadmapStep[] = [
-  { number: 1, label: 'Societe mere' },
-  { number: 2, label: 'Succursale' },
-  { number: 3, label: 'Generation' },
-  { number: 4, label: 'Pieces jointes' },
-  { number: 5, label: 'Synthese' },
-];
+const STEPS: RoadmapStep[] = etapesRoadmap(ETAPES_SUCCURSALE_ETR);
 
 /** Contrôles de conformité BLOQUANTS — miroir exact du backend. */
 const CONTROLES = [
@@ -106,7 +103,7 @@ function emptyMere(): SocieteMereState {
   };
 }
 
-export function succursaleEtrDocType(code: string): string {
+function succursaleEtrDocType(code: string): string {
   if (code.startsWith('ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_ETRANGERE')) {
     return 'Annonce légale — Ouverture de succursale';
   }
@@ -191,7 +188,8 @@ function SuccursaleEtrWorkflowPageBody() {
     for (const c of CONTROLES) init[c.key] = !!persisted[c.key];
     return init;
   });
-  const [revealErrors, setRevealErrors] = useState(false);
+  // Remises a zero a chaque changement d'etape.
+  const [revealErrors, setRevealErrors] = useEtatReinitialise(viewStep, () => false);
 
   // ---------- Étape 2 : saisie de la succursale ----------
   const [succursale, setSuccursale] = useState<SuccursaleSaisieState>(
@@ -220,10 +218,6 @@ function SuccursaleEtrWorkflowPageBody() {
     () => (stepData.step4?.piecesJointes as PieceJointeEntry[] | undefined) ?? [],
   );
 
-  useEffect(() => {
-    setRevealErrors(false);
-  }, [viewStep]);
-
   /** Faits de la mère effectivement utilisés : sélection BD ou saisie. */
   const mereEffective = useMemo<SocieteMereState>(() => {
     if (!reuseExisting || !dossierMere) return mere;
@@ -246,8 +240,7 @@ function SuccursaleEtrWorkflowPageBody() {
   }, [organeCompetent, mereEffective.forme]);
   const formeJuridique: 'SARL' | 'SARL_AU' = isAU ? 'SARL_AU' : 'SARL';
 
-  const minDate = new Date(Date.now() - 2 * 365 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-  const maxDate = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  const [{ minDate, maxDate }] = useState(bornesDateSeance);
 
   const convocationError = useMemo(
     () => convocationDelaiError(convocationDate, dateAG),
@@ -269,18 +262,18 @@ function SuccursaleEtrWorkflowPageBody() {
     const errs: Step1Errors = {};
     if (reuseExisting) {
       if (!dossierMereId.trim()) {
-        errs.mere = 'Selectionnez la societe mere etrangere deja enregistree.';
+        errs.mere = 'Sélectionnez la société mère étrangère déjà enregistrée.';
       }
     } else if (!mere.denomination.trim()) {
-      errs.mere = 'La denomination de la societe mere est obligatoire.';
+      errs.mere = 'La dénomination de la société mère est obligatoire.';
     } else if (!mere.forme.trim() || !mere.pays.trim() || !mere.siege.trim()) {
       errs.mere =
-        "Forme juridique d'origine, pays et siege social sont obligatoires : ces mentions figurent dans l'annonce legale.";
+        'La forme juridique d’origine, le pays et le siège social sont obligatoires : ces mentions figurent dans l’annonce légale.';
     }
-    if (!dateAG) errs.dateAG = 'La date de la decision de l’organe est obligatoire.';
+    if (!dateAG) errs.dateAG = 'La date de la décision de l’organe est obligatoire.';
     if (convocationError) errs.convocation = convocationError;
     if (controlesManquants.length > 0) {
-      errs.conformite = `Controles de conformite manquants : ${controlesManquants.join(', ')}.`;
+      errs.conformite = `Contrôles de conformité manquants : ${controlesManquants.join(', ')}.`;
     }
     return errs;
   }, [reuseExisting, dossierMereId, mere, dateAG, convocationError, controlesManquants]);
@@ -294,7 +287,7 @@ function SuccursaleEtrWorkflowPageBody() {
       buildDocFilename(
         succursaleEtrDocType(tpl.code),
         targetDenomination,
-        mereEffective.forme || 'Etrangere',
+        mereEffective.forme || 'Étrangère',
         opts?.version,
       ),
     [targetDenomination, mereEffective.forme],
@@ -361,90 +354,10 @@ function SuccursaleEtrWorkflowPageBody() {
     [succursale],
   );
 
-  if (loading) return <Loader />;
-  if (!ticket || !progress)
-    return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger">
-        {error ?? 'Workflow introuvable'}
-      </div>
-    );
-
-  const step = viewStep;
-  const isTerminated = progress.statut === 'TERMINE';
-  const showErr1 = (field: keyof Step1Errors): string | undefined =>
-    revealErrors ? step1Errors[field] : undefined;
-
-  function convocationPayload() {
+  const convocationPayload = useCallback(() => {
     if (!convocationDate) return undefined;
     return { date: convocationDate, heure: convocationHeure || undefined };
-  }
-
-  async function handleValidate() {
-    setError(null);
-    if (step === 1) {
-      const errs = Object.values(step1Errors).filter(Boolean) as string[];
-      if (errs.length > 0) {
-        setRevealErrors(true);
-        setError(
-          `Veuillez corriger ${errs.length} erreur${errs.length > 1 ? 's' : ''} (surlignees en rouge).`,
-        );
-        return;
-      }
-      await executeStep(1, {
-        ...controles,
-        dossierMereEtrangereId: reuseExisting ? dossierMereId : undefined,
-        societeMere: merePayload(),
-        organe: { competent: organeCompetent || undefined, date: dateAG },
-        dateAG,
-        typeAssemblee,
-        convocation: convocationPayload(),
-      });
-    } else if (step === 2) {
-      const errs = Object.values(step2Errors).filter(Boolean) as string[];
-      if (errs.length > 0) {
-        setRevealErrors(true);
-        setError(
-          `Veuillez corriger ${errs.length} erreur${errs.length > 1 ? 's' : ''} (surlignees en rouge).`,
-        );
-        return;
-      }
-      await executeStep(2, {
-        succursale: succursalePayload,
-        formalitesMandataireNom: mandataire || undefined,
-      });
-    } else if (step === 3) {
-      if (!pvValidated) {
-        setError('Generez puis validez le PV de creation de la succursale avant de continuer.');
-        return;
-      }
-      if (!annonceValidated) {
-        setError(
-          "Generez puis validez l'annonce legale d'ouverture : sa publication au Journal "
-            + "d'Annonces Legales est obligatoire.",
-        );
-        return;
-      }
-      await executeStep(3, {
-        pvValide: true,
-        annonceValide: true,
-        depotLegal:
-          depotLegalNumero || depotLegalDate
-            ? { numero: depotLegalNumero || null, date: depotLegalDate || null }
-            : undefined,
-      });
-    } else if (step === 4) {
-      await executeStep(4, {
-        piecesJointes: piecesJointes.map((p) => ({
-          id: p.id,
-          label: p.label,
-          filename: p.filename,
-          version: p.version ?? null,
-        })),
-      });
-    } else if (step === 5) {
-      await executeStep(5, {});
-    }
-  }
+  }, [convocationDate, convocationHeure]);
 
   /** Contenu courant de l'étape — voir la note dans DissolutionWorkflowPage. */
   const draftPayloadFor = useCallback(
@@ -478,12 +391,94 @@ function SuccursaleEtrWorkflowPageBody() {
       return null;
     },
     [reuseExisting, dossierMereId, mereEffective, organeCompetent, dateAG,
-      typeAssemblee, convocationDate, convocationHeure, controles, succursale,
+      typeAssemblee, convocationPayload, controles, succursale,
       succursalePayload, mandataire, pvValidated, annonceValidated,
       depotLegalNumero, depotLegalDate, piecesJointes],
   );
 
-  useStepAutosave(step, () => draftPayloadFor(step), registerDirty);
+  // Appele avant les retours anticipes : l'ordre des hooks ne varie jamais.
+  useStepAutosave(viewStep, () => draftPayloadFor(viewStep), registerDirty);
+
+  if (loading) return <Loader />;
+  if (!ticket || !progress)
+    return (
+      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+        {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
+      </div>
+    );
+
+  const step = viewStep;
+  const isTerminated = progress.statut === 'TERMINE';
+  const showErr1 = (field: keyof Step1Errors): string | undefined =>
+    revealErrors ? step1Errors[field] : undefined;
+
+  async function handleValidate() {
+    setError(null);
+    if (step === 1) {
+      const errs = Object.values(step1Errors).filter(Boolean) as string[];
+      if (errs.length > 0) {
+        setRevealErrors(true);
+        setError(
+          `Veuillez corriger ${errs.length} erreur${errs.length > 1 ? 's' : ''} (signalée${errs.length > 1 ? 's' : ''} en rouge).`,
+        );
+        return;
+      }
+      await executeStep(1, {
+        ...controles,
+        dossierMereEtrangereId: reuseExisting ? dossierMereId : undefined,
+        societeMere: merePayload(),
+        organe: { competent: organeCompetent || undefined, date: dateAG },
+        dateAG,
+        typeAssemblee,
+        convocation: convocationPayload(),
+      });
+    } else if (step === 2) {
+      const errs = Object.values(step2Errors).filter(Boolean) as string[];
+      if (errs.length > 0) {
+        setRevealErrors(true);
+        setError(
+          `Veuillez corriger ${errs.length} erreur${errs.length > 1 ? 's' : ''} (signalée${errs.length > 1 ? 's' : ''} en rouge).`,
+        );
+        return;
+      }
+      await executeStep(2, {
+        succursale: succursalePayload,
+        formalitesMandataireNom: mandataire || undefined,
+      });
+    } else if (step === 3) {
+      if (!pvValidated) {
+        setError('Générez puis validez le procès-verbal de création de la succursale avant de continuer.');
+        return;
+      }
+      if (!annonceValidated) {
+        setError(
+          'Générez puis validez l’annonce légale d’ouverture : sa publication dans un journal '
+            + 'd’annonces légales est obligatoire.',
+        );
+        return;
+      }
+      await executeStep(3, {
+        pvValide: true,
+        annonceValide: true,
+        depotLegal:
+          depotLegalNumero || depotLegalDate
+            ? { numero: depotLegalNumero || null, date: depotLegalDate || null }
+            : undefined,
+      });
+    } else if (step === 4) {
+      await executeStep(4, {
+        piecesJointes: piecesJointes.map((p) => ({
+          id: p.id,
+          label: p.label,
+          filename: p.filename,
+          version: p.version ?? null,
+        })),
+      });
+    } else if (step === 5) {
+      await executeStep(5, {});
+    }
+  }
+
 
   async function handleSaveDraft() {
     const payload = draftPayloadFor(step);
@@ -496,7 +491,7 @@ function SuccursaleEtrWorkflowPageBody() {
       await ticketService.transition(ticket.id, { target: 'CLOTURE_DOSSIER' });
       navigate('/tickets');
     } catch (err) {
-      setError((err as Error)?.message ?? 'Echec de cloture');
+      setError((err as Error)?.message ?? 'La clôture du parcours a échoué : réessayez.');
     }
   }
 
@@ -516,20 +511,33 @@ function SuccursaleEtrWorkflowPageBody() {
         onSaveDraft={!isTerminated && step < 5 ? handleSaveDraft : undefined}
         onValidate={!isTerminated ? handleValidate : undefined}
         onCancel={() => setShowCancel(true)}
-        footer={{ validateLabel: step === 5 ? 'Finaliser' : "Valider l'etape" }}
+        footer={{ validateLabel: step === 5 ? 'Finaliser' : 'Valider l’étape' }}
       >
+        <AideEtape
+          parcours="succursale-etr"
+          etapes={ETAPES_SUCCURSALE_ETR}
+          etape={step}
+          manquants={
+            step === 1
+              ? (Object.values(step1Errors).filter(Boolean) as string[])
+              : step === 2
+                ? (Object.values(step2Errors).filter(Boolean) as string[])
+                : undefined
+          }
+        />
+
         {step === 1 && (
           <div className="space-y-5" data-testid="succursale-etr-step1">
             <header>
               <div className="flex items-center gap-2">
                 <Globe className="h-5 w-5 text-accent" />
-                <h2 className="text-lg font-semibold text-fg">Etape 1 — Societe mere etrangere</h2>
+                <h2 className="text-lg font-semibold text-fg">Étape 1 — Société mère étrangère</h2>
               </div>
               <p className="text-sm text-fg-subtle">
-                La societe mere est hors Maroc : son identite n'existe pas en base et doit etre
-                saisie — sauf si elle a deja ete enregistree lors d'une precedente ouverture,
-                auquel cas <strong>selectionnez-la</strong> (elle possede alors sa propre Data
-                Room, ou seront classes les actes de la succursale).
+                La société mère est établie hors du Maroc : son identité n’existe pas encore dans la
+                plateforme et doit être saisie — sauf si elle a déjà été enregistrée lors d’une
+                précédente ouverture ; dans ce cas, <strong>sélectionnez-la</strong> (elle possède
+                alors sa propre Data Room, où seront classés les actes de la succursale).
               </p>
             </header>
 
@@ -544,7 +552,7 @@ function SuccursaleEtrWorkflowPageBody() {
                     : 'border-border bg-bg-raised text-fg-muted'
                 }`}
               >
-                Nouvelle societe mere
+                Nouvelle société mère
               </button>
               <button
                 type="button"
@@ -556,7 +564,7 @@ function SuccursaleEtrWorkflowPageBody() {
                     : 'border-border bg-bg-raised text-fg-muted'
                 }`}
               >
-                Mere deja enregistree
+                Mère déjà enregistrée
               </button>
             </div>
 
@@ -564,13 +572,13 @@ function SuccursaleEtrWorkflowPageBody() {
               <div>
                 <DossierAutocomplete
                   value={dossierMereId}
-                  label="Societe mere etrangere"
+                  label="Société mère étrangère"
                   origine="ETRANGERE"
                   onSelect={(d) => {
                     setDossierMere(d);
                     setDossierMereId(d?.id ?? '');
                   }}
-                  help="Seules les societes meres ETRANGERES deja enregistrees sont proposees. Leur identite n'est pas re-saisie."
+                  help="Seules les sociétés mères étrangères déjà enregistrées sont proposées. Leur identité n’est pas ressaisie."
                 />
                 {showErr1('mere') && (
                   <p className="mt-1 flex items-start gap-1 text-xs text-danger" role="alert">
@@ -583,20 +591,20 @@ function SuccursaleEtrWorkflowPageBody() {
               <section className="space-y-3 rounded-xl border border-border bg-bg-raised p-4">
                 <div className="grid gap-3 md:grid-cols-2">
                   <TextField
-                    label="Denomination *"
+                    label="Dénomination *"
                     value={mere.denomination}
                     data-testid="etr-mere-denomination"
                     onChange={(e) => setMere({ ...mere, denomination: e.target.value })}
                   />
                   <TextField
-                    label="Forme juridique du pays d'origine *"
+                    label="Forme juridique du pays d’origine *"
                     value={mere.forme}
                     data-testid="etr-mere-forme"
                     onChange={(e) => setMere({ ...mere, forme: e.target.value })}
                     placeholder="Ltd, GmbH, SAS, BV…"
                   />
                   <TextField
-                    label="Pays d'origine *"
+                    label="Pays d’origine *"
                     value={mere.pays}
                     data-testid="etr-mere-pays"
                     onChange={(e) => setMere({ ...mere, pays: e.target.value })}
@@ -605,12 +613,12 @@ function SuccursaleEtrWorkflowPageBody() {
                     label="Capital (devise comprise)"
                     value={mere.capital}
                     onChange={(e) => setMere({ ...mere, capital: e.target.value })}
-                    placeholder="Ex : 500 000 EUR"
-                    hint="Publie tel quel dans l'annonce : la devise d'origine est conservee."
+                    placeholder="Ex. : 500 000 EUR"
+                    hint="Publié tel quel dans l’annonce : la devise d’origine est conservée."
                   />
                   <div className="md:col-span-2">
                     <TextField
-                      label="Siege social *"
+                      label="Siège social *"
                       value={mere.siege}
                       data-testid="etr-mere-siege"
                       onChange={(e) => setMere({ ...mere, siege: e.target.value })}
@@ -620,7 +628,7 @@ function SuccursaleEtrWorkflowPageBody() {
                     label="Registre du commerce (type)"
                     value={mere.registre}
                     onChange={(e) => setMere({ ...mere, registre: e.target.value })}
-                    placeholder="Ex : Companies House"
+                    placeholder="Ex. : Companies House"
                   />
                   <TextField
                     label="N° de registre"
@@ -632,7 +640,7 @@ function SuccursaleEtrWorkflowPageBody() {
                       label="Loi applicable"
                       value={mere.loiApplicable}
                       onChange={(e) => setMere({ ...mere, loiApplicable: e.target.value })}
-                      placeholder="Ex : loi anglaise"
+                      placeholder="Ex. : loi anglaise"
                     />
                   </div>
                 </div>
@@ -647,15 +655,15 @@ function SuccursaleEtrWorkflowPageBody() {
 
             <div className="grid gap-3 md:grid-cols-2">
               <TextField
-                label="Organe competent"
+                label="Organe compétent"
                 value={organeCompetent}
                 data-testid="etr-organe-competent"
                 onChange={(e) => setOrganeCompetent(e.target.value)}
-                placeholder="Ex : le conseil d'administration, l'associe unique…"
-                hint="Publie dans l'annonce : « Aux termes de la decision de … »."
+                placeholder="Ex. : le conseil d’administration, l’associé unique…"
+                hint="Publié dans l’annonce : « Aux termes de la décision de … »."
               />
               <TextField
-                label="Date de la decision *"
+                label="Date de la décision *"
                 type="date"
                 value={dateAG}
                 min={minDate}
@@ -666,7 +674,7 @@ function SuccursaleEtrWorkflowPageBody() {
                 error={showErr1('dateAG')}
               />
               <Select
-                label="Type de decision *"
+                label="Type de décision *"
                 value={typeAssemblee}
                 data-testid="etr-type-assemblee"
                 onChange={(e) => setTypeAssemblee(e.target.value as 'ordinaire' | 'extraordinaire')}
@@ -676,13 +684,9 @@ function SuccursaleEtrWorkflowPageBody() {
                 ]}
               />
               <div className="rounded-lg border border-indigo-200 bg-accent/10 p-3 text-xs text-fg-muted">
-                Formalisme detecte : <strong>{isAU ? 'organe unipersonnel' : 'organe collegial'}</strong>
-                {' '}— Modeles{' '}
-                <code className="rounded bg-bg-overlay px-1.5 py-0.5">
-                  {isAU
-                    ? 'PV_CREATION_SUCCURSALE_ETRANGERE_SARL_AU'
-                    : 'PV_CREATION_SUCCURSALE_ETRANGERE_SARL'}
-                </code>
+                Organe détecté : <strong>{isAU ? 'organe unipersonnel' : 'organe collégial'}</strong>.
+                Acte produit : procès-verbal de création de succursale par une société étrangère
+                {isAU ? ' (décision unipersonnelle)' : ' (décision collégiale)'}.
               </div>
             </div>
 
@@ -692,7 +696,7 @@ function SuccursaleEtrWorkflowPageBody() {
             >
               <div className="flex items-center gap-2">
                 <Megaphone className="h-4 w-4 text-accent" />
-                <h4 className="text-sm font-semibold text-fg">Convocation (optionnelle)</h4>
+                <h4 className="text-sm font-semibold text-fg">Convocation (facultative)</h4>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <TextField
@@ -714,9 +718,9 @@ function SuccursaleEtrWorkflowPageBody() {
                 />
               </div>
               <p className="text-[11px] text-fg-subtle">
-                Regle des <strong>{CONVOCATION_DELAI_JOURS} jours</strong> : la reunion ne peut se
-                tenir moins de {CONVOCATION_DELAI_JOURS} jours calendaires apres la convocation.
-                Laisser vide si aucune convocation n'est emise.
+                Règle des <strong>{CONVOCATION_DELAI_JOURS} jours</strong> : la réunion ne peut se
+                tenir moins de {CONVOCATION_DELAI_JOURS} jours calendaires après la convocation.
+                Laissez vide si aucune convocation n’est émise.
               </p>
               {convocationError && (
                 <div
@@ -784,12 +788,12 @@ function SuccursaleEtrWorkflowPageBody() {
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-warning" />
                 <h4 className="text-sm font-semibold text-fg">
-                  Controles de conformite (bloquants)
+                  Contrôles de conformité (bloquants)
                 </h4>
               </div>
               <p className="text-[11px] text-fg-subtle">
-                Ces six controles portent sur les pieces de la societe mere : sans eux, le dossier
-                n'est pas recevable au greffe. Le backend les re-verifie.
+                Ces six contrôles portent sur les pièces de la société mère : sans eux, le dossier
+                n’est pas recevable au greffe. La plateforme les vérifie à nouveau à la validation.
               </p>
               <div className="grid gap-2 md:grid-cols-2">
                 {CONTROLES.map((c) => (
@@ -820,12 +824,12 @@ function SuccursaleEtrWorkflowPageBody() {
             <header>
               <div className="flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-accent" />
-                <h2 className="text-lg font-semibold text-fg">Etape 2 — Donnees de la succursale</h2>
+                <h2 className="text-lg font-semibold text-fg">Étape 2 — Données de la succursale</h2>
               </div>
               <p className="text-sm text-fg-subtle">
-                Saisie <strong>identique</strong> a celle d'une succursale de societe marocaine.
-                Ces informations alimentent a la fois le PV et l'annonce legale : elles ne sont
-                saisies qu'ici.
+                Saisie <strong>identique</strong> à celle d’une succursale de société marocaine.
+                Ces informations alimentent à la fois le procès-verbal et l’annonce légale : elles ne
+                sont saisies qu’ici.
               </p>
             </header>
 
@@ -835,19 +839,19 @@ function SuccursaleEtrWorkflowPageBody() {
               parties={null}
               dossierId={dossierMereEffectifId}
               errors={revealErrors ? step2Errors : {}}
-              roleLabel="Representant resident au Maroc"
+              roleLabel="Représentant résident au Maroc"
             />
 
             <section className="space-y-3 rounded-xl border border-border bg-bg-raised p-4">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-violet-600" />
-                <h4 className="text-sm font-semibold text-fg">Formalites</h4>
+                <h4 className="text-sm font-semibold text-fg">Formalités</h4>
               </div>
               <TextField
-                label="Mandataire charge des formalites"
+                label="Mandataire chargé des formalités"
                 value={mandataire}
                 onChange={(e) => setMandataire(e.target.value)}
-                hint="Requis : la résolution des pouvoirs le nomme."
+                hint="Obligatoire : la résolution des pouvoirs le nomme."
               />
             </section>
           </div>
@@ -858,11 +862,11 @@ function SuccursaleEtrWorkflowPageBody() {
             <header>
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-violet-600" />
-                <h2 className="text-lg font-semibold text-fg">Etape 3 — Generation des actes</h2>
+                <h2 className="text-lg font-semibold text-fg">Étape 3 — Génération des actes</h2>
               </div>
               <p className="text-sm text-fg-subtle">
-                Le <strong>PV de creation</strong> et l'<strong>annonce legale d'ouverture</strong>
-                {' '}sont generes a partir des etapes 1 et 2 : aucune donnee n'est re-saisie.
+                Le <strong>procès-verbal de création</strong> et l’<strong>annonce légale d’ouverture</strong>
+                {' '}sont produits à partir des étapes 1 et 2 : aucune donnée n’est ressaisie.
               </p>
             </header>
 
@@ -873,11 +877,11 @@ function SuccursaleEtrWorkflowPageBody() {
             >
               <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning" />
               <span>
-                <strong>Modele derive, non fourni par le directeur.</strong> Le directeur n'a livre
-                l'avis d'ouverture que pour une societe mere <em>marocaine</em>. La variante
-                etrangere reprend sa structure et sa formulation mot pour mot, en remplacant le
-                seul chapeau d'identification par les variables de la societe mere.
-                <strong> A faire valider par le directeur</strong> avant publication.
+                <strong>Modèle dérivé, non fourni par le directeur.</strong> Le directeur n’a livré
+                l’avis d’ouverture que pour une société mère <em>marocaine</em>. La variante
+                étrangère reprend sa structure et sa formulation mot pour mot, en remplaçant le
+                seul chapeau d’identification par les données de la société mère.
+                <strong> À faire valider par le directeur</strong> avant publication.
               </span>
             </div>
 
@@ -949,20 +953,20 @@ function SuccursaleEtrWorkflowPageBody() {
               <div className="flex items-center gap-2">
                 <Paperclip className="h-5 w-5 text-accent" />
                 <h2 className="text-lg font-semibold text-fg">
-                  Etape 4 — Pieces jointes (optionnelle)
+                  Étape 4 — Pièces jointes (facultative)
                 </h2>
               </div>
               <p className="text-sm text-fg-subtle">
-                Deposez ici les <strong>versions legalisees</strong> : statuts apostilles, traduction
-                certifiee, procuration, PV signe, annonce publiee. Cette etape est{' '}
-                <strong>entierement facultative</strong>.
+                Déposez ici les <strong>versions légalisées</strong> : statuts apostillés, traduction
+                certifiée, procuration, procès-verbal signé, annonce publiée. Cette étape est{' '}
+                <strong>entièrement facultative</strong>.
               </p>
             </header>
             <PiecesJointesPanel
               dossierId={dossierMereEffectifId}
               ticketId={ticket?.id}
               denomination={targetDenomination}
-              forme={mereEffective.forme || 'Etrangere'}
+              forme={mereEffective.forme || 'Étrangère'}
               motif={depositMotif}
               onDeposited={(entry) =>
                 setPiecesJointes((prev) => {
@@ -974,19 +978,19 @@ function SuccursaleEtrWorkflowPageBody() {
             />
             {dossierMereEffectifId ? (
               <p className="rounded-lg border border-border bg-bg-overlay p-3 text-xs text-fg-subtle">
-                Les depots sont classes dans la Data Room de la societe mere{' '}
-                <strong>{targetDenomination || '—'}</strong>, creee des la validation de
-                l'etape 1.
+                Les dépôts sont classés dans la Data Room de la société mère{' '}
+                <strong>{targetDenomination || '—'}</strong>, créée dès la validation de
+                l’étape 1.
               </p>
             ) : (
               <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-fg-muted">
-                Validez d'abord l'etape 1 : c'est elle qui cree (ou reutilise) la Data Room de la
-                societe mere, destination de ces depots.
+                Validez d’abord l’étape 1 : c’est elle qui crée (ou réutilise) la Data Room de la
+                société mère, destination de ces dépôts.
               </p>
             )}
             {piecesJointes.length === 0 && (
               <p className="rounded-lg border border-border bg-bg-overlay p-3 text-xs text-fg-subtle">
-                Aucune piece jointe deposee pour le moment — cette etape est facultative.
+                Aucune pièce jointe déposée pour le moment — cette étape est facultative.
               </p>
             )}
           </div>
@@ -996,20 +1000,20 @@ function SuccursaleEtrWorkflowPageBody() {
           <div className="space-y-4" data-testid="succursale-etr-synthese">
             <div className="rounded-xl bg-gradient-to-r from-accent to-indigo-600 p-6 text-bg-raised">
               <CheckCircle className="mb-2 h-8 w-8" />
-              <h2 className="text-2xl font-bold">Succursale creee</h2>
+              <h2 className="text-2xl font-bold">Succursale créée</h2>
               <p className="text-sm text-indigo-100">
-                Le PV de creation et l'annonce legale d'ouverture ont ete generes et valides.
+                Le procès-verbal de création et l’annonce légale d’ouverture ont été produits et validés.
               </p>
             </div>
 
             <div className="rounded-xl border border-border bg-bg-raised p-4">
-              <p className="mb-3 text-sm font-semibold text-fg">Societe mere etrangere</p>
+              <p className="mb-3 text-sm font-semibold text-fg">Société mère étrangère</p>
               <div className="grid gap-4 rounded-lg bg-bg-overlay p-3 sm:grid-cols-2">
-                <Field label="Denomination" value={mereEffective.denomination} />
-                <Field label="Forme d'origine" value={mereEffective.forme} />
+                <Field label="Dénomination" value={mereEffective.denomination} />
+                <Field label="Forme d’origine" value={mereEffective.forme} />
                 <Field label="Pays" value={mereEffective.pays} />
                 <Field label="Capital" value={mereEffective.capital} />
-                <Field label="Siege social" value={mereEffective.siege} className="sm:col-span-2" />
+                <Field label="Siège social" value={mereEffective.siege} className="sm:col-span-2" />
                 <Field
                   label="Registre"
                   value={[mereEffective.registre, mereEffective.registreNumero]
@@ -1017,8 +1021,8 @@ function SuccursaleEtrWorkflowPageBody() {
                     .join(' n° ')}
                 />
                 <Field label="Loi applicable" value={mereEffective.loiApplicable} />
-                <Field label="Organe decisionnaire" value={organeCompetent} />
-                <Field label="Date de la decision" value={dateAG} />
+                <Field label="Organe décisionnaire" value={organeCompetent} />
+                <Field label="Date de la décision" value={dateAG} />
               </div>
             </div>
 
@@ -1026,14 +1030,14 @@ function SuccursaleEtrWorkflowPageBody() {
               <p className="mb-3 text-sm font-semibold text-fg">Succursale au Maroc</p>
               <div className="grid gap-4 rounded-lg bg-bg-overlay p-3 sm:grid-cols-2">
                 <Field label="Enseigne" value={succursale.enseigne} />
-                <Field label="Activite" value={succursale.activite} />
+                <Field label="Activité" value={succursale.activite} />
                 <Field label="Adresse" value={succursale.adresse} className="sm:col-span-2" />
                 <Field label="Ville" value={succursale.ville} />
                 <Field
                   label="Greffe de la succursale"
                   value={succursale.villeGreffe || succursale.ville}
                 />
-                <Field label="Date d'ouverture" value={succursale.dateOuverture} />
+                <Field label="Date d’ouverture" value={succursale.dateOuverture} />
                 <Field
                   label="Dotation"
                   value={
@@ -1045,26 +1049,26 @@ function SuccursaleEtrWorkflowPageBody() {
 
             <div className="rounded-xl border border-border bg-bg-raised p-4 text-sm text-fg-muted">
               <p>
-                <strong>Data Room de la societe mere :</strong>{' '}
+                <strong>Data Room de la société mère :</strong>{' '}
                 {reuseExisting
-                  ? 'reutilisee (mere deja enregistree).'
-                  : 'creee des la validation de l’etape 1 — la societe mere est un dossier a part entiere, ou sont classes le PV, l’annonce et les pieces.'}
+                  ? 'réutilisée (mère déjà enregistrée).'
+                  : 'créée dès la validation de l’étape 1 — la société mère est un dossier à part entière, où sont classés le procès-verbal, l’annonce et les pièces.'}
               </p>
               <p className="mt-1">
-                <strong>Immatriculation :</strong> la succursale doit etre immatriculee au registre
+                <strong>Immatriculation :</strong> la succursale doit être immatriculée au registre
                 du commerce de{' '}
                 <strong>{succursale.villeGreffe || succursale.ville || '—'}</strong> dans les trois
                 mois de son ouverture (loi 15-95, art. 75).
               </p>
               <p className="mt-1">
-                <strong>N° RC et ICE de la succursale :</strong> attribues par le greffe apres depot
-                — a saisir dans les identifiants du dossier, pas ici.
+                <strong>N° RC et ICE de la succursale :</strong> attribués après le dépôt au greffe
+                — à saisir dans les identifiants du dossier, pas ici.
               </p>
             </div>
 
             {!isTerminated ? (
               <div className="flex gap-2">
-                <Button onClick={handleCloturer}>Cloturer le workflow</Button>
+                <Button onClick={handleCloturer}>Clôturer le parcours</Button>
               </div>
             ) : (
               <Button onClick={() => navigate('/tickets')}>Retour aux tickets</Button>

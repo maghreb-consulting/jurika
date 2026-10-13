@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import { describe, it, expect } from 'vitest';
 import {
   CONVOCATION_DELAI_JOURS,
@@ -10,7 +9,7 @@ import {
   decisionTypeFor,
   validateModification,
   validateStep1Inputs,
-} from '../ModificationWorkflowPage';
+} from '../modificationLogique';
 
 describe('Modification — preflight (étape 3)', () => {
   it('FALLBACK_ANNEXE_TYPES contient les 9 types non couverts', () => {
@@ -101,7 +100,7 @@ describe('Modification — preflight (étape 3)', () => {
       decisionType: 'AGE',
     });
     expect(msg).toBeTruthy();
-    expect(msg).toMatch(/societe/i);
+    expect(msg).toMatch(/société/i);
   });
 
   it('validateStep1Inputs : dossierId OK + selection OK + date OK → null', () => {
@@ -114,7 +113,7 @@ describe('Modification — preflight (étape 3)', () => {
     expect(msg).toBeNull();
   });
 
-  it('validateStep1Inputs : dossierId présent mais sélection vide → blocage \"au moins une\"', () => {
+  it('validateStep1Inputs : dossierId présent mais sélection vide → blocage « au moins une »', () => {
     const msg = validateStep1Inputs({
       dossierId: '11111111-1111-1111-1111-111111111111',
       selectedTypes: [],

@@ -151,7 +151,7 @@ describe('LiquidationWorkflowPage — étape 1, anti-duplication', () => {
       expect(screen.getByTestId('liquidation-secours-liquidateur')).toBeInTheDocument();
     });
     expect(screen.getByTestId('liquidateur-picker')).toBeInTheDocument();
-    expect(screen.getByTestId('liquidation-liquidateur-bd')).toHaveTextContent('non enregistre');
+    expect(screen.getByTestId('liquidation-liquidateur-bd')).toHaveTextContent('non enregistré');
     // Champs vides : rien a reprendre de la BD.
     expect(screen.getByTestId('liquidateur-nom')).toHaveValue('');
     // La date de dissolution, elle, reste lue en base : pas de saisie de secours.

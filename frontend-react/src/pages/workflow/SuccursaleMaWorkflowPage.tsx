@@ -16,7 +16,7 @@
  * la BD ; le bloc succursale saisi à l'étape 2 alimente à la fois le PV et l'annonce —
  * le sous-formulaire de génération l'affiche en récapitulatif verrouillé (`locked`).
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
@@ -37,6 +37,9 @@ import { CancelTicketDialog } from '../tickets/CancelTicketDialog';
 import { useWorkflow } from './useWorkflow';
 import { useStepAutosave } from './useStepAutosave';
 import { WorkflowBoot } from './WorkflowBoot';
+import { AideEtape } from './AideEtape';
+import { ETAPES_SUCCURSALE_MA, etapesRoadmap } from './aidesParcours';
+import { bornesDateSeance, useDossierParties, useEtatReinitialise } from './parcoursHooks';
 import { DossierAutocomplete } from '../../components/workflow/DossierAutocomplete';
 import { SuccursaleOperationForm } from '../../components/workflow/SuccursaleOperationForm';
 import { SuccursaleAnnoncePanel } from '../../components/workflow/SuccursaleAnnoncePanel';
@@ -59,24 +62,17 @@ import {
   convocationDelaiError,
 } from '../../components/workflow/convocationDelai';
 import { buildDocFilename, formeLabel } from '../../components/workflow/workflowFilename';
-import { workflowService, type DossierParties } from '../../services/workflow.service';
 import type { TemplateInfo } from '../../services/workflowDocumentService';
 import type { AssocieInput, GerantInput } from '../../components/workflow/SeanceForm';
 import type { DossierBrief } from '../../types/dataroom';
 
-const STEPS: RoadmapStep[] = [
-  { number: 1, label: 'Societe mere' },
-  { number: 2, label: 'Succursale' },
-  { number: 3, label: 'Generation' },
-  { number: 4, label: 'Pieces jointes' },
-  { number: 5, label: 'Synthese' },
-];
+const STEPS: RoadmapStep[] = etapesRoadmap(ETAPES_SUCCURSALE_MA);
 
 /** Une société dissoute / liquidée / radiée n'ouvre pas de succursale. */
 const ALLOWED_STATUTS_MERE = ['ACTIVE'];
 
 /** Libellé « type de document » pour le nommage `type - dénomination - forme (- v<n>)`. */
-export function succursaleMaDocType(code: string): string {
+function succursaleMaDocType(code: string): string {
   if (code.startsWith('ANNONCE_LEGALE_OUVERTURE_SUCCURSALE')) {
     return 'Annonce légale — Ouverture de succursale';
   }
@@ -156,9 +152,8 @@ function SuccursaleMaWorkflowPageBody() {
   const [convocationSnapshot, setConvocationSnapshot] = useState<Record<string, unknown> | null>(
     (stepData.step1?.convocationSnapshot as Record<string, unknown>) ?? null,
   );
-  const [dossierParties, setDossierParties] = useState<DossierParties | null>(null);
-  const [partiesLoading, setPartiesLoading] = useState(false);
-  const [revealErrors, setRevealErrors] = useState(false);
+  // Remises a zero a chaque changement d'etape.
+  const [revealErrors, setRevealErrors] = useEtatReinitialise(viewStep, () => false);
 
   // ---------- Étape 2 : saisie de la succursale ----------
   const [succursale, setSuccursale] = useState<SuccursaleSaisieState>(
@@ -187,34 +182,10 @@ function SuccursaleMaWorkflowPageBody() {
     () => (stepData.step4?.piecesJointes as PieceJointeEntry[] | undefined) ?? [],
   );
 
-  useEffect(() => {
-    setRevealErrors(false);
-  }, [viewStep]);
-
   // Parties prenantes DÈS la sélection : elles peuplent le sélecteur de responsable
   // ET la convocation — aucune re-saisie d'identité.
-  useEffect(() => {
-    if (!dossierId) {
-      setDossierParties(null);
-      return;
-    }
-    let cancelled = false;
-    setPartiesLoading(true);
-    workflowService
-      .getDossierParties(dossierId)
-      .then((parties) => {
-        if (!cancelled) setDossierParties(parties);
-      })
-      .catch(() => {
-        /* best-effort : la saisie externe reste possible */
-      })
-      .finally(() => {
-        if (!cancelled) setPartiesLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [dossierId]);
+  // Best-effort : un echec de lecture laisse la saisie externe possible.
+  const { dossierParties, partiesLoading } = useDossierParties(dossierId);
 
   const formeJuridiqueRaw = useMemo(
     () =>
@@ -265,8 +236,7 @@ function SuccursaleMaWorkflowPageBody() {
     [dossierParties],
   );
 
-  const minDate = new Date(Date.now() - 2 * 365 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-  const maxDate = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  const [{ minDate, maxDate }] = useState(bornesDateSeance);
 
   // Règle DURE des 16 jours (miroir exact du backend WorkflowSteps.convocationDelaiError).
   const convocationError = useMemo(
@@ -277,8 +247,8 @@ function SuccursaleMaWorkflowPageBody() {
   type Step1Errors = { dossierId?: string; dateAG?: string; convocation?: string };
   const step1Errors = useMemo<Step1Errors>(() => {
     const errs: Step1Errors = {};
-    if (!dossierId.trim()) errs.dossierId = 'Selectionnez la societe mere.';
-    if (!dateAG) errs.dateAG = "La date de l'assemblee est obligatoire.";
+    if (!dossierId.trim()) errs.dossierId = 'Sélectionnez la société mère.';
+    if (!dateAG) errs.dateAG = 'La date de l’assemblée est obligatoire.';
     if (convocationError) errs.convocation = convocationError;
     return errs;
   }, [dossierId, dateAG, convocationError]);
@@ -338,87 +308,6 @@ function SuccursaleMaWorkflowPageBody() {
     [succursale],
   );
 
-  if (loading) return <Loader />;
-  if (!ticket || !progress)
-    return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger">
-        {error ?? 'Workflow introuvable'}
-      </div>
-    );
-
-  const step = viewStep;
-  const isTerminated = progress.statut === 'TERMINE';
-  const showErr1 = (field: keyof Step1Errors): string | undefined =>
-    revealErrors ? step1Errors[field] : undefined;
-
-  async function handleValidate() {
-    setError(null);
-    if (step === 1) {
-      const errs = Object.values(step1Errors).filter(Boolean) as string[];
-      if (errs.length > 0) {
-        setRevealErrors(true);
-        setError(
-          `Veuillez corriger ${errs.length} erreur${errs.length > 1 ? 's' : ''} (surlignees en rouge).`,
-        );
-        return;
-      }
-      await executeStep(1, {
-        dossierId,
-        dateAG,
-        typeAssemblee,
-        formeJuridique: formeJuridiqueRaw ?? undefined,
-        convocation: convocationPayload(),
-      });
-    } else if (step === 2) {
-      const errs = Object.values(step2Errors).filter(Boolean) as string[];
-      if (errs.length > 0) {
-        setRevealErrors(true);
-        setError(
-          `Veuillez corriger ${errs.length} erreur${errs.length > 1 ? 's' : ''} (surlignees en rouge).`,
-        );
-        return;
-      }
-      await executeStep(2, {
-        succursale: succursalePayload,
-        formalitesMandataireNom: mandataire || undefined,
-      });
-    } else if (step === 3) {
-      if (!pvValidated) {
-        setError('Generez puis validez le PV de creation de la succursale avant de continuer.');
-        return;
-      }
-      if (!annonceValidated) {
-        setError(
-          "Generez puis validez l'annonce legale d'ouverture : sa publication au Journal "
-            + "d'Annonces Legales est obligatoire (les numero et date de depot legal restent "
-            + 'facultatifs a ce stade).',
-        );
-        return;
-      }
-      await executeStep(3, {
-        pvValide: true,
-        annonceValide: true,
-        depotLegal:
-          depotLegalNumero || depotLegalDate
-            ? { numero: depotLegalNumero || null, date: depotLegalDate || null }
-            : undefined,
-      });
-    } else if (step === 4) {
-      // Étape OPTIONNELLE : jamais bloquante, peut être vide.
-      await executeStep(4, {
-        piecesJointes: piecesJointes.map((p) => ({
-          id: p.id,
-          label: p.label,
-          filename: p.filename,
-          version: p.version ?? null,
-        })),
-      });
-    } else if (step === 5) {
-      await executeStep(5, {});
-    }
-  }
-
-  /** Contenu courant de l'étape — voir la note dans DissolutionWorkflowPage. */
   const draftPayloadFor = useCallback(
     (n: number): Record<string, unknown> | null => {
       if (n === 1) {
@@ -449,13 +338,96 @@ function SuccursaleMaWorkflowPageBody() {
       if (n === 4) return { piecesJointes };
       return null;
     },
-    [dossierId, dateAG, typeAssemblee, formeJuridiqueRaw, convocationDate,
-      convocationHeure, convocationSnapshot, succursale, succursalePayload,
+    [dossierId, dateAG, typeAssemblee, formeJuridiqueRaw, convocationPayload,
+      convocationSnapshot, succursale, succursalePayload,
       mandataire, pvValidated, annonceValidated, depotLegalNumero, depotLegalDate,
       piecesJointes],
   );
 
-  useStepAutosave(step, () => draftPayloadFor(step), registerDirty);
+  // Appele avant les retours anticipes : l'ordre des hooks ne varie jamais.
+  useStepAutosave(viewStep, () => draftPayloadFor(viewStep), registerDirty);
+
+  if (loading) return <Loader />;
+  if (!ticket || !progress)
+    return (
+      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+        {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
+      </div>
+    );
+
+  const step = viewStep;
+  const isTerminated = progress.statut === 'TERMINE';
+  const showErr1 = (field: keyof Step1Errors): string | undefined =>
+    revealErrors ? step1Errors[field] : undefined;
+
+  async function handleValidate() {
+    setError(null);
+    if (step === 1) {
+      const errs = Object.values(step1Errors).filter(Boolean) as string[];
+      if (errs.length > 0) {
+        setRevealErrors(true);
+        setError(
+          `Veuillez corriger ${errs.length} erreur${errs.length > 1 ? 's' : ''} (signalée${errs.length > 1 ? 's' : ''} en rouge).`,
+        );
+        return;
+      }
+      await executeStep(1, {
+        dossierId,
+        dateAG,
+        typeAssemblee,
+        formeJuridique: formeJuridiqueRaw ?? undefined,
+        convocation: convocationPayload(),
+      });
+    } else if (step === 2) {
+      const errs = Object.values(step2Errors).filter(Boolean) as string[];
+      if (errs.length > 0) {
+        setRevealErrors(true);
+        setError(
+          `Veuillez corriger ${errs.length} erreur${errs.length > 1 ? 's' : ''} (signalée${errs.length > 1 ? 's' : ''} en rouge).`,
+        );
+        return;
+      }
+      await executeStep(2, {
+        succursale: succursalePayload,
+        formalitesMandataireNom: mandataire || undefined,
+      });
+    } else if (step === 3) {
+      if (!pvValidated) {
+        setError('Générez puis validez le procès-verbal de création de la succursale avant de continuer.');
+        return;
+      }
+      if (!annonceValidated) {
+        setError(
+          'Générez puis validez l’annonce légale d’ouverture : sa publication dans un journal '
+            + 'd’annonces légales est obligatoire (le numéro et la date du dépôt légal restent '
+            + 'facultatifs à ce stade).',
+        );
+        return;
+      }
+      await executeStep(3, {
+        pvValide: true,
+        annonceValide: true,
+        depotLegal:
+          depotLegalNumero || depotLegalDate
+            ? { numero: depotLegalNumero || null, date: depotLegalDate || null }
+            : undefined,
+      });
+    } else if (step === 4) {
+      // Étape OPTIONNELLE : jamais bloquante, peut être vide.
+      await executeStep(4, {
+        piecesJointes: piecesJointes.map((p) => ({
+          id: p.id,
+          label: p.label,
+          filename: p.filename,
+          version: p.version ?? null,
+        })),
+      });
+    } else if (step === 5) {
+      await executeStep(5, {});
+    }
+  }
+
+  /** Contenu courant de l'étape — voir la note dans DissolutionWorkflowPage. */
 
   async function handleSaveDraft() {
     const payload = draftPayloadFor(step);
@@ -468,15 +440,15 @@ function SuccursaleMaWorkflowPageBody() {
       await ticketService.transition(ticket.id, { target: 'CLOTURE_DOSSIER' });
       navigate('/tickets');
     } catch (err) {
-      setError((err as Error)?.message ?? 'Echec de cloture');
+      setError((err as Error)?.message ?? 'La clôture du parcours a échoué : réessayez.');
     }
   }
 
   const decisionLabel = isAU
-    ? "Decision de l'associe unique"
+    ? 'Décision de l’associé unique'
     : typeAssemblee === 'ordinaire'
-      ? 'Assemblee Generale Ordinaire (AGO)'
-      : 'Assemblee Generale Extraordinaire (AGE)';
+      ? 'Assemblée générale ordinaire (AGO)'
+      : 'Assemblée générale extraordinaire (AGE)';
 
   const societeInput = {
     // Identite complete : sans elle, les formulaires de seance laissaient vides le
@@ -503,17 +475,30 @@ function SuccursaleMaWorkflowPageBody() {
         onSaveDraft={!isTerminated && step < 5 ? handleSaveDraft : undefined}
         onValidate={!isTerminated ? handleValidate : undefined}
         onCancel={() => setShowCancel(true)}
-        footer={{ validateLabel: step === 5 ? 'Finaliser' : "Valider l'etape" }}
+        footer={{ validateLabel: step === 5 ? 'Finaliser' : 'Valider l’étape' }}
       >
+        <AideEtape
+          parcours="succursale-ma"
+          etapes={ETAPES_SUCCURSALE_MA}
+          etape={step}
+          manquants={
+            step === 1
+              ? (Object.values(step1Errors).filter(Boolean) as string[])
+              : step === 2
+                ? (Object.values(step2Errors).filter(Boolean) as string[])
+                : undefined
+          }
+        />
+
         {step === 1 && (
           <div className="space-y-5" data-testid="succursale-ma-step1">
             <header>
-              <h2 className="text-lg font-semibold text-fg">Etape 1 — Societe mere et assemblee</h2>
+              <h2 className="text-lg font-semibold text-fg">Étape 1 — Société mère et assemblée</h2>
               <p className="text-sm text-fg-subtle">
-                Selectionnez la societe <strong>ACTIVE</strong> qui ouvre la succursale, puis la
-                date et le type de l'assemblee qui la decide. L'identite de la societe
-                (denomination, capital, siege, RC, ville du greffe) est lue en base : elle n'est{' '}
-                <strong>jamais re-saisie</strong>.
+                Sélectionnez la société <strong>active</strong> qui ouvre la succursale, puis la
+                date et le type de l’assemblée qui la décide. L’identité de la société
+                (dénomination, capital, siège, RC, ville du greffe) est lue dans le dossier : vous
+                n’avez{' '}<strong>jamais à la ressaisir</strong>.
               </p>
             </header>
 
@@ -525,7 +510,7 @@ function SuccursaleMaWorkflowPageBody() {
                   setDossierId(d?.id ?? '');
                 }}
                 allowedStatuts={ALLOWED_STATUTS_MERE}
-                help="Seules les societes au statut ACTIVE peuvent ouvrir une succursale."
+                help="Seules les sociétés au statut « active » peuvent ouvrir une succursale."
               />
               {showErr1('dossierId') && (
                 <p className="mt-1 flex items-start gap-1 text-xs text-danger" role="alert">
@@ -540,24 +525,15 @@ function SuccursaleMaWorkflowPageBody() {
                 className="rounded-lg border border-indigo-200 bg-accent/10 p-3 text-xs text-fg-muted"
                 role="status"
               >
-                Formalisme detecte : <strong>{decisionLabel}</strong> — Modeles :{' '}
-                <code className="rounded bg-bg-overlay px-1.5 py-0.5">
-                  {isAU
-                    ? 'PV_CREATION_SUCCURSALE_MAROC_SARL_AU'
-                    : 'PV_CREATION_SUCCURSALE_MAROC_SARL'}
-                </code>{' '}
-                +{' '}
-                <code className="rounded bg-bg-overlay px-1.5 py-0.5">
-                  {isAU
-                    ? 'ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL_AU'
-                    : 'ANNONCE_LEGALE_OUVERTURE_SUCCURSALE_SARL'}
-                </code>
+                Organe compétent : <strong>{decisionLabel}</strong>. Actes produits : procès-verbal
+                de création de la succursale{isAU ? ' (SARL à associé unique)' : ' (SARL)'} et
+                annonce légale d’ouverture.
               </div>
             )}
 
             <div className="grid gap-3 md:grid-cols-2">
               <TextField
-                label={`Date ${isAU ? 'de la decision' : "de l'assemblee"} *`}
+                label={`Date ${isAU ? 'de la décision' : 'de l’assemblée'} *`}
                 type="date"
                 value={dateAG}
                 min={minDate}
@@ -568,7 +544,7 @@ function SuccursaleMaWorkflowPageBody() {
                 error={showErr1('dateAG')}
               />
               <Select
-                label="Type d'assemblee *"
+                label="Type d’assemblée *"
                 value={typeAssemblee}
                 data-testid="succursale-ma-type-assemblee"
                 onChange={(e) =>
@@ -580,8 +556,8 @@ function SuccursaleMaWorkflowPageBody() {
                 ]}
                 hint={
                   isAU
-                    ? "En SARL AU, l'associe unique exerce les pouvoirs de l'assemblee."
-                    : "Selon les statuts, l'ouverture d'une succursale peut relever de l'AGO ou de l'AGE."
+                    ? 'En SARL à associé unique, l’associé unique exerce les pouvoirs de l’assemblée.'
+                    : 'Selon les statuts, l’ouverture d’une succursale peut relever de l’AGO ou de l’AGE.'
                 }
               />
             </div>
@@ -592,7 +568,7 @@ function SuccursaleMaWorkflowPageBody() {
             >
               <div className="flex items-center gap-2">
                 <Megaphone className="h-4 w-4 text-accent" />
-                <h4 className="text-sm font-semibold text-fg">Convocation (optionnelle)</h4>
+                <h4 className="text-sm font-semibold text-fg">Convocation (facultative)</h4>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <TextField
@@ -614,9 +590,9 @@ function SuccursaleMaWorkflowPageBody() {
                 />
               </div>
               <p className="text-[11px] text-fg-subtle">
-                Regle des <strong>{CONVOCATION_DELAI_JOURS} jours</strong> : l'assemblee ne peut se
-                tenir moins de {CONVOCATION_DELAI_JOURS} jours calendaires apres la convocation.
-                Laisser vide si aucune convocation n'est emise.
+                Règle des <strong>{CONVOCATION_DELAI_JOURS} jours</strong> : l’assemblée ne peut se
+                tenir moins de {CONVOCATION_DELAI_JOURS} jours calendaires après la convocation.
+                Laissez vide si aucune convocation n’est émise.
               </p>
               {convocationError && (
                 <div
@@ -663,13 +639,13 @@ function SuccursaleMaWorkflowPageBody() {
             <header>
               <div className="flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-accent" />
-                <h2 className="text-lg font-semibold text-fg">Etape 2 — Donnees de la succursale</h2>
+                <h2 className="text-lg font-semibold text-fg">Étape 2 — Données de la succursale</h2>
               </div>
               <p className="text-sm text-fg-subtle">
-                Ces informations alimentent <strong>a la fois</strong> le PV et l'annonce legale :
-                elles ne sont saisies qu'ici. La <strong>ville du greffe</strong> de la succursale
-                est distincte de celle du siege — la succursale s'immatricule au RC de son lieu
-                d'exploitation.
+                Ces informations alimentent <strong>à la fois</strong> le procès-verbal et l’annonce
+                légale : elles ne sont saisies qu’ici. La <strong>ville du greffe</strong> de la
+                succursale est distincte de celle du siège : la succursale s’immatricule au RC de son
+                lieu d’exploitation.
               </p>
             </header>
 
@@ -685,13 +661,13 @@ function SuccursaleMaWorkflowPageBody() {
             <section className="space-y-3 rounded-xl border border-border bg-bg-raised p-4">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-violet-600" />
-                <h4 className="text-sm font-semibold text-fg">Formalites</h4>
+                <h4 className="text-sm font-semibold text-fg">Formalités</h4>
               </div>
               <TextField
-                label="Mandataire charge des formalites"
+                label="Mandataire chargé des formalités"
                 value={mandataire}
                 onChange={(e) => setMandataire(e.target.value)}
-                hint="Requis : la résolution des pouvoirs le nomme."
+                hint="Obligatoire : la résolution des pouvoirs le nomme."
               />
             </section>
           </div>
@@ -702,13 +678,13 @@ function SuccursaleMaWorkflowPageBody() {
             <header>
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-violet-600" />
-                <h2 className="text-lg font-semibold text-fg">Etape 3 — Generation des actes</h2>
+                <h2 className="text-lg font-semibold text-fg">Étape 3 — Génération des actes</h2>
               </div>
               <p className="text-sm text-fg-subtle">
-                Le <strong>PV de creation de succursale</strong> et l'
-                <strong>annonce legale d'ouverture</strong> sont generes a partir des etapes 1 et 2
-                et de la Data Room : aucune donnee n'est re-saisie. A la validation, chaque document
-                est <strong>depose automatiquement</strong> et versionne dans la dataroom juridique.
+                Le <strong>procès-verbal de création de succursale</strong> et l’
+                <strong>annonce légale d’ouverture</strong> sont produits à partir des étapes 1 et 2
+                et de la Data Room : aucune donnée n’est ressaisie. À la validation, chaque document
+                est <strong>déposé automatiquement</strong> et versionné dans la Data Room juridique.
               </p>
             </header>
 
@@ -833,14 +809,14 @@ function SuccursaleMaWorkflowPageBody() {
               <div className="flex items-center gap-2">
                 <Paperclip className="h-5 w-5 text-accent" />
                 <h2 className="text-lg font-semibold text-fg">
-                  Etape 4 — Pieces jointes (optionnelle)
+                  Étape 4 — Pièces jointes (facultative)
                 </h2>
               </div>
               <p className="text-sm text-fg-subtle">
-                Deposez ici les <strong>versions legalisees</strong> des documents generes (PV
-                signe, annonce publiee, modele 4…). Cette etape est{' '}
-                <strong>entierement facultative</strong> : vous pouvez la laisser vide et poursuivre
-                vers la synthese. Chaque depot est versionne en Data Room.
+                Déposez ici les <strong>versions légalisées</strong> des documents produits
+                (procès-verbal signé, annonce publiée, modèle 4…). Cette étape est{' '}
+                <strong>entièrement facultative</strong> : vous pouvez la laisser vide et poursuivre
+                vers la synthèse. Chaque dépôt est versionné dans la Data Room.
               </p>
             </header>
             <PiecesJointesPanel
@@ -859,7 +835,7 @@ function SuccursaleMaWorkflowPageBody() {
             />
             {piecesJointes.length === 0 && (
               <p className="rounded-lg border border-border bg-bg-overlay p-3 text-xs text-fg-subtle">
-                Aucune piece jointe deposee pour le moment — cette etape est facultative.
+                Aucune pièce jointe déposée pour le moment — cette étape est facultative.
               </p>
             )}
           </div>
@@ -869,10 +845,10 @@ function SuccursaleMaWorkflowPageBody() {
           <div className="space-y-4" data-testid="succursale-ma-synthese">
             <div className="rounded-xl bg-gradient-to-r from-accent to-indigo-600 p-6 text-bg-raised">
               <CheckCircle className="mb-2 h-8 w-8" />
-              <h2 className="text-2xl font-bold">Succursale creee</h2>
+              <h2 className="text-2xl font-bold">Succursale créée</h2>
               <p className="text-sm text-indigo-100">
-                Le PV de creation et l'annonce legale d'ouverture ont ete generes, valides et
-                deposes en dataroom.
+                Le procès-verbal de création et l’annonce légale d’ouverture ont été produits,
+                validés et déposés dans la Data Room.
               </p>
             </div>
 
@@ -880,17 +856,17 @@ function SuccursaleMaWorkflowPageBody() {
               className="rounded-xl border border-border bg-bg-raised p-4"
               data-testid="synthese-societe"
             >
-              <p className="mb-3 text-sm font-semibold text-fg">Societe mere et decision</p>
+              <p className="mb-3 text-sm font-semibold text-fg">Société mère et décision</p>
               <div className="grid gap-4 rounded-lg bg-bg-overlay p-3 sm:grid-cols-2">
-                <Field label="Denomination" value={targetDenomination} />
+                <Field label="Dénomination" value={targetDenomination} />
                 <Field label="Forme juridique" value={formeJuridiqueRaw} />
-                <Field label={`Date ${isAU ? 'de la decision' : "de l'assemblee"}`} value={dateAG} />
-                <Field label="Type d'assemblee" value={typeAssemblee} />
+                <Field label={`Date ${isAU ? 'de la décision' : 'de l’assemblée'}`} value={dateAG} />
+                <Field label="Type d’assemblée" value={typeAssemblee} />
                 <Field
                   label="Convocation"
                   value={
                     convocationDate
-                      ? `${convocationDate}${convocationHeure ? ` a ${convocationHeure}` : ''}`
+                      ? `${convocationDate}${convocationHeure ? ` à ${convocationHeure}` : ''}`
                       : 'Aucune'
                   }
                 />
@@ -904,14 +880,14 @@ function SuccursaleMaWorkflowPageBody() {
               <p className="mb-3 text-sm font-semibold text-fg">Succursale</p>
               <div className="grid gap-4 rounded-lg bg-bg-overlay p-3 sm:grid-cols-2">
                 <Field label="Enseigne" value={succursale.enseigne} />
-                <Field label="Activite" value={succursale.activite} />
+                <Field label="Activité" value={succursale.activite} />
                 <Field label="Adresse" value={succursale.adresse} className="sm:col-span-2" />
                 <Field label="Ville" value={succursale.ville} />
                 <Field
                   label="Greffe de la succursale"
                   value={succursale.villeGreffe || succursale.ville}
                 />
-                <Field label="Date d'ouverture" value={succursale.dateOuverture} />
+                <Field label="Date d’ouverture" value={succursale.dateOuverture} />
                 <Field
                   label="Dotation"
                   value={
@@ -944,25 +920,25 @@ function SuccursaleMaWorkflowPageBody() {
               className="rounded-xl border border-border bg-bg-raised p-4"
               data-testid="synthese-documents"
             >
-              <p className="mb-3 text-sm font-semibold text-fg">Documents et depots</p>
+              <p className="mb-3 text-sm font-semibold text-fg">Documents et dépôts</p>
               <ul className="space-y-1 rounded-lg bg-bg-overlay p-3 text-sm text-fg-muted">
                 <li>
-                  PV de creation de succursale : {pvValidated ? 'genere et valide' : 'non valide'} —
-                  depose en Data Room versionnee.
+                  Procès-verbal de création de succursale : {pvValidated ? 'produit et validé' : 'non validé'} —
+                  déposé et versionné dans la Data Room.
                 </li>
                 <li>
-                  Annonce legale d'ouverture :{' '}
-                  {annonceValidated ? 'generee et validee' : 'non validee'}
+                  Annonce légale d’ouverture :{' '}
+                  {annonceValidated ? 'produite et validée' : 'non validée'}
                   {depotLegalNumero || depotLegalDate
-                    ? ` — depot legal n° ${depotLegalNumero || '—'} du ${depotLegalDate || '—'}`
-                    : ' — depot legal (n° + date) a completer apres depot au greffe'}
+                    ? ` — dépôt légal n° ${depotLegalNumero || '—'} du ${depotLegalDate || '—'}`
+                    : ' — numéro et date du dépôt légal à compléter après le dépôt au greffe'}
                   .
                 </li>
                 <li>
-                  Pieces jointes :{' '}
+                  Pièces jointes :{' '}
                   {piecesJointes.length > 0
                     ? piecesJointes.map((p) => p.label).join(', ')
-                    : 'aucune (etape facultative)'}
+                    : 'aucune (étape facultative)'}
                   .
                 </li>
               </ul>
@@ -970,20 +946,20 @@ function SuccursaleMaWorkflowPageBody() {
 
             <div className="rounded-xl border border-border bg-bg-raised p-4 text-sm text-fg-muted">
               <p>
-                <strong>Immatriculation :</strong> la succursale doit etre immatriculee au registre
+                <strong>Immatriculation :</strong> la succursale doit être immatriculée au registre
                 du commerce de{' '}
                 <strong>{succursale.villeGreffe || succursale.ville || '—'}</strong> dans les trois
                 mois de son ouverture (loi 15-95, art. 75).
               </p>
               <p className="mt-1">
-                <strong>N° RC de la succursale :</strong> attribue par le greffe apres depot — a
+                <strong>N° RC de la succursale :</strong> attribué par le greffe après le dépôt — à
                 saisir dans les identifiants du dossier, pas ici.
               </p>
             </div>
 
             {!isTerminated ? (
               <div className="flex gap-2">
-                <Button onClick={handleCloturer}>Cloturer le workflow</Button>
+                <Button onClick={handleCloturer}>Clôturer le parcours</Button>
               </div>
             ) : (
               <Button onClick={() => navigate('/tickets')}>Retour aux tickets</Button>
