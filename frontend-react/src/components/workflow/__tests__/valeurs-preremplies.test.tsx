@@ -2,7 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { describe, expect, it, vi } from 'vitest';
 import { render, renderHook } from '@testing-library/react';
 import { DynamicField } from '../modificationResolutions';
-import { useSeanceForm, emptyAssocie } from '../SeanceForm';
+import { useSeanceForm, emptyAssocie } from '../seanceFormEtat';
 import { emptyLiquidateur } from '../LiquidateurPicker';
 
 /**

@@ -36,15 +36,15 @@ import {
   listTemplatesForWorkflow,
   type TemplateInfo,
 } from '../../services/workflowDocumentService';
+import { SeanceFormFields } from './SeanceForm';
 import {
-  SeanceFormFields,
   sanitizeFilename,
   useSeanceForm,
   type AssocieInput,
   type GerantInput,
   type SeanceSections,
   type SeanceSocieteInput,
-} from './SeanceForm';
+} from './seanceFormEtat';
 import type { DocumentType } from '../../types/dataroom';
 import { USAGES_CABINET } from '../../lib/usagesCabinet';
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Building2,
@@ -16,7 +16,7 @@ import { BlocageValidation } from '../../../components/workflow/BlocageValidatio
 import { IdentityExtractor } from '../../../components/identity/IdentityExtractor';
 import { toIsoDate } from '../../../types/identity';
 import { useStepAutosave } from '../useStepAutosave';
-import { InfoBulle } from '../../../components/ui/Aide';
+import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 import { TypePieceProposee, ValeurProposee } from '../../../components/workflow/ValeurProposee';
 import { libelleNumeroPiece, pieceInvalidMessage, pieceSansExtraction } from './pieceIdentite';
 import { ajouterExtraits, retirerExtraits } from '../provenance';
@@ -277,7 +277,7 @@ function newAssocie(): Associe {
     repLieuNaissance: '',
     repNationalite: 'Marocaine',
     repPieceValidite: '',
-    repQualite: 'Gerant',
+    repQualite: 'Gérant',
     rcUploaded: false,
     statutsEntiteUploaded: false,
     repCinUploaded: false,
@@ -340,7 +340,7 @@ function cinInvalidMessage(value: string): string | null {
   if (!value) return null;
   const v = value.replace(/\s+/g, '').toUpperCase();
   if (!/^[A-Z]{1,2}[0-9]{5,7}$/.test(v)) {
-    return 'Format CIN invalide (ex : X 123456)';
+    return 'Numéro de CIN invalide (ex. : X 123456).';
   }
   return null;
 }
@@ -348,21 +348,21 @@ function cinInvalidMessage(value: string): string | null {
 function iceInvalidMessage(value: string): string | null {
   if (!value) return null;
   const v = value.replace(/[\s-]/g, '');
-  if (!/^\d{15}$/.test(v)) return 'ICE invalide (15 chiffres)';
+  if (!/^\d{15}$/.test(v)) return 'ICE invalide : il compte 15 chiffres.';
   return null;
 }
 
 function rcInvalidMessage(value: string): string | null {
   if (!value) return null;
   const v = value.replace(/\s+/g, '');
-  if (!/^\d{1,8}$/.test(v)) return 'RC invalide (chiffres uniquement)';
+  if (!/^\d{1,8}$/.test(v)) return 'Numéro de RC invalide : chiffres uniquement.';
   return null;
 }
 
 function ifInvalidMessage(value: string): string | null {
   if (!value) return null;
   const v = value.replace(/\s+/g, '');
-  if (!/^\d{7,8}$/.test(v)) return 'IF invalide (7 a 8 chiffres)';
+  if (!/^\d{7,8}$/.test(v)) return 'Identifiant fiscal invalide : 7 ou 8 chiffres.';
   return null;
 }
 
@@ -419,8 +419,16 @@ export function Step6Associes({
    *  - Les associes propages dont le dirigeant n'est plus marque sont
    *    retires (l'utilisateur les recree manuellement s'il le souhaite).
    */
-  useEffect(() => {
-    if (!propagatedFromDirigeants) return;
+  // L6 : la reconciliation se fait au rendu, quand la liste des dirigeants propages (memo
+  // de la page) ou la forme change -- et non plus dans un effet (rendu en cascade).
+  const [propagationVue, setPropagationVue] = useState<{
+    source: NonNullable<Props['propagatedFromDirigeants']>;
+    unique: boolean;
+  } | null>(null);
+  if (propagatedFromDirigeants
+      && (propagationVue === null || propagationVue.source !== propagatedFromDirigeants
+        || propagationVue.unique !== isUnique)) {
+    setPropagationVue({ source: propagatedFromDirigeants, unique: isUnique });
     setAssocies((prev) => {
       const propagatedIds = new Set(propagatedFromDirigeants.map((d) => d.id));
       // 1) Filtre les propages obsoletes
@@ -498,7 +506,7 @@ export function Step6Associes({
       }
       return result.length > 0 ? result : prev;
     });
-  }, [propagatedFromDirigeants, isUnique]);
+  }
 
   /**
    * Lot L3 : `extraction` vrai quand le patch vient de la lecture d'une piece confirmee
@@ -609,6 +617,9 @@ export function Step6Associes({
   // (force le re-affichage de l'IdentityExtractor meme si archive existante).
   const [replacingCinIds, setReplacingCinIds] = useState<Set<string>>(new Set());
 
+  const pct = (a: Associe) =>
+    totalParts > 0 ? (a.nombreParts / totalParts) * 100 : 0;
+
   // P1 2026-06-21 — Getter "dirty" pour flush au navigation. Miroite le payload
   // de onSubmit (associes avec mandataire/procuration conditionnels + montants
   // distribues + clauses globales) pour persister les saisies meme sans clic
@@ -646,9 +657,6 @@ export function Step6Associes({
       })),
     );
   }
-
-  const pct = (a: Associe) =>
-    totalParts > 0 ? (a.nombreParts / totalParts) * 100 : 0;
 
   const expectsTotal =
     !isUnique && typeof totalPartsExpected === 'number' && totalPartsExpected > 0;
@@ -750,9 +758,9 @@ export function Step6Associes({
         if (!a.repCin || cinInvalidMessage(a.repCin)) manques.push('CIN du représentant');
         if (!a.repAdresse) manques.push('adresse du représentant');
         if (!a.repQualite) manques.push('qualité du représentant');
-        if (!importMode && !a.rcUploaded) manques.push('RC de l’entité (fichier)');
-        if (!importMode && !a.statutsEntiteUploaded) manques.push('statuts de l’entité (fichier)');
-        if (!importMode && !a.repCinUploaded) manques.push('CIN du représentant (extraite)');
+        if (!importMode && !a.rcUploaded) manques.push('modèle J ou extrait du RC de la société (fichier)');
+        if (!importMode && !a.statutsEntiteUploaded) manques.push('statuts de la société (fichier)');
+        if (!importMode && !a.repCinUploaded) manques.push('CIN du représentant (lue)');
       } else {
         if (!a.nom) manques.push('nom');
         if (!a.prenom) manques.push('prénom');
@@ -766,7 +774,7 @@ export function Step6Associes({
         if (!importMode && !a.cinUploaded) {
           manques.push(pieceSansExtraction(a.pieceType)
             ? 'pièce d’identité jointe (passeport ou carte de séjour)'
-            : 'CIN extraite — joindre le fichier ne suffit pas, cliquez « Extraire »');
+            : 'CIN lue : joindre le fichier ne suffit pas, cliquez sur « Extraire »');
         }
       }
       // Lot L4a (E1c) : apport en nature ou en industrie, decrit par l'associe qui le fait.
@@ -829,10 +837,10 @@ export function Step6Associes({
           <div className="flex items-start gap-2 rounded-lg border-l-4 border-warning bg-warning/10 p-3 text-xs text-warning">
             <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
             <p>
-              <strong>Nombre total de parts non defini.</strong> Retournez a
-              l'etape 3 (Capital) pour saisir le nombre total de parts du capital
-              et le montant du capital social — la repartition entre associes
-              sera ensuite validee en temps reel.
+              <strong>Nombre total de parts non défini.</strong> Retournez à
+              l’étape 3 (capital) pour saisir le nombre total de parts et le
+              montant du capital social : la répartition entre associés sera
+              ensuite contrôlée au fil de la saisie.
             </p>
           </div>
         )}
@@ -844,7 +852,7 @@ export function Step6Associes({
           <div className="sticky top-4 z-10 space-y-3 rounded-xl border-2 border-accent/30 bg-bg-raised p-4 shadow-md">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <span className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle">
-                Cible depuis l'etape 3 (Capital)
+                Objectif fixé à l’étape 3 (capital)
               </span>
               <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm">
                 {expectsCapital && (
@@ -905,7 +913,7 @@ export function Step6Associes({
             {/* F5 — Barre de progression PARTS : se remplit au fur et a mesure. */}
             {expectsTotal && (
               <DistributionBar
-                label="Parts distribuees"
+                label="Parts réparties"
                 current={totalParts}
                 target={totalPartsExpected ?? 0}
                 unit=""
@@ -945,7 +953,7 @@ export function Step6Associes({
             {/* Fallback : Step3 sans ventilation (anciens dossiers) -> barre globale. */}
             {!expectsByType && expectsCapital && (
               <DistributionBar
-                label="Apports distribues"
+                label="Apports répartis"
                 current={totalApport}
                 target={capitalSocialExpected ?? 0}
                 unit=" MAD"
@@ -955,15 +963,25 @@ export function Step6Associes({
           </div>
         )}
 
-        <div className="rounded-xl border border-accent/20 bg-accent/10 p-4 text-xs text-fg">
-          {isUnique
-            ? 'SARL AU : un seul associe unique detient 100% des parts.'
-            : 'SARL : plusieurs associes possibles. La somme des parts doit egaler le nombre total de parts du capital (verifie en temps reel ci-dessus).'}
-          <span className="ml-1">
-            <strong>L'upload de la CIN est obligatoire</strong> pour chaque
-            associe. Les dirigeants marques &laquo; Associe &raquo; a l'etape
-            precedente sont propages automatiquement (identite + CIN reprises).
-          </span>
+        <div className="space-y-3 rounded-xl border border-accent/20 bg-accent/10 p-4 text-xs text-fg">
+          <h3 className="text-base font-bold text-fg">Les associés et la répartition du capital</h3>
+          <p>
+            {isUnique
+              ? 'SARL AU : l’associé unique détient 100 % des parts.'
+              : 'SARL : deux associés ou plus. La somme des parts doit égaler le nombre total de parts du capital (contrôlé au fil de la saisie ci-dessus).'}
+            <span className="ml-1">
+              <strong>La CIN de chaque associé doit être importée et lue.</strong> Les
+              dirigeants cochés « Également associé » à l’étape précédente sont repris
+              automatiquement (identité et CIN).
+            </span>
+          </p>
+          <TexteAide cle={importMode ? 'import-etape-associes' : 'creation-etape-6'} titre="Ce qu’il faut faire">
+            Pour chaque associé : son identité, puis ses lignes d’apport (type et nombre de
+            parts) ; le montant se calcule avec la valeur nominale. Les barres indiquent ce
+            qui reste à répartir ; « Répartir équitablement » partage les parts entre les
+            associés. Ce qui manque est listé au-dessus du bouton « Valider et continuer ».
+            L’étape suivante prépare les documents de la création.
+          </TexteAide>
         </div>
 
         {/* 2026-06-19 — Bouton "Répartir équitablement" : alloue parts + apports
@@ -974,9 +992,9 @@ export function Step6Associes({
             type="button"
             onClick={autoDistribute}
             className="flex w-full items-center justify-center gap-2 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs font-semibold text-accent hover:bg-accent/10"
-            title="Distribue les parts + apports egalement entre les associes ; le dernier absorbe le reliquat pour que la somme tombe exactement sur le capital."
+            title="Partage les parts et les apports à égalité entre les associés ; le dernier reçoit le reliquat, pour que la somme égale exactement le capital."
           >
-            Repartir equitablement ({associes.length} associes —{' '}
+            Répartir équitablement ({associes.length} associés,{' '}
             {(totalPartsExpected ?? 0).toLocaleString('fr-MA')} parts /{' '}
             {(capitalSocialExpected ?? 0).toLocaleString('fr-MA')} MAD)
           </button>
@@ -1015,14 +1033,14 @@ export function Step6Associes({
                   <span className="text-sm font-bold text-fg">
                     {a.prenom || a.nom
                       ? `${a.prenom} ${a.nom}`
-                      : `Associe ${i + 1}`}
+                      : `Associé ${i + 1}`}
                   </span>
                   {isPropagated && (
                     <span
                       className="inline-flex items-center gap-1 rounded bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-accent"
-                      title="Propage depuis un dirigeant marque Associe a l'etape 5"
+                      title="Repris d’un dirigeant coché « Également associé » à l’étape 5"
                     >
-                      <Link2 className="h-3 w-3" /> Dirigeant-Associe
+                      <Link2 className="h-3 w-3" /> Dirigeant associé
                     </span>
                   )}
                 </div>
@@ -1033,6 +1051,8 @@ export function Step6Associes({
                       setAssocies((arr) => arr.filter((x) => x.id !== a.id))
                     }
                     className="rounded p-1.5 text-danger hover:bg-danger/10"
+                    aria-label={`Retirer l’associé ${i + 1}`}
+                    title="Retirer cet associé"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -1043,7 +1063,7 @@ export function Step6Associes({
                 {/* EX5 — Toggle PHYSIQUE / MORALE — desactive si propage (source = Step5). */}
                 <div>
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-fg-subtle">
-                    Nature de l'associe
+                    Nature de l’associé
                   </p>
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                     <button
@@ -1061,7 +1081,7 @@ export function Step6Associes({
                       <User className={`h-4 w-4 ${a.typePersonne === 'PHYSIQUE' ? 'text-accent' : 'text-fg-subtle'}`} />
                       <div>
                         <p className="text-sm font-bold text-fg">Personne physique</p>
-                        <p className="text-[11px] text-fg-subtle">Individu titulaire d'une CIN</p>
+                        <p className="text-[11px] text-fg-subtle">Une personne, titulaire d’une pièce d’identité</p>
                       </div>
                     </button>
                     <button
@@ -1079,13 +1099,13 @@ export function Step6Associes({
                       <Building2 className={`h-4 w-4 ${a.typePersonne === 'MORALE' ? 'text-accent' : 'text-fg-subtle'}`} />
                       <div>
                         <p className="text-sm font-bold text-fg">Personne morale</p>
-                        <p className="text-[11px] text-fg-subtle">Societe / entite (RC + ICE + IF + representant)</p>
+                        <p className="text-[11px] text-fg-subtle">Une société (RC, ICE, IF et représentant légal)</p>
                       </div>
                     </button>
                   </div>
                   {isPropagated && (
                     <p className="mt-1 text-[10px] text-fg-subtle">
-                      Type fige par le dirigeant correspondant (revenir a l'etape 5 pour modifier).
+                      Nature fixée par le dirigeant correspondant (revenez à l’étape 5 pour la modifier).
                     </p>
                   )}
                 </div>
@@ -1093,10 +1113,15 @@ export function Step6Associes({
                 {/* 2026-08 (contrat CREATION) — genre grammatical + associe-gerant. */}
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-xs text-fg-subtle">
+                    <label className="mb-1 flex items-center gap-1 text-xs text-fg-subtle">
                       Genre (accord grammatical)
+                      <InfoBulle
+                        libelle="À quoi sert le genre ?"
+                        texte="Il accorde les actes (« né » ou « née », « associé » ou « associée »). Il suit la civilité : Madame donne le féminin, et inversement."
+                      />
                     </label>
                     <select
+                      aria-label="Genre (accord grammatical)"
                       value={
                         a.genre ??
                         (a.typePersonne === 'MORALE'
@@ -1131,11 +1156,11 @@ export function Step6Associes({
                       className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm disabled:opacity-60"
                     >
                       <option value="masculin">Masculin</option>
-                      <option value="féminin">Feminin</option>
+                      <option value="féminin">Féminin</option>
                     </select>
                     {isPropagated && (
                       <p className="mt-1 text-[10px] text-fg-subtle">
-                        Decoule de la civilite du dirigeant (etape 5).
+                        Découle de la civilité du dirigeant (étape 5).
                       </p>
                     )}
                   </div>
@@ -1147,9 +1172,9 @@ export function Step6Associes({
                       onChange={(e) => update(a.id, { estGerant: e.target.checked })}
                       className="h-4 w-4 rounded border-border accent-accent disabled:opacity-60"
                     />
-                    Associe egalement gerant
+                    Associé également gérant
                     {isPropagated && (
-                      <span className="text-[10px] text-fg-subtle">(repris de l'etape 5)</span>
+                      <span className="text-[10px] text-fg-subtle">(repris de l’étape 5)</span>
                     )}
                   </label>
                 </div>
@@ -1231,7 +1256,7 @@ export function Step6Associes({
                         if (meta?.archivedDocumentId) {
                           update(a.id, {
                             cinUploaded: true,
-                            cinFileName: `Archive Data Room ${meta.archivedDocumentId.slice(0, 8)}`,
+                            cinFileName: 'Pièce d’identité archivée dans la Data Room du dossier',
                           });
                         }
                         // Sortir du mode "remplacement" — l'archive est mise a jour.
@@ -1248,7 +1273,7 @@ export function Step6Associes({
                     <p className="flex items-center gap-1.5 text-[11px] text-success">
                       <CheckCircle className="h-3 w-3" />
                       {a.cinFileName}
-                      {isPropagated && ' (reprise de l\'etape 5)'}
+                      {isPropagated && ' (reprise de l’étape 5)'}
                     </p>
                     {!isPropagated && !replacingCinIds.has(a.id) && (
                       <button
@@ -1278,9 +1303,10 @@ export function Step6Associes({
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                   <div>
                     <label className="mb-1 block text-xs text-fg-subtle">
-                      Civilite
+                      Civilité
                     </label>
                     <select
+                      aria-label="Civilité"
                       value={a.civilite}
                       /* Fix B1 — la civilité pilote le genre : les deux ne peuvent
                          plus diverger (« M. … née »). Cf. le sélecteur de genre. */
@@ -1305,7 +1331,7 @@ export function Step6Associes({
                     disabled={isPropagated}
                   />
                   <Field
-                    label="Prenom"
+                    label="Prénom"
                     required
                     value={a.prenom}
                     onChange={(e) => update(a.id, { prenom: e.target.value })}
@@ -1358,7 +1384,7 @@ export function Step6Associes({
                       onChange={(e) =>
                         update(a.id, { adresse: e.target.value })
                       }
-                      placeholder="Adresse complete"
+                      placeholder="Adresse complète"
                       disabled={isPropagated}
                       className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm disabled:opacity-60"
                     />
@@ -1382,7 +1408,7 @@ export function Step6Associes({
                       type="text"
                       value={a.lieuNaissance ?? ''}
                       onChange={(e) => update(a.id, { lieuNaissance: e.target.value })}
-                      placeholder="Ex: Rabat"
+                      placeholder="Ex. : Rabat"
                       disabled={isPropagated}
                       className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm disabled:opacity-60"
                     />
@@ -1406,8 +1432,8 @@ export function Step6Associes({
                     )}
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-fg-subtle">CIN valable jusqu'au</label>
-                    <input aria-label="CIN valable jusqu'au"
+                    <label className="mb-1 block text-xs text-fg-subtle">Pièce valable jusqu’au</label>
+                    <input aria-label="Pièce valable jusqu’au"
                       type="date"
                       value={a.pieceValidite ?? ''}
                       onChange={(e) => update(a.id, { pieceValidite: e.target.value })}
@@ -1422,7 +1448,7 @@ export function Step6Associes({
                 <div className="rounded-xl border border-warning/20 bg-warning/10 p-4">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs font-semibold uppercase text-warning">
-                      Parts sociales & apport
+                      Parts sociales et apport
                     </p>
                     {/* EX3 — Total parts visible en tete de chaque carte associe */}
                     {(expectsTotal || expectsCapital) && (
@@ -1438,7 +1464,7 @@ export function Step6Associes({
                             Total parts {totalParts}/{totalPartsExpected}
                             {!sumPartsValid && partsRemaining !== 0 && (
                               <span className="ml-1">
-                                ({partsRemaining > 0 ? `+${partsRemaining} a repartir` : `${partsRemaining}`})
+                                ({partsRemaining > 0 ? `${partsRemaining} à répartir` : `${-partsRemaining} en trop`})
                               </span>
                             )}
                           </span>
@@ -1454,7 +1480,7 @@ export function Step6Associes({
                             Apports {totalApport.toLocaleString('fr-MA')}/{capitalSocialExpected?.toLocaleString('fr-MA')} MAD
                             {!apportValid && apportRemaining !== 0 && (
                               <span className="ml-1">
-                                ({apportRemaining > 0 ? `+${apportRemaining.toLocaleString('fr-MA')} a repartir` : `${apportRemaining.toLocaleString('fr-MA')}`})
+                                ({apportRemaining > 0 ? `${apportRemaining.toLocaleString('fr-MA')} à répartir` : `${(-apportRemaining).toLocaleString('fr-MA')} en trop`})
                               </span>
                             )}
                           </span>
@@ -1468,7 +1494,7 @@ export function Step6Associes({
                       montantApport global = nombreParts × valeurNominale. */}
                   <div className="space-y-3">
                     <p className="text-[11px] font-semibold uppercase text-fg-subtle">
-                      Lignes d'apport
+                      Lignes d’apport
                     </p>
                     {a.apports.map((line, lineIdx) => {
                       const lineMontant = valeurNominaleExpected
@@ -1484,6 +1510,7 @@ export function Step6Associes({
                               Type
                             </label>
                             <select
+                              aria-label={`Type de l’apport ${lineIdx + 1}`}
                               value={line.type}
                               onChange={(e) => {
                                 const newApports = a.apports.map((x, i) =>
@@ -1503,7 +1530,7 @@ export function Step6Associes({
                             <label className="mb-1 block text-[10px] text-fg-subtle">
                               Parts <span className="text-danger">*</span>
                             </label>
-                            <input aria-label="Parts"
+                            <input aria-label={`Parts de l’apport ${lineIdx + 1}`}
                               type="number"
                               min={0}
                               step={1}
@@ -1523,7 +1550,7 @@ export function Step6Associes({
                           </div>
                           <div>
                             <label className="mb-1 block text-[10px] text-fg-subtle">
-                              Montant ligne (auto)
+                              Montant de la ligne (calculé)
                             </label>
                             <div className="flex h-9 items-center justify-between rounded-lg border border-border bg-bg-overlay px-3 text-sm">
                               <span className="font-bold text-fg">
@@ -1541,7 +1568,8 @@ export function Step6Associes({
                                 update(a.id, { apports: newApports, ...derived });
                               }}
                               className="h-9 rounded-lg border border-danger/30 px-2 text-danger hover:bg-danger/10"
-                              title="Supprimer cette ligne d'apport"
+                              title="Supprimer cette ligne d’apport"
+                              aria-label="Supprimer cette ligne d’apport"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -1561,7 +1589,7 @@ export function Step6Associes({
                       }}
                       className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-2 text-xs text-accent transition hover:border-accent hover:bg-accent/10"
                     >
-                      <UserPlus className="h-3.5 w-3.5" /> Ajouter une ligne d'apport
+                      <UserPlus className="h-3.5 w-3.5" /> Ajouter une ligne d’apport
                     </button>
 
                     {a.apports.some((l) => l.type === 'NATURE' && Number(l.parts) > 0) && (
@@ -1583,20 +1611,20 @@ export function Step6Associes({
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                       <div>
                         <label className="mb-1 block text-[10px] text-fg-subtle">
-                          Total parts (Σ)
+                          Total des parts
                         </label>
                         <div className="flex h-9 items-center rounded-lg border border-warning/30 bg-bg-raised px-3 text-sm font-bold">
                           {a.nombreParts}
                         </div>
                         {valeurNominaleExpected && (
                           <p className="mt-0.5 text-[10px] text-fg-subtle">
-                            x {valeurNominaleExpected.toLocaleString('fr-MA')} MAD/part
+                            × {valeurNominaleExpected.toLocaleString('fr-MA')} MAD par part
                           </p>
                         )}
                       </div>
                       <div>
                         <label className="mb-1 block text-[10px] text-fg-subtle">
-                          Montant total (MAD) — calcule auto
+                          Montant total (MAD), calculé
                         </label>
                         <div className="flex h-9 items-center justify-between rounded-lg border border-border bg-bg-overlay px-3 text-sm">
                           <span className="font-bold text-fg">
@@ -1606,18 +1634,18 @@ export function Step6Associes({
                         </div>
                         {!valeurNominaleExpected && (
                           <p className="mt-0.5 text-[10px] text-warning">
-                            Definissez le capital a l'etape 3 pour le calcul auto.
+                            Définissez le capital à l’étape 3 pour que le montant se calcule.
                           </p>
                         )}
                         {isLast && reliquatActif && (
                           <p className="mt-0.5 text-[10px] text-accent">
-                            Reliquat alloue ici pour Σ = capital exacte.
+                            Le reliquat d’arrondi est attribué ici, pour que la somme égale exactement le capital.
                           </p>
                         )}
                       </div>
                       <div>
                         <label className="mb-1 block text-[10px] text-fg-subtle">
-                          % detention
+                          Part du capital détenue
                         </label>
                         <div className="flex h-9 items-center rounded-lg border border-warning/30 bg-bg-raised px-3 text-sm font-bold text-warning">
                           {pct(a).toFixed(2)}%
@@ -1642,7 +1670,7 @@ export function Step6Associes({
                         }
                         className="h-4 w-4 accent-accent"
                       />
-                      Represente par un mandataire (procuration speciale)
+                      Représenté par un mandataire (procuration spéciale)
                     </label>
                     {a.representeParMandataire && (
                       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -1654,7 +1682,7 @@ export function Step6Associes({
                             type="text"
                             value={a.mandataire ?? ''}
                             onChange={(ev) => update(a.id, { mandataire: ev.target.value })}
-                            placeholder="Ex: Me Hassan TAZI, Avocat au Barreau de Casablanca"
+                            placeholder="Ex. : Me Hassan TAZI, avocat au barreau de Casablanca"
                             className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
                           />
                         </div>
@@ -1684,7 +1712,7 @@ export function Step6Associes({
             onClick={() => setAssocies([...associes, newAssocie()])}
             className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-3 text-sm text-accent transition hover:border-accent hover:bg-accent/10"
           >
-            <UserPlus className="h-4 w-4" /> Ajouter un associe
+            <UserPlus className="h-4 w-4" /> Ajouter un associé
           </button>
         )}
 
@@ -1692,7 +1720,7 @@ export function Step6Associes({
           <div className="rounded-lg border-l-4 border-warning bg-warning/10 p-3 text-sm text-warning">
             Une SARL requiert <strong>au moins 2 associés</strong>. Ajoutez un second
             associé pour continuer (une société à <strong>un seul</strong> associé relève
-            du workflow « SARL AU »).
+            du parcours « SARL AU »).
           </div>
         )}
 
@@ -1700,8 +1728,8 @@ export function Step6Associes({
           <div className="flex items-start gap-2 rounded-lg border-l-4 border-danger bg-danger/10 p-3">
             <AlertTriangle className="h-4 w-4 flex-shrink-0 text-danger" />
             <p className="text-xs text-danger">
-              SARL AU : un seul associe est autorise. Supprimez les associes
-              supplementaires.
+              SARL AU : un seul associé est autorisé. Retirez les associés
+              supplémentaires.
             </p>
           </div>
         )}
@@ -1710,12 +1738,14 @@ export function Step6Associes({
           <div className="flex items-start gap-2 rounded-lg border-l-4 border-warning bg-warning/10 p-3">
             <AlertTriangle className="h-4 w-4 flex-shrink-0 text-warning" />
             <p className="text-xs text-warning">
-              La somme des parts distribuees ({totalParts}) doit egaler le
+              La somme des parts réparties ({totalParts}) doit égaler le
               nombre total de parts du capital ({totalPartsExpected}). Ajustez
-              les repartitions pour pouvoir continuer.
+              la répartition pour pouvoir continuer.
               {partsRemaining !== 0 && (
                 <strong className="ml-1">
-                  Restant a repartir : {partsRemaining > 0 ? `+${partsRemaining}` : partsRemaining} parts.
+                  {partsRemaining > 0
+                    ? `Reste à répartir : ${partsRemaining} parts.`
+                    : `Parts en trop : ${-partsRemaining}.`}
                 </strong>
               )}
             </p>
@@ -1726,11 +1756,13 @@ export function Step6Associes({
           <div className="flex items-start gap-2 rounded-lg border-l-4 border-danger bg-danger/10 p-3">
             <AlertTriangle className="h-4 w-4 flex-shrink-0 text-danger" />
             <p className="text-xs text-danger">
-              La somme des apports distribues ({totalApport.toLocaleString('fr-MA')} MAD) doit
-              egaler le capital social ({capitalSocialExpected?.toLocaleString('fr-MA')} MAD).
+              La somme des apports répartis ({totalApport.toLocaleString('fr-MA')} MAD) doit
+              égaler le capital social ({capitalSocialExpected?.toLocaleString('fr-MA')} MAD).
               {apportRemaining !== 0 && (
                 <strong className="ml-1">
-                  Restant a repartir : {apportRemaining > 0 ? `+${apportRemaining.toLocaleString('fr-MA')}` : apportRemaining.toLocaleString('fr-MA')} MAD.
+                  {apportRemaining > 0
+                    ? `Reste à répartir : ${apportRemaining.toLocaleString('fr-MA')} MAD.`
+                    : `Apports en trop : ${(-apportRemaining).toLocaleString('fr-MA')} MAD.`}
                 </strong>
               )}
             </p>
@@ -1761,7 +1793,12 @@ export function Step6Associes({
       {/* Sidebar synthese — 2026-06-11 : affiche PHYSIQUE *ET* MORALE. */}
       <aside className="sticky top-6 h-fit self-start space-y-4">
         <div className="rounded-xl border border-border bg-bg-raised p-5 shadow-sm">
-          <h4 className="mb-4 text-sm font-bold text-fg">Synthese des parts</h4>
+          <h4 className="mb-4 text-sm font-bold text-fg">Synthèse des parts</h4>
+          {associes.every((a) => (a.typePersonne === 'MORALE' ? !a.denomination : !(a.nom || a.prenom))) && (
+            <p className="mb-3 text-xs text-fg-subtle">
+              Les associés apparaîtront ici dès que leur nom sera saisi.
+            </p>
+          )}
           <div className="mb-4 space-y-3">
             {associes
               // Affiche TOUT associe ayant une identite (physique : nom/prenom,
@@ -1790,18 +1827,18 @@ export function Step6Associes({
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium text-fg">
-                        {display || (isMorale ? 'Entite' : 'Associe')}
+                        {display || (isMorale ? 'Société' : 'Associé')}
                         {isMorale && (
                           <span
                             className="ml-1 text-[10px] font-bold text-fg-subtle"
                             title="Personne morale"
                           >
-                            (M)
+                            (PM)
                           </span>
                         )}
                         {a.fromDirigeantId && (
-                          <span className="ml-1 text-[10px] text-accent">
-                            (D)
+                          <span className="ml-1 text-[10px] text-accent" title="Également dirigeant (étape 5)">
+                            (gérant)
                           </span>
                         )}
                       </p>
@@ -1845,7 +1882,7 @@ export function Step6Associes({
                     : 'bg-warning/10 text-warning'
                 }`}
               >
-                <span>Parts distribuees</span>
+                <span>Parts réparties</span>
                 <span>
                   {totalParts}/{totalPartsExpected}
                 </span>
@@ -1930,13 +1967,13 @@ function DistributionBar({
       {!exact && (
         <p className={`mt-0.5 text-[10px] font-medium ${textColor}`}>
           {over
-            ? `Depasse de ${formatValue(Math.abs(remaining))}${unit} — reduisez les valeurs.`
-            : `Restant a repartir : ${formatValue(remaining)}${unit}`}
+            ? `Dépasse de ${formatValue(Math.abs(remaining))}${unit} : réduisez les valeurs.`
+            : `Reste à répartir : ${formatValue(remaining)}${unit}`}
         </p>
       )}
       {exact && (
         <p className="mt-0.5 text-[10px] font-medium text-success">
-          ✓ Distribution conforme a la cible
+          ✓ Répartition conforme à l’objectif
         </p>
       )}
     </div>
@@ -1993,7 +2030,7 @@ function MoraleAssocieForm({
     onChange({ rcUploaded: true, rcFileName: file.name });
     void onPieceUploaded?.(
       `RC_ASSOCIE_MORALE_${a.id.slice(0, 8)}`,
-      `RC entite associee ${a.denomination || a.id.slice(0, 8)}`,
+      `RC de la société associée ${a.denomination || ''}`.trim(),
       file,
     );
   }
@@ -2001,7 +2038,7 @@ function MoraleAssocieForm({
     onChange({ statutsEntiteUploaded: true, statutsEntiteFileName: file.name });
     void onPieceUploaded?.(
       `STATUTS_ENTITE_ASSOCIE_${a.id.slice(0, 8)}`,
-      `Statuts entite associee ${a.denomination || a.id.slice(0, 8)}`,
+      `Statuts de la société associée ${a.denomination || ''}`.trim(),
       file,
     );
   }
@@ -2013,14 +2050,14 @@ function MoraleAssocieForm({
     <div className="space-y-4">
       <div className="rounded-lg border border-border bg-bg-overlay p-4">
         <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase text-fg-subtle">
-          <Building2 className="h-3.5 w-3.5" /> Identification de l'entite associee
+          <Building2 className="h-3.5 w-3.5" /> Identification de la société associée
         </p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs text-fg-subtle">
-              Denomination <span className="text-danger">*</span>
+              Dénomination <span className="text-danger">*</span>
             </label>
-            <input aria-label="Denomination"
+            <input aria-label="Dénomination"
               type="text"
               value={a.denomination ?? ''}
               disabled={ro}
@@ -2031,6 +2068,7 @@ function MoraleAssocieForm({
           <div>
             <label className="mb-1 block text-xs text-fg-subtle">Forme juridique</label>
             <select
+              aria-label="Forme juridique de la société associée"
               value={a.formeJuridiqueEntite ?? 'SARL'}
               disabled={ro}
               onChange={(e) => onChange({ formeJuridiqueEntite: e.target.value })}
@@ -2048,9 +2086,9 @@ function MoraleAssocieForm({
           </div>
           <div>
             <label className="mb-1 block text-xs text-fg-subtle">
-              RC <span className="text-danger">*</span>
+              Numéro du RC <span className="text-danger">*</span>
             </label>
-            <input aria-label="RC"
+            <input aria-label="Numéro du RC"
               type="text"
               value={a.rc ?? ''}
               disabled={ro}
@@ -2081,9 +2119,9 @@ function MoraleAssocieForm({
           </div>
           <div>
             <label className="mb-1 block text-xs text-fg-subtle">
-              IF <span className="text-danger">*</span>
+              Identifiant fiscal (IF) <span className="text-danger">*</span>
             </label>
-            <input aria-label="IF"
+            <input aria-label="Identifiant fiscal (IF)"
               type="text"
               value={a.ifFiscal ?? ''}
               disabled={ro}
@@ -2098,9 +2136,9 @@ function MoraleAssocieForm({
           </div>
           <div className="md:col-span-2">
             <label className="mb-1 block text-xs text-fg-subtle">
-              Adresse du siege <span className="text-danger">*</span>
+              Adresse du siège <span className="text-danger">*</span>
             </label>
-            <input aria-label="Adresse du siege"
+            <input aria-label="Adresse du siège"
               type="text"
               value={a.siege ?? ''}
               disabled={ro}
@@ -2110,20 +2148,20 @@ function MoraleAssocieForm({
           </div>
           {/* 2026-06-11 — capital & deliberation pour Statuts */}
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Capital de l'entite (MAD)</label>
-            <input aria-label="Capital de l'entite (MAD)"
+            <label className="mb-1 block text-xs text-fg-subtle">Capital de la société (MAD)</label>
+            <input aria-label="Capital de la société (MAD)"
               type="number"
               min={0}
               value={a.capitalEntite ?? 0}
               disabled={ro}
               onChange={(e) => onChange({ capitalEntite: Number(e.target.value || 0) })}
-              placeholder="Ex: 5000000"
+              placeholder="Ex. : 5000000"
               className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Date de la deliberation</label>
-            <input aria-label="Date de la deliberation"
+            <label className="mb-1 block text-xs text-fg-subtle">Date de la délibération</label>
+            <input aria-label="Date de la délibération"
               type="date"
               value={a.deliberationDate ?? ''}
               disabled={ro}
@@ -2137,20 +2175,20 @@ function MoraleAssocieForm({
       {/* Justificatifs entite */}
       <div className="rounded-lg border border-border bg-bg-overlay p-4">
         <p className="mb-3 text-xs font-bold uppercase text-fg-subtle">
-          Justificatifs entite (obligatoires)
+          Justificatifs de la société associée (obligatoires)
         </p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <AssocUploadCard
             uploaded={!!a.rcUploaded}
             filename={a.rcFileName}
-            label="Modele J / RC recent"
+            label="Modèle J ou extrait récent du RC"
             disabled={ro}
             onFile={uploadRcFor}
           />
           <AssocUploadCard
             uploaded={!!a.statutsEntiteUploaded}
             filename={a.statutsEntiteFileName}
-            label="Statuts de l'entite"
+            label="Statuts de la société"
             disabled={ro}
             onFile={uploadStatutsFor}
           />
@@ -2160,7 +2198,7 @@ function MoraleAssocieForm({
       {/* Representant legal + upload CIN obligatoire */}
       <div className="rounded-lg border border-accent/30 bg-accent/5 p-4">
         <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase text-accent">
-          <User className="h-3.5 w-3.5" /> Representant legal (personne physique)
+          <User className="h-3.5 w-3.5" /> Représentant légal (personne physique)
         </p>
         {/* 2026-06-19 — Representant legal = personne physique : meme assistant
             CIN recto/verso + toggle nouvelle/ancienne que pour un associe PP.
@@ -2189,7 +2227,7 @@ function MoraleAssocieForm({
                 // que values.cin est present, meme sans archivedDocumentId.
                 if (meta?.archivedDocumentId) {
                   patch.repCinUploaded = true;
-                  patch.repCinFileName = `Archive Data Room ${meta.archivedDocumentId.slice(0, 8)}`;
+                  patch.repCinFileName = 'archivée dans la Data Room du dossier';
                 } else if (values.cin) {
                   patch.repCinUploaded = true;
                   patch.repCinFileName = `CIN ${values.cin.toUpperCase()}`;
@@ -2206,23 +2244,24 @@ function MoraleAssocieForm({
           <div className="mb-3 flex items-start gap-2 rounded-md border border-success/30 bg-success/5 p-2 text-xs">
             <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
             <div className="flex-1">
-              <p className="font-semibold text-success">CIN du representant captee</p>
+              <p className="font-semibold text-success">CIN du représentant lue</p>
               <p className="text-fg-subtle">
                 {a.repPrenom || a.repNom
                   ? `${a.repPrenom ?? ''} ${a.repNom ?? ''}`.trim() + (a.repCin ? ` — ${a.repCin}` : '')
-                  : (a.repCin ? `Numero : ${a.repCin}` : 'Donnees extraites')}
+                  : (a.repCin ? `Numéro : ${a.repCin}` : 'Données lues sur la pièce')}
                 {a.repCinFileName ? ` · ${a.repCinFileName}` : ''}
               </p>
               {ro && (
-                <p className="mt-1 text-[10px]">Reprise de l'etape 5 (dirigeant correspondant).</p>
+                <p className="mt-1 text-[10px]">Reprise de l’étape 5 (dirigeant correspondant).</p>
               )}
             </div>
           </div>
         )}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Civilite</label>
+            <label className="mb-1 block text-xs text-fg-subtle">Civilité</label>
             <select
+              aria-label="Civilité du représentant"
               value={a.repCivilite ?? 'M'}
               disabled={ro}
               onChange={(e) =>
@@ -2238,7 +2277,7 @@ function MoraleAssocieForm({
             <label className="mb-1 block text-xs text-fg-subtle">
               Nom <span className="text-danger">*</span>
             </label>
-            <input aria-label="Nom"
+            <input aria-label="Nom du représentant"
               type="text"
               value={a.repNom ?? ''}
               disabled={ro}
@@ -2248,9 +2287,9 @@ function MoraleAssocieForm({
           </div>
           <div>
             <label className="mb-1 block text-xs text-fg-subtle">
-              Prenom <span className="text-danger">*</span>
+              Prénom <span className="text-danger">*</span>
             </label>
-            <input aria-label="Prenom"
+            <input aria-label="Prénom du représentant"
               type="text"
               value={a.repPrenom ?? ''}
               disabled={ro}
@@ -2264,8 +2303,8 @@ function MoraleAssocieForm({
           {/* 2026-06-11 — Champs ajoutes : Nationalite, Date+Lieu naissance,
               CIN valable jusqu'au, Adresse (idem dirigeant MORALE). */}
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Nationalite</label>
-            <input aria-label="Nationalite"
+            <label className="mb-1 block text-xs text-fg-subtle">Nationalité</label>
+            <input aria-label="Nationalité du représentant"
               type="text"
               value={a.repNationalite ?? ''}
               disabled={ro}
@@ -2276,7 +2315,7 @@ function MoraleAssocieForm({
           </div>
           <div>
             <label className="mb-1 block text-xs text-fg-subtle">Date de naissance</label>
-            <input aria-label="Date de naissance"
+            <input aria-label="Date de naissance du représentant"
               type="date"
               value={a.repDateNaissance ?? ''}
               disabled={ro}
@@ -2286,7 +2325,7 @@ function MoraleAssocieForm({
           </div>
           <div>
             <label className="mb-1 block text-xs text-fg-subtle">Lieu de naissance</label>
-            <input aria-label="Lieu de naissance"
+            <input aria-label="Lieu de naissance du représentant"
               type="text"
               value={a.repLieuNaissance ?? ''}
               disabled={ro}
@@ -2296,8 +2335,8 @@ function MoraleAssocieForm({
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">CIN valable jusqu'au</label>
-            <input aria-label="CIN valable jusqu'au"
+            <label className="mb-1 block text-xs text-fg-subtle">CIN valable jusqu’au</label>
+            <input aria-label="CIN du représentant valable jusqu’au"
               type="date"
               value={a.repPieceValidite ?? ''}
               disabled={ro}
@@ -2309,25 +2348,25 @@ function MoraleAssocieForm({
             <label className="mb-1 block text-xs text-fg-subtle">
               Adresse <span className="text-danger">*</span>
             </label>
-            <input aria-label="Adresse"
+            <input aria-label="Adresse du représentant"
               type="text"
               value={a.repAdresse ?? ''}
               disabled={ro}
               onChange={(e) => onChange({ repAdresse: e.target.value })}
-              placeholder="Adresse complete"
+              placeholder="Adresse complète"
               className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
             />
           </div>
           <div className="md:col-span-3">
             <label className="mb-1 block text-xs text-fg-subtle">
-              Qualite <span className="text-danger">*</span>
+              Qualité <span className="text-danger">*</span>
             </label>
-            <input aria-label="Qualite"
+            <input aria-label="Qualité du représentant"
               type="text"
               value={a.repQualite ?? ''}
               disabled={ro}
               onChange={(e) => onChange({ repQualite: e.target.value })}
-              placeholder="Gerant / President / Mandataire..."
+              placeholder="Gérant, président, mandataire…"
               className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
             />
           </div>

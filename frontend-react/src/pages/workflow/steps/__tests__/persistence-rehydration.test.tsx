@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -40,7 +39,7 @@ describe('Step1 — ré-hydratation « 0 champ perdu »', () => {
     expect(screen.getByDisplayValue('M. BENANI')).toBeInTheDocument();
 
     // Le CN archivé s'affiche comme « déjà importé » (plus d'extracteur vide).
-    expect(screen.getByText(/Certificat Negatif deja importe/i)).toBeInTheDocument();
+    expect(screen.getByText(/Certificat négatif déjà importé/i)).toBeInTheDocument();
     expect(screen.getByText(/Certificat Négatif — PARACOSME/)).toBeInTheDocument();
     // Bouton « Remplacer » disponible sans re-forcer la saisie.
     expect(screen.getByRole('button', { name: /Remplacer/i })).toBeInTheDocument();
@@ -65,7 +64,7 @@ describe('Step1 — ré-hydratation « 0 champ perdu »', () => {
     // Le bug historique réinitialisait ces champs (denomination = chaîne).
     expect(screen.getByDisplayValue('PARACOSME')).toBeInTheDocument();
     expect(screen.getByDisplayValue('CN-2026-001')).toBeInTheDocument();
-    expect(screen.getByText(/Certificat Negatif deja importe/i)).toBeInTheDocument();
+    expect(screen.getByText(/Certificat négatif déjà importé/i)).toBeInTheDocument();
   });
 
   it('« Remplacer » rouvre l’extracteur (ré-upload possible sans perdre l’état)', () => {
@@ -150,7 +149,7 @@ describe('Step5 — ré-hydratation gouvernance + signataires « 0 champ perdu �
      * durée déterminée + 50 ans. C'est précisément la dé-duplication recherchée, le
      * texte libre étant ce qui écrasait le choix de l'utilisateur.
      */
-    expect(screen.getByDisplayValue('Duree determinee')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Durée déterminée')).toBeInTheDocument();
     expect(screen.getByDisplayValue('50')).toBeInTheDocument();
     expect(
       screen.getByDisplayValue('Au-delà de 200 000 DH, accord des associés.'),
@@ -171,7 +170,7 @@ describe('Step5 — ré-hydratation gouvernance + signataires « 0 champ perdu �
     // Le <select> du dirigeant est positionné sur « Fonctions non remunerees »
     // (preuve que la phrase « non rémunéré » du bag hérité a été ré-inversée).
     expect(
-      screen.getByDisplayValue('Fonctions non remunerees'),
+      screen.getByDisplayValue('Fonctions non rémunérées'),
     ).toBeInTheDocument();
     // Gouvernance complète + dirigeant valide => « Valider et continuer » activé
     // (si la rémunération s'était réinitialisée, le bouton resterait désactivé).

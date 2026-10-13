@@ -1,7 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, renderHook, act } from '@testing-library/react';
 import { ValeurProposee } from '../ValeurProposee';
-import { useSeanceForm, serializeAssocie, emptyAssocie, emptyResolution } from '../SeanceForm';
+import {
+  useSeanceForm,
+  serializeAssocie,
+  emptyAssocie,
+  emptyResolution,
+} from '../seanceFormEtat';
 
 /**
  * Lot L3 (D6) : aucune valeur par defaut silencieuse. Vote, quorum et presence sont

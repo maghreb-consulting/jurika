@@ -10,6 +10,8 @@ import {
 import { useStepAutosave } from '../useStepAutosave';
 import type { DirtyGetter } from '../useWorkflow';
 import { ValeurProposee } from '../../../components/workflow/ValeurProposee';
+import { BlocageValidation } from '../../../components/workflow/BlocageValidation';
+import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -160,6 +162,18 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
         (depotBanqueNom.trim().length > 0 && depotNumero.trim().length > 0)) &&
       (hasNumeraire || hasNature || hasIndustrie);
 
+  // Ce qui manque encore, nomme a cote du bouton (principe A4).
+  const raisonsBlocage = [
+    !(hasNumeraire || hasNature || hasIndustrie) && 'Cochez au moins un type d’apport.',
+    capitalSocial <= 0 && 'Saisissez le montant des apports : le capital social est nul.',
+    !importMode && isBlocked && 'Libérez au moins le quart du capital social.',
+    nbParts <= 0 && 'Saisissez le nombre de parts sociales.',
+    duree <= 0 && 'Confirmez ou saisissez la durée de la société.',
+    !importMode && !dateCommencement && 'Saisissez la date de commencement d’exploitation.',
+    !importMode && depotFondsBloque && !depotBanqueNom.trim() && 'Saisissez la banque de dépôt du capital.',
+    !importMode && depotFondsBloque && !depotNumero.trim() && 'Saisissez le numéro du compte de dépôt.',
+  ];
+
   // P1 2026-06-21 — Getter "dirty" pour flush avant navigation.
   useStepAutosave(
     3,
@@ -232,12 +246,19 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
         <div className="mb-1 flex items-center gap-2">
           <Calculator className="h-5 w-5 text-accent" />
-          <h3 className="text-lg font-bold text-fg">Apports & Capital</h3>
+          <h3 className="text-lg font-bold text-fg">Apports et capital</h3>
         </div>
-        <p className="mb-6 text-xs text-fg-subtle">
-          Devise : Dirham marocain (MAD). Au moins un type d'apport doit etre
-          renseigne.
+        <p className="mb-4 text-xs text-fg-subtle">
+          Montants en dirhams marocains (MAD). Au moins un type d’apport doit être
+          renseigné.
         </p>
+        <div className="mb-6">
+          <TexteAide cle={importMode ? 'import-etape-capital' : 'creation-etape-3'} titre="Ce qu’il faut faire">
+            {importMode
+              ? 'Indiquez les apports qui composent le capital, le nombre de parts et la durée de la société, puis cliquez sur « Valider et continuer ».'
+              : 'Cochez les types d’apport et saisissez leurs montants : le capital social se calcule. Indiquez la part libérée du numéraire (au moins le quart du capital), le nombre de parts, la durée et la date de commencement, puis les options de constitution. Cliquez ensuite sur « Valider et continuer » ; l’étape suivante porte sur l’activité. La répartition entre associés se fait à l’étape 6.'}
+          </TexteAide>
+        </div>
 
         {/* Numeraire — seul apport partiellement liberable */}
         <div className="mb-4 rounded-lg border border-border bg-bg-overlay p-4">
@@ -249,9 +270,9 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
               className="h-4 w-4 rounded"
             />
             <span className="text-sm font-medium text-fg">
-              Apport en numeraire
+              Apport en numéraire
             </span>
-            <span className="text-xs text-fg-subtle">(en MAD, liberation partielle possible)</span>
+            <span className="text-xs text-fg-subtle">(en MAD, libération partielle possible)</span>
           </label>
           {hasNumeraire && (
             <div className="space-y-3">
@@ -275,11 +296,15 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
                 </div>
                 {!importMode && (
                 <div>
-                  <label className="mb-1 block text-xs text-fg-subtle">
-                    Dont libere (MAD) — RG legale liberable partiellement
+                  <label className="mb-1 flex items-center gap-1 text-xs text-fg-subtle">
+                    Dont libéré (MAD)
+                    <InfoBulle
+                      libelle="Qu’est-ce que la part libérée ?"
+                      texte="La somme effectivement versée à la constitution. Seul l’apport en numéraire peut n’être libéré qu’en partie ; les apports en nature et en industrie le sont en totalité. Le total libéré doit atteindre au moins le quart du capital social (loi 5-96, article 51)."
+                    />
                   </label>
                   <div className="relative">
-                    <input aria-label="Dont libere (MAD) — RG legale liberable partiellement"
+                    <input aria-label="Dont libéré (MAD)"
                       type="number"
                       min={0}
                       max={numeraire}
@@ -295,7 +320,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
                   </div>
                   {numeraireLibere > numeraire && (
                     <p className="mt-1 text-[11px] font-medium text-danger">
-                      Plafonne au montant total de l'apport ({numeraire.toLocaleString('fr-MA')} MAD).
+                      Plafonné au montant total de l’apport ({numeraire.toLocaleString('fr-MA')} MAD).
                     </p>
                   )}
                 </div>
@@ -317,10 +342,10 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
             <span className="text-sm font-medium text-fg">
               Apport en nature
             </span>
-            <span className="text-xs text-fg-subtle">(optionnel)</span>
+            <span className="text-xs text-fg-subtle">(facultatif)</span>
             {hasNature && (
               <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/40 bg-success/10 px-2 py-0.5 text-[10px] font-bold uppercase text-success">
-                <Lock className="h-3 w-3" /> 100% libere
+                <Lock className="h-3 w-3" /> Libéré à 100 %
               </span>
             )}
           </label>
@@ -330,7 +355,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
                 <label className="mb-1 block text-xs text-fg-subtle">
                   Montant (MAD)
                 </label>
-                <input aria-label="Montant (MAD)"
+                <input aria-label="Montant de l’apport en nature (MAD)"
                   type="number"
                   min={0}
                   value={nature}
@@ -342,11 +367,11 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
                 <label className="mb-1 block text-xs text-fg-subtle">
                   Description
                 </label>
-                <input aria-label="Description"
+                <input aria-label="Description de l’apport en nature"
                   type="text"
                   value={natureDesc}
                   onChange={(ev) => setNatureDesc(ev.target.value)}
-                  placeholder="Ex: Vehicule, materiel, mobilier…"
+                  placeholder="Ex. : véhicule, matériel, mobilier…"
                   className="h-9 w-full rounded-lg border-2 border-border bg-bg-raised px-3 text-sm"
                 />
               </div>
@@ -366,10 +391,10 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
             <span className="text-sm font-medium text-fg">
               Apport en industrie
             </span>
-            <span className="text-xs text-fg-subtle">(optionnel)</span>
+            <span className="text-xs text-fg-subtle">(facultatif)</span>
             {hasIndustrie && (
               <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/40 bg-success/10 px-2 py-0.5 text-[10px] font-bold uppercase text-success">
-                <Lock className="h-3 w-3" /> 100% libere
+                <Lock className="h-3 w-3" /> Libéré à 100 %
               </span>
             )}
           </label>
@@ -379,7 +404,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
                 <label className="mb-1 block text-xs text-fg-subtle">
                   Montant (MAD)
                 </label>
-                <input aria-label="Montant (MAD)"
+                <input aria-label="Montant de l’apport en industrie (MAD)"
                   type="number"
                   min={0}
                   value={industrie}
@@ -391,11 +416,11 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
                 <label className="mb-1 block text-xs text-fg-subtle">
                   Description
                 </label>
-                <input aria-label="Description"
+                <input aria-label="Description de l’apport en industrie"
                   type="text"
                   value={industrieDesc}
                   onChange={(ev) => setIndustrieDesc(ev.target.value)}
-                  placeholder="Ex: Savoir-faire technique"
+                  placeholder="Ex. : savoir-faire technique"
                   className="h-9 w-full rounded-lg border-2 border-border bg-bg-raised px-3 text-sm"
                 />
               </div>
@@ -421,7 +446,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
       {/* Libération & Parts — EX2 : libere est calcule, pas saisi */}
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
         <h3 className="mb-5 text-base font-bold text-fg">
-          Liberation & Parts sociales
+          Libération et parts sociales
         </h3>
 
         {/* Tableau decomposition liberation (transparence pour user) — masque en IMPORT */}
@@ -430,16 +455,16 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
           <table className="w-full text-xs">
             <thead className="bg-bg-overlay text-fg-subtle">
               <tr>
-                <th className="px-3 py-2 text-left font-medium">Type d'apport</th>
+                <th className="px-3 py-2 text-left font-medium">Type d’apport</th>
                 <th className="px-3 py-2 text-right font-medium">Souscrit (MAD)</th>
-                <th className="px-3 py-2 text-right font-medium">Libere (MAD)</th>
-                <th className="px-3 py-2 text-right font-medium">% libere</th>
+                <th className="px-3 py-2 text-right font-medium">Libéré (MAD)</th>
+                <th className="px-3 py-2 text-right font-medium">Part libérée</th>
               </tr>
             </thead>
             <tbody className="bg-bg-raised">
               {hasNumeraire && (
                 <tr className="border-t border-border">
-                  <td className="px-3 py-2">Numeraire</td>
+                  <td className="px-3 py-2">Numéraire</td>
                   <td className="px-3 py-2 text-right">{numeraire.toLocaleString('fr-MA')}</td>
                   <td className="px-3 py-2 text-right">{numeraireLibereSafe.toLocaleString('fr-MA')}</td>
                   <td className="px-3 py-2 text-right font-medium">{numeraireLiberePct}%</td>
@@ -498,17 +523,17 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
               <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning" />
               <div className="text-xs text-warning">
                 <p>
-                  <strong>Valeur nominale non entiere :</strong>{' '}
+                  <strong>Valeur nominale non entière :</strong>{' '}
                   {valeurNominale.toLocaleString('fr-MA', { maximumFractionDigits: 4 })} MAD.
-                  Le capital n'est pas un multiple exact du nombre de parts.
+                  Le capital n’est pas un multiple exact du nombre de parts.
                 </p>
                 <p className="mt-1">
-                  Recommande : ajustez le nombre de parts pour obtenir une valeur
-                  nominale entiere (ex.{' '}
+                  Conseil : ajustez le nombre de parts pour obtenir une valeur
+                  nominale entière (ex.{' '}
                   {nbParts > 1 ? capitalSocial.toString().slice(0, -1) || '100' : '100'}{' '}
-                  parts a {Math.max(1, Math.round(valeurNominale)).toLocaleString('fr-MA')}{' '}
-                  MAD), sinon le dernier associe absorbera le reliquat d'arrondi
-                  (Step 6) pour garantir Σ = capital.
+                  parts à {Math.max(1, Math.round(valeurNominale)).toLocaleString('fr-MA')}{' '}
+                  MAD). Sinon, le dernier associé recevra le reliquat d’arrondi
+                  (étape 6), pour que la somme des apports égale le capital.
                 </p>
               </div>
             </div>
@@ -527,7 +552,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
           <>
           <div className="h-10 w-px bg-border" />
           <div>
-            <span className="text-xs text-fg-subtle">% libere global</span>
+            <span className="text-xs text-fg-subtle">Part libérée du capital</span>
             <p
               className={`text-lg font-bold ${
                 isBlocked ? 'text-danger' : 'text-success'
@@ -552,14 +577,14 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
             <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-danger" />
             <div>
               <p className="text-sm font-semibold text-danger">
-                Liberation insuffisante — Etape bloquee
+                Libération insuffisante : l’étape ne peut pas être validée
               </p>
               <p className="text-xs text-danger">
-                Le capital libere total ({libere.toLocaleString('fr-MA')} MAD) doit etre
-                au minimum 25% du capital social total (
-                {Math.ceil(capitalSocial * 0.25).toLocaleString('fr-MA')} MAD minimum).
-                Augmentez la part de numeraire liberee (nature/industrie sont deja a 100%).
-                Regle conforme a la Loi 5-96, Article 51.
+                Le capital libéré ({libere.toLocaleString('fr-MA')} MAD) doit atteindre
+                au moins 25 % du capital social, soit{' '}
+                {Math.ceil(capitalSocial * 0.25).toLocaleString('fr-MA')} MAD.
+                Augmentez la part libérée du numéraire (les apports en nature et en industrie
+                sont déjà libérés à 100 %). Règle de la loi 5-96, article 51.
               </p>
             </div>
           </div>
@@ -569,7 +594,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
           <div className="flex items-start gap-3 rounded-lg border-l-4 border-success bg-success/10 p-4">
             <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-success" />
             <p className="text-sm text-success">
-              Liberation du capital conforme — {percentLibere}% libere sur le capital total ({'>='} 25% legal).
+              Libération du capital conforme : {percentLibere} % du capital est libéré (minimum légal : 25 %).
             </p>
           </div>
         )}
@@ -578,7 +603,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
       {/* Duree */}
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
         <h3 className="mb-5 text-base font-bold text-fg">
-          Duree de la societe
+          Durée de la société
         </h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
@@ -595,9 +620,9 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
           <>
           <div>
             <label className="mb-1 block text-xs font-medium text-fg">
-              Date de commencement d'exploitation
+              Date de commencement d’exploitation
             </label>
-            <input aria-label="Date de commencement d'exploitation"
+            <input aria-label="Date de commencement d’exploitation"
               type="date"
               value={dateCommencement}
               onChange={(ev) => setDateCommencement(ev.target.value)}
@@ -606,9 +631,9 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-fg">
-              Date de fin <span className="text-fg-subtle">(auto)</span>
+              Date de fin <span className="text-fg-subtle">(calculée)</span>
             </label>
-            <input aria-label="Date de fin (auto)"
+            <input aria-label="Date de fin (calculée)"
               type="date"
               value={dateFin}
               readOnly
@@ -626,34 +651,34 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
       {!importMode && depotFondsBloque && (
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
         <h3 className="mb-3 flex items-center gap-2 text-lg font-bold text-fg">
-          <Lock className="h-5 w-5 text-accent" /> Compte de depot du capital
+          <Lock className="h-5 w-5 text-accent" /> Compte de dépôt du capital
         </h3>
         <p className="mb-4 text-xs text-fg-subtle">
-          Etablissement et numero du compte bloque sur lequel les apports en numeraire
-          sont deposes. Apparait dans la clause de depot des Statuts.
+          Établissement et numéro du compte bloqué sur lequel les apports en numéraire
+          sont déposés. Ils figurent dans la clause de dépôt des statuts.
         </p>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs font-medium text-fg">
-              Banque de depot <span className="text-danger">*</span>
+              Banque de dépôt <span className="text-danger">*</span>
             </label>
-            <input aria-label="Banque de depot"
+            <input aria-label="Banque de dépôt"
               type="text"
               value={depotBanqueNom}
               onChange={(ev) => setDepotBanqueNom(ev.target.value)}
-              placeholder="Ex: Attijariwafa Bank, Agence Anfa"
+              placeholder="Ex. : Attijariwafa Bank, agence Anfa"
               className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
             />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-fg">
-              N° du compte de depot <span className="text-danger">*</span>
+              N° du compte de dépôt <span className="text-danger">*</span>
             </label>
-            <input aria-label="N° du compte de depot"
+            <input aria-label="N° du compte de dépôt"
               type="text"
               value={depotNumero}
               onChange={(ev) => setDepotNumero(ev.target.value)}
-              placeholder="Ex: 007 780 1234567890123 45"
+              placeholder="Ex. : 007 780 1234567890123 45"
               className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
             />
           </div>
@@ -670,19 +695,25 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
               Libération des apports en numéraire
             </label>
             <select
+              aria-label="Libération des apports en numéraire"
               value={modeLiberation}
               onChange={(ev) => setModeLiberation(ev.target.value)}
               className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
             >
               <option value="intégrale">Intégrale</option>
-              <option value="partielle">Partielle (1/4 min., solde ≤ 5 ans)</option>
+              <option value="partielle">Partielle (un quart au moins, solde dans les cinq ans)</option>
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
+            <label className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
               Mode de signature sociale (art. 15)
+              <InfoBulle
+                libelle="Que signifie le mode de signature ?"
+                texte="Il fixe, dans les statuts, comment les gérants engagent la société : chacun seul (séparée), chacun seul jusqu’à un plafond par opération, ou à deux au moins (conjointe)."
+              />
             </label>
             <select
+              aria-label="Mode de signature sociale (art. 15)"
               value={modeSignature}
               onChange={(ev) => setModeSignature(ev.target.value)}
               className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
@@ -702,7 +733,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
                 min={0}
                 value={signaturePlafond || ''}
                 onChange={(ev) => setSignaturePlafond(Number(ev.target.value))}
-                placeholder="Ex: 50000"
+                placeholder="Ex. : 50000"
                 className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
               />
             </div>
@@ -726,10 +757,11 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
             <AlertTriangle className="h-4 w-4 text-warning" /> Commissaire aux apports (obligatoire)
           </h3>
           <p className="mb-3 text-xs text-fg-subtle">
-            Apport en nature &gt; 100 000 MAD : la designation d'un commissaire aux apports
-            est requise (Loi 5-96 Article 53).
+            Apport en nature supérieur à 100 000 MAD : la désignation d’un commissaire aux
+            apports est requise (loi 5-96, article 53).
           </p>
           <input
+            aria-label="Nom du commissaire aux apports"
             type="text"
             value={commissaireApportsNom}
             onChange={(ev) => setCommissaireApportsNom(ev.target.value)}
@@ -738,6 +770,8 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
           />
         </div>
       )}
+
+      <BlocageValidation raisons={raisonsBlocage} testId="step3-blocage" />
 
       <div className="flex items-center justify-end pt-2">
         <button

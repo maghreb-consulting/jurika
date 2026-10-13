@@ -31,7 +31,7 @@ export function WorkflowRoadmap({ currentStep, steps, blocked, viewStep, onNavig
   const validatedCount = Math.max(0, Math.min(currentStep - 1, total));
   const percent = total > 0 ? Math.round((validatedCount / total) * 100) : 0;
   return (
-    <nav className="rounded-2xl border border-border bg-bg-raised p-4" aria-label="Progression du workflow">
+    <nav className="rounded-2xl border border-border bg-bg-raised p-4" aria-label="Progression du parcours">
       <ol className="flex items-center gap-1 overflow-x-auto">
         {steps.map((s, idx) => {
           // Une etape est "validee" si sa position est strictement avant la HWM
@@ -73,11 +73,11 @@ export function WorkflowRoadmap({ currentStep, steps, blocked, viewStep, onNavig
             : 'text-fg-muted';
 
           const tooltip = isFuture
-            ? `Etape ${s.number} verrouillee (validez d'abord les precedentes)`
+            ? `Étape ${s.number} verrouillée : validez d’abord les étapes précédentes`
             : isView
-            ? `Etape ${s.number} affichee`
+            ? `Étape ${s.number} affichée`
             : clickable
-            ? `Revenir a l'etape ${s.number}`
+            ? `Revenir à l’étape ${s.number}`
             : undefined;
 
           return (
@@ -126,7 +126,7 @@ export function WorkflowRoadmap({ currentStep, steps, blocked, viewStep, onNavig
           />
         </div>
         <span className="text-xs font-medium text-fg-subtle">
-          {validatedCount}/{total} etapes
+          {validatedCount}/{total} étapes validées
         </span>
       </div>
     </nav>

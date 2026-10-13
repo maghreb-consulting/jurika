@@ -24,8 +24,8 @@ import {
   listTemplatesForWorkflow,
   type TemplateInfo,
 } from '../../services/workflowDocumentService';
+import { SeanceFormFields } from './SeanceForm';
 import {
-  SeanceFormFields,
   sanitizeFilename,
   useSeanceForm,
   type AssocieInput,
@@ -33,7 +33,7 @@ import {
   type SeanceSections,
   type SeanceSocieteInput,
   type SeanceDefaults,
-} from './SeanceForm';
+} from './seanceFormEtat';
 import type { DocumentType } from '../../types/dataroom';
 
 const WORKFLOW_CODE = 'INCIDENT_SEANCE';

@@ -1,4 +1,3 @@
-/* eslint-disable */
 /**
  * FICHIER GENERE — ne pas editer a la main.
  *   node scripts/lotB/derive-champs-creation.mjs

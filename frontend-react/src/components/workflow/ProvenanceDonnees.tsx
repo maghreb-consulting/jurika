@@ -6,7 +6,17 @@ import { libelleProvenance, ouCorriger } from './provenanceLibelles';
  * Lot L3 (RG-VAR-02, RG-VAR-03) : une donnee connue n'est jamais redemandee ; elle
  * s'affiche en lecture, avec sa provenance et l'endroit unique ou la corriger.
  */
-export function ProvenanceDonnees({ variables }: { variables: VariableDuMagasin[] }) {
+export function ProvenanceDonnees({
+  variables,
+  libelles = {},
+}: {
+  variables: VariableDuMagasin[];
+  /**
+   * Libelles des donnees, par nom de variable (lot L6) : la donnee s'affiche sous son
+   * libelle ; son nom technique ne reste affiche qu'a defaut de libelle connu.
+   */
+  libelles?: Record<string, string>;
+}) {
   const simples = variables.filter((v) => !v.boucle && v.valeur);
   if (simples.length === 0) return null;
   return (
@@ -18,8 +28,11 @@ export function ProvenanceDonnees({ variables }: { variables: VariableDuMagasin[
           texte="Chaque donnée est saisie une seule fois : elle est reprise partout ailleurs. Sa provenance est indiquée ; pour la corriger, faites-le à l’endroit indiqué, et la correction vaut pour toutes les générations suivantes."
         />
       </h4>
+      <p className="mt-1 text-xs text-fg-muted">
+        Ces données ne vous sont plus demandées. Survolez une provenance pour savoir où corriger la donnée.
+      </p>
       <table className="mt-2 w-full text-xs">
-        <caption className="sr-only">Données connues du ticket et leur provenance</caption>
+        <caption className="sr-only">Données connues du dossier et leur provenance</caption>
         <thead>
           <tr className="text-left text-fg-subtle">
             <th className="py-1 pr-2 font-medium">Donnée</th>
@@ -30,7 +43,11 @@ export function ProvenanceDonnees({ variables }: { variables: VariableDuMagasin[
         <tbody>
           {simples.map((v) => (
             <tr key={v.variable} className="border-t border-border">
-              <td className="py-1 pr-2 font-mono text-[11px] text-fg-muted">{v.variable}</td>
+              {libelles[v.variable] ? (
+                <td className="py-1 pr-2 text-fg-muted">{libelles[v.variable]}</td>
+              ) : (
+                <td className="py-1 pr-2 font-mono text-[11px] text-fg-muted">{v.variable}</td>
+              )}
               <td className="py-1 pr-2 text-fg">{v.valeur}</td>
               <td className="py-1 text-fg-muted" title={ouCorriger(v)}>{libelleProvenance(v)}</td>
             </tr>

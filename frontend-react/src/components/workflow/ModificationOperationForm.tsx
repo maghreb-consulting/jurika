@@ -27,8 +27,8 @@ import {
   listTemplatesForWorkflow,
   type TemplateInfo,
 } from '../../services/workflowDocumentService';
+import { SeanceFormFields } from './SeanceForm';
 import {
-  SeanceFormFields,
   sanitizeFilename,
   useSeanceForm,
   type AssocieInput,
@@ -36,7 +36,7 @@ import {
   type FormeJuridique,
   type SeanceSections,
   type SeanceSocieteInput,
-} from './SeanceForm';
+} from './seanceFormEtat';
 import {
   OUI_NON,
   RES_SPECS,

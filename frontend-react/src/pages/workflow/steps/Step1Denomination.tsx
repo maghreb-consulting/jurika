@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   CheckCircle,
   Pencil,
@@ -11,6 +11,8 @@ import { toIsoDate } from '../../../types/identity';
 import { useStepAutosave } from '../useStepAutosave';
 import type { DirtyGetter } from '../useWorkflow';
 import { ajouterExtraits, retirerExtraits } from '../provenance';
+import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
+import { BlocageValidation } from '../../../components/workflow/BlocageValidation';
 
 /**
  * UI Polish 2026-06-05 — Helper : formate ICE en groupes "XXX XXX XXX XXX XXX"
@@ -106,7 +108,7 @@ function iceInvalidMessage(value: string): string | null {
   if (!value) return null;
   const digits = value.replace(/\D/g, '');
   if (digits.length === 0) return null;
-  if (digits.length !== 15) return `ICE invalide : ${digits.length}/15 chiffres`;
+  if (digits.length !== 15) return `ICE invalide : ${digits.length} chiffres saisis sur 15.`;
   return null;
 }
 
@@ -149,15 +151,11 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
     dateExpiration: (extracted.dateExpiration as string) ?? '',
     formeJuridique: initialForme,
   });
-  // Synchroniser si lockedFormeJuridique arrive apres mount (fetch async).
-  // On force la valeur du form pour ne JAMAIS renvoyer une forme qui
-  // contredirait la decision prise a la creation du ticket.
-  useEffect(() => {
-    if (lockedFormeJuridique && form.formeJuridique !== lockedFormeJuridique) {
-      setForm((p) => ({ ...p, formeJuridique: lockedFormeJuridique }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lockedFormeJuridique]);
+  // La forme verrouillee peut arriver apres le montage (chargement du ticket) : elle
+  // l'emporte, au rendu, sur la valeur du formulaire, pour ne JAMAIS renvoyer une forme
+  // qui contredirait la decision prise a la creation du ticket (L6 : etat derive,
+  // sans effet).
+  const formeJuridique: FormeJuridique = lockedFormeJuridique ?? form.formeJuridique;
 
   /**
    * 2026-06-15 — Etat d'archivage. IdentityExtractor (mode="cn") archive le
@@ -188,7 +186,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
   // useStepAutosave enregistre ce getter pour le flush au navigation.
   useStepAutosave(
     1,
-    () => ({ ...form, cnArchivedDocumentId: cnArchivedId, cnFileName }),
+    () => ({ ...form, formeJuridique, cnArchivedDocumentId: cnArchivedId, cnFileName }),
     registerDirty,
   );
 
@@ -250,7 +248,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
         .toString()
         .trim();
       setCnFileName(
-        label ? `Certificat Négatif — ${label}` : 'Certificat Négatif',
+        label ? `Certificat négatif — ${label}` : 'Certificat négatif',
       );
       setReplacingCn(false);
     }
@@ -272,6 +270,19 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
   // automatiquement « néant » (rempli côté payload). Pas de saisie forcée.
   const cnAge = daysBetween(form.cnDate);
   const cnTooOld = form.cnDate !== '' && cnAge > 90;
+  // Ce qui manque encore, nomme a cote du bouton (principe A4 : jamais de bouton grise
+  // sans dire pourquoi).
+  const raisonsBlocage = [
+    !form.denomination && 'Saisissez la dénomination de la société.',
+    !form.ice && 'Saisissez l’ICE.',
+    !!iceError && 'Corrigez l’ICE : il compte 15 chiffres.',
+    importMode && !form.rcNumero && 'Saisissez le numéro du registre du commerce.',
+    importMode && !form.ifFiscal && 'Saisissez l’identifiant fiscal.',
+    !importMode && !form.cnNumero && 'Saisissez le numéro du certificat négatif.',
+    !importMode && !form.cnDate && 'Saisissez la date de délivrance du certificat négatif.',
+    !importMode && !form.activiteCn && 'Saisissez l’activité portée sur le certificat négatif.',
+    !importMode && !form.beneficiaire && 'Saisissez le bénéficiaire du certificat négatif.',
+  ];
 
   return (
     <form
@@ -287,6 +298,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
           : {};
         onSubmit({
           ...form,
+          formeJuridique,
           ...importExtras,
           cnArchivedDocumentId: cnArchivedId,
           cnFileName,
@@ -299,31 +311,46 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
           <>
             <div className="mb-1 flex items-center gap-2">
               <span className="text-lg">🏢</span>
-              <h3 className="text-lg font-bold text-fg">Identite de la societe</h3>
+              <h3 className="text-lg font-bold text-fg">Identité de la société</h3>
               <span className="rounded bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
-                Reprise d'une societe existante
+                Reprise d’une société existante
               </span>
             </div>
             <p className="mb-6 text-xs text-fg-subtle">
-              Renseignez l'identite et l'immatriculation de la societe a importer.
-              Le certificat negatif n'est pas requis (societe deja immatriculee).
+              Renseignez l’identité et l’immatriculation de la société à reprendre.
+              Le certificat négatif n’est pas requis : la société est déjà immatriculée.
             </p>
+            <div className="mb-6">
+              <TexteAide cle="import-etape-identite" titre="Ce qu’il faut faire">
+                Saisissez la dénomination, l’ICE, le numéro du registre du commerce et
+                l’identifiant fiscal tels qu’ils figurent sur l’extrait du registre du
+                commerce, puis cliquez sur « Valider et continuer ». Ce qui manque est listé
+                au-dessus du bouton.
+              </TexteAide>
+            </div>
           </>
         ) : (
           <>
         <div className="mb-1 flex items-center gap-2">
           <span className="text-lg">📜</span>
-          <h3 className="text-lg font-bold text-fg">Certificat Negatif</h3>
+          <h3 className="text-lg font-bold text-fg">Certificat négatif</h3>
           <span className="rounded bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
-            Extraction IA assistee
+            Lecture automatique proposée
           </span>
         </div>
-        <p className="mb-6 text-xs text-fg-subtle">
-          Saisissez les informations du Certificat Negatif. Vous pouvez egalement
-          importer le PDF/image et lancer une extraction IA pour pre-remplir les
-          champs (l'extraction reste une aide — la saisie manuelle est toujours
-          possible).
+        <p className="mb-4 text-xs text-fg-subtle">
+          Saisissez les informations du certificat négatif. Vous pouvez aussi
+          importer le certificat (PDF ou image) : ses informations sont lues et
+          proposées dans les champs ci-dessous. La lecture reste une aide : la
+          saisie manuelle est toujours possible.
         </p>
+        <div className="mb-6">
+          <TexteAide cle="creation-etape-1" titre="Étape 1 : le certificat négatif">
+            Importez le certificat négatif ou saisissez ses informations, vérifiez la
+            dénomination et l’ICE, puis cliquez sur « Valider et continuer ». Ce qui manque
+            est listé au-dessus du bouton. L’étape suivante porte sur le siège social.
+          </TexteAide>
+        </div>
 
         {/*
          * 2026-06-15 — Assistant d'extraction CN dedie a l'Etape 1.
@@ -347,11 +374,10 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
                 <CheckCircle className="h-4 w-4 flex-shrink-0 text-success" />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-success">
-                    Certificat Negatif deja importe
+                    Certificat négatif déjà importé
                   </p>
                   <p className="truncate text-[11px] text-fg-subtle">
-                    {cnFileName ?? 'Archive dans la Data Room'} · ref&nbsp;
-                    <code className="font-mono">{cnArchivedId.slice(0, 8)}</code>
+                    {cnFileName ?? 'Certificat négatif'} · archivé dans la Data Room du dossier
                   </p>
                 </div>
               </div>
@@ -376,7 +402,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
                   onClick={() => setReplacingCn(false)}
                   className="mt-2 text-[11px] text-fg-subtle hover:underline"
                 >
-                  Annuler le remplacement — conserver le CN deja importe
+                  Annuler le remplacement : conserver le certificat déjà importé
                 </button>
               )}
             </>
@@ -395,11 +421,11 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
                 Forme juridique
               </p>
               <p className="text-sm font-medium text-fg">
-                {lockedFormeJuridique === 'SARL_AU' ? 'SARL AU (associe unique)' : 'SARL (2+ associes)'}
+                {lockedFormeJuridique === 'SARL_AU' ? 'SARL AU (associé unique)' : 'SARL (deux associés ou plus)'}
               </p>
             </div>
             <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-accent">
-              Definie a la creation
+              Choisie à l’ouverture du ticket
             </span>
           </div>
         ) : (
@@ -413,22 +439,22 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
                   type="radio"
                   name="formeJuridique"
                   value="SARL"
-                  checked={form.formeJuridique === 'SARL'}
+                  checked={formeJuridique === 'SARL'}
                   onChange={() => setForm((p) => ({ ...p, formeJuridique: 'SARL' }))}
                 />
                 <span className="font-medium text-fg">SARL</span>
-                <span className="text-xs text-fg-subtle">(2+ associes)</span>
+                <span className="text-xs text-fg-subtle">(deux associés ou plus)</span>
               </label>
               <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border-2 border-border bg-bg-raised px-3 py-2 text-sm hover:border-accent">
                 <input
                   type="radio"
                   name="formeJuridique"
                   value="SARL_AU"
-                  checked={form.formeJuridique === 'SARL_AU'}
+                  checked={formeJuridique === 'SARL_AU'}
                   onChange={() => setForm((p) => ({ ...p, formeJuridique: 'SARL_AU' }))}
                 />
                 <span className="font-medium text-fg">SARL AU</span>
-                <span className="text-xs text-fg-subtle">(associe unique)</span>
+                <span className="text-xs text-fg-subtle">(associé unique)</span>
               </label>
             </div>
           </div>
@@ -438,8 +464,12 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* 2026-08 — ICE requis a la creation (choix produit) : affiche dans tous les modes. */}
           <div>
-              <label className="mb-1 block text-xs font-medium text-fg">
+              <label className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
                 ICE <span className="text-danger">*</span>
+                <InfoBulle
+                  libelle="Qu’est-ce que l’ICE ?"
+                  texte="L’identifiant commun de l’entreprise : 15 chiffres, portés sur le certificat négatif. Il est repris dans tous les actes de la société."
+                />
               </label>
               <input aria-label="ICE"
                 type="text"
@@ -462,79 +492,79 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
                 </p>
               ) : (
                 <p className="mt-1 text-[11px] text-fg-subtle">
-                  15 chiffres. Les espaces et tirets sont ignores.
+                  15 chiffres. Les espaces et les tirets sont ignorés.
                 </p>
               )}
             </div>
           <Field
-            label="Denomination / Raison sociale"
+            label="Dénomination (raison sociale)"
             required
             value={form.denomination}
             onChange={bind('denomination')}
-            placeholder="Ex: ATLAS TRADING"
+            placeholder="Ex. : ATLAS TRADING"
           />
           {importMode && (
             <>
               <Field
-                label="RC (Registre de Commerce)"
+                label="Numéro du registre du commerce (RC)"
                 required
                 value={form.rcNumero}
                 onChange={bind('rcNumero')}
-                placeholder="Ex: 123456"
+                placeholder="Ex. : 123456"
               />
               <Field
-                label="IF (Identifiant Fiscal)"
+                label="Identifiant fiscal (IF)"
                 required
                 value={form.ifFiscal}
                 onChange={bind('ifFiscal')}
-                placeholder="Ex: 12345678"
+                placeholder="Ex. : 12345678"
               />
               <Field
-                label="Sigle commercial (optionnel)"
+                label="Sigle commercial (facultatif)"
                 value={form.sigle}
                 onChange={bind('sigle')}
-                placeholder={'Ex: ATLAS — laisser vide = « néant »'}
+                placeholder={'Ex. : ATLAS ; vide, il vaut « néant »'}
               />
             </>
           )}
           {!importMode && (
             <>
               <Field
-                label="N° Certificat Negatif"
+                label="Numéro du certificat négatif"
                 required
                 value={form.cnNumero}
                 onChange={bind('cnNumero')}
-                placeholder="CN-2026-XXX"
+                placeholder="Ex. : CN-2026-123"
               />
               <Field
-                label="Date de delivrance"
+                label="Date de délivrance"
                 required
                 type="date"
                 value={form.cnDate}
                 onChange={bind('cnDate')}
               />
               <Field
-                label="Activite (CN)"
+                label="Activité portée sur le certificat"
                 required
                 value={form.activiteCn}
                 onChange={bind('activiteCn')}
-                placeholder="Ex: Commerce de materiaux"
+                placeholder="Ex. : Commerce de matériaux"
               />
               <Field
-                label="Beneficiaire CN"
+                label="Bénéficiaire du certificat"
                 required
                 value={form.beneficiaire}
                 onChange={bind('beneficiaire')}
-                placeholder="Nom du beneficiaire"
+                placeholder="Nom du bénéficiaire"
               />
               <Field
-                label="Tribunal (optionnel)"
+                label="Tribunal (facultatif)"
                 value={form.tribunal}
                 onChange={bind('tribunal')}
-                placeholder="Ex: Tribunal de commerce de Casablanca"
+                placeholder="Ex. : Tribunal de commerce de Casablanca"
               />
               <Field
-                label="Date d'expiration (optionnel)"
+                label="Date d’expiration (facultatif)"
                 type="date"
                 value={form.dateExpiration}
                 onChange={bind('dateExpiration')}
@@ -546,7 +576,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
         {!importMode && (
           <p className="mt-3 flex items-center gap-1 text-xs text-fg-subtle">
             <Pencil className="h-3 w-3" /> Vous pouvez corriger les champs si
-            l'extraction est inexacte.
+            la lecture du certificat est inexacte.
           </p>
         )}
 
@@ -555,16 +585,18 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
             <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning" />
             <div>
               <p className="font-semibold text-warning">
-                Certificat negatif ancien
+                Certificat négatif ancien
               </p>
               <p className="text-xs text-warning">
-                Le CN date de {cnAge} jours. Au-dela de 90 jours, il peut etre
-                refuse par le greffe. Verifiez sa validite avant publication.
+                Le certificat date de {cnAge} jours. Au-delà de 90 jours, il peut être
+                refusé par le greffe. Vérifiez sa validité avant le dépôt.
               </p>
             </div>
           </div>
         )}
       </div>
+
+      <BlocageValidation raisons={raisonsBlocage} testId="step1-blocage" />
 
       <div className="flex items-center justify-end pt-2">
         <button

@@ -5,8 +5,9 @@ import {
   CheckCircle,
   Building2,
   ChevronRight,
-  AlertTriangle,
 } from 'lucide-react';
+import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
+import { BlocageValidation } from '../../../components/workflow/BlocageValidation';
 import {
   MOROCCO_PROVINCES,
   communesForProvince,
@@ -112,7 +113,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
     // un 2e fichier distinct branche sur handleCertifFile.
     const code = justificatifType === 'BAIL' ? 'CONTRAT_BAIL' : 'JUSTIFICATIF_SIEGE';
     const label = justificatifType === 'BAIL'
-      ? 'Contrat de bail / titre de propriete'
+      ? 'Contrat de bail ou titre de propriété'
       : 'Contrat de domiciliation';
     void onPieceUploaded?.(code, label, f);
   }
@@ -122,7 +123,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
     setCertifDoc(f.name);
     void onPieceUploaded?.(
       'CERTIFICAT_PROPRIETE',
-      'Certificat de propriete',
+      'Certificat de propriété',
       f,
     );
   }
@@ -150,6 +151,22 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
       (justificatifType === 'BAIL'
         ? !!certifDoc
         : !!attestDoc);
+
+  // Ce qui manque encore, nomme a cote du bouton (principe A4).
+  const raisonsBlocage = [
+    !adresse && 'Saisissez l’adresse du siège social.',
+    !province && 'Saisissez la province ou la préfecture.',
+    !commune && 'Saisissez la commune.',
+    importMode && !codePostal && 'Saisissez le code postal.',
+    !importMode && !mainDoc && (justificatifType === 'BAIL'
+      ? 'Importez le contrat de bail ou le titre de propriété.'
+      : 'Importez le contrat de domiciliation.'),
+    !importMode && justificatifType === 'BAIL' && !certifDoc && 'Importez le certificat de propriété.',
+    !importMode && justificatifType === 'DOMICILIATION' && !attestDoc
+      && 'Importez l’attestation de réception du courrier.',
+    !importMode && !dateDebut && 'Saisissez la date de début du contrat.',
+    !importMode && !dateFin && 'Saisissez la date de fin du contrat.',
+  ];
 
   // P1 2026-06-21 — autosave manquant sur Step2 -> adresse/siege perdus a la
   // navigation retour. Le getter miroite le payload onSubmit.
@@ -195,22 +212,31 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
         <div className="mb-1 flex items-center gap-2">
           <Building2 className="h-5 w-5 text-accent" />
-          <h3 className="text-lg font-bold text-fg">Siege social</h3>
+          <h3 className="text-lg font-bold text-fg">Siège social</h3>
         </div>
-        <p className="mb-6 text-xs text-fg-subtle">
-          Adresse complete du siege social et justificatif d'occupation.
+        <p className="mb-4 text-xs text-fg-subtle">
+          {importMode
+            ? 'Adresse complète du siège social de la société.'
+            : 'Adresse complète du siège social et justificatif d’occupation des locaux.'}
         </p>
+        <div className="mb-6">
+          <TexteAide cle={importMode ? 'import-etape-siege' : 'creation-etape-2'} titre="Ce qu’il faut faire">
+            {importMode
+              ? 'Saisissez l’adresse, la province, la commune et le code postal du siège, puis cliquez sur « Valider et continuer ». Les justificatifs se versent plus loin, avec les pièces de la société.'
+              : 'Saisissez l’adresse du siège, choisissez le justificatif (bail ou domiciliation) et importez ses pièces : elles rejoignent la Data Room du dossier. Indiquez ensuite la localisation et les dates du contrat, puis cliquez sur « Valider et continuer ». L’étape suivante porte sur le capital.'}
+          </TexteAide>
+        </div>
 
         {/* Adresse */}
         <div className="mb-5">
           <label className="mb-1 block text-xs font-medium text-fg">
-            Adresse du siege social
+            Adresse du siège social
           </label>
-          <textarea aria-label="Adresse du siege social"
+          <textarea aria-label="Adresse du siège social"
             rows={2}
             value={adresse}
             onChange={(ev) => setAdresse(ev.target.value)}
-            placeholder="Numero, rue, quartier, ville"
+            placeholder="Numéro, rue, quartier, ville"
             className="w-full resize-none rounded-lg border-2 border-border bg-bg-overlay px-3 py-2 text-sm focus:border-accent focus:outline-none"
           />
         </div>
@@ -220,8 +246,12 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
         {!importMode && (
         <>
         <div className="mb-5">
-          <label className="mb-3 block text-xs font-medium text-fg">
+          <label className="mb-3 flex items-center gap-1 text-xs font-medium text-fg">
             Type de justificatif
+            <InfoBulle
+              libelle="Quel justificatif choisir ?"
+              texte="Bail : la société loue ses locaux (ou en est propriétaire) ; joignez le contrat de bail ou le titre de propriété et le certificat de propriété. Domiciliation : la société est hébergée par un domiciliataire ; joignez le contrat de domiciliation et l’attestation de réception du courrier."
+            />
           </label>
           <div className="flex gap-3">
             <button
@@ -239,7 +269,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
               }`}
             >
               <p className="text-sm font-semibold text-fg">Contrat de bail</p>
-              <p className="mt-1 text-xs text-fg-subtle">+ Certificat de propriete</p>
+              <p className="mt-1 text-xs text-fg-subtle">et certificat de propriété</p>
             </button>
             <button
               type="button"
@@ -259,7 +289,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
                 Contrat de domiciliation
               </p>
               <p className="mt-1 text-xs text-fg-subtle">
-                + Attestation de reception courrier
+                et attestation de réception du courrier
               </p>
             </button>
           </div>
@@ -270,14 +300,14 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
         <div className="mb-5">
           <label className="mb-2 block text-xs font-medium text-fg">
             {justificatifType === 'BAIL'
-              ? 'Contrat de bail / titre de propriete'
+              ? 'Contrat de bail ou titre de propriété'
               : 'Contrat de domiciliation'}
           </label>
           {!mainDoc ? (
             <label className="block cursor-pointer rounded-lg border-2 border-dashed border-border p-8 text-center transition hover:border-accent hover:bg-bg-overlay">
               <Upload className="mx-auto mb-2 h-8 w-8 text-fg-subtle" />
               <p className="text-sm text-fg-subtle">
-                Glissez ou cliquez pour importer
+                Cliquez pour importer le fichier (PDF ou image)
               </p>
               <input
                 type="file"
@@ -306,13 +336,13 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
         {justificatifType === 'BAIL' && (
           <div className="mb-5">
             <label className="mb-2 block text-xs font-medium text-fg">
-              Certificat de propriete
+              Certificat de propriété
             </label>
             {!certifDoc ? (
               <label className="block cursor-pointer rounded-lg border-2 border-dashed border-border p-6 text-center transition hover:border-accent hover:bg-bg-overlay">
                 <Upload className="mx-auto mb-1 h-6 w-6 text-fg-subtle" />
                 <p className="text-sm text-fg-subtle">
-                  Importer le certificat de propriete
+                  Importer le certificat de propriété
                 </p>
                 <input
                   type="file"
@@ -342,13 +372,13 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
         {justificatifType === 'DOMICILIATION' && (
           <div className="mb-5">
             <label className="mb-2 block text-xs font-medium text-fg">
-              Attestation de reception courrier
+              Attestation de réception du courrier
             </label>
             {!attestDoc ? (
               <label className="block cursor-pointer rounded-lg border-2 border-dashed border-border p-6 text-center transition hover:border-accent hover:bg-bg-overlay">
                 <Upload className="mx-auto mb-1 h-6 w-6 text-fg-subtle" />
                 <p className="text-sm text-fg-subtle">
-                  Importer l'attestation de reception courrier
+                  Importer l’attestation de réception du courrier
                 </p>
                 <input
                   type="file"
@@ -380,9 +410,9 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
         <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-fg">
-              Province / Prefecture
+              Province ou préfecture
             </label>
-            <input aria-label="Province / Prefecture"
+            <input aria-label="Province ou préfecture"
               type="text"
               list={provinceListId}
               value={province}
@@ -397,7 +427,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
               ))}
             </datalist>
             <p className="mt-0.5 text-[10px] text-fg-subtle">
-              Liste : 75 prefectures/provinces du Maroc. Si la votre n'apparait pas, saisissez-la librement.
+              Liste des 75 préfectures et provinces du Maroc. Si la vôtre n’y figure pas, saisissez-la librement.
             </p>
           </div>
           <div>
@@ -409,7 +439,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
               list={communeListId}
               value={commune}
               onChange={(ev) => setCommune(ev.target.value)}
-              placeholder={communes.length ? 'Choisir ou saisir' : 'Saisir la commune'}
+              placeholder={communes.length ? 'Choisir ou saisir la commune' : 'Saisir la commune'}
               autoComplete="off"
               className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
             />
@@ -420,8 +450,10 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
             </datalist>
             <p className="mt-0.5 text-[10px] text-fg-subtle">
               {communes.length
-                ? `${communes.length} commune(s) suggeree(s) pour ${province}. Free-text accepte.`
-                : `Aucune suggestion pour ${province} — saisie libre.`}
+                ? `${communes.length} commune(s) proposée(s) pour ${province}. Une autre commune peut être saisie.`
+                : province
+                  ? `Aucune commune proposée pour ${province} : saisissez-la librement.`
+                  : 'Choisissez d’abord la province : ses communes vous seront proposées.'}
             </p>
           </div>
           <div>
@@ -443,18 +475,22 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
             La durée de la société est saisie à l'étape 3 (Capital), pas ici. */}
         <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
+            <label className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
               Ville du greffe
+              <InfoBulle
+                libelle="À quoi sert la ville du greffe ?"
+                texte="Ville du tribunal de commerce compétent, auprès duquel la société est immatriculée. Elle reprend la province saisie ; corrigez-la si le tribunal compétent siège ailleurs. Elle est imprimée dans les actes et les formulaires du dépôt."
+              />
             </label>
             <input aria-label="Ville du greffe"
               type="text"
               value={villeGreffe}
               onChange={(ev) => setVilleGreffe(ev.target.value)}
-              placeholder="Ex: Casablanca"
+              placeholder="Ex. : Casablanca"
               className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
             />
             <p className="mt-0.5 text-[10px] text-fg-subtle">
-              Greffe du tribunal de commerce competent (defaut : ville du siege).
+              Greffe du tribunal de commerce compétent (par défaut : la province du siège).
             </p>
           </div>
         </div>
@@ -464,9 +500,9 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs font-medium text-fg">
-              Date de debut du contrat
+              Date de début du contrat
             </label>
-            <input aria-label="Date de debut du contrat"
+            <input aria-label="Date de début du contrat"
               type="date"
               value={dateDebut}
               onChange={(ev) => setDateDebut(ev.target.value)}
@@ -488,16 +524,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
         )}
       </div>
 
-      {!canSubmit && (
-        <div className="flex items-start gap-2 rounded-lg border-l-4 border-warning bg-warning/10 p-3 text-xs">
-          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning" />
-          <p className="text-warning">
-            {importMode
-              ? "Renseignez l'adresse, la province, la commune et le code postal du siege."
-              : "Renseignez l'adresse complete, la commune, les dates du contrat et le(s) justificatif(s) avant de continuer."}
-          </p>
-        </div>
-      )}
+      <BlocageValidation raisons={raisonsBlocage} testId="step2-blocage" />
 
       <div className="flex items-center justify-end pt-2">
         <button

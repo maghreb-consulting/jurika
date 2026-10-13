@@ -31,7 +31,7 @@ export function distributeSharesEvenly(totalShares: number, n: number): number[]
   if (n === 1) return [safeTotal];
   const base = Math.floor(safeTotal / n);
   const out: number[] = new Array(n).fill(base);
-  let remainder = safeTotal - base * n;
+  const remainder = safeTotal - base * n;
   // Tout le reliquat va au dernier (consigne Cowork).
   out[n - 1] += remainder;
   return out;

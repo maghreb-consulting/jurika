@@ -10,6 +10,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
+import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -58,32 +59,32 @@ const REQUIRED_BASE_CODES = ['CN', 'JUSTIFICATIF_SIEGE', 'STATUTS_VALIDES'];
 const DEFAULT_PIECES: Piece[] = [
   {
     code: 'CN',
-    label: 'Certificat negatif (CN)',
-    description: 'Date ne depassant pas 90 jours',
+    label: 'Certificat négatif',
+    description: 'Délivré depuis moins de 90 jours',
     obligatoire: false,
   },
   {
     code: 'JUSTIFICATIF_SIEGE',
-    label: 'Justificatif siege',
-    description: 'Contrat de bail ou contrat de domiciliation signe',
+    label: 'Justificatif du siège',
+    description: 'Contrat de bail ou contrat de domiciliation signé',
     obligatoire: false,
   },
   {
     code: 'STATUTS_VALIDES',
-    label: 'Statuts valides',
-    description: "Statuts generes et valides a l'etape 7",
+    label: 'Statuts validés',
+    description: 'Statuts générés et validés à l’étape 7',
     obligatoire: false,
   },
   {
     code: 'BLOCAGE_CAPITAL',
-    label: 'Attestation de blocage de capital',
-    description: 'Requis si capital > 100 000 MAD (apport en numeraire)',
+    label: 'Attestation de blocage du capital',
+    description: 'Requise si le capital dépasse 100 000 MAD (apport en numéraire)',
     obligatoire: false,
   },
   {
     code: 'AUTORISATION_PREF',
-    label: 'Autorisation prefectorale / sectorielle',
-    description: 'Requis si activite reglementee',
+    label: 'Autorisation préfectorale ou sectorielle',
+    description: 'Requise si l’activité est réglementée',
     obligatoire: false,
   },
 ];
@@ -97,8 +98,11 @@ export function Step8PiecesJointes({
   onPieceUploaded,
 }: Props) {
   // Pre-remplit a partir du registre + ancien stockage local (compat).
-  const uploadedFromData =
-    (existing?.pieces as { uploaded?: string[] })?.uploaded ?? [];
+  // L6 : memoise (la liste servait de dependance a un useMemo et changeait a chaque rendu).
+  const uploadedFromData = useMemo(
+    () => (existing?.pieces as { uploaded?: string[] })?.uploaded ?? [],
+    [existing?.pieces],
+  );
 
   // BUG 2 (fix 2026-07-18) — Le Certificat Negatif est archive des l'etape 1
   // via IdentityExtractor (mode="cn") : il alimente `step1.cnArchivedDocumentId`
@@ -163,7 +167,7 @@ export function Step8PiecesJointes({
       if (p.code === 'CN' && cnArchivedId) {
         return {
           ...p,
-          fileName: `certificat-negatif-${cnArchivedId.slice(0, 8)}.pdf`,
+          fileName: 'Certificat négatif archivé à l’étape 1',
           fromRegistry: true,
         };
       }
@@ -233,8 +237,8 @@ export function Step8PiecesJointes({
       const reg = registeredPieces?.[code];
       out.push({
         code,
-        label: `CIN — ${d.prenom ?? ''} ${d.nom ?? ''} (Dirigeant${
-          d.isAssociate ? ' + Associe' : ''
+        label: `CIN — ${d.prenom ?? ''} ${d.nom ?? ''} (dirigeant${
+          d.isAssociate ? ' et associé' : ''
         })`.trim(),
         role: 'DIRIGEANT',
         cinNumero: d.cinNumero,
@@ -249,7 +253,7 @@ export function Step8PiecesJointes({
       const reg = registeredPieces?.[code];
       out.push({
         code,
-        label: `CIN — ${a.prenom ?? ''} ${a.nom ?? ''} (Associe)`.trim(),
+        label: `CIN — ${a.prenom ?? ''} ${a.nom ?? ''} (associé)`.trim(),
         role: 'ASSOCIE',
         cinNumero: a.cin,
         fileName: reg?.filename ?? a.cinFileName,
@@ -281,7 +285,7 @@ export function Step8PiecesJointes({
       {
         code: `EXTRA_${Date.now()}`,
         label: extraLabel.trim(),
-        description: 'Document additionnel',
+        description: 'Document complémentaire',
         obligatoire: false,
       },
     ]);
@@ -328,12 +332,12 @@ export function Step8PiecesJointes({
               )}
               {!piece.obligatoire && (
                 <span className="rounded bg-fg-subtle/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-fg-subtle">
-                  Optionnel
+                  Facultative
                 </span>
               )}
               {piece.fromRegistry && done && (
                 <span className="rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
-                  Deja deposee
+                  Déjà déposée
                 </span>
               )}
             </div>
@@ -361,6 +365,8 @@ export function Step8PiecesJointes({
                   type="button"
                   onClick={() => removeFor(piece.code)}
                   className="rounded p-1 text-danger hover:bg-danger/10"
+                  aria-label={`Retirer : ${piece.label}`}
+                  title="Retirer la pièce"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -409,11 +415,11 @@ export function Step8PiecesJointes({
                   : 'bg-warning/15 text-warning'
               }`}
             >
-              {p.role}
+              {p.role === 'DIRIGEANT' ? 'Dirigeant' : 'Associé'}
             </span>
           </div>
           <p className="text-[11px] text-fg-subtle">
-            {p.cinNumero ? `N° ${p.cinNumero}` : 'N° CIN non renseigne'}
+            {p.cinNumero ? `N° ${p.cinNumero}` : 'N° de CIN non renseigné'}
           </p>
           {done ? (
             <div className="mt-2 flex items-center gap-2 rounded border border-success/20 bg-bg-raised p-2">
@@ -436,8 +442,7 @@ export function Step8PiecesJointes({
             </div>
           ) : (
             <label className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-danger/40 px-3 py-2 text-xs text-danger transition hover:bg-danger/10">
-              <Upload className="h-3.5 w-3.5" /> CIN obligatoire manquante —
-              importer
+              <Upload className="h-3.5 w-3.5" /> CIN non encore importée : importer
               <input
                 type="file"
                 accept="application/pdf,image/*"
@@ -474,17 +479,22 @@ export function Step8PiecesJointes({
       <div className="flex items-start gap-3 rounded-lg border border-accent/20 bg-accent/10 p-4">
         <Info className="h-5 w-5 flex-shrink-0 text-accent" />
         <div>
-          <p className="text-sm font-semibold text-fg">
-            Pieces jointes requises pour l'immatriculation
-          </p>
+          <h3 className="text-sm font-semibold text-fg">
+            Pièces jointes pour l’immatriculation
+          </h3>
           <p className="text-xs text-fg-subtle">
-            Les documents deja uploades dans les etapes precedentes sont affiches
-            ici dans leurs champs appropries (badge &laquo; Deja deposee
-            &raquo;). Les CIN sont regroupees en blocs par personne. Chaque
-            piece est automatiquement deposee dans la Data Room du dossier.
+            Les documents déjà importés aux étapes précédentes sont repris ici
+            (mention « Déjà déposée »). Les CIN sont regroupées par personne. Chaque
+            pièce est automatiquement déposée dans la Data Room du dossier.
           </p>
         </div>
       </div>
+      <TexteAide cle="creation-etape-8" titre="Ce qu’il faut faire">
+        Importez les pièces que vous avez déjà ; aucune ne bloque l’étape, vous pourrez
+        compléter plus tard depuis la Data Room. Ajoutez au besoin une pièce
+        complémentaire par son libellé, puis cliquez sur « Valider et continuer » :
+        l’étape suivante présente la synthèse du dossier.
+      </TexteAide>
 
       {/* Bloc CIN regroupees par personne */}
       {cinPersonnes.length > 0 && (
@@ -494,8 +504,8 @@ export function Step8PiecesJointes({
             personne(s)
           </h3>
           <p className="mb-4 text-xs text-fg-subtle">
-            Une CIN par dirigeant et par associe (les dirigeants-associes ne
-            comptent qu'une fois). Pre-remplis depuis les etapes 5 et 6.
+            Une CIN par dirigeant et par associé (un dirigeant également associé ne
+            compte qu’une fois). Reprises des étapes 5 et 6.
           </p>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {cinPersonnes.map(renderCinPersonne)}
@@ -513,10 +523,10 @@ export function Step8PiecesJointes({
       {obligatoires.length > 0 && (
         <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
           <h3 className="mb-1 flex items-center gap-2 text-base font-bold text-fg">
-            <span className="h-2 w-2 rounded-full bg-danger" /> Pieces obligatoires
+            <span className="h-2 w-2 rounded-full bg-danger" /> Pièces obligatoires
           </h3>
           <p className="mb-4 text-xs text-fg-subtle">
-            Requises dans tous les cas pour finaliser la creation.
+            Requises dans tous les cas pour finaliser la création.
           </p>
           <div className="space-y-3">{obligatoires.map(renderPiece)}</div>
         </div>
@@ -524,20 +534,21 @@ export function Step8PiecesJointes({
 
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
         <h3 className="mb-1 flex items-center gap-2 text-base font-bold text-fg">
-          <span className="h-2 w-2 rounded-full bg-fg-subtle" /> Pieces
-          optionnelles
+          <span className="h-2 w-2 rounded-full bg-fg-subtle" /> Pièces
+          facultatives
         </h3>
         <p className="mb-4 text-xs text-fg-subtle">
-          Selon la configuration du dossier (capital, activite, etc.)
+          Selon le dossier (capital, activité, etc.).
         </p>
         <div className="space-y-3">{optionnelles.map(renderPiece)}</div>
 
         <div className="mt-4 flex items-center gap-2">
           <input
             type="text"
+            aria-label="Libellé d’une pièce complémentaire"
             value={extraLabel}
             onChange={(e) => setExtraLabel(e.target.value)}
-            placeholder="Libelle d'une piece additionnelle"
+            placeholder="Libellé d’une pièce complémentaire"
             className="h-10 flex-1 rounded-lg border border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
           />
           <button
@@ -550,18 +561,22 @@ export function Step8PiecesJointes({
                 : 'cursor-not-allowed bg-border text-fg-subtle'
             }`}
           >
-            <Plus className="h-4 w-4" /> Ajouter piece
+            <Plus className="h-4 w-4" /> Ajouter la pièce
           </button>
+          <InfoBulle
+            libelle="Ajouter une pièce complémentaire"
+            texte="Saisissez le libellé de la pièce (par exemple « Attestation bancaire »), cliquez sur « Ajouter la pièce », puis importez le fichier dans la ligne qui apparaît."
+          />
         </div>
       </div>
 
       <div className="rounded-xl border border-border bg-bg-overlay p-5">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-sm font-bold text-fg">
-            Progression des pieces jointes
+            Progression des pièces jointes
           </span>
           <span className="text-sm font-bold text-accent">
-            {totalUploaded} / {totalCount} importees
+            {totalUploaded} / {totalCount} importées
           </span>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-border">

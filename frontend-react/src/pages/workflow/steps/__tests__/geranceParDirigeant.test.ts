@@ -1,10 +1,9 @@
-/// <reference types="vitest" />
 import { describe, it, expect } from 'vitest';
 import {
   agregerGerance,
   dureeMandatLabel,
   dirigeantLabel,
-} from '../Step5Dirigeants';
+} from '../geranceDirigeants';
 
 /**
  * Gérance PAR DIRIGEANT — étape 5 de la création (2026-08-18).
