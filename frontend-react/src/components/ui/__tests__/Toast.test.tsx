@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitForElementToBeRemoved } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ToastProvider, useToast } from '../Toast';
+import { ToastProvider } from '../Toast';
+import { useToast } from '../useToast';
 
 function Trigger() {
   const toast = useToast();

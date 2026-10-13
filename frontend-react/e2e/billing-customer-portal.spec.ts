@@ -10,6 +10,7 @@ test.describe('Billing — Customer Portal', () => {
     'Necessite Stripe TEST keys + workspace deja active');
 
   test('clic "Gerer mon abonnement" -> redirection Stripe Customer Portal', async ({ page, authenticatedUser }) => {
+    void authenticatedUser; // active la fixture de connexion
     await page.goto('/app/billing');
     await expect(page.getByTestId('billing-overview')).toBeVisible({ timeout: 10_000 });
 

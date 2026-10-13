@@ -1,7 +1,8 @@
 import { useId, useState } from 'react';
 import { Building, Check, Hash, Mail, MapPin, User } from 'lucide-react';
 import { emailMsg, isFilled } from '../../lib/formValidation';
-import { PhoneNumberInput, isValidPhone } from '../../components/ui/PhoneNumberInput';
+import { PhoneNumberInput } from '../../components/ui/PhoneNumberInput';
+import { isValidPhone } from '../../components/ui/phoneNumber';
 import { MOROCCO_PROVINCES } from '../../data/morocco-localities';
 import {
   PROFESSIONAL_TYPES,

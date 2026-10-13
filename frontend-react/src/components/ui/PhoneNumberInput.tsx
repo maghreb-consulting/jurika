@@ -7,7 +7,7 @@ import {
   useState,
 } from 'react';
 import { ChevronDown, Search } from 'lucide-react';
-import { AsYouType, isValidPhoneNumber, parsePhoneNumberFromString } from 'libphonenumber-js';
+import { AsYouType, parsePhoneNumberFromString } from 'libphonenumber-js';
 import type { CountryCode } from 'libphonenumber-js';
 import { twMerge } from 'tailwind-merge';
 import {
@@ -48,28 +48,10 @@ function normalize(s: string): string {
     .trim();
 }
 
-/**
- * Recompose l'E.164 a partir du pays + du numero national saisi. Le `0` de
- * tete (prefixe national) est retire (jamais present en E.164). Renvoie '' si
- * aucun chiffre national n'est saisi (le champ est alors considere vide).
- */
-export function composeE164(country: Country, national: string): string {
-  const digits = national.replace(/\D/g, '').replace(/^0+/, '');
-  return digits ? `+${country.dialCode}${digits}` : '';
-}
+import { composeE164 } from './phoneNumber';
 
-/**
- * Valide un numero E.164 pour le pays deduit de l'indicatif. S'appuie sur
- * libphonenumber-js (longueur + plage nationale selon le pays).
- */
-export function isValidPhone(e164: string): boolean {
-  if (!e164) return false;
-  try {
-    return isValidPhoneNumber(e164);
-  } catch {
-    return false;
-  }
-}
+// Fonctions reexportees pour les appelants existants (le code vit dans phoneNumber.ts).
+export { composeE164, isValidPhone } from './phoneNumber';
 
 /** Decompose un E.164 en { pays, numero national } (best-effort). */
 function decompose(e164: string, fallback: Country): { country: Country; national: string } {
@@ -130,20 +112,21 @@ export function PhoneNumberInput({
 
   // Etat interne : pays selectionne + numero national (chiffres, prefixe 0
   // tolere). L'E.164 est recompose et remonte a chaque frappe.
-  const initial = useMemo(() => decompose(value, fallback), []); // eslint-disable-line react-hooks/exhaustive-deps
-  const [country, setCountry] = useState<Country>(initial.country);
-  const [national, setNational] = useState<string>(initial.national);
+  const [country, setCountry] = useState<Country>(() => decompose(value, fallback).country);
+  const [national, setNational] = useState<string>(() => decompose(value, fallback).national);
 
   // Re-synchronise si le parent pousse une valeur externe (reprise de draft,
   // reset) differente de ce qu'on a compose — sans casser la frappe courante.
-  useEffect(() => {
+  // Ajustement pendant le rendu (derniere valeur vue) plutot qu'un effet.
+  const [valeurVue, setValeurVue] = useState(value);
+  if (value !== valeurVue) {
+    setValeurVue(value);
     if (value !== composeE164(country, national)) {
       const next = decompose(value, country);
       setCountry(next.country);
       setNational(next.national);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }
 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -174,11 +157,18 @@ export function PhoneNumberInput({
     return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
 
-  // Focus la recherche a l'ouverture + reset highlight.
-  useEffect(() => {
-    if (open) {
+  // Ouvre / ferme la liste ; a l'ouverture, recherche et surlignage repartent de zero.
+  function basculerListe() {
+    if (!open) {
       setSearch('');
       setHighlight(0);
+    }
+    setOpen(!open);
+  }
+
+  // Focus la recherche a l'ouverture.
+  useEffect(() => {
+    if (open) {
       // microtask : le champ est monte apres le render d'ouverture
       queueMicrotask(() => searchRef.current?.focus());
     }
@@ -249,7 +239,7 @@ export function PhoneNumberInput({
           <button
             type="button"
             disabled={disabled}
-            onClick={() => setOpen((o) => !o)}
+            onClick={basculerListe}
             aria-haspopup="listbox"
             aria-expanded={open}
             aria-label={`Indicatif pays : ${country.name} +${country.dialCode}`}
@@ -291,7 +281,7 @@ export function PhoneNumberInput({
                 className="max-h-64 overflow-y-auto py-1"
               >
                 {filtered.length === 0 && (
-                  <li className="px-3 py-2 text-xs text-fg-subtle">Aucun pays trouve.</li>
+                  <li className="px-3 py-2 text-xs text-fg-subtle">Aucun pays trouvé.</li>
                 )}
                 {filtered.map((c, idx) => {
                   const selected = c.iso2 === country.iso2;

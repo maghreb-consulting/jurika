@@ -51,23 +51,32 @@ export function PdfPreviewModal({
   onDownload,
   fetchPreview,
 }: Props) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
-  const [contentType, setContentType] = useState<string>('application/pdf');
+  // Resultat du dernier chargement, rattache au document demande : l'etat de
+  // chargement se deduit pendant le rendu (aucun setState synchrone dans l'effet).
+  const [resultat, setResultat] = useState<{
+    cle: string;
+    url: string | null;
+    contentType: string;
+    error: string | null;
+  } | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  // Fonction de chargement la plus recente, sans relancer l'effet a chaque rendu
+  // (les appelants passent souvent une fonction flechee recreee a chaque rendu).
+  const fetchRef = useRef(fetchPreview ?? dataroomService.previewDocument);
+  useEffect(() => {
+    fetchRef.current = fetchPreview ?? dataroomService.previewDocument;
+  });
+
+  const cle = open && documentId ? documentId : null;
 
   // Effet : fetch du Blob a chaque ouverture pour un nouveau documentId
   useEffect(() => {
-    if (!open || !documentId) return;
+    if (!cle) return;
 
     let cancelled = false;
     let currentUrl: string | null = null;
-    setLoading(true);
-    setError(null);
 
-    const doFetch = fetchPreview ?? dataroomService.previewDocument;
-    doFetch(documentId)
+    fetchRef.current(cle)
       .then(({ url, contentType: ct }) => {
         if (cancelled) {
           // Caller a ferme entre temps -> revoke immediat
@@ -75,23 +84,25 @@ export function PdfPreviewModal({
           return;
         }
         currentUrl = url;
-        setObjectUrl(url);
-        setContentType(ct);
+        setResultat({ cle, url, contentType: ct, error: null });
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(extractError(err).message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        setResultat({ cle, url: null, contentType: 'application/pdf', error: extractError(err).message });
       });
 
     return () => {
       cancelled = true;
       if (currentUrl) window.URL.revokeObjectURL(currentUrl);
-      setObjectUrl(null);
+      setResultat(null);
     };
-  }, [open, documentId]);
+  }, [cle]);
+
+  const courant = resultat && resultat.cle === cle ? resultat : null;
+  const loading = cle !== null && courant === null;
+  const error = courant?.error ?? null;
+  const objectUrl = courant?.url ?? null;
+  const contentType = courant?.contentType ?? 'application/pdf';
 
   // ESC pour fermer
   useEffect(() => {
@@ -147,7 +158,7 @@ export function PdfPreviewModal({
       className="fixed inset-0 z-50 flex flex-col bg-fg/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
-      aria-label={`Apercu de ${filename}`}
+      aria-label={`Aperçu de ${filename}`}
       onClick={(e) => {
         // Click outside = close (mais pas clicks sur l'iframe ou le header)
         if (e.target === e.currentTarget) onClose();
@@ -165,7 +176,7 @@ export function PdfPreviewModal({
             {canDownload && onDownload && (
               <Button variant="secondary" size="sm" onClick={onDownload}>
                 <Download className="mr-1 h-4 w-4" />
-                Telecharger
+                Télécharger
               </Button>
             )}
             {canPrint && (isPdf || isImage) && objectUrl && (
@@ -178,7 +189,7 @@ export function PdfPreviewModal({
               type="button"
               onClick={onClose}
               className="rounded-full p-1.5 text-fg-subtle hover:bg-bg-overlay hover:text-fg-muted"
-              aria-label="Fermer l'apercu"
+              aria-label="Fermer l’aperçu"
             >
               <X className="h-5 w-5" />
             </button>
@@ -189,12 +200,12 @@ export function PdfPreviewModal({
           {loading && (
             <div className="flex flex-col items-center gap-2 text-fg-subtle">
               <Loader2 className="h-8 w-8 animate-spin text-accent" />
-              <p className="text-sm">Chargement de l'apercu...</p>
+              <p className="text-sm">Chargement de l’aperçu…</p>
             </div>
           )}
           {!loading && error && (
             <div className="max-w-md rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-center text-sm text-danger">
-              <p className="font-semibold">Apercu indisponible</p>
+              <p className="font-semibold">Aperçu indisponible</p>
               <p className="mt-1 text-xs">{error}</p>
             </div>
           )}
@@ -202,7 +213,7 @@ export function PdfPreviewModal({
             <iframe
               ref={iframeRef}
               src={objectUrl}
-              title={`Apercu PDF -- ${filename}`}
+              title={`Aperçu PDF : ${filename}`}
               className="h-full w-full border-0"
             />
           )}
@@ -210,17 +221,17 @@ export function PdfPreviewModal({
             <div className="flex h-full w-full items-center justify-center overflow-auto p-4">
               <img
                 src={objectUrl}
-                alt={`Apercu -- ${filename}`}
+                alt={`Aperçu : ${filename}`}
                 className="max-h-full max-w-full object-contain"
               />
             </div>
           )}
           {!loading && !error && objectUrl && !isPdf && !isImage && (
             <div className="max-w-md rounded-lg border border-amber-200 bg-warning/10 px-4 py-3 text-center text-sm text-warning">
-              <p className="font-semibold">Apercu non disponible pour ce type</p>
+              <p className="font-semibold">Aperçu non disponible pour ce type de fichier</p>
               <p className="mt-1 text-xs">
-                Format detecte : <strong>{contentType}</strong>. Telechargez le
-                fichier pour l'ouvrir avec une application adaptee.
+                Format détecté : <strong>{contentType}</strong>. Téléchargez le
+                fichier pour l’ouvrir avec une application adaptée.
               </p>
             </div>
           )}

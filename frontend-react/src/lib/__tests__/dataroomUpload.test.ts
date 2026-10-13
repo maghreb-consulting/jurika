@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   isMotifValid,

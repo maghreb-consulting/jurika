@@ -8,6 +8,7 @@ test.describe('Billing — carte refusee', () => {
     'Necessite Stripe TEST keys + Stripe CLI');
 
   test('card 4000-0000-0000-0002 -> trial preserve + erreur lisible', async ({ page, authenticatedUser }) => {
+    void authenticatedUser; // active la fixture de connexion
     await page.goto('/app/billing');
     await page.getByTestId('plan-business-cta').click();
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Modal } from './Modal';
 import { Button } from './Button';
 import { TextField } from './TextField';
@@ -52,13 +52,16 @@ export function PromptDialog({
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Réinitialise le champ à chaque ouverture.
-  useEffect(() => {
+  // Reinitialise le champ a chaque ouverture (ajustement pendant le rendu,
+  // sur changement de `open` ou de `defaultValue`, plutot qu'un effet).
+  const [vu, setVu] = useState({ open, defaultValue });
+  if (open !== vu.open || defaultValue !== vu.defaultValue) {
+    setVu({ open, defaultValue });
     if (open) {
       setValue(defaultValue);
       setError(null);
     }
-  }, [open, defaultValue]);
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

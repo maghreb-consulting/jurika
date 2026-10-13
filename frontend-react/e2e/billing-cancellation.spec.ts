@@ -12,6 +12,7 @@ test.describe('Billing — annulation subscription', () => {
     'Necessite Stripe TEST keys + workspace active + simulate cancel via stripe trigger');
 
   test('cancel -> banner orange + acces conserve jusqu\'a fin periode', async ({ page, authenticatedUser }) => {
+    void authenticatedUser; // active la fixture de connexion
     // Pre-requis : appeler une fois `stripe trigger customer.subscription.deleted`
     // (ou utiliser un workspace deja seede en status cancelled via /api/v1/test/seed).
 

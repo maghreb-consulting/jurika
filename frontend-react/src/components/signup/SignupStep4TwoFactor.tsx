@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Smartphone, QrCode } from 'lucide-react';
 import { SMS_2FA_ENABLED } from '../../lib/featureFlags';
 
@@ -24,14 +24,12 @@ export function SignupStep4TwoFactor({ initial, onBack, onNext }: Props) {
   // SMS « Hors service » tant qu'aucun fournisseur SMS n'est branche
   // (SMS_2FA_ENABLED=false). On force TOTP pour ne pas laisser choisir une
   // methode qui casserait le setup au 1er login.
-  const [pref, setPref] = useState<TwoFactorPreference>(
+  const [prefChoisie, setPref] = useState<TwoFactorPreference>(
     SMS_2FA_ENABLED ? initial : 'TOTP',
   );
-
-  // Si le flag est faux et qu'un draft repris portait 'SMS', on rebascule TOTP.
-  useEffect(() => {
-    if (!SMS_2FA_ENABLED && pref === 'SMS') setPref('TOTP');
-  }, [pref]);
+  // Si le flag est faux et qu'un draft repris portait 'SMS', on rebascule TOTP
+  // (valeur deduite pendant le rendu, sans effet).
+  const pref: TwoFactorPreference = !SMS_2FA_ENABLED && prefChoisie === 'SMS' ? 'TOTP' : prefChoisie;
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -46,29 +44,29 @@ export function SignupStep4TwoFactor({ initial, onBack, onNext }: Props) {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8" data-testid="signup-step-2fa">
       <div className="rounded-2xl bg-bg-raised p-6 shadow-md sm:p-8">
-        <h2 className="mb-2 font-heading text-2xl font-semibold text-fg">Methode 2FA preferee</h2>
+        <h2 className="mb-2 font-heading text-2xl font-semibold text-fg">Méthode de double authentification</h2>
         <p className="mb-6 text-sm text-fg-subtle">
-          La 2FA est obligatoire (RG-SAAS-12). Vous activerez votre 2FA au 1er login,
-          mais choisissez deja votre methode pour preparer le setup.
+          La double authentification est obligatoire pour protéger les données du cabinet.
+          Choisissez dès maintenant votre méthode : vous l’activerez à votre première connexion.
         </p>
         <form onSubmit={submit} className="space-y-3" noValidate>
           <PrefCard
             value="SMS" current={pref} setPref={setPref}
             icon={<Smartphone className="h-5 w-5" />}
             title="SMS"
-            body="Recevez un code 6 chiffres par SMS. Simple, pas d'app a installer."
+            body="Recevez un code à 6 chiffres par SMS. Simple : aucune application à installer."
             disabled={!SMS_2FA_ENABLED}
             disabledLabel="Hors service"
           />
           <PrefCard
             value="TOTP" current={pref} setPref={setPref}
             icon={<QrCode className="h-5 w-5" />}
-            title="Google Authenticator (TOTP)"
-            body="Scannez un QR code une seule fois avec Google Authenticator / Authy / 1Password. Recommande : pas de dependance reseau, gratuit."
+            title="Application d’authentification"
+            body="Scannez une seule fois un QR code avec Google Authenticator, Authy ou 1Password. Recommandé : gratuit et indépendant du réseau téléphonique."
           />
           <div className="mt-2 flex gap-3">
             <button type="button" onClick={onBack} className={btnSecondary} data-testid="signup-step4-back">← Retour</button>
-            <button type="submit" className={btnPrimary} data-testid="signup-step4-next">Continuer → Recap</button>
+            <button type="submit" className={btnPrimary} data-testid="signup-step4-next">Continuer vers le récapitulatif</button>
           </div>
         </form>
       </div>
