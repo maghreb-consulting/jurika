@@ -60,13 +60,13 @@ const PILLARS = [
   },
   {
     id: 'ia',
-    kicker: '04 · Intelligence artificielle',
+    kicker: '04 · Assistant juridique',
     title: 'Un assistant juridique qui cite ses sources',
     lead:
-      "Chatbot RAG spécialisé en droit des sociétés marocain, et copilote qui propose des actions — sans jamais agir seul.",
+      "Un assistant spécialisé en droit des sociétés marocain, qui répond à partir de sources fiables et les cite — sans jamais agir seul.",
     points: [
-      "Réponses ancrées sur le corpus documentaire du cabinet, avec citation de l'article et de la référence.",
-      "Copilote qui observe les signaux du dossier et propose des actions à l'employé.",
+      "Réponses tirées des sources fiables déposées par JURIKA, avec la référence citée.",
+      "Aucune donnée de client : l’assistant n’a accès à aucun dossier et bloque les données personnelles.",
       "L'humain garde la main : aucune action automatique sur vos données.",
     ],
     Mockup: CopiloteMockup,

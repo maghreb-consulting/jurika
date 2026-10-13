@@ -21,7 +21,6 @@ import { AISplitScroll } from './components/sections/AISplitScroll.jsx';
 import { PilotageShowcase } from './components/sections/PilotageShowcase.jsx';
 import { AudiencesCarousel } from './components/sections/AudiencesCarousel.jsx';
 import { Pricing } from './components/sections/Pricing.jsx';
-import { Testimonials } from './components/sections/Testimonials.jsx';
 import { FAQ } from './components/sections/FAQ.jsx';
 import { CTAFinal } from './components/sections/CTAFinal.jsx';
 
@@ -72,7 +71,6 @@ export function MarketingApp() {
         <PilotageShowcase />
         <AudiencesCarousel />
         <Pricing onDemoClick={goSignup} />
-        <Testimonials />
         <FAQ />
         <CTAFinal onDemoClick={goSignup} />
       </main>

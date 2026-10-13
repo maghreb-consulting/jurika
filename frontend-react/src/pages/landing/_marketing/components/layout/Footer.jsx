@@ -11,7 +11,7 @@ export function Footer() {
         <div className="footer-brand">
           <Logo light />
           <p>
-            Plateforme SaaS B2B multi-tenant de gestion juridique des entreprises, propulsée par l'IA.
+            Plateforme de gestion juridique des entreprises au Maroc, pour les cabinets.
             Éditée par Maghreb Consulting, Casablanca.
           </p>
           <div className="socials">
@@ -23,7 +23,7 @@ export function Footer() {
         <div className="footer-col">
           <h4>Produit</h4>
           <a href="#fonctionnalites">Fonctionnalités</a>
-          <a href="#ia">Intelligence Artificielle</a>
+          <a href="#ia">Assistant juridique</a>
           <a href="#pilotage-live">Pilotage & traçabilité</a>
           <a href="#tarifs">Tarifs</a>
           <a href="#faq">FAQ</a>
