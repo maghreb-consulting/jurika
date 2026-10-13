@@ -1,30 +1,10 @@
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useEffect, useRef } from 'react';
 
 gsap.registerPlugin(ScrollTrigger);
 
 export { gsap, ScrollTrigger };
 
-/**
- * useGsap — context isole, cleanup automatique.
- * Pattern : pinned-scrub, sticky-stack, horizontal-scrub.
- */
-export function useGsap<T extends HTMLElement = HTMLDivElement>(
-  callback: (ctx: gsap.Context, scope: T) => void,
-  deps: React.DependencyList = [],
-) {
-  const ref = useRef<T | null>(null);
-
-  useEffect(() => {
-    if (!ref.current) return;
-    const ctx = gsap.context((self) => callback(self, ref.current!), ref.current);
-    return () => ctx.revert();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-
-  return ref;
-}
 
 /** Easing tokens — calibrees sur Linear/Stripe */
 export const EASE = {

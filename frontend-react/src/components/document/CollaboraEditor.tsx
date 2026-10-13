@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useEffectEvent } from 'react';
 import { AlertTriangle, Loader, ShieldCheck } from 'lucide-react';
 import { dataroomService } from '../../services/dataroom.service';
 import type { SeanceEdition } from '../../types/dataroom';
@@ -68,16 +68,18 @@ export function CollaboraEditor({ documentId, titre, onClose, onEdited }: Props)
   // La séance est fermée au démontage. Le serveur coupe la LECTURE aussitôt
   // mais laisse une fenêtre de grâce à l'ÉCRITURE : Collabora enregistre de
   // façon asynchrone et appelle souvent PutFile après la fermeture de l'onglet.
+  // Lot L6 : fermeture en « événement d'effet » (useEffectEvent) : elle lit le dernier onEdited
+  // sans en dépendre ; l'effet ne se joue qu'au montage et au démontage.
+  const fermerAuDemontage = useEffectEvent(() => {
+    const s = seanceRef.current;
+    if (!s) return;
+    void dataroomService.fermerSeanceEdition(s.sessionId).catch(() => {
+      /* best-effort : la séance expirera d'elle-même */
+    });
+    if (aModifie.current) onEdited?.();
+  });
   useEffect(() => {
-    return () => {
-      const s = seanceRef.current;
-      if (!s) return;
-      void dataroomService.fermerSeanceEdition(s.sessionId).catch(() => {
-        /* best-effort : la séance expirera d'elle-même */
-      });
-      if (aModifie.current) onEdited?.();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => fermerAuDemontage();
   }, []);
 
   // ─── Messages de l'éditeur ─────────────────────────────────────────

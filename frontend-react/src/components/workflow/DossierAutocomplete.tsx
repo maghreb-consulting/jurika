@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useEffectEvent } from 'react';
 import { Search } from 'lucide-react';
 import { InfoBulle } from '../ui/Aide';
 import { dataroomService } from '../../services/dataroom.service';
@@ -121,35 +121,38 @@ export function DossierAutocomplete({
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<DossierBrief | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
+  // Lot L6 : chargement au montage en « événement d'effet » (useEffectEvent) : il lit la valeur
+  // courante sans en dépendre, sans désactiver la règle des dépendances.
+  const chargerDossiers = useEffectEvent(async (estAnnule: () => boolean) => {
       setLoading(true);
       setError(null);
       try {
         const list = await dataroomService.listDossiers();
-        if (cancelled) return;
+        if (estAnnule()) return;
         setDossiers(list);
         if (value) {
           const cur = list.find((d) => d.id === value) ?? null;
           setSelected(cur);
         }
       } catch (e) {
-        if (!cancelled) {
+        if (!estAnnule()) {
           setError(
             (e as { message?: string })?.message ??
               'Impossible de charger la liste des sociétés. Rechargez la page.',
           );
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!estAnnule()) setLoading(false);
       }
-    }
-    void load();
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    // Lancement par promesse : aucun état posé de façon synchrone dans l'effet.
+    Promise.resolve().then(() => chargerDossiers(() => cancelled)).catch(() => undefined);
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = useMemo(() => {

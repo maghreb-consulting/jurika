@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useEffectEvent } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
@@ -744,10 +744,10 @@ export function Step7Generation({
    *
    * Exécuté une seule fois au montage (les blobs vivent en mémoire React).
    */
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
+  // Lot L6 : corps de la ré-hydratation en « événement d'effet » (useEffectEvent) : il lit les
+  // valeurs courantes sans être une dépendance ; l'effet ne se joue qu'au montage, sans
+  // désactiver la règle des dépendances.
+  const rehydrater = useEffectEvent(async (estAnnule: () => boolean) => {
       // Lot 2 — 0) LES BROUILLONS D'ABORD. Un document généré est persisté dès
       // sa génération : il se retrouve même si l'étape n'a jamais été soumise,
       // et il porte l'édition faite avant de quitter la page. C'est ce qui rend
@@ -761,7 +761,7 @@ export function Step7Generation({
           // best-effort : on retombe sur les documents en vigueur.
         }
       }
-      if (cancelled) return;
+      if (estAnnule()) return;
 
       const codesBrouillon = Object.entries(TEMPLATE_TO_DOCTYPE)
         .filter(([code, type]) =>
@@ -785,13 +785,13 @@ export function Step7Generation({
       });
 
       for (const code of codesBrouillon) {
-        if (cancelled) return;
+        if (estAnnule()) return;
         try {
           const type = TEMPLATE_TO_DOCTYPE[code];
           const b = brouillons.find((x) => x.documentType === type);
           if (!b) continue;
           const blob = await dataroomService.fetchDocumentBlob(b.id);
-          if (cancelled) return;
+          if (estAnnule()) return;
           updateDoc(code, {
             blob,
             documentId: b.id,
@@ -806,7 +806,7 @@ export function Step7Generation({
         } catch {
           // best-effort : la carte reste telle quelle, Régénérer reste dispo.
         } finally {
-          if (!cancelled) setRestoring((prev) => ({ ...prev, [code]: false }));
+          if (!estAnnule()) setRestoring((prev) => ({ ...prev, [code]: false }));
         }
       }
 
@@ -821,7 +821,7 @@ export function Step7Generation({
         }
       }
       for (const code of codesToRestore) {
-        if (cancelled) return;
+        if (estAnnule()) return;
         try {
           const wantType = TEMPLATE_TO_DOCTYPE[code];
           const match = wantType
@@ -836,7 +836,7 @@ export function Step7Generation({
           if (match) {
             // PRIORITÉ Data Room — récupère le blob déposé (sans re-télécharger).
             const blob = await dataroomService.fetchDocumentBlob(match.id);
-            if (cancelled) return;
+            if (estAnnule()) return;
             updateDoc(code, {
               blob,
               documentId: match.id,
@@ -852,25 +852,28 @@ export function Step7Generation({
               code,
               await chargeServeur(false),
             );
-            if (cancelled) return;
+            if (estAnnule()) return;
             updateDoc(code, { blob, filename });
           }
         } catch {
           // best-effort : la carte reste « générée », Régénérer reste dispo.
         } finally {
-          if (!cancelled) {
+          if (!estAnnule()) {
             setRestoring((prev) => ({ ...prev, [code]: false }));
           }
         }
       }
-    })();
+  });
 
+  useEffect(() => {
+    let cancelled = false;
+    // Lancement par promesse : aucun état posé de façon synchrone dans l'effet.
+    Promise.resolve().then(() => rehydrater(() => cancelled)).catch(() => undefined);
     return () => {
       cancelled = true;
     };
     // Montage uniquement : les blobs ne survivent pas au démontage, la
     // ré-hydratation doit se rejouer à chaque retour sur l'étape.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Étape 7 (noms propres 2026-08) — nom de fichier / libellé « soignés » pour un
