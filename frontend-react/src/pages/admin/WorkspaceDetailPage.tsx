@@ -17,7 +17,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { useToast } from '../../components/ui/Toast';
+import { useToast } from '../../components/ui/useToast';
 import { KpiCard } from '../../components/dashboard/KpiCard';
 import { ChartCard } from '../../components/dashboard/charts/ChartCard';
 import { DonutChart } from '../../components/dashboard/charts/DonutChart';
@@ -27,9 +27,17 @@ import { adminService } from '../../services/admin.service';
 import type { WorkspaceDetail, WorkspaceStatusAction } from '../../types/admin';
 import { chartTheme, statutTicketColors } from '../../lib/chartTheme';
 import { FORFAIT_LABELS, STATUT_TICKET_LABELS, labelOf } from '../../lib/dashboardLabels';
+import { extractError } from '../../lib/api';
+import {
+  STATUT_ABONNEMENT_LABELS,
+  STATUT_ESSAI_LABELS,
+  libelleActionAudit,
+  libelleCode,
+} from '../../lib/adminLabels';
+import { TexteAide } from '../../components/ui/Aide';
 
 const ROLE_LABELS: Record<string, string> = {
-  SUPER_ADMIN: 'Super Admin',
+  SUPER_ADMIN: 'Super-administrateur',
   SUPERVISEUR: 'Superviseur',
   EMPLOYE: 'Employé',
   CLIENT: 'Client',
@@ -41,11 +49,11 @@ const DOC_LABELS: Record<string, string> = {
 };
 const ACTION_META: Record<
   WorkspaceStatusAction,
-  { label: string; verb: string; target: string; variant: 'primary' | 'danger' }
+  { label: string; verb: string; done: string; target: string; variant: 'primary' | 'danger' }
 > = {
-  activate: { label: 'Activer', verb: 'activer', target: 'ACTIVE', variant: 'primary' },
-  suspend: { label: 'Suspendre', verb: 'suspendre', target: 'SUSPENDED', variant: 'danger' },
-  deactivate: { label: 'Désactiver', verb: 'désactiver', target: 'DEACTIVATED', variant: 'danger' },
+  activate: { label: 'Activer', verb: 'activer', done: 'activé', target: 'ACTIVE', variant: 'primary' },
+  suspend: { label: 'Suspendre', verb: 'suspendre', done: 'suspendu', target: 'SUSPENDED', variant: 'danger' },
+  deactivate: { label: 'Désactiver', verb: 'désactiver', done: 'désactivé', target: 'DEACTIVATED', variant: 'danger' },
 };
 
 export function WorkspaceDetailPage() {
@@ -77,11 +85,11 @@ export function WorkspaceDetailPage() {
     setActing(true);
     try {
       await adminService.setWorkspaceStatus(workspaceId, pending);
-      toast.success(`« ${ws?.name} » — ${ACTION_META[pending].verb} effectué.`);
+      toast.success(`Cabinet « ${ws?.name} » ${ACTION_META[pending].done}.`);
       setWs((prev) => (prev ? { ...prev, statut: ACTION_META[pending].target } : prev));
       setPending(null);
-    } catch {
-      toast.error("L'action a échoué. Réessayez.");
+    } catch (e) {
+      toast.error(`L’action a échoué : ${extractError(e).message}`);
     } finally {
       setActing(false);
     }
@@ -92,8 +100,11 @@ export function WorkspaceDetailPage() {
       <div className="space-y-4">
         <BackLink />
         <Card className="p-10 text-center">
-          <p className="font-medium text-fg">Workspace introuvable</p>
-          <p className="mt-1 text-sm text-fg-subtle">Les détails n'ont pas pu être récupérés.</p>
+          <p className="font-medium text-fg">Cabinet introuvable</p>
+          <p className="mt-1 text-sm text-fg-subtle">
+            La fiche de ce cabinet n’a pas pu être récupérée. Revenez à la liste des cabinets et
+            rouvrez-la ; si le problème persiste, vérifiez l’état des services.
+          </p>
         </Card>
       </div>
     );
@@ -120,7 +131,7 @@ export function WorkspaceDetailPage() {
     label: labelOf(STATUT_TICKET_LABELS, c.label),
     count: c.count,
   }));
-  const eventsByAction = ws.eventsByAction.map((c) => ({ label: c.label, count: c.count }));
+  const eventsByAction = ws.eventsByAction.map((c) => ({ label: libelleActionAudit(c.label), count: c.count }));
 
   const availableActions: WorkspaceStatusAction[] =
     ws.statut === 'DEACTIVATED'
@@ -161,6 +172,14 @@ export function WorkspaceDetailPage() {
         </div>
       </header>
 
+      <TexteAide cle="admin-fiche-cabinet" titre="Fiche du cabinet">
+        <p>
+          Cette fiche réunit l’identité du cabinet, son forfait, ses compteurs (équipe, clients, tickets,
+          dossiers, stockage) et son activité des 30 derniers jours. Les boutons en haut à droite changent
+          son statut ; une confirmation vous est demandée. Le contenu des dossiers n’est jamais affiché ici.
+        </p>
+      </TexteAide>
+
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <KpiCard label="Équipe" value={ws.employes} icon={<Briefcase className="h-4 w-4" />} />
@@ -186,7 +205,7 @@ export function WorkspaceDetailPage() {
           <Field label="Créé le" value={new Date(ws.createdAt).toLocaleDateString('fr-FR')} />
           <Field label="Ville" value={ws.city} />
           <Field label="ICE" value={ws.ice} mono />
-          <Field label="IF fiscal" value={ws.ifFiscal} mono />
+          <Field label="IF (identifiant fiscal)" value={ws.ifFiscal} mono />
           <Field label="RC" value={ws.rcNumber} mono />
           <Field label="Téléphone" value={ws.telephone} />
           <Field label="Site web" value={ws.siteWeb} />
@@ -195,11 +214,11 @@ export function WorkspaceDetailPage() {
             label="Essai"
             value={
               ws.trialStatus === 'TRIAL_ACTIVE' && ws.trialEndsAt
-                ? `Actif jusqu'au ${new Date(ws.trialEndsAt).toLocaleDateString('fr-FR')}`
-                : ws.trialStatus ?? null
+                ? `En cours jusqu’au ${new Date(ws.trialEndsAt).toLocaleDateString('fr-FR')}`
+                : libelleCode(STATUT_ESSAI_LABELS, ws.trialStatus)
             }
           />
-          <Field label="Abonnement" value={ws.subscriptionStatus} />
+          <Field label="Abonnement" value={libelleCode(STATUT_ABONNEMENT_LABELS, ws.subscriptionStatus)} />
         </dl>
       </Card>
 
@@ -226,7 +245,7 @@ export function WorkspaceDetailPage() {
         >
           <EvolutionChart data={ws.activity30d.map((d) => ({ day: d.day, count: d.count }))} color={chartTheme.accent} />
         </ChartCard>
-        <ChartCard title="Principales actions (30j)" icon={<Layers className="h-4 w-4" />} empty={eventsByAction.length === 0}>
+        <ChartCard title="Principales actions (30 jours)" icon={<Layers className="h-4 w-4" />} empty={eventsByAction.length === 0}>
           <DistributionChart data={eventsByAction} color={chartTheme.accent} height={220} />
         </ChartCard>
       </div>
@@ -241,7 +260,7 @@ export function WorkspaceDetailPage() {
         <ul className="divide-y divide-border">
           {ws.recentEvents.map((e) => (
             <li key={e.id} className="flex items-center gap-3 py-2 text-sm">
-              <span className="rounded bg-bg-overlay px-2 py-0.5 font-mono text-[11px] text-fg-muted">{e.action}</span>
+              <span className="rounded bg-bg-overlay px-2 py-0.5 text-[11px] text-fg-muted">{libelleActionAudit(e.action)}</span>
               {e.entityType && <span className="text-fg-subtle">{e.entityType}</span>}
               <span className="ml-auto text-xs text-fg-subtle">
                 {new Date(e.createdAt).toLocaleString('fr-FR', {
@@ -259,9 +278,11 @@ export function WorkspaceDetailPage() {
       <ConfirmDialog
         open={pending !== null}
         onOpenChange={(o) => !o && setPending(null)}
-        title={pending ? `${ACTION_META[pending].label} le workspace` : ''}
+        title={pending ? `${ACTION_META[pending].label} le cabinet` : ''}
         description={
-          pending ? `Confirmer ${ACTION_META[pending].verb} « ${ws.name} » (${ws.code}) ?` : undefined
+          pending
+            ? `Voulez-vous vraiment ${ACTION_META[pending].verb} le cabinet « ${ws.name} » (${ws.code}) ?`
+            : undefined
         }
         confirmLabel={pending ? ACTION_META[pending].label : 'Confirmer'}
         variant={pending === 'activate' ? 'primary' : 'danger'}
@@ -278,7 +299,7 @@ export function WorkspaceDetailPage() {
         onClick={() => navigate('/admin/workspaces')}
         className="inline-flex items-center gap-1.5 text-sm text-fg-subtle transition hover:text-accent"
       >
-        <ArrowLeft className="h-4 w-4" /> Retour aux workspaces
+        <ArrowLeft className="h-4 w-4" /> Retour aux cabinets
       </button>
     );
   }

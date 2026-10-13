@@ -4,14 +4,16 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { useToast } from '../../components/ui/Toast';
+import { useToast } from '../../components/ui/useToast';
 import { adminService } from '../../services/admin.service';
+import { extractError } from '../../lib/api';
+import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import type { AdminUserRow, AdminUsersPage, AdminWorkspaceRow } from '../../types/admin';
 
 const PAGE_SIZE = 25;
 
 const ROLE_LABELS: Record<string, string> = {
-  SUPER_ADMIN: 'Super Admin',
+  SUPER_ADMIN: 'Super-administrateur',
   SUPERVISEUR: 'Superviseur',
   EMPLOYE: 'Employé',
   CLIENT: 'Client',
@@ -32,22 +34,25 @@ export function UsersPage() {
 
   const [page, setPage] = useState<AdminUsersPage | null>(null);
   const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(true);
+  // Parametres de la derniere liste recue : le chargement se deduit pendant le rendu.
+  const [chargePour, setChargePour] = useState<string | null>(null);
+  const cle = `${debounced}|${role}|${workspaceId}|${offset}`;
+  const loading = chargePour !== cle;
   const [workspaces, setWorkspaces] = useState<AdminWorkspaceRow[]>([]);
 
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [acting, setActing] = useState(false);
 
-  // Debounce recherche.
+  // Debounce recherche ; une recherche nouvelle repart de la premiere page.
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(search), 300);
+    const t = setTimeout(() => {
+      if (search !== debounced) {
+        setDebounced(search);
+        setOffset(0);
+      }
+    }, 300);
     return () => clearTimeout(t);
-  }, [search]);
-
-  // Reset la pagination quand un filtre change.
-  useEffect(() => {
-    setOffset(0);
-  }, [debounced, role, workspaceId]);
+  }, [search, debounced]);
 
   // Dropdown workspaces (filtre).
   useEffect(() => {
@@ -56,17 +61,23 @@ export function UsersPage() {
 
   useEffect(() => {
     let mounted = true;
-    setLoading(true);
-    setError(false);
     adminService
       .listUsers({ search: debounced, role, workspaceId, offset, limit: PAGE_SIZE })
-      .then((p) => mounted && setPage(p))
-      .catch(() => mounted && setError(true))
-      .finally(() => mounted && setLoading(false));
+      .then((p) => {
+        if (!mounted) return;
+        setPage(p);
+        setError(false);
+        setChargePour(cle);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setError(true);
+        setChargePour(cle);
+      });
     return () => {
       mounted = false;
     };
-  }, [debounced, role, workspaceId, offset]);
+  }, [debounced, role, workspaceId, offset, cle]);
 
   const total = page?.total ?? 0;
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
@@ -85,16 +96,16 @@ export function UsersPage() {
         else toast.error(r.message);
       } else if (pending.type === 'suspend') {
         await adminService.suspendUser(u.id);
-        toast.success(`${u.firstName} ${u.lastName} suspendu.`);
+        toast.success(`Compte de ${u.firstName} ${u.lastName} suspendu.`);
         patchStatus(u.id, 'INACTIVE');
       } else {
         await adminService.reactivateUser(u.id);
-        toast.success(`${u.firstName} ${u.lastName} réactivé.`);
+        toast.success(`Compte de ${u.firstName} ${u.lastName} réactivé.`);
         patchStatus(u.id, 'ACTIVE');
       }
       setPending(null);
-    } catch {
-      toast.error("L'action a échoué. Réessayez.");
+    } catch (e) {
+      toast.error(`L’action a échoué : ${extractError(e).message}`);
     } finally {
       setActing(false);
     }
@@ -110,12 +121,22 @@ export function UsersPage() {
     <div className="space-y-5">
       <header>
         <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold text-fg">
-          <Users className="h-6 w-6 text-accent" /> Utilisateurs plateforme
+          <Users className="h-6 w-6 text-accent" /> Utilisateurs de la plateforme
         </h1>
         <p className="mt-1 text-sm text-fg-subtle">
-          Vue cross-workspaces. Aucun contenu métier (RG-U07) — identité, rôle, cabinet et statut.
+          Les comptes de tous les cabinets : identité, rôle, cabinet et statut. Le contenu des dossiers
+          n’est jamais visible ici.
         </p>
       </header>
+
+      <TexteAide cle="admin-utilisateurs" titre="Que faire sur cet écran ?">
+        <p>
+          Retrouvez un compte par son nom, son adresse, son rôle ou son cabinet. Vous pouvez envoyer un
+          nouveau mot de passe temporaire (l’utilisateur devra le changer à sa connexion), suspendre un
+          compte (il ne peut plus se connecter) ou le réactiver. Les comptes de super-administrateur ne
+          se gèrent pas ici.
+        </p>
+      </TexteAide>
 
       {/* Filtres */}
       <div className="flex flex-wrap items-center gap-3">
@@ -125,24 +146,33 @@ export function UsersPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher un nom ou email…"
+            placeholder="Rechercher un nom ou une adresse…"
+            aria-label="Rechercher un utilisateur"
             className="w-full rounded-lg border border-border bg-bg-raised py-2 pl-9 pr-3 text-sm text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none"
           />
         </div>
         <select
           value={role}
-          onChange={(e) => setRole(e.target.value)}
+          onChange={(e) => {
+            setRole(e.target.value);
+            setOffset(0);
+          }}
+          aria-label="Filtrer par rôle"
           className="rounded-lg border border-border bg-bg-raised px-3 py-2 text-sm text-fg focus:border-accent focus:outline-none"
         >
           <option value="">Tous les rôles</option>
           <option value="SUPERVISEUR">Superviseur</option>
           <option value="EMPLOYE">Employé</option>
           <option value="CLIENT">Client</option>
-          <option value="SUPER_ADMIN">Super Admin</option>
+          <option value="SUPER_ADMIN">Super-administrateur</option>
         </select>
         <select
           value={workspaceId}
-          onChange={(e) => setWorkspaceId(e.target.value)}
+          onChange={(e) => {
+            setWorkspaceId(e.target.value);
+            setOffset(0);
+          }}
+          aria-label="Filtrer par cabinet"
           className="max-w-[220px] rounded-lg border border-border bg-bg-raised px-3 py-2 text-sm text-fg focus:border-accent focus:outline-none"
         >
           <option value="">Tous les cabinets</option>
@@ -154,14 +184,17 @@ export function UsersPage() {
         </select>
       </div>
 
-      {error && (
+      {error && !loading && (
         <Card className="p-8 text-center">
           <p className="font-medium text-fg">Chargement impossible</p>
-          <p className="mt-1 text-sm text-fg-subtle">La liste des utilisateurs n'a pas pu être récupérée.</p>
+          <p className="mt-1 text-sm text-fg-subtle">
+            La liste des utilisateurs n’a pas pu être récupérée. Rechargez la page ; si le problème
+            persiste, vérifiez l’état des services sur l’écran de supervision.
+          </p>
         </Card>
       )}
 
-      {!error && loading && (
+      {loading && (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-14 animate-pulse rounded-lg border border-border bg-bg-raised" />
@@ -171,7 +204,10 @@ export function UsersPage() {
 
       {!error && !loading && page && page.items.length === 0 && (
         <Card className="p-10 text-center">
-          <p className="text-sm text-fg-subtle">Aucun utilisateur ne correspond aux filtres.</p>
+          <p className="text-sm text-fg-subtle">
+            Aucun utilisateur ne correspond à ces filtres. Modifiez la recherche ou choisissez « Tous les
+            cabinets ».
+          </p>
         </Card>
       )}
 
@@ -185,7 +221,15 @@ export function UsersPage() {
                   <th className="px-4 py-3 font-medium">Rôle</th>
                   <th className="px-4 py-3 font-medium">Cabinet</th>
                   <th className="px-4 py-3 font-medium">Statut</th>
-                  <th className="px-4 py-3 font-medium">2FA</th>
+                  <th className="px-4 py-3 font-medium">
+                    <span className="inline-flex items-center gap-1">
+                      Double authentification
+                      <InfoBulle
+                        libelle="Aide : double authentification"
+                        texte="« Activée » : l’utilisateur confirme chaque connexion par un code à 6 chiffres. Un tiret indique qu’elle n’est pas encore configurée : elle lui sera demandée à sa prochaine connexion."
+                      />
+                    </span>
+                  </th>
                   <th className="px-4 py-3 font-medium">Dernière connexion</th>
                   <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
@@ -238,7 +282,7 @@ export function UsersPage() {
                               onClick={() => setPending({ type: 'reset', user: u })}
                               className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-accent transition hover:bg-accent/10"
                             >
-                              <KeyRound className="h-3.5 w-3.5" /> Reset MDP
+                              <KeyRound className="h-3.5 w-3.5" /> Nouveau mot de passe
                             </button>
                             {u.status === 'INACTIVE' ? (
                               <button
@@ -320,7 +364,7 @@ function buildDialog(pending: PendingAction | null): {
     case 'reset':
       return {
         title: 'Réinitialiser le mot de passe',
-        description: `Un nouveau mot de passe temporaire sera généré et envoyé par email à ${name} (${pending.user.contactEmail}).`,
+        description: `Un nouveau mot de passe temporaire sera généré et envoyé par courriel à ${name} (${pending.user.contactEmail}). Il devra le changer à sa prochaine connexion.`,
         confirmLabel: 'Envoyer',
         variant: 'primary',
       };

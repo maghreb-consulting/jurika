@@ -53,23 +53,23 @@ export function ReferentielDemarchesPage() {
         <h1 className="flex items-center gap-1 text-xl font-semibold text-fg">
           Référentiel des démarches
           <InfoBulle
-            libelle="D'où vient ce référentiel ?"
+            libelle="D’où vient ce référentiel ?"
             texte="Des onglets « Démarches » des matrices du corpus livré par le cabinet : une ligne par démarche, avec son statut, son organisme, sa condition, son délai, son justificatif et son modèle. Il pilote le déroulement des tickets hors création."
           />
         </h1>
         <p className="text-sm text-fg-muted">
-          Version appliquée : <strong data-testid="version-active">{etat?.versionActive ?? 'aucune'}</strong>
+          Version appliquée : <strong data-testid="version-active">{etat ? (etat.versionActive ?? 'aucune') : '…'}</strong>
         </p>
       </header>
 
       <TexteAide cle="referentiel-import" titre="Quand importer le référentiel ?">
-        Après chaque livraison du corpus par le cabinet. L'import lit les onglets « Démarches » et « Renvois » et
+        Après chaque livraison du corpus par le cabinet. L’import lit les onglets « Démarches » et « Renvois » et
         les décisions de chaque matrice. Il est refusé si l'analyse relève une erreur (statut inconnu, onglet
         illisible) : la version précédente reste alors en service. Une version appliquée remplace la précédente ;
-        l'avancement des tickets en cours (démarches cochées, délais saisis) suit la ligne de même place dans la
+        l’avancement des tickets en cours (démarches cochées, délais saisis) suit la ligne de même place dans la
         nouvelle version, et ce qui ne trouve pas de ligne correspondante est compté au rapport. Une nouvelle
-        version du corpus montée sur le serveur s'importe d'elle-même au démarrage. Les délais que la matrice
-        exprime en texte et les conditions rédigées en phrase sont listés au rapport : l'employé les appréciera
+        version du corpus montée sur le serveur s’importe d’elle-même au démarrage. Les délais que la matrice
+        exprime en texte et les conditions rédigées en phrase sont listés au rapport : l’employé les appréciera
         sur la ligne.
       </TexteAide>
 
@@ -92,7 +92,7 @@ export function ReferentielDemarchesPage() {
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-fg">Journal des imports</h2>
         {etat && etat.imports.length === 0 && (
-          <p className="text-sm text-fg-subtle">Aucun import : les tickets hors création n'ont pas encore de démarches du corpus.</p>
+          <p className="text-sm text-fg-subtle">Aucun import : les tickets hors création n’ont pas encore de démarches du corpus. Cliquez sur « Importer le référentiel du corpus ».</p>
         )}
         <ul className="space-y-2">
           {etat?.imports.map((i) => {
@@ -117,13 +117,13 @@ export function ReferentielDemarchesPage() {
                   <div className="mt-2 space-y-2 text-xs text-fg-muted">
                     <p>
                       {rapport.total ?? 0} lignes lues ; {rapport.conditionsPhrases?.length ?? 0} conditions rédigées en
-                      phrase (à apprécier par l'employé) ; {rapport.delaisTextuels?.length ?? 0} délais en texte seul
+                      phrase (à apprécier par l’employé) ; {rapport.delaisTextuels?.length ?? 0} délais en texte seul
                       (point de départ ou durée non chiffrés par la matrice).
                     </p>
                     {rapport.etatsReportes !== undefined && (
                       <p data-testid="etats-reportes">
                         Avancement des tickets en cours : {rapport.etatsReportes} état(s) reporté(s) sur la nouvelle
-                        version ; {rapport.etatsNonReportes ?? 0} sans ligne correspondante (restés sur l'ancienne ligne).
+                        version ; {rapport.etatsNonReportes ?? 0} sans ligne correspondante (restés sur l’ancienne ligne).
                       </p>
                     )}
                     {rapport.lignesParOnglet && (

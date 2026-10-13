@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   auditService,
   type AuditEntry,
@@ -8,58 +8,45 @@ import {
 } from '../../services/audit.service';
 import { adminService } from '../../services/admin.service';
 import type { AdminUserRow, AdminWorkspaceRow } from '../../types/admin';
+import { extractError } from '../../lib/api';
+import { libelleActionAudit } from '../../lib/adminLabels';
+import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 
-const ACTION_LABELS: Record<string, string> = {
-  LOGIN_SUCCESS: 'Connexion réussie',
-  LOGIN_FAILED: 'Connexion échouée',
-  LOGOUT: 'Déconnexion',
-  PASSWORD_CHANGED: 'Mot de passe changé',
-  // Lot L5 (E10) : gestion de son compte.
-  USER_NAME_CHANGED: 'Prénom ou nom modifié',
-  CONTACT_EMAIL_CHANGE_REQUESTED: 'Changement d’adresse demandé',
-  CONTACT_EMAIL_CHANGED: 'Adresse électronique modifiée',
-  LOGIN_EMAIL_CHANGE_REQUESTED: 'Changement d’identifiant demandé',
-  LOGIN_EMAIL_CHANGED: 'Identifiant de connexion modifié',
-  ACCOUNT_CHANGE_CANCELLED: 'Demande de changement annulée',
-  WORKSPACE_REGISTER: 'Inscription workspace',
-  WORKSPACE_ACTIVATED: 'Workspace activé',
-  WORKSPACE_SUSPENDED: 'Workspace suspendu',
-  WORKSPACE_DEACTIVATED: 'Workspace désactivé',
-  USER_SUSPENDED: 'Utilisateur suspendu',
-  USER_REACTIVATED: 'Utilisateur réactivé',
-};
-
-function humanizeAction(action: string): string {
-  return ACTION_LABELS[action] ?? action;
-}
+const humanizeAction = libelleActionAudit;
 
 export default function AuditLogPage() {
   const [page, setPage] = useState<AuditPage | null>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<AuditFilters>({ offset: 0, limit: 50 });
+  // Filtres auxquels correspond le dernier resultat : le chargement en cours se
+  // deduit pendant le rendu (aucun setState synchrone dans l'effet).
+  const [chargePour, setChargePour] = useState<AuditFilters | null>(null);
+  const loading = chargePour !== filters;
 
   // Sources des listes deroulantes (donnees reelles).
   const [workspaces, setWorkspaces] = useState<AdminWorkspaceRow[]>([]);
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [facets, setFacets] = useState<AuditFacets>({ actions: [], sourceServices: [] });
 
-  const fetchPage = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await auditService.search(filters);
-      setPage(result);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [filters]);
-
   useEffect(() => {
-    void fetchPage();
-  }, [fetchPage]);
+    let annule = false;
+    auditService
+      .search(filters)
+      .then((result) => {
+        if (annule) return;
+        setPage(result);
+        setError(null);
+        setChargePour(filters);
+      })
+      .catch((e) => {
+        if (annule) return;
+        setError(`Le journal n’a pas pu être chargé : ${extractError(e).message}`);
+        setChargePour(filters);
+      });
+    return () => {
+      annule = true;
+    };
+  }, [filters]);
 
   // Workspaces + facettes (actions / services) au montage.
   useEffect(() => {
@@ -80,7 +67,7 @@ export default function AuditLogPage() {
     setFilters((prev) => ({ ...prev, [key]: value, offset: 0 }));
   }
 
-  // Changer de workspace remet a zero le filtre utilisateur (l'ancien user
+  // Changer de cabinet remet a zero le filtre utilisateur (l'ancien user
   // peut ne pas appartenir au nouveau workspace).
   function updateWorkspace(value: string | undefined) {
     setFilters((prev) => ({ ...prev, workspaceId: value, userId: undefined, offset: 0 }));
@@ -98,7 +85,7 @@ export default function AuditLogPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `journal-audit-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -122,9 +109,9 @@ export default function AuditLogPage() {
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-semibold text-fg">Journal d'audit</h1>
+          <h1 className="font-heading text-2xl font-semibold text-fg">Journal d’audit</h1>
           <p className="mt-1 text-sm text-fg-subtle">
-            Toutes les actions de la plateforme, filtrables par workspace, utilisateur, action et service.
+            Toutes les actions tracées sur la plateforme, filtrables par cabinet, utilisateur, action et service.
           </p>
         </div>
         <button
@@ -133,20 +120,29 @@ export default function AuditLogPage() {
           onClick={exportCsv}
           disabled={!items.length}
         >
-          Exporter CSV
+          Exporter en CSV
         </button>
       </header>
+
+      <TexteAide cle="admin-journal-audit" titre="Comment lire le journal">
+        <p>
+          Choisissez un cabinet, un utilisateur, une action ou une période pour retrouver un événement
+          (connexion, changement de mot de passe, suspension d’un cabinet…). L’export CSV reprend la
+          page affichée ; affinez les filtres avant d’exporter. Le journal se consulte : il ne se
+          modifie pas.
+        </p>
+      </TexteAide>
 
       {/* Filtres — listes deroulantes sur donnees reelles */}
       <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-bg-raised p-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="flex flex-col gap-1 text-xs text-fg-subtle">
-          Workspace
+          Cabinet
           <select
             className={selectClass}
             value={filters.workspaceId ?? ''}
             onChange={(e) => updateWorkspace(e.target.value || undefined)}
           >
-            <option value="">Tous les workspaces</option>
+            <option value="">Tous les cabinets</option>
             {workspaces.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.code} — {w.name}
@@ -156,7 +152,7 @@ export default function AuditLogPage() {
         </label>
 
         <label className="flex flex-col gap-1 text-xs text-fg-subtle">
-          Type d'utilisateur
+          Type d’utilisateur
           <select
             className={selectClass}
             value={filters.role ?? ''}
@@ -166,7 +162,7 @@ export default function AuditLogPage() {
             <option value="CLIENT">Client</option>
             <option value="SUPERVISEUR">Superviseur</option>
             <option value="EMPLOYE">Employé</option>
-            <option value="SUPER_ADMIN">Super Admin</option>
+            <option value="SUPER_ADMIN">Super-administrateur</option>
           </select>
         </label>
 
@@ -204,7 +200,13 @@ export default function AuditLogPage() {
         </label>
 
         <label className="flex flex-col gap-1 text-xs text-fg-subtle">
-          Service source
+          <span className="inline-flex items-center gap-1">
+            Service d’origine
+            <InfoBulle
+              libelle="Aide : service d’origine"
+              texte="Composant de la plateforme qui a enregistré l’événement (authentification, Data Room, documents…). Utile pour un diagnostic technique."
+            />
+          </span>
           <select
             className={selectClass}
             value={filters.sourceService ?? ''}
@@ -252,8 +254,8 @@ export default function AuditLogPage() {
         )}
       </div>
 
-      {loading && <p className="text-sm text-fg-subtle">Chargement...</p>}
-      {error && <p className="text-sm text-danger">{error}</p>}
+      {loading && <p className="text-sm text-fg-subtle">Chargement…</p>}
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
 
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="min-w-full text-sm">
@@ -262,10 +264,10 @@ export default function AuditLogPage() {
               <th className="px-3 py-2 font-medium">Date</th>
               <th className="px-3 py-2 font-medium">Service</th>
               <th className="px-3 py-2 font-medium">Action</th>
-              <th className="px-3 py-2 font-medium">Workspace</th>
-              <th className="px-3 py-2 font-medium">Acteur</th>
-              <th className="px-3 py-2 font-medium">Ressource</th>
-              <th className="px-3 py-2 font-medium">Correlation</th>
+              <th className="px-3 py-2 font-medium">Cabinet</th>
+              <th className="px-3 py-2 font-medium">Auteur</th>
+              <th className="px-3 py-2 font-medium">Élément concerné</th>
+              <th className="px-3 py-2 font-medium" title="Identifiant qui relie les événements d’une même opération">Corrélation</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -293,7 +295,9 @@ export default function AuditLogPage() {
             {!loading && !items.length && (
               <tr>
                 <td colSpan={7} className="px-3 py-6 text-center text-fg-subtle">
-                  Aucun événement.
+                  {hasActiveFilter
+                    ? 'Aucun événement ne correspond à ces filtres. Élargissez la période ou réinitialisez les filtres.'
+                    : 'Aucun événement enregistré pour le moment.'}
                 </td>
               </tr>
             )}
