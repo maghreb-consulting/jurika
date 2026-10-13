@@ -116,7 +116,7 @@ public class TrialSoftLockFilter extends OncePerRequestFilter {
         response.setCharacterEncoding("UTF-8");
         Map<String, Object> body = Map.of(
                 "error", "TRIAL_EXPIRED",
-                "message", "Votre essai gratuit a expire. Activez votre abonnement pour continuer.",
+                "message", "Votre essai gratuit a expir\u00e9. Activez votre abonnement pour continuer.",
                 "upgradeUrl", "/app/billing",
                 "trial", Map.of(
                         "status", state.status(),

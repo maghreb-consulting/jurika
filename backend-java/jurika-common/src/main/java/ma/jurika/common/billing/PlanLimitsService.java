@@ -85,8 +85,8 @@ public class PlanLimitsService {
         if (current >= q.maxUsers()) {
             throw new PlanLimitException(
                     "PLAN_LIMIT_USERS",
-                    String.format("Limite d'utilisateurs atteinte pour le plan %s : %d/%d. "
-                            + "Passez au plan superieur pour ajouter plus d'utilisateurs.",
+                    String.format("Limite d\u2019utilisateurs atteinte pour la formule %s : %d/%d. "
+                            + "Passez \u00e0 la formule sup\u00e9rieure pour ajouter des utilisateurs.",
                             plan.displayLabel(), current, q.maxUsers()),
                     "users", current, q.maxUsers(),
                     plan.internalCode(),
@@ -104,8 +104,8 @@ public class PlanLimitsService {
         if (current >= q.maxDossiers()) {
             throw new PlanLimitException(
                     "PLAN_LIMIT_DOSSIERS",
-                    String.format("Limite de dossiers atteinte pour le plan %s : %d/%d. "
-                            + "Passez au plan superieur pour creer plus de dossiers.",
+                    String.format("Limite de dossiers atteinte pour la formule %s : %d/%d. "
+                            + "Passez \u00e0 la formule sup\u00e9rieure pour cr\u00e9er d\u2019autres dossiers.",
                             plan.displayLabel(), current, q.maxDossiers()),
                     "dossiers", current, q.maxDossiers(),
                     plan.internalCode(),
@@ -200,12 +200,12 @@ public class PlanLimitsService {
     private String upgradeHintFor(Plan current, String quota) {
         // Spec directeur 2026-06-02 : essentiel -> business -> entreprise.
         if ("essentiel".equals(current.internalCode())) {
-            return "Passez au plan Business (100 dossiers, 6 utilisateurs, 20 Go).";
+            return "Passez \u00e0 la formule Business (100 dossiers, 6 utilisateurs, 20 Go).";
         }
         if ("business".equals(current.internalCode())) {
-            return "Contactez les ventes pour le plan Entreprise (illimite).";
+            return "Contactez le service commercial pour la formule Entreprise (illimit\u00e9e).";
         }
-        return "Contactez les ventes.";
+        return "Contactez le service commercial.";
     }
 
 }
