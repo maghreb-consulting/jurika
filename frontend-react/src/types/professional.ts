@@ -17,9 +17,9 @@ export type ProfessionalType =
 
 /** Libelles FR alignes sur l'enum backend (ProfessionalType.labelFr()). */
 export const PROFESSIONAL_TYPE_LABELS: Record<ProfessionalType, string> = {
-  COMPTABLE_AGREE: 'Comptable agree',
+  COMPTABLE_AGREE: 'Comptable agréé',
   CONSEILLER_JURIDIQUE: 'Conseiller juridique',
-  CENTRE_AFFAIRES: "Centre d'affaires",
+  CENTRE_AFFAIRES: 'Centre d’affaires',
   EXPERT_COMPTABLE: 'Expert comptable',
   ENTREPRISE: 'Entreprise',
   AVOCAT: 'Avocat',
@@ -48,7 +48,7 @@ export function isProfessionalType(value: string | null | undefined): value is P
 export function entityNameLabel(type: ProfessionalType | null | undefined): string {
   switch (type) {
     case 'NOTAIRE':
-      return "Nom de l'etude";
+      return 'Nom de l’étude';
     case 'AVOCAT':
     case 'EXPERT_COMPTABLE':
     case 'COMPTABLE_AGREE':

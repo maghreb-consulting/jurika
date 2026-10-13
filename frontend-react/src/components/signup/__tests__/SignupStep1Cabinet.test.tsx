@@ -146,7 +146,7 @@ describe('<SignupStep1Cabinet> (formulaire unique)', () => {
 
   it('adapts the entity-name label to the chosen type (Notaire -> Nom de l etude)', () => {
     renderWithRouter(<SignupStep1Cabinet initial={EMPTY} onNext={vi.fn()} professionalType="NOTAIRE" />);
-    expect(screen.getByText(/Nom de l'etude/i)).toBeInTheDocument();
+    expect(screen.getByText(/Nom de l’étude/i)).toBeInTheDocument();
   });
 
   it('marks the entity-name field optional for an individual type (Avocat)', () => {
@@ -217,7 +217,7 @@ describe('<SignupStep1Cabinet> (formulaire unique)', () => {
     fireEvent.change(screen.getByTestId('signup-admin-phone'), { target: { value: '61' } });
     fireEvent.change(screen.getByTestId('signup-city'), { target: { value: 'Casablanca' } });
     fireEvent.click(screen.getByTestId('signup-step1-next'));
-    expect(screen.getByTestId('signup-step1-error')).toHaveTextContent(/telephone invalide/i);
+    expect(screen.getByTestId('signup-step1-error')).toHaveTextContent(/téléphone invalide/i);
     expect(onNext).not.toHaveBeenCalled();
   });
 
