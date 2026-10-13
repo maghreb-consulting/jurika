@@ -127,7 +127,7 @@ export function PiecesJointesPanel({
         aria-expanded={open}
       >
         <Paperclip className="h-4 w-4 text-accent" />
-        <span className="text-sm font-semibold text-fg">Pièces jointes (optionnelles)</span>
+        <span className="text-sm font-semibold text-fg">Pièces jointes (facultatives)</span>
         <span className="ml-auto text-xs text-fg-subtle">
           {Object.keys(done).length > 0 ? `${Object.keys(done).length} déposée(s)` : 'Aucune obligatoire'}
         </span>
@@ -137,7 +137,7 @@ export function PiecesJointesPanel({
         <div className="space-y-3 border-t border-border p-4">
           <p className="text-xs text-fg-subtle">
             Déposez les pièces au format PDF / image (statut légalisé, PV signé, CIN…). Aucune
-            pièce n'est obligatoire. Chaque dépôt est versionné en Data Room.
+            pièce n’est obligatoire. Chaque dépôt est versionné en Data Room.
           </p>
 
           <ul className="space-y-2">

@@ -50,13 +50,13 @@ export interface OcrSuggestionsPanelProps {
 function formatMode(mode?: string): string {
   switch (mode) {
     case 'PDFBOX_TEXT':
-      return 'PDF numerique (couche texte)';
+      return 'PDF numérique (couche texte)';
     case 'PDFBOX_RENDER_TESSERACT':
-      return 'PDF scanne (OCR Tesseract)';
+      return 'PDF scanné (lecture automatique)';
     case 'TESSERACT_IMAGE':
-      return 'Image (OCR Tesseract)';
+      return 'Image (lecture automatique)';
     case 'FALLBACK':
-      return 'OCR indisponible (saisie manuelle)';
+      return 'Lecture automatique indisponible (saisie manuelle)';
     default:
       return mode ?? 'mode inconnu';
   }
@@ -81,9 +81,9 @@ export function OcrSuggestionsPanel({
         <div className="flex items-center gap-3">
           <Sparkles className="h-5 w-5 animate-pulse text-indigo-600" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-indigo-900">Extraction IA en cours...</p>
+            <p className="text-sm font-semibold text-indigo-900">Extraction IA en cours…</p>
             <p className="text-xs text-indigo-700">
-              {filename ?? 'document'} — vous pouvez continuer la saisie manuelle pendant l'analyse.
+              {filename ?? 'document'} — vous pouvez continuer la saisie manuelle pendant l’analyse.
             </p>
           </div>
         </div>
@@ -148,7 +148,7 @@ export function OcrSuggestionsPanel({
             onClick={onDismiss}
             className="rounded p-1 text-indigo-600 hover:bg-indigo-100"
             aria-label="Fermer les suggestions"
-            title="Fermer (les valeurs deja appliquees restent)"
+            title="Fermer (les valeurs déjà appliquées restent)"
           >
             <X className="h-4 w-4" />
           </button>
@@ -188,7 +188,7 @@ export function OcrSuggestionsPanel({
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-indigo-200 pt-3">
         <p className="text-xs text-indigo-700">
-          L'OCR ne remplit JAMAIS un champ deja saisi. Choisissez champ par champ.
+          La lecture automatique ne remplit jamais un champ déjà saisi. Choisissez champ par champ.
         </p>
         <button
           type="button"

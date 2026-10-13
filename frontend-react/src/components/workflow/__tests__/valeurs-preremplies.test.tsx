@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, renderHook } from '@testing-library/react';
 import { DynamicField } from '../modificationResolutions';
 import { useSeanceForm, emptyAssocie } from '../seanceFormEtat';
-import { emptyLiquidateur } from '../LiquidateurPicker';
+import { emptyLiquidateur } from '../liquidateurOptions';
 
 /**
  * Lot L4a (E2) : aucune valeur pre-remplie silencieuse. Une liste ne choisit plus sa

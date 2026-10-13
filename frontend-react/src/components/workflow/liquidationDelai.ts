@@ -72,12 +72,12 @@ export function liquidationDelaiError(
   const jours = joursCalendairesEntre(dateDissolution, dateCloture);
   if (jours === null) return null;
   if (jours < 0) {
-    return 'La date de cloture de la liquidation ne peut pas preceder la date de dissolution.';
+    return 'La date de clôture de la liquidation ne peut pas précéder la date de dissolution.';
   }
   if (jours < LIQUIDATION_DELAI_JOURS) {
-    return `Delai legal insuffisant : ${jours} jour(s) entre la dissolution et la cloture. `
-      + `Une societe ne peut etre liquidee que ${LIQUIDATION_DELAI_JOURS} jours au minimum `
-      + 'apres sa dissolution.';
+    return `Délai légal insuffisant : ${jours} jour(s) entre la dissolution et la clôture. `
+      + `Une société ne peut être liquidée que ${LIQUIDATION_DELAI_JOURS} jours au minimum `
+      + 'après sa dissolution.';
   }
   return null;
 }

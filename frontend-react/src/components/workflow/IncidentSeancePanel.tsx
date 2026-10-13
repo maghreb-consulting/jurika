@@ -14,19 +14,16 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
-import {
-  WorkflowDocumentBlock,
-  freshDocState,
-  useDocumentBlocks,
-  type DocState,
-} from './WorkflowDocumentBlock';
+import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
+import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
 } from '../../services/workflowDocumentService';
 import { SeanceFormFields } from './SeanceForm';
+import { TexteAide } from '../ui/Aide';
+import { incidentPvFilename } from './incidentSeance';
 import {
-  sanitizeFilename,
   useSeanceForm,
   type AssocieInput,
   type GerantInput,
@@ -38,23 +35,6 @@ import type { DocumentType } from '../../types/dataroom';
 
 const WORKFLOW_CODE = 'INCIDENT_SEANCE';
 
-/**
- * Point 3 (audit directeur) — nom de fichier lisible « Type + Dénomination » pour les
- * PV d'incident (au lieu du code technique backend). Pure &amp; testable.
- */
-export function incidentPvFilename(
-  code: string,
-  denomination?: string | null,
-): string | undefined {
-  const denom = (denomination ?? '').toString().trim() || 'Société';
-  const libelle = code.includes('DEFAUT_QUORUM')
-    ? 'Défaut de quorum'
-    : code.includes('IRREGULARITE_CONVOCATION')
-      ? 'Irrégularité de convocation'
-      : null;
-  if (!libelle) return undefined;
-  return sanitizeFilename(`PV — ${libelle} - ${denom}`) + '.docx';
-}
 
 // Rétro-compatibilité des props (4 pages hôtes) : alias des types communs.
 export type IncidentSocieteInput = SeanceSocieteInput;
@@ -139,9 +119,19 @@ export function IncidentSeancePanel({
   });
 
   const [docs, setDocs] = useState<Record<string, DocState>>({});
-  const [templates, setTemplates] = useState<TemplateInfo[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
-  const [loadTemplatesError, setLoadTemplatesError] = useState<string | null>(null);
+  // L6 : resultat du chargement des modeles, rattache a la forme ; « en cours » se
+  // deduit (plus de mise a jour synchrone d'etat au debut de l'effet).
+  const cleModeles = isAU ? 'SARL_AU' : 'SARL';
+  const [chargement, setChargement] = useState<{
+    cle: string;
+    templates: TemplateInfo[];
+    erreur: string | null;
+  } | null>(null);
+  const charge = chargement?.cle === cleModeles ? chargement : null;
+  const templates = charge?.templates ?? [];
+  const loadTemplatesError = charge?.erreur ?? null;
+  const loadingTemplates = open && !charge;
+  const modelesCharges = !!charge;
 
   // Point 3 (audit directeur) — nommage conforme « Type + Dénomination » : chaque PV
   // d'incident sort avec un libellé lisible au lieu du code technique backend.
@@ -166,10 +156,8 @@ export function IncidentSeancePanel({
 
   // Chargement des modèles à l'ouverture, filtrés par forme (SARL vs SARL AU).
   useEffect(() => {
-    if (!open || templates.length > 0) return;
+    if (!open || modelesCharges) return;
     let cancelled = false;
-    setLoadingTemplates(true);
-    setLoadTemplatesError(null);
     listTemplatesForWorkflow(WORKFLOW_CODE)
       .then((items) => {
         if (cancelled) return;
@@ -184,21 +172,20 @@ export function IncidentSeancePanel({
           if (wa !== wb) return wa - wb;
           return a.code.localeCompare(b.code);
         });
-        setTemplates(sorted);
+        setChargement({ cle: cleModeles, templates: sorted, erreur: null });
       })
       .catch((err) => {
         if (cancelled) return;
-        setLoadTemplatesError(
-          err instanceof Error ? err.message : "Impossible de charger les modèles d'incident de séance.",
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingTemplates(false);
+        setChargement({
+          cle: cleModeles,
+          templates: [],
+          erreur: err instanceof Error ? err.message : 'Impossible de charger les modèles d’incident de séance.',
+        });
       });
     return () => {
       cancelled = true;
     };
-  }, [open, isAU, templates.length]);
+  }, [open, isAU, modelesCharges, cleModeles]);
 
   return (
     <section className="rounded-xl border border-amber-300/60 bg-warning/5">
@@ -211,7 +198,7 @@ export function IncidentSeancePanel({
       >
         <span className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 flex-shrink-0 text-warning" />
-          <span className="text-sm font-semibold text-fg">Incident de séance (optionnel)</span>
+          <span className="text-sm font-semibold text-fg">Incident de séance (facultatif)</span>
           <span className="hidden text-xs text-fg-subtle sm:inline">
             — Constat de défaut de quorum / Irrégularité de convocation
           </span>
@@ -225,11 +212,12 @@ export function IncidentSeancePanel({
 
       {open && (
         <div className="space-y-5 border-t border-amber-300/40 p-4">
-          <p className="text-xs text-fg-subtle">
-            À n'utiliser que si l'assemblée n'a pas pu se tenir normalement. Renseignez la séance,
-            la convocation et (le cas échéant) la 2e assemblée, puis générez le PV correspondant.
-            Les documents sont déposés en dataroom (PV AGE) quand un dossier est rattaché.
-          </p>
+          <TexteAide cle="incident-seance" titre="Quand et comment l’utiliser ?">
+            À n’utiliser que si l’assemblée n’a pas pu se tenir normalement (quorum non atteint,
+            convocation irrégulière). Renseignez la séance, la convocation et, le cas échéant, la
+            seconde assemblée, puis générez le procès-verbal correspondant. Les documents validés
+            sont déposés dans la Data Room quand un dossier est rattaché.
+          </TexteAide>
 
           <SeanceFormFields
             form={form}
@@ -242,7 +230,7 @@ export function IncidentSeancePanel({
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-violet-600" />
-              <h4 className="text-sm font-semibold text-fg">Générer le PV d'incident</h4>
+              <h4 className="text-sm font-semibold text-fg">Générer le procès-verbal d’incident</h4>
             </div>
 
             {loadingTemplates && <p className="text-sm text-fg-subtle">Chargement des modèles…</p>}
@@ -256,8 +244,8 @@ export function IncidentSeancePanel({
                 data-testid="incident-seance-aucun">
                 {/* Lot L4d (E11) : variantes SARL AU retirees, sans objet. */}
                 {isAU
-                  ? "En société à associé unique, il n'y a ni quorum ni convocation : aucun procès-verbal d'incident de séance (défaut de quorum, irrégularité de convocation) ne s'applique. L'associé unique consigne ses décisions au registre."
-                  : "Aucun modèle d'incident de séance disponible."}
+                  ? 'En société à associé unique, il n’y a ni quorum ni convocation : aucun procès-verbal d’incident de séance (défaut de quorum, irrégularité de convocation) ne s’applique. L’associé unique consigne ses décisions au registre.'
+                  : 'Aucun modèle d’incident de séance n’est disponible. Signalez-le à l’administrateur de la plateforme.'}
               </div>
             )}
 

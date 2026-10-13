@@ -8,7 +8,7 @@ import {
   personNames,
   seedResolutions,
   type ResolutionState,
-} from '../modificationResolutions';
+} from '../modificationResolutionsSpecs';
 
 describe('modificationResolutions — seedResolutions', () => {
   const decisions = [

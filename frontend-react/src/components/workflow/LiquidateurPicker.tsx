@@ -17,156 +17,14 @@ import { IdentityExtractor } from '../identity/IdentityExtractor';
 import { TypePieceProposee } from './ValeurProposee';
 import { TexteAide } from '../ui/Aide';
 import { estPersonneMorale } from '../../lib/liquidateur';
-import type { DossierPartie, DossierParties } from '../../services/workflow.service';
+import { EXTERNE_KEY, type LiquidateurOption, type LiquidateurState } from './liquidateurOptions';
 
-/** Origine du liquidateur : partie prenante du dossier (BD) ou tiers (EXTERNE). */
-export type LiquidateurSource = 'BD' | 'EXTERNE';
-
-export interface LiquidateurState {
-  source: LiquidateurSource;
-  /** Clé de l'option BD retenue ('' si externe). */
-  partieKey: string;
-  civilite: string;
-  prenom: string;
-  nom: string;
-  cin: string;
-  /** L3 (D6) : type de piece, "CIN" propose a l'ecran puis confirme. */
-  pieceType?: string;
-  adresse: string;
-  remuneration: string;
-  /**
-   * Lot L4d (E5, décision du directeur du 11 octobre 2026) : le liquidateur est une
-   * personne physique ou une personne morale. Absent = personne physique.
-   */
-  forme?: 'physique' | 'morale';
-  denomination?: string;
-  formeJuridique?: string;
-  capital?: string;
-  siegeSocial?: string;
-  rcVille?: string;
-  rcNumero?: string;
-  ice?: string;
-  representantNom?: string;
-  representantQualite?: string;
-  /**
-   * Lot L4d (E11d) : donnees du PV de dissolution du corpus. Nationalite et date de
-   * naissance (personne physique), ancien gerant (oui / non), remuneration (oui / non,
-   * montant, modalites) : saisies, jamais supposees.
-   */
-  nationalite?: string;
-  dateNaissance?: string;
-  ancienGerant?: '' | 'oui' | 'non';
-  remunerationApplicable?: '' | 'oui' | 'non';
-  remunerationMontant?: string;
-  remunerationModalites?: string;
-  /** Lot L4d (E11d) : siege de la liquidation au siege social (oui) ou a une autre adresse (non). */
-  siegeIdentique?: string;
-}
-
-export interface LiquidateurOption {
-  key: string;
-  label: string;
-  role: 'gerant' | 'associe';
-  civilite: string;
-  prenom: string;
-  nom: string;
-  cin: string;
-  adresse: string;
-  /** Lot L4d (E5) : associé personne morale (désigné par sa dénomination). */
-  morale?: boolean;
-  denomination?: string;
-  formeJuridique?: string;
-  siegeSocial?: string;
-  rcNumero?: string;
-  rcVille?: string;
-  ice?: string;
-  representantNom?: string;
-}
-
-export const EXTERNE_KEY = '__externe__';
-
-export function emptyLiquidateur(): LiquidateurState {
-  return {
-    source: 'BD',
-    partieKey: '',
-    civilite: 'M.',
-    prenom: '',
-    nom: '',
-    cin: '',
-    adresse: '',
-    remuneration: '', // L4a (E2) : proposee a l'ecran, a confirmer
-  };
-}
-
-function str(v: unknown): string {
-  return v == null ? '' : String(v).trim();
-}
-
-/** Lot L4d (E5) : une partie personne morale peut être liquidateur (désignée par sa dénomination). */
-function isPhysique(p: DossierPartie): boolean {
-  return str(p.typePersonne).toUpperCase() !== 'MORALE';
-}
-
-/**
- * Construit les options « liquidateur » depuis les parties prenantes BD : gérants
- * d'abord (ils sont les candidats naturels), puis associés. Dédoublonnage sur le nom
- * complet (un gérant associé n'apparaît qu'une fois, avec le rôle gérant).
- */
-export function buildLiquidateurOptions(
-  parties: DossierParties | null | undefined,
-): LiquidateurOption[] {
-  const out: LiquidateurOption[] = [];
-  const seen = new Set<string>();
-  const push = (p: DossierPartie, role: 'gerant' | 'associe') => {
-    if (!isPhysique(p)) {
-      const denomination = str(p.denomination);
-      if (!denomination) return;
-      const cle = denomination.toLowerCase();
-      if (seen.has(cle)) return;
-      seen.add(cle);
-      out.push({
-        key: `${role}:${cle}`,
-        label: `${denomination} — ${role === 'gerant' ? 'gérant' : 'associé'} (personne morale)`,
-        role, civilite: '', prenom: '', nom: '', cin: '',
-        adresse: str(p.siegeSocial) || str(p.adresse),
-        morale: true,
-        denomination,
-        formeJuridique: str(p.formeJuridique),
-        siegeSocial: str(p.siegeSocial) || str(p.adresse),
-        rcNumero: str(p.rcNumero),
-        rcVille: str(p.rcVille),
-        ice: str(p.ice),
-        representantNom: str(p.representantNom),
-      });
-      return;
-    }
-    const prenom = str(p.prenom);
-    const nom = str(p.nom);
-    const full = [prenom, nom].filter(Boolean).join(' ').trim();
-    if (!full) return;
-    const dedupe = full.toLowerCase();
-    if (seen.has(dedupe)) return;
-    seen.add(dedupe);
-    out.push({
-      key: `${role}:${dedupe}`,
-      label: `${full} — ${role === 'gerant' ? 'gérant' : 'associé'}`,
-      role,
-      civilite: str(p.civilite) || 'M.',
-      prenom,
-      nom,
-      // Fix D4 (2026-08-16) — la CIN du liquidateur n'était pas reprise de la base
-      // et devait être re-saisie, alors que le liquidateur est presque toujours un
-      // gérant ou un associé déjà connu. En cause : on ne lisait QUE la clé `cin`,
-      // or la fiche structurée la range selon son origine sous `cinNumero`
-      // (dirigeants du wizard de création) ou `pieceNumero` (voie directeur).
-      cin: str(p.cin) || str(p.cinNumero) || str(p.pieceNumero),
-      adresse: str(p.adresse) || str(p.domicile),
-    });
-  };
-  (parties?.gerants ?? []).forEach((g) => push(g, 'gerant'));
-  (parties?.associes ?? []).forEach((a) => push(a, 'associe'));
-  return out;
-}
+export type { LiquidateurOption, LiquidateurSource, LiquidateurState } from './liquidateurOptions';
+export { EXTERNE_KEY } from './liquidateurOptions';
+// Compatibilite (L6) : DissolutionWorkflowPage et LiquidationWorkflowPage importent encore
+// ces fonctions d'ici. A retirer des que ces pages les importeront depuis
+// './liquidateurOptions' (hors perimetre de l'etape E8).
+export { buildLiquidateurOptions, emptyLiquidateur } from './liquidateurOptions';
 
 export interface LiquidateurPickerProps {
   value: LiquidateurState;
@@ -286,9 +144,9 @@ export function LiquidateurPicker({
         <h4 className="text-sm font-semibold text-fg">Liquidateur *</h4>
       </div>
       <p className="text-xs text-fg-subtle">
-        Choisissez d'abord un <strong>gérant ou associé existant</strong> de la société : son
-        identité est reprise de la Data Room, sans re-saisie. S'il s'agit d'un tiers,
-        sélectionnez « Autre », puis indiquez s'il s'agit d'une personne physique (CIN, avec
+        Choisissez d’abord un <strong>gérant ou associé existant</strong> de la société : son
+        identité est reprise de la Data Room, sans ressaisie. S’il s’agit d’un tiers,
+        sélectionnez « Autre », puis indiquez s’il s’agit d'une personne physique (CIN, avec
         lecture automatique) ou d'une société (personne morale).
       </p>
 
@@ -404,7 +262,7 @@ export function LiquidateurPicker({
           onChange={(e) => set({ cin: e.target.value })}
           hint={
             value.source === 'BD' && value.partieKey && !value.cin
-              ? "Absent de la Data Room pour cette personne : saisissez-le."
+              ? 'Absent de la Data Room pour cette personne : saisissez-le.'
               : undefined
           }
         />
@@ -418,7 +276,7 @@ export function LiquidateurPicker({
           value={value.adresse}
           data-testid="liquidateur-adresse"
           onChange={(e) => set({ adresse: e.target.value })}
-          hint="Publiée dans l'annonce légale (« demeurant à … »)."
+          hint="Publiée dans l’annonce légale (« demeurant à … »)."
         />
         <TextField
           label="Nationalité"
@@ -440,7 +298,7 @@ export function LiquidateurPicker({
             value={value.ancienGerant ?? ''}
             data-testid="liquidateur-ancien-gerant"
             onChange={(e) => set({ ancienGerant: e.target.value as '' | 'oui' | 'non' })}
-            hint="Le procès-verbal lui rappelle alors qu'aucune cession d'actif ne peut lui être consentie (article 366 de la loi 17-95)."
+            hint="Le procès-verbal lui rappelle alors qu’aucune cession d’actif ne peut lui être consentie (article 366 de la loi 17-95)."
             options={[
               { value: '', label: 'Choisir…' },
               { value: 'oui', label: 'Oui' },

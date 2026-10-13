@@ -21,148 +21,27 @@ import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
 import { IdentityExtractor } from '../identity/IdentityExtractor';
 import { TypePieceProposee, ValeurProposee } from './ValeurProposee';
-import { buildLiquidateurOptions, EXTERNE_KEY } from './LiquidateurPicker';
+import { TexteAide } from '../ui/Aide';
+import { buildLiquidateurOptions, EXTERNE_KEY } from './liquidateurOptions';
 import type { DossierParties } from '../../services/workflow.service';
+import type {
+  ResponsableTypePersonne,
+  SuccursaleResponsableState,
+  SuccursaleSaisieErrors,
+  SuccursaleSaisieState,
+} from './succursaleSaisie';
 
-export type ResponsableSource = 'BD' | 'EXTERNE';
-export type ResponsableTypePersonne = 'PHYSIQUE' | 'MORALE';
-
-export interface SuccursaleResponsableState {
-  present: boolean;
-  source: ResponsableSource;
-  /** Clé de l'option BD retenue ('' si externe). */
-  partieKey: string;
-  typePersonne: ResponsableTypePersonne;
-  civilite: string;
-  prenom: string;
-  nom: string;
-  /** Personne morale : dénomination + représentant légal. */
-  denomination: string;
-  representantNom: string;
-  nationalite: string;
-  adresse: string;
-  pieceType: string;
-  pieceNumero: string;
-  pouvoirs: string;
-}
-
-export interface SuccursaleSaisieState {
-  enseigne: string;
-  adresse: string;
-  ville: string;
-  villeGreffe: string;
-  activite: string;
-  dateOuverture: string;
-  dotationPresente: boolean;
-  dotationMontant: string;
-  responsable: SuccursaleResponsableState;
-}
-
-export function emptySuccursaleSaisie(): SuccursaleSaisieState {
-  return {
-    enseigne: '',
-    adresse: '',
-    ville: '',
-    villeGreffe: '',
-    activite: '',
-    dateOuverture: '',
-    dotationPresente: false,
-    dotationMontant: '',
-    responsable: {
-      present: false,
-      source: 'BD',
-      partieKey: '',
-      typePersonne: 'PHYSIQUE',
-      civilite: 'M.',
-      prenom: '',
-      nom: '',
-      denomination: '',
-      representantNom: '',
-      nationalite: '', // L4a (E2) : proposee a l'ecran
-      adresse: '',
-      pieceType: '', // L3 (D6) : "CIN" propose a l'ecran, puis confirme
-      pieceNumero: '',
-      pouvoirs: '',
-    },
-  };
-}
-
-export type SuccursaleSaisieErrors = Partial<
-  Record<
-    'enseigne' | 'adresse' | 'ville' | 'activite' | 'dateOuverture' | 'villeGreffe'
-      | 'dotation' | 'responsable',
-    string
-  >
->;
-
-/**
- * Miroir EXACT des règles du backend (`SuccursaleMaWorkflow.stepSuccursale`) : ce qui
- * est refusé ici est refusé là-bas, et réciproquement.
- */
-export function succursaleSaisieErrors(s: SuccursaleSaisieState): SuccursaleSaisieErrors {
-  const e: SuccursaleSaisieErrors = {};
-  if (!s.enseigne.trim()) e.enseigne = "L'enseigne de la succursale est obligatoire.";
-  if (!s.adresse.trim()) e.adresse = "L'adresse de la succursale est obligatoire.";
-  if (!s.ville.trim()) e.ville = 'La ville de la succursale est obligatoire.';
-  if (!s.activite.trim()) e.activite = "L'activité de la succursale est obligatoire.";
-  if (!s.dateOuverture) e.dateOuverture = "La date d'ouverture est obligatoire.";
-  if (s.dotationPresente) {
-    const n = Number(String(s.dotationMontant).replace(/[\s  _]/g, ''));
-    if (!Number.isFinite(n) || n <= 0) {
-      e.dotation = 'Dotation annoncée : précisez son montant (en dirhams).';
-    }
-  }
-  if (s.responsable.present) {
-    const r = s.responsable;
-    const identifie = r.typePersonne === 'MORALE' ? r.denomination.trim() : r.nom.trim();
-    if (!identifie) {
-      e.responsable =
-        'Désignez le responsable : choisissez un gérant ou un associé existant, ou saisissez un responsable externe.';
-    } else if (!r.adresse.trim()) {
-      e.responsable = "L'adresse du responsable de la succursale est obligatoire.";
-    } else if (!r.pieceNumero.trim()) {
-      e.responsable =
-        "Le numéro de pièce d'identité du responsable est obligatoire (dépôt CIN recto-verso + OCR à l'appui).";
-    } else if (!r.pouvoirs.trim()) {
-      e.responsable =
-        'Précisez les pouvoirs conférés au responsable : ils sont publiés dans l’annonce légale.';
-    }
-  }
-  return e;
-}
-
-/** Bloc `succursale` envoyé au backend / aux mappers (contrat `SuccursaleVarsBuilder`). */
-export function toSuccursalePayload(s: SuccursaleSaisieState): Record<string, unknown> {
-  const r = s.responsable;
-  return {
-    enseigne: s.enseigne.trim(),
-    adresse: s.adresse.trim(),
-    ville: s.ville.trim(),
-    villeGreffe: (s.villeGreffe || s.ville).trim(),
-    activite: s.activite.trim(),
-    dateOuverture: s.dateOuverture,
-    dotationPresente: s.dotationPresente,
-    dotationMontant: s.dotationPresente ? s.dotationMontant.trim() : '',
-    responsablePresent: r.present,
-    responsable: r.present
-      ? {
-          source: r.source,
-          typePersonne: r.typePersonne,
-          civilite: r.civilite,
-          prenom: r.prenom.trim(),
-          // Personne morale : le « nom » publié est la dénomination.
-          nom: (r.typePersonne === 'MORALE' ? r.denomination : r.nom).trim(),
-          denomination: r.denomination.trim(),
-          representantNom: r.representantNom.trim(),
-          nationalite: r.nationalite.trim(),
-          adresse: r.adresse.trim(),
-          pieceType: r.pieceType.trim(),
-          pieceNumero: r.pieceNumero.trim(),
-          pouvoirs: r.pouvoirs.trim(),
-        }
-      : {},
-  };
-}
+export type {
+  ResponsableSource,
+  ResponsableTypePersonne,
+  SuccursaleResponsableState,
+  SuccursaleSaisieErrors,
+  SuccursaleSaisieState,
+} from './succursaleSaisie';
+// Compatibilite (L6) : SuccursaleMaWorkflowPage et SuccursaleEtrWorkflowPage importent encore
+// ces fonctions d'ici. A retirer des que ces pages les importeront depuis './succursaleSaisie'
+// (hors perimetre de l'etape E8).
+export { emptySuccursaleSaisie, succursaleSaisieErrors, toSuccursalePayload } from './succursaleSaisie';
 
 export interface SuccursaleSaisieFormProps {
   value: SuccursaleSaisieState;
@@ -198,6 +77,12 @@ export function SuccursaleSaisieForm({
 
   return (
     <div className="space-y-5">
+      <TexteAide cle="succursale-saisie" titre="Ce qu’il faut faire">
+        Renseignez la succursale (enseigne, activité, adresse, ville et greffe où elle sera
+        immatriculée, date d’ouverture), puis, s’il y a lieu, sa dotation et son responsable.
+        Ces données sont reprises telles quelles dans le procès-verbal et l’annonce légale de
+        l’étape suivante : rien ne sera redemandé.
+      </TexteAide>
       {/* ---------------- Localisation ---------------- */}
       <section className="space-y-4 rounded-xl border border-border bg-bg-raised p-4">
         <div className="flex items-center gap-2">
@@ -247,7 +132,7 @@ export function SuccursaleSaisieForm({
             data-testid="succ-ville-greffe"
             onChange={(e) => set({ villeGreffe: e.target.value })}
             error={errors.villeGreffe}
-            hint="La succursale s’immatricule au RC de SON lieu d’exploitation, distinct de celui du siège."
+            hint="La succursale s’immatricule au RC de son propre lieu d’exploitation, distinct de celui du siège."
           />
           <TextField
             label="Date d’ouverture *"
@@ -351,7 +236,7 @@ export function SuccursaleSaisieForm({
                   ...options.map((o) => ({ value: o.key, label: o.label })),
                   { value: EXTERNE_KEY, label: 'Autre personne (saisie externe)' },
                 ]}
-                hint="Les gérants et associés du dossier sont proposés en premier : leur identité n’est jamais re-saisie."
+                hint="Les gérants et associés du dossier sont proposés en premier : leur identité n’est jamais ressaisie."
               />
             )}
 

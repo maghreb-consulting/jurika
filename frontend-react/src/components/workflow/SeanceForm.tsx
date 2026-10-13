@@ -105,7 +105,7 @@ export function SeanceFormFields({
           <div className="grid gap-3 md:grid-cols-3">
             {!lockType && (
               <Select
-                label="Type d'assemblée"
+                label="Type d’assemblée"
                 value={f.type}
                 onChange={(e) => f.setType(e.target.value as NonNullable<SeanceDefaults['type']>)}
                 options={[
@@ -119,7 +119,7 @@ export function SeanceFormFields({
               <TextField label="Date" type="date" value={f.date} onChange={(e) => f.setDate(e.target.value)} />
             )}
             {!hideSeanceHeure && (
-              <TextField label="Heure de l'assemblée" type="time" value={f.heure} onChange={(e) => f.setHeure(e.target.value)} />
+              <TextField label="Heure de l’assemblée" type="time" value={f.heure} onChange={(e) => f.setHeure(e.target.value)} />
             )}
             <div className="md:col-span-3">
               <TextField label="Lieu" value={f.lieu} onChange={(e) => f.setLieu(e.target.value)} placeholder="Ex : siège social" />
@@ -213,7 +213,7 @@ export function SeanceFormFields({
                   options={[{ value: 'première', label: 'Première' }, { value: 'deuxième', label: 'Deuxième' }]}
                 />
                 {f.convRang === 'deuxième' && (
-                  <TextField label="Date 1re assemblée" type="date" value={f.dateAgPremiere} onChange={(e) => f.setDateAgPremiere(e.target.value)} />
+                  <TextField label="Date de la première assemblée" type="date" value={f.dateAgPremiere} onChange={(e) => f.setDateAgPremiere(e.target.value)} />
                 )}
                 <TextField label="Lieu de signature" value={f.lieuSignature} onChange={(e) => f.setLieuSignature(e.target.value)} placeholder="Ex : Casablanca" />
               </>
@@ -221,11 +221,11 @@ export function SeanceFormFields({
             {sections.irregularite && (
               <div className="md:col-span-3">
                 <TextField
-                  label="Nature de l'irrégularité"
+                  label="Nature de l’irrégularité"
                   value={f.irregulariteNature}
                   onChange={(e) => f.setIrregulariteNature(e.target.value)}
                   placeholder="Ex : délai non respecté, associé non convoqué…"
-                  hint="Uniquement pour le PV d'irrégularité de convocation."
+                  hint="Uniquement pour le PV d’irrégularité de convocation."
                 />
               </div>
             )}
@@ -354,7 +354,7 @@ export function SeanceFormFields({
                       placeholder={`Point ${i + 1}`}
                       // Le titre de bloc porte le sens a l'ecran ; hors contexte
                       // visuel, « Point 1 » seul ne dit pas de quoi il s'agit.
-                      aria-label={`Point ${i + 1} de l'ordre du jour`}
+                      aria-label={`Point ${i + 1} de l’ordre du jour`}
                     />
                   </div>
                   <RemoveButton onClick={() => f.setOrdreDuJour((p) => p.filter((_, j) => j !== i))} disabled={f.ordreDuJour.length <= 1} />
@@ -390,7 +390,7 @@ export function SeanceFormFields({
                     value={d}
                     onChange={(e) => f.setDocumentsJoints((p) => p.map((x, j) => (j === i ? e.target.value : x)))}
                     placeholder={`Document ${i + 1}`}
-                    aria-label={`Document joint ${i + 1} a la convocation`}
+                    aria-label={`Document joint ${i + 1} à la convocation`}
                   />
                 </div>
                 <RemoveButton onClick={() => f.setDocumentsJoints((p) => p.filter((_, j) => j !== i))} disabled={f.documentsJoints.length <= 0} />
@@ -402,7 +402,7 @@ export function SeanceFormFields({
 
       {sections.resolutions && (
         <Card
-          title="Résolutions (optionnel)"
+          title="Résolutions (facultatif)"
           action={<SmallAddButton label="Ajouter une résolution" onClick={() => f.setResolutions((p) => [...p, emptyResolution()])} />}
         >
           {sections.convocationCorpus && (
@@ -419,7 +419,7 @@ export function SeanceFormFields({
           )}
           <div className="space-y-3">
             {f.resolutions.length === 0 && (
-              <p className="text-xs text-fg-subtle">Aucune résolution.</p>
+              <p className="text-xs text-fg-subtle">Aucune résolution : cliquez sur « Ajouter une résolution » s’il y a lieu.</p>
             )}
             {f.resolutions.map((r, i) => (
               <div key={i} className="rounded-lg border border-border bg-bg-overlay p-3">
@@ -728,7 +728,7 @@ export function AssocieFields({
           label="N° de CIN"
           value={value.pieceNumero ?? ''}
           onChange={(e) => onChange({ ...value, pieceNumero: e.target.value })}
-          hint="Repris de la fiche société ; complétez s'il manque."
+          hint="Repris de la fiche société ; complétez s’il manque."
         />
       )}
       {!isMorale && (
@@ -749,7 +749,7 @@ export function AssocieFields({
       )}
       <TextField label="Nombre de parts" type="number" value={value.nombreParts} onChange={(e) => onChange({ ...value, nombreParts: e.target.value })} />
       {showVoix && (
-        <TextField label="Nombre de voix" type="number" value={value.nombreVoix} onChange={(e) => onChange({ ...value, nombreVoix: e.target.value })} placeholder="= parts" />
+        <TextField label="Nombre de voix" type="number" value={value.nombreVoix} onChange={(e) => onChange({ ...value, nombreVoix: e.target.value })} placeholder="Égal au nombre de parts" />
       )}
       {showEmail && (
         <TextField label="Adresse électronique *" type="email" value={value.adresseElectronique ?? ''}

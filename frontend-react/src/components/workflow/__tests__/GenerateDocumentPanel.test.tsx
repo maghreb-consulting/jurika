@@ -88,7 +88,7 @@ describe('<GenerateDocumentPanel>', () => {
       ).toBeInTheDocument();
     });
     expect(
-      screen.getByText(/Aucun document disponible pour ce workflow \(manifest vide\)/i),
+      screen.getByText(/Aucun modèle de document n’est disponible pour ce parcours/i),
     ).toBeInTheDocument();
   });
 

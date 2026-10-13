@@ -44,12 +44,12 @@ export function convocationDelaiError(
   const pv = Date.parse(dateAssemblee);
   if (Number.isNaN(conv) || Number.isNaN(pv)) return null;
   if (conv >= pv) {
-    return "La date de convocation doit preceder la date du PV / de l'assemblee.";
+    return 'La date de convocation doit précéder la date de l’assemblée (et du procès-verbal).';
   }
   const jours = Math.floor((pv - conv) / 86400000);
   if (jours < CONVOCATION_DELAI_JOURS) {
-    return `Delai de convocation insuffisant : ${jours} jour(s) entre la convocation et `
-      + `l'assemblee. Un minimum de ${CONVOCATION_DELAI_JOURS} jours est requis.`;
+    return `Délai de convocation insuffisant : ${jours} jour(s) entre la convocation et `
+      + `l’assemblée. Un minimum de ${CONVOCATION_DELAI_JOURS} jours est requis.`;
   }
   return null;
 }

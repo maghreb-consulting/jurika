@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { ConvocationPanel, FeuillePresencePanel } from '../SeanceDocPanels';
-import { IncidentSeancePanel, incidentPvFilename } from '../IncidentSeancePanel';
+import { IncidentSeancePanel } from '../IncidentSeancePanel';
+import { incidentPvFilename } from '../incidentSeance';
 
 /**
  * Point 1 (audit directeur) — les documents de séance partagés (Convocation / Incident /
@@ -34,27 +35,27 @@ describe('Documents de séance — Point 3 : nommage conforme', () => {
   });
 });
 
-describe('Documents de séance — Point 1 : optionnels et repliés par défaut', () => {
+describe('Documents de séance — Point 1 : facultatifs et repliés par défaut', () => {
   const societe = { denomination: 'ACME SARL', villeGreffe: 'Casablanca' };
 
-  it('ConvocationPanel : optionnel, replié', () => {
+  it('ConvocationPanel : facultatif, replié', () => {
     render(<ConvocationPanel formeJuridique="SARL" societe={societe} />);
     const toggle = screen.getByTestId('seance-doc-toggle-CONVOCATION_AG');
-    expect(toggle).toHaveTextContent(/optionnel/i);
+    expect(toggle).toHaveTextContent(/facultatif/i);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('FeuillePresencePanel : optionnel, replié', () => {
+  it('FeuillePresencePanel : facultatif, replié', () => {
     render(<FeuillePresencePanel formeJuridique="SARL" societe={societe} />);
     const toggle = screen.getByTestId('seance-doc-toggle-FEUILLE_PRESENCE_AG');
-    expect(toggle).toHaveTextContent(/optionnel/i);
+    expect(toggle).toHaveTextContent(/facultatif/i);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('IncidentSeancePanel : optionnel, replié', () => {
+  it('IncidentSeancePanel : facultatif, replié', () => {
     render(<IncidentSeancePanel formeJuridique="SARL" societe={societe} />);
     const toggle = screen.getByTestId('incident-seance-toggle');
-    expect(toggle).toHaveTextContent(/optionnel/i);
+    expect(toggle).toHaveTextContent(/facultatif/i);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 });

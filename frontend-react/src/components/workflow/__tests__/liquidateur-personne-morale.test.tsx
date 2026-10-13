@@ -5,7 +5,8 @@ import { useState } from 'react';
 
 vi.mock('../../identity/IdentityExtractor', () => ({ IdentityExtractor: () => null }));
 
-import { LiquidateurPicker, emptyLiquidateur, type LiquidateurState } from '../LiquidateurPicker';
+import { LiquidateurPicker } from '../LiquidateurPicker';
+import { emptyLiquidateur, type LiquidateurState } from '../liquidateurOptions';
 
 /** Lot L4d (E5) : l'écran du liquidateur offre la personne morale (tiers ou associé). */
 function Hote() {

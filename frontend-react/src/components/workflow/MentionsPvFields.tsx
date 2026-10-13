@@ -92,18 +92,18 @@ export function MentionsPvFields({
         </p>
       </TexteAide>
 
-      <Bloc titre="Mentions de l'acte">
+      <Bloc titre="Mentions de l’acte">
         <ValeurProposee id="mentions-dossierReference" label="Référence du dossier *"
           proposition={referenceDossier ?? ''} valeur={val('dossierReference') || undefined}
           onChange={set('dossierReference')} />
         {champ('registreFolio', isAU ? 'Folio du registre des décisions *' : 'Folio du registre des procès-verbaux *',
           { hint: 'Folio sur lequel le procès-verbal sera inscrit.' })}
-        <ValeurProposee id="mentions-enregistrementLieu" label="Lieu d'enregistrement *"
+        <ValeurProposee id="mentions-enregistrementLieu" label="Lieu d’enregistrement *"
           proposition={villeEnregistrement ?? ''} valeur={val('enregistrementLieu') || undefined}
           onChange={set('enregistrementLieu')} />
         {mode === 'dissolution' &&
-          champ('annonceJournal', "Journal d'annonces légales *", {
-            hint: "Journal où l'avis de dissolution sera publié (imprimé dans les pouvoirs pour les formalités).",
+          champ('annonceJournal', 'Journal d’annonces légales *', {
+            hint: 'Journal où l’avis de dissolution sera publié (imprimé dans les pouvoirs pour les formalités).',
           })}
       </Bloc>
 
@@ -128,7 +128,7 @@ export function MentionsPvFields({
 
       {mode === 'dissolution' && (
         <Bloc titre="Gérance et salariés"
-          aide="Le quitus peut être donné à la gérance dès la dissolution ou réservé jusqu'à la clôture. Une entreprise de dix salariés ou plus doit obtenir l'autorisation de fermeture du gouverneur (articles 66, 67 et 69 du code du travail) : le procès-verbal le rappelle.">
+          aide="Le quitus peut être donné à la gérance dès la dissolution ou réservé jusqu’à la clôture. Une entreprise de dix salariés ou plus doit obtenir l’autorisation de fermeture du gouverneur (articles 66, 67 et 69 du code du travail) : le procès-verbal le rappelle.">
           {choix('quitusGerance', 'Quitus donné à la gérance ? *', [
             { value: '', label: 'Choisir…' },
             { value: 'oui', label: 'Oui, quitus entier' },
@@ -142,9 +142,9 @@ export function MentionsPvFields({
       {mode === 'liquidation' && (
         <>
           <Bloc titre="Rappel de la dissolution"
-            aide="Le procès-verbal rappelle l'inscription de la dissolution au registre du commerce (point de départ de la prescription de cinq ans, calculée) et la publication de la nomination du liquidateur.">
+            aide="Le procès-verbal rappelle l’inscription de la dissolution au registre du commerce (point de départ de la prescription de cinq ans, calculée) et la publication de la nomination du liquidateur.">
             {champ('dissolutionRcInscriptionDate', 'Inscription de la dissolution au RC *', { type: 'date' })}
-            {champ('annonceJournal', "Journal d'annonces légales de la nomination *")}
+            {champ('annonceJournal', 'Journal d’annonces légales de la nomination *')}
             {champ('annoncePublicationDate', 'Date de publication *', { type: 'date' })}
             {!isAU && choix('convocationAuteur', "Assemblée convoquée par *", [
               { value: '', label: 'Choisir…' },
@@ -155,15 +155,15 @@ export function MentionsPvFields({
               <>
                 {champ('ordonnanceAssocieDemandeur', 'Associé demandeur *')}
                 {champ('ordonnanceTribunal', 'Ville du tribunal *')}
-                {champ('ordonnanceNumero', "Numéro de l'ordonnance *")}
-                {champ('ordonnanceDate', "Date de l'ordonnance *", { type: 'date' })}
+                {champ('ordonnanceNumero', 'Numéro de l’ordonnance *')}
+                {champ('ordonnanceDate', 'Date de l’ordonnance *', { type: 'date' })}
                 {champ('ordonnanceMandataireNom', 'Mandataire désigné *')}
               </>
             )}
           </Bloc>
 
           <Bloc titre="Compte définitif"
-            aide="L'actif net disponible, le remboursement du nominal et le boni ou le mali sont calculés à partir des totaux de l'étape 1, des frais et de la rémunération du liquidateur. Le procès-verbal ne s'écrit pas sans les frais.">
+            aide="L’actif net disponible, le remboursement du nominal et le boni ou le mali sont calculés à partir des totaux de l’étape 1, des frais et de la rémunération du liquidateur. Le procès-verbal ne s’écrit pas sans les frais.">
             <Zone id="mentions-operationsResume" label="Résumé des opérations de liquidation *"
               value={val('operationsResume')} onChange={set('operationsResume')}
               hint="Complète la phrase : « Il expose les conditions dans lesquelles il a réalisé l’actif social… : … »." />
@@ -186,7 +186,7 @@ export function MentionsPvFields({
 
           {val('compteDefinitifApprobation') !== 'refuse' && (
             <Bloc titre="Quitus et répartition du solde"
-              aide="Le quitus se choisit dans l'avis de clôture ci-dessous ; ses réserves ou ses motifs de refus se saisissent ici. La retenue à la source sur le boni (article 13-I du code général des impôts) est indiquée par vous : la plateforme ne fixe ni son assiette ni son taux.">
+              aide="Le quitus se choisit dans l’avis de clôture ci-dessous ; ses réserves ou ses motifs de refus se saisissent ici. La retenue à la source sur le boni (article 13-I du code général des impôts) est indiquée par vous : la plateforme ne fixe ni son assiette ni son taux.">
               {!quitusAvis && (
                 <p className="md:col-span-2 text-xs text-warning" role="status">
                   Choisissez le sens du quitus dans l’avis de clôture ci-dessous : le procès-verbal en dépend.
@@ -218,7 +218,7 @@ export function MentionsPvFields({
               {champ('repartitionDateLimite', 'Paiement au plus tard le *', { type: 'date' })}
               <Zone id="mentions-maliRepartition" label="Répartition du mali (facultatif)"
                 value={val('maliRepartition')} onChange={set('maliRepartition')}
-                hint="En cas de mali seulement : imputation entre associés selon l'état annexé." />
+                hint="En cas de mali seulement : imputation entre associés selon l’état annexé." />
             </Bloc>
           )}
 
@@ -231,7 +231,7 @@ export function MentionsPvFields({
           </Bloc>
 
           <Bloc titre="Passifs éventuels et radiation"
-            aide="Sans passif éventuel, le procès-verbal constate qu'aucune provision n'est à constituer. Les pièces du dossier de radiation sont facultatives (une par ligne).">
+            aide="Sans passif éventuel, le procès-verbal constate qu’aucune provision n’est à constituer. Les pièces du dossier de radiation sont facultatives (une par ligne).">
             {choix('passifEventuelApplicable', 'Subsiste-t-il des passifs éventuels ? *')}
             {val('passifEventuelApplicable') === 'oui' && (
               <>

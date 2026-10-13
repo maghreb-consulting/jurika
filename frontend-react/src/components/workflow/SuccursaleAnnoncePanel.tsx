@@ -17,12 +17,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Megaphone } from 'lucide-react';
 import { TextField } from '../ui/TextField';
-import {
-  WorkflowDocumentBlock,
-  freshDocState,
-  useDocumentBlocks,
-  type DocState,
-} from './WorkflowDocumentBlock';
+import { TexteAide } from '../ui/Aide';
+import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
+import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
@@ -170,18 +167,21 @@ export function SuccursaleAnnoncePanel({
   const workflowCode = WORKFLOW_CODE[mode];
 
   const [docs, setDocs] = useState<Record<string, DocState>>({});
-  const [tpl, setTpl] = useState<TemplateInfo>(() => makeTemplateInfo(code, mode));
-
   // Libellé réel du modèle (documentKind) depuis le manifest — repli local si le
-  // service est indisponible (dégradation gracieuse, jamais bloquante).
+  // service est indisponible (dégradation gracieuse, jamais bloquante). L6 : le modele
+  // trouve est rattache a son code ; le repli se deduit au rendu.
+  const [trouve, setTrouve] = useState<TemplateInfo | null>(null);
+  const tpl = useMemo(
+    () => (trouve?.code === code ? trouve : makeTemplateInfo(code, mode)),
+    [trouve, code, mode],
+  );
   useEffect(() => {
     let cancelled = false;
-    setTpl(makeTemplateInfo(code, mode));
     listTemplatesForWorkflow(workflowCode)
       .then((items) => {
         if (cancelled) return;
         const found = items.find((t) => t.code === code);
-        if (found) setTpl(found);
+        if (found) setTrouve(found);
       })
       .catch(() => {
         /* best-effort */
@@ -247,8 +247,8 @@ export function SuccursaleAnnoncePanel({
     mode === 'fermeture'
       ? 'Annonce légale de fermeture de succursale'
       : mode === 'ouverture-etrangere'
-        ? "Annonce légale d'ouverture de succursale (société mère étrangère)"
-        : "Annonce légale d'ouverture de succursale";
+        ? 'Annonce légale d’ouverture de succursale (société mère étrangère)'
+        : 'Annonce légale d’ouverture de succursale';
 
   return (
     <section
@@ -260,11 +260,11 @@ export function SuccursaleAnnoncePanel({
         <h4 className="text-sm font-semibold text-fg">{titre}</h4>
       </div>
       <p className="text-xs text-fg-subtle">
-        Avis à publier au Journal d'Annonces Légales. La société mère (dénomination, capital,
-        siège, RC, ville du greffe), la date de l'
-        {isAU ? "décision de l'associé unique" : 'assemblée'} et les caractéristiques de la
-        succursale sont repris des étapes précédentes et de la Data Room —{' '}
-        <strong>rien à re-saisir</strong>.
+        Avis à publier dans un journal d’annonces légales. La société mère (dénomination,
+        capital, siège, RC, ville du greffe), la date de{' '}
+        {isAU ? 'la décision de l’associé unique' : 'l’assemblée'} et les caractéristiques de la
+        succursale sont repris des étapes précédentes et de la Data Room :{' '}
+        <strong>rien à ressaisir</strong>.
         {mode !== 'fermeture' && (
           <>
             {' '}
@@ -274,6 +274,12 @@ export function SuccursaleAnnoncePanel({
           </>
         )}
       </p>
+
+      <TexteAide cle={`succursale-annonce-${mode}`} titre="Ce qu’il faut faire">
+        Générez l’avis, relisez l’aperçu puis validez-le : il est déposé dans la Data Room
+        du dossier. Le numéro et la date de dépôt légal se saisissent quand le greffe les
+        délivre ; régénérez alors l’avis pour qu’ils y figurent.
+      </TexteAide>
 
       <div className="grid gap-3 md:grid-cols-2">
         <TextField
@@ -292,8 +298,8 @@ export function SuccursaleAnnoncePanel({
       </div>
       <p className="text-[11px] text-fg-subtle">
         Ces deux informations sont attribuées par le greffe <strong>après</strong> le dépôt :
-        l'annonce se génère sans elles (les emplacements restent vides). Régénérez l'annonce
-        une fois le numéro connu si vous souhaitez l'y faire figurer.
+        l’annonce se génère sans elles (les emplacements restent vides). Régénérez l’annonce
+        une fois le numéro connu si vous souhaitez l’y faire figurer.
       </p>
 
       <WorkflowDocumentBlock

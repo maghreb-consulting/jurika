@@ -17,12 +17,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
-import {
-  WorkflowDocumentBlock,
-  freshDocState,
-  useDocumentBlocks,
-  type DocState,
-} from './WorkflowDocumentBlock';
+import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
+import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
@@ -37,12 +33,7 @@ import {
   type SeanceSections,
   type SeanceSocieteInput,
 } from './seanceFormEtat';
-import {
-  OUI_NON,
-  RES_SPECS,
-  flattenResolution,
-  type ResolutionState,
-} from './modificationResolutions';
+import { OUI_NON, RES_SPECS, flattenResolution, type ResolutionState } from './modificationResolutionsSpecs';
 import type { DocumentType } from '../../types/dataroom';
 import { ValeurProposee } from './ValeurProposee';
 import { InfoBulle, TexteAide } from '../ui/Aide';
@@ -177,8 +168,11 @@ export function ModificationOperationForm({
 
   const [docs, setDocs] = useState<Record<string, DocState>>({});
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
-  const [loadTemplatesError, setLoadTemplatesError] = useState<string | null>(null);
+  // L6 : erreur de chargement rattachee au modele demande ; « en cours » se deduit (plus
+  // de mise a jour synchrone d'etat au debut de l'effet).
+  const [erreurModele, setErreurModele] = useState<{ code: string; message: string } | null>(null);
+  const loadTemplatesError = erreurModele?.code === pvCode ? erreurModele.message : null;
+  const loadingTemplates = templates.length === 0 && !loadTemplatesError;
 
   const ordreDuJour = useMemo(
     () => resolutions.map((r) => r.objet.trim() || RES_SPECS[r.type]?.label || 'Résolution'),
@@ -217,8 +211,6 @@ export function ModificationOperationForm({
   useEffect(() => {
     if (templates.length > 0) return;
     let cancelled = false;
-    setLoadingTemplates(true);
-    setLoadTemplatesError(null);
     listTemplatesForWorkflow(WORKFLOW_CODE)
       .then((items) => {
         if (cancelled) return;
@@ -227,12 +219,10 @@ export function ModificationOperationForm({
       })
       .catch((err) => {
         if (cancelled) return;
-        setLoadTemplatesError(
-          err instanceof Error ? err.message : 'Impossible de charger le modèle.',
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingTemplates(false);
+        setErreurModele({
+          code: pvCode,
+          message: err instanceof Error ? err.message : 'Impossible de charger le modèle.',
+        });
       });
     return () => {
       cancelled = true;
@@ -255,7 +245,7 @@ export function ModificationOperationForm({
       />
 
       {/* Options d'assemblée référencées par les résolutions. */}
-      <Section title={isAU ? "Options des décisions de l'associé unique" : "Options de l'assemblée"}>
+      <Section title={isAU ? 'Options des décisions de l’associé unique' : 'Options de l’assemblée'}>
         <TexteAide cle={isAU ? 'pv-modification-options-au' : 'pv-modification-options'} titre="Que renseigner ici ?">
           {isAU
             ? 'Confirmez le nombre d’exemplaires originaux et indiquez le numéro et le feuillet du registre des décisions de l’associé unique, que le procès-verbal cite. Sans ces données, la génération est refusée et les nomme. Ensuite, générez le procès-verbal, relisez-le puis validez-le.'
@@ -287,7 +277,7 @@ export function ModificationOperationForm({
           )}
           {isAU && (
             <Select
-              label="Le gérant est-il l'associé unique ?"
+              label="Le gérant est-il l’associé unique ?"
               value={gerantEstAssocie}
               onChange={(e) => setGerantEstAssocie(e.target.value as 'oui' | 'non')}
               options={OUI_NON}
@@ -328,11 +318,11 @@ export function ModificationOperationForm({
       </Section>
 
       {/* Récapitulatif des résolutions (saisie à l'étape 2). */}
-      <Section title="Résolutions à intégrer au PV">
+      <Section title="Résolutions à intégrer au procès-verbal">
         {resolutions.length === 0 ? (
           <p className="text-sm text-fg-subtle">
-            Aucune résolution — revenez à l'étape 1 pour sélectionner des décisions, puis
-            renseignez-les à l'étape 2.
+            Aucune résolution : revenez à l’étape 1 pour sélectionner des décisions, puis
+            renseignez-les à l’étape 2.
           </p>
         ) : (
           <ol className="space-y-2">
@@ -344,7 +334,7 @@ export function ModificationOperationForm({
                 <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-violet-600 text-[10px] font-bold text-white">
                   {i + 1}
                 </span>
-                <span className="text-fg">{r.objet.trim() || RES_SPECS[r.type]?.label || r.type}</span>
+                <span className="text-fg">{r.objet.trim() || RES_SPECS[r.type]?.label || 'Résolution'}</span>
               </li>
             ))}
           </ol>
@@ -355,7 +345,7 @@ export function ModificationOperationForm({
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-violet-600" />
-          <h4 className="text-sm font-semibold text-fg">Générer le PV de modification</h4>
+          <h4 className="text-sm font-semibold text-fg">Générer le procès-verbal de modification</h4>
         </div>
         {loadingTemplates && <p className="text-sm text-fg-subtle">Chargement du modèle…</p>}
         {loadTemplatesError && (
@@ -364,7 +354,7 @@ export function ModificationOperationForm({
           </div>
         )}
         {resolutions.length === 0 && (
-          <p className="text-sm text-fg-subtle">Ajoutez au moins une résolution pour générer le PV.</p>
+          <p className="text-sm text-fg-subtle">Ajoutez au moins une résolution pour générer le procès-verbal.</p>
         )}
         <div className="grid gap-4 md:grid-cols-1">
           {templates.map((tpl) => (

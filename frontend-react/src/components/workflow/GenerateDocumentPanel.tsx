@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2, Download, FileText, RefreshCcw } from 'lucid
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
+import { TexteAide } from '../ui/Aide';
 import {
   generateDocument,
   listTemplatesForWorkflow,
@@ -85,9 +86,14 @@ export function GenerateDocumentPanel({
   onGenerated,
   dossierId,
 }: Props) {
-  const [templates, setTemplates] = useState<MergedTemplate[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  // L6 : resultat du dernier chargement, avec la cle des parcours demandes ; le
+  // chargement « en cours » se DEDUIT de la cle courante (plus de mise a jour
+  // synchrone d'etat au debut de l'effet).
+  const [chargement, setChargement] = useState<{
+    cle: string;
+    templates: MergedTemplate[];
+    erreur: string | null;
+  } | null>(null);
   const [generating, setGenerating] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [successAt, setSuccessAt] = useState<Record<string, number>>({});
@@ -95,16 +101,15 @@ export function GenerateDocumentPanel({
   const successTimers = useRef<Record<string, number>>({});
 
   const codesKey = useMemo(() => [...workflowCodes].sort().join('|'), [workflowCodes]);
+  const aucunParcours = (workflowCodes ?? []).length === 0;
+  const loading = !aucunParcours && chargement?.cle !== codesKey;
+  const templates = !aucunParcours && chargement?.cle === codesKey ? chargement.templates : [];
+  const loadError = !aucunParcours && chargement?.cle === codesKey ? chargement.erreur : null;
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setLoadError(null);
-
     const codes = workflowCodes ?? [];
     if (codes.length === 0) {
-      setTemplates([]);
-      setLoading(false);
       return () => {
         cancelled = true;
       };
@@ -134,11 +139,11 @@ export function GenerateDocumentPanel({
             firstError = 'Impossible de charger la liste des documents.';
           }
         });
-        setTemplates(merged);
-        if (merged.length === 0 && firstError) setLoadError(firstError);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        setChargement({
+          cle: codesKey,
+          templates: merged,
+          erreur: merged.length === 0 && firstError ? firstError : null,
+        });
       });
 
     return () => {
@@ -182,7 +187,7 @@ export function GenerateDocumentPanel({
         }, 3000);
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : 'Erreur lors de la generation';
+          err instanceof Error ? err.message : 'Échec de la génération. Réessayez.';
         setErrors((prev) => ({ ...prev, [tpl.code]: message }));
       } finally {
         setGenerating((prev) => ({ ...prev, [tpl.code]: false }));
@@ -211,13 +216,19 @@ export function GenerateDocumentPanel({
         title="Aucun document disponible"
         description={
           loadError ??
-          'Aucun document disponible pour ce workflow (manifest vide).'
+          'Aucun modèle de document n’est disponible pour ce parcours. Signalez-le à l’administrateur de la plateforme.'
         }
       />
     );
   }
 
   return (
+    <div className="space-y-3">
+    <TexteAide cle="generer-documents" titre="Ce qu’il faut faire">
+      Cliquez sur « Générer le document » : il est produit à partir des données du dossier
+      puis téléchargé. S’il manque une donnée, le message la nomme ; complétez-la puis
+      réessayez.
+    </TexteAide>
     <div
       className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
       data-testid="generate-document-panel"
@@ -230,19 +241,18 @@ export function GenerateDocumentPanel({
         return (
           <Card key={tpl.code} className="flex flex-col gap-3 p-5">
             <div className="flex items-start justify-between gap-2">
-              <h3
-                className="text-sm font-semibold text-fg"
-                title={tpl.code}
-              >
+              <h3 className="text-sm font-semibold text-fg">
                 {title}
               </h3>
               <span
                 className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${originBadgeClasses(tpl.origin, tpl.deprecated)}`}
               >
-                {tpl.deprecated ? 'hérité' : tpl.origin || 'interne'}
+                {tpl.deprecated ? 'ancien modèle' : 'modèle du cabinet'}
               </span>
             </div>
-            <p className="text-xs text-fg-subtle">{tpl.code}</p>
+            <p className="text-xs text-fg-subtle">
+              Le document est généré au format Word, puis téléchargé.
+            </p>
 
             {error ? (
               <div
@@ -286,6 +296,7 @@ export function GenerateDocumentPanel({
           </Card>
         );
       })}
+    </div>
     </div>
   );
 }
