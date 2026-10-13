@@ -169,8 +169,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 - **Bump des actions CI** : `setup-java@v5`, et les versions d'actions ciblant Node 24 (les
   actions actuelles s'appuient sur des runtimes en fin de vie).
-- **Nettoyage du lint frontend herite** : `frontend-react` porte des avertissements de lint
-  preexistants (bruit dans les annotations CI), a resorber independamment.
 - **`out-of-order: true` : une cle qui ouvre plus que sa serrure.** Active sur CINQ services
   (ai, dashboard, workflow, dataroom, ticket) depuis l'import initial — jamais restreint a
   ticket. Elle affaiblit durablement la garantie d'ordre : une migration de version inferieure
@@ -246,22 +244,11 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   `au-ord-distribution` ("dividendes ou reserves") route vers les seuls dividendes ;
   `OfficialDecision.note` jamais affiche (motif 9). Exoneration de retenue : associe unique personne
   morale sans ecran d'identite.
-- **Ecrans** : `CabinetTab.tsx` annonce des "PDF generes (fiche client, etat des debours)" ;
-  `ProfileSecurityPage` "Changer mon mot de passe" mene a la page de changement obligatoire ;
-  `Sidebar.tsx` et `AppShellSidebar.tsx` ne sont plus montes (code mort) ; `useLenisScroll` exclut
-  encore `/chatbot` ; `scripts/demo-video/capture-demo.mjs` vise l'ancienne page du chatbot.
 - **Auth** : `InviteEmployeUseCase` cherche les doublons sur l'identifiant et non sur
-  `contact_email` ; gabarits de courriel existants (password-changed, verify-email...) et leurs
-  sujets sans accents ; libelles d'audit `DEBOURS_*` absents de `AuditActionLabels`.
+  `contact_email` ; libelles d'audit `DEBOURS_*` absents de `AuditActionLabels`.
 - **Debours** : lignes anterieures avec `piece_jointe_url` affichees sans lien Data Room ;
   dependance `io.minio` inutilisee dans le pom de ticket-service.
 - **Fiche** : un auteur d'un autre workspace s'affiche "Compte inconnu".
-- **Lint herite** (`react-hooks/set-state-in-effect` et autres) : LiquidationWorkflowPage,
-  SeanceOperationForm, modificationResolutions (react-refresh), DossierJuridiqueTab,
-  TicketDetailDrawer, ClientDataroomView, ChatPage, NotificationBell, DemandesTab,
-  RequetesAuClientSection, AuditLogPage.
-- **Tests vitest sensibles a la charge** (delais de 5 s) : step7-documents-conditionnels,
-  liquidation-annonce-corpus, LoginPage et d'autres sous charge machine elevee.
 
 ### Lot L4d (page de ticket, bascule du corpus, 2026-10-12) -- dette relevee
 
@@ -292,14 +279,30 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **Note interne `NOTE_DEFAUT_DECISION_ASSOCIE_UNIQUE_SARL_AU`** du corpus non branchee (constat de
   defaut de decision de l'associe unique).
 
-### Lot L6 (qualite de la langue, ergonomie) -- a prevoir
+### Lot L6 (ergonomie, langue, identite, 2026-10-13) -- dette relevee
 
-- **Passe complete d'ergonomie et d'aide integree** (CDC 15.4) sur tous les ecrans existants,
-  en particulier a chaque statut du ticket : ce qu'il faut faire, ce qui manque, ce qui vient
-  ensuite.
-- **Visite guidee** a la premiere connexion (masquable, reaffichable).
-- **Nouveau logo**, avec sa variante ivoire en mode sombre.
-- **Super-admin affiche "JURIKA"** (et non un nom de cabinet ou de compte).
+- **Messages par defaut de Bean Validation** (`@NotBlank` sans `message`) : en anglais si la JVM
+  n'est pas en francais ; aucun `ValidationMessages_fr` (jurika-common/config).
+- **Theme** : envoye au serveur (`UpdateThemeUseCase`) mais jamais relu par le front (motif 9) ;
+  l'ecran dit desormais "memorise dans ce navigateur".
+- **Recuperation par code** : le compte est cherche sur la colonne `email` et non sur
+  `login_email` ; un utilisateur qui ne connait que son identifiant pourrait echouer (a verifier).
+- **Ecrans** : `TicketPage` affiche les noms techniques des variables (ProvenanceDonnees sans
+  dictionnaire de libelles) ; `OcrSuggestionsPanel` affiche la source "tesseract / llm" ;
+  activite du client : colonne "Utilisateur" = 8 caracteres d'identifiant ; champ "Ticket lie"
+  d'une demande saisi a la main.
+- **Valeurs par defaut silencieuses de la creation** (etape 3 : numeraire 100 000, liberation
+  25 000, 1 000 parts ; etape 5 : nationalite "Marocaine") : a passer en valeurs proposees puis
+  confirmees (comme D6 de L3), A_DECIDER cabinet.
+- **Vitrine et pages legales** : affirmations commerciales non verifiees (hebergement OVH
+  Casablanca, SLA 99,9 %, tarifs et forfaits differents du CDC, "conforme CNDP" alors que la
+  declaration est en cours, messagerie client-employe) ; CGU et confidentialite en brouillon
+  (jargon technique, adresses legal@ / dpo@ / contact@jurika.ma) : A_DECIDER directeur.
+- **billing** : client Stripe cree avec "billing@jurika.ma" a defaut d'adresse ; adresse
+  commerciale par defaut "contact@jurika.ai" (BILLING_SALES_EMAIL).
+- **`scripts/demo-video/seed-demo-content.mjs`** (etape 6) depose des sources du chatbot avec le
+  jeton du cabinet : refuse depuis L5 (super-admin seul).
+- **`ProfessionalType.java`** : libelles non accentues (non affiches par le front).
 
 ### Lot L4b (demarches du corpus, D5, 2026-10-11) -- dette relevee
 

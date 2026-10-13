@@ -28,9 +28,11 @@ import Lenis from 'lenis';
 //                 branche sur ScrollTrigger.update via window.__lenis ; une 2e
 //                 instance casse le pin/scrub de StickyShowcase.
 //  - '/chat'    : layout verrouillé à 100vh avec scroll interne (h-[calc(100vh-9rem)]).
-//  - '/chatbot' : idem. Lenis applique son transform au document -> viewport
-//                 figé, clics/NavLink morts (il fallait re-saisir l'URL).
-const LENIS_DENYLIST = new Set<string>(['/', '/chat', '/chatbot']);
+//                 Lenis applique son transform au document -> viewport figé,
+//                 clics/NavLink morts (il fallait re-saisir l'URL).
+// (Lot L6 : '/chatbot' retiré : la page n'existe plus, le chatbot est un panneau latéral
+// et l'adresse ne fait que rediriger.)
+const LENIS_DENYLIST = new Set<string>(['/', '/chat']);
 
 export function useLenisScroll(): void {
   const { pathname } = useLocation();
