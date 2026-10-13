@@ -164,11 +164,6 @@ async function ensureChatSchema() {
 }
 ensureChatSchema().catch(() => {});
 
-// Order participants to create canonical conversation key
-function orderUsers(a, b) {
-  return a < b ? [a, b] : [b, a];
-}
-
 // ----------------------------------------------------------------------
 // BUG 10 (2026-06-08) — helpers notifications
 // ----------------------------------------------------------------------
@@ -243,22 +238,6 @@ async function createNotification({ workspaceId, userId, type, title, message, a
 // role EMPLOYE ou SUPERVISEUR, refus par defaut.
 // ----------------------------------------------------------------------
 
-async function getOrCreateConversation(workspaceId, userA, userB) {
-  const [a, b] = orderUsers(userA, userB);
-  const existing = await pgPool.query(
-    `SELECT id FROM chat_conversations
-       WHERE workspace_id = $1 AND participant_a = $2 AND participant_b = $3`,
-    [workspaceId, a, b]
-  );
-  if (existing.rows.length) return existing.rows[0].id;
-  const id = randomUUID();
-  await pgPool.query(
-    `INSERT INTO chat_conversations(id, workspace_id, participant_a, participant_b)
-       VALUES ($1, $2, $3, $4)`,
-    [id, workspaceId, a, b]
-  );
-  return id;
-}
 
 // ----------------------------------------------------------------------
 // Redis pub/sub bridge (Spring Boot -> Node -> WS)
@@ -327,41 +306,12 @@ io.on('connection', (socket) => {
     try {
       // Lot L5 (E9, RG-COM-06) : expediteur EMPLOYE ou SUPERVISEUR, destinataire
       // EMPLOYE ou SUPERVISEUR actif DU MEME cabinet ; tout le reste est refuse.
-      const controle = await messagerie.controlerEnvoi(pgPool, socket.identite, to, body);
-      if (!controle.ok) {
-        return ack && ack({ ok: false, error: controle.message, code: controle.code });
-      }
-      const conversationId = await getOrCreateConversation(socket.workspaceId, socket.userId, to);
-      const id = randomUUID();
-      const createdAt = new Date().toISOString();
-      await pgPool.query(
-        `INSERT INTO chat_messages(id, workspace_id, conversation_id,
-             sender_id, recipient_id, body, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [id, socket.workspaceId, conversationId, socket.userId, to, body, createdAt]
-      );
-      await pgPool.query(
-        `UPDATE chat_conversations SET last_message_at = $1 WHERE id = $2`,
-        [createdAt, conversationId]
-      );
-      const msg = {
-        id, conversationId, from: socket.userId, to, body, createdAt,
-        workspaceId: socket.workspaceId,
-      };
-      io.to(`user:${to}`).emit('chat:message', msg);
-      io.to(`user:${socket.userId}`).emit('chat:message', msg);
-      // BUG 10 — notification CHAT_MESSAGE pour le destinataire (best-effort,
-      // jamais bloquant pour l'envoi du message).
-      createNotification({
-        workspaceId: socket.workspaceId,
-        userId: to,
-        type: 'CHAT_MESSAGE',
-        title: `Nouveau message`,
-        message: body.length > 120 ? `${body.slice(0, 117)}...` : body,
-        actionUrl: '/chat',
-        metadata: { from: socket.userId, conversationId },
-      }).catch((err) => console.error('notification CHAT_MESSAGE failed:', err.message));
-      ack && ack({ ok: true, id, conversationId, createdAt, message: msg });
+      // Lot L5b (E1) : meme chemin d'ecriture que la route REST.
+      const r = await messagerie.enregistrerMessage(pgPool, socket.identite, to, body);
+      if (!r.ok) return ack && ack({ ok: false, error: r.message, code: r.code });
+      diffuserMessage(r.message);
+      ack && ack({ ok: true, id: r.message.id, conversationId: r.message.conversationId,
+        createdAt: r.message.createdAt, message: r.message });
     } catch (err) {
       console.error('chat:send failed', err.message);
       ack && ack({ ok: false, error: 'Le message n’a pas pu être envoyé. Réessayez.' });
@@ -399,6 +349,53 @@ function userFromToken(req) {
     return null;
   }
 }
+
+/**
+ * Lot L5b (E1) : diffusion d'un message DEJA enregistre. Best-effort : le temps reel
+ * et la notification ne conditionnent jamais l'envoi (RG-COM-06).
+ */
+function diffuserMessage(msg) {
+  io.to(`user:${msg.to}`).emit('chat:message', msg);
+  io.to(`user:${msg.from}`).emit('chat:message', msg);
+  // BUG 10 — notification CHAT_MESSAGE pour le destinataire (best-effort).
+  createNotification({
+    workspaceId: msg.workspaceId,
+    userId: msg.to,
+    type: 'CHAT_MESSAGE',
+    title: `Nouveau message`,
+    message: msg.body.length > 120 ? `${msg.body.slice(0, 117)}...` : msg.body,
+    actionUrl: '/chat',
+    metadata: { from: msg.from, conversationId: msg.conversationId },
+  }).catch((err) => console.error('notification CHAT_MESSAGE failed:', err.message));
+}
+
+/**
+ * Lot L5b (E1, RG-COM-06) : envoi par REST. L'ecran envoie toujours par cette route :
+ * le message est enregistre et rendu meme quand la connexion temps reel est coupee ;
+ * le temps reel ne sert qu'a la remise immediate.
+ */
+app.post('/api/v1/chat/messages', async (req, res) => {
+  const user = userFromToken(req);
+  if (!user) return res.status(401).json({ error: 'Non authentifie' });
+  const identite = messagerie.identiteDuJeton(user);
+  if (!messagerie.peutUtiliserMessagerie(identite)) {
+    return res.status(403).json({ error: messagerie.MESSAGES_REFUS.ROLE_REFUSE, code: 'ROLE_REFUSE' });
+  }
+  const { to, body } = req.body || {};
+  try {
+    const r = await messagerie.enregistrerMessage(pgPool, identite, to, body);
+    if (!r.ok) {
+      const statut = r.code === 'MESSAGE_INVALIDE' || r.code === 'DESTINATAIRE_INVALIDE'
+        || r.code === 'DESTINATAIRE_SOI_MEME' ? 400 : 403;
+      return res.status(statut).json({ error: r.message, code: r.code });
+    }
+    diffuserMessage(r.message);
+    return res.status(201).json(r.message);
+  } catch (err) {
+    console.error('POST /api/v1/chat/messages failed', err.message);
+    return res.status(500).json({ error: 'Le message n’a pas pu être envoyé. Réessayez.' });
+  }
+});
 
 app.get('/api/v1/chat/conversations', async (req, res) => {
   const user = userFromToken(req);

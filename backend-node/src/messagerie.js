@@ -117,6 +117,61 @@ async function controlerDestinataireNotification(db, workspaceId, userId) {
   return { ok: true };
 }
 
+/**
+ * Lot L5b (E1, RG-COM-06) : enregistre un message DES son envoi. Seul chemin
+ * d'ecriture, commun a l'envoi par le temps reel (`chat:send`) et a la route REST
+ * (`POST /api/v1/chat/messages`) : un message est conserve meme si la connexion
+ * temps reel du destinataire, ou de l'expediteur, est interrompue ; le destinataire
+ * le retrouve a sa prochaine lecture. Un envoi refuse n'ecrit rien.
+ *
+ * @param db pool pg (`connect()` pour les controles, `query()` pour l'ecriture).
+ * @returns `{ ok: true, message }` ou `{ ok: false, code, message }`.
+ */
+async function enregistrerMessage(db, identite, to, body, horloge = () => new Date()) {
+  const controle = await controlerEnvoi(db, identite, to, body);
+  if (!controle.ok) return controle;
+  const { randomUUID } = require('node:crypto');
+  const conversationId = await conversationDe(db, identite.workspaceId, identite.userId, to);
+  const id = randomUUID();
+  const createdAt = horloge().toISOString();
+  await db.query(
+    `INSERT INTO chat_messages(id, workspace_id, conversation_id,
+         sender_id, recipient_id, body, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [id, identite.workspaceId, conversationId, identite.userId, to, body, createdAt]
+  );
+  await db.query(
+    `UPDATE chat_conversations SET last_message_at = $1 WHERE id = $2`,
+    [createdAt, conversationId]
+  );
+  return {
+    ok: true,
+    message: {
+      id, conversationId, from: identite.userId, to, body, createdAt,
+      workspaceId: identite.workspaceId,
+    },
+  };
+}
+
+/** Conversation (unique par paire, dans le cabinet), creee au premier message. */
+async function conversationDe(db, workspaceId, userA, userB) {
+  const [a, b] = userA < userB ? [userA, userB] : [userB, userA];
+  const existing = await db.query(
+    `SELECT id FROM chat_conversations
+       WHERE workspace_id = $1 AND participant_a = $2 AND participant_b = $3`,
+    [workspaceId, a, b]
+  );
+  if (existing.rows.length) return existing.rows[0].id;
+  const { randomUUID } = require('node:crypto');
+  const id = randomUUID();
+  await db.query(
+    `INSERT INTO chat_conversations(id, workspace_id, participant_a, participant_b)
+       VALUES ($1, $2, $3, $4)`,
+    [id, workspaceId, a, b]
+  );
+  return id;
+}
+
 function refus(code) {
   return { ok: false, code, message: MESSAGES_REFUS[code] || 'Refusé.' };
 }
@@ -132,4 +187,5 @@ module.exports = {
   controlerCorrespondant,
   controlerEnvoi,
   controlerDestinataireNotification,
+  enregistrerMessage,
 };
