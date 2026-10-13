@@ -23,7 +23,7 @@ COPY ai-service/pom.xml           ai-service/
 COPY dashboard-service/pom.xml    dashboard-service/
 COPY billing-service/pom.xml      billing-service/
 RUN --mount=type=cache,target=/root/.m2/repository,sharing=locked \
-    mvn -B -pl :workflow-service -am -DskipTests dependency:go-offline || true
+    mvn -B -pl :workflow-service -am -DskipTests dependency:go-offline
 COPY jurika-common/src jurika-common/src
 COPY workflow-service/src workflow-service/src
 RUN --mount=type=cache,target=/root/.m2/repository,sharing=locked \

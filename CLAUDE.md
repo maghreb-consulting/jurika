@@ -364,11 +364,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   (E5, E5b, E6) ; 46 fichiers du front citent `SUPERVISEUR`.
 - **Export ZIP du Dossier Juridique** : echec complet (`duplicate entry`) quand deux documents
   d'un meme type portent le meme nom de fichier (`exportSelectionAsZip`).
-- **Dockerfiles Java : `dependency:go-offline ... || true`** (les 10 services) : l'erreur de
-  prechargement reste avalee. La cause vue en E26 (collision du cache Maven partage entre
-  constructions paralleles) est levee depuis L5 E1 (`sharing=locked`) ; l'etape `package` echoue
-  toujours bruyamment. Retirer le `|| true` demande de verifier que go-offline passe sur les
-  modules du reacteur (jurika-common non publie).
 - **Exemple d'environnement serveur** : `.env.local.server.example` n'active pas le profil
   compose `mailhog` (`COMPOSE_PROFILES`) alors que `start-local.sh` attend `jurika-mailhog` :
   une installation faite depuis l'exemple n'atteint jamais 18/18.

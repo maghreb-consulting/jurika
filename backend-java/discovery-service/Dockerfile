@@ -23,7 +23,7 @@ COPY ai-service/pom.xml           ai-service/
 COPY dashboard-service/pom.xml    dashboard-service/
 COPY billing-service/pom.xml      billing-service/
 RUN --mount=type=cache,target=/root/.m2/repository,sharing=locked \
-    mvn -B -pl :discovery-service -DskipTests dependency:go-offline || true
+    mvn -B -pl :discovery-service -DskipTests dependency:go-offline
 COPY discovery-service/src discovery-service/src
 RUN --mount=type=cache,target=/root/.m2/repository,sharing=locked \
     mvn -B -pl :discovery-service -DskipTests package
