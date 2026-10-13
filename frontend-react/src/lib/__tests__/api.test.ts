@@ -1,5 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { isAuthRejection, handleSessionEnd, NoRefreshTokenError, tokenStorage } from '../api';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import {
+  isAuthRejection,
+  handleSessionEnd,
+  NoRefreshTokenError,
+  tokenStorage,
+  extractError,
+  MESSAGE_ERREUR_RESEAU,
+  MESSAGE_ERREUR_INCONNUE,
+} from '../api';
 
 /** Fabrique un objet ressemblant a une AxiosError (isAxiosError=true). */
 function axiosLikeError(status: number | undefined, code?: string) {
@@ -96,5 +104,28 @@ describe('handleSessionEnd', () => {
     mockLocation('/');
     handleSessionEnd(axiosLikeError(401));
     expect(window.location.href).toBe('');
+  });
+});
+
+describe('extractError (messages en francais correct)', () => {
+  it('reprend le message du serveur quand il existe', () => {
+    const err = Object.assign(new Error('http'), {
+      isAxiosError: true,
+      response: { status: 422, data: { code: 'X', message: 'Le capital est obligatoire.' } },
+    });
+    expect(extractError(err)).toEqual({ code: 'X', message: 'Le capital est obligatoire.', errors: undefined });
+  });
+
+  it('sans message du serveur : repli selon le statut', () => {
+    expect(extractError(axiosLikeError(403)).message).toBe('Vous n’avez pas les droits nécessaires pour cette action.');
+    expect(extractError(axiosLikeError(404)).message).toMatch(/^L’élément demandé est introuvable/);
+    expect(extractError(axiosLikeError(503)).message).toMatch(/^Le service est momentanément indisponible/);
+    expect(extractError(axiosLikeError(400)).message).toBe(MESSAGE_ERREUR_INCONNUE);
+  });
+
+  it('sans reponse du serveur : message de connexion', () => {
+    expect(extractError(axiosLikeError(undefined))).toEqual({ code: 'NETWORK', message: MESSAGE_ERREUR_RESEAU });
+    expect(extractError(new Error('boom')).message).toBe(MESSAGE_ERREUR_RESEAU);
+    expect(MESSAGE_ERREUR_RESEAU).not.toMatch(/reseau/);
   });
 });

@@ -329,14 +329,40 @@ api.interceptors.response.use(
   },
 );
 
+/** Messages de repli affiches quand le serveur ne donne pas de message lisible. */
+export const MESSAGE_ERREUR_RESEAU =
+  'Le serveur ne répond pas. Vérifiez votre connexion internet, puis réessayez.';
+export const MESSAGE_ERREUR_INCONNUE =
+  'Une erreur inattendue s’est produite. Réessayez ; si le problème persiste, contactez le support.';
+
+/** Message de repli selon le statut HTTP (aucun message fourni par le serveur). */
+function messageParStatut(status: number | undefined): string {
+  if (status === 401) return 'Votre session a expiré. Reconnectez-vous, puis réessayez.';
+  if (status === 403) return 'Vous n’avez pas les droits nécessaires pour cette action.';
+  if (status === 404) return 'L’élément demandé est introuvable : il a peut-être été supprimé.';
+  if (status === 413) return 'Le fichier est trop volumineux.';
+  if (status === 429) return 'Trop de demandes en peu de temps. Patientez quelques instants, puis réessayez.';
+  if (status !== undefined && status >= 500) {
+    return 'Le service est momentanément indisponible. Réessayez dans quelques instants.';
+  }
+  return MESSAGE_ERREUR_INCONNUE;
+}
+
 export function extractError(error: unknown): ApiError {
   if (axios.isAxiosError(error) && error.response?.data) {
     const data = error.response.data as ApiError;
+    const message = typeof data.message === 'string' && data.message.trim() !== ''
+      ? data.message
+      : messageParStatut(error.response.status);
     return {
       code: data.code ?? 'UNKNOWN',
-      message: data.message ?? 'Erreur inconnue',
+      message,
       errors: data.errors,
     };
   }
-  return { code: 'NETWORK', message: 'Erreur reseau' };
+  if (axios.isAxiosError(error) && error.response) {
+    // Reponse sans corps exploitable (passerelle, proxy...) : message selon le statut.
+    return { code: 'UNKNOWN', message: messageParStatut(error.response.status) };
+  }
+  return { code: 'NETWORK', message: MESSAGE_ERREUR_RESEAU };
 }
