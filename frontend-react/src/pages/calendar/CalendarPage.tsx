@@ -30,6 +30,14 @@ import { TexteAide } from '../../components/ui/Aide';
 /** Lot L6 (E9) : libelles des codes d'une echeance (jamais le code brut a l'ecran). */
 const STATUT_ECHEANCE: Record<string, string> = { OUVERTE: 'Ouverte', TERMINEE: 'Traitée', IGNOREE: 'Ignorée' };
 const SOURCE_ECHEANCE: Record<string, string> = { AUTO: 'Automatique (règle du cabinet)', MANUAL: 'Saisie manuelle' };
+const REGLE_ECHEANCE: Record<string, string> = {
+  CN_EXPIRY_90D: 'Expiration du certificat négatif (90 jours)',
+  RC_DEPOT_3M: 'Immatriculation au registre du commerce (3 mois)',
+  CNSS_DECL_30D: 'Affiliation à la CNSS (30 jours)',
+  CLOTURE_COMPTABLE_6M: 'Approbation des comptes annuels (6 mois)',
+  LIQUIDATION_PUBLI_16J: 'Publication de la liquidation (16 jours)',
+  STEP_STALE_7D: 'Ticket sans progression depuis 7 jours',
+};
 
 /**
  * Page Calendrier (2026-06-25 — repurposing tickets).
@@ -483,7 +491,7 @@ export function CalendarPage() {
               {selectedDeadline.ruleKey && (
                 <div className="flex justify-between gap-3">
                   <dt className="text-fg-subtle">Règle</dt>
-                  <dd className="font-mono text-xs text-fg">{selectedDeadline.ruleKey}</dd>
+                  <dd className="text-xs text-fg">{REGLE_ECHEANCE[selectedDeadline.ruleKey] ?? selectedDeadline.ruleKey}</dd>
                 </div>
               )}
               <div className="flex justify-between gap-3">
