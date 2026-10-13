@@ -84,9 +84,11 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
   commande contenant `prune`, `docker volume rm`, `docker rm -v`. Toute autre commande Docker
   demande l'accord de l'utilisateur.
 - **Activation en fin de lot** : apres le verify vert et le push, `/lot-complet` active lui-meme
-  la branche du lot sur le Z440 : sauvegarde controlee d'abord (`pg_dump -Fc` de toutes les
-  bases, `pg_dumpall --globals-only`, verifies par `pg_restore --list` ; volume MinIO par
-  `scripts/sauvegarde-volume-par-exec.py`), reconstruction et recreation, etat sain, test de
+  la branche du lot sur le Z440 : sauvegarde controlee d'abord, services applicatifs arretes,
+  par `scripts/sauvegarde-lot.sh <dossier>` (`pg_dump -Fc` de toutes les bases,
+  `pg_dumpall --globals-only`, verifies par `pg_restore --list` ; volume MinIO par
+  `scripts/sauvegarde-volume-par-exec.py` ; documents MinIO reels, hors `.minio.sys`, rapproches
+  des documents en base par `scripts/controle-sauvegarde-minio.py`), reconstruction et recreation, etat sain, test de
   fumee ; resultat dans le rapport final. Echec : retour arriere du code (depuis `main`), jamais
   de restauration de donnees automatique. `/lot-activer <lot>` reste disponible (pas a pas).
 - Les commandes `/lot-demarrer`, `/lot-executer`, `/lot-verifier` et `/lot-cloturer` (mode

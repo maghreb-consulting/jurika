@@ -63,7 +63,12 @@ def main():
         relus = [m for m in tar.getmembers() if m.isfile()]
     if len(relus) != len(fichiers) or sum(m.size for m in relus) != total:
         sys.exit("ECHEC : archive relue differente de la liste")
-    print(f"OK {archive} : {len(fichiers)} fichiers, {total} octets, mode 600")
+    # Lot L6 (E2) : ce compte est celui des FICHIERS copies (integrite de la copie), pas des
+    # documents : pour MinIO, les fichiers internes (.minio.sys) varient d'eux-memes. Les
+    # documents se controlent avec controle-sauvegarde-minio.py.
+    internes = sum(1 for _, _, c in fichiers if "/.minio.sys/" in c + "/")
+    detail = f" (dont {internes} fichiers internes .minio.sys)" if internes else ""
+    print(f"OK {archive} : {len(fichiers)} fichiers copies{detail}, {total} octets, mode 600")
 
 
 if __name__ == "__main__":
