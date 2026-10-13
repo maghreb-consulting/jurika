@@ -58,7 +58,7 @@ export function EntityActivityPanel({ entityType, entityId, title = 'Activite' }
           <Loader2 className="h-5 w-5 animate-spin text-accent" />
         </div>
       ) : items.length === 0 ? (
-        <p className="py-4 text-center text-xs text-fg-subtle">Aucune activite enregistree.</p>
+        <p className="py-4 text-center text-xs text-fg-subtle">Aucune activité enregistrée.</p>
       ) : (
         <ul className="space-y-2">
           {items.map((e) => (

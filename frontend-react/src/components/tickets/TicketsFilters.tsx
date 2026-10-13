@@ -57,7 +57,7 @@ export function TicketsFilters({
             type="text"
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="Rechercher reference, titre, description..."
+            placeholder="Rechercher par référence, titre ou description…"
             className="h-9 pl-9 pr-4 w-full bg-bg-overlay border border-border rounded-lg text-sm focus:border-accent focus:outline-none"
           />
         </div>
@@ -84,9 +84,9 @@ export function TicketsFilters({
             onFilterPrioriteChange(e.target.value as TicketPriorite | '')
           }
           className="h-9 px-3 bg-bg-overlay border border-border rounded-lg text-xs hover:border-accent transition"
-          aria-label="Filtrer par priorite"
+          aria-label="Filtrer par priorité"
         >
-          <option value="">Toutes priorites</option>
+          <option value="">Toutes les priorités</option>
           {(Object.entries(PRIORITE_LABELS) as [TicketPriorite, string][]).map(
             ([k, v]) => (
               <option key={k} value={k}>
@@ -104,7 +104,7 @@ export function TicketsFilters({
           className="h-9 px-3 bg-bg-overlay border border-border rounded-lg text-xs hover:border-accent transition"
           aria-label="Filtrer par statut"
         >
-          <option value="">Tous statuts</option>
+          <option value="">Tous les statuts</option>
           {(Object.entries(STATUT_LABELS) as [TicketStatut, string][]).map(
             ([k, v]) => (
               <option key={k} value={k}>

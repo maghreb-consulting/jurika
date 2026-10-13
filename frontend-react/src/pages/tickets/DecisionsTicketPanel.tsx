@@ -95,8 +95,8 @@ export function DecisionsTicketPanel({
         </h3>
         <TexteAide cle="decisions-ticket" titre="Comment choisir les décisions">
           Cochez la ou les décisions que la société adopte dans ce dossier, puis enregistrez : les démarches du
-          ticket apparaissent en dessous, statut par statut. Une démarche « à apprécier » dépend d'une donnée non
-          encore saisie ou d'une condition rédigée en phrase : cochez-la si elle s'applique, sinon écartez-la avec
+          ticket apparaissent en dessous, statut par statut. Une démarche « à apprécier » dépend d’une donnée non
+          encore saisie ou d’une condition rédigée en phrase : cochez-la si elle s’applique, sinon écartez-la avec
           un motif.
         </TexteAide>
 

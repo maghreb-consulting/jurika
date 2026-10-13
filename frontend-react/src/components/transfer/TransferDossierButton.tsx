@@ -32,9 +32,9 @@ export function TransferDossierButton({ dossierId, raisonSociale, className, onD
         variant="secondary"
         onClick={() => setOpen(true)}
         className={className}
-        title="Transferer ce dossier a un collegue"
+        title="Transférer ce dossier à un collègue"
       >
-        <ArrowRightLeft className="mr-2 h-4 w-4" /> Transferer a...
+        <ArrowRightLeft className="mr-2 h-4 w-4" /> Transférer à un collègue
       </Button>
       <TransferDossierDrawer
         open={open}

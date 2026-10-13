@@ -7,7 +7,7 @@ import { Badge } from '../../components/ui/Badge';
 import { ticketService } from '../../services/ticket.service';
 import { useCurrentUser } from '../../store/authStore';
 import { extractError } from '../../lib/api';
-import { STATUT_LABELS, TICKET_TYPE_LABELS } from '../../types/ticket';
+import { PRIORITE_LABELS, STATUT_LABELS, TICKET_TYPE_LABELS } from '../../types/ticket';
 import type { Ticket } from '../../types/ticket';
 import { CancelTicketDialog } from './CancelTicketDialog';
 import { RepriseTicketDialog } from './RepriseTicketDialog';
@@ -19,6 +19,8 @@ import { RecapitulatifPanel } from './RecapitulatifPanel';
 import { NoteTicketPanel } from './NoteTicketPanel';
 import { DeboursPanel } from './DeboursPanel';
 import { EntityActivityPanel } from '../../components/tracabilite/EntityActivityPanel';
+import { AideStatutTicket } from './AideStatutTicket';
+import { profilTicket } from './textesAideStatut';
 
 interface Props {
   ticketId: string;
@@ -45,9 +47,15 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
   /** Lot L4b : recharge les demarches apres un changement de decisions. */
   const [versionDemarches, setVersionDemarches] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  /** Lot L6 (E9) : obstacles au passage, nommes par le serveur, pour l'aide du statut. */
+  const [obstacles, setObstacles] = useState<string[] | null>(null);
 
   const load = useCallback(async () => {
     ticketService.acces(ticketId).then(setAcces).catch(() => setAcces({ enCharge: false, raison: null }));
+    Promise.resolve()
+      .then(() => ticketService.passage(ticketId))
+      .then((p) => setObstacles(p.obstacles))
+      .catch(() => setObstacles(null));
     try {
       setTicket(await ticketService.get(ticketId));
     } catch (err) {
@@ -72,7 +80,7 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
 
   if (!ticket) {
     return (
-      <Drawer open onClose={onClose} title="Chargement..." width="lg">
+      <Drawer open onClose={onClose} title="Chargement du ticket…" width="lg">
         <div className="flex justify-center py-12">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
         </div>
@@ -102,7 +110,7 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
               {ticket.statut === 'GENERATION_DOCUMENTS' && (
                 <>
                   <Button variant="primary" onClick={() => navigate(`/workflows/${ticket.id}`)}>
-                    Reprendre le workflow
+                    Reprendre le parcours
                   </Button>
                   {/* Lot 1 — le parcours passe par « Déroulement de la démarche » :
                       on ne clôture plus directement depuis la génération. */}
@@ -117,7 +125,7 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
               {ticket.statut === 'DEROULEMENT_DEMARCHE' && (
                 <>
                   <Button variant="primary" onClick={() => navigate(`/workflows/${ticket.id}`)}>
-                    Consulter le workflow
+                    Consulter le parcours
                   </Button>
                   <Button variant="secondary" onClick={() => handleTransition('CLOTURE_DOSSIER')}>
                     Clôturer le dossier
@@ -128,7 +136,7 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
                   lecture seule (valeurs saisies + étapes + documents générés). */}
               {ticket.statut === 'CLOTURE_DOSSIER' && (
                 <Button variant="secondary" onClick={() => navigate(`/workflows/${ticket.id}`)}>
-                  Consulter le workflow
+                  Consulter le parcours
                 </Button>
               )}
               {/* Lot L4a (E6, RG-TKT-02/05) : un ticket ANNULE ne sort que par la reprise,
@@ -137,7 +145,7 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
               {ticket.statut === 'ANNULE' && (
                 <>
                   <Button variant="secondary" onClick={() => navigate(`/workflows/${ticket.id}`)}>
-                    Consulter le workflow
+                    Consulter le parcours
                   </Button>
                   <Button variant="primary" onClick={() => setShowReprise(true)}>
                     <Play className="mr-1 h-4 w-4" /> Reprendre
@@ -168,15 +176,18 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
         )}
 
         <section className="space-y-4">
+          <AideStatutTicket statut={ticket.statut} profil={profilTicket(user?.role, acces?.enCharge === true)}
+            obstacles={obstacles} />
+
           <div className="grid grid-cols-2 gap-4 rounded-lg bg-bg-overlay p-4 text-sm md:grid-cols-4">
             <Field label="Statut">
               <StatutBadge s={ticket.statut} />
             </Field>
-            <Field label="Priorite">{ticket.priorite}</Field>
-            <Field label="Echeance">
+            <Field label="Priorité">{PRIORITE_LABELS[ticket.priorite] ?? ticket.priorite}</Field>
+            <Field label="Échéance">
               {ticket.deadline ? new Date(ticket.deadline).toLocaleDateString('fr-FR') : '—'}
             </Field>
-            <Field label="Cree le">
+            <Field label="Créé le">
               {new Date(ticket.createdAt).toLocaleDateString('fr-FR')}
             </Field>
           </div>
@@ -191,7 +202,7 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
           {/* Ticket actuellement ANNULE : motif d'annulation en rouge (pertinent). */}
           {ticket.statut === 'ANNULE' && ticket.annulationMotif && (
             <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm">
-              <p className="font-semibold text-rose-800">Motif d'annulation</p>
+              <p className="font-semibold text-rose-800">Motif d’annulation</p>
               <p className="mt-1 text-rose-700">{ticket.annulationMotif}</p>
             </div>
           )}
@@ -276,7 +287,7 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
           <DeadlinesPanel ticketId={ticketId} />
 
           {/* E2 — Activite (tracabilite) de ce ticket */}
-          <EntityActivityPanel entityType="ticket" entityId={ticketId} title="Activite du ticket" />
+          <EntityActivityPanel entityType="ticket" entityId={ticketId} title="Activité du ticket" />
         </section>
       </Drawer>
 

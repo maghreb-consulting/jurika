@@ -53,12 +53,12 @@ export function TransferDossierDrawer({ open, dossierId, raisonSociale, onClose,
 
   const options = useMemo(
     () => [
-      { value: '', label: 'Choisir un collegue...' },
+      { value: '', label: 'Choisir un collègue…' },
       // Tous les contacts ici sont des EMPLOYES (cf. filtre ci-dessus) — plus
       // de branche libellé "(Superviseur)" : elle était devenue morte.
       ...contacts.map((u) => ({
         value: u.userId,
-        label: `${u.firstName} ${u.lastName} (Employe)`,
+        label: `${u.firstName} ${u.lastName} (employé)`,
       })),
     ],
     [contacts],
@@ -66,14 +66,14 @@ export function TransferDossierDrawer({ open, dossierId, raisonSociale, onClose,
 
   async function submit() {
     if (!toUserId) {
-      setError('Selectionnez un collegue destinataire.');
+      setError('Sélectionnez le collègue qui reprendra le dossier.');
       return;
     }
     setLoading(true);
     setError(null);
     try {
       await transferService.requestTransfer(dossierId, toUserId, motif);
-      setSuccess('Demande de transfert envoyee. En attente d\'acceptation du collegue.');
+      setSuccess('Demande de transfert envoyée. Le dossier vous reste confié jusqu’à ce que votre collègue l’accepte.');
       onDone?.();
     } catch (err) {
       setError(extractError(err).message);
@@ -86,7 +86,7 @@ export function TransferDossierDrawer({ open, dossierId, raisonSociale, onClose,
     <Drawer
       open={open}
       onClose={onClose}
-      title="Transferer le dossier"
+      title="Transférer le dossier"
       subtitle={raisonSociale}
       width="md"
       footer={
@@ -115,8 +115,8 @@ export function TransferDossierDrawer({ open, dossierId, raisonSociale, onClose,
         ) : (
           <>
             <p className="text-sm text-fg-subtle">
-              Une demande sera envoyee au collegue. Le transfert ne s'applique
-              qu'apres son acceptation.
+              Choisissez l’employé qui reprendra ce dossier. Une demande lui est envoyée : le transfert ne
+              s’applique qu’après son acceptation, et vous restez responsable du dossier d’ici là.
             </p>
             <Select
               label="Nouveau responsable"
@@ -126,7 +126,7 @@ export function TransferDossierDrawer({ open, dossierId, raisonSociale, onClose,
             />
             <div className="flex flex-col gap-1">
               <label htmlFor="transfer-motif" className="text-sm font-medium text-fg-muted">
-                Motif (optionnel)
+                Motif (facultatif)
               </label>
               <textarea
                 id="transfer-motif"
@@ -134,7 +134,7 @@ export function TransferDossierDrawer({ open, dossierId, raisonSociale, onClose,
                 onChange={(e) => setMotif(e.target.value)}
                 rows={3}
                 maxLength={1000}
-                placeholder="Ex: conge prolonge, repartition de charge..."
+                placeholder="Exemple : congé prolongé, répartition de la charge…"
                 className="w-full rounded-lg border border-border bg-bg-raised px-3 py-2 text-sm text-fg focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
             </div>

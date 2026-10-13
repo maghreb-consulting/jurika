@@ -69,7 +69,7 @@ export function useWorkspaceDirectory(): WorkspaceDirectory {
   }, []);
 
   const nameOf = (userId: string | null | undefined): string => {
-    if (!userId) return 'Systeme';
+    if (!userId) return 'Système';
     if (current && userId === current.userId) return 'Vous';
     const u = byId[userId];
     if (u) return `${u.firstName} ${u.lastName}`.trim() || u.email;

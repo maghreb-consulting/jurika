@@ -278,7 +278,7 @@ function DemarcheRow({
 
   async function cocher() {
     if (!dossierId && !sansJustificatif) {
-      setErreur("Le ticket n'a pas de dossier rattaché : le justificatif ne peut pas être déposé.");
+      setErreur("Le ticket n’a pas de dossier rattaché : le justificatif ne peut pas être déposé.");
       return;
     }
     setEnCours(true);
@@ -837,7 +837,7 @@ function EcarterDrawer({
           label="Motif"
           value={motif}
           onChange={(e) => setMotif(e.target.value)}
-          placeholder="Pourquoi cette démarche ne s'applique pas à ce dossier"
+          placeholder="Pourquoi cette démarche ne s’applique pas à ce dossier"
           error={erreur ?? undefined}
         />
         <div className="flex justify-end gap-2">

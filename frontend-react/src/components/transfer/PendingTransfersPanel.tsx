@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRightLeft, Check, X } from 'lucide-react';
+import { InfoBulle } from '../ui/Aide';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { transferService } from '../../services/transfer.service';
@@ -71,6 +72,10 @@ export function PendingTransfersPanel() {
       <div className="mb-3 flex items-center gap-2">
         <ArrowRightLeft className="h-4 w-4 text-accent" />
         <h3 className="text-sm font-semibold text-fg">Transferts en attente</h3>
+        <InfoBulle
+          libelle="Que faire d’un transfert reçu ?"
+          texte="Un collègue vous propose de reprendre un de ses dossiers. Acceptez : le dossier et ses tickets en cours passent sous votre responsabilité. Refusez : il reste à votre collègue. Les demandes que vous avez envoyées attendent la réponse de leur destinataire."
+        />
       </div>
 
       {error && (
@@ -81,7 +86,7 @@ export function PendingTransfersPanel() {
 
       {inbox.length > 0 && (
         <div className="mb-3">
-          <p className="mb-1 text-xs uppercase tracking-wide text-fg-subtle">Recus</p>
+          <p className="mb-1 text-xs uppercase tracking-wide text-fg-subtle">Reçus</p>
           <ul className="divide-y divide-border rounded-lg border border-border">
             {inbox.map((t) => (
               <li key={t.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
@@ -118,13 +123,13 @@ export function PendingTransfersPanel() {
 
       {outbox.length > 0 && (
         <div>
-          <p className="mb-1 text-xs uppercase tracking-wide text-fg-subtle">Envoyes</p>
+          <p className="mb-1 text-xs uppercase tracking-wide text-fg-subtle">Envoyés</p>
           <ul className="divide-y divide-border rounded-lg border border-border">
             {outbox.map((t) => (
               <li key={t.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                 <div className="min-w-0">
                   <p className="truncate font-medium text-fg">{t.raisonSociale ?? t.dossierId.slice(0, 8)}</p>
-                  <p className="text-xs text-fg-subtle">En attente d'acceptation</p>
+                  <p className="text-xs text-fg-subtle">En attente d’acceptation</p>
                 </div>
                 <Button
                   size="sm"

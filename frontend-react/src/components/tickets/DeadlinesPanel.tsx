@@ -71,7 +71,7 @@ export function DeadlinesPanel({ className, ticketId, limit = 10 }: DeadlinesPan
     >
       <header className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-[var(--color-fg)]">
-          Echeances {ticketId ? "du ticket" : "ouvertes"}
+          Échéances {ticketId ? "du ticket" : "ouvertes"}
         </h3>
         <span className="text-[11px] text-[var(--color-fg-muted)]">
           {state === "ready" && items.length > 0 ? `${items.length} ouverte${items.length > 1 ? "s" : ""}` : ""}
@@ -87,8 +87,8 @@ export function DeadlinesPanel({ className, ticketId, limit = 10 }: DeadlinesPan
 
       {state === "error" && (
         <ErrorState
-          title="Echeances indisponibles"
-          message="Impossible de charger les echeances. Reessayez ou contactez l'administrateur."
+          title="Échéances indisponibles"
+          message="Impossible de charger les échéances. Réessayez dans un instant ; si le problème persiste, prévenez votre superviseur."
           onRetry={() => void load()}
         />
       )}
@@ -96,8 +96,8 @@ export function DeadlinesPanel({ className, ticketId, limit = 10 }: DeadlinesPan
       {state === "ready" && items.length === 0 && (
         <EmptyState
           icon={<Calendar className="h-5 w-5" />}
-          title="Aucune echeance ouverte"
-          description="Tout est sous controle. Les echeances apparaitront ici des qu'une regle metier sera declenchee."
+          title="Aucune échéance ouverte"
+          description="Rien à surveiller pour l’instant. Les échéances apparaissent ici dès qu’une démarche ou un délai légal en fait naître une."
         />
       )}
 
@@ -114,7 +114,7 @@ export function DeadlinesPanel({ className, ticketId, limit = 10 }: DeadlinesPan
                   <span className="truncate text-sm font-medium text-[var(--color-fg)]">{d.title}</span>
                   {d.source === "AUTO" && (
                     <span className="rounded bg-[var(--color-bg-overlay)] px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-[var(--color-fg-muted)]">
-                      auto
+                      automatique
                     </span>
                   )}
                 </div>
@@ -129,7 +129,7 @@ export function DeadlinesPanel({ className, ticketId, limit = 10 }: DeadlinesPan
                 <button
                   type="button"
                   onClick={() => void onComplete(d.id)}
-                  title="Marquer comme terminee"
+                  title="Marquer comme terminée" aria-label="Marquer comme terminée"
                   className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-overlay)] hover:text-emerald-400"
                 >
                   <CheckCircle2 className="h-4 w-4" />
@@ -137,7 +137,7 @@ export function DeadlinesPanel({ className, ticketId, limit = 10 }: DeadlinesPan
                 <button
                   type="button"
                   onClick={() => void onDismiss(d.id)}
-                  title="Ignorer"
+                  title="Ignorer" aria-label="Ignorer"
                   className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-overlay)] hover:text-[var(--color-fg)]"
                 >
                   <X className="h-4 w-4" />

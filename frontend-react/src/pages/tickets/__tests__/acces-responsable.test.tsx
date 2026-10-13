@@ -44,7 +44,7 @@ describe('Accès au ticket (RG-DOS-01)', () => {
     role = 'EMPLOYE';
     acces.mockResolvedValue({ enCharge: true, peutAgir: true, raison: null });
     monter();
-    expect(await screen.findByRole('button', { name: /Reprendre le workflow/ })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Reprendre le parcours/ })).toBeInTheDocument();
     expect(screen.queryByTestId('acces-raison')).toBeNull();
   });
 
@@ -53,7 +53,7 @@ describe('Accès au ticket (RG-DOS-01)', () => {
     acces.mockResolvedValue({ enCharge: false, peutAgir: false, raison: 'Ce ticket relève d’un dossier dont vous n’êtes pas le responsable.' });
     monter();
     expect(await screen.findByTestId('acces-raison')).toHaveTextContent(/pas le responsable/);
-    expect(screen.queryByRole('button', { name: /Reprendre le workflow/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Reprendre le parcours/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /Annuler le ticket/ })).toBeNull();
   });
 

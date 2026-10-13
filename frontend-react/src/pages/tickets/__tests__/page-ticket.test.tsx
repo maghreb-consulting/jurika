@@ -63,6 +63,12 @@ describe('Page du ticket (tous parcours)', () => {
     monter();
     expect(await screen.findByTestId('obstacles')).toHaveTextContent('Génération du PV de transfert');
     expect(screen.getByRole('button', { name: /Passer à/ })).toBeDisabled();
+    // Lot L6 (E9) : l'aide du statut dit quoi faire, renvoie aux obstacles, annonce la suite.
+    const aide = screen.getByTestId('aide-statut-ticket');
+    expect(aide).toHaveTextContent('Étape 2 sur 4');
+    expect(aide).toHaveTextContent('Ouvrez le parcours');
+    expect(aide).toHaveTextContent('un point à régler');
+    expect(aide).toHaveTextContent('Déroulement de la démarche');
     // Données saisies avec leur provenance, documents lisibles.
     expect(await screen.findByText('PARACOSME', { selector: 'td' })).toBeInTheDocument();
     expect(await screen.findByTestId('documents-ticket')).toHaveTextContent('— PARACOSME — version 2');
@@ -86,6 +92,7 @@ describe('Page du ticket (tous parcours)', () => {
     monter();
     expect(await screen.findByTestId('obstacles')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Passer à/ })).toBeNull();
+    expect(screen.getByTestId('aide-statut-ticket')).toHaveTextContent('Seul l’employé responsable du dossier fait avancer ce ticket');
     expect(await screen.findByTestId('acces-raison')).toHaveTextContent('Consultation');
   });
 });

@@ -65,9 +65,9 @@ describe('TableView — colonne Responsable', () => {
     expect(screen.queryByText(/emp-1/)).not.toBeInTheDocument();
   });
 
-  it('affiche « Non assigne » pour un ticket sans responsable', () => {
+  it('affiche « Non assigné » pour un ticket sans responsable', () => {
     render(<TableView tickets={[ticket({ id: 't-b', assigneId: null })]} onSelect={() => {}} />);
     const row = screen.getByText('Creation SARL').closest('tr') as HTMLElement;
-    expect(within(row).getByText('Non assigne')).toBeInTheDocument();
+    expect(within(row).getByText('Non assigné')).toBeInTheDocument();
   });
 });

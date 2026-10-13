@@ -63,7 +63,7 @@ export function RepriseTicketDialog({ ticket, onClose, onConfirm }: Props) {
   return (
     <SensitiveTransitionDialog
       title="Reprendre le ticket"
-      intro={`Le ticket retrouvera son statut antérieur, « ${STATUT_LABELS[cible]} », et le parcours reprendra là où il s'était arrêté. Vous allez reprendre le ticket`}
+      intro={`Le ticket retrouvera son statut antérieur, « ${STATUT_LABELS[cible]} », et le parcours reprendra là où il s’était arrêté. Vous allez reprendre le ticket`}
       reference={ticket.reference}
       minLength={1}
       confirmLabel={`Reprendre au statut « ${STATUT_LABELS[cible]} »`}

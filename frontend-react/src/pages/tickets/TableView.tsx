@@ -15,13 +15,13 @@ export function TableView({ tickets, onSelect }: Props) {
       <table className="w-full text-sm">
         <thead className="bg-bg-overlay font-heading text-xs uppercase tracking-wider text-fg-muted">
           <tr>
-            <th className="px-4 py-3 text-left">Reference</th>
+            <th className="px-4 py-3 text-left">Référence</th>
             <th className="px-4 py-3 text-left">Titre</th>
             <th className="px-4 py-3 text-left">Type</th>
             <th className="px-4 py-3 text-left">Responsable</th>
             <th className="px-4 py-3 text-left">Statut</th>
-            <th className="px-4 py-3 text-left">Priorite</th>
-            <th className="px-4 py-3 text-left">Echeance</th>
+            <th className="px-4 py-3 text-left">Priorité</th>
+            <th className="px-4 py-3 text-left">Échéance</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -49,7 +49,7 @@ export function TableView({ tickets, onSelect }: Props) {
           {tickets.length === 0 && (
             <tr>
               <td colSpan={7} className="px-4 py-12 text-center text-sm text-fg-subtle">
-                Aucun ticket
+                Aucun ticket ne correspond à la recherche ou aux filtres.
               </td>
             </tr>
           )}
@@ -62,7 +62,7 @@ export function TableView({ tickets, onSelect }: Props) {
 function ResponsableCell({ t }: { t: Ticket }) {
   const label = responsableLabel(t);
   if (label === 'Non assigne') {
-    return <span className="text-fg-subtle italic">Non assigne</span>;
+    return <span className="text-fg-subtle italic">Non assigné</span>;
   }
   return <span className="text-fg">{label}</span>;
 }

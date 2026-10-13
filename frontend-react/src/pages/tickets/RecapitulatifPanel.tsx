@@ -145,7 +145,7 @@ export function RecapitulatifPanel({ ticketId }: { ticketId: string }) {
               {!d.visibleClient && (
                 <span
                   className="flex items-center gap-1 text-[11px] text-fg-subtle"
-                  title="Ce document n'est pas montré au client"
+                  title="Ce document n’est pas montré au client"
                 >
                   <EyeOff className="h-3 w-3" /> masqué
                 </span>

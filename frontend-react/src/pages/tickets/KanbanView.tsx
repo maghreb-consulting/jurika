@@ -118,7 +118,7 @@ export function KanbanView({
       await onTransition(dragTicket.id, target);
     } catch (err) {
       console.error(err);
-      toast.error((err as Error)?.message ?? 'Transition impossible');
+      toast.error((err as Error)?.message ?? 'Changement de statut impossible.');
     } finally {
       setDragTicket(null);
     }
@@ -175,7 +175,7 @@ export function KanbanView({
             {col.sortie && (
               <p className="-mt-1 px-1 text-[11px] leading-snug text-fg-subtle">
                 Sortie du parcours, atteignable depuis les quatre autres statuts —
-                ce n'est pas une cinquième étape.
+                ce n’est pas une cinquième étape.
               </p>
             )}
             {/* min-h preserve la zone de drop meme si la colonne est vide.
@@ -205,7 +205,7 @@ export function KanbanView({
                           await onTransition(t.id, 'GENERATION_DOCUMENTS');
                         } catch (err) {
                           console.error(err);
-                          toast.error((err as Error)?.message ?? 'Transition impossible');
+                          toast.error((err as Error)?.message ?? 'Changement de statut impossible.');
                         }
                       }}
                       className="inline-flex items-center justify-center gap-1 rounded-lg border border-accent/40 bg-accent/10 px-2 py-1 text-xs font-semibold text-accent transition-colors hover:bg-accent/20"

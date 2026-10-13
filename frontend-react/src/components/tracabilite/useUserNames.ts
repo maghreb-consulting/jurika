@@ -61,7 +61,7 @@ export function useUserNames(): (userId: string | null | undefined) => string {
   }, [contacts]);
 
   return (userId) => {
-    if (!userId) return 'Systeme';
+    if (!userId) return 'Système';
     if (current && userId === current.userId) return 'Vous';
     return names[userId] ?? `${userId.slice(0, 8)}…`;
   };
