@@ -20,7 +20,7 @@ class SmtpEmailSenderExpediteurTest {
     @Test
     void sans_expediteur_configure_rien_ne_part_et_l_erreur_le_dit() {
         JavaMailSender mail = mock(JavaMailSender.class);
-        SmtpEmailSender sender = new SmtpEmailSender(mail, mock(SpringTemplateEngine.class), "  ", "JURIKA");
+        SmtpEmailSender sender = new SmtpEmailSender(mail, mock(SpringTemplateEngine.class), "  ", "JURIKA", "");
         assertThatThrownBy(() -> sender.sendTemplated("client@example.com", "Sujet", "welcome", Map.of()))
                 .isInstanceOf(EmailDeliveryException.class)
                 .hasMessageContaining("SMTP_FROM");

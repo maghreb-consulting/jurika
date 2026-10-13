@@ -136,6 +136,8 @@ jurika:
     provider: ${JURIKA_EMAIL_PROVIDER:smtp}
     # Lot L6 (E5) : aucune adresse par defaut (jurika.ma non deploye) ; SMTP_FROM vient de .env.local.
     from: ${SMTP_FROM:}
+    # Lot L6 (E5) : contact cite dans les courriels ; vide = l'adresse d'expediteur (SMTP_FROM).
+    support: ${JURIKA_SUPPORT_EMAIL:}
     from-name: ${SMTP_FROM_NAME:JURIKA}
     verification-base-url: ${FRONTEND_URL:http://localhost:5173}/verify-email
     # Lot L5 (E10) : page de confirmation d'un changement d'adresse ou d'identifiant

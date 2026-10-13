@@ -53,7 +53,7 @@
                 Maghreb Consulting &mdash; Casablanca, Maroc &mdash;
                 <a href="mailto:contact@maghreb-consulting.ma" style="color:#8a6d1f;text-decoration:none;">contact@maghreb-consulting.ma</a>
                 &mdash; Support technique :
-                <a href="mailto:support@jurika.ma" style="color:#8a6d1f;text-decoration:none;">support@jurika.ma</a>
+                <a th:href="${'mailto:' + supportEmail}" style="color:#8a6d1f;text-decoration:none;" th:text="${supportEmail}">contact</a>
             </p>
             <p style="margin:0;font-size:11px;color:#94A3B8;line-height:1.5;">
                 Vous recevez ce courriel parce que vous &ecirc;tes utilisateur de JURIKA. &nbsp;
@@ -94,7 +94,7 @@
             JURIKA ne vous demandera <strong>jamais</strong> votre mot de passe ni vos codes de double
             authentification, que ce soit par courriel, par SMS ou par t&eacute;l&eacute;phone. En cas de message
             suspect, transmettez-le &agrave;
-            <a href="mailto:abuse@jurika.ma" style="color:#7F1D1D;">abuse@jurika.ma</a>.
+            <a th:href="${'mailto:' + supportEmail}" style="color:#7F1D1D;" th:text="${supportEmail}">contact</a>.
         </p>
     </div>
 </th:block>

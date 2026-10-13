@@ -41,15 +41,20 @@ public class SmtpEmailSender implements EmailSender {
     private final SpringTemplateEngine templateEngine;
     private final String fromAddress;
     private final String fromName;
+    private final String supportAddress;
 
     public SmtpEmailSender(JavaMailSender mailSender,
                            SpringTemplateEngine templateEngine,
                            @Value("${jurika.email.from:}") String fromAddress,
-                           @Value("${jurika.email.from-name:JURIKA}") String fromName) {
+                           @Value("${jurika.email.from-name:JURIKA}") String fromName,
+                           @Value("${jurika.email.support:}") String supportAddress) {
         this.mailSender = mailSender;
         this.templateEngine = templateEngine;
         this.fromAddress = fromAddress;
         this.fromName = fromName;
+        // Lot L6 (E5) : contact cite dans les courriels (alertes de securite...). jurika.ma n'est
+        // pas deploye : a defaut de JURIKA_SUPPORT_EMAIL, l'adresse d'expediteur verifiee.
+        this.supportAddress = (supportAddress == null || supportAddress.isBlank()) ? fromAddress : supportAddress;
     }
 
     @Override
@@ -62,6 +67,7 @@ public class SmtpEmailSender implements EmailSender {
         }
         Context ctx = new Context();
         ctx.setVariables(variables);
+        if (!variables.containsKey("supportEmail")) ctx.setVariable("supportEmail", supportAddress);
         String html = templateEngine.process("email/" + templateName, ctx);
 
         MimeMessage message = mailSender.createMimeMessage();

@@ -118,6 +118,8 @@ class EmailTemplateRenderingTest {
         vars.put("ipAddress", "196.12.34.56");
         vars.put("userAgent", "Chrome 128 / Windows 11");
         vars.put("unsubscribeUrl", null);
+        // Lot L6 (E5) : contact injecte (JURIKA_SUPPORT_EMAIL, a defaut l'expediteur verifie).
+        vars.put("supportEmail", "contact-verifie@example.com");
 
         String html = render("password-changed", vars);
 
@@ -125,7 +127,7 @@ class EmailTemplateRenderingTest {
         assertThat(html).contains("196.12.34.56");
         assertThat(html).contains("Chrome 128");
         assertThat(html).contains("22/05/2026");
-        assertThat(html).contains("support@jurika.ma");
+        assertThat(html).contains("mailto:contact-verifie@example.com").doesNotContain("@jurika.ma\"");
         assertThat(html).contains("Attention aux messages frauduleux");
     }
 

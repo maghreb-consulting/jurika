@@ -25,7 +25,8 @@ public class BillingProperties {
     private String salesEmail = "contact@jurika.ai";
 
     @NotBlank
-    private String fromEmail = "noreply@jurika.ma";
+    // Lot L6 (E5) : aucun expediteur par defaut (jurika.ma non deploye) : SMTP_FROM obligatoire (@NotBlank).
+    private String fromEmail = "";
 
     /**
      * BUG 14 (2026-06-07) — autorise la methode de paiement TEST_BYPASS

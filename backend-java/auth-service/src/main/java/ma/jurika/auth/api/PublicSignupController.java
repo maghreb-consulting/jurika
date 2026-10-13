@@ -43,15 +43,19 @@ public class PublicSignupController {
      * tester Brevo / le contenu du welcome.html.
      */
     private final boolean deferCredentialsAllowed;
+    private final String contactSupport;
     /** Lot L0 (E13a) : le workspace cree devient le workspace courant avant la transaction. */
     private final ma.jurika.auth.application.ContexteWorkspacePublic contextePublic;
 
     public PublicSignupController(SignupCabinetUseCase signupCabinetUseCase,
                                    @Value("${jurika.signup.defer-credentials-allowed:true}") boolean deferCredentialsAllowed,
+                                   @Value("${jurika.email.support:${jurika.email.from:}}") String contactSupport,
                                    ma.jurika.auth.application.ContexteWorkspacePublic contextePublic) {
         this.signupCabinetUseCase = signupCabinetUseCase;
         this.contextePublic = contextePublic;
         this.deferCredentialsAllowed = deferCredentialsAllowed;
+        // Lot L6 (E5) : contact cite au demandeur ; jurika.ma n'est pas deploye avant la mise en production.
+        this.contactSupport = contactSupport == null ? "" : contactSupport.trim();
         if (!deferCredentialsAllowed) {
             log.warn("Signup defer-credentials DESACTIVE par config -- le mail welcome partira AU SIGNUP "
                     + "meme si le wizard demande de le differer. Ne pas activer en prod.");
@@ -114,7 +118,10 @@ public class PublicSignupController {
             message = "Cabinet cr\u00e9\u00e9. Ouvrez le courriel que nous venons de vous envoyer pour activer votre compte.";
         } else {
             message = "Cabinet cr\u00e9\u00e9, mais le courriel d\u2019activation n\u2019a pas pu \u00eatre envoy\u00e9. "
-                    + "\u00c9crivez \u00e0 support@jurika.ma en indiquant votre code workspace : " + result.workspaceCode();
+                    + (contactSupport.isBlank()
+                        ? "Contactez JURIKA en indiquant le code de votre cabinet : "
+                        : "\u00c9crivez \u00e0 " + contactSupport + " en indiquant le code de votre cabinet : ")
+                    + result.workspaceCode();
         }
         java.util.HashMap<String, Object> resp = new java.util.HashMap<>();
         resp.put("workspaceCode", result.workspaceCode());
