@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="fr">
 <head>
     <meta charset="UTF-8"/>
-    <title>Code de recuperation 2FA utilise - JURIKA</title>
+    <title>Code de r&eacute;cup&eacute;ration utilis&eacute; - JURIKA</title>
 </head>
 <body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#0F172A;">
 
@@ -12,7 +12,7 @@
             <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
                    style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
 
-                <th:block th:replace="~{email/_base :: header(title='Code de recuperation 2FA utilise')}"/>
+                <th:block th:replace="~{email/_base :: header(title='Code de r&eacute;cup&eacute;ration utilis&eacute;')}"/>
 
                 <tr>
                     <td style="padding:32px;">
@@ -21,9 +21,9 @@
                         </p>
 
                         <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
-                            Un de vos <strong>codes de recuperation 2FA</strong> vient d'etre utilise
-                            pour acceder a votre compte JURIKA. Ce code est desormais
-                            <strong>consomme</strong> et ne peut plus servir.
+                            Un de vos <strong>codes de r&eacute;cup&eacute;ration de double authentification</strong> vient
+                            d&rsquo;&ecirc;tre utilis&eacute; pour acc&eacute;der &agrave; votre compte JURIKA. Ce code est d&eacute;sormais
+                            <strong>consomm&eacute;</strong> et ne peut plus servir.
                         </p>
 
                         <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:16px;margin:24px 0;">
@@ -40,36 +40,36 @@
                                 <span th:text="${userAgent}">Chrome / Windows</span>
                             </p>
                             <p style="margin:0;font-size:13px;color:#64748B;">
-                                <strong style="color:#0F172A;">Codes de recuperation restants :</strong>
+                                <strong style="color:#0F172A;">Codes de r&eacute;cup&eacute;ration restants :</strong>
                                 <span th:text="${remaining}">9</span> / 10
                             </p>
                         </div>
 
                         <p style="margin:0 0 16px;font-size:14px;color:#0F172A;line-height:1.55;">
-                            <strong>C'etait vous ?</strong> Aucune action n'est requise.
-                            Si votre stock de codes est bas (3 ou moins), pensez a regenerer
-                            10 nouveaux codes depuis votre page de securite.
+                            <strong>C&rsquo;&eacute;tait vous&nbsp;?</strong> Aucune action n&rsquo;est requise.
+                            S&rsquo;il vous reste 3 codes ou moins, pensez &agrave; r&eacute;g&eacute;n&eacute;rer
+                            10 nouveaux codes depuis votre page de s&eacute;curit&eacute;.
                         </p>
 
                         <div style="background:#FEF2F2;border:1px solid #FCA5A5;border-radius:8px;padding:16px;margin:24px 0;">
                             <p style="margin:0 0 8px;font-size:13px;color:#991B1B;font-weight:600;">
-                                Ce n'etait pas vous ?
+                                Ce n&rsquo;&eacute;tait pas vous&nbsp;?
                             </p>
                             <p style="margin:0 0 12px;font-size:12px;color:#7F1D1D;line-height:1.55;">
-                                Votre compte est probablement compromis. Agissez immediatement :
+                                Votre compte est probablement compromis. Agissez imm&eacute;diatement&nbsp;:
                             </p>
                             <ol style="margin:0;padding-left:18px;font-size:12px;color:#7F1D1D;line-height:1.6;">
-                                <li>Changez votre mot de passe JURIKA</li>
-                                <li>Regenerez vos codes de recuperation (invalide les anciens)</li>
-                                <li>Verifiez vos sessions actives et deconnectez les inconnues</li>
-                                <li>Contactez <a href="mailto:support@jurika.ma" style="color:#7F1D1D;">support@jurika.ma</a></li>
+                                <li>changez votre mot de passe JURIKA ;</li>
+                                <li>r&eacute;g&eacute;n&eacute;rez vos codes de r&eacute;cup&eacute;ration (les anciens deviennent invalides) ;</li>
+                                <li>v&eacute;rifiez vos sessions actives et fermez celles que vous ne reconnaissez pas ;</li>
+                                <li>&eacute;crivez &agrave; <a href="mailto:support@jurika.ma" style="color:#7F1D1D;">support@jurika.ma</a>.</li>
                             </ol>
                         </div>
 
                         <div style="text-align:center;margin:24px 0;">
                             <a th:href="${securityUrl}"
-                               style="display:inline-block;background:#0c1d3f;color:#c8a45c;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">
-                                Gerer la securite de mon compte
+                               style="display:inline-block;background:#0c1d3f;color:#c9a24a;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">
+                                G&eacute;rer la s&eacute;curit&eacute; de mon compte
                             </a>
                         </div>
 

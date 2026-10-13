@@ -89,7 +89,7 @@ class EmailTemplateRenderingTest {
         assertThat(html).contains("Aa9$kL2p#Mq8");
         assertThat(html).contains("Maghreb Consulting");
         assertThat(html).contains("contact@maghreb-consulting.ma");
-        assertThat(html).contains("Avertissement anti-phishing");
+        assertThat(html).contains("Attention aux messages frauduleux");
         assertThat(html).contains("Conforme RGPD");
     }
 
@@ -126,7 +126,7 @@ class EmailTemplateRenderingTest {
         assertThat(html).contains("Chrome 128");
         assertThat(html).contains("22/05/2026");
         assertThat(html).contains("support@jurika.ma");
-        assertThat(html).contains("Avertissement anti-phishing");
+        assertThat(html).contains("Attention aux messages frauduleux");
     }
 
     @Test
@@ -179,9 +179,9 @@ class EmailTemplateRenderingTest {
         String html = render("2fa-enabled", vars);
 
         assertThat(html).contains("Google Authenticator (TOTP)");
-        assertThat(html).contains("codes de recuperation");
+        assertThat(plainText(html)).contains("codes de recuperation");
         assertThat(html).contains("Maghreb Consulting");
-        assertThat(html).contains("Avertissement anti-phishing");
+        assertThat(html).contains("Attention aux messages frauduleux");
     }
 
     @Test
@@ -241,7 +241,7 @@ class EmailTemplateRenderingTest {
         // Le wordmark texte "JURI"+"KA" est rendu meme si les images sont bloquees.
         assertThat(html).contains(">JURI<");
         assertThat(html).contains(">KA<");
-        assertThat(plainText(html)).contains("Gestion juridique augmentee");
+        assertThat(plainText(html)).contains("Gestion juridique des entreprises");
         // Source de l'embleme = CID embarque par defaut (pas d'URL externe).
         assertThat(html).contains("cid:jurika-logo");
         // L'ancienne URL externe non deployee (bloquee par Gmail/Outlook) a disparu.
