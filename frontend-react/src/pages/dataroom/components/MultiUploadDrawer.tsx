@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertCircle, Check, Loader2, Trash2, Upload } from 'lucide-react';
 import { Drawer } from '../../../components/ui/Drawer';
 import { Button } from '../../../components/ui/Button';
@@ -79,13 +79,16 @@ export function MultiUploadDrawer({
   const [submitting, setSubmitting] = useState(false);
   const [recap, setRecap] = useState<{ ok: number; ko: number } | null>(null);
 
-  useEffect(() => {
+  // Remise a zero a l'ouverture, ajustee pendant le rendu (pas d'etat pose dans un effet).
+  const [ouvertVu, setOuvertVu] = useState<boolean | null>(null);
+  if (ouvertVu !== open) {
+    setOuvertVu(open);
     if (open) {
       setRows([]);
       setSubmitting(false);
       setRecap(null);
     }
-  }, [open]);
+  }
 
   function addFiles(list: FileList | null) {
     if (!list) return;

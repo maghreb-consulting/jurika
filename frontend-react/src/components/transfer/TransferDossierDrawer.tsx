@@ -28,10 +28,18 @@ export function TransferDossierDrawer({ open, dossierId, raisonSociale, onClose,
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Remise a zero a l'ouverture, ajustee pendant le rendu (pas d'etat pose dans un effet).
+  const [ouvertVu, setOuvertVu] = useState<boolean | null>(null);
+  if (ouvertVu !== open) {
+    setOuvertVu(open);
+    if (open) {
+      setError(null);
+      setSuccess(null);
+    }
+  }
+
   useEffect(() => {
     if (!open) return;
-    setError(null);
-    setSuccess(null);
     authService
       .listChatContacts()
       // 2026-06-30 — Un dossier ne peut être transféré qu'à un EMPLOYE : le

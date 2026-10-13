@@ -33,7 +33,8 @@ export function PendingTransfersPanel() {
   }, []);
 
   useEffect(() => {
-    load();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(load);
     // Rafraichissement temps reel best-effort (le socket est optionnel).
     const socket = getSocket();
     const refresh = () => load();

@@ -88,7 +88,8 @@ export function DemarchesPanel({
   }, [ticketId]);
 
   useEffect(() => {
-    void charger();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(charger);
   }, [charger]);
 
   if (chargement) {

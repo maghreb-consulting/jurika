@@ -1,4 +1,4 @@
-import type { DragEvent } from 'react';
+import { useState, type DragEvent } from 'react';
 import { Calendar, ArrowRightLeft } from 'lucide-react';
 import { TICKET_TYPE_LABELS, responsableLabel } from '../../types/ticket';
 import type { Ticket } from '../../types/ticket';
@@ -42,6 +42,8 @@ const PRIO_COLORS: Record<
  * Backend ne renvoie pas encore ces donnees -> placeholders supprimes pour rester fidele au modele.
  */
 export function TicketCard({ ticket, onClick, onDragStart }: Props) {
+  // Instant de reference fige au montage de la carte (rendu pur).
+  const [maintenant] = useState(() => Date.now());
   const typeColor = TYPE_COLORS[ticket.type] ?? {
     bg: 'bg-bg-overlay',
     text: 'text-fg-subtle',
@@ -63,7 +65,7 @@ export function TicketCard({ ticket, onClick, onDragStart }: Props) {
 
   const overdue =
     ticket.deadline &&
-    new Date(ticket.deadline).getTime() < Date.now() &&
+    new Date(ticket.deadline).getTime() < maintenant &&
     ticket.statut !== 'CLOTURE_DOSSIER' &&
     ticket.statut !== 'ANNULE';
 

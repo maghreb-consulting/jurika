@@ -79,10 +79,13 @@ export function ClientAccessLogDrawer({
   // Reset + premier chargement a l'ouverture
   useEffect(() => {
     if (!open) return;
-    setItems([]);
-    setOffset(0);
-    setTotal(0);
-    load(0, true);
+    // Remise a zero par promesse : aucun etat pose de facon synchrone dans l'effet
+    void Promise.resolve().then(() => {
+      setItems([]);
+      setOffset(0);
+      setTotal(0);
+      return load(0, true);
+    });
   }, [open, load]);
 
   return (

@@ -121,15 +121,16 @@ function DataroomManagementView() {
   }, []);
 
   useEffect(() => {
-    loadDossiers();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(loadDossiers);
   }, [loadDossiers]);
 
-  // Auto-selection du dossier passe en query (?dossier=...) une fois la liste chargee.
-  useEffect(() => {
-    if (!deepLinkDossier || selected || dossiers.length === 0) return;
+  // Auto-selection du dossier passe en query (?dossier=...) une fois la liste chargee
+  // (ajustee pendant le rendu : la selection pose converge en un tour).
+  if (deepLinkDossier && !selected && dossiers.length > 0) {
     const match = dossiers.find((d) => d.id === deepLinkDossier);
     if (match) setSelected(match);
-  }, [deepLinkDossier, dossiers, selected]);
+  }
 
   // Comptes par onglet (utiles pour les badges).
   const activeCount = useMemo(
@@ -500,8 +501,11 @@ function DataroomDetail({
   }, [dossier.id]);
 
   useEffect(() => {
-    loadSettings();
-    loadClient();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(() => {
+      void loadSettings();
+      void loadClient();
+    });
   }, [loadSettings, loadClient]);
 
   useEffect(() => {

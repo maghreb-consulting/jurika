@@ -36,7 +36,8 @@ export function EntityActivityPanel({ entityType, entityId, title = 'Activite' }
   }, [entityType, entityId]);
 
   useEffect(() => {
-    load();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(load);
   }, [load]);
 
   return (

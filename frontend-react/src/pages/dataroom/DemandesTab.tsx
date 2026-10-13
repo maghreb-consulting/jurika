@@ -88,7 +88,8 @@ export function DemandesTab({
   }, [dossierId]);
 
   useEffect(() => {
-    load();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(load);
   }, [load]);
 
   const counts = useMemo(() => {
@@ -349,7 +350,10 @@ function CreateTicketDrawer({ open, onClose, demande, onCreated }: CreateTicketD
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Remise a zero a l'ouverture, ajustee pendant le rendu (pas d'etat pose dans un effet).
+  const [ouvertureVue, setOuvertureVue] = useState<{ open: boolean; demande: DemandeSummary } | null>(null);
+  if (!ouvertureVue || ouvertureVue.open !== open || ouvertureVue.demande !== demande) {
+    setOuvertureVue({ open, demande });
     if (open) {
       setTitre(demande.sujet ?? '');
       setDescription(demande.description ?? '');
@@ -357,7 +361,7 @@ function CreateTicketDrawer({ open, onClose, demande, onCreated }: CreateTicketD
       setPriorite('NORMALE');
       setError(null);
     }
-  }, [open, demande]);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -460,13 +464,16 @@ function NewDemandeDrawer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Remise a zero a l'ouverture, ajustee pendant le rendu (pas d'etat pose dans un effet).
+  const [ouvertVu, setOuvertVu] = useState<boolean | null>(null);
+  if (ouvertVu !== open) {
+    setOuvertVu(open);
     if (open) {
       setSujet('');
       setDescription('');
       setError(null);
     }
-  }, [open]);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

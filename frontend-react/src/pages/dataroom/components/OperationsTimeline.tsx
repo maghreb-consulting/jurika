@@ -38,8 +38,8 @@ const MONTH_LABEL_FORMATTER = new Intl.DateTimeFormat('fr-FR', {
   year: 'numeric',
 });
 
-/** Groupage helper exporte pour test unitaire. */
-export function groupByMonth(
+/** Groupage par mois calendaire. */
+function groupByMonth(
   entries: TicketHistoryEntry[],
 ): { monthKey: string; label: string; items: TicketHistoryEntry[] }[] {
   const buckets = new Map<string, TicketHistoryEntry[]>();

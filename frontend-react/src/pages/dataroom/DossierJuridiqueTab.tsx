@@ -40,20 +40,16 @@ import type { DroitsDossier } from '../../types/dataroom';
 import { InfoBulle } from '../../components/ui/Aide';
 import { STATUT_LABELS_COURTS } from '../../types/ticket';
 import type { TicketStatut } from '../../types/ticket';
-import {
-  DEFAULT_FILTERS,
-  JuridiqueSearchBar,
-  filtersToApiParams,
-  type SearchFilters,
-} from './components/JuridiqueSearchBar';
+import { JuridiqueSearchBar } from './components/JuridiqueSearchBar';
+import { DEFAULT_FILTERS, filtersToApiParams, type SearchFilters } from './components/juridiqueFiltres';
 import { OperationsTimeline } from './components/OperationsTimeline';
+import { TimelineFiltersDrawer } from './components/TimelineFiltersDrawer';
 import {
   countActiveTimelineFilters,
   DEFAULT_TIMELINE_FILTERS,
-  TimelineFiltersDrawer,
   timelineFiltersToApiParams,
   type TimelineFilters,
-} from './components/TimelineFiltersDrawer';
+} from './components/timelineFiltres';
 import { UploadDocumentDialog } from './components/UploadDocumentDialog';
 import { MultiUploadDrawer } from './components/MultiUploadDrawer';
 import { DocumentVersionsDropdown } from './components/DocumentVersionsDropdown';
@@ -192,21 +188,30 @@ export function DossierJuridiqueTab({
   }, [dossierId, timelineFilters]);
 
   useEffect(() => {
-    load();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(load);
   }, [load]);
 
   // Effet recherche : se declenche a chaque changement filtres si recherche active.
+  // Les etats sont poses dans la promesse : aucun etat pose de facon synchrone dans l'effet.
   useEffect(() => {
+    let cancelled = false;
     if (!isSearchActive) {
-      setSearchResults(null);
-      setSearchTotal(0);
-      return;
+      void Promise.resolve().then(() => {
+        if (cancelled) return;
+        setSearchResults(null);
+        setSearchTotal(0);
+      });
+      return () => {
+        cancelled = true;
+      };
     }
     const params = filtersToApiParams(filters);
-    let cancelled = false;
-    setSearching(true);
-    dataroomService
-      .searchJuridique(dossierId, params)
+    void Promise.resolve()
+      .then(() => {
+        if (!cancelled) setSearching(true);
+        return dataroomService.searchJuridique(dossierId, params);
+      })
       .then((res) => {
         if (cancelled) return;
         setSearchResults(res.items);

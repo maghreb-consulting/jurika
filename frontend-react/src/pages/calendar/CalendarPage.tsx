@@ -149,7 +149,8 @@ export function CalendarPage() {
   }, [source, range.from, range.to]);
 
   useEffect(() => {
-    void reload();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(reload);
   }, [reload]);
 
   // --- Vue tickets : groupement par jour + priorite ---

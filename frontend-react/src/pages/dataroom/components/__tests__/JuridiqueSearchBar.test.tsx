@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { DEFAULT_FILTERS, JuridiqueSearchBar, type SearchFilters } from '../JuridiqueSearchBar';
+import { JuridiqueSearchBar } from '../JuridiqueSearchBar';
+import { DEFAULT_FILTERS, type SearchFilters } from '../juridiqueFiltres';
 
 // Sprint 14 bis / D3 — JuridiqueSearchBar
 // 3 tests : input rend la query, debounce 300ms onChange, drawer s'ouvre.

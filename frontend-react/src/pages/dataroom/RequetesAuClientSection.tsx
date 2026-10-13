@@ -66,7 +66,8 @@ export function RequetesAuClientSection({
   }, [dossierId]);
 
   useEffect(() => {
-    void load();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(load);
   }, [load]);
 
   const sorted = useMemo(

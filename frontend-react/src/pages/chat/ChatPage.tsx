@@ -65,7 +65,7 @@ export function ChatPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [typingFrom, setTypingFrom] = useState<string | null>(null);
-  const [connected, setConnected] = useState(false);
+  const [connected, setConnected] = useState(() => getSocket()?.connected === true);
 
   // BUG 12 (2026-06-08) — Index userId -> nom complet/role, alimente par la
   // liste des contacts. Sert a afficher des libelles humains a la place des
@@ -200,8 +200,11 @@ export function ChatPage() {
 
   // Initial load
   useEffect(() => {
-    void loadConversations();
-    void loadContacts();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(() => {
+      void loadConversations();
+      void loadContacts();
+    });
   }, [loadConversations, loadContacts]);
 
   // Socket lifecycle
@@ -275,7 +278,6 @@ export function ChatPage() {
     s.on('chat:message', onMessage);
     s.on('chat:typing', onTyping);
 
-    if (s.connected) setConnected(true);
 
     return () => {
       s.off('connect', onConnect);

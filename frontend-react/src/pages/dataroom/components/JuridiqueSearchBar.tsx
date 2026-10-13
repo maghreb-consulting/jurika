@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Filter, Search, X } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Drawer } from '../../../components/ui/Drawer';
@@ -9,6 +9,7 @@ import {
   type DocumentType,
   type VersionScope,
 } from '../../../types/dataroom';
+import { DEFAULT_FILTERS, type SearchFilters } from './juridiqueFiltres';
 
 /**
  * Sprint 7 / TASK 1.5 -- Barre de recherche + drawer filtres avances
@@ -23,21 +24,6 @@ import {
  * Sync URL : volontairement OUT pour V1 (eviter scope creep). A ajouter
  * via useSearchParams si demande utilisateur (TASK 1 plan ligne 115).
  */
-export interface SearchFilters {
-  q: string;
-  types: (DocumentType | string)[];
-  from: string; // YYYY-MM-DD ou ''
-  to: string;
-  versionScope: VersionScope;
-}
-
-export const DEFAULT_FILTERS: SearchFilters = {
-  q: '',
-  types: [],
-  from: '',
-  to: '',
-  versionScope: 'CURRENT',
-};
 
 interface Props {
   filters: SearchFilters;
@@ -66,10 +52,12 @@ export function JuridiqueSearchBar({
   const [localQuery, setLocalQuery] = useState(filters.q);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    // Sync entrant si parent reset filtres
+  // Synchronisation entrante (le parent remet les filtres a zero), ajustee pendant le rendu.
+  const [qVue, setQVue] = useState(filters.q);
+  if (qVue !== filters.q) {
+    setQVue(filters.q);
     setLocalQuery(filters.q);
-  }, [filters.q]);
+  }
 
   function handleQueryChange(v: string) {
     setLocalQuery(v);
@@ -268,24 +256,4 @@ export function JuridiqueSearchBar({
       </Drawer>
     </>
   );
-}
-
-/**
- * Helper : convertit SearchFilters (UI) -> SearchJuridiqueParams (API).
- * Conversion date YYYY-MM-DD vers Instant ISO 8601 (UTC, debut/fin du jour).
- */
-export function filtersToApiParams(f: SearchFilters): {
-  q?: string;
-  types?: string[];
-  from?: string;
-  to?: string;
-  versionScope?: VersionScope;
-} {
-  return {
-    q: f.q.trim() || undefined,
-    types: f.types.length > 0 ? f.types : undefined,
-    from: f.from ? `${f.from}T00:00:00Z` : undefined,
-    to: f.to ? `${f.to}T23:59:59Z` : undefined,
-    versionScope: f.versionScope,
-  };
 }

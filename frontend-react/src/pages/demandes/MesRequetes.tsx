@@ -4,7 +4,7 @@ import { Loader2, Inbox, CheckCircle2, Clock, Send, FileUp, X } from 'lucide-rea
 import { dataroomService } from '../../services/dataroom.service';
 import { formatDateTime } from '../../lib/date';
 import type { DossierBrief, RequeteSummary, RequeteStatut } from '../../types/dataroom';
-import { REQUETE_STATUT_LABELS, TYPE_REQUETE_LABELS } from '../../types/dataroom';
+import { TYPE_REQUETE_LABELS } from '../../types/dataroom';
 
 /**
  * Lot AG — Ecran CLIENT « Demandes de mon conseiller » (requetes EMPLOYE_TO_CLIENT).
@@ -41,7 +41,8 @@ export function MesRequetes() {
   }, []);
 
   useEffect(() => {
-    void load();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(load);
   }, [load]);
 
   const byColumn = useMemo(() => {
@@ -257,9 +258,4 @@ function RepondreModal({
       </div>
     </div>
   );
-}
-
-/** Libelle statut (reutilise le mapping partage). */
-export function requeteStatutLabel(s: RequeteStatut): string {
-  return REQUETE_STATUT_LABELS[s];
 }

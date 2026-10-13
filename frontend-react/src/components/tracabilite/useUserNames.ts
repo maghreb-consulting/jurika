@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { authService } from '../../services/auth.service';
 import type { WorkspaceUser } from '../../types/auth';
 import { useCurrentUser } from '../../store/authStore';
@@ -54,12 +54,10 @@ export function useUserContacts(): { contacts: WorkspaceUser[]; loading: boolean
 export function useUserNames(): (userId: string | null | undefined) => string {
   const current = useCurrentUser();
   const { contacts } = useUserContacts();
-  const [names, setNames] = useState<Record<string, string>>({});
-
-  useEffect(() => {
+  const names = useMemo(() => {
     const map: Record<string, string> = {};
     for (const u of contacts) map[u.userId] = `${u.firstName} ${u.lastName}`.trim();
-    setNames(map);
+    return map;
   }, [contacts]);
 
   return (userId) => {

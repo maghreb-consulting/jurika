@@ -46,7 +46,8 @@ export function DepotsTab({
   }, [dossierId]);
 
   useEffect(() => {
-    reload();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(reload);
   }, [reload]);
 
   return (

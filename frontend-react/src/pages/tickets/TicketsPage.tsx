@@ -78,7 +78,8 @@ export function TicketsPage() {
 
   useEffect(() => {
     if (view !== 'table') return;
-    void loadTable(0);
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(() => loadTable(0));
   }, [view, loadTable]);
 
   const reloadAll = useCallback(async () => {

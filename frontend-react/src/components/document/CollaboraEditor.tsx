@@ -34,6 +34,8 @@ interface Props {
 export function CollaboraEditor({ documentId, titre, onClose, onEdited }: Props) {
   const [seance, setSeance] = useState<SeanceEdition | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
+  /** Echeance du jeton d'acces (ms depuis l'epoque), calculee a l'ouverture de la seance. */
+  const [expireA, setExpireA] = useState(0);
   /**
    * Vrai dès que l'éditeur signale une modification. Sert à ne prévenir
    * l'appelant que si quelque chose a réellement changé.
@@ -49,6 +51,7 @@ export function CollaboraEditor({ documentId, titre, onClose, onEdited }: Props)
       .then((s) => {
         if (annule) return;
         seanceRef.current = s;
+        setExpireA(Date.now() + s.accessTokenTtlMs);
         setSeance(s);
       })
       .catch((e: unknown) => {
@@ -136,7 +139,7 @@ export function CollaboraEditor({ documentId, titre, onClose, onEdited }: Props)
     `${seance.editeurUrl}${sep}` +
     `WOPISrc=${encodeURIComponent(seance.wopiSrc)}` +
     `&access_token=${encodeURIComponent(seance.accessToken)}` +
-    `&access_token_ttl=${Date.now() + seance.accessTokenTtlMs}` +
+    `&access_token_ttl=${expireA}` +
     `&lang=fr-FR` +
     (seance.canWrite ? '' : '&permission=readonly');
 

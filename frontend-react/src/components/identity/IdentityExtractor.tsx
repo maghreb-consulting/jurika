@@ -297,7 +297,7 @@ const LIBELLES_PARASITES = [
   /VALABLE\s+JUSQU['’]?\s*AU/gi,
 ];
 
-export function nettoieValeurOcr(raw: string): string {
+function nettoieValeurOcr(raw: string): string {
   let out = raw;
   for (const re of LIBELLES_PARASITES) out = out.replace(re, ' ');
   return out.replace(/\s{2,}/g, ' ').trim();

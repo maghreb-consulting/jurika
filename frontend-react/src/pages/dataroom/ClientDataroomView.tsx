@@ -102,7 +102,8 @@ export function ClientDataroomView() {
   }, []);
 
   useEffect(() => {
-    load();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(load);
   }, [load]);
 
   // Sprint 7 / TASK 5.3 -- WebSocket : reload du juridique + toast quand
@@ -902,7 +903,8 @@ function ClientDepots({
   }, [dossierId]);
 
   useEffect(() => {
-    reload();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(reload);
   }, [reload]);
 
   const uploadFiles = useCallback(
