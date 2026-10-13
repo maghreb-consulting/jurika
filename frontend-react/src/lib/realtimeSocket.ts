@@ -1,25 +1,30 @@
 import { io, Socket } from 'socket.io-client';
 import { tokenStorage } from './api';
+import { adresseTempsReel } from './realtimeAdresse';
 
-export const REALTIME_URL =
-  (import.meta.env.VITE_REALTIME_URL as string | undefined) ?? 'http://localhost:3000';
+/** Lot L5b (E1) : meme origine que le front par defaut (voir realtimeAdresse.ts). */
+export const TEMPS_REEL = adresseTempsReel(
+  import.meta.env.VITE_REALTIME_URL as string | undefined,
+  typeof window !== 'undefined' ? window.location.origin : '',
+);
+/** Base REST du service temps reel. */
+export const REALTIME_URL = TEMPS_REEL.baseRest;
 
 let socket: Socket | null = null;
 let currentToken: string | null = null;
 
 function buildSocket(token: string): Socket {
-  return io(REALTIME_URL, {
-    path: '/socket.io',
+  return io(TEMPS_REEL.origine, {
+    path: TEMPS_REEL.cheminSocket,
     transports: ['websocket', 'polling'],
     auth: { token },
     autoConnect: true,
     reconnection: true,
-    // 2026-06-22 — le service temps réel (backend-node, port 3000) est optionnel.
-    // On limite les tentatives pour ne pas inonder la console d'erreurs réseau
-    // quand il n'est pas démarré (au lieu d'un retry infini).
-    reconnectionAttempts: 3,
+    // Lot L5b (E1) : reconnexion sans limite, espacee jusqu'a 30 s. Avant, trois
+    // tentatives puis plus rien : une coupure breve laissait l'ecran « Hors-ligne »
+    // jusqu'au rechargement de la page.
     reconnectionDelay: 2000,
-    reconnectionDelayMax: 10_000,
+    reconnectionDelayMax: 30_000,
     timeout: 8_000,
   });
 }

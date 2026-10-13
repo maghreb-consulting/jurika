@@ -13,7 +13,7 @@ import type {
  * VITE_REALTIME_URL et non par le gateway Java.
  */
 const realtimeApi = axios.create({
-  baseURL: `${REALTIME_URL}/api/v1`,
+  baseURL: REALTIME_URL,
   headers: { 'Content-Type': 'application/json' },
 });
 
