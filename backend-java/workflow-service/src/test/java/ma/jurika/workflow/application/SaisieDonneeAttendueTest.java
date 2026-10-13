@@ -58,7 +58,7 @@ class SaisieDonneeAttendueTest {
     void une_donnee_non_reclamee_est_refusee() {
         when(requete.getResultList()).thenReturn(List.of());
         assertThatThrownBy(() -> service.saisir(ws, ticket, employe, "DENOMINATION", "X"))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("n'est pas attendue");
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("n\u2019est pas attendue");
         verify(magasin, never()).poser(any(), any(), any(), any(), any(), any(), any());
     }
 

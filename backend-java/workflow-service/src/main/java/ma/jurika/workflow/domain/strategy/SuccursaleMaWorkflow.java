@@ -80,7 +80,7 @@ public class SuccursaleMaWorkflow extends AbstractWorkflow {
             case 3 -> stepGeneration(ctx);
             case 4 -> stepPiecesJointes(ctx);
             case 5 -> stepSynthese(ctx);
-            default -> StepResult.blocked("Etape inconnue : " + ctx.step());
+            default -> StepResult.blocked("\u00c9tape inconnue : " + ctx.step());
         };
     }
 
@@ -92,20 +92,20 @@ public class SuccursaleMaWorkflow extends AbstractWorkflow {
 
         String dossierIdRaw = strOrNull(first0(p.get("dossierId"), p.get("societeMereId")));
         if (dossierIdRaw == null) {
-            return StepResult.blocked("Selectionnez la societe mere.");
+            return StepResult.blocked("S\u00e9lectionnez la soci\u00e9t\u00e9 m\u00e8re.");
         }
         try {
             UUID.fromString(dossierIdRaw);
         } catch (IllegalArgumentException e) {
             return StepResult.blocked(
-                    "Identifiant de societe invalide. Selectionnez la societe dans la liste.");
+                    "Identifiant de soci\u00e9t\u00e9 invalide. S\u00e9lectionnez la soci\u00e9t\u00e9 dans la liste.");
         }
 
         Map<String, Object> dossier = readDossier(ctx);
         String statut = strOrNull(dossier.get("statut"));
         if (statut != null && STATUTS_INCOMPATIBLES.contains(statut)) {
             return StepResult.blocked(
-                    "Cette societe est au statut « " + statut + " » : elle ne peut plus "
+                    "Cette soci\u00e9t\u00e9 est au statut \u00ab " + statut + " \u00bb : elle ne peut plus "
                             + "ouvrir de succursale.");
         }
 
@@ -113,19 +113,19 @@ public class SuccursaleMaWorkflow extends AbstractWorkflow {
         String dateRaw = strOrNull(first0(p.get("dateAG"), p.get("dateAssemblee"), p.get("dateAGE")));
         if (dateRaw == null) {
             return StepResult.blocked(
-                    "La date de l'assemblee qui decide l'ouverture est obligatoire.");
+                    "La date de l\u2019assembl\u00e9e qui d\u00e9cide l\u2019ouverture est obligatoire.");
         }
         LocalDate dateAg = parseDateOrNull(dateRaw);
         if (dateAg == null) {
-            return StepResult.blocked("Date d'assemblee invalide. Format attendu : AAAA-MM-JJ.");
+            return StepResult.blocked("Date d\u2019assembl\u00e9e invalide. Format attendu : AAAA-MM-JJ.");
         }
         if (dateAg.isAfter(LocalDate.now().plusDays(30))) {
             return StepResult.blocked(
-                    "La date d'assemblee ne peut pas etre dans le futur (> 30 jours).");
+                    "La date d\u2019assembl\u00e9e ne peut pas \u00eatre dans le futur (> 30 jours).");
         }
         if (dateAg.isBefore(LocalDate.now().minusYears(2))) {
             return StepResult.blocked(
-                    "La date d'assemblee est trop ancienne (> 2 ans). Verifiez la saisie.");
+                    "La date d\u2019assembl\u00e9e est trop ancienne (> 2 ans). V\u00e9rifiez la saisie.");
         }
 
         // Type d'assemblee : contrairement a la dissolution, l'ouverture d'une succursale
@@ -133,12 +133,12 @@ public class SuccursaleMaWorkflow extends AbstractWorkflow {
         String typeAg = strOrNull(first0(p.get("typeAssemblee"), p.get("assembleeNature")));
         if (typeAg == null) {
             return StepResult.blocked(
-                    "Precisez le type d'assemblee : ordinaire ou extraordinaire.");
+                    "Pr\u00e9cisez le type d\u2019assembl\u00e9e : ordinaire ou extraordinaire.");
         }
         String typeNorm = typeAg.toLowerCase(Locale.ROOT);
         if (!TYPES_ASSEMBLEE.contains(typeNorm)) {
             return StepResult.blocked(
-                    "Type d'assemblee invalide : attendu « ordinaire » ou « extraordinaire ».");
+                    "Type d\u2019assembl\u00e9e invalide : attendu \u00ab ordinaire \u00bb ou \u00ab extraordinaire \u00bb.");
         }
 
         // Convocation OPTIONNELLE — regle DURE des 16 jours (jours calendaires).
@@ -183,14 +183,14 @@ public class SuccursaleMaWorkflow extends AbstractWorkflow {
         Map<String, Object> p = ctx.payload();
         if (!isTrue(p, "pvValide")) {
             return StepResult.blocked(
-                    "Le PV de creation de la succursale doit etre valide avant de poursuivre.");
+                    "Le PV de cr\u00e9ation de la succursale doit \u00eatre valide avant de poursuivre.");
         }
         if (!isTrue(p, "annonceValide")) {
             return StepResult.blocked(
-                    "L'annonce legale d'ouverture doit etre validee : sa publication au "
-                            + "Journal d'Annonces Legales est obligatoire (les numero et date "
-                            + "de depot legal, attribues par le greffe apres depot, restent "
-                            + "facultatifs a ce stade).");
+                    "L\u2019annonce l\u00e9gale d\u2019ouverture doit \u00eatre valid\u00e9e : sa publication au "
+                            + "Journal d\u2019Annonces L\u00e9gales est obligatoire (les num\u00e9ro et date "
+                            + "de d\u00e9p\u00f4t l\u00e9gal, attribu\u00e9s par le greffe apr\u00e8s d\u00e9p\u00f4t, restent "
+                            + "facultatifs \u00e0 ce stade).");
         }
 
         Map<String, Object> dossier = readDossier(ctx);

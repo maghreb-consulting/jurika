@@ -74,7 +74,7 @@ public class DonneesAttenduesService {
         if (attendue.isEmpty()) {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.BAD_REQUEST,
-                    "Cette donn\u00e9e n'est pas attendue par les documents du ticket.");
+                    "Cette donn\u00e9e n\u2019est pas attendue par les documents du ticket.");
         }
         magasin.poser(workspaceId, ticketId, variable, valeur,
                 ma.jurika.workflow.domain.model.VariableDuDossier.Origine.SAISIE, auteur, "donnee-attendue");

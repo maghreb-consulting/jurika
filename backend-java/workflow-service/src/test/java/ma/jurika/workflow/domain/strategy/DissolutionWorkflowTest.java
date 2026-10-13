@@ -85,7 +85,7 @@ class DissolutionWorkflowTest {
     void etapeHorsPlage_rejetee() {
         assertThatThrownBy(() -> run(5, Map.of(), "SARL"))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("1..4");
+                .hasMessageContaining("1 \u00e0 4");
     }
 
     // ── Etape 1 : saisie ───────────────────────────────────────────────
@@ -187,7 +187,7 @@ class DissolutionWorkflowTest {
         p.put("liquidateur", l);
         StepResult res = run(1, p, "SARL");
         assertThat(res.canAdvance()).isFalse();
-        assertThat(res.message()).contains("denomination du liquidateur");
+        assertThat(res.message()).contains("d\u00e9nomination du liquidateur");
     }
 
     @Test
@@ -207,7 +207,7 @@ class DissolutionWorkflowTest {
         p.remove("siegeLiquidation");
         StepResult res = run(1, p, "SARL");
         assertThat(res.canAdvance()).isFalse();
-        assertThat(res.message()).contains("siege de la liquidation");
+        assertThat(res.message()).contains("si\u00e8ge de la liquidation");
     }
 
     @Test
@@ -233,7 +233,7 @@ class DissolutionWorkflowTest {
         p.put("siegeIdentique", "non");
         StepResult res = run(1, p, "SARL");
         assertThat(res.canAdvance()).isFalse();
-        assertThat(res.message()).contains("siege de la liquidation");
+        assertThat(res.message()).contains("si\u00e8ge de la liquidation");
     }
 
     @Test
@@ -334,7 +334,7 @@ class DissolutionWorkflowTest {
     void step2_annonceNonValide_blocage() {
         StepResult res = run(2, Map.of("pvValide", true), "SARL");
         assertThat(res.canAdvance()).isFalse();
-        assertThat(res.message()).contains("annonce legale");
+        assertThat(res.message()).contains("annonce l\u00e9gale");
     }
 
     @Test

@@ -114,7 +114,7 @@ class PvAgoWorkflowTest {
             p.remove("dossierId");
             StepResult r = wf.executeStep(ctx(1, p, Map.of()));
             assertThat(r.canAdvance()).isFalse();
-            assertThat(r.message()).contains("societe");
+            assertThat(r.message()).contains("soci\u00e9t\u00e9");
         }
 
         @Test
@@ -151,7 +151,7 @@ class PvAgoWorkflowTest {
             p.put("exerciceClos", String.valueOf(LocalDate.now().getYear() + 1));
             StepResult r = wf.executeStep(ctx(1, p, Map.of()));
             assertThat(r.canAdvance()).isFalse();
-            assertThat(r.message()).contains("AVANT la cloture");
+            assertThat(r.message()).contains("AVANT la cl\u00f4ture");
         }
 
         @Test
@@ -207,7 +207,7 @@ class PvAgoWorkflowTest {
             approbationOf(sansMontant).remove("resultatNet");
             StepResult r = wf.executeStep(ctx(2, sansMontant, Map.of()));
             assertThat(r.canAdvance()).isFalse();
-            assertThat(r.message()).contains("montant du resultat");
+            assertThat(r.message()).contains("montant du r\u00e9sultat");
         }
 
         @Test
@@ -240,7 +240,7 @@ class PvAgoWorkflowTest {
                     List.of(affectation("", 100_000L)));
             StepResult r = wf.executeStep(ctx(2, p, Map.of()));
             assertThat(r.canAdvance()).isFalse();
-            assertThat(r.message()).contains("libelle");
+            assertThat(r.message()).contains("libell\u00e9");
         }
 
         @Test
@@ -270,7 +270,7 @@ class PvAgoWorkflowTest {
             a.put("dividendeMiseEnPaiementDate", DATE_AGO.plusDays(30).toString());
             StepResult r = wf.executeStep(ctx(2, p, Map.of()));
             assertThat(r.canAdvance()).isFalse();
-            assertThat(r.message()).contains("depasse le resultat");
+            assertThat(r.message()).contains("d\u00e9passe le r\u00e9sultat");
         }
 
         @Test
@@ -358,6 +358,6 @@ class PvAgoWorkflowTest {
     void etape_hors_plage_est_rejetee() {
         assertThatThrownBy(() -> wf.executeStep(ctx(6, Map.of(), Map.of())))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("1..5");
+                .hasMessageContaining("1 \u00e0 5");
     }
 }

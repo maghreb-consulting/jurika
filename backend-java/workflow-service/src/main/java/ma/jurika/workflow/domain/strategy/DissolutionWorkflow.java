@@ -68,7 +68,7 @@ public class DissolutionWorkflow extends AbstractWorkflow {
             case 2 -> stepGeneration(ctx);
             case 3 -> stepPiecesJointes(ctx);
             case 4 -> stepSynthese(ctx);
-            default -> StepResult.blocked("Etape inconnue : " + ctx.step());
+            default -> StepResult.blocked("\u00c9tape inconnue : " + ctx.step());
         };
     }
 
@@ -82,13 +82,13 @@ public class DissolutionWorkflow extends AbstractWorkflow {
         String dossierIdRaw = strOrNull(p.get("dossierId"));
         if (dossierIdRaw == null) {
             return StepResult.blocked(
-                    "Selectionnez la societe a dissoudre.");
+                    "S\u00e9lectionnez la soci\u00e9t\u00e9 \u00e0 dissoudre.");
         }
         try {
             UUID.fromString(dossierIdRaw);
         } catch (IllegalArgumentException e) {
             return StepResult.blocked(
-                    "Identifiant de societe invalide. Selectionnez la societe dans la liste.");
+                    "Identifiant de soci\u00e9t\u00e9 invalide. S\u00e9lectionnez la soci\u00e9t\u00e9 dans la liste.");
         }
         // Motif >= 20 chars
         String motif = strOrNull(p.get("motifDissolution"));
@@ -97,9 +97,9 @@ public class DissolutionWorkflow extends AbstractWorkflow {
         }
         if (motif.length() < MOTIF_MIN_LENGTH) {
             return StepResult.blocked(
-                    "Le motif est trop court — precisez la cause (cessation d'activite, "
-                            + "mesentente entre associes, etc.). Minimum "
-                            + MOTIF_MIN_LENGTH + " caracteres.");
+                    "Le motif est trop court \u2014 pr\u00e9cisez la cause (cessation d\u2019activit\u00e9, "
+                            + "m\u00e9sentente entre associ\u00e9s, etc.). Minimum "
+                            + MOTIF_MIN_LENGTH + " caract\u00e8res.");
         }
         // Date AGE — la dissolution se decide TOUJOURS en assemblee generale
         // EXTRAORDINAIRE (ou par decision de l'associe unique en SARL AU) : aucun
@@ -107,7 +107,7 @@ public class DissolutionWorkflow extends AbstractWorkflow {
         String dateRaw = strOrNull(p.get("dateAGE"));
         if (dateRaw == null) {
             return StepResult.blocked(
-                    "La date de l'assemblee generale extraordinaire (AGE) de dissolution "
+                    "La date de l\u2019assembl\u00e9e g\u00e9n\u00e9rale extraordinaire (AGE) de dissolution "
                             + "est obligatoire.");
         }
         LocalDate dateAge = parseDateOrNull(dateRaw);
@@ -117,19 +117,19 @@ public class DissolutionWorkflow extends AbstractWorkflow {
         }
         if (dateAge.isAfter(LocalDate.now().plusDays(30))) {
             return StepResult.blocked(
-                    "La date AGE ne peut pas etre dans le futur (> 30 jours).");
+                    "La date AGE ne peut pas \u00eatre dans le futur (> 30 jours).");
         }
         if (dateAge.isBefore(LocalDate.now().minusYears(2))) {
             return StepResult.blocked(
-                    "La date AGE est trop ancienne (> 2 ans). Verifiez la saisie.");
+                    "La date AGE est trop ancienne (> 2 ans). V\u00e9rifiez la saisie.");
         }
         // Statut dossier (best-effort via injection en existingData)
         Map<String, Object> dossier = readDossier(ctx);
         String statut = strOrNull(dossier.get("statut"));
         if (statut != null && STATUTS_DEJA_TERMINES.contains(statut)) {
             return StepResult.blocked(
-                    "Cette societe est deja au statut « " + statut + " » : la dissolution "
-                            + "n'est pas applicable.");
+                    "Cette soci\u00e9t\u00e9 est d\u00e9j\u00e0 au statut \u00ab " + statut + " \u00bb : la dissolution "
+                            + "n\u2019est pas applicable.");
         }
 
         // Liquidateur : nomme des l'etape 1 (il alimente le PV ET l'annonce legale).
@@ -139,21 +139,21 @@ public class DissolutionWorkflow extends AbstractWorkflow {
         String liquidateurNom = WorkflowSteps.identiteLiquidateur(liquidateur);
         if (liquidateurNom == null) {
             return StepResult.blocked(liquidateurMorale
-                    ? "Indiquez la denomination du liquidateur personne morale."
-                    : "Designez le liquidateur : choisissez un gerant ou un associe existant, "
+                    ? "Indiquez la d\u00e9nomination du liquidateur personne morale."
+                    : "D\u00e9signez le liquidateur : choisissez un g\u00e9rant ou un associ\u00e9 existant, "
                             + "ou saisissez un liquidateur externe.");
         }
         String source = strOrNull(liquidateur.get("source"));
         if (source != null && !LIQUIDATEUR_SOURCES.contains(source.toUpperCase(java.util.Locale.ROOT))) {
             return StepResult.blocked(
-                    "Origine du liquidateur invalide : attendu « BD » (gerant / associe du "
+                    "Origine du liquidateur invalide : attendu \u00ab BD \u00bb (g\u00e9rant / associ\u00e9 du "
                             + "dossier) ou « EXTERNE » (saisie manuelle).");
         }
         String liquidateurAdresse = strOrNull(liquidateur.get("adresse"));
         if (liquidateurAdresse == null) {
             return StepResult.blocked(
-                    "L'adresse du liquidateur est obligatoire : elle figure dans l'annonce "
-                            + "legale de dissolution.");
+                    "L\u2019adresse du liquidateur est obligatoire : elle figure dans l\u2019annonce "
+                            + "l\u00e9gale de dissolution.");
         }
 
         // Siege de la liquidation (variable $SIEGE_LIQUIDATION de l'annonce).
@@ -164,7 +164,7 @@ public class DissolutionWorkflow extends AbstractWorkflow {
         String siegeLiquidation = strOrNull(first0(p.get("siegeLiquidation"),
                 liquidateur.get("siege")));
         if (siegeLiquidation == null && !"oui".equals(siegeIdentique)) {
-            return StepResult.blocked("Le siege de la liquidation est obligatoire.");
+            return StepResult.blocked("Le si\u00e8ge de la liquidation est obligatoire.");
         }
 
         // Convocation OPTIONNELLE — regle DURE des 16 jours (jours calendaires).
@@ -220,14 +220,14 @@ public class DissolutionWorkflow extends AbstractWorkflow {
         Map<String, Object> p = ctx.payload();
         if (!isTrue(p, "pvValide")) {
             return StepResult.blocked(
-                    "Le PV de dissolution doit etre valide avant de poursuivre.");
+                    "Le PV de dissolution doit \u00eatre valide avant de poursuivre.");
         }
         if (!isTrue(p, "annonceValide")) {
             return StepResult.blocked(
-                    "L'annonce legale de dissolution doit etre validee : sa publication au "
-                            + "Journal d'Annonces Legales est obligatoire (les numero et date "
-                            + "de depot legal, attribues par le greffe apres depot, restent "
-                            + "facultatifs a ce stade).");
+                    "L\u2019annonce l\u00e9gale de dissolution doit \u00eatre valid\u00e9e : sa publication au "
+                            + "Journal d\u2019Annonces L\u00e9gales est obligatoire (les num\u00e9ro et date "
+                            + "de d\u00e9p\u00f4t l\u00e9gal, attribu\u00e9s par le greffe apr\u00e8s d\u00e9p\u00f4t, restent "
+                            + "facultatifs \u00e0 ce stade).");
         }
         Map<String, Object> out = new HashMap<>();
         out.put("pvValide", true);
@@ -262,8 +262,8 @@ public class DissolutionWorkflow extends AbstractWorkflow {
         out.put("archiveLe", java.time.Instant.now().toString());
         out.put("finalise", true);
         // Suggestion utilisateur : ouvrir le ticket Liquidation
-        out.put("nextSuggestion", "Ouvrir un ticket Liquidation lorsque le delai legal "
-                + "de 16 jours est ecoule.");
+        out.put("nextSuggestion", "Ouvrir un ticket Liquidation lorsque le d\u00e9lai l\u00e9gal "
+                + "de 16 jours est \u00e9coul\u00e9.");
         return StepResult.ok(out);
     }
 

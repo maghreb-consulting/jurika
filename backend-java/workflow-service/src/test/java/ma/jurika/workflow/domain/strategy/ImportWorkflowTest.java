@@ -175,7 +175,7 @@ class ImportWorkflowTest {
     @DisplayName("Il n'existe plus d'etape 10 : le suivi des exercices a disparu")
     void plusDEtapeSuivi() {
         assertThatThrownBy(() -> run(10, Map.of("regimeTvaMensuel", false), Map.of()))
-                .hasMessageContaining("hors plage (1..9)");
+                .hasMessageContaining("hors plage (1 \u00e0 9)");
     }
 
     @Test
@@ -333,7 +333,7 @@ class ImportWorkflowTest {
                         "documents", List.of(Map.of("type", "RC", "filename", "rc.pdf")))));
         StepResult r = run(9, Map.of("validated", true), existing);
         assertThat(r.canAdvance()).isFalse();
-        assertThat(r.message()).contains("Etape 1");
+        assertThat(r.message()).contains("\u00c9tape 1");
     }
 
     // ---- Lot L4d (E8) : publicites de la societe (annonces JAL et Bulletin officiel) ----

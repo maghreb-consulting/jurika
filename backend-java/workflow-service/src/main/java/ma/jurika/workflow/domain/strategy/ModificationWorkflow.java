@@ -110,7 +110,7 @@ public class ModificationWorkflow extends AbstractWorkflow {
             case 3 -> stepGenerationDocuments(ctx);
             case 4 -> stepPiecesJointes(ctx);
             case 5 -> stepFinalisation(ctx);
-            default -> StepResult.blocked("Etape inconnue : " + ctx.step());
+            default -> StepResult.blocked("\u00c9tape inconnue : " + ctx.step());
         };
     }
 
@@ -123,40 +123,40 @@ public class ModificationWorkflow extends AbstractWorkflow {
         String dossierIdStr = strOrNull(p.get("dossierId"));
         if (dossierIdStr == null) {
             return StepResult.blocked(
-                    "Selectionnez la societe a modifier avant de continuer.");
+                    "S\u00e9lectionnez la soci\u00e9t\u00e9 \u00e0 modifier avant de continuer.");
         }
         java.util.UUID dossierId;
         try {
             dossierId = java.util.UUID.fromString(dossierIdStr);
         } catch (IllegalArgumentException ex) {
             return StepResult.blocked(
-                    "Identifiant de societe invalide. Selectionnez la societe dans la liste.");
+                    "Identifiant de soci\u00e9t\u00e9 invalide. S\u00e9lectionnez la soci\u00e9t\u00e9 dans la liste.");
         }
         // Defense-in-depth : WorkflowUseCases a deja recharge les faits du dossier
         // choisi dans existingData.dossier (loadDossierFactsById).
         Map<String, Object> dossierFacts = readStep(ctx, "dossier");
         if (dossierFacts.isEmpty()) {
             return StepResult.blocked(
-                    "La societe selectionnee est introuvable dans votre workspace.");
+                    "La soci\u00e9t\u00e9 s\u00e9lectionn\u00e9e est introuvable dans votre cabinet.");
         }
         Object factsId = dossierFacts.get("dossierId");
         if (factsId != null && !dossierIdStr.equalsIgnoreCase(factsId.toString())) {
             return StepResult.blocked(
-                    "Incoherence dossier : verifiez la societe selectionnee.");
+                    "Incoh\u00e9rence du dossier : v\u00e9rifiez la soci\u00e9t\u00e9 s\u00e9lectionn\u00e9e.");
         }
 
         // RG-M02 : decisionType obligatoire + format
         String decisionType = strOrNull(p.get("decisionType"));
         if (decisionType == null || !DECISION_TYPES.contains(decisionType)) {
             return StepResult.blocked(
-                    "Type d'assemblee invalide. Choisissez une decision ordinaire ou "
-                            + "extraordinaire (l'application la traduit en AGO/AGE ou en "
-                            + "decision de l'associe unique selon la forme).");
+                    "Type d\u2019assembl\u00e9e invalide. Choisissez une d\u00e9cision ordinaire ou "
+                            + "extraordinaire (l\u2019application la traduit en AGO/AGE ou en "
+                            + "d\u00e9cision de l\u2019associ\u00e9 unique selon la forme).");
         }
         // RG-M02 : date PV obligatoire + coherente
         String datePV = strOrNull(p.get("datePV"));
         if (datePV == null) {
-            return StepResult.blocked("La date du PV ou de la decision est obligatoire.");
+            return StepResult.blocked("La date du PV ou de la d\u00e9cision est obligatoire.");
         }
         LocalDate parsedDate = parseDateOrNull(datePV);
         if (parsedDate == null) {
@@ -165,7 +165,7 @@ public class ModificationWorkflow extends AbstractWorkflow {
         }
         if (parsedDate.isAfter(LocalDate.now().plusDays(30))) {
             return StepResult.blocked(
-                    "La date du PV ne peut pas etre dans le futur (> 30 jours).");
+                    "La date du PV ne peut pas \u00eatre dans le futur (> 30 jours).");
         }
 
         // RG-M06 : coherence decisionType vs formeJuridique du dossier (best-effort)
@@ -173,14 +173,14 @@ public class ModificationWorkflow extends AbstractWorkflow {
         if (formeJuridique != null) {
             if ("SARL_AU".equals(formeJuridique) && !"AU".equals(decisionType)) {
                 return StepResult.blocked(
-                        "La societe est une SARL a associe unique : les decisions sont "
-                                + "prises par l'associe unique (choisissez « decision de "
-                                + "l'associe unique »).");
+                        "La soci\u00e9t\u00e9 est une SARL \u00e0 associ\u00e9 unique : les d\u00e9cisions sont "
+                                + "prises par l\u2019associ\u00e9 unique (choisissez \u00ab d\u00e9cision de "
+                                + "l\u2019associ\u00e9 unique \u00bb).");
             }
             if ("SARL".equals(formeJuridique) && "AU".equals(decisionType)) {
                 return StepResult.blocked(
-                        "La societe est une SARL pluri-associes : utilisez une assemblee "
-                                + "generale (AGO/AGE) et non une decision de l'associe unique.");
+                        "La soci\u00e9t\u00e9 est une SARL pluri-associ\u00e9s : utilisez une assembl\u00e9e "
+                                + "g\u00e9n\u00e9rale (AGO/AGE) et non une d\u00e9cision de l\u2019associ\u00e9 unique.");
             }
         }
         boolean isAU = "SARL_AU".equals(formeJuridique);
@@ -202,15 +202,15 @@ public class ModificationWorkflow extends AbstractWorkflow {
             for (Object o : decisionsRaw) {
                 if (!(o instanceof Map<?, ?> dm)) {
                     return StepResult.blocked(
-                            "Format de selection invalide. Rechargez la page et reessayez.");
+                            "Format de s\u00e9lection invalide. Rechargez la page et r\u00e9essayez.");
                 }
                 @SuppressWarnings("unchecked")
                 Map<String, Object> d = (Map<String, Object>) dm;
                 String rt = strOrNull(d.get("resolutionType"));
                 if (rt == null || !RESOLUTION_TYPES.contains(rt)) {
                     return StepResult.blocked(
-                            "Type de resolution non reconnu : « " + rt
-                                    + " ». Verifiez la selection des modifications.");
+                            "Type de r\u00e9solution non reconnu : \u00ab " + rt
+                                    + " \u00bb. V\u00e9rifiez la s\u00e9lection des modifications.");
                 }
                 decisions.add(d);
                 if (seenRt.add(rt)) resolutionTypes.add(rt);
@@ -223,15 +223,15 @@ public class ModificationWorkflow extends AbstractWorkflow {
                 if (rt == null) continue;
                 if (!RESOLUTION_TYPES.contains(rt)) {
                     return StepResult.blocked(
-                            "Type de resolution non reconnu : « " + rt
-                                    + " ». Verifiez la selection des modifications.");
+                            "Type de r\u00e9solution non reconnu : \u00ab " + rt
+                                    + " \u00bb. V\u00e9rifiez la s\u00e9lection des modifications.");
                 }
                 if (seenRt.add(rt)) resolutionTypes.add(rt);
             }
         }
         if (resolutionTypes.isEmpty()) {
             return StepResult.blocked(
-                    "Selectionnez au moins une modification a apporter.");
+                    "S\u00e9lectionnez au moins une modification \u00e0 apporter.");
         }
 
         // Indicateurs RG derives des resolutionTypes.
@@ -266,8 +266,8 @@ public class ModificationWorkflow extends AbstractWorkflow {
             out.put("formeAvant", "SARL_AU");
             out.put("formeApres", "SARL");
             out.put("formeChangeRaison",
-                    "RG-M11 : la cession de parts d'une SARL AU entraine "
-                            + "l'adaptation des statuts en SARL pluri-associes.");
+                    "RG-M11 : la cession de parts d\u2019une SARL AU entra\u00eene "
+                            + "l\u2019adaptation des statuts en SARL pluri-associ\u00e9s.");
         }
         if (formeJuridique != null) out.put("formeJuridique", formeJuridique);
         return StepResult.ok(out);
@@ -347,11 +347,11 @@ public class ModificationWorkflow extends AbstractWorkflow {
     private StepResult stepFinalisation(StepContext ctx) {
         if (!isTrue(ctx.payload(), "pvValide")) {
             return StepResult.blocked(
-                    "Le proces-verbal (ou la decision) doit etre valide avant la finalisation.");
+                    "Le proc\u00e8s-verbal (ou la d\u00e9cision) doit \u00eatre valide avant la finalisation.");
         }
         if (!isTrue(ctx.payload(), "statutsValides")) {
             return StepResult.blocked(
-                    "Les statuts mis a jour doivent etre valides avant la finalisation.");
+                    "Les statuts mis \u00e0 jour doivent \u00eatre valides avant la finalisation.");
         }
         // RG-M13/M14 (Phase 2) : si une decision publiable est presente, l'annonce legale de
         // modification doit etre validee avant la finalisation.
@@ -359,8 +359,8 @@ public class ModificationWorkflow extends AbstractWorkflow {
         boolean jalRequis = Boolean.TRUE.equals(step3.get("jalRequis"));
         if (jalRequis && !isTrue(ctx.payload(), "jalValide")) {
             return StepResult.blocked(
-                    "RG-M13 : l'annonce legale de modification doit etre validee (publication "
-                            + "au Journal d'Annonces Legales obligatoire pour cette modification).");
+                    "RG-M13 : l\u2019annonce l\u00e9gale de modification doit \u00eatre valid\u00e9e (publication "
+                            + "au Journal d\u2019Annonces L\u00e9gales obligatoire pour cette modification).");
         }
         return StepResult.ok(Map.of("finalise", true));
     }
@@ -390,7 +390,7 @@ public class ModificationWorkflow extends AbstractWorkflow {
             case "operation_restructuration" -> List.of("Projet annexe");
             case "capitaux_propres_art86" -> List.of("Loi 5-96 art. 86");
             case "mise_harmonie_statuts", "modification_statuts_autre" -> List.of("Statuts");
-            case "pouvoirs_formalites" -> List.of("Decision standard");
+            case "pouvoirs_formalites" -> List.of("D\u00e9cision standard");
             default -> List.of();
         };
     }

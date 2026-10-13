@@ -71,7 +71,7 @@ public class PvAgoWorkflow extends AbstractWorkflow {
             case 3 -> stepGeneration(ctx);
             case 4 -> stepPiecesJointes(ctx);
             case 5 -> stepSynthese(ctx);
-            default -> StepResult.blocked("Etape inconnue : " + ctx.step());
+            default -> StepResult.blocked("\u00c9tape inconnue : " + ctx.step());
         };
     }
 
@@ -83,27 +83,27 @@ public class PvAgoWorkflow extends AbstractWorkflow {
 
         String dossierIdRaw = strOrNull(p.get("dossierId"));
         if (dossierIdRaw == null) {
-            return StepResult.blocked("Selectionnez la societe dont les comptes sont approuves.");
+            return StepResult.blocked("S\u00e9lectionnez la soci\u00e9t\u00e9 dont les comptes sont approuv\u00e9s.");
         }
         try {
             UUID.fromString(dossierIdRaw);
         } catch (IllegalArgumentException e) {
             return StepResult.blocked(
-                    "Identifiant de societe invalide. Selectionnez la societe dans la liste.");
+                    "Identifiant de soci\u00e9t\u00e9 invalide. S\u00e9lectionnez la soci\u00e9t\u00e9 dans la liste.");
         }
 
         Map<String, Object> dossier = readDossier(ctx);
         String statut = strOrNull(dossier.get("statut"));
         if (statut != null && STATUTS_INCOMPATIBLES.contains(statut)) {
             return StepResult.blocked(
-                    "Cette societe est au statut « " + statut + " » : l'approbation annuelle "
-                            + "des comptes ne s'y applique plus.");
+                    "Cette soci\u00e9t\u00e9 est au statut \u00ab " + statut + " \u00bb : l\u2019approbation annuelle "
+                            + "des comptes ne s\u2019y applique plus.");
         }
 
         // Exercice clos : annee ou date complete.
         String exerciceClos = strOrNull(first0(p.get("exerciceClos"), p.get("exerciceClosDate")));
         if (exerciceClos == null) {
-            return StepResult.blocked("L'exercice clos a approuver est obligatoire.");
+            return StepResult.blocked("L\u2019exercice clos \u00e0 approuver est obligatoire.");
         }
         LocalDate exerciceClosDate = resolveExerciceClos(exerciceClos);
         if (exerciceClosDate == null) {
@@ -115,25 +115,25 @@ public class PvAgoWorkflow extends AbstractWorkflow {
         String dateRaw = strOrNull(first0(p.get("dateAGO"), p.get("dateAG"), p.get("dateAssemblee")));
         if (dateRaw == null) {
             return StepResult.blocked(
-                    "La date de l'assemblee generale ordinaire est obligatoire.");
+                    "La date de l\u2019assembl\u00e9e g\u00e9n\u00e9rale ordinaire est obligatoire.");
         }
         LocalDate dateAgo = parseDateOrNull(dateRaw);
         if (dateAgo == null) {
-            return StepResult.blocked("Date d'assemblee invalide. Format attendu : AAAA-MM-JJ.");
+            return StepResult.blocked("Date d\u2019assembl\u00e9e invalide. Format attendu : AAAA-MM-JJ.");
         }
         if (dateAgo.isAfter(LocalDate.now().plusDays(30))) {
             return StepResult.blocked(
-                    "La date d'assemblee ne peut pas etre dans le futur (> 30 jours).");
+                    "La date d\u2019assembl\u00e9e ne peut pas \u00eatre dans le futur (> 30 jours).");
         }
         if (dateAgo.isBefore(LocalDate.now().minusYears(2))) {
             return StepResult.blocked(
-                    "La date d'assemblee est trop ancienne (> 2 ans). Verifiez la saisie.");
+                    "La date d\u2019assembl\u00e9e est trop ancienne (> 2 ans). V\u00e9rifiez la saisie.");
         }
         // L'AGO d'approbation se tient APRES la cloture de l'exercice qu'elle approuve.
         if (dateAgo.isBefore(exerciceClosDate)) {
             return StepResult.blocked(
-                    "L'assemblee (" + dateRaw + ") ne peut pas se tenir AVANT la cloture de "
-                            + "l'exercice qu'elle approuve (" + exerciceClosDate + ").");
+                    "L\u2019assembl\u00e9e (" + dateRaw + ") ne peut pas se tenir AVANT la cl\u00f4ture de "
+                            + "l\u2019exercice qu\u2019elle approuve (" + exerciceClosDate + ").");
         }
 
         // Convocation OPTIONNELLE — regle DURE des 16 jours (jours calendaires).
@@ -185,12 +185,12 @@ public class PvAgoWorkflow extends AbstractWorkflow {
         String resultatType = normResultatType(a.get("resultatType"));
         if (resultatType == null) {
             return StepResult.blocked(
-                    "Precisez le resultat de l'exercice : benefice ou perte.");
+                    "Pr\u00e9cisez le r\u00e9sultat de l\u2019exercice : b\u00e9n\u00e9fice ou perte.");
         }
         Long resultatNet = toLong(a.get("resultatNet"));
         if (resultatNet == null) {
             return StepResult.blocked(
-                    "Le montant du resultat de l'exercice est obligatoire (en dirhams).");
+                    "Le montant du r\u00e9sultat de l\u2019exercice est obligatoire (en dirhams).");
         }
         a.put("resultatType", resultatType);
         a.put("resultatNet", resultatNet);
@@ -199,8 +199,8 @@ public class PvAgoWorkflow extends AbstractWorkflow {
         List<?> affectations = asList(a, "affectations");
         if (affectations.isEmpty()) {
             return StepResult.blocked(
-                    "L'affectation du resultat est obligatoire : reserve legale, reserves "
-                            + "facultatives, report a nouveau, dividendes…");
+                    "L\u2019affectation du r\u00e9sultat est obligatoire : r\u00e9serve l\u00e9gale, r\u00e9serves "
+                            + "facultatives, report \u00e0 nouveau, dividendes\u2026");
         }
         long somme = 0L;
         for (Object row : affectations) {
@@ -208,20 +208,20 @@ public class PvAgoWorkflow extends AbstractWorkflow {
             Long montant = toLong(first0(r.get("montant"), r.get("montantChiffres")));
             if (strOrNull(r.get("libelle")) == null) {
                 return StepResult.blocked(
-                        "Chaque ligne d'affectation doit porter un libelle (reserve legale, "
-                                + "report a nouveau, dividendes…).");
+                        "Chaque ligne d\u2019affectation doit porter un libell\u00e9 (r\u00e9serve l\u00e9gale, "
+                                + "report \u00e0 nouveau, dividendes\u2026).");
             }
             if (montant == null) {
                 return StepResult.blocked(
-                        "Chaque ligne d'affectation doit porter un montant.");
+                        "Chaque ligne d\u2019affectation doit porter un montant.");
             }
             somme += montant;
         }
         long aAffecter = Math.abs(resultatNet);
         if (somme != aAffecter) {
             return StepResult.blocked(
-                    "L'affectation ne solde pas le resultat : " + somme + " DH affectes pour "
-                            + aAffecter + " DH a affecter. Ajustez les montants.");
+                    "L\u2019affectation ne solde pas le r\u00e9sultat : " + somme + " DH affect\u00e9s pour "
+                            + aAffecter + " DH \u00e0 affecter. Ajustez les montants.");
         }
 
         // Dividendes : si distribution annoncee, le detail publie devient obligatoire.
@@ -231,21 +231,21 @@ public class PvAgoWorkflow extends AbstractWorkflow {
             Long total = toLong(first0(a.get("dividendeMontantTotal"), a.get("dividendeTotal")));
             if (total == null || total <= 0) {
                 return StepResult.blocked(
-                        "Distribution annoncee : precisez le montant TOTAL des dividendes.");
+                        "Distribution annonc\u00e9e : pr\u00e9cisez le montant TOTAL des dividendes.");
             }
             if (total > aAffecter) {
                 return StepResult.blocked(
-                        "Le montant total des dividendes (" + total + " DH) depasse le resultat "
+                        "Le montant total des dividendes (" + total + " DH) d\u00e9passe le r\u00e9sultat "
                                 + "a affecter (" + aAffecter + " DH).");
             }
             if (toLong(a.get("dividendeParPart")) == null) {
                 return StepResult.blocked(
-                        "Distribution annoncee : precisez le dividende par part sociale.");
+                        "Distribution annonc\u00e9e : pr\u00e9cisez le dividende par part sociale.");
             }
             String miseEnPaiement = strOrNull(a.get("dividendeMiseEnPaiementDate"));
             if (miseEnPaiement == null) {
                 return StepResult.blocked(
-                        "Distribution annoncee : precisez la date de mise en paiement.");
+                        "Distribution annonc\u00e9e : pr\u00e9cisez la date de mise en paiement.");
             }
             if (parseDateOrNull(miseEnPaiement) == null) {
                 return StepResult.blocked(
@@ -267,7 +267,7 @@ public class PvAgoWorkflow extends AbstractWorkflow {
         if ("oui".equals(conventions) && strOrNull(a.get("conventionsDetail")) == null) {
             return StepResult.blocked(
                     "Conventions reglementees annoncees : decrivez-les (elles figurent dans "
-                            + "une resolution du PV).");
+                            + "une r\u00e9solution du PV).");
         }
         if (!"oui".equals(conventions)) {
             a.remove("conventionsDetail");
@@ -279,7 +279,7 @@ public class PvAgoWorkflow extends AbstractWorkflow {
         if ("oui".equals(cacPresent) && strOrNull(a.get("commissaireNom")) == null) {
             return StepResult.blocked(
                     "Commissaire aux comptes present : son nom est obligatoire (il est nomme "
-                            + "dans le proces-verbal).");
+                            + "dans le proc\u00e8s-verbal).");
         }
         if (!"oui".equals(cacPresent)) {
             a.remove("commissaireNom");
@@ -297,7 +297,7 @@ public class PvAgoWorkflow extends AbstractWorkflow {
         Map<String, Object> p = ctx.payload();
         if (!isTrue(p, "pvValide")) {
             return StepResult.blocked(
-                    "Le PV d'approbation des comptes doit etre valide avant de poursuivre.");
+                    "Le PV d\u2019approbation des comptes doit \u00eatre valide avant de poursuivre.");
         }
 
         Map<String, Object> dossier = readDossier(ctx);

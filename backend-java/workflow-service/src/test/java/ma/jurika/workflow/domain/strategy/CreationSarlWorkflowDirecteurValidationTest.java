@@ -81,7 +81,7 @@ class CreationSarlWorkflowDirecteurValidationTest {
         p.put("modeLiberation", "moitié");
         StepResult r = run(p);
         assertThat(r.canAdvance()).isFalse();
-        assertThat(r.message()).contains("liberation");
+        assertThat(r.message()).contains("lib\u00e9ration");
     }
 
     // ---- Phase 4 — contrat §2 : dépôt conditionnel, ICE optionnel, signature admin ----

@@ -151,8 +151,8 @@ public class WorkflowUseCases {
                 }
             }
             throw new ConflictException(
-                    "Le workflow n'a pas pu etre demarre — un autre workflow existe "
-                            + "deja pour ce ticket ou la societe n'est pas accessible "
+                    "Le parcours n\u2019a pas pu \u00eatre d\u00e9marr\u00e9 \u2014 un autre parcours existe "
+                            + "d\u00e9j\u00e0 pour ce ticket ou la soci\u00e9t\u00e9 n\u2019est pas accessible "
                             + "depuis votre espace. Rechargez la page.");
         } catch (Exception ex) {
             log.error("workflow.start.failed workspace={} ticket={} type={} user={}",
@@ -895,22 +895,22 @@ public class WorkflowUseCases {
             String denomination = pickString(pickMap(stepData, "societeMere"), "denomination");
             if (cause.contains("uq_dossier_workspace_raison_alive")) {
                 throw new ValidationException(
-                        "Une societe vivante porte deja la denomination « " + denomination
-                                + " » dans cet espace de travail : impossible d'ouvrir un second "
-                                + "dossier a ce nom. Verifiez la denomination de la societe mere, "
-                                + "ou selectionnez la mere etrangere deja enregistree.");
+                        "Une soci\u00e9t\u00e9 vivante porte d\u00e9j\u00e0 la d\u00e9nomination \u00ab " + denomination
+                                + " \u00bb dans cet espace de travail : impossible d\u2019ouvrir un second "
+                                + "dossier \u00e0 ce nom. V\u00e9rifiez la d\u00e9nomination de la soci\u00e9t\u00e9 m\u00e8re, "
+                                + "ou s\u00e9lectionnez la m\u00e8re \u00e9trang\u00e8re d\u00e9j\u00e0 enregistr\u00e9e.");
             }
             log.error("SUCCURSALE_ETR step1 : violation d'integrite a la creation du dossier "
                     + "mere etrangere « {} » : {}", denomination, cause);
             throw new ValidationException(
-                    "Le dossier de la societe mere etrangere n'a pas pu etre enregistre "
-                            + "(contrainte de base de donnees). Signalez ce message au support : "
+                    "Le dossier de la soci\u00e9t\u00e9 m\u00e8re \u00e9trang\u00e8re n\u2019a pas pu \u00eatre enregistr\u00e9 "
+                            + "(contrainte de base de donn\u00e9es). Signalez ce message au support : "
                             + cause);
         } catch (Exception ex) {
             log.warn("SUCCURSALE_ETR step1 : creation du dossier mere etrangere echouee : {}",
                     ex.getMessage());
             throw new ValidationException(
-                    "La Data Room de la societe mere etrangere n'a pas pu etre creee : "
+                    "La Data Room de la soci\u00e9t\u00e9 m\u00e8re \u00e9trang\u00e8re n\u2019a pas pu \u00eatre cr\u00e9\u00e9e : "
                             + ex.getMessage());
         }
         if (mereId == null) return stepData;
@@ -2105,7 +2105,7 @@ public class WorkflowUseCases {
         }
         if ("CLOTURE_DOSSIER".equals(String.valueOf(rows.get(0)))) {
             throw new ConflictException("TICKET_CLOS_LECTURE_SEULE : le ticket est clos, "
-                    + "son parcours ne peut plus etre modifie (RG-TKT-11).");
+                    + "son parcours ne peut plus \u00eatre modifi\u00e9 (RG-TKT-11).");
         }
     }
 

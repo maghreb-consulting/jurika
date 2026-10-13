@@ -81,7 +81,7 @@ public class AnnulationController {
                 .setParameter(1, ticketId).setParameter(2, ws).getResultList();
         if (statut.isEmpty() || !"ANNULE".equals(String.valueOf(statut.get(0)))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Les documents d'annulation se pr\u00e9parent sur un ticket annul\u00e9.");
+                    "Les documents d\u2019annulation se pr\u00e9parent sur un ticket annul\u00e9.");
         }
         if (saisies.variables() != null) {
             saisies.variables().forEach((nom, valeur) -> {
