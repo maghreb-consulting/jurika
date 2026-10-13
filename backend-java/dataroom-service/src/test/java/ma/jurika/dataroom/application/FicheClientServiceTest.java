@@ -19,16 +19,21 @@ import ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository;
 import ma.jurika.dataroom.infrastructure.persistence.WorkflowProgressViewJpaRepository;
 import ma.jurika.dataroom.infrastructure.persistence.WorkspaceViewEntity;
 import ma.jurika.dataroom.infrastructure.persistence.WorkspaceViewJpaRepository;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayInputStream;
+import javax.imageio.ImageIO;
+import java.io.File;
+import java.time.Clock;
+import java.time.ZoneOffset;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,7 +61,8 @@ import static org.mockito.Mockito.when;
 /**
  * Lot L5 (E7) : fiche client et fiche dossier -- acces, contenu (identifiants seuls dans la
  * fiche client, operations dans la fiche dossier), provenance lue dans la trace, versions de
- * la taxe professionnelle, rendu Word lu, conservation dans la Data Room.
+ * la taxe professionnelle, rendu PDF a la charte lu (lot L5b E3 : plus de Word), conservation
+ * dans la Data Room. Les PDF et leurs pages en PNG sont ranges dans target/output/l5b-pdf.
  */
 class FicheClientServiceTest {
 
@@ -82,11 +88,13 @@ class FicheClientServiceTest {
     private static final Instant J2 = Instant.parse("2026-03-05T10:00:00Z");
     private static final Instant J3 = Instant.parse("2026-06-20T10:00:00Z");
     private static final Instant J4 = Instant.parse("2026-07-01T10:00:00Z");
+    /** Horloge figee : 13/10/2026 a Casablanca. */
+    private static final Clock HORLOGE = Clock.fixed(Instant.parse("2026-10-13T09:00:00Z"), ZoneOffset.UTC);
 
     @BeforeEach
     void setUp() {
         service = new FicheClientService(dossiers, workflows, users, workspaces, lecture, juridique,
-                archiveGuard, new ObjectMapper());
+                archiveGuard, new ObjectMapper(), HORLOGE);
         TenantContext.set(ws);
         WorkspaceViewEntity w = mock(WorkspaceViewEntity.class);
         lenient().when(w.getName()).thenReturn("Maghreb Consulting");
@@ -108,11 +116,11 @@ class FicheClientServiceTest {
                 new TraceLigne("identifiant_fiscal", null, "IF-77", "EXTRAITE", ticketCreation, responsable, J2),
                 new TraceLigne("taxe_professionnelle", "TP-1111", "TP-2222", "SAISIE", null, responsable, J2),
                 new TraceLigne("capital_social_mad", "100000.00", "250000.00", "PARCOURS", ticketModif, null, J3)));
-        TicketLigne creation = new TicketLigne(ticketCreation, "T-0001", "CREATION", "CLOTURE_DOSSIER",
+        TicketLigne creation = new TicketLigne(ticketCreation, "T-2026-00001", "CREATION", "CLOTURE_DOSSIER",
                 J1, J2, null, responsable);
-        TicketLigne modif = new TicketLigne(ticketModif, "T-0002", "MODIFICATION", "DEROULEMENT_DEMARCHE",
+        TicketLigne modif = new TicketLigne(ticketModif, "T-2026-00002", "MODIFICATION", "DEROULEMENT_DEMARCHE",
                 J3, null, null, autreEmploye);
-        TicketLigne annule = new TicketLigne(ticketAnnule, "T-0003", "PV_AGO", "ANNULE", J3, null, J4, null);
+        TicketLigne annule = new TicketLigne(ticketAnnule, "T-2026-00003", "PV_AGO", "ANNULE", J3, null, J4, null);
         lenient().when(lecture.ticketsParId(eq(ws), any())).thenReturn(Map.of(
                 ticketCreation, creation, ticketModif, modif));
         lenient().when(lecture.tickets(ws, dossierId)).thenReturn(List.of(creation, modif, annule));
@@ -157,13 +165,13 @@ class FicheClientServiceTest {
                 "DENOMINATION", "FORME", "CAPITAL", "SIEGE", "RC", "ICE", "IF", "TP", "CNSS");
         assertThat(ids.get("DENOMINATION").provenance()).isEqualTo("Reprise à l’import du dossier");
         assertThat(ids.get("RC").valeur()).isEqualTo("45678 (tribunal : Casablanca)");
-        assertThat(ids.get("RC").provenance()).isEqualTo("Obtenu en fin de parcours (ticket T-0001)");
-        assertThat(ids.get("IF").provenance()).isEqualTo("Lu sur une pièce et confirmé (ticket T-0001)");
+        assertThat(ids.get("RC").provenance()).isEqualTo("Obtenu en fin de parcours (ticket T-2026-00001)");
+        assertThat(ids.get("IF").provenance()).isEqualTo("Lu sur une pièce et confirmé (ticket T-2026-00001)");
         assertThat(ids.get("TP").valeur()).isEqualTo("TP-2222");
         assertThat(ids.get("TP").provenance()).isEqualTo("Saisie manuelle par Salma Alaoui, le 05/03/2026");
         assertThat(ids.get("CAPITAL").valeur()).isEqualTo("250 000,00 dirhams");
         assertThat(ids.get("CAPITAL").provenance())
-                .isEqualTo("Parcours « Modification statutaire » (ticket T-0002)");
+                .isEqualTo("Parcours « Modification statutaire » (ticket T-2026-00002)");
         assertThat(ids.get("SIEGE").origine()).as("aucune trace : jamais attribuee").isEqualTo("NON_TRACEE");
         assertThat(ids.get("CNSS").valeur()).isNull();
         assertThat(ids.get("CNSS").provenance()).isEqualTo("Donnée manquante");
@@ -203,7 +211,7 @@ class FicheClientServiceTest {
     @Test
     void fiche_dossier_toutes_les_operations_annulees_comprises() {
         FicheDossierView v = service.ficheDossier(dossierId, Role.EMPLOYE, responsable);
-        assertThat(v.operations()).extracting(Operation::reference).containsExactly("T-0001", "T-0002", "T-0003");
+        assertThat(v.operations()).extracting(Operation::reference).containsExactly("T-2026-00001", "T-2026-00002", "T-2026-00003");
         Operation creation = v.operations().get(0);
         assertThat(creation.natureFin()).isEqualTo("CLOTURE");
         assertThat(creation.dateFin()).isEqualTo(J2);
@@ -219,52 +227,72 @@ class FicheClientServiceTest {
         assertThat(v.derniereCloture()).isEqualTo(J2);
     }
 
-    // ------------------------------------------------------------------ Word
+    // ------------------------------------------------------------------ PDF
 
     @Test
-    void fiche_client_word_lue_identifiants_seuls_aucun_historique() throws Exception {
+    void fiche_client_pdf_lue_identifiants_seuls_aucun_historique() throws Exception {
         when(juridique.uploadVersion(eq(dossierId), anyString(), anyString(), isNull(), any(MultipartFile.class),
                 eq(responsable))).thenReturn(resume((short) 1));
-        byte[] docx = service.genererFicheClient(dossierId, Role.EMPLOYE, responsable).contenu();
-        String texte = texte(docx, "fiche-client.docx");
+        byte[] pdf = service.genererFicheClient(dossierId, Role.EMPLOYE, responsable).contenu();
+        assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
+        String texte = texte(pdf, "fiche-client");
 
         assertThat(texte).contains("Fiche client", "Maghreb Consulting", "ACME SARL",
                 "Société à responsabilité limitée (SARL)", "250 000,00 dirhams",
                 "45678 (tribunal : Casablanca)", "001234567000089", "IF-77", "TP-2222", "TP-1111",
                 "En vigueur", "Remplacée", "01/03/2026", "Non renseignée",
                 "Saisie manuelle par Salma Alaoui, le 05/03/2026", "Donnée manquante");
-        assertThat(texte).doesNotContain("T-0003", "Opérations juridiques", "Annulé le", "Karim");
+        assertThat(texte).contains("Identifiants de la soci\u00e9t\u00e9 en vigueur au 13/10/2026",
+                "Provenance : Reprise \u00e0 l'import du dossier", "\u00c9dit\u00e9 par JURIKA le 13/10/2026",
+                "Provenance non trac\u00e9e (valeur ant\u00e9rieure au suivi)");
+        assertThat(texte).doesNotContain("Provenance : Provenance", "\u02bc");
+        // RG-FIC-01 : aucun historique (ni operations, ni trace des modifications).
+        assertThat(texte).doesNotContain("T-2026-00003", "Op\u00e9rations juridiques", "Annul\u00e9 le",
+                "Cl\u00f4tur\u00e9 le", "Karim", "TP-1111 \u2192", "Ancienne valeur", "100000");
         assertThat(texte).doesNotContain("$");
     }
 
     @Test
-    void fiche_dossier_word_lue_identifiants_et_operations() throws Exception {
+    void fiche_dossier_pdf_lue_identifiants_et_operations() throws Exception {
         when(juridique.uploadVersion(eq(dossierId), anyString(), anyString(), isNull(), any(MultipartFile.class),
                 eq(responsable))).thenReturn(resume((short) 2));
-        byte[] docx = service.genererFicheDossier(dossierId, Role.EMPLOYE, responsable).contenu();
-        String texte = texte(docx, "fiche-dossier.docx");
+        byte[] pdf = service.genererFicheDossier(dossierId, Role.EMPLOYE, responsable).contenu();
+        String texte = texte(pdf, "fiche-dossier").replace('\n', ' ');
 
         assertThat(texte).contains("Fiche dossier", "ACME SARL", "TP-2222",
                 "Opérations juridiques du dossier",
                 "À jour de la dernière clôture, le 05/03/2026.",
-                "Création de société", "T-0001", "10/01/2026", "Clôturé le 05/03/2026",
-                "Modification statutaire", "T-0002", "En cours", "Karim Bennani",
-                "Assemblée générale ordinaire", "T-0003", "Annulé le 01/07/2026");
+                "Création de société", "T-2026-00001", "10/01/2026", "Clôturé le 05/03/2026",
+                "Modification statutaire", "T-2026-00002", "En cours", "Karim Bennani",
+                "Assemblée générale ordinaire", "T-2026-00003", "Annulé le 01/07/2026");
         assertThat(texte).doesNotContain("$");
     }
 
     @Test
-    void rendu_deterministe_memes_donnees_memes_octets() {
+    void rendu_deterministe_memes_donnees_memes_octets() throws Exception {
         byte[] a = service.genererFicheDossier(dossierId, Role.SUPERVISEUR, autreEmploye).contenu();
+        Thread.sleep(1100); // l'horloge du systeme avance : aucun effet sur le document
         byte[] b = service.genererFicheDossier(dossierId, Role.SUPERVISEUR, autreEmploye).contenu();
         assertThat(a).isEqualTo(b);
+        byte[] c = service.genererFicheClient(dossierId, Role.SUPERVISEUR, autreEmploye).contenu();
+        byte[] d = service.genererFicheClient(dossierId, Role.SUPERVISEUR, autreEmploye).contenu();
+        assertThat(c).isEqualTo(d);
+    }
+
+    @Test
+    void fiche_client_et_fiche_dossier_sont_deux_documents_distincts() throws Exception {
+        String client = texte(service.genererFicheClient(dossierId, Role.SUPERVISEUR, autreEmploye).contenu(), null);
+        String dossier = texte(service.genererFicheDossier(dossierId, Role.SUPERVISEUR, autreEmploye).contenu(), null);
+        assertThat(client).contains("Fiche client").doesNotContain("Fiche dossier");
+        assertThat(dossier).contains("Fiche dossier").doesNotContain("Fiche client");
     }
 
     @Test
     void sans_operation_ni_tp_les_tableaux_le_disent() throws Exception {
         when(lecture.tickets(ws, dossierId)).thenReturn(List.of());
         when(lecture.versionsTp(ws, dossierId)).thenReturn(List.of());
-        String texte = texte(service.genererFicheDossier(dossierId, Role.SUPERVISEUR, autreEmploye).contenu(), null);
+        String texte = texte(service.genererFicheDossier(dossierId, Role.SUPERVISEUR, autreEmploye).contenu(),
+                "fiche-dossier-vide");
         assertThat(texte).contains("Aucune opération enregistrée", "Aucune taxe professionnelle enregistrée",
                 "Aucune opération clôturée à ce jour.");
         assertThat(texte).doesNotContain("$");
@@ -276,15 +304,26 @@ class FicheClientServiceTest {
     void le_responsable_conserve_chaque_generation_en_version_dans_la_data_room() {
         when(juridique.uploadVersion(eq(dossierId), eq("FICHE_CLIENT"), eq("Fiche client"), isNull(),
                 any(MultipartFile.class), eq(responsable))).thenReturn(resume((short) 3));
-        FicheClientService.FicheWord w = service.genererFicheClient(dossierId, Role.EMPLOYE, responsable);
+        FicheClientService.FichePdf w = service.genererFicheClient(dossierId, Role.EMPLOYE, responsable);
         assertThat(w.conservee()).isTrue();
         assertThat(w.version()).isEqualTo((short) 3);
-        assertThat(w.nomFichier()).isEqualTo("Fiche_client_ACME_SARL.docx");
+        assertThat(w.nomFichier()).isEqualTo("Fiche_client_ACME_SARL.pdf");
+        // Conservee en PDF : le fichier depose porte le type application/pdf et les octets rendus.
+        org.mockito.ArgumentCaptor<MultipartFile> f = org.mockito.ArgumentCaptor.forClass(MultipartFile.class);
+        verify(juridique).uploadVersion(eq(dossierId), eq("FICHE_CLIENT"), eq("Fiche client"), isNull(),
+                f.capture(), eq(responsable));
+        assertThat(f.getValue().getContentType()).isEqualTo("application/pdf");
+        assertThat(f.getValue().getOriginalFilename()).isEqualTo("Fiche_client_ACME_SARL.pdf");
+        try {
+            assertThat(f.getValue().getBytes()).isEqualTo(w.contenu());
+        } catch (java.io.IOException e) {
+            throw new AssertionError(e);
+        }
     }
 
     @Test
     void le_superviseur_telecharge_sans_ecrire() {
-        FicheClientService.FicheWord w = service.genererFicheClient(dossierId, Role.SUPERVISEUR, autreEmploye);
+        FicheClientService.FichePdf w = service.genererFicheClient(dossierId, Role.SUPERVISEUR, autreEmploye);
         assertThat(w.conservee()).isFalse();
         verify(juridique, never()).uploadVersion(any(), any(), any(), any(), any(MultipartFile.class), any());
     }
@@ -292,7 +331,7 @@ class FicheClientServiceTest {
     @Test
     void societe_archivee_fiche_produite_mais_non_conservee() {
         when(archiveGuard.isReadOnly(dossierId)).thenReturn(true);
-        FicheClientService.FicheWord w = service.genererFicheDossier(dossierId, Role.EMPLOYE, responsable);
+        FicheClientService.FichePdf w = service.genererFicheDossier(dossierId, Role.EMPLOYE, responsable);
         assertThat(w.conservee()).isFalse();
         assertThat(w.contenu()).isNotEmpty();
         verify(juridique, never()).uploadVersion(any(), any(), any(), any(), any(MultipartFile.class), any());
@@ -327,21 +366,23 @@ class FicheClientServiceTest {
 
     private DocumentSummary resume(short version) {
         return new DocumentSummary(UUID.randomUUID(), dossierId, null, "FICHE_CLIENT", "Fiche client",
-                version, true, "f.docx", FicheClientService.DOCX_MIME, 10L, J1, null, null, null, false);
+                version, true, "f.pdf", FicheClientService.PDF_MIME, 10L, J1, null, null, null, false);
     }
 
-    /** Texte du document (paragraphes et tableaux) ; copie dans target/ pour relecture. */
-    private static String texte(byte[] docx, String copie) throws Exception {
-        if (copie != null) {
-            Path dir = Path.of("target", "fiches-rendues");
-            Files.createDirectories(dir);
-            Files.write(dir.resolve(copie), docx);
+    /** Texte du PDF (PDFBox) ; le PDF et ses pages en PNG sont copies dans target/output/l5b-pdf. */
+    private static String texte(byte[] pdf, String copie) throws Exception {
+        try (PDDocument doc = Loader.loadPDF(pdf)) {
+            if (copie != null) {
+                Path dir = Path.of("target", "output", "l5b-pdf");
+                Files.createDirectories(dir);
+                Files.write(dir.resolve(copie + ".pdf"), pdf);
+                PDFRenderer r = new PDFRenderer(doc);
+                for (int p = 0; p < doc.getNumberOfPages(); p++) {
+                    ImageIO.write(r.renderImageWithDPI(p, 110, ImageType.RGB), "png",
+                            new File(dir.toFile(), copie + "-p" + (p + 1) + ".png"));
+                }
+            }
+            return new PDFTextStripper().getText(doc);
         }
-        StringBuilder sb = new StringBuilder();
-        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(docx))) {
-            for (XWPFParagraph p : doc.getParagraphs()) sb.append(p.getText()).append('\n');
-            for (XWPFTable t : doc.getTables()) sb.append(t.getText()).append('\n');
-        }
-        return sb.toString();
     }
 }

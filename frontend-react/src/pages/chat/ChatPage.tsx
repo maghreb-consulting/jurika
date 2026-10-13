@@ -12,7 +12,7 @@ import { getSocket } from '../../lib/realtimeSocket';
 import { useCurrentUser } from '../../store/authStore';
 import { refreshChatUnread } from '../../store/chatUnreadStore';
 import { extractError } from '../../lib/api';
-import type { ChatMessage, Conversation, ChatSendAck } from '../../types/chat';
+import type { ChatMessage, Conversation } from '../../types/chat';
 import type { WorkspaceUser } from '../../types/auth';
 
 interface DraftConversation {
@@ -232,7 +232,7 @@ export function ChatPage() {
         const existing = prev[peerId] ?? [];
         // Replace optimistic match if any
         const filtered = existing.filter(
-          (m) => !(m.pending && m.body === msg.body && m.to === msg.to),
+          (m) => m.id !== msg.id && !(m.pending && m.body === msg.body && m.to === msg.to),
         );
         return { ...prev, [peerId]: [...filtered, msg] };
       });
@@ -289,6 +289,23 @@ export function ChatPage() {
     // par `activePeerRef`, évitant un re-bind complet du socket à chaque
     // changement de conversation (churn + risque de rater des messages).
   }, [user?.userId]);
+
+  // Lot L5b (E1, RG-COM-06) : sans temps reel, la liste et la conversation ouverte sont
+  // relues toutes les 15 s : un message recu est remis meme sans connexion temps reel.
+  useEffect(() => {
+    if (connected) return;
+    const t = setInterval(() => {
+      void chatService.listConversations().then(setConversations).catch(() => undefined);
+      const peer = activePeerRef.current;
+      const conv = peer ? conversationsRef.current.find((c) => c.peerId === peer) : undefined;
+      if (peer && conv) {
+        void chatService.listMessages(conv.id)
+          .then((items) => setMessagesByPeer((prev) => ({ ...prev, [peer]: items })))
+          .catch(() => undefined);
+      }
+    }, 15_000);
+    return () => clearInterval(t);
+  }, [connected]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -352,67 +369,55 @@ export function ChatPage() {
 
   async function handleSend() {
     const body = draftBody.trim();
-    const s = socketRef.current;
-    if (!body || !activePeer || !s) return;
+    if (!body || !activePeer) return;
+    const peer = activePeer;
 
     setSending(true);
     setError(null);
 
     const optimistic: ChatMessage = {
       id: `tmp-${Date.now()}`,
-      conversationId: `pending:${activePeer}`,
+      conversationId: `pending:${peer}`,
       from: user?.userId ?? 'me',
-      to: activePeer,
+      to: peer,
       body,
       createdAt: new Date().toISOString(),
       pending: true,
     };
     setMessagesByPeer((prev) => ({
       ...prev,
-      [activePeer]: [...(prev[activePeer] ?? []), optimistic],
+      [peer]: [...(prev[peer] ?? []), optimistic],
     }));
     setDraftBody('');
 
     try {
-      const ack = await new Promise<ChatSendAck>((resolve) => {
-        let settled = false;
-        const timeout = setTimeout(() => {
-          if (!settled) resolve({ ok: false, error: 'Timeout' });
-        }, 8000);
-        s.emit('chat:send', { to: activePeer, body }, (response: ChatSendAck) => {
-          settled = true;
-          clearTimeout(timeout);
-          resolve(response ?? { ok: false, error: 'Reponse invalide' });
-        });
+      // Lot L5b (E1, RG-COM-06) : envoi par le serveur, enregistre des l'envoi, que la
+      // connexion temps reel soit active ou non ; le temps reel ne sert qu'a la remise
+      // immediate (l'evenement chat:message du meme message est dedoublonne par son id).
+      const saved = await chatService.envoyer(peer, body);
+      setMessagesByPeer((prev) => {
+        const sans = (prev[peer] ?? []).filter((m) => m.id !== optimistic.id && m.id !== saved.id);
+        return { ...prev, [peer]: [...sans, saved] };
       });
-
-      if (!ack.ok) {
-        throw new Error(ack.error ?? 'Echec de l\'envoi');
-      }
-
-      // Promote draft conversation to real one once the server confirms it
-      if (draftPeer && draftPeer.peerId === activePeer && ack.message) {
-        setDraftPeer(null);
-        setConversations((prev) => {
-          if (prev.some((c) => c.peerId === activePeer)) return prev;
-          return [
-            {
-              id: ack.message!.conversationId,
-              peerId: activePeer,
-              lastMessage: ack.message!.body,
-              lastMessageAt: ack.message!.createdAt,
-              unreadCount: 0,
-            },
-            ...prev,
-          ];
-        });
-      }
+      setConversations((prev) => {
+        const idx = prev.findIndex((c) => c.peerId === peer);
+        const maj: Conversation = {
+          id: saved.conversationId,
+          peerId: peer,
+          lastMessage: saved.body,
+          lastMessageAt: saved.createdAt,
+          unreadCount: 0,
+        };
+        if (idx >= 0) return [{ ...prev[idx], ...maj }, ...prev.filter((_, i) => i !== idx)];
+        return [maj, ...prev];
+      });
+      if (draftPeer && draftPeer.peerId === peer) setDraftPeer(null);
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Echec de l\'envoi';
+      const message = e instanceof Error ? e.message : 'Le message n’a pas pu être envoyé.';
       setError(message);
       setMessagesByPeer((prev) => ({
         ...prev,
-        [activePeer]: (prev[activePeer] ?? []).filter((m) => m.id !== optimistic.id),
+        [peer]: (prev[peer] ?? []).filter((m) => m.id !== optimistic.id),
       }));
       setDraftBody(body);
     } finally {
@@ -455,15 +460,20 @@ export function ChatPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs">
+          {/* Lot L5b (E1, RG-COM-06) : indicateur seulement ; il ne bloque jamais l'envoi. */}
           {connected ? (
             <Badge variant="success">
-              <PlugZap className="mr-1 h-3 w-3" /> Connecte
+              <PlugZap className="mr-1 h-3 w-3" /> Temps réel actif
             </Badge>
           ) : (
             <Badge variant="warning">
-              <Plug className="mr-1 h-3 w-3" /> Hors-ligne
+              <Plug className="mr-1 h-3 w-3" /> Temps réel interrompu
             </Badge>
           )}
+          <InfoBulle
+            libelle="Que signifie l’indicateur de connexion ?"
+            texte="« Temps réel actif » : les messages de vos collègues s’affichent dès leur envoi. « Temps réel interrompu » : vos messages partent et sont enregistrés quand même ; ceux de vos collègues apparaissent à la prochaine actualisation, faite automatiquement toutes les 15 secondes."
+          />
         </div>
       </header>
 
@@ -697,7 +707,7 @@ export function ChatPage() {
                 />
                 <Button
                   onClick={() => void handleSend()}
-                  disabled={!draftBody.trim() || sending || !connected}
+                  disabled={!draftBody.trim() || sending}
                   loading={sending}
                   size="sm"
                 >

@@ -24,6 +24,7 @@ class JurikaPdfLetterheadTest {
 
     private byte[] build(CabinetIdentity id) {
         JurikaPdfDocument doc = JurikaPdfTheme.newDocument();
+        doc.dateEdition(java.time.LocalDate.of(2026, 10, 13));
         doc.header(id, "Document de test", "Sujet", null);
         doc.note("Corps du document.");
         return doc.finish();
@@ -56,6 +57,7 @@ class JurikaPdfLetterheadTest {
     @Test
     void couche_texte_rend_exactement_les_ligatures() throws Exception {
         JurikaPdfDocument doc = JurikaPdfTheme.newDocument();
+        doc.dateEdition(java.time.LocalDate.of(2026, 10, 13));
         doc.header(CabinetIdentity.ofName(null, "Cabinet"), "Document de test", null, null);
         // Titre serif (Playfair) contenant « fi » + corps sans (Inter) avec ff/fl/ffi.
         doc.sectionTitle("1", "Identifiants officiels");
@@ -85,8 +87,8 @@ class JurikaPdfLetterheadTest {
     }
 
     @Test
-    void en_tete_sans_logo_cabinet_embarque_embleme_jurika_par_defaut() throws Exception {
-        // Aucun logo cabinet -> l'embleme JURIKA par defaut est embarque dans le PDF.
+    void en_tete_sans_logo_cabinet_embarque_le_logo_moucharabieh() throws Exception {
+        // Aucun logo cabinet -> le logo Moucharabieh de JURIKA est embarque (toujours present).
         byte[] pdf = build(CabinetIdentity.ofName(null, "Cabinet Solo"));
         assertThat(imageCount(pdf)).isGreaterThanOrEqualTo(1);
     }

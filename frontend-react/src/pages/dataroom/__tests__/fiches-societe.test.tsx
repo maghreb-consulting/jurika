@@ -3,23 +3,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 /**
- * Lot L5 (E7) : fiche client et fiche dossier a l'ecran (cahier des charges 10.2, 10.3).
+ * Lot L5 (E7) puis L5b (E3) : fiche client et fiche dossier a l'ecran (cahier des charges
+ * 10.2, 10.3) -- deux panneaux distincts, chacun son PDF (RG-FIC-05, 07, 08 ; plus de Word).
  * Les valeurs affichees sont celles rendues par le serveur (provenance, versions de TP,
- * operations) ; la generation Word dit si la fiche a ete conservee.
+ * operations) ; le telechargement dit si la fiche a ete conservee.
  */
 
 const svc = {
+  ficheClient: vi.fn(),
   ficheDossier: vi.fn(),
-  genererFicheWord: vi.fn(),
+  genererFichePdf: vi.fn(),
 };
 vi.mock('../../../services/dataroom.service', () => ({
   dataroomService: {
+    ficheClient: (...a: unknown[]) => svc.ficheClient(...a),
     ficheDossier: (...a: unknown[]) => svc.ficheDossier(...a),
-    genererFicheWord: (...a: unknown[]) => svc.genererFicheWord(...a),
+    genererFichePdf: (...a: unknown[]) => svc.genererFichePdf(...a),
   },
 }));
 
-import { FichesSocieteDrawer } from '../components/FichesSocieteDrawer';
+import { FicheSocieteDrawer } from '../components/FichesSocieteDrawer';
 import type { FicheDossierVue } from '../../../types/dataroom';
 
 const vue = (modifiable: boolean): FicheDossierVue => ({
@@ -54,12 +57,17 @@ beforeEach(() => {
   Object.values(svc).forEach((f) => f.mockReset());
 });
 
-describe('Fiche client et fiche dossier', () => {
-  it('fiche client : identifiants, provenance, versions de TP, trace, manquants nommes', async () => {
-    svc.ficheDossier.mockResolvedValue(vue(true));
-    render(<FichesSocieteDrawer open dossierId="d1" raisonSociale="ACME SARL" onClose={() => {}} onModifier={() => {}} />);
+const ouvrir = (type: 'client' | 'dossier') =>
+  render(<FicheSocieteDrawer open type={type} dossierId="d1" raisonSociale="ACME SARL" onClose={() => {}} onModifier={() => {}} />);
+
+describe('Fiche client', () => {
+  it('identifiants, provenance, versions de TP, trace, manquants nommes ; aucune operation', async () => {
+    svc.ficheClient.mockResolvedValue(vue(true).fiche);
+    ouvrir('client');
 
     const table = await screen.findByTestId('fiche-identifiants-table');
+    expect(svc.ficheClient).toHaveBeenCalledWith('d1');
+    expect(svc.ficheDossier).not.toHaveBeenCalled();
     expect(within(table).getByText('Obtenu en fin de parcours (ticket T-0001)')).toBeInTheDocument();
     expect(within(table).getByText('Saisie manuelle par Salma Alaoui, le 05/03/2026')).toBeInTheDocument();
     expect(within(table).getByText('Non renseigné')).toBeInTheDocument();
@@ -67,51 +75,58 @@ describe('Fiche client et fiche dossier', () => {
     expect(screen.getByText('Non renseignée')).toBeInTheDocument();
     expect(screen.getByText('En vigueur')).toBeInTheDocument();
     expect(screen.getByTestId('fiche-trace')).toHaveTextContent('TP-1111');
-    // La fiche client ne montre pas les operations.
+    // Document distinct : ni onglets, ni operations du dossier.
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
     expect(screen.queryByTestId('fiche-operations-table')).not.toBeInTheDocument();
-    expect(screen.getByRole('note', { name: 'À quoi servent ces fiches ?' })).toBeInTheDocument();
+    expect(screen.getByRole('note', { name: 'À quoi sert la fiche client ?' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Modifier les identifiants/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Télécharger la fiche client (PDF)' })).toBeInTheDocument();
+    expect(screen.queryByText(/Word/)).not.toBeInTheDocument();
   });
 
-  it('fiche dossier : toutes les operations, annulees comprises, et la derniere cloture', async () => {
-    svc.ficheDossier.mockResolvedValue(vue(false));
-    render(<FichesSocieteDrawer open dossierId="d1" raisonSociale="ACME SARL" onClose={() => {}} onModifier={() => {}} />);
+  it('telechargement PDF : dit si la fiche est conservee et sa version', async () => {
+    svc.ficheClient.mockResolvedValue(vue(true).fiche);
+    svc.genererFichePdf.mockResolvedValue({ conservee: true, version: 3 });
+    ouvrir('client');
     await screen.findByTestId('fiche-identifiants-table');
-    fireEvent.click(screen.getByRole('tab', { name: 'Fiche dossier' }));
+    fireEvent.click(screen.getByTestId('fiche-generer'));
+    await waitFor(() => expect(svc.genererFichePdf).toHaveBeenCalledWith('d1', 'fiche-client'));
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'La fiche client (PDF) a été téléchargée et conservée dans la Data Room du dossier (version 3)',
+    );
+  });
+});
 
-    const ops = screen.getByTestId('fiche-operations-table');
+describe('Fiche dossier', () => {
+  it('toutes les operations, annulees comprises, et la derniere cloture ; pas de trace', async () => {
+    svc.ficheDossier.mockResolvedValue(vue(false));
+    ouvrir('dossier');
+    const ops = await screen.findByTestId('fiche-operations-table');
+    expect(svc.ficheClient).not.toHaveBeenCalled();
     expect(ops).toHaveTextContent('T-0001');
     expect(ops).toHaveTextContent('T-0003');
     expect(ops).toHaveTextContent(/Annulé le/);
     expect(screen.getByText(/À jour de la dernière clôture/)).toBeInTheDocument();
+    expect(screen.getByTestId('fiche-identifiants-table')).toBeInTheDocument();
+    expect(screen.queryByTestId('fiche-trace')).not.toBeInTheDocument();
+    expect(screen.getByRole('note', { name: 'À quoi sert la fiche dossier ?' })).toBeInTheDocument();
     // Superviseur (non modifiable) : pas de bouton de modification.
     expect(screen.queryByRole('button', { name: /Modifier les identifiants/ })).not.toBeInTheDocument();
   });
 
-  it('generation Word : dit si la fiche est conservee et sa version', async () => {
-    svc.ficheDossier.mockResolvedValue(vue(true));
-    svc.genererFicheWord.mockResolvedValue({ conservee: true, version: 3 });
-    render(<FichesSocieteDrawer open dossierId="d1" raisonSociale="ACME SARL" onClose={() => {}} onModifier={() => {}} />);
-    await screen.findByTestId('fiche-identifiants-table');
-    fireEvent.click(screen.getByTestId('fiche-generer'));
-    await waitFor(() => expect(svc.genererFicheWord).toHaveBeenCalledWith('d1', 'fiche-client'));
-    expect(await screen.findByRole('status')).toHaveTextContent('conservée dans la Data Room du dossier (version 3)');
-  });
-
-  it('generation non conservee (superviseur) : le message le dit', async () => {
+  it('telechargement non conserve (superviseur) : le message le dit', async () => {
     svc.ficheDossier.mockResolvedValue(vue(false));
-    svc.genererFicheWord.mockResolvedValue({ conservee: false, version: null });
-    render(<FichesSocieteDrawer open dossierId="d1" raisonSociale="ACME SARL" onClose={() => {}} onModifier={() => {}} />);
-    await screen.findByTestId('fiche-identifiants-table');
-    fireEvent.click(screen.getByRole('tab', { name: 'Fiche dossier' }));
-    fireEvent.click(screen.getByTestId('fiche-generer'));
-    await waitFor(() => expect(svc.genererFicheWord).toHaveBeenCalledWith('d1', 'fiche-dossier'));
+    svc.genererFichePdf.mockResolvedValue({ conservee: false, version: null });
+    ouvrir('dossier');
+    await screen.findByTestId('fiche-operations-table');
+    fireEvent.click(screen.getByRole('button', { name: 'Télécharger la fiche dossier (PDF)' }));
+    await waitFor(() => expect(svc.genererFichePdf).toHaveBeenCalledWith('d1', 'fiche-dossier'));
     expect(await screen.findByRole('status')).toHaveTextContent('n’est pas conservée');
   });
 
   it('un refus du serveur est affiche', async () => {
     svc.ficheDossier.mockRejectedValue(new Error('Seul l’employé responsable du dossier consulte ses fiches.'));
-    render(<FichesSocieteDrawer open dossierId="d1" raisonSociale="ACME SARL" onClose={() => {}} onModifier={() => {}} />);
+    ouvrir('dossier');
     expect(await screen.findByRole('alert')).toBeInTheDocument();
   });
 });

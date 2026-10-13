@@ -11,7 +11,7 @@ import { CATEGORIE_LABELS } from '../../../types/ticket';
 /**
  * Lot L1 puis lot L5 (E6) (RG-DEB-03) : le client consulte l'etat des debours de chaque
  * operation de son dossier si ses permissions le prevoient (consultation des documents,
- * RG-CLI-01) ; il telecharge l'etat (Word) et les pieces justificatives si la permission de
+ * RG-CLI-01) ; il telecharge l'etat (PDF, lot L5b E3) et les pieces justificatives si la permission de
  * telecharger le prevoit. Le serveur decide : un refus affiche son motif.
  */
 
@@ -60,7 +60,7 @@ export function ClientDebours({ operations, canDownload }: { operations: Dossier
         <p>
           Chaque opération de votre dossier affiche les frais engagés, leur total et leurs pièces
           justificatives. {canDownload
-            ? 'Vous pouvez télécharger l’état des débours (document Word) et chaque pièce.'
+            ? 'Vous pouvez télécharger l’état des débours (document PDF) et chaque pièce.'
             : 'Le téléchargement n’est pas ouvert sur votre accès : demandez-le à votre cabinet.'}{' '}
           Pour toute question sur un montant, adressez une demande à votre cabinet depuis l’onglet
           « Mes Demandes ».
@@ -86,7 +86,7 @@ export function ClientDebours({ operations, canDownload }: { operations: Dossier
                   onClick={() => telecharger(() => ticketService.downloadEtatDebours(id, op.reference ?? id))}
                   className="text-xs font-medium text-accent underline"
                 >
-                  Télécharger l’état des débours (Word)
+                  Télécharger l’état des débours (PDF)
                 </button>
               )}
             </header>

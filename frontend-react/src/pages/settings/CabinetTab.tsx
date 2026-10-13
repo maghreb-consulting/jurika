@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
+import { InfoBulle } from '../../components/ui/Aide';
 import { workspaceService, type WorkspaceProfile } from '../../services/workspace.service';
 import { extractError } from '../../lib/api';
 import { PROFESSIONAL_TYPE_LABELS, isProfessionalType } from '../../types/professional';
@@ -21,7 +22,8 @@ import { PROFESSIONAL_TYPE_LABELS, isProfessionalType } from '../../types/profes
  * 2026-07-14 — Papier a en-tete : au-dela de l'ICE/ville, on configure ici le
  * nom affiche, l'adresse, le telephone, le site web, le RC et l'IF du cabinet,
  * ainsi que son logo. Un apercu en direct montre l'en-tete et le pied de page
- * des PDF generes (Fiche client, etat des debours...).
+ * des documents de synthese en PDF (fiche client, fiche dossier, etat des debours ; lot
+ * L5b E3, RG-FIC-08) : le logo JURIKA a gauche, le bloc du cabinet a droite.
  */
 export function CabinetTab() {
   const [profile, setProfile] = useState<WorkspaceProfile | null>(null);
@@ -190,8 +192,8 @@ export function CabinetTab() {
           <Building className="h-5 w-5 text-accent" /> Cabinet
         </h2>
         <p className="mt-1 text-sm text-fg-muted">
-          Coordonnees et papier a en-tete de votre cabinet — utilises en en-tete et pied
-          de page des documents generes (Fiche client, etat des debours…).
+          Coordonnées et papier à en-tête de votre cabinet — utilisés en en-tête et pied de
+          page des documents de synthèse en PDF (fiche client, fiche dossier, état des débours).
         </p>
       </div>
 
@@ -211,10 +213,21 @@ export function CabinetTab() {
       {/* Apercu du papier a en-tete */}
       <section className="rounded-2xl border border-border bg-bg-raised p-5">
         <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-fg-subtle">
-          <ImageIcon className="h-4 w-4" /> Apercu du papier a en-tete
+          <ImageIcon className="h-4 w-4" /> Aperçu du papier à en-tête
+          <InfoBulle
+            libelle="Où apparaît ce papier à en-tête ?"
+            texte="Sur les documents de synthèse téléchargés en PDF : fiche client, fiche dossier et état des débours. Le logo JURIKA figure à gauche de l’en-tête, votre logo et vos coordonnées à droite ; l’ICE, le RC et l’IF du cabinet en pied de page. Les actes générés suivent, eux, les modèles du cabinet."
+          />
         </h3>
         <div className="rounded-xl border border-border-hi bg-white p-5 text-[#050d1f]">
-          <div className="flex items-start gap-4 border-b-2 border-[#a8853d] pb-3">
+          <div className="flex items-start justify-end gap-4 border-b-2 border-[#a8853d] pb-3 text-right">
+            <div className="min-w-0">
+              <p className="font-heading text-lg font-semibold leading-tight">{effectiveName}</p>
+              {adresse.trim() && <p className="text-xs text-[#64748b]">{adresse.trim()}</p>}
+              {contactParts.length > 0 && (
+                <p className="text-xs text-[#64748b]">{contactParts.join('  ·  ')}</p>
+              )}
+            </div>
             {logoUrl && (
               <img
                 src={logoUrl}
@@ -223,18 +236,11 @@ export function CabinetTab() {
                 data-testid="cabinet-logo-preview"
               />
             )}
-            <div className="min-w-0">
-              <p className="font-heading text-lg font-semibold leading-tight">{effectiveName}</p>
-              {adresse.trim() && <p className="text-xs text-[#64748b]">{adresse.trim()}</p>}
-              {contactParts.length > 0 && (
-                <p className="text-xs text-[#64748b]">{contactParts.join('  ·  ')}</p>
-              )}
-            </div>
           </div>
           <p className="mt-6 text-center text-2xl font-semibold font-heading">Fiche client</p>
           <div className="mt-6 border-t border-[#a8853d] pt-2 text-center text-[11px] text-[#64748b]">
             {legalParts.length > 0 && <p>{legalParts.join('   ·   ')}</p>}
-            <p>Genere par JURIKA le {new Date().toLocaleDateString('fr-FR')} · Page 1 / 1</p>
+            <p>Édité par JURIKA le {new Date().toLocaleDateString('fr-FR')} · Page 1 / 1</p>
           </div>
         </div>
       </section>

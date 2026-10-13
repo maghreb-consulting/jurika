@@ -44,8 +44,9 @@ import java.util.UUID;
  *       consultation le prevoit (RG-DEB-03, RG-CLI-01) -- {@link AccesDeboursTicket} ;</li>
  *   <li>ecriture : employe en charge seulement (RG-DOS-01), ticket ni clos ni annule
  *       (RG-TKT-11), chaque geste trace (P7) -- {@link DeboursUseCase} ;</li>
- *   <li>etat des debours au format Word (RG-DEB-02, P5 : la sortie PDF est retiree), memes
- *       droits que la lecture, et pour le client la permission de telecharger.</li>
+ *   <li>etat des debours au format PDF a la charte JURIKA (RG-DEB-02, RG-FIC-08 ; lot L5b E3 :
+ *       plus de sortie Word), memes droits que la lecture, et pour le client la permission de
+ *       telecharger.</li>
  * </ul>
  * Ticket d'un autre workspace ou d'un autre dossier : 404.
  */
@@ -53,8 +54,6 @@ import java.util.UUID;
 @RequestMapping("/api/v1/tickets/{ticketId}/debours")
 public class DeboursController {
 
-    static final MediaType DOCX = MediaType.parseMediaType(
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     private static final ZoneId CASABLANCA = ZoneId.of("Africa/Casablanca");
 
     private final DeboursUseCase deboursUseCase;
@@ -115,25 +114,26 @@ public class DeboursController {
     }
 
     /**
-     * Lot L5 (E6, RG-DEB-02) : etat des debours du ticket au format Word, regenere a chaque
-     * demande a partir des lignes en base. Lectures en une transaction en lecture seule (RLS).
+     * Lot L5b (E3, RG-DEB-02, RG-FIC-08) : etat des debours du ticket au format PDF a la charte
+     * JURIKA, regenere a chaque demande a partir des lignes en base. Lectures en une transaction
+     * en lecture seule (RLS).
      */
     @Transactional(readOnly = true)
-    @GetMapping("/etat-word")
+    @GetMapping("/etat-pdf")
     @PreAuthorize("hasAnyRole('EMPLOYE','SUPERVISEUR','CLIENT') and !hasRole('SUPER_ADMIN')")
-    public ResponseEntity<byte[]> etatWord(@AuthenticationPrincipal AuthenticatedUser actor,
-                                           @PathVariable UUID ticketId) {
+    public ResponseEntity<byte[]> etatPdf(@AuthenticationPrincipal AuthenticatedUser actor,
+                                          @PathVariable UUID ticketId) {
         Ticket ticket = acces.telechargement(actor, ticketId);
         CabinetIdentity cabinet = workspaces.findById(actor.workspaceId())
                 .map(DeboursController::cabinet)
                 .orElseThrow(() -> new NotFoundException("Cabinet inconnu"));
-        byte[] docx = etatDebours.etablir(actor.workspaceId(), ticket, cabinet, LocalDate.now(clock.withZone(CASABLANCA)));
-        String filename = "Etat_des_debours_" + ticket.reference() + ".docx";
+        byte[] pdf = etatDebours.etablir(actor.workspaceId(), ticket, cabinet, LocalDate.now(clock.withZone(CASABLANCA)));
+        String filename = "Etat_des_debours_" + ticket.reference() + ".pdf";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
                         .filename(filename, StandardCharsets.UTF_8).build().toString())
-                .contentType(DOCX)
-                .body(docx);
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 
     /** En-tete du cabinet : donnees du workspace (nom affiche sur les documents, sinon denomination). */

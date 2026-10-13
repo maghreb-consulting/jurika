@@ -6,7 +6,7 @@ RUN npm ci
 COPY . .
 
 ARG VITE_API_URL=https://api.jurika.ma/api/v1
-ARG VITE_REALTIME_URL=https://realtime.jurika.ma
+ARG VITE_REALTIME_URL=
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_REALTIME_URL=$VITE_REALTIME_URL
 

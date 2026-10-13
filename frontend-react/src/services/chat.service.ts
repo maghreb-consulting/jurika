@@ -13,7 +13,7 @@ import type { ChatMessage, Conversation } from '../types/chat';
  * reassignation des tickets + audit DOSSIER_TRANSFERE) — cf. transfer.service.ts.
  */
 const realtimeApi = axios.create({
-  baseURL: `${REALTIME_URL}/api/v1`,
+  baseURL: REALTIME_URL,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -29,6 +29,20 @@ export const chatService = {
   async listConversations(): Promise<Conversation[]> {
     const { data } = await realtimeApi.get<Conversation[]>('/chat/conversations');
     return data;
+  },
+
+  /**
+   * Lot L5b (E1, RG-COM-06) : envoi par le serveur, enregistre des l'envoi, avec ou sans
+   * connexion temps reel. Un refus rend le message du serveur (cabinet, destinataire...).
+   */
+  async envoyer(to: string, body: string): Promise<ChatMessage> {
+    try {
+      const { data } = await realtimeApi.post<ChatMessage>('/chat/messages', { to, body });
+      return data;
+    } catch (e) {
+      const data = axios.isAxiosError(e) ? (e.response?.data as { error?: string } | undefined) : undefined;
+      throw new Error(data?.error ?? 'Le message n’a pas pu être envoyé. Vérifiez votre connexion et réessayez.');
+    }
   },
 
   async listMessages(conversationId: string): Promise<ChatMessage[]> {

@@ -204,7 +204,7 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
             </div>
           )}
 
-          {/* Lot L5 (E6) : rubrique Debours commune a la page du ticket (saisie, pieces, etat Word). */}
+          {/* Lot L5 (E6) : rubrique Debours commune a la page du ticket (saisie, pieces, etat PDF depuis L5b E3). */}
           <DeboursPanel ticketId={ticketId} reference={ticket.reference} dossierId={ticket.dossierId ?? null}
             statut={ticket.statut} canAct={canAct} />
 

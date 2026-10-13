@@ -21,6 +21,8 @@ const svc = {
   getJuridique: vi.fn(),
   deleteJuridiqueDocument: vi.fn(),
   downloadDocument: vi.fn(),
+  ficheClient: vi.fn(),
+  ficheDossier: vi.fn(),
 };
 vi.mock('../../../services/dataroom.service', () => ({
   // Les autres appels des composants enfants (types de documents, etc.) rendent une liste vide.
@@ -128,7 +130,7 @@ describe('3. Debours cote client', () => {
 
   const fraisGreffe = { id: 'x', ticketId: 't1', libelle: 'Dépôt au greffe', categorie: 'FRAIS_GREFFE', montantMad: 350, dateEngagement: '2026-09-02', pieceJointeUrl: null, pieceJointeFilename: 'quittance.pdf', pieceDocumentId: 'doc-q', notes: null, createdAt: '2026-09-02' };
 
-  it('affiche les frais, le total, l etat Word et les pieces si le telechargement est permis', async () => {
+  it('affiche les frais, le total, l etat PDF et les pieces si le telechargement est permis', async () => {
     tickets.listDebours.mockResolvedValue({ items: [fraisGreffe], total: 350 });
     tickets.downloadEtatDebours.mockResolvedValue(undefined);
     svc.downloadDocument.mockResolvedValue(undefined);
@@ -136,11 +138,11 @@ describe('3. Debours cote client', () => {
     expect(await screen.findByText('Dépôt au greffe')).toBeInTheDocument();
     expect(tickets.listDebours).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('table')).toHaveTextContent('Total');
-    fireEvent.click(screen.getByRole('button', { name: 'Télécharger l’état des débours (Word)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Télécharger l’état des débours (PDF)' }));
     expect(tickets.downloadEtatDebours).toHaveBeenCalledWith('t1', 'T-2026-001');
     fireEvent.click(screen.getByRole('button', { name: /quittance\.pdf/ }));
     expect(svc.downloadDocument).toHaveBeenCalledWith('doc-q', 'quittance.pdf');
-    expect(screen.queryByText(/PDF\)/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Word/)).not.toBeInTheDocument();
     expect(screen.getByRole('note', { name: 'Consulter vos débours' })).toBeInTheDocument();
   });
 
@@ -200,6 +202,36 @@ describe('4. Bouton de suppression d un document', () => {
     await screen.findAllByText('Statuts');
     expect(screen.queryByRole('button', { name: 'Supprimer' })).toBeNull();
     expect(svc.mesDroits).not.toHaveBeenCalled();
+  });
+});
+
+describe('Fiche client et fiche dossier : deux boutons distincts (lot L5b, E3)', () => {
+  const fiche = {
+    dossierId: 'd1', cabinet: 'Cabinet', denomination: 'ACME SARL', modifiable: false,
+    identifiants: [{ code: 'DENOMINATION', libelle: 'Dénomination', valeur: 'ACME SARL', provenance: 'Parcours de création', origine: 'OUVERTURE' }],
+    versionsTp: [], modifications: [],
+  };
+
+  it('chaque bouton ouvre son propre panneau et son propre document', async () => {
+    svc.getJuridique.mockResolvedValue(vue());
+    svc.ficheClient.mockResolvedValue(fiche);
+    svc.ficheDossier.mockResolvedValue({ fiche, operations: [], derniereCloture: null });
+    render(<MemoryRouter><DossierJuridiqueTab dossierId="d1" role="SUPERVISEUR" /></MemoryRouter>);
+    const boutonClient = await screen.findByTestId('open-fiche-client');
+    expect(boutonClient).toHaveTextContent('Fiche client');
+    expect(screen.getByTestId('open-fiche-dossier')).toHaveTextContent('Fiche dossier');
+    expect(screen.queryByText('Fiche client et fiche dossier')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Fiche client ou fiche dossier ?' })).toBeInTheDocument();
+
+    fireEvent.click(boutonClient);
+    expect(await screen.findByRole('button', { name: 'Télécharger la fiche client (PDF)' })).toBeInTheDocument();
+    expect(svc.ficheClient).toHaveBeenCalledWith('d1');
+    expect(svc.ficheDossier).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('open-fiche-dossier'));
+    expect(await screen.findByRole('button', { name: 'Télécharger la fiche dossier (PDF)' })).toBeInTheDocument();
+    await waitFor(() => expect(svc.ficheDossier).toHaveBeenCalledWith('d1'));
+    expect(await screen.findByText('Aucune opération enregistrée.')).toBeInTheDocument();
   });
 });
 

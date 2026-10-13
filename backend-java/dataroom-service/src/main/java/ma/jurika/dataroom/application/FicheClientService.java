@@ -24,7 +24,9 @@ import ma.jurika.dataroom.infrastructure.persistence.UserViewJpaRepository;
 import ma.jurika.dataroom.infrastructure.persistence.WorkflowProgressRow;
 import ma.jurika.dataroom.infrastructure.persistence.WorkflowProgressViewJpaRepository;
 import ma.jurika.dataroom.infrastructure.persistence.WorkspaceViewJpaRepository;
-import ma.jurika.dataroom.infrastructure.word.GabaritWord;
+import ma.jurika.dataroom.infrastructure.pdf.FichesPdf;
+import ma.jurika.dataroom.infrastructure.persistence.WorkspaceViewEntity;
+import ma.jurika.common.pdf.CabinetIdentity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
@@ -34,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -42,7 +45,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -62,7 +64,8 @@ import java.util.UUID;
  *   <li>RG-FIC-04 : la trace des modifications (auteur, date, ancienne et nouvelle valeur) se
  *       consulte a l'ecran ; la modification elle-meme passe par ticket-service
  *       ({@code PATCH /api/v1/dossiers/{id}/identifiants}) ;</li>
- *   <li>RG-FIC-05 a 07 : generees a la demande au format Word (P5), deterministes ; chaque
+ *   <li>RG-FIC-05 a 08 : deux documents distincts generes a la demande au format PDF a la
+ *       charte JURIKA (lot L5b E3 ; plus aucune sortie Word), deterministes ; chaque
  *       generation par l'employe responsable est conservee dans la Data Room du dossier, en
  *       versions successives (RG-DR-04). La fiche dossier est relue a chaque demande : elle
  *       est a jour de la derniere cloture (RG-CLO-04).</li>
@@ -81,7 +84,7 @@ public class FicheClientService {
     static final String TYPE_FICHE_DOSSIER = "FICHE_DOSSIER";
     static final String TITRE_FICHE_CLIENT = "Fiche client";
     static final String TITRE_FICHE_DOSSIER = "Fiche dossier";
-    public static final String DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    public static final String PDF_MIME = FichesPdf.MIME;
 
     static final String NON_RENSEIGNE = "Non renseigné";
     static final String NON_RENSEIGNEE = "Non renseignée";
@@ -134,8 +137,8 @@ public class FicheClientService {
             "SARL_AU", "Société à responsabilité limitée à associé unique (SARL AU)",
             "ETRANGERE", "Société étrangère");
 
-    /** Document Word produit, et sa conservation dans la Data Room. */
-    public record FicheWord(byte[] contenu, String nomFichier, boolean conservee, Short version) {}
+    /** Document PDF produit, et sa conservation dans la Data Room. */
+    public record FichePdf(byte[] contenu, String nomFichier, boolean conservee, Short version) {}
 
     private final DossierViewJpaRepository dossiers;
     private final WorkflowProgressViewJpaRepository workflows;
@@ -145,6 +148,7 @@ public class FicheClientService {
     private final DataroomJuridiqueService juridique;
     private final DossierArchiveGuard archiveGuard;
     private final ObjectMapper objectMapper;
+    private final Clock clock;
 
     public FicheClientService(DossierViewJpaRepository dossiers,
                               WorkflowProgressViewJpaRepository workflows,
@@ -153,7 +157,8 @@ public class FicheClientService {
                               FicheSocieteLecture lecture,
                               DataroomJuridiqueService juridique,
                               DossierArchiveGuard archiveGuard,
-                              ObjectMapper objectMapper) {
+                              ObjectMapper objectMapper,
+                              Clock clock) {
         this.dossiers = dossiers;
         this.workflows = workflows;
         this.users = users;
@@ -162,6 +167,7 @@ public class FicheClientService {
         this.juridique = juridique;
         this.archiveGuard = archiveGuard;
         this.objectMapper = objectMapper;
+        this.clock = clock;
     }
 
     // ------------------------------------------------------------------ lecture
@@ -188,44 +194,42 @@ public class FicheClientService {
         return new FicheDossierView(fiche, operations, derniere);
     }
 
-    // ------------------------------------------------------------------ Word
+    // ------------------------------------------------------------------ PDF
 
     @Transactional
     @Auditable(action = "FICHE_CLIENT_GENERATED", resourceType = "dossier", resourceIdExpr = "#dossierId")
-    public FicheWord genererFicheClient(UUID dossierId, Role role, UUID userId) {
+    public FichePdf genererFicheClient(UUID dossierId, Role role, UUID userId) {
         FicheClientView fiche = ficheClient(dossierId, role, userId);
-        byte[] docx = GabaritWord.remplir("gabarits/fiches/FICHE_CLIENT.docx", valeurs(fiche),
-                Map.of("VTP_", lignesTp(fiche)), Map.of("VTP_", "Aucune taxe professionnelle enregistrée"));
+        byte[] pdf = FichesPdf.ficheClient(identiteCabinet(), fiche, aujourdhui());
         return conserver(dossierId, role, userId, TYPE_FICHE_CLIENT, TITRE_FICHE_CLIENT,
-                "Fiche_client_" + nomSur(fiche.denomination()) + ".docx", docx);
+                "Fiche_client_" + nomSur(fiche.denomination()) + ".pdf", pdf);
     }
 
     @Transactional
     @Auditable(action = "FICHE_DOSSIER_GENERATED", resourceType = "dossier", resourceIdExpr = "#dossierId")
-    public FicheWord genererFicheDossier(UUID dossierId, Role role, UUID userId) {
+    public FichePdf genererFicheDossier(UUID dossierId, Role role, UUID userId) {
         FicheDossierView vue = ficheDossier(dossierId, role, userId);
-        Map<String, String> valeurs = valeurs(vue.fiche());
-        valeurs.put("A_JOUR", vue.derniereCloture() == null
-                ? "Aucune opération clôturée à ce jour."
-                : "À jour de la dernière clôture, le " + date(vue.derniereCloture()) + ".");
-        List<Map<String, String>> ops = new ArrayList<>();
-        for (Operation o : vue.operations()) {
-            Map<String, String> l = new LinkedHashMap<>();
-            l.put("OP_TYPE", o.sousTypeLabel() == null ? o.typeLabel() : o.typeLabel() + " : " + o.sousTypeLabel());
-            l.put("OP_REFERENCE", o.reference() == null ? NON_RENSEIGNEE : o.reference());
-            l.put("OP_OUVERTURE", o.dateOuverture() == null ? NON_RENSEIGNEE : date(o.dateOuverture()));
-            l.put("OP_FIN", o.dateFin() == null ? "En cours"
-                    : ("ANNULATION".equals(o.natureFin()) ? "Annulé le " : "Clôturé le ") + date(o.dateFin()));
-            l.put("OP_STATUT", o.statutLabel());
-            l.put("OP_RESPONSABLE", o.responsable());
-            ops.add(l);
-        }
-        byte[] docx = GabaritWord.remplir("gabarits/fiches/FICHE_DOSSIER.docx", valeurs,
-                Map.of("VTP_", lignesTp(vue.fiche()), "OP_", ops),
-                Map.of("VTP_", "Aucune taxe professionnelle enregistrée",
-                        "OP_", "Aucune opération enregistrée"));
+        byte[] pdf = FichesPdf.ficheDossier(identiteCabinet(), vue, aujourdhui());
         return conserver(dossierId, role, userId, TYPE_FICHE_DOSSIER, TITRE_FICHE_DOSSIER,
-                "Fiche_dossier_" + nomSur(vue.fiche().denomination()) + ".docx", docx);
+                "Fiche_dossier_" + nomSur(vue.fiche().denomination()) + ".pdf", pdf);
+    }
+
+    /** Date d'edition imprimee : jour courant a Casablanca (horloge injectee). */
+    private LocalDate aujourdhui() {
+        return LocalDate.now(clock.withZone(CASABLANCA));
+    }
+
+    /** En-tete du cabinet : donnees du workspace (nom affiche sur les documents, sinon denomination). */
+    private CabinetIdentity identiteCabinet() {
+        UUID ws = workspace();
+        return workspaces.findById(ws).map(FicheClientService::identite)
+                .orElseGet(() -> CabinetIdentity.ofName(null, null));
+    }
+
+    private static CabinetIdentity identite(WorkspaceViewEntity w) {
+        return CabinetIdentity.resolve(w.getNomAfficheDocuments(), w.getName(), w.getLogoBytes(),
+                w.getLogoContentType(), w.getAdresse(), w.getTelephone(), w.getContactEmail(), w.getSiteWeb(),
+                w.getIce(), w.getRcNumber(), w.getIfFiscal());
     }
 
     /**
@@ -233,35 +237,14 @@ public class FicheClientService {
      * meme emplacement). Le superviseur et le super-admin, en lecture seule (RG-U02-04),
      * telechargent sans rien ecrire ; une societe archivee (Data Room en lecture seule) aussi.
      */
-    private FicheWord conserver(UUID dossierId, Role role, UUID userId, String type, String titre,
-                                String nomFichier, byte[] docx) {
+    private FichePdf conserver(UUID dossierId, Role role, UUID userId, String type, String titre,
+                               String nomFichier, byte[] pdf) {
         if (role != Role.EMPLOYE || archiveGuard.isReadOnly(dossierId)) {
-            return new FicheWord(docx, nomFichier, false, null);
+            return new FichePdf(pdf, nomFichier, false, null);
         }
         DocumentSummary doc = juridique.uploadVersion(dossierId, type, titre, null,
-                new OctetsMultipartFile(nomFichier, DOCX_MIME, docx), userId);
-        return new FicheWord(docx, nomFichier, true, doc.version());
-    }
-
-    private Map<String, String> valeurs(FicheClientView fiche) {
-        Map<String, String> v = new HashMap<>();
-        v.put("CABINET_NOM", fiche.cabinet());
-        v.put("DENOMINATION_TITRE", fiche.denomination() == null ? NON_RENSEIGNEE : fiche.denomination());
-        for (Identifiant i : fiche.identifiants()) {
-            v.put(i.code() + "_VALEUR", i.valeur() == null ? NON_RENSEIGNE : i.valeur());
-            v.put(i.code() + "_PROVENANCE", i.provenance());
-        }
-        return v;
-    }
-
-    private static List<Map<String, String>> lignesTp(FicheClientView fiche) {
-        List<Map<String, String>> out = new ArrayList<>();
-        for (VersionTp t : fiche.versionsTp()) {
-            out.add(Map.of("VTP_NUMERO", t.numero(),
-                    "VTP_DATE_EFFET", t.dateEffet() == null ? NON_RENSEIGNEE : t.dateEffet().format(JJ_MM_AAAA),
-                    "VTP_ETAT", t.enVigueur() ? "En vigueur" : "Remplacée"));
-        }
-        return out;
+                new OctetsMultipartFile(nomFichier, PDF_MIME, pdf), userId);
+        return new FichePdf(pdf, nomFichier, true, doc.version());
     }
 
     // ------------------------------------------------------------------ assemblage

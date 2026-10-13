@@ -9,6 +9,7 @@ vi.mock('../../../services/chat.service', () => ({
   chatService: {
     listConversations: vi.fn().mockResolvedValue([]),
     listMessages: vi.fn().mockResolvedValue([]),
+    envoyer: vi.fn(),
   },
 }));
 
@@ -116,9 +117,7 @@ describe('<ChatPage>', () => {
   // son message s'affiche tel quel et le brouillon est rendu a l'utilisateur.
   it('affiche le refus du serveur et rend le message a la saisie', async () => {
     const refus = 'Ce destinataire n’appartient pas à votre cabinet.';
-    fakeSocket.emit.mockImplementation((event: string, _payload: unknown, ack?: (r: unknown) => void) => {
-      if (event === 'chat:send' && ack) ack({ ok: false, error: refus, code: 'DESTINATAIRE_INCONNU' });
-    });
+    vi.mocked(chatService.envoyer).mockRejectedValueOnce(new Error(refus));
     render(<ChatPage />);
     fireEvent.click(await screen.findByTestId('chat-new-conversation'));
     fireEvent.click(await screen.findByTestId('chat-contact-item'));
@@ -128,7 +127,31 @@ describe('<ChatPage>', () => {
 
     expect(await screen.findByText(refus)).toBeInTheDocument();
     expect((input as HTMLTextAreaElement).value).toBe('Message refuse');
-    fakeSocket.emit.mockReset();
+  });
+
+  // Lot L5b (E1, RG-COM-06) : retour de test « Hors-ligne, les messages ne partent pas ».
+  // Le message est enregistre par le serveur (REST) meme sans temps reel ; l'indicateur
+  // de connexion ne bloque jamais l'envoi.
+  it('envoie et affiche le message meme sans connexion temps reel', async () => {
+    fakeSocket.connected = false;
+    vi.mocked(chatService.envoyer).mockResolvedValueOnce({
+      id: 'm-1', conversationId: 'c-1', from: 'me', to: 'peer-1', body: 'Bonjour Sara',
+      createdAt: '2026-10-13T10:00:00.000Z',
+    });
+    render(<ChatPage />);
+    fireEvent.click(await screen.findByTestId('chat-new-conversation'));
+    fireEvent.click(await screen.findByTestId('chat-contact-item'));
+    const input = await screen.findByTestId('chat-message-input');
+    fireEvent.change(input, { target: { value: 'Bonjour Sara' } });
+    expect(screen.getByRole('button', { name: /Envoyer/ })).toBeEnabled();
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    await waitFor(() => expect(chatService.envoyer).toHaveBeenCalledWith('peer-1', 'Bonjour Sara'));
+    // Le message s'affiche dans la conversation et en apercu dans la liste.
+    expect((await screen.findAllByText('Bonjour Sara')).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText(/Hors-ligne/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Temps réel interrompu/)).toBeInTheDocument();
+    fakeSocket.connected = true;
   });
 
   it("porte l'aide de la messagerie interne", async () => {

@@ -474,32 +474,33 @@ public class JuridiqueController {
     }
 
     /**
-     * Lot L5 (E7, P5) : fiche client au format Word. Generee par l'employe responsable, elle
-     * est conservee dans la Data Room (nouvelle version) ; en-tete {@code X-Fiche-Conservee}.
+     * Lot L5b (E3, RG-FIC-05, RG-FIC-08) : fiche client au format PDF a la charte JURIKA (plus
+     * de Word). Generee par l'employe responsable, elle est conservee dans la Data Room
+     * (nouvelle version) ; en-tete {@code X-Fiche-Conservee}.
      */
-    @PostMapping(value = "/dossiers/{dossierId}/juridique/fiche-client/word")
+    @PostMapping(value = "/dossiers/{dossierId}/juridique/fiche-client/pdf")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN','ROLE_SUPERVISEUR','ROLE_EMPLOYE')")
-    @Operation(summary = "Fiche client Word (generee, conservee en version par l'employe responsable)")
-    public ResponseEntity<byte[]> ficheClientWord(@AuthenticationPrincipal AuthenticatedUser user,
+    @Operation(summary = "Fiche client PDF (generee, conservee en version par l'employe responsable)")
+    public ResponseEntity<byte[]> ficheClientPdf(@AuthenticationPrincipal AuthenticatedUser user,
+                                                 @PathVariable UUID dossierId) {
+        employeGuard.assertResponsable(dossierId, user);
+        return pdf(ficheClient.genererFicheClient(dossierId, user.role(), user.userId()));
+    }
+
+    /** Lot L5b (E3, RG-FIC-07, RG-FIC-08) : fiche dossier au format PDF (meme regle de conservation). */
+    @PostMapping(value = "/dossiers/{dossierId}/juridique/fiche-dossier/pdf")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN','ROLE_SUPERVISEUR','ROLE_EMPLOYE')")
+    @Operation(summary = "Fiche dossier PDF (generee, conservee en version par l'employe responsable)")
+    public ResponseEntity<byte[]> ficheDossierPdf(@AuthenticationPrincipal AuthenticatedUser user,
                                                   @PathVariable UUID dossierId) {
         employeGuard.assertResponsable(dossierId, user);
-        return word(ficheClient.genererFicheClient(dossierId, user.role(), user.userId()));
+        return pdf(ficheClient.genererFicheDossier(dossierId, user.role(), user.userId()));
     }
 
-    /** Lot L5 (E7, P5) : fiche dossier au format Word (meme regle de conservation). */
-    @PostMapping(value = "/dossiers/{dossierId}/juridique/fiche-dossier/word")
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN','ROLE_SUPERVISEUR','ROLE_EMPLOYE')")
-    @Operation(summary = "Fiche dossier Word (generee, conservee en version par l'employe responsable)")
-    public ResponseEntity<byte[]> ficheDossierWord(@AuthenticationPrincipal AuthenticatedUser user,
-                                                   @PathVariable UUID dossierId) {
-        employeGuard.assertResponsable(dossierId, user);
-        return word(ficheClient.genererFicheDossier(dossierId, user.role(), user.userId()));
-    }
-
-    private static ResponseEntity<byte[]> word(FicheClientService.FicheWord fiche) {
+    private static ResponseEntity<byte[]> pdf(FicheClientService.FichePdf fiche) {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fiche.nomFichier() + "\"")
-                .header(HttpHeaders.CONTENT_TYPE, FicheClientService.DOCX_MIME)
+                .header(HttpHeaders.CONTENT_TYPE, FicheClientService.PDF_MIME)
                 .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(fiche.contenu().length))
                 .header("X-Fiche-Conservee", String.valueOf(fiche.conservee()))
                 .header("X-Fiche-Version", fiche.version() == null ? "" : String.valueOf(fiche.version()))

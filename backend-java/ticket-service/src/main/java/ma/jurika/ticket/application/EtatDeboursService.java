@@ -20,8 +20,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Lot L5 (E6, RG-DEB-02) : etablit l'etat des debours d'un ticket au format Word (P5),
- * regenerable a tout moment. Les droits sont controles avant ({@link AccesDeboursTicket}).
+ * Lot L5 (E6, RG-DEB-02) : etablit l'etat des debours d'un ticket, au format PDF a la charte
+ * JURIKA depuis le lot L5b (E3, RG-FIC-08), regenerable a tout moment. Les droits sont controles avant ({@link AccesDeboursTicket}).
  * Refus nommes : ticket sans dossier (pas de societe a identifier), ticket sans debours.
  */
 @Service

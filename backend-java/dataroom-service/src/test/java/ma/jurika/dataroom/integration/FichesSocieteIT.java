@@ -8,7 +8,6 @@ import ma.jurika.dataroom.api.dto.FicheClientDtos.Identifiant;
 import ma.jurika.dataroom.api.dto.FicheClientDtos.Operation;
 import ma.jurika.dataroom.application.FicheClientService;
 import ma.jurika.dataroom.domain.port.ObjectStorage;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,7 +27,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.io.ByteArrayInputStream;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +41,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Lot L5 (E7) : fiche client et fiche dossier sur le vrai schema (migrations de auth,
  * ticket, dataroom et workflow), en role d'execution jurika_app (RLS) : lectures des
  * tickets, de la trace des identifiants (ticket V41) et des versions de TP (ticket V30) ;
- * conservation des fiches Word en versions successives dans la Data Room (dataroom V36).
+ * conservation des fiches (PDF depuis L5b E3) en versions successives dans la Data Room (dataroom V36).
  */
 @Testcontainers
 @SpringBootTest(
@@ -164,15 +162,16 @@ class FichesSocieteIT {
 
     @Test
     void chaque_generation_du_responsable_est_conservee_en_nouvelle_version() throws Exception {
-        FicheClientService.FicheWord w1 = fiches.genererFicheClient(dossier, Role.EMPLOYE, EMPLOYE);
-        FicheClientService.FicheWord w2 = fiches.genererFicheClient(dossier, Role.EMPLOYE, EMPLOYE);
+        FicheClientService.FichePdf w1 = fiches.genererFicheClient(dossier, Role.EMPLOYE, EMPLOYE);
+        FicheClientService.FichePdf w2 = fiches.genererFicheClient(dossier, Role.EMPLOYE, EMPLOYE);
         fiches.genererFicheDossier(dossier, Role.EMPLOYE, EMPLOYE);
 
         assertThat(w1.conservee()).isTrue();
         assertThat(w1.version()).isEqualTo((short) 1);
         assertThat(w2.version()).isEqualTo((short) 2);
         List<Map<String, Object>> docs = jdbc.queryForList("""
-                SELECT document_type, version, is_current, visible_client, groupe FROM dataroom_documents
+                SELECT document_type, version, is_current, visible_client, groupe, content_type, filename
+                  FROM dataroom_documents
                  WHERE dossier_id = ? ORDER BY document_type, version
                 """, dossier);
         assertThat(docs).hasSize(3);
@@ -180,10 +179,14 @@ class FichesSocieteIT {
         assertThat(docs.get(1)).containsEntry("document_type", "FICHE_CLIENT").containsEntry("is_current", true)
                 .containsEntry("visible_client", false).containsEntry("groupe", "ACTES_GENERES");
         assertThat(docs.get(2)).containsEntry("document_type", "FICHE_DOSSIER");
+        // Lot L5b (E3) : conservees en PDF.
+        assertThat(docs).allSatisfy(d -> {
+            assertThat(d).containsEntry("content_type", "application/pdf");
+            assertThat((String) d.get("filename")).endsWith(".pdf");
+        });
 
-        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(w1.contenu()))) {
-            String texte = doc.getParagraphs().stream().map(p -> p.getText()).collect(Collectors.joining("\n"))
-                    + doc.getTables().stream().map(t -> t.getText()).collect(Collectors.joining("\n"));
+        try (var doc = org.apache.pdfbox.Loader.loadPDF(w1.contenu())) {
+            String texte = new org.apache.pdfbox.text.PDFTextStripper().getText(doc);
             assertThat(texte).contains("PARACOSME", "TP-501", "5 bd Zerktouni, Casablanca").doesNotContain("$");
         }
     }

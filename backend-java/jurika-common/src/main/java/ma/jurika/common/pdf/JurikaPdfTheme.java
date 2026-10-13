@@ -14,14 +14,20 @@ public final class JurikaPdfTheme {
 
     private JurikaPdfTheme() {}
 
-    // ── Couleurs charte ───────────────────────────────────────────────────────
+    // Couleurs de la charte (lot L5b E3, RG-FIC-08) : lues dans les SVG du logo Moucharabieh
+    // valide (~/docs/logo/3-moucharabieh/logo-horizontal-clair.svg), aucune inventee.
     public static final Color WHITE = new Color(0xff, 0xff, 0xff);
-    public static final Color VELIN = new Color(0xfa, 0xfa, 0xf7);
-    public static final Color BAND = new Color(0xf4, 0xf4, 0xef); // encadres / lignes alternees
-    public static final Color NAVY = new Color(0x05, 0x0d, 0x1f); // titres
-    public static final Color NAVY_SOFT = new Color(0x1c, 0x34, 0x61); // secondaire
-    public static final Color SLATE = new Color(0x64, 0x74, 0x8b); // libelles discrets
-    public static final Color GOLD = new Color(0xa8, 0x85, 0x3d); // filets / accents
+    public static final Color BAND = new Color(0xf4, 0xf4, 0xef); // encadres / lignes alternees (fond neutre)
+    /** Marine du nom JURIKA (fill #0c1d3f), aussi trait du zellige marine (pattern zeln). */
+    public static final Color NAVY = new Color(0x0c, 0x1d, 0x3f);
+    /** Marine clair, premier arret du degrade de l'embleme (#16325f). */
+    public static final Color NAVY_SOFT = new Color(0x16, 0x32, 0x5f);
+    public static final Color SLATE = new Color(0x64, 0x74, 0x8b); // libelles discrets (gris neutre lisible)
+    /** Or de la devise "Gestion juridique des entreprises" (fill #a8853d) : texte et filets. */
+    public static final Color GOLD = new Color(0xa8, 0x85, 0x3d);
+    /** Or des filets de l'embleme (stroke #c9a24a). */
+    public static final Color GOLD_LINE = new Color(0xc9, 0xa2, 0x4a);
+    /** Or du motif de zellige et du treillis (stroke #d4b06a) : decor. */
     public static final Color GOLD_SOFT = new Color(0xd4, 0xb0, 0x6a);
     public static final Color GREEN = new Color(0x10, 0x81, 0x5a);
 
