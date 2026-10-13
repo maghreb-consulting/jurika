@@ -51,17 +51,17 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Tableau de bord', to: '/dashboard', icon: Home, roles: ['SUPER_ADMIN', 'SUPERVISEUR', 'EMPLOYE', 'CLIENT'] },
   // SUPERVISEUR -> "Tous les Tickets", EMPLOYE -> "Mes Tickets" (label dynamique)
-  { label: 'Mes Tickets', to: '/tickets', icon: Ticket, roles: ['EMPLOYE'] },
-  { label: 'Tous les Tickets', to: '/tickets', icon: Ticket, roles: ['SUPERVISEUR'] },
+  { label: 'Mes tickets', to: '/tickets', icon: Ticket, roles: ['EMPLOYE'] },
+  { label: 'Tous les tickets', to: '/tickets', icon: Ticket, roles: ['SUPERVISEUR'] },
   { label: 'Mes Data Rooms', to: '/data-rooms', icon: Lock, roles: ['EMPLOYE'] },
   { label: 'Toutes les Data Rooms', to: '/data-rooms', icon: Lock, roles: ['SUPERVISEUR'] },
-  { label: 'Mon Espace', to: '/data-rooms', icon: Lock, roles: ['CLIENT'] },
+  { label: 'Mon espace', to: '/data-rooms', icon: Lock, roles: ['CLIENT'] },
   // Page Kanban dediee CLIENT : suivi de ses demandes (Non traitee / En cours / Traitee).
   { label: 'Mes demandes', to: '/mes-demandes', icon: MessageSquare, roles: ['CLIENT'] },
   // Lot AG — requetes de son conseiller (employe -> client).
-  { label: 'Demandes de mon conseiller', to: '/mes-requetes', icon: Inbox, roles: ['CLIENT'] },
+  { label: 'Requêtes du cabinet', to: '/mes-requetes', icon: Inbox, roles: ['CLIENT'] },
   // Lot M (2026-06-30) — Chat retire au CLIENT (experience reduite : Dashboard + Data Room).
-  { label: 'Chat', to: '/chat', icon: MessageSquare, roles: ['SUPERVISEUR', 'EMPLOYE'] },
+  { label: 'Messagerie', to: '/chat', icon: MessageSquare, roles: ['SUPERVISEUR', 'EMPLOYE'] },
   // Lot L4d (E7) : delais de depot au greffe (lecture ; ajustement par le superviseur).
   { label: 'Délais de greffe', to: '/delais-greffe', icon: ListChecks, roles: ['SUPERVISEUR', 'EMPLOYE'] },
   // E2 (2026-06-25) — Tracabilite : SUPERVISEUR
@@ -69,7 +69,7 @@ const NAV_ITEMS: NavItem[] = [
   // Lot L1 (D1) : dossiers dont le responsable a ete designe d'office, a verifier.
   { label: 'Dossiers à vérifier', to: '/dossiers-a-verifier', icon: UserCheck, roles: ['SUPERVISEUR'] },
   // SUPER_ADMIN : gestion plateforme uniquement (RG-U07).
-  { label: 'Workspaces', to: '/admin/workspaces', icon: Building2, roles: ['SUPER_ADMIN'] },
+  { label: 'Cabinets', to: '/admin/workspaces', icon: Building2, roles: ['SUPER_ADMIN'] },
   { label: 'Utilisateurs', to: '/admin/users', icon: Users, roles: ['SUPER_ADMIN'] },
   { label: 'Journal d’audit', to: '/admin/audit', icon: ScrollText, roles: ['SUPER_ADMIN'] },
   { label: 'Référentiel des démarches', to: '/admin/referentiel-demarches', icon: ListChecks, roles: ['SUPER_ADMIN'] },

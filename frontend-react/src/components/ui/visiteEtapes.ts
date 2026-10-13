@@ -40,7 +40,7 @@ const ETAPES: Record<Role, EtapeVisite[]> = {
       cible: 'menu',
       titre: 'Le menu',
       texte:
-        'Commencez par « Mes Tickets » : chaque ticket suit une demande de votre client, de la saisie des informations jusqu’au dépôt. « Mes Data Rooms » rassemble les pièces de vos dossiers.',
+        'Commencez par « Mes tickets » : chaque ticket suit une demande de votre client, de la saisie des informations jusqu’au dépôt. « Mes Data Rooms » rassemble les pièces de vos dossiers.',
     },
     {
       cible: 'echeances',
@@ -104,7 +104,7 @@ const ETAPES: Record<Role, EtapeVisite[]> = {
       cible: 'menu',
       titre: 'Le menu',
       texte:
-        '« Mon Espace » rassemble les documents de vos dossiers. « Mes demandes » vous permet d’adresser une demande au cabinet et d’en suivre l’avancement. « Demandes de mon conseiller » liste ce que votre conseiller attend de vous : commencez par là.',
+        '« Mon espace » rassemble les documents de vos dossiers. « Mes demandes » vous permet d’adresser une demande au cabinet et d’en suivre l’avancement. « Demandes de mon conseiller » liste ce que votre conseiller attend de vous : commencez par là.',
     },
     COMPTE,
     AIDES,

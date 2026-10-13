@@ -59,7 +59,7 @@ export function VerifyEmailPage() {
           patternMsg(
             workspaceCode.toUpperCase(),
             /^JUR-[A-Z0-9]{5}$/,
-            'Code workspace non valide : format attendu JUR- suivi de 5 lettres ou chiffres.',
+            'Code du cabinet non valide : format attendu JUR- suivi de 5 lettres ou chiffres.',
           ),
       ) ?? undefined,
       email: emailMsg(email) ?? undefined,
@@ -145,7 +145,7 @@ export function VerifyEmailPage() {
                 </p>
               </div>
               <TextField
-                label="Code workspace"
+                label="Code du cabinet"
                 name="workspaceCode"
                 placeholder="JUR-AB123"
                 value={workspaceCode}

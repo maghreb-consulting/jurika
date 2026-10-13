@@ -128,7 +128,7 @@ describe('TracabilitePage — filtres par nom + acteurs actifs/retires', () => {
     });
     render(<TracabilitePage />);
 
-    await waitFor(() => expect(screen.getByText(/Utilisateur supprime/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Utilisateur supprimé/)).toBeInTheDocument());
     // Jamais l'UUID brut complet.
     expect(screen.queryByText('99999999-9999-9999-9999-999999999999')).not.toBeInTheDocument();
   });

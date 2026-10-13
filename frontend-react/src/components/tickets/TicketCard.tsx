@@ -51,9 +51,9 @@ export function TicketCard({ ticket, onClick, onDragStart }: Props) {
   const prio = PRIO_COLORS[ticket.priorite];
 
   // Responsable (assigneId resolu backend) : ligne discrete + avatar initiales.
-  // Le superviseur voit ainsi qui porte chaque ticket ; "Non assigne" sinon.
+  // Le superviseur voit ainsi qui porte chaque ticket ; "Non assigné" sinon.
   const responsable = responsableLabel(ticket);
-  const assigned = responsable !== 'Non assigne';
+  const assigned = responsable !== 'Non assigné';
   const initials = assigned
     ? responsable
         .split(/\s+/)

@@ -228,31 +228,9 @@ export function ClientDataroomView() {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={!canDownload}
-                className={`px-4 h-9 border-2 rounded-lg flex items-center gap-2 text-xs transition ${
-                  canDownload
-                    ? 'border-border text-fg hover:border-accent bg-bg-raised'
-                    : 'opacity-50 cursor-not-allowed border-border text-fg-subtle bg-bg-raised'
-                }`}
-                title="Télécharger tous les documents en vigueur"
-              >
-                <Download className="w-3.5 h-3.5" /> Tout télécharger
-              </button>
-              <button
-                type="button"
-                disabled={!canPrint}
-                className={`px-4 h-9 rounded-lg flex items-center gap-2 text-xs transition ${
-                  canPrint
-                    ? 'text-fg hover:bg-bg-overlay'
-                    : 'opacity-50 cursor-not-allowed text-fg-subtle'
-                }`}
-              >
-                <Printer className="w-3.5 h-3.5" /> Imprimer
-              </button>
-            </div>
+            {/* Lot L6 : les boutons « Tout télécharger » et « Imprimer » n'avaient aucune action
+                (contrôles inopérants) ; retirés. Chaque document se télécharge depuis sa ligne,
+                selon les permissions rappelées ci-dessous. */}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 md:gap-4 mt-4 pt-4 border-t border-border text-xs text-fg-subtle">

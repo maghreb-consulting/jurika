@@ -10,7 +10,7 @@ interface StepperProps {
  */
 export function Stepper({ currentStep }: StepperProps) {
   const steps = [
-    { number: 1, label: 'Code workspace' },
+    { number: 1, label: 'Code du cabinet' },
     { number: 2, label: 'Identifiants' },
     { number: 3, label: 'Double authentification' },
   ] as const;

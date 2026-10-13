@@ -64,17 +64,17 @@ describe('AppTopNav', () => {
     setRole('CLIENT');
     renderTopNav();
     expect(screen.queryByTestId('topnav-upgrade-cta')).not.toBeInTheDocument();
-    expect(screen.queryByText('Chat')).not.toBeInTheDocument();
+    expect(screen.queryByText('Messagerie')).not.toBeInTheDocument();
     expect(screen.queryByTestId('echeances')).not.toBeInTheDocument();
     // Garde son espace Data Room.
-    expect(screen.getByText('Mon Espace')).toBeInTheDocument();
+    expect(screen.getByText('Mon espace')).toBeInTheDocument();
   });
 
   it('EMPLOYE : changement de forfait, Chat et échéances présents (non-régression)', () => {
     setRole('EMPLOYE');
     renderTopNav();
     expect(screen.getByTestId('topnav-upgrade-cta')).toHaveTextContent('Changer de forfait');
-    expect(screen.getByText('Chat')).toBeInTheDocument();
+    expect(screen.getByText('Messagerie')).toBeInTheDocument();
     expect(screen.getByTestId('echeances')).toBeInTheDocument();
   });
 

@@ -52,7 +52,7 @@ export function SupervisorRemarks() {
     setRemarks((rs) => [
       {
         id: `rk-${Date.now()}`,
-        employeeName: 'Equipe',
+        employeeName: 'Équipe',
         text,
         createdAt: new Date().toISOString(),
       },

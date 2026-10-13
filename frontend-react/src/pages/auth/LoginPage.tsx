@@ -91,7 +91,7 @@ export function LoginPage() {
     const code = workspaceCode.toUpperCase();
     const invalid = firstError(
       () => requiredMsg(code),
-      () => patternMsg(code, /^JUR-[A-Z0-9]{5}$/, 'Code workspace incomplet : saisissez les 5 lettres ou chiffres qui suivent « JUR- ».'),
+      () => patternMsg(code, /^JUR-[A-Z0-9]{5}$/, 'Code du cabinet incomplet : saisissez les 5 lettres ou chiffres qui suivent « JUR- ».'),
     );
     if (invalid) {
       setError(invalid);
@@ -242,8 +242,8 @@ export function LoginPage() {
                   Saisissez le code de votre cabinet (workspace), reçu par courriel à l’ouverture
                   de votre compte.{' '}
                   <InfoBulle
-                    libelle="Où trouver le code du workspace ?"
-                    texte="Le code du workspace commence par « JUR- » suivi de 5 lettres ou chiffres. Il figure dans le courriel de bienvenue ou d’invitation. Vous ne l’avez plus ? Demandez-le au superviseur de votre cabinet. Étape suivante : votre identifiant et votre mot de passe."
+                    libelle="Où trouver le code du cabinet ?"
+                    texte="Le code du cabinet commence par « JUR- » suivi de 5 lettres ou chiffres. Il figure dans le courriel de bienvenue ou d’invitation. Vous ne l’avez plus ? Demandez-le au superviseur de votre cabinet. Étape suivante : votre identifiant et votre mot de passe."
                   />
                 </p>
               </div>
@@ -287,7 +287,7 @@ export function LoginPage() {
                     // centre, le sens etant porte par le titre au-dessus. Sans nom
                     // accessible, un lecteur d'ecran annoncait « zone de texte » sur
                     // le tout premier champ du produit.
-                    aria-label="Code workspace, les 5 caractères après JUR-"
+                    aria-label="Code du cabinet, les 5 caractères après JUR-"
                     inputMode="text"
                     maxLength={5}
                     autoComplete="organization"

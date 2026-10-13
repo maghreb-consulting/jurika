@@ -165,5 +165,3 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: num
   );
 }
 
-// Reexport pour les appelants existants (le crochet vit dans useToast.ts).
-export { useToast } from './useToast';

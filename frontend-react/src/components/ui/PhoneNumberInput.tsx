@@ -50,8 +50,6 @@ function normalize(s: string): string {
 
 import { composeE164 } from './phoneNumber';
 
-// Fonctions reexportees pour les appelants existants (le code vit dans phoneNumber.ts).
-export { composeE164, isValidPhone } from './phoneNumber';
 
 /** Decompose un E.164 en { pays, numero national } (best-effort). */
 function decompose(e164: string, fallback: Country): { country: Country; national: string } {

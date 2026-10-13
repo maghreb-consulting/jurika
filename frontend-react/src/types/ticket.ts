@@ -103,13 +103,13 @@ export interface Ticket {
 
 /**
  * Libelle affichable du responsable d'un ticket : « Prenom Nom » si resolu,
- * sinon « Non assigne ». Ne renvoie JAMAIS d'UUID (RG : pas d'identifiant brut
+ * sinon « Non assigné ». Ne renvoie JAMAIS d'UUID (RG : pas d'identifiant brut
  * dans l'UI). Le backend laisse les champs a null quand le ticket n'est pas
  * assigne ou que le compte a ete purge.
  */
 export function responsableLabel(t: Pick<Ticket, 'assignePrenom' | 'assigneNom'>): string {
   const full = `${t.assignePrenom ?? ''} ${t.assigneNom ?? ''}`.trim();
-  return full || 'Non assigne';
+  return full || 'Non assigné';
 }
 
 export interface Debours {

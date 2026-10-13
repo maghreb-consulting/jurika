@@ -4,7 +4,7 @@ import { Play } from 'lucide-react';
 import { STATUT_LABELS } from '../../types/ticket';
 import type { Ticket, TicketStatut } from '../../types/ticket';
 import { TicketCard } from '../../components/tickets/TicketCard';
-import { useToast } from '../../components/ui/Toast';
+import { useToast } from '../../components/ui/useToast';
 import { CancelTicketDialog } from './CancelTicketDialog';
 import { RepriseTicketDialog } from './RepriseTicketDialog';
 import type { ColonneTickets } from './useTicketColumns';

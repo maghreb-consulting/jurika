@@ -47,7 +47,7 @@ describe('LoginPage', () => {
    * qui s'y accroche casse au moindre ajustement de libelle.
    */
   const champWorkspace = () =>
-    screen.getByRole('textbox', { name: /code workspace/i }) as HTMLInputElement;
+    screen.getByRole('textbox', { name: /code du cabinet/i }) as HTMLInputElement;
 
   it('rend l\'etape "workspace" en premier avec un input vide', () => {
     renderLogin();

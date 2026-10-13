@@ -61,7 +61,7 @@ export function TableView({ tickets, onSelect }: Props) {
 
 function ResponsableCell({ t }: { t: Ticket }) {
   const label = responsableLabel(t);
-  if (label === 'Non assigne') {
+  if (label === 'Non assigné') {
     return <span className="text-fg-subtle italic">Non assigné</span>;
   }
   return <span className="text-fg">{label}</span>;

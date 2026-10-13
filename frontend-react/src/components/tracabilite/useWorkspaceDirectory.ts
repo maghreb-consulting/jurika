@@ -74,7 +74,7 @@ export function useWorkspaceDirectory(): WorkspaceDirectory {
     const u = byId[userId];
     if (u) return `${u.firstName} ${u.lastName}`.trim() || u.email;
     // Compte purge : jamais l'UUID brut (juste un suffixe court pour distinguer).
-    return `Utilisateur supprime · ${userId.slice(0, 8)}`;
+    return `Utilisateur supprimé · ${userId.slice(0, 8)}`;
   };
 
   const isRetired = (userId: string | null | undefined): boolean => {

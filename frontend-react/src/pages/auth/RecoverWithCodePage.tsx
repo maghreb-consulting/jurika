@@ -44,7 +44,7 @@ export function RecoverWithCodePage() {
         patternMsg(
           workspaceCode.toUpperCase(),
           /^JUR-[A-Z0-9]{5}$/,
-          'Code workspace non valide : format attendu JUR- suivi de 5 lettres ou chiffres.',
+          'Code du cabinet non valide : format attendu JUR- suivi de 5 lettres ou chiffres.',
         ),
     );
     if (wsErr) {
@@ -109,7 +109,7 @@ export function RecoverWithCodePage() {
 
               <div className="mb-4">
                 <label htmlFor="ws-code" className="mb-2 block text-sm font-medium text-fg">
-                  Code workspace
+                  Code du cabinet
                 </label>
                 <input
                   id="ws-code"

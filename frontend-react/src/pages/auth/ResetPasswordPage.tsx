@@ -42,7 +42,7 @@ export function ResetPasswordPage() {
           patternMsg(
             workspaceCode.toUpperCase(),
             /^JUR-[A-Z0-9]{5}$/,
-            'Code workspace non valide : format attendu JUR- suivi de 5 lettres ou chiffres.',
+            'Code du cabinet non valide : format attendu JUR- suivi de 5 lettres ou chiffres.',
           ),
       ) ?? undefined,
       email: emailMsg(email) ?? undefined,
@@ -188,7 +188,7 @@ export function ResetPasswordPage() {
               </div>
               <form onSubmit={request} className="space-y-4" noValidate>
                 <TextField
-                  label="Code workspace"
+                  label="Code du cabinet"
                   name="workspaceCode"
                   value={workspaceCode}
                   onChange={(e) => {
