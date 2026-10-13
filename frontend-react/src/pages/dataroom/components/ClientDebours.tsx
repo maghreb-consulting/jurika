@@ -63,7 +63,7 @@ export function ClientDebours({ operations, canDownload }: { operations: Dossier
             ? 'Vous pouvez télécharger l’état des débours (document PDF) et chaque pièce.'
             : 'Le téléchargement n’est pas ouvert sur votre accès : demandez-le à votre cabinet.'}{' '}
           Pour toute question sur un montant, adressez une demande à votre cabinet depuis l’onglet
-          « Mes Demandes ».
+          « Demandes du client ».
         </p>
       </TexteAide>
       {erreur && <p role="alert" className="text-sm text-danger">{erreur}</p>}

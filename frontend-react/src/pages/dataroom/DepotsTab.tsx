@@ -54,7 +54,7 @@ export function DepotsTab({
     <div className="rounded-xl border border-border bg-bg-raised p-4 md:p-6">
       <div className="mb-4 flex items-center gap-2">
         <Upload className="h-5 w-5 text-warning" />
-        <h3 className="text-sm font-semibold text-fg">Depots du client</h3>
+        <h3 className="text-sm font-semibold text-fg">Dépôts du client</h3>
       </div>
 
       {readOnly && (
@@ -79,7 +79,7 @@ export function DepotsTab({
         <div className="py-12 text-center">
           <Upload className="mx-auto mb-3 h-10 w-10 text-fg-subtle" />
           <p className="text-sm text-fg-subtle">
-            Aucun depot du client pour le moment.
+            Aucun dépôt du client pour le moment. Les pièces qu’il dépose depuis son espace apparaîtront ici.
           </p>
         </div>
       ) : (
@@ -93,7 +93,7 @@ export function DepotsTab({
       {!loading && depots.length > 0 && (
         <div className="mt-6 border-t border-border pt-5 text-center">
           <p className="text-xs text-fg-subtle">
-            {depots.length} depot{depots.length > 1 ? 's' : ''}
+            {depots.length} dépôt{depots.length > 1 ? 's' : ''}
           </p>
         </div>
       )}
@@ -129,7 +129,7 @@ function DepotRow({ depot }: { depot: DepotSummary }) {
       <div className="min-w-0 flex-1">
         <h4 className="truncate text-sm font-bold text-fg">{depot.title}</h4>
         <p className="mt-0.5 text-[10px] text-fg-subtle">
-          Depose par le client • {formatBytes(depot.sizeBytes)} •{' '}
+          Déposé par le client • {formatBytes(depot.sizeBytes)} •{' '}
           {new Date(depot.createdAt).toLocaleDateString('fr-FR')}
         </p>
       </div>
@@ -148,7 +148,7 @@ function DepotRow({ depot }: { depot: DepotSummary }) {
           disabled={downloading}
           className="flex h-8 items-center gap-1 rounded border border-border bg-bg-raised px-3 text-xs text-fg transition hover:border-accent disabled:opacity-50"
         >
-          <Download className="h-3.5 w-3.5" /> {downloading ? '...' : 'Telecharger'}
+          <Download className="h-3.5 w-3.5" /> {downloading ? '…' : 'Télécharger'}
         </button>
       </div>
       <PdfPreviewModal

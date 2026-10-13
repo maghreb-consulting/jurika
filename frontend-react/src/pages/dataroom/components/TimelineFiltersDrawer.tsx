@@ -14,14 +14,14 @@ import { DEFAULT_TIMELINE_FILTERS, type TimelineFilters } from './timelineFiltre
  */
 
 const TICKET_TYPE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'CREATION', label: 'Creation' },
+  { value: 'CREATION', label: 'Création' },
   { value: 'MODIFICATION', label: 'Modification' },
   { value: 'DISSOLUTION', label: 'Dissolution' },
   { value: 'LIQUIDATION', label: 'Liquidation' },
   { value: 'AGO', label: 'PV AGO' },
   { value: 'SUCCURSALE', label: 'Succursale' },
-  { value: 'FERMETURE_SUCCURSALE', label: 'Fermeture succursale' },
-  { value: 'IMPORT', label: 'Import dossier' },
+  { value: 'FERMETURE_SUCCURSALE', label: 'Fermeture de succursale' },
+  { value: 'IMPORT', label: 'Import de dossier' },
 ];
 
 interface Props {
@@ -55,8 +55,8 @@ export function TimelineFiltersDrawer({ open, filters, onClose, onApply }: Props
     <Drawer
       open={open}
       onClose={onClose}
-      title="Filtres de la timeline"
-      subtitle="Affinez l'historique des operations cloturees"
+      title="Filtres de l’historique"
+      subtitle="Affinez l’historique des opérations clôturées"
       width="md"
       footer={
         <div className="flex justify-between gap-2 border-t border-border px-6 py-3">
@@ -65,7 +65,7 @@ export function TimelineFiltersDrawer({ open, filters, onClose, onApply }: Props
             size="sm"
             onClick={() => setDraft(DEFAULT_TIMELINE_FILTERS)}
           >
-            Reinitialiser
+            Réinitialiser
           </Button>
           <div className="flex gap-2">
             <Button variant="secondary" size="sm" onClick={onClose}>
@@ -87,7 +87,7 @@ export function TimelineFiltersDrawer({ open, filters, onClose, onApply }: Props
       <div className="space-y-6">
         <section>
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
-            Type d'operation
+            Type d’opération
           </h4>
           <div className="flex flex-wrap gap-2">
             {TICKET_TYPE_OPTIONS.map(({ value, label }) => {
@@ -112,7 +112,7 @@ export function TimelineFiltersDrawer({ open, filters, onClose, onApply }: Props
 
         <section>
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
-            Periode de cloture
+            Période de clôture
           </h4>
           <div className="grid grid-cols-2 gap-3">
             <div>

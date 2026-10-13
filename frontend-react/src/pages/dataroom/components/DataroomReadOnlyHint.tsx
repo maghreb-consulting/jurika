@@ -30,7 +30,7 @@ export function DataroomReadOnlyHint({
         <span className="font-semibold text-fg">
           {archivedStatutLabel(statut)}
         </span>{' '}
-        — archive legale : consultation et telechargement uniquement.
+        — archive légale : consultation et téléchargement uniquement.
       </span>
     </div>
   );

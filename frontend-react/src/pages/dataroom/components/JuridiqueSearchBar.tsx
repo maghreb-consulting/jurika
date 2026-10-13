@@ -115,7 +115,7 @@ export function JuridiqueSearchBar({
           <TextField
             value={localQuery}
             onChange={(e) => handleQueryChange(e.target.value)}
-            placeholder="Rechercher dans les documents juridiques (titre, nom de fichier)..."
+            placeholder="Rechercher dans les documents juridiques (titre, nom de fichier)…"
             className="pl-9"
           />
         </div>
@@ -139,7 +139,7 @@ export function JuridiqueSearchBar({
               variant="ghost"
               size="sm"
               onClick={resetAll}
-              title="Reinitialiser tous les filtres"
+              title="Réinitialiser tous les filtres"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -150,8 +150,8 @@ export function JuridiqueSearchBar({
       {(filters.q || activeFiltersCount > 0) && (
         <p className="text-xs text-fg-subtle">
           {loading
-            ? 'Recherche en cours...'
-            : `${totalResults ?? 0} resultat${(totalResults ?? 0) > 1 ? 's' : ''}`}
+            ? 'Recherche en cours…'
+            : `${totalResults ?? 0} résultat${(totalResults ?? 0) > 1 ? 's' : ''}`}
           {filters.q && <> pour <strong>"{filters.q}"</strong></>}
         </p>
       )}
@@ -169,7 +169,7 @@ export function JuridiqueSearchBar({
               size="sm"
               onClick={() => setDraft({ ...DEFAULT_FILTERS, q: filters.q })}
             >
-              Reinitialiser
+              Réinitialiser
             </Button>
             <Button size="sm" onClick={applyDraft}>
               Appliquer

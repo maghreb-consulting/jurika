@@ -117,7 +117,7 @@ export function UploadDocumentDialog({
       await onUploaded();
       onClose();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Echec de l\'upload';
+      const msg = err instanceof Error ? err.message : 'Échec du dépôt du document. Vérifiez le fichier, puis réessayez.';
       setError(msg);
     } finally {
       setSubmitting(false);
@@ -140,7 +140,7 @@ export function UploadDocumentDialog({
       <div className="relative w-full max-w-lg rounded-xl bg-bg-raised shadow-xl">
         <header className="flex items-center justify-between border-b border-border px-5 py-3">
           <h2 id="upload-dialog-title" className="text-base font-semibold text-fg">
-            Uploader un document
+            Ajouter un document
           </h2>
           <button
             type="button"
@@ -209,7 +209,7 @@ export function UploadDocumentDialog({
                   type="text"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Ex. Statuts SARL refondus"
+                  placeholder="Exemple : statuts refondus de la SARL"
                   className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
                 />
               </div>
@@ -229,7 +229,7 @@ export function UploadDocumentDialog({
                 value={motif}
                 onChange={(e) => setMotif(e.target.value)}
                 rows={2}
-                placeholder="Ex. Correction d'une coquille dans l'objet social"
+                placeholder="Exemple : correction d’une coquille dans l’objet social"
                 className={`w-full rounded-lg border bg-bg-raised px-3 py-2 text-sm ${
                   motif.length > 0 && motifTrimmed.length < 5
                     ? 'border-danger focus:border-danger'

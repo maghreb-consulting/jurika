@@ -62,11 +62,24 @@ const TABS: {
   icon: typeof FileText;
   activeBg: string;
 }[] = [
-  { value: 'juridique', label: 'Dossier juridique', icon: FileText, activeBg: 'bg-accent' },
-  { value: 'depots',    label: 'Depot client',     icon: Upload, activeBg: 'bg-warning' },
-  { value: 'requetes',  label: 'Requetes',         icon: Send, activeBg: 'bg-success' },
-  { value: 'demandes',  label: 'Demandes',         icon: MessageSquare, activeBg: 'bg-accent' },
+  // Lot L6 (E9) : libelles et ordre de RG-DR-01.
+  { value: 'juridique', label: 'Dossier juridique',   icon: FileText, activeBg: 'bg-accent' },
+  { value: 'depots',    label: 'Dépôts du client',    icon: Upload, activeBg: 'bg-warning' },
+  { value: 'demandes',  label: 'Demandes du client',  icon: MessageSquare, activeBg: 'bg-accent' },
+  { value: 'requetes',  label: 'Requêtes du cabinet', icon: Send, activeBg: 'bg-success' },
 ];
+
+/** Lot L6 (E9, CDC 15.4) : ce que contient chaque section et ce qu'on y fait. */
+const AIDE_ONGLETS: Record<Tab, string> = {
+  juridique:
+    'Les documents juridiques de la société, rangés par ticket (une opération, un dossier). Ajoutez un document déposé ; consultez les versions remplacées ; téléchargez la fiche client ou la fiche dossier.',
+  depots:
+    'Les pièces que le client a déposées lui-même depuis son espace. Consultez-les et téléchargez-les ; rangez dans le dossier juridique celles qui servent une opération.',
+  demandes:
+    'Les demandes que le client adresse au cabinet. Prenez-les en charge, répondez, ou ouvrez un ticket quand une demande appelle une opération juridique.',
+  requetes:
+    'Ce que le cabinet attend du client : une pièce à fournir ou une réponse. Créez une requête ; le client la voit dans son espace et y répond.',
+};
 
 /**
  * Page d'entree Data Room.
@@ -177,11 +190,11 @@ function DataroomManagementView() {
       <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-xs text-fg-subtle">
-            Dashboard / {isReadOnly ? 'Tous les Data Rooms' : 'Mes Data Rooms'}
+            Tableau de bord / {isReadOnly ? 'Toutes les Data Rooms' : 'Mes Data Rooms'}
           </p>
           <div className="mt-1 flex items-center gap-3">
             <h1 className="text-2xl md:text-3xl font-bold text-fg">
-              {isReadOnly ? 'Tous les Data Rooms' : 'Mes Data Rooms'}
+              {isReadOnly ? 'Toutes les Data Rooms' : 'Mes Data Rooms'}
             </h1>
             {isReadOnly && (
               <span className="px-2 py-1 bg-accent/10 text-accent rounded text-xs font-bold">
@@ -192,12 +205,18 @@ function DataroomManagementView() {
               {filtered.length}
             </span>
           </div>
+          <p className="mt-1 text-sm text-fg-subtle">
+            {isReadOnly
+              ? 'Les Data Rooms de toutes les sociétés du cabinet, en consultation.'
+              : 'Les Data Rooms des sociétés dont vous êtes responsable : documents, dépôts, demandes et requêtes du client.'}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-fg-subtle" />
             <TextField
-              placeholder="Rechercher..."
+              placeholder="Rechercher une société, une référence, un ICE…"
+              aria-label="Rechercher une Data Room"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-56 pl-9"
@@ -255,8 +274,10 @@ function DataroomManagementView() {
           <FolderOpen className="h-10 w-10 text-fg-subtle" />
           <p className="text-sm text-fg-subtle">
             {statusTab === 'SUSPENDED'
-              ? "Aucun Data Room suspendu."
-              : "Aucun Data Room actif. Les Data Rooms sont crees automatiquement a partir d'un workflow (Creation SARL, Import dossier...)."}
+              ? (query.trim() ? 'Aucune Data Room suspendue ne correspond à la recherche.' : 'Aucune Data Room suspendue.')
+              : query.trim()
+                ? 'Aucune Data Room ne correspond à la recherche.'
+                : 'Aucune Data Room active. Une Data Room est créée automatiquement à l’ouverture d’un ticket de création ou d’import de société.'}
           </p>
         </Card>
       ) : isReadOnly ? (
@@ -400,7 +421,7 @@ function DossierCard({
 
         <div className="hidden md:block text-center px-2">
           <p className="text-[10px] uppercase tracking-wide text-fg-subtle">
-            Client
+            Accès client
           </p>
           <p className="text-base font-bold text-fg">
             {settings?.accessCount ?? 0}
@@ -418,7 +439,8 @@ function DossierCard({
                 disabled={busy}
                 onClick={handleToggleSuspend}
                 className="p-2 hover:bg-success/10 rounded-lg transition text-success disabled:opacity-50"
-                title="Reactiver"
+                title="Réactiver l’accès du client"
+                aria-label="Réactiver l’accès du client"
               >
                 <PlayCircle className="w-4 h-4" />
               </button>
@@ -428,7 +450,8 @@ function DossierCard({
                 disabled={busy}
                 onClick={handleToggleSuspend}
                 className="p-2 hover:bg-danger/10 rounded-lg transition text-danger disabled:opacity-50"
-                title="Suspendre"
+                title="Suspendre l’accès du client"
+                aria-label="Suspendre l’accès du client"
               >
                 <PauseCircle className="w-4 h-4" />
               </button>
@@ -609,10 +632,10 @@ function DataroomDetail({
             variant="secondary"
             onClick={() => setAccessLogOpen(true)}
             className="border border-accent/30 text-accent hover:bg-accent/10 bg-bg-raised"
-            title="Voir l'activite client (consultations, telechargements)"
+            title="Voir l’activité du client (consultations, téléchargements)"
           >
             <Activity className="mr-2 h-4 w-4" />
-            Activite client
+            Activité du client
           </Button>
           {/* V9 — Transfert du dossier a un collegue (EMPLOYE: demande / SUPERVISEUR: direct) */}
           <TransferDossierButton
@@ -653,11 +676,11 @@ function DataroomDetail({
               {dataroomReadOnlyMessage(dossier.statut)}
             </p>
             <p className="text-fg-subtle">
-              Consultation et telechargement restent possibles (archives
-              juridiques). Ajout, remplacement, suppression, depot de pieces et
-              nouvelles demandes sont desactives. Les echeances et alertes
-              fiscales sont suspendues. Seul le workflow de liquidation peut
-              encore deposer ses actes de cloture.
+              Consultation et téléchargement restent possibles (archives
+              juridiques). Ajout, remplacement, suppression, dépôt de pièces et
+              nouvelles demandes sont désactivés. Les échéances et alertes
+              fiscales sont suspendues. Seul le parcours de liquidation peut
+              encore déposer ses actes de clôture.
             </p>
           </div>
         </div>
@@ -683,14 +706,14 @@ function DataroomDetail({
       {/* 2026-07-01 — Acces client : identite du CLIENT lie (ou aucun) */}
       <div className="bg-bg-overlay border border-border rounded-xl p-3 md:p-4">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-xs font-bold text-fg">Acces client :</span>
+          <span className="text-xs font-bold text-fg">Accès du client :</span>
           {loadingClient ? (
             <span className="text-xs text-fg-subtle">Chargement…</span>
           ) : client ? (
             <>
               <span
                 className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-medium text-accent"
-                title="Client rattache a ce dossier"
+                title="Client rattaché à ce dossier"
               >
                 <UserCheck className="h-3.5 w-3.5" />
                 {client.firstName} {client.lastName}
@@ -706,15 +729,15 @@ function DataroomDetail({
                   variant="secondary"
                   onClick={() => setRemoveClientOpen(true)}
                   className="ml-auto border border-danger/30 text-danger hover:bg-danger/10 bg-bg-raised"
-                  title="Retirer l'acces de ce client (vs suspendre qui est reversible)"
+                  title="Retirer définitivement l’accès de ce client (la suspension, elle, est réversible)"
                 >
-                  <UserMinus className="mr-2 h-4 w-4" /> Retirer l'acces
+                  <UserMinus className="mr-2 h-4 w-4" /> Retirer l’accès
                 </Button>
               )}
             </>
           ) : (
             <>
-              <span className="text-xs text-fg-subtle">Aucun client</span>
+              <span className="text-xs text-fg-subtle">Aucun client invité sur ce dossier.</span>
               {canEdit && (
                 <Button
                   variant="primary"
@@ -751,6 +774,8 @@ function DataroomDetail({
         })}
       </div>
 
+      <p className="-mt-2 text-sm text-fg-subtle" data-testid="aide-onglet-dataroom">{AIDE_ONGLETS[tab]}</p>
+
       {tab === 'juridique' && (
         <DossierJuridiqueTab
           dossierId={dossier.id}
@@ -786,7 +811,7 @@ function DataroomDetail({
 
       {/* E2 — Activite (tracabilite) de ce dossier */}
       <div className="rounded-xl border border-border bg-bg-raised p-4">
-        <EntityActivityPanel entityType="dossier" entityId={dossier.id} title="Activite du dossier" />
+        <EntityActivityPanel entityType="dossier" entityId={dossier.id} title="Activité du dossier" />
       </div>
 
       {/* Lot L1 : historique des responsables du dossier (employe responsable, superviseur). */}
@@ -823,14 +848,14 @@ function DataroomDetail({
       <ConfirmDialog
         open={removeClientOpen}
         onOpenChange={(o) => !o && setRemoveClientOpen(false)}
-        title="Retirer l'acces du client"
+        title="Retirer l’accès du client"
         description={
           client
-            ? `Retirer l'acces de ${client.email} ? ${client.firstName} ${client.lastName} ne pourra plus consulter ce dossier sans une nouvelle invitation. Le compte reste actif (autres dossiers, historique).`
-            : "Retirer l'acces du client a ce dossier ?"
+            ? `Retirer l’accès de ${client.email} ? ${client.firstName} ${client.lastName} ne pourra plus consulter ce dossier sans une nouvelle invitation. Le compte reste actif (autres dossiers, historique).`
+            : "Retirer l’accès du client à ce dossier ?"
         }
         variant="danger"
-        confirmLabel="Retirer l'acces"
+        confirmLabel="Retirer l’accès"
         loading={removingClient}
         onConfirm={confirmRemoveClientAccess}
       />

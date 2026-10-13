@@ -184,8 +184,8 @@ export function MultiUploadDrawer({
     <Drawer
       open={open}
       onClose={onClose}
-      title="Upload multiple"
-      subtitle="Pour chaque fichier : nouveau document, ou nouvelle version d'un document existant"
+      title="Ajouter plusieurs documents"
+      subtitle="Pour chaque fichier : nouveau document, ou nouvelle version d’un document existant"
       width="lg"
     >
       <div className="space-y-4">
@@ -340,7 +340,7 @@ export function MultiUploadDrawer({
                           value={r.motif}
                           disabled={r.status === 'UPLOADING' || r.status === 'DONE'}
                           onChange={(e) => patchRow(r.id, { motif: e.target.value })}
-                          placeholder="Ex. Version corrigée des statuts"
+                          placeholder="Exemple : version corrigée des statuts"
                           className={`h-8 w-full rounded-lg border bg-bg-raised px-2 text-xs ${
                             motifInvalid
                               ? 'border-danger focus:border-danger'

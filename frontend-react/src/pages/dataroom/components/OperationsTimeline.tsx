@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight, FileText, History } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
+import { TICKET_TYPE_LABELS } from '../../../types/ticket';
 import type { DocumentSummary, TicketHistoryEntry } from '../../../types/dataroom';
 
 /**
@@ -93,8 +94,8 @@ function typeBadgeVariant(type?: string | null): 'success' | 'warning' | 'neutra
 export function OperationsTimeline({
   entries,
   renderDocumentRow,
-  emptyTitle = 'Aucune operation a afficher',
-  emptyHint = 'Les operations cloturees apparaitront ici, groupees par mois.',
+  emptyTitle = 'Aucune opération à afficher',
+  emptyHint = 'Les opérations clôturées apparaîtront ici, groupées par mois.',
   initialCount = 5,
   stepCount = 5,
 }: OperationsTimelineProps) {
@@ -196,14 +197,14 @@ function TimelineEvent({
                   {entry.titre}
                 </p>
                 <Badge variant={typeBadgeVariant(entry.type)} className="text-[10px]">
-                  {entry.type ?? '—'}
+                  {entry.type ? ((TICKET_TYPE_LABELS as Record<string, string>)[entry.type] ?? entry.type) : '—'}
                 </Badge>
                 <Badge variant="neutral" className="text-[10px]">
                   {entry.reference}
                 </Badge>
               </div>
               <p className="text-xs text-fg-subtle">
-                Cloture le {dateLabel}
+                Clôturé le {dateLabel}
                 {entry.description ? ` • ${entry.description}` : ''}
               </p>
             </div>
@@ -211,7 +212,7 @@ function TimelineEvent({
           <div className="flex shrink-0 items-center gap-1.5">
             {generatedCount > 0 && (
               <Badge variant="success" className="text-[10px]">
-                +{generatedCount} genere{generatedCount > 1 ? 's' : ''}
+                +{generatedCount} généré{generatedCount > 1 ? 's' : ''}
               </Badge>
             )}
             {replacedCount > 0 && (
@@ -225,7 +226,7 @@ function TimelineEvent({
           <div className="space-y-3 border-t border-border px-3 pb-3 pt-2">
             {generatedCount === 0 && replacedCount === 0 && (
               <p className="rounded-md border border-border bg-bg-overlay px-3 py-2 text-xs italic text-fg-subtle">
-                Operation sans modification de document.
+                Opération sans modification de document.
               </p>
             )}
             {generatedCount > 0 && (
