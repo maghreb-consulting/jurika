@@ -108,12 +108,12 @@ public class ChangePlanUseCase {
 
         BillingPeriod period = cmd.billingPeriod() != null ? cmd.billingPeriod() : BillingPeriod.MONTHLY;
         Plan target = PlanCatalog.findByCode(targetCode)
-                .orElseThrow(() -> new BusinessException("PLAN_UNKNOWN", "Plan inconnu: " + cmd.targetPlanCode()));
+                .orElseThrow(() -> new BusinessException("PLAN_UNKNOWN", "Formule inconnue : " + cmd.targetPlanCode()));
 
         // RG-BL10 — entreprise sur devis, refuser cote backend (front route vers /contact-sales).
         if (target.quoteOnly()) {
             throw new BusinessException("PLAN_QUOTE_ONLY",
-                    "Plan Entreprise sur devis — utilisez la demande contact-sales depuis l'app.");
+                    "La formule Entreprise est sur devis : utilisez la demande de contact commercial depuis l\u2019application.");
         }
 
         // Downgrade guard — bloquant si le workspace depasse les nouveaux quotas.
@@ -153,7 +153,7 @@ public class ChangePlanUseCase {
             log.error("Echec change plan workspace={} target={} : {}",
                     cmd.workspaceId(), targetCode, e.getMessage());
             throw new BusinessException("STRIPE_ERROR",
-                    "Stripe error: " + (e.getStripeError() != null ? e.getStripeError().getMessage() : e.getMessage()));
+                    "Erreur du service de paiement Stripe : " + (e.getStripeError() != null ? e.getStripeError().getMessage() : e.getMessage()));
         }
     }
 
@@ -172,7 +172,7 @@ public class ChangePlanUseCase {
         Plan from = PlanCatalog.findByCode(fromCode).orElse(null);
         Plan to = PlanCatalog.findByCode(toCode).orElse(null);
         if (to == null) {
-            throw new BusinessException("PLAN_UNKNOWN", "Plan inconnu: " + cmd.targetPlanCode());
+            throw new BusinessException("PLAN_UNKNOWN", "Formule inconnue : " + cmd.targetPlanCode());
         }
 
         boolean upgrade = isUpgrade(fromCode, toCode);
@@ -223,7 +223,7 @@ public class ChangePlanUseCase {
         return subscriptionRepo
                 .findFirstByWorkspaceIdAndStatusOrderByCreatedAtDesc(workspaceId, "active")
                 .orElseThrow(() -> new NotFoundException(
-                        "Aucun abonnement actif pour ce workspace — utilisez /checkout-session pour la 1re souscription."));
+                        "Aucun abonnement actif pour ce cabinet : souscrivez d\u2019abord un abonnement."));
     }
 
     private void checkDowngradeAllowed(UUID workspaceId, Plan target) {
@@ -247,8 +247,8 @@ public class ChangePlanUseCase {
 
         if (!q.isUsersUnlimited() && usage.users() > q.maxUsers()) {
             throw new PlanLimitException("PLAN_DOWNGRADE_BLOCKED_USERS",
-                    String.format("Downgrade impossible : %d employes actifs dans le workspace pour un plan %s limite a %d. "
-                                    + "Supprimez %d employe(s) avant de redescendre.",
+                    String.format("Passage \u00e0 une formule inf\u00e9rieure impossible : %d employ\u00e9s actifs dans le cabinet pour une formule %s limit\u00e9e \u00e0 %d. "
+                                    + "Supprimez %d employ\u00e9(s) avant de changer de formule.",
                             usage.users(), target.displayLabel(), q.maxUsers(),
                             usage.users() - q.maxUsers()),
                     "users", usage.users(), q.maxUsers(),
@@ -256,8 +256,8 @@ public class ChangePlanUseCase {
         }
         if (!q.isDossiersUnlimited() && usage.dossiers() > q.maxDossiers()) {
             throw new PlanLimitException("PLAN_DOWNGRADE_BLOCKED_DOSSIERS",
-                    String.format("Downgrade impossible : %d dossiers actifs pour un plan %s limite a %d. "
-                                    + "Archivez %d dossier(s) avant de redescendre.",
+                    String.format("Passage \u00e0 une formule inf\u00e9rieure impossible : %d dossiers actifs pour une formule %s limit\u00e9e \u00e0 %d. "
+                                    + "Archivez %d dossier(s) avant de changer de formule.",
                             usage.dossiers(), target.displayLabel(), q.maxDossiers(),
                             usage.dossiers() - q.maxDossiers()),
                     "dossiers", usage.dossiers(), q.maxDossiers(),
@@ -267,7 +267,7 @@ public class ChangePlanUseCase {
             long maxBytes = (long) q.maxStorageGb() * 1024L * 1024L * 1024L;
             if (usage.storageBytes() > maxBytes) {
                 throw new PlanLimitException("PLAN_DOWNGRADE_BLOCKED_STORAGE",
-                        String.format("Downgrade impossible : stockage utilise %d Go > limite plan %s (%d Go).",
+                        String.format("Passage \u00e0 une formule inf\u00e9rieure impossible : %d Go de stockage utilis\u00e9s, au-del\u00e0 de la limite de la formule %s (%d Go).",
                                 usage.storageBytes() / (1024 * 1024 * 1024),
                                 target.displayLabel(), q.maxStorageGb()),
                         "storage", usage.storageBytes(), maxBytes,

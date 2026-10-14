@@ -55,7 +55,7 @@ public class VerifyRecoveryCodeUseCase {
             .ofPattern("dd/MM/yyyy HH:mm 'GMT'")
             .withZone(ZoneId.of("Africa/Casablanca"));
     /** Reponse generique : meme message pour code inconnu, deja utilise, email inconnu. */
-    private static final String GENERIC_AUTH_ERROR = "Code de recuperation invalide";
+    private static final String GENERIC_AUTH_ERROR = "Code de r\u00e9cup\u00e9ration incorrect.";
 
     private final WorkspaceRepository workspaceRepository;
     private final UserRepository userRepository;
@@ -112,7 +112,7 @@ public class VerifyRecoveryCodeUseCase {
             // Audit best-effort sans workspace si on n'arrive pas a resoudre.
             auditRateLimited(cmd);
             throw new TooManyRequestsException("RECOVERY_CODE_RATE_LIMITED",
-                    "Trop de tentatives. Reessayez dans 15 minutes.");
+                    "Trop de tentatives : r\u00e9essayez dans 15 minutes.");
         }
 
         Workspace workspace = workspaceRepository.findByCode(cmd.workspaceCode()).orElse(null);
@@ -230,7 +230,7 @@ public class VerifyRecoveryCodeUseCase {
             vars.put("contactEmail", user.contactEmail());
             // BUG 7 (2026-06-08) — notif vers contact_email.
             emailSender.sendTemplated(user.contactEmail(),
-                    "JURIKA - code de recuperation 2FA utilise",
+                    "JURIKA - code de r\u00e9cup\u00e9ration utilis\u00e9",
                     "recovery-code-used",
                     vars);
         } catch (RuntimeException ex) {

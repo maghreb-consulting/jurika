@@ -1,12 +1,8 @@
-/// <reference types="vitest" />
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
-import {
-  PhoneNumberInput,
-  composeE164,
-  isValidPhone,
-} from '../PhoneNumberInput';
+import { PhoneNumberInput } from '../PhoneNumberInput';
+import { composeE164, isValidPhone } from '../phoneNumber';
 import { countryByIso2 } from '../../../data/countries';
 
 describe('composeE164 / isValidPhone', () => {

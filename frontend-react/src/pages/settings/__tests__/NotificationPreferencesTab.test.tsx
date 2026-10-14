@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -85,6 +84,20 @@ describe('<NotificationPreferencesTab>', () => {
     fireEvent.click(row.querySelector('button')!);
 
     await waitFor(() => expect(setPreferences).toHaveBeenCalledWith({ CHAT_MESSAGE: false }));
+  });
+
+  it('un type sans préférence enregistrée (activé par défaut) se désactive au premier clic', async () => {
+    getPreferences.mockResolvedValue({ preferences: {}, knownTypes: ['CHAT_MESSAGE'] });
+    setPreferences.mockResolvedValue(undefined);
+
+    render(<NotificationPreferencesTab />);
+
+    const row = await screen.findByTestId('notif-pref-CHAT_MESSAGE');
+    expect(row).toHaveTextContent('Activée');
+    fireEvent.click(row.querySelector('button')!);
+
+    await waitFor(() => expect(setPreferences).toHaveBeenCalledWith({ CHAT_MESSAGE: false }));
+    expect(await screen.findByText('Désactivée')).toBeInTheDocument();
   });
 
   it('service injoignable : affiche tout de meme les toggles par defaut + bandeau erreur', async () => {

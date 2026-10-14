@@ -92,7 +92,7 @@ public final class FichesPdf {
         }
         PdfTable t = new PdfTable()
                 .column("Num\u00e9ro", 2.4f, PdfTable.Align.LEFT)
-                .column("Date de prise d'effet", 2f, PdfTable.Align.LEFT)
+                .column("Date de prise d\u2019effet", 2f, PdfTable.Align.LEFT)
                 .column("\u00c9tat", 1.6f, PdfTable.Align.LEFT);
         for (VersionTp v : fiche.versionsTp()) {
             t.row(PdfTable.Cell.of(v.numero(), v.enVigueur() ? PdfTable.Style.STRONG : PdfTable.Style.NORMAL),

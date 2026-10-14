@@ -103,13 +103,15 @@ export function computeBackoffMs(consecutiveFailures: number): number {
 }
 
 export function useSessionKeepAlive(): void {
-  const lastActivityRef = useRef<number>(Date.now());
+  // Initialise au montage dans l'effet (Date.now est interdit pendant le rendu).
+  const lastActivityRef = useRef<number>(0);
   const lastThrottleRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Nb d'echecs TRANSITOIRES consecutifs du refresh proactif (reset au succes). */
   const transientFailuresRef = useRef<number>(0);
 
   useEffect(() => {
+    lastActivityRef.current = Date.now();
     let cancelled = false;
 
     const clearTimer = () => {

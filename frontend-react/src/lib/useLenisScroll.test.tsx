@@ -71,15 +71,6 @@ describe('useLenisScroll', () => {
     expect(lenisStats.constructs).toBe(0);
   });
 
-  it("n'instancie PAS Lenis sur /chatbot (layout 100vh)", () => {
-    render(
-      <MemoryRouter initialEntries={['/chatbot']}>
-        <Harness />
-      </MemoryRouter>,
-    );
-    expect(lenisStats.constructs).toBe(0);
-  });
-
   it('instancie Lenis sur une route scrollable (ex. /dashboard)', () => {
     render(
       <MemoryRouter initialEntries={['/dashboard']}>

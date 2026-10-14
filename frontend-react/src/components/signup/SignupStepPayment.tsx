@@ -18,6 +18,7 @@ import type {
   PreparePaymentResponse,
 } from '../../types/billing';
 import { formatMadCents } from '../../types/billing';
+import { libelleForfait } from '../../lib/adminLabels';
 
 /**
  * BUG 14 (2026-06-07) — Etape 6 du wizard signup : selection du moyen de
@@ -69,10 +70,10 @@ const METHOD_CARDS: ReadonlyArray<{
   description: string;
   icon: typeof CreditCard;
 }> = [
-  { value: 'CARD', label: 'Carte bancaire', description: 'Paiement immediat via Stripe.', icon: CreditCard },
-  { value: 'BANK_TRANSFER', label: 'Virement bancaire', description: 'RIB Maghreb Consulting. Activation sous 24-48h.', icon: Banknote },
-  { value: 'CHEQUE', label: 'Cheque', description: 'A l\'ordre de Maghreb Consulting.', icon: ScrollText },
-  { value: 'CASH', label: 'Especes au siege', description: 'Reglement au comptant a Casablanca.', icon: Coins },
+  { value: 'CARD', label: 'Carte bancaire', description: 'Paiement immédiat par Stripe.', icon: CreditCard },
+  { value: 'BANK_TRANSFER', label: 'Virement bancaire', description: 'RIB de Maghreb Consulting. Activation sous 24 à 48 heures.', icon: Banknote },
+  { value: 'CHEQUE', label: 'Chèque', description: 'À l’ordre de Maghreb Consulting.', icon: ScrollText },
+  { value: 'CASH', label: 'Espèces au siège', description: 'Règlement au comptant à Casablanca.', icon: Coins },
 ];
 
 const BYPASS_METHOD: PaymentMethod = 'TEST_BYPASS' as unknown as PaymentMethod;
@@ -116,8 +117,7 @@ export function SignupStepPayment(props: SignupStepPaymentProps) {
     // OU si la query string ?bypass=1 est presente (utile pour staging).
     try {
       if (window.location.search.includes('bypass=1')) return true;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return Boolean((import.meta as any).env?.DEV);
+      return Boolean(import.meta.env.DEV);
     } catch {
       return false;
     }
@@ -138,7 +138,7 @@ export function SignupStepPayment(props: SignupStepPaymentProps) {
       });
       setResult(res);
       if (res.method === 'CARD' && res.checkoutUrl) {
-        window.location.href = res.checkoutUrl;
+        window.location.assign(res.checkoutUrl);
         return;
       }
       // TEST_BYPASS = COMPLETED immediatement -> success
@@ -171,13 +171,13 @@ export function SignupStepPayment(props: SignupStepPaymentProps) {
         <header>
           <h1 className="font-heading text-3xl font-semibold text-fg">Paiement</h1>
           <p className="mt-2 text-sm text-fg-muted">
-            Forfait <strong>{draft.planCode}</strong> — periode <strong>{draft.billingPeriod === 'yearly' ? 'annuelle' : 'mensuelle'}</strong>
+            Forfait <strong>{libelleForfait(draft.planCode)}</strong> — période <strong>{draft.billingPeriod === 'yearly' ? 'annuelle' : 'mensuelle'}</strong>
             {amountMadCents !== null && (
               <> — montant <strong>{formatMadCents(amountMadCents)}</strong> HT</>
             )}
           </p>
           <p className="mt-1 text-xs text-fg-subtle">
-            Vos identifiants de connexion seront envoyes par email apres validation du paiement.
+            Vos identifiants de connexion vous seront envoyés par courriel après validation du paiement.
           </p>
         </header>
 
@@ -221,7 +221,7 @@ export function SignupStepPayment(props: SignupStepPaymentProps) {
 
           {method === 'BANK_TRANSFER' && (
             <label className="mt-4 block text-sm">
-              <span className="mb-1 block text-fg-muted">Reference de votre virement (si deja effectue)</span>
+              <span className="mb-1 block text-fg-muted">Référence de votre virement (s’il est déjà effectué)</span>
               <input
                 type="text"
                 value={bankReference}
@@ -240,7 +240,7 @@ export function SignupStepPayment(props: SignupStepPaymentProps) {
               disabled={submitting}
               className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-raised px-4 py-2 text-sm font-medium text-fg-muted hover:bg-bg-overlay disabled:opacity-50"
             >
-              Etape precedente
+              Étape précédente
             </button>
             <button
               type="button"
@@ -263,10 +263,10 @@ export function SignupStepPayment(props: SignupStepPaymentProps) {
             <div className="flex items-start gap-3">
               <FlaskConical className="mt-0.5 h-5 w-5 flex-none text-warning" />
               <div className="flex-1">
-                <h3 className="text-sm font-bold text-warning">Mode test (dev only)</h3>
+                <h3 className="text-sm font-bold text-warning">Mode test (développement uniquement)</h3>
                 <p className="mt-1 text-xs text-fg-muted">
-                  Active le bypass de paiement pour tester le flow end-to-end sans Stripe ni virement reel.
-                  Reserve aux environnements dev/staging — le backend doit avoir
+                  Contourne le paiement pour tester l’inscription de bout en bout, sans Stripe ni virement réel.
+                  Réservé aux environnements de développement et de préproduction ; le serveur doit avoir
                   <code className="mx-1 rounded bg-bg-overlay px-1 font-mono">jurika.billing.test-bypass-enabled=true</code>.
                 </p>
                 <button
@@ -277,7 +277,7 @@ export function SignupStepPayment(props: SignupStepPaymentProps) {
                   data-testid="signup-payment-bypass-cta"
                 >
                   <Clock className="h-3.5 w-3.5" />
-                  Bypass paiement (TEST)
+                  Contourner le paiement (test)
                 </button>
               </div>
             </div>
@@ -290,17 +290,17 @@ export function SignupStepPayment(props: SignupStepPaymentProps) {
 
 function labelKey(key: string): string {
   return ({
-    paymentRef: 'Reference paiement',
-    beneficiary: 'Beneficiaire',
+    paymentRef: 'Référence du paiement',
+    beneficiary: 'Bénéficiaire',
     bank: 'Banque',
     rib: 'RIB',
     iban: 'IBAN',
     swift: 'SWIFT/BIC',
-    reference: 'Reference a indiquer',
-    amount: 'Montant a verser',
-    mailingAddress: 'Adresse d\'envoi',
+    reference: 'Référence à indiquer',
+    amount: 'Montant à verser',
+    mailingAddress: 'Adresse d’envoi',
     instruction: 'Instruction',
-    siegeAddress: 'Adresse du siege',
+    siegeAddress: 'Adresse du siège',
     hours: 'Horaires',
     mode: 'Mode',
   } as Record<string, string>)[key] ?? key;
@@ -320,7 +320,7 @@ function PaymentPendingScreen({ result, onContinue }: PendingProps) {
           <h1 className="font-heading text-2xl font-semibold text-fg">Paiement en attente de validation</h1>
           <p className="mt-2 text-sm text-fg-muted">{result.userMessage}</p>
           <p className="mt-3 text-xs text-fg-subtle">
-            Reference paiement : <code className="rounded bg-bg-overlay px-2 py-0.5 font-mono">PAY-{result.paymentId}</code>
+            Référence du paiement : <code className="rounded bg-bg-overlay px-2 py-0.5 font-mono">PAY-{result.paymentId}</code>
           </p>
         </header>
 
@@ -337,8 +337,8 @@ function PaymentPendingScreen({ result, onContinue }: PendingProps) {
         </section>
 
         <p className="text-xs text-fg-subtle">
-          Des reception de votre paiement, votre workspace sera active et vos identifiants
-          (code workspace + mot de passe temporaire) seront envoyes par email a l'admin du cabinet.
+          Dès réception de votre paiement, votre espace sera activé et les identifiants (code du
+          cabinet et mot de passe temporaire) seront envoyés par courriel au responsable du cabinet.
         </p>
 
         <div className="flex justify-end">
@@ -348,7 +348,7 @@ function PaymentPendingScreen({ result, onContinue }: PendingProps) {
             className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2 text-sm font-bold text-bg hover:bg-accent-hover"
             data-testid="signup-payment-pending-continue"
           >
-            J'ai compris, fermer
+            J’ai compris, fermer
           </button>
         </div>
       </div>

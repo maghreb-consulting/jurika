@@ -14,18 +14,14 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarClock, ChevronDown, ChevronRight, ClipboardList, Sparkles } from 'lucide-react';
-import {
-  WorkflowDocumentBlock,
-  freshDocState,
-  useDocumentBlocks,
-  type DocState,
-} from './WorkflowDocumentBlock';
+import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
+import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
 } from '../../services/workflowDocumentService';
+import { SeanceFormFields } from './SeanceForm';
 import {
-  SeanceFormFields,
   sanitizeFilename,
   useSeanceForm,
   type AssocieInput,
@@ -34,7 +30,7 @@ import {
   type SeanceDefaults,
   type SeanceSections,
   type SeanceSocieteInput,
-} from './SeanceForm';
+} from './seanceFormEtat';
 import type { DocumentType } from '../../types/dataroom';
 import { TexteAide } from '../ui/Aide';
 
@@ -155,9 +151,18 @@ function SeanceDocPanel({
   }, [form.snapshot, onSnapshot]);
 
   const [docs, setDocs] = useState<Record<string, DocState>>({});
-  const [template, setTemplate] = useState<TemplateInfo | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  // L6 : resultat du chargement du modele, rattache a son code ; « en cours » se deduit
+  // (plus de mise a jour synchrone d'etat au debut de l'effet).
+  const [chargement, setChargement] = useState<{
+    code: string;
+    template: TemplateInfo | null;
+    erreur: string | null;
+  } | null>(null);
+  const charge = chargement?.code === templateCode ? chargement : null;
+  const template = charge?.template ?? null;
+  const loadError = charge?.erreur ?? null;
+  const loading = isOpen && !charge;
+  const modeleCharge = !!charge;
 
   const buildPayload = form.buildPayload;
 
@@ -187,31 +192,32 @@ function SeanceDocPanel({
   });
 
   useEffect(() => {
-    if (!isOpen || template) return;
+    if (!isOpen || modeleCharge) return;
     let cancelled = false;
-    setLoading(true);
-    setLoadError(null);
     listTemplatesForWorkflow(WORKFLOW_CODE)
       .then((items) => {
         if (cancelled) return;
         const found = items.find((t) => t.code === templateCode) ?? null;
-        if (!found) {
-          setLoadError('Modèle indisponible : ' + templateCode);
-          return;
-        }
-        setTemplate(found);
+        setChargement({
+          code: templateCode,
+          template: found,
+          erreur: found
+            ? null
+            : `Le modèle « ${title} » est indisponible. Signalez-le à l’administrateur de la plateforme.`,
+        });
       })
       .catch((err) => {
         if (cancelled) return;
-        setLoadError(err instanceof Error ? err.message : 'Impossible de charger le modèle.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        setChargement({
+          code: templateCode,
+          template: null,
+          erreur: err instanceof Error ? err.message : 'Impossible de charger le modèle.',
+        });
       });
     return () => {
       cancelled = true;
     };
-  }, [isOpen, template, templateCode]);
+  }, [isOpen, modeleCharge, templateCode, title]);
 
   return (
     <section className={embedded ? '' : 'rounded-xl border border-accent/30 bg-accent/5'}>
@@ -225,7 +231,7 @@ function SeanceDocPanel({
         >
           <span className="flex items-center gap-2">
             <span className="flex-shrink-0 text-accent">{icon}</span>
-            <span className="text-sm font-semibold text-fg">{title} (optionnel)</span>
+            <span className="text-sm font-semibold text-fg">{title} (facultatif)</span>
           </span>
           {open ? (
             <ChevronDown className="h-4 w-4 flex-shrink-0 text-fg-subtle" />
@@ -351,8 +357,8 @@ export function ConvocationPanel(props: SeanceDocPanelBaseProps) {
       {...props}
       templateCode="CONVOCATION_AG"
       documentType="CONVOCATION"
-      title="Convocation à l'assemblée"
-      hint="À proposer AVANT l'assemblée. Renseignez la séance, la convocation, l'ordre du jour et les associés destinataires, puis générez la lettre de convocation du cabinet (une lettre par associé) : lettre de l'assemblée annuelle pour une assemblée ordinaire, de l'assemblée extraordinaire sinon, de seconde convocation au rang « Deuxième »."
+      title="Convocation à l’assemblée"
+      hint="À préparer AVANT l’assemblée. Renseignez la séance, la convocation, l’ordre du jour et les associés destinataires, puis générez la lettre de convocation du cabinet (une lettre par associé) : lettre de l’assemblée annuelle pour une assemblée ordinaire, de l’assemblée extraordinaire sinon, de seconde convocation au rang « Deuxième »."
       filenamePrefix="Convocation"
       icon={<CalendarClock className="h-4 w-4" />}
       sections={sections}
@@ -369,7 +375,7 @@ export function FeuillePresencePanel(props: SeanceDocPanelBaseProps) {
       templateCode="FEUILLE_PRESENCE_AG"
       documentType="FEUILLE_PRESENCE"
       title="Feuille de présence"
-      hint="À proposer APRÈS l'assemblée. Renseignez les présences (parts, voix, mandataire et date du pouvoir) par associé, puis générez la feuille de présence du cabinet : totaux, quotités et majorité sont calculés d'après ces présences."
+      hint="À préparer APRÈS l’assemblée. Renseignez les présences (parts, voix, mandataire et date du pouvoir) par associé, puis générez la feuille de présence du cabinet : totaux, quotités et majorité sont calculés d’après ces présences."
       filenamePrefix="Feuille de présence"
       icon={<ClipboardList className="h-4 w-4" />}
       sections={sections}

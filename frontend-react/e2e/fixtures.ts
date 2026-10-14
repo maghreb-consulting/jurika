@@ -89,15 +89,15 @@ type Fixtures = {
 };
 
 export const test = base.extend<Fixtures>({
-  apiClient: async ({ request }, use) => {
-    await use(request);
+  apiClient: async ({ request }, provide) => {
+    await provide(request);
   },
-  seededWorkspace: async ({ request }, use) => {
+  seededWorkspace: async ({ request }, provide) => {
     const ws = await seedWorkspaceViaApi(request);
-    await use(ws);
+    await provide(ws);
     await ws.cleanup();
   },
-  authenticatedUser: async ({ request, page, seededWorkspace }, use) => {
+  authenticatedUser: async ({ request, page, seededWorkspace }, provide) => {
     const session = await loginViaApi(
       request,
       seededWorkspace.workspaceCode,
@@ -105,7 +105,7 @@ export const test = base.extend<Fixtures>({
       seededWorkspace.adminPassword,
     );
     await injectTokensInPage(page, session);
-    await use(session);
+    await provide(session);
   },
 });
 

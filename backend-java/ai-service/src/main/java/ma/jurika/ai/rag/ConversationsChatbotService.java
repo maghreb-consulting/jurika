@@ -35,6 +35,13 @@ import java.util.function.Supplier;
  *   <li><b>Titre</b> : tire de la premiere question, tronque sans couper un mot ; modifiable.</li>
  *   <li><b>Archivage</b> : une conversation archivee reste consultable ; on n'y pose plus de
  *       question (409) tant qu'elle n'est pas desarchivee.</li>
+ *   <li><b>Conservation</b> (decision de l'utilisateur, lot L6, 2026-10-13) : une conversation est
+ *       conservee tant que le compte de son auteur existe (un compte n'est jamais supprime,
+ *       seulement desactive : RG-CPT-03), puis elle suit le sort des donnees du cabinet :
+ *       archivage a l'arret du forfait (RG-DP-04), ou suppression a la demande du cabinet.
+ *       Aucune purge automatique ici ; les tables {@code chatbot_conversations} et
+ *       {@code chatbot_echanges} portent {@code workspace_id} et doivent etre comprises dans
+ *       l'archivage et la suppression des donnees d'un cabinet (lots L7 et L8).</li>
  * </ul>
  * Chaque ecriture passe dans une transaction qui pose {@code app.current_workspace_id}
  * (reglage local, il ne fuit pas dans le pool).
@@ -233,7 +240,7 @@ public class ConversationsChatbotService {
         if (Boolean.TRUE.equals(conversation.get("archivee"))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Cette conversation est archivée : vous pouvez la consulter, mais pour y poser une "
-                            + "question, désarchivez-la d'abord.");
+                            + "question, d\u00e9sarchivez-la d\u2019abord.");
         }
         return null;
     }
@@ -281,7 +288,7 @@ public class ConversationsChatbotService {
         try {
             return JSON.readValue(json, LISTE_SOURCES);
         } catch (Exception ex) {
-            throw new IllegalStateException("Sources d'un echange illisibles", ex);
+            throw new IllegalStateException("Sources d\u2019un echange illisibles", ex);
         }
     }
 
@@ -289,7 +296,7 @@ public class ConversationsChatbotService {
         try {
             return JSON.writeValueAsString(valeur);
         } catch (Exception ex) {
-            throw new IllegalStateException("Sources d'un echange non serialisables", ex);
+            throw new IllegalStateException("Sources d\u2019un echange non serialisables", ex);
         }
     }
 }

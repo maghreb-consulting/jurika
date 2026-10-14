@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -11,6 +9,7 @@ import {
 import { createPortal } from 'react-dom';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
+import { ToastContext, type ToastApi, type ToastVariant } from './useToast';
 
 /**
  * Système de toast maison (aucune dépendance externe : ni sonner ni
@@ -30,8 +29,6 @@ import { twMerge } from 'tailwind-merge';
  * `error` de TextField) ni les `ErrorState` de page.
  */
 
-export type ToastVariant = 'success' | 'error' | 'info';
-
 interface ToastItem {
   id: number;
   variant: ToastVariant;
@@ -39,17 +36,6 @@ interface ToastItem {
   /** ms avant auto-dismiss ; 0 = persistant (fermeture manuelle uniquement). */
   duration: number;
 }
-
-interface ToastApi {
-  /** Ajoute un toast générique et renvoie son id (pour un dismiss manuel éventuel). */
-  show: (message: string, variant?: ToastVariant, duration?: number) => number;
-  success: (message: string, duration?: number) => number;
-  error: (message: string, duration?: number) => number;
-  info: (message: string, duration?: number) => number;
-  dismiss: (id: number) => void;
-}
-
-const ToastContext = createContext<ToastApi | null>(null);
 
 const DEFAULT_DURATION = 4000;
 
@@ -179,14 +165,3 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: num
   );
 }
 
-/**
- * Hook d'accès à l'API toast. À utiliser dans les composants sous
- * <ToastProvider>. Lance si le provider est absent (aide au diagnostic).
- */
-export function useToast(): ToastApi {
-  const ctx = useContext(ToastContext);
-  if (!ctx) {
-    throw new Error('useToast doit être utilisé à l’intérieur de <ToastProvider>.');
-  }
-  return ctx;
-}

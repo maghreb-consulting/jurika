@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useEffectEvent } from 'react';
 import { useReducedMotion } from '../../hooks/useReducedMotion.js';
 import { HERO_TIMING } from '../../config/motion.js';
 
@@ -12,10 +12,16 @@ export function TypewriterText({ text, startDelayMs = 0, intervalMs = HERO_TIMIN
   const reduced = useReducedMotion();
   const [visible, setVisible] = useState(reduced ? text : '');
 
+  // Lot L6 : onDone en « événement d'effet » : la dernière fonction est appelée, sans relancer
+  // l'animation quand le parent la recrée.
+  const signalerFin = useEffectEvent(() => {
+    if (onDone) onDone();
+  });
+
   useEffect(() => {
     if (reduced) {
       setVisible(text);
-      if (onDone) onDone();
+      signalerFin();
       return undefined;
     }
     setVisible('');
@@ -27,7 +33,7 @@ export function TypewriterText({ text, startDelayMs = 0, intervalMs = HERO_TIMIN
         setVisible(text.slice(0, i));
         if (i >= text.length) {
           clearInterval(intervalId);
-          if (onDone) onDone();
+          signalerFin();
         }
       }, intervalMs);
     }, startDelayMs);
@@ -35,8 +41,7 @@ export function TypewriterText({ text, startDelayMs = 0, intervalMs = HERO_TIMIN
       clearTimeout(startTimer);
       if (intervalId) clearInterval(intervalId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text, reduced]);
+  }, [text, reduced, startDelayMs, intervalMs]);
 
   return (
     <span className={`typewriter ${visible.length === text.length ? 'is-done' : ''} ${className}`}>

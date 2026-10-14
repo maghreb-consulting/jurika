@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertCircle, FileUp, Loader2, X } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { uploadOrReplace } from '../../../lib/dataroomUpload';
@@ -61,7 +61,10 @@ export function UploadDocumentDialog({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Remise a zero a l'ouverture, ajustee pendant le rendu (pas d'etat pose dans un effet).
+  const [ouvertVu, setOuvertVu] = useState<boolean | null>(null);
+  if (ouvertVu !== open) {
+    setOuvertVu(open);
     if (open) {
       setTarget(NEW_DOCUMENT_VALUE);
       setFile(null);
@@ -71,7 +74,7 @@ export function UploadDocumentDialog({
       setError(null);
       setSubmitting(false);
     }
-  }, [open]);
+  }
 
   const isReplaceMode = target !== NEW_DOCUMENT_VALUE;
   const selectedDoc = useMemo(
@@ -114,7 +117,7 @@ export function UploadDocumentDialog({
       await onUploaded();
       onClose();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Echec de l\'upload';
+      const msg = err instanceof Error ? err.message : 'Échec du dépôt du document. Vérifiez le fichier, puis réessayez.';
       setError(msg);
     } finally {
       setSubmitting(false);
@@ -137,7 +140,7 @@ export function UploadDocumentDialog({
       <div className="relative w-full max-w-lg rounded-xl bg-bg-raised shadow-xl">
         <header className="flex items-center justify-between border-b border-border px-5 py-3">
           <h2 id="upload-dialog-title" className="text-base font-semibold text-fg">
-            Uploader un document
+            Ajouter un document
           </h2>
           <button
             type="button"
@@ -206,7 +209,7 @@ export function UploadDocumentDialog({
                   type="text"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Ex. Statuts SARL refondus"
+                  placeholder="Exemple : statuts refondus de la SARL"
                   className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
                 />
               </div>
@@ -226,7 +229,7 @@ export function UploadDocumentDialog({
                 value={motif}
                 onChange={(e) => setMotif(e.target.value)}
                 rows={2}
-                placeholder="Ex. Correction d'une coquille dans l'objet social"
+                placeholder="Exemple : correction d’une coquille dans l’objet social"
                 className={`w-full rounded-lg border bg-bg-raised px-3 py-2 text-sm ${
                   motif.length > 0 && motifTrimmed.length < 5
                     ? 'border-danger focus:border-danger'

@@ -49,8 +49,8 @@ public class GenerationExceptionHandler {
     public ResponseEntity<Map<String, Object>> identite(ma.jurika.ai.workflow.identity.IdentiteSocieteIndisponibleException ex) {
         log.error("{}", ex.getMessage());
         return reponse(HttpStatus.SERVICE_UNAVAILABLE, corps("DONNEES_SOCIETE_INDISPONIBLES",
-                "Les données de la société n'ont pas pu être lues : le document n'a pas été généré. "
-                        + "Réessayez dans un instant ; si le problème persiste, signalez-le à l'administrateur."));
+                "Les donn\u00e9es de la soci\u00e9t\u00e9 n\u2019ont pas pu \u00eatre lues : le document n\u2019a pas \u00e9t\u00e9 g\u00e9n\u00e9r\u00e9. "
+                        + "R\u00e9essayez dans un instant ; si le probl\u00e8me persiste, signalez-le \u00e0 l\u2019administrateur."));
     }
 
     /** Lot L4d (E10) : clause libre impossible a placer sans risque ; la raison est donnee. */
@@ -66,16 +66,16 @@ public class GenerationExceptionHandler {
     public ResponseEntity<Map<String, Object>> introuvable(GabaritIntrouvableException ex) {
         log.error("{}", ex.getMessage());
         return reponse(HttpStatus.NOT_FOUND, corps("MODELE_INTROUVABLE",
-                "Le modèle de ce document est introuvable sur la plateforme. Signalez-le à l'administrateur : "
-                        + "aucun document de remplacement n'est produit."));
+                "Le mod\u00e8le de ce document est introuvable sur la plateforme. Signalez-le \u00e0 l\u2019administrateur : "
+                        + "aucun document de remplacement n\u2019est produit."));
     }
 
     @ExceptionHandler(CorpusException.class)
     public ResponseEntity<Map<String, Object>> corpus(CorpusException ex) {
         log.error("Modele du corpus refuse : {}", ex.getMessage());
         return reponse(HttpStatus.CONFLICT, corps("MODELE_REFUSE",
-                "Le modèle de ce document ne peut pas être utilisé en l'état (il a été modifié ou n'est pas "
-                        + "rendable). Signalez-le à l'administrateur ; le détail figure au journal de la plateforme."));
+                "Le mod\u00e8le de ce document ne peut pas \u00eatre utilis\u00e9 en l\u2019\u00e9tat (il a \u00e9t\u00e9 modifi\u00e9 ou n\u2019est pas "
+                        + "rendable). Signalez-le \u00e0 l\u2019administrateur ; le d\u00e9tail figure au journal de la plateforme."));
     }
 
     private static Map<String, Object> corps(String code, String message) {

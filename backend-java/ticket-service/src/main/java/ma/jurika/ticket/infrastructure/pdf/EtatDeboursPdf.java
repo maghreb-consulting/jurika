@@ -51,21 +51,21 @@ public class EtatDeboursPdf implements EtatDeboursDocument {
 
     static final Map<FormeJuridique, String> FORMES = new EnumMap<>(Map.of(
             FormeJuridique.SARL, "Soci\u00e9t\u00e9 \u00e0 responsabilit\u00e9 limit\u00e9e (SARL)",
-            FormeJuridique.SARL_AU, "Soci\u00e9t\u00e9 \u00e0 responsabilit\u00e9 limit\u00e9e d'associ\u00e9 unique (SARL AU)",
+            FormeJuridique.SARL_AU, "Soci\u00e9t\u00e9 \u00e0 responsabilit\u00e9 limit\u00e9e d\u2019associ\u00e9 unique (SARL AU)",
             FormeJuridique.SA, "Soci\u00e9t\u00e9 anonyme (SA)",
             FormeJuridique.SAS, "Soci\u00e9t\u00e9 par actions simplifi\u00e9e (SAS)",
             FormeJuridique.SCS, "Soci\u00e9t\u00e9 en commandite simple (SCS)",
-            FormeJuridique.GIE, "Groupement d'int\u00e9r\u00eat \u00e9conomique (GIE)"));
+            FormeJuridique.GIE, "Groupement d\u2019int\u00e9r\u00eat \u00e9conomique (GIE)"));
 
     static final Map<TicketType, String> TYPES = new EnumMap<>(Map.of(
             TicketType.CREATION, "Cr\u00e9ation de soci\u00e9t\u00e9",
-            TicketType.IMPORT, "Reprise d'un dossier existant",
+            TicketType.IMPORT, "Reprise d\u2019un dossier existant",
             TicketType.MODIFICATION, "Modification",
             TicketType.DISSOLUTION, "Dissolution",
             TicketType.LIQUIDATION, "Liquidation",
-            TicketType.SUCCURSALE_MA, "Ouverture d'une succursale",
-            TicketType.SUCCURSALE_ETR, "Succursale d'une soci\u00e9t\u00e9 \u00e9trang\u00e8re",
-            TicketType.FERMETURE_SUCCURSALE, "Fermeture d'une succursale",
+            TicketType.SUCCURSALE_MA, "Ouverture d\u2019une succursale",
+            TicketType.SUCCURSALE_ETR, "Succursale d\u2019une soci\u00e9t\u00e9 \u00e9trang\u00e8re",
+            TicketType.FERMETURE_SUCCURSALE, "Fermeture d\u2019une succursale",
             TicketType.PV_AGO, "Assembl\u00e9e g\u00e9n\u00e9rale ordinaire"));
 
     @Override

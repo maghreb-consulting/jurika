@@ -82,7 +82,9 @@ export function useTicketColumns(filtres: FiltresTickets) {
    * updater `setState` le rendrait impur (StrictMode l'appelle deux fois).
    */
   const colonnesRef = useRef(colonnes);
-  colonnesRef.current = colonnes;
+  useEffect(() => {
+    colonnesRef.current = colonnes;
+  }, [colonnes]);
 
   const { query, type, priorite, statut } = filtres;
 
@@ -141,7 +143,8 @@ export function useTicketColumns(filtres: FiltresTickets) {
   }, [query, type, priorite, statut]);
 
   useEffect(() => {
-    void load();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(load);
   }, [load]);
 
   const loadMore = useCallback(

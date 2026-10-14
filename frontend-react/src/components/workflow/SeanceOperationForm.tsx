@@ -14,26 +14,23 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Sparkles } from 'lucide-react';
+import { TexteAide } from '../ui/Aide';
 import { TextField } from '../ui/TextField';
 import { TypePieceProposee, ValeurProposee } from './ValeurProposee';
-import {
-  WorkflowDocumentBlock,
-  freshDocState,
-  useDocumentBlocks,
-  type DocState,
-} from './WorkflowDocumentBlock';
+import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
+import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
 } from '../../services/workflowDocumentService';
+import { SeanceFormFields } from './SeanceForm';
 import {
-  SeanceFormFields,
   useSeanceForm,
   type AssocieInput,
   type GerantInput,
   type SeanceSections,
   type SeanceSocieteInput,
-} from './SeanceForm';
+} from './seanceFormEtat';
 import type { DocumentType } from '../../types/dataroom';
 import { USAGES_CABINET } from '../../lib/usagesCabinet';
 import { MentionsPvFields } from './MentionsPvFields';
@@ -227,8 +224,11 @@ export function SeanceOperationForm({
 
   const [docs, setDocs] = useState<Record<string, DocState>>({});
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
-  const [loadTemplatesError, setLoadTemplatesError] = useState<string | null>(null);
+  // L6 : erreur de chargement rattachee a la demande ; « en cours » se deduit (plus de
+  // mise a jour synchrone d'etat au debut de l'effet). La liste chargee n'est jamais vide.
+  const [erreurModeles, setErreurModeles] = useState<{ cle: string; message: string } | null>(null);
+  const loadTemplatesError = erreurModeles?.cle === pvCode ? erreurModeles.message : null;
+  const loadingTemplates = templates.length === 0 && !loadTemplatesError;
 
   const requiredCodes = useMemo(
     () => (mode === 'liquidation' ? [pvCode, RAPPORT] : [pvCode]),
@@ -339,8 +339,6 @@ export function SeanceOperationForm({
   useEffect(() => {
     if (templates.length > 0) return;
     let cancelled = false;
-    setLoadingTemplates(true);
-    setLoadTemplatesError(null);
     listTemplatesForWorkflow(workflowCode)
       .then((items) => {
         if (cancelled) return;
@@ -358,10 +356,7 @@ export function SeanceOperationForm({
       })
       .catch((err) => {
         if (cancelled) return;
-        setLoadTemplatesError(err instanceof Error ? err.message : 'Impossible de charger les modèles.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingTemplates(false);
+        setErreurModeles({ cle: pvCode, message: err instanceof Error ? err.message : 'Impossible de charger les modèles.' });
       });
     return () => {
       cancelled = true;
@@ -374,6 +369,12 @@ export function SeanceOperationForm({
 
   return (
     <div className="space-y-5">
+      <TexteAide cle={`seance-operation-${mode}`} titre="Ce qu’il faut faire">
+        Renseignez la séance (date, lieu, bureau, présences et vote), confirmez les valeurs
+        proposées, puis générez chaque document, relisez son aperçu et validez-le : il est
+        déposé dans la Data Room du dossier. Une donnée manquante vous est nommée à la
+        génération.
+      </TexteAide>
       <SeanceFormFields form={form} sections={SECTIONS} />
 
       <section className="rounded-xl border border-border bg-bg-raised p-4">

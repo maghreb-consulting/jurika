@@ -70,7 +70,7 @@ public class FermetureSuccursaleWorkflow extends AbstractWorkflow {
             case 2 -> stepGeneration(ctx);
             case 3 -> stepPiecesJointes(ctx);
             case 4 -> stepSynthese(ctx);
-            default -> StepResult.blocked("Etape inconnue : " + ctx.step());
+            default -> StepResult.blocked("\u00c9tape inconnue : " + ctx.step());
         };
     }
 
@@ -83,13 +83,13 @@ public class FermetureSuccursaleWorkflow extends AbstractWorkflow {
         // Societe mere : dossier existant (identite lue en BD).
         String dossierIdRaw = strOrNull(first0(p.get("dossierId"), p.get("societeMereId")));
         if (dossierIdRaw == null) {
-            return StepResult.blocked("Selectionnez la societe mere.");
+            return StepResult.blocked("S\u00e9lectionnez la soci\u00e9t\u00e9 m\u00e8re.");
         }
         try {
             UUID.fromString(dossierIdRaw);
         } catch (IllegalArgumentException e) {
             return StepResult.blocked(
-                    "Identifiant de societe invalide. Selectionnez la societe dans la liste.");
+                    "Identifiant de soci\u00e9t\u00e9 invalide. S\u00e9lectionnez la soci\u00e9t\u00e9 dans la liste.");
         }
 
         Map<String, Object> succ = buildSuccursale(p);
@@ -107,16 +107,16 @@ public class FermetureSuccursaleWorkflow extends AbstractWorkflow {
                 UUID.fromString(succursaleDbId);
             } catch (IllegalArgumentException e) {
                 return StepResult.blocked(
-                        "Identifiant de succursale invalide. Selectionnez-la dans la liste.");
+                        "Identifiant de succursale invalide. S\u00e9lectionnez-la dans la liste.");
             }
         } else if (succursaleId == null) {
             // Saisie manuelle : on exige le minimum permettant de creer la ligne (l'enseigne
             // l'identifie, la ville designe le greffe de sa radiation).
             if (strOrNull(succ.get("enseigne")) == null || strOrNull(succ.get("ville")) == null) {
                 return StepResult.blocked(
-                        "Selectionnez la succursale a fermer dans la liste de cette societe. "
-                                + "Si elle n'y figure pas encore, saisissez au minimum son "
-                                + "enseigne et sa ville : elle sera enregistree puis fermee.");
+                        "S\u00e9lectionnez la succursale \u00e0 fermer dans la liste de cette soci\u00e9t\u00e9. "
+                                + "Si elle n\u2019y figure pas encore, saisissez au minimum son "
+                                + "enseigne et sa ville : elle sera enregistr\u00e9e puis ferm\u00e9e.");
             }
         }
 
@@ -126,16 +126,16 @@ public class FermetureSuccursaleWorkflow extends AbstractWorkflow {
         String rcNumero = strOrNull(first0(succ.get("rcNumero"), succ.get("rc")));
         if (rcNumero == null) {
             return StepResult.blocked(
-                    "Le numero RC de la succursale est obligatoire : il est publie dans "
-                            + "l'annonce de fermeture (« immatriculee sous le n° … »). S'il n'est "
-                            + "pas encore enregistre, saisissez-le une fois — il sera conserve.");
+                    "Le num\u00e9ro RC de la succursale est obligatoire : il est publi\u00e9 dans "
+                            + "l\u2019annonce de fermeture (\u00ab immatricul\u00e9e sous le n\u00b0 \u2026 \u00bb). S\u2019il n\u2019est "
+                            + "pas encore enregistr\u00e9, saisissez-le une fois \u2014 il sera conserv\u00e9.");
         }
         succ.put("rcNumero", rcNumero);
 
         // Date d'EFFET de la fermeture (distincte de la date d'assemblee).
         String dateFermetureRaw = strOrNull(first0(succ.get("dateFermeture"), succ.get("dateEffet")));
         if (dateFermetureRaw == null) {
-            return StepResult.blocked("La date d'effet de la fermeture est obligatoire.");
+            return StepResult.blocked("La date d\u2019effet de la fermeture est obligatoire.");
         }
         LocalDate dateFermeture = parseDateOrNull(dateFermetureRaw);
         if (dateFermeture == null) {
@@ -147,14 +147,14 @@ public class FermetureSuccursaleWorkflow extends AbstractWorkflow {
         String motif = strOrNull(first0(succ.get("motif"), p.get("motifFermeture")));
         if (motif == null) {
             return StepResult.blocked(
-                    "Le motif de la fermeture est obligatoire : il est publie dans l'annonce "
-                            + "legale (« Cette fermeture est motivee par … »).");
+                    "Le motif de la fermeture est obligatoire : il est publi\u00e9 dans l\u2019annonce "
+                            + "l\u00e9gale (\u00ab Cette fermeture est motiv\u00e9e par \u2026 \u00bb).");
         }
         if (motif.length() < MOTIF_MIN_LENGTH) {
             return StepResult.blocked(
-                    "Le motif est trop court — precisez la cause (cessation de l'activite, "
-                            + "reorganisation, transfert au siege...). Minimum "
-                            + MOTIF_MIN_LENGTH + " caracteres.");
+                    "Le motif est trop court \u2014 pr\u00e9cisez la cause (cessation de l\u2019activit\u00e9, "
+                            + "r\u00e9organisation, transfert au si\u00e8ge...). Minimum "
+                            + MOTIF_MIN_LENGTH + " caract\u00e8res.");
         }
         succ.put("motif", motif);
 
@@ -162,30 +162,30 @@ public class FermetureSuccursaleWorkflow extends AbstractWorkflow {
         String dateRaw = strOrNull(first0(p.get("dateAG"), p.get("dateAssemblee"), p.get("dateAGE")));
         if (dateRaw == null) {
             return StepResult.blocked(
-                    "La date de l'assemblee qui decide la fermeture est obligatoire.");
+                    "La date de l\u2019assembl\u00e9e qui d\u00e9cide la fermeture est obligatoire.");
         }
         LocalDate dateAg = parseDateOrNull(dateRaw);
         if (dateAg == null) {
-            return StepResult.blocked("Date d'assemblee invalide. Format attendu : AAAA-MM-JJ.");
+            return StepResult.blocked("Date d\u2019assembl\u00e9e invalide. Format attendu : AAAA-MM-JJ.");
         }
         if (dateAg.isAfter(LocalDate.now().plusDays(30))) {
             return StepResult.blocked(
-                    "La date d'assemblee ne peut pas etre dans le futur (> 30 jours).");
+                    "La date d\u2019assembl\u00e9e ne peut pas \u00eatre dans le futur (> 30 jours).");
         }
         if (dateAg.isBefore(LocalDate.now().minusYears(2))) {
             return StepResult.blocked(
-                    "La date d'assemblee est trop ancienne (> 2 ans). Verifiez la saisie.");
+                    "La date d\u2019assembl\u00e9e est trop ancienne (> 2 ans). V\u00e9rifiez la saisie.");
         }
 
         String typeAg = strOrNull(first0(p.get("typeAssemblee"), p.get("assembleeNature")));
         if (typeAg == null) {
             return StepResult.blocked(
-                    "Precisez le type d'assemblee : ordinaire ou extraordinaire.");
+                    "Pr\u00e9cisez le type d\u2019assembl\u00e9e : ordinaire ou extraordinaire.");
         }
         String typeNorm = typeAg.toLowerCase(Locale.ROOT);
         if (!TYPES_ASSEMBLEE.contains(typeNorm)) {
             return StepResult.blocked(
-                    "Type d'assemblee invalide : attendu « ordinaire » ou « extraordinaire ».");
+                    "Type d\u2019assembl\u00e9e invalide : attendu \u00ab ordinaire \u00bb ou \u00ab extraordinaire \u00bb.");
         }
 
         // Convocation OPTIONNELLE — regle DURE des 16 jours (jours calendaires).
@@ -229,14 +229,14 @@ public class FermetureSuccursaleWorkflow extends AbstractWorkflow {
         Map<String, Object> p = ctx.payload();
         if (!isTrue(p, "pvValide")) {
             return StepResult.blocked(
-                    "Le PV de fermeture doit etre valide avant de poursuivre.");
+                    "Le PV de fermeture doit \u00eatre valide avant de poursuivre.");
         }
         if (!isTrue(p, "annonceValide")) {
             return StepResult.blocked(
-                    "L'annonce legale de fermeture doit etre validee : sa publication au "
-                            + "Journal d'Annonces Legales fonde la radiation de la succursale "
-                            + "(les numero et date de depot legal, attribues par le greffe apres "
-                            + "depot, restent facultatifs a ce stade).");
+                    "L\u2019annonce l\u00e9gale de fermeture doit \u00eatre valid\u00e9e : sa publication au "
+                            + "Journal d\u2019Annonces L\u00e9gales fonde la radiation de la succursale "
+                            + "(les num\u00e9ro et date de d\u00e9p\u00f4t l\u00e9gal, attribu\u00e9s par le greffe apr\u00e8s "
+                            + "d\u00e9p\u00f4t, restent facultatifs \u00e0 ce stade).");
         }
 
         Map<String, Object> dossier = readDossier(ctx);

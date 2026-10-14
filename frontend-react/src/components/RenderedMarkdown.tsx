@@ -17,7 +17,7 @@ import { type JSX } from 'react';
 const H1 = /^#\s+(.+)$/;
 const H2 = /^##\s+(.+)$/;
 const H3 = /^###\s+(.+)$/;
-const BULLET = /^[\-*]\s+(.+)$/;
+const BULLET = /^[-*]\s+(.+)$/;
 const NUMBERED = /^\d+\.\s+(.+)$/;
 const BLOCKQUOTE = /^>\s*(.*)$/;
 const HTML_COMMENT = /^<!--.*?-->\s*$/;

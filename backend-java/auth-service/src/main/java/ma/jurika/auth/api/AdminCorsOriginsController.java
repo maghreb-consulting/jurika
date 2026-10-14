@@ -71,7 +71,7 @@ public class AdminCorsOriginsController {
     public record AddOriginRequest(
             @NotBlank
             @Pattern(regexp = "^https?://[A-Za-z0-9.-]+(:\\d{1,5})?$",
-                     message = "Origine invalide : format attendu http(s)://host[:port]")
+                     message = "Origine non valide : format attendu http(s)://hote[:port].")
             String origin) {}
 
     public record AllowedOriginResponse(UUID id, UUID workspaceId, String origin) {

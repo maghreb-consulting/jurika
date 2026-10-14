@@ -53,10 +53,10 @@ export function RecoveryCodeForm({ workspaceCode, email, loading, error, onSubmi
       </div>
 
       <div className="mb-6 text-center">
-        <h2 className="mb-2 text-2xl font-bold text-fg">Code de recuperation</h2>
+        <h2 className="mb-2 text-2xl font-bold text-fg">Code de récupération</h2>
         <p className="text-sm text-fg-subtle">
-          Saisissez l'un de vos 10 codes 2FA generes lors de l'activation. Chaque code
-          n'est valide qu'<strong>une seule fois</strong>.
+          Saisissez l’un des 10 codes de récupération reçus à l’activation de la double
+          authentification. Chaque code ne sert qu’<strong>une seule fois</strong>.
         </p>
       </div>
 
@@ -66,7 +66,7 @@ export function RecoveryCodeForm({ workspaceCode, email, loading, error, onSubmi
 
       <div className="mb-4">
         <label htmlFor="recovery-code-input" className="mb-2 block text-sm font-medium text-fg">
-          Code de recuperation
+          Code de récupération
         </label>
         <input
           id="recovery-code-input"
@@ -87,7 +87,7 @@ export function RecoveryCodeForm({ workspaceCode, email, loading, error, onSubmi
           }`}
         />
         <p className="mt-2 text-center text-xs text-fg-subtle">
-          16 caracteres en 4 groupes de 4 ({normalized.length}/16)
+          16 caractères en 4 groupes de 4 ({normalized.length}/16)
         </p>
       </div>
 
@@ -101,11 +101,11 @@ export function RecoveryCodeForm({ workspaceCode, email, loading, error, onSubmi
       )}
 
       <Button type="submit" className="h-12 w-full" loading={loading} disabled={!isComplete}>
-        Verifier & Acceder
+        Vérifier et accéder
       </Button>
 
       <p className="mt-6 text-center text-xs text-fg-subtle">
-        Vous n'avez plus aucun code de recuperation ? Contactez le support a{' '}
+        Vous n’avez plus aucun code de récupération ? Écrivez au support :{' '}
         <a className="font-medium text-accent hover:underline" href="mailto:support@jurika.ma">
           support@jurika.ma
         </a>

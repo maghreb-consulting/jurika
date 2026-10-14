@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="fr">
 <head>
     <meta charset="UTF-8"/>
-    <title>Invitation a rejoindre JURIKA</title>
+    <title>Invitation &agrave; rejoindre JURIKA</title>
 </head>
 <body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#0F172A;">
 
@@ -21,10 +21,10 @@
                         </p>
 
                         <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
-                            Vous avez ete invite a rejoindre le cabinet
+                            Vous &ecirc;tes invit&eacute; &agrave; rejoindre le cabinet
                             <strong th:text="${workspaceName}">Maghreb Consulting</strong>
                             sur JURIKA en tant que
-                            <strong th:text="${roleLabel}">Employe</strong>.
+                            <strong th:text="${roleLabel}">Employ&eacute;</strong>.
                         </p>
 
                         <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
@@ -51,7 +51,7 @@
                                 </tr>
                                 <tr th:if="${contactEmail != null and contactEmail != loginEmail}">
                                     <td style="padding:0 0 16px;font-size:11px;color:#64748B;">
-                                        Notifications envoyees a <span th:text="${contactEmail}" style="color:#0F172A;">karim@cabinet.ma</span>.
+                                        Notifications envoy&eacute;es &agrave; <span th:text="${contactEmail}" style="color:#0F172A;">karim@cabinet.ma</span>.
                                     </td>
                                 </tr>
                                 <tr>
@@ -67,15 +67,14 @@
 
                         <div style="text-align:center;margin:32px 0;">
                             <a th:href="${loginUrl}"
-                               style="display:inline-block;background:#0c1d3f;color:#c8a45c;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px;">
+                               style="display:inline-block;background:#0c1d3f;color:#c9a24a;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px;">
                                 Me connecter
                             </a>
                         </div>
 
                         <p style="margin:0 0 16px;font-size:13px;color:#64748B;line-height:1.55;">
-                            Au premier login, il vous sera demande de changer votre mot de passe
-                            et de configurer votre authentification a deux facteurs (SMS ou
-                            Google Authenticator).
+                            &Agrave; votre premi&egrave;re connexion, vous devrez changer votre mot de passe
+                            et activer la double authentification (SMS ou Google Authenticator).
                         </p>
 
                         <th:block th:replace="~{email/_base :: phishingBox}"/>

@@ -47,7 +47,7 @@ public class UserThemeController {
      */
     public record ThemeUpdateRequest(
             @NotBlank
-            @Pattern(regexp = "^(dark|light)$", message = "theme doit etre 'dark' ou 'light'")
+            @Pattern(regexp = "^(dark|light)$", message = "Th\u00e8me inconnu : choisissez le th\u00e8me clair ou sombre.")
             String theme
     ) {}
 

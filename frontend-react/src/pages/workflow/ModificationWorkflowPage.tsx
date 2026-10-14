@@ -30,12 +30,14 @@ import { ValeurProposee } from '../../components/workflow/ValeurProposee';
 import { WorkflowShell } from '../../components/workflow/WorkflowShell';
 import type { RoadmapStep } from '../../components/workflow/WorkflowRoadmap';
 import { ticketService } from '../../services/ticket.service';
-import { workflowService, type DossierParties } from '../../services/workflow.service';
 import type { AssocieInput, GerantInput } from '../../components/workflow/SeanceForm';
 import { CancelTicketDialog } from '../tickets/CancelTicketDialog';
 import { useWorkflow } from './useWorkflow';
 import { useStepAutosave } from './useStepAutosave';
 import { WorkflowBoot } from './WorkflowBoot';
+import { AideEtape } from './AideEtape';
+import { ETAPES_MODIFICATION, etapesRoadmap } from './aidesParcours';
+import { useDossierParties } from './parcoursHooks';
 import { dataroomService } from '../../services/dataroom.service';
 import { IncidentSeancePanel } from '../../components/workflow/IncidentSeancePanel';
 import { ConvocationPanel, FeuillePresencePanel } from '../../components/workflow/SeanceDocPanels';
@@ -58,16 +60,8 @@ import {
   type ModForme,
   type OfficialDecision,
 } from './officialModificationDecisions';
-import {
-  RES_SPECS,
-  ResolutionFieldsEditor,
-  flattenResolution,
-  oldValuesFor,
-  personNames,
-  seedResolutions,
-  type PersonLists,
-  type ResolutionState,
-} from '../../components/workflow/modificationResolutions';
+import { ResolutionFieldsEditor, type PersonLists, type ResolutionState } from '../../components/workflow/modificationResolutions';
+import { RES_SPECS, flattenResolution, oldValuesFor, personNames, seedResolutions } from '../../components/workflow/modificationResolutionsSpecs';
 import { IdentityExtractor } from '../../components/identity/IdentityExtractor';
 import { GeneratedDocPreview } from '../../components/document/GeneratedDocPreview';
 import { DocumentEditModal } from '../../components/document/DocumentEditModal';
@@ -81,6 +75,20 @@ import {
   type PieceJointeEntry,
 } from '../../components/workflow/PiecesJointesPanel';
 import { USAGES_CABINET } from '../../lib/usagesCabinet';
+import {
+  ALL_MODS,
+  DECISION_TYPES,
+  NATURE_OPTIONS,
+  classifyDocKind,
+  computePreflight,
+  computeRefonteMissing,
+  decisionTypeFor,
+  formatMad,
+  isBlankValue,
+  validateStep1Inputs,
+  type AssembleeNature,
+  type PreflightEntry,
+} from './modificationLogique';
 
 // Phase 1 (2026-08-10) — voie directeur : déclencheurs basés sur le `resolutionType`
 // (snake_case) du catalogue officiel. Miroir de ModificationWorkflow.*_TRIGGERS_RT (backend).
@@ -114,320 +122,7 @@ const NEW_ASSOCIE_TARGET_FIELD: Record<string, string> = {
   augmentation_capital_nature: 'apporteurNom',
 };
 
-const STEPS: RoadmapStep[] = [
-  { number: 1, label: 'Selection' },
-  { number: 2, label: 'Saisie' },
-  { number: 3, label: 'Generation' },
-  { number: 4, label: 'Pieces jointes' },
-  { number: 5, label: 'Synthese' },
-];
-
-// Type d'assemblee simplifie (spec 2026-08-11) : l'employe choisit Ordinaire ou
-// Extraordinaire. Le decisionType envoye au backend est derive de (forme, nature) :
-// SARL ordinaire→AGO, extraordinaire→AGE ; SARL_AU → decision de l'associe unique (AU).
-type AssembleeNature = 'ordinaire' | 'extraordinaire';
-const NATURE_OPTIONS: { value: AssembleeNature; label: string }[] = [
-  { value: 'ordinaire', label: 'Ordinaire' },
-  { value: 'extraordinaire', label: 'Extraordinaire' },
-];
-export function decisionTypeFor(isAU: boolean, nature: AssembleeNature): string {
-  if (isAU) return 'AU';
-  return nature === 'ordinaire' ? 'AGO' : 'AGE';
-}
-
-/**
- * Regle des 16 jours : le noyau (constante + helpers purs) vit desormais dans
- * `components/workflow/convocationDelai` — PARTAGE avec le workflow DISSOLUTION
- * (2026-08-12). Re-exporte ici pour ne rien casser des imports existants.
- */
-export { CONVOCATION_DELAI_JOURS, addDaysIso, convocationDelaiError };
-
-// RG transverse 2026-06-05 : liste PLATE (pas de groupes/titres) — tri alphabetique strict
-// pour favoriser la recherche/scan rapide. Les categories ne sont plus exposees a l'UI ;
-// elles restent disponibles via l'indication "article" sous chaque item.
-interface ModificationItem {
-  id: string;
-  label: string;
-  article?: string;
-}
-
-const MODIFICATIONS: ModificationItem[] = [
-  { id: 'AUGMENTATION_CAPITAL', label: 'Augmentation de capital (numeraire)', article: 'Articles 6-7' },
-  { id: 'AUGMENTATION_CAPITAL_NATURE', label: 'Augmentation de capital (apport nature)', article: 'Articles 6-7' },
-  { id: 'AUGMENTATION_CAPITAL_RESERVES', label: 'Augmentation par incorporation de reserves', article: 'Articles 6-7' },
-  { id: 'CESSION_PARTIELLE', label: 'Cession partielle de parts', article: 'Articles 8-9' },
-  { id: 'CESSION_TOTALE', label: "Cession totale (changement associe unique)", article: 'Article 9' },
-  { id: 'CHANGEMENT_DENOMINATION', label: 'Changement de denomination', article: 'Article 2' },
-  { id: 'CHANGEMENT_OBJET', label: "Changement de l'objet social", article: 'Article 3' },
-  { id: 'CLAUSE_AGREMENT', label: "Clause d'agrement", article: 'Article 10' },
-  { id: 'CLAUSE_PREEMPTION', label: 'Droit de preemption / inalienabilite', article: 'Statuts' },
-  { id: 'CONTINUATION_PERTES', label: 'Continuation malgre pertes', article: 'Loi 5-96 art. 86' },
-  { id: 'CREATION_SUCCURSALE', label: 'Creation / transfert / suppression de succursale', article: 'Article 17' },
-  { id: 'DESIGNATION_CAC', label: "Designation d'un CAC", article: 'Article 15' },
-  { id: 'DESIGNATION_GERANT', label: "Nomination d'un gerant", article: 'Article 12' },
-  { id: 'FUSION_SCISSION', label: 'Fusion / scission / apport partiel', article: 'Projet annexe' },
-  { id: 'MODALITES_DECISIONS', label: 'Modalites de decisions', article: 'Statuts' },
-  { id: 'MODIF_NOMBRE_GERANTS', label: 'Modification nombre/duree gerants', article: 'Article 12' },
-  { id: 'MODIF_POUVOIRS_GERANT', label: 'Modification pouvoirs/remuneration', article: 'Article 12' },
-  { id: 'MODIF_VALEUR_NOMINALE', label: 'Modification valeur nominale parts', article: 'Article 7' },
-  { id: 'NANTISSEMENT', label: 'Nantissement de parts', article: 'Acte annexe' },
-  { id: 'PACTE_ASSOCIES', label: "Pacte d'associes", article: 'Annexe' },
-  { id: 'POUVOIRS_FORMALITES', label: 'Pouvoirs pour formalites', article: 'Decision standard' },
-  { id: 'PROROGATION_DUREE', label: 'Prorogation de la duree', article: 'Article 5' },
-  { id: 'REDUCTION_CAPITAL', label: 'Reduction de capital', article: 'Articles 6-7' },
-  { id: 'REVOCATION_GERANT', label: "Revocation d'un gerant", article: 'Article 12' },
-  { id: 'TRANSFERT_SIEGE', label: 'Transfert du siege social', article: 'Article 4' },
-  { id: 'TRANSFORMATION', label: 'Transformation (SARL <-> SA, etc.)', article: 'Statuts complets' },
-  { id: 'TRANSMISSION_PARTS', label: 'Transmission par succession/donation', article: 'Articles 8-9' },
-].sort((a, b) => a.label.localeCompare(b.label, 'fr', { sensitivity: 'base' }));
-
-const ALL_MODS = MODIFICATIONS;
-
-const DECISION_TYPES = [
-  { value: 'AU', label: "Decision de l'associe unique (SARL AU)" },
-  { value: 'AGE', label: 'Assemblee Generale Extraordinaire (SARL)' },
-  { value: 'AGO', label: 'Assemblee Generale Ordinaire (AGO)' },
-  { value: 'CA', label: "Conseil d'administration" },
-  { value: 'PV', label: 'Proces-verbal de reunion' },
-];
-
-// ============================================================================
-// VALIDATION TEMPS REEL (RG transverse 2026-06-05) — par modification choisie
-// ============================================================================
-// Chaque entree definit les champs requis + regle de validation + message
-// utilisateur precis (typo/oubli). Renvoie null si OK, sinon le message FR.
-type FieldValidator = (value: string, values: Record<string, string>) => string | null;
-
-interface FieldSpec {
-  name: string;
-  label: string;
-  validate: FieldValidator;
-}
-
-function required(label: string): FieldValidator {
-  return (v) => (!v || !v.trim()) ? `${label} est obligatoire.` : null;
-}
-function minLen(label: string, n: number): FieldValidator {
-  return (v) => {
-    if (!v || !v.trim()) return `${label} est obligatoire.`;
-    if (v.trim().length < n) return `${label} doit comporter au moins ${n} caracteres (actuel : ${v.trim().length}).`;
-    return null;
-  };
-}
-function positiveNumber(label: string): FieldValidator {
-  return (v) => {
-    if (!v || !v.trim()) return `${label} est obligatoire.`;
-    const n = Number(v);
-    if (!Number.isFinite(n)) return `${label} doit etre un nombre valide.`;
-    if (n <= 0) return `${label} doit etre strictement positif.`;
-    return null;
-  };
-}
-function dateField(label: string, opts?: { notFuture?: boolean; notPast?: boolean }): FieldValidator {
-  return (v) => {
-    if (!v || !v.trim()) return `${label} est obligatoire.`;
-    const ts = Date.parse(v);
-    if (Number.isNaN(ts)) return `${label} doit etre une date valide (AAAA-MM-JJ).`;
-    if (opts?.notFuture && ts > Date.now() + 86400000)
-      return `${label} ne peut pas etre dans le futur.`;
-    if (opts?.notPast && ts < Date.now() - 86400000)
-      return `${label} ne peut pas etre dans le passe.`;
-    return null;
-  };
-}
-function cin(label: string): FieldValidator {
-  return (v) => {
-    if (!v || !v.trim()) return `${label} est obligatoire.`;
-    // CIN marocaine : 1-2 lettres + 5-7 chiffres (souple : autorise espaces internes).
-    const clean = v.replace(/\s+/g, '').toUpperCase();
-    if (!/^[A-Z]{1,2}\d{4,8}$/.test(clean))
-      return `${label} invalide : format attendu 1-2 lettres puis 4-8 chiffres (ex : AB123456).`;
-    return null;
-  };
-}
-
-const FIELD_SPECS: Record<string, FieldSpec[]> = {
-  AUGMENTATION_CAPITAL: [
-    { name: 'nouveauCapital', label: 'Nouveau capital (MAD)', validate: positiveNumber('Nouveau capital') },
-    { name: 'nouvellesParts', label: 'Nombre de nouvelles parts', validate: positiveNumber('Nombre de nouvelles parts') },
-    { name: 'dateVersement', label: 'Date versement des fonds', validate: dateField('Date versement', { notFuture: false }) },
-  ],
-  AUGMENTATION_CAPITAL_NATURE: [
-    { name: 'valeurApport', label: "Valeur de l'apport (MAD)", validate: positiveNumber("Valeur de l'apport") },
-    { name: 'partsAttribuees', label: 'Nombre de parts attribuees', validate: positiveNumber('Nombre de parts attribuees') },
-    { name: 'descriptionBien', label: 'Description du bien apporte', validate: minLen('Description du bien', 10) },
-    { name: 'cacNom', label: 'Commissaire aux apports — Nom', validate: required('Nom du commissaire aux apports') },
-  ],
-  REDUCTION_CAPITAL: [
-    { name: 'montantReduction', label: 'Montant reduction (MAD)', validate: positiveNumber('Montant de reduction') },
-    { name: 'motif', label: 'Motif', validate: minLen('Motif', 10) },
-  ],
-  TRANSFERT_SIEGE: [
-    { name: 'nouvelleAdresse', label: 'Nouvelle adresse', validate: minLen('Nouvelle adresse', 5) },
-    { name: 'nouvelleVille', label: 'Nouvelle ville', validate: required('Nouvelle ville') },
-    { name: 'dateEffet', label: "Date d'effet", validate: dateField("Date d'effet") },
-  ],
-  CHANGEMENT_DENOMINATION: [
-    { name: 'nouvelleDenomination', label: 'Nouvelle denomination', validate: minLen('Nouvelle denomination', 2) },
-  ],
-  CHANGEMENT_OBJET: [
-    { name: 'nouvelObjet', label: 'Nouvel objet social', validate: minLen('Nouvel objet social', 20) },
-  ],
-  PROROGATION_DUREE: [
-    { name: 'annees', label: "Nombre d'annees de prorogation", validate: positiveNumber("Nombre d'annees") },
-    { name: 'dateEffet', label: "Date d'effet", validate: dateField("Date d'effet") },
-  ],
-  DESIGNATION_GERANT: [
-    { name: 'nom', label: 'Nom', validate: required('Nom') },
-    { name: 'prenom', label: 'Prenom', validate: required('Prenom') },
-    { name: 'cin', label: 'CIN', validate: cin('CIN') },
-    { name: 'dateEffet', label: "Date d'effet", validate: dateField("Date d'effet") },
-    { name: 'nationalite', label: 'Nationalite', validate: required('Nationalite') },
-  ],
-  REVOCATION_GERANT: [
-    { name: 'identite', label: 'Identite du gerant revoque', validate: required('Identite du gerant revoque') },
-    { name: 'dateEffet', label: "Date d'effet", validate: dateField("Date d'effet") },
-    { name: 'motif', label: 'Motif', validate: minLen('Motif', 10) },
-  ],
-  CESSION_PARTIELLE: [
-    { name: 'dateActe', label: "Date de l'acte", validate: dateField("Date de l'acte") },
-    { name: 'cessionnaire', label: 'Cessionnaire', validate: required('Cessionnaire') },
-    { name: 'nombreParts', label: 'Nombre de parts cedees', validate: positiveNumber('Nombre de parts cedees') },
-    { name: 'prix', label: 'Prix de cession (MAD)', validate: positiveNumber('Prix de cession') },
-  ],
-};
-
-// Fallback generique : un champ "details" obligatoire >= 10 chars.
-const FALLBACK_SPEC: FieldSpec[] = [
-  { name: 'details', label: 'Details', validate: minLen('Details', 10) },
-];
-
-// Types pour lesquels la generation s'appuie sur une "annexe a fournir" :
-// le PV et les statuts sont quand meme generes, mais les champs structures ne
-// sont pas exiges (l'avocat fournira l'acte annexe). Aligne sur le fallback du
-// ResolutionTextGenerator (cote ai-service).
-export const FALLBACK_ANNEXE_TYPES = new Set<string>([
-  'AUGMENTATION_CAPITAL_NATURE',
-  'CESSION_PARTIELLE',
-  'CESSION_TOTALE',
-  'TRANSMISSION_PARTS',
-  'NANTISSEMENT',
-  'TRANSFORMATION',
-  'FUSION_SCISSION',
-  'DESIGNATION_CAC',
-  'PACTE_ASSOCIES',
-]);
-
-export function getFieldSpec(typeId: string): FieldSpec[] {
-  return FIELD_SPECS[typeId] ?? FALLBACK_SPEC;
-}
-
-export function validateModification(typeId: string, values: Record<string, string>): Record<string, string> {
-  const errs: Record<string, string> = {};
-  for (const spec of getFieldSpec(typeId)) {
-    const msg = spec.validate(values[spec.name] ?? '', values);
-    if (msg) errs[spec.name] = msg;
-  }
-  return errs;
-}
-
-/**
- * PROMPT F (2026-06-23) — validation pure de l'étape 1 (sans React),
- * testable unitairement. Retourne un message d'erreur si bloquée, null si OK.
- */
-export function validateStep1Inputs(input: {
-  dossierId: string;
-  selectedTypes: string[];
-  datePV: string;
-  decisionType: string;
-}): string | null {
-  if (!input.dossierId) return 'Selectionnez la societe a modifier.';
-  if (!input.selectedTypes || input.selectedTypes.length === 0) {
-    return 'Selectionnez au moins une modification.';
-  }
-  if (!input.datePV || !input.decisionType) {
-    return 'Renseignez la date du PV et le type de decision.';
-  }
-  return null;
-}
-
-/** Preflight pur (sans React) — utilise par l'etape 3 et testable unitairement. */
-export interface PreflightEntry {
-  typeId: string;
-  missing: { name: string; label: string }[];
-}
-export interface PreflightResult {
-  blocking: PreflightEntry[];
-  warnings: PreflightEntry[];
-  canGenerate: boolean;
-}
-export function computePreflight(
-  selected: string[],
-  values: Record<string, Record<string, string>>,
-): PreflightResult {
-  const blocking: PreflightEntry[] = [];
-  const warnings: PreflightEntry[] = [];
-  for (const typeId of selected) {
-    const errs = validateModification(typeId, values[typeId] ?? {});
-    if (Object.keys(errs).length === 0) continue;
-    const spec = getFieldSpec(typeId);
-    const missing = spec
-      .filter((f) => errs[f.name])
-      .map((f) => ({ name: f.name, label: f.label }));
-    if (missing.length === 0) continue;
-    (FALLBACK_ANNEXE_TYPES.has(typeId) ? warnings : blocking).push({ typeId, missing });
-  }
-  return { blocking, warnings, canGenerate: blocking.length === 0 };
-}
-
-// ============================================================================
-// PREFLIGHT STATUT REFONDU (2026-06-24) — champs structurés manquants
-// ============================================================================
-// Le statut COMPLET refondu (STATUTS_REFONDUS_*) se génère depuis la fiche
-// structurée (JAMAIS le scan). Pour une société importée scan-only, certains
-// champs structurés sont absents : on les détecte ici et on FORCE leur saisie
-// (avec le scan affiché en aide) avant d'autoriser la génération.
-export interface RefonteField {
-  key: string;
-  label: string;
-  type: 'text' | 'number' | 'textarea';
-}
-
-// Champs structurés indispensables à un statut refondu cohérent (en-tête + gérance).
-const REFONTE_REQUIRED_FIELDS: RefonteField[] = [
-  { key: 'denomination', label: 'Dénomination sociale', type: 'text' },
-  { key: 'objetSocial', label: 'Objet social', type: 'textarea' },
-  { key: 'adresseSiege', label: 'Adresse du siège social', type: 'text' },
-  { key: 'capitalSocial', label: 'Capital social (MAD)', type: 'number' },
-  { key: 'valeurNominale', label: "Valeur nominale d'une part (MAD)", type: 'number' },
-  { key: 'dureeAnnees', label: 'Durée de la société (années)', type: 'number' },
-];
-
-const REFONTE_GERANT_FIELD: RefonteField = {
-  key: 'gerantNom',
-  label: 'Nom du gérant en exercice',
-  type: 'text',
-};
-
-function isBlankValue(v: unknown): boolean {
-  return v === null || v === undefined || String(v).trim() === '';
-}
-
-/**
- * Détecte les champs structurés MANQUANTS pour générer le statut refondu, à
- * partir de la fiche EFFECTIVE (fiche structurée persistée ⊕ saisies preflight).
- * Pure / testable. La gérance est requise via au moins un gérant connu
- * (fiche.gerants/dirigeants non vides) ou la saisie `gerantNom`.
- */
-export function computeRefonteMissing(fiche: Record<string, unknown> | undefined): RefonteField[] {
-  const f = fiche ?? {};
-  const missing = REFONTE_REQUIRED_FIELDS.filter((fld) => isBlankValue(f[fld.key]));
-  const gerants = f.gerants ?? f.dirigeants;
-  const hasGerant =
-    (Array.isArray(gerants) && gerants.length > 0) || !isBlankValue(f.gerantNom);
-  if (!hasGerant) missing.push(REFONTE_GERANT_FIELD);
-  return missing;
-}
+const STEPS: RoadmapStep[] = etapesRoadmap(ETAPES_MODIFICATION);
 
 // ============================================================================
 // GENERATION DOCUMENTS PAR BLOC (RG transverse 2026-06-05)
@@ -444,128 +139,6 @@ function mapTemplateToDocumentType(code: string): DocumentType {
   if (code.startsWith('ANNONCE_LEGALE') || code.startsWith('ANNONCE_JAL') || code.includes('JAL'))
     return 'ANNONCE_JAL';
   return 'AUTRE';
-}
-
-// Nettoie une portion de nom de fichier (retire les caractères interdits par les OS).
-export function sanitizeFilenamePart(raw: string): string {
-  return (raw || 'Societe')
-    .replace(/[\\/:*?"<>|]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 120) || 'Societe';
-}
-
-// ============================================================================
-// SYNTHESE etape 4 (2026-06-24) — helpers PURS (sans React, testables).
-// Toutes les donnees du recap sont deja disponibles cote front (selection +
-// valeurs saisies + faits dossier) ; on les transforme ici en lignes lisibles.
-// ============================================================================
-
-/** Categorie d'un document a partir de son code template (robuste sans le manifest). */
-export function classifyDocKind(code: string): 'PV' | 'STATUTS' | 'JAL' | 'AUTRE' {
-  if (code.startsWith('PV_')) return 'PV';
-  if (code.startsWith('STATUTS_')) return 'STATUTS';
-  if (code.startsWith('ANNONCE_LEGALE') || code.includes('JAL')) return 'JAL';
-  return 'AUTRE';
-}
-
-/** Formate un montant MAD lisible (separateur de milliers fr-FR). */
-export function formatMad(v: unknown): string {
-  if (v === null || v === undefined || `${v}`.trim() === '') return '—';
-  const n = Number(v);
-  if (!Number.isFinite(n)) return String(v);
-  return `${n.toLocaleString('fr-FR')} MAD`;
-}
-
-export interface ChangeRow {
-  /** Libelle du type de modification (regroupement visuel). */
-  typeLabel: string;
-  /** Champ impacte (ex : « Capital social »). */
-  champ: string;
-  /** Valeur avant (ou « — » si non connue / non applicable). */
-  avant: string;
-  /** Valeur apres (issue des valeurs saisies a l'etape 2). */
-  apres: string;
-}
-
-/**
- * Construit le tableau AVANT → APRES a partir de la selection (etape 1) et des
- * valeurs saisies (etape 2), enrichi des faits dossier (denomination, capital).
- * Les types non structures (annexe a fournir) retombent sur le champ « details ».
- */
-export function buildChangeRows(
-  selected: string[],
-  values: Record<string, Record<string, string>>,
-  dossier?: { denomination?: string; capitalSocial?: number },
-): ChangeRow[] {
-  const rows: ChangeRow[] = [];
-  const labelOf = (id: string) => ALL_MODS.find((m) => m.id === id)?.label ?? id;
-  for (const id of selected) {
-    const v = values[id] ?? {};
-    const L = labelOf(id);
-    switch (id) {
-      case 'CHANGEMENT_DENOMINATION':
-        rows.push({ typeLabel: L, champ: 'Denomination sociale', avant: dossier?.denomination || '—', apres: v.nouvelleDenomination || '—' });
-        if (v.sigle) rows.push({ typeLabel: L, champ: 'Sigle', avant: '—', apres: v.sigle });
-        break;
-      case 'CHANGEMENT_OBJET':
-        rows.push({ typeLabel: L, champ: 'Objet social', avant: '—', apres: v.nouvelObjet || '—' });
-        break;
-      case 'TRANSFERT_SIEGE':
-        rows.push({
-          typeLabel: L,
-          champ: 'Siege social',
-          avant: '—',
-          apres: [v.nouvelleAdresse, v.nouvelleVille].filter(Boolean).join(', ') || '—',
-        });
-        break;
-      case 'PROROGATION_DUREE':
-        rows.push({
-          typeLabel: L,
-          champ: 'Duree de la societe',
-          avant: '—',
-          apres: v.annees ? `+ ${v.annees} an(s)${v.dateEffet ? ` (effet ${v.dateEffet})` : ''}` : '—',
-        });
-        break;
-      case 'AUGMENTATION_CAPITAL':
-        rows.push({ typeLabel: L, champ: 'Capital social', avant: formatMad(dossier?.capitalSocial), apres: formatMad(v.nouveauCapital) });
-        rows.push({ typeLabel: L, champ: 'Nouvelles parts emises', avant: '—', apres: v.nouvellesParts || '—' });
-        break;
-      case 'AUGMENTATION_CAPITAL_NATURE':
-        rows.push({ typeLabel: L, champ: 'Apport en nature', avant: '—', apres: formatMad(v.valeurApport) });
-        rows.push({ typeLabel: L, champ: 'Bien apporte', avant: '—', apres: v.descriptionBien || '—' });
-        if (v.cacNom) rows.push({ typeLabel: L, champ: 'Commissaire aux apports', avant: '—', apres: v.cacNom });
-        break;
-      case 'REDUCTION_CAPITAL': {
-        const ancien = dossier?.capitalSocial;
-        const reduc = Number(v.montantReduction);
-        const apres =
-          ancien != null && Number.isFinite(reduc) ? formatMad(ancien - reduc) : '—';
-        rows.push({ typeLabel: L, champ: 'Capital social', avant: formatMad(ancien), apres });
-        break;
-      }
-      case 'DESIGNATION_GERANT':
-        rows.push({ typeLabel: L, champ: 'Gerant nomme', avant: '—', apres: [v.prenom, v.nom].filter(Boolean).join(' ') || '—' });
-        if (v.remuneration) rows.push({ typeLabel: L, champ: 'Remuneration gerant', avant: '—', apres: formatMad(v.remuneration) });
-        break;
-      case 'REVOCATION_GERANT':
-        rows.push({ typeLabel: L, champ: 'Gerant revoque', avant: v.identite || '—', apres: 'Revoque' });
-        break;
-      case 'CESSION_PARTIELLE':
-        rows.push({
-          typeLabel: L,
-          champ: 'Cession de parts',
-          avant: '—',
-          apres: `${v.nombreParts || '?'} part(s) → ${v.cessionnaire || '?'}${v.prix ? ` (${formatMad(v.prix)})` : ''}`,
-        });
-        break;
-      default: {
-        // Types non structures (annexe a fournir / declaratif) : champ « details ».
-        rows.push({ typeLabel: L, champ: 'Modification', avant: '—', apres: v.details || '— (annexe a fournir)' });
-      }
-    }
-  }
-  return rows;
 }
 
 interface DocState {
@@ -644,7 +217,8 @@ function ModificationWorkflowPageBody() {
   const [assembleeNature, setAssembleeNature] = useState<AssembleeNature>(initialNature);
   const [selectedDossierId, setSelectedDossierId] = useState<string>(initialDossierId);
   const [dossiers, setDossiers] = useState<DossierBrief[]>([]);
-  const [dossiersLoading, setDossiersLoading] = useState(false);
+  // Vrai des le montage : la liste est chargee une seule fois, a l'ouverture.
+  const [dossiersLoading, setDossiersLoading] = useState(true);
   const [search, setSearch] = useState('');
   // Convocation OPTIONNELLE (etape 1) — date + heure + associes a convoquer (BD).
   // Regle DURE des 16 jours entre convocation et PV (validee front + back).
@@ -655,9 +229,10 @@ function ModificationWorkflowPageBody() {
   // L'heure etait annoncee par le commentaire ci-dessus mais son etat n'existait
   // pas : elle n'etait ni saisie, ni transmise a la lettre de convocation.
   const [convocationHeure, setConvocationHeure] = useState<string>(initialConv.heure ?? '');
-  // Parties prenantes du dossier (associes/gerants) chargees DES la selection de la
-  // societe — peuplent le selecteur « associes a convoquer » sans re-saisie d'identite.
-  const [dossierParties, setDossierParties] = useState<DossierParties | null>(null);
+  // Parties prenantes (associes/gerants) chargees DES la selection de la societe :
+  // elles peuplent le selecteur « associes a convoquer » sans ressaisie d'identite.
+  // Best-effort : repli sur effectiveFiche.associes.
+  const { dossierParties } = useDossierParties(selectedDossierId);
 
   // Step 2 state — valeurs legacy (conservées pour buildChangeRows/synthèse).
   const [values] = useState<Record<string, Record<string, string>>>(
@@ -743,17 +318,19 @@ function ModificationWorkflowPageBody() {
   const [scanLoading, setScanLoading] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Resynchronisation des valeurs du brouillon quand le parcours charge change
+  // (ajustement pendant le rendu, et non plus dans un effet).
+  const [progressIdVu, setProgressIdVu] = useState(progress?.id);
+  if (progress?.id !== progressIdVu) {
+    setProgressIdVu(progress?.id);
     if (initialSelected.length && selected.length === 0) setSelected(initialSelected);
     if (initialDate && !datePV) setDatePV(initialDate);
     if (initialDossierId && !selectedDossierId) setSelectedDossierId(initialDossierId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [progress?.id]);
+  }
 
   // PROMPT F (2026-06-23) — charger les sociétés dispo pour le sélecteur.
   useEffect(() => {
     let cancelled = false;
-    setDossiersLoading(true);
     dataroomService
       .listDossiers()
       .then((list) => {
@@ -791,14 +368,18 @@ function ModificationWorkflowPageBody() {
 
   // Phase 2 — réconcilie les résolutions avec la sélection (une par décision) :
   // conserve les valeurs saisies, ajoute/retire selon la sélection courante.
-  useEffect(() => {
+  // Ajustement pendant le rendu (et non plus dans un effet) ; `null` au montage : la
+  // premiere reconciliation a lieu au premier rendu, comme le faisait l'effet.
+  const [decisionsReconciliees, setDecisionsReconciliees] = useState<OfficialDecision[] | null>(null);
+  if (decisionsReconciliees !== selectedDecisions) {
+    setDecisionsReconciliees(selectedDecisions);
     setResolutions((prev) =>
       seedResolutions(
         prev,
         selectedDecisions.map((d) => ({ id: d.id, resolutionType: d.resolutionType, label: d.label })),
       ),
     );
-  }, [selectedDecisions]);
+  }
 
   // Lecture des faits dossier injectes par le backend (workflow_progress.data.dossier).
   const dossier = stepData.dossier as
@@ -1029,26 +610,6 @@ function ModificationWorkflowPageBody() {
     [selectedDecisions],
   );
 
-  // Charge les parties prenantes (associes/gerants) DES qu'une societe est
-  // selectionnee — pour peupler le selecteur de convocation avant toute validation.
-  useEffect(() => {
-    if (!selectedDossierId) {
-      setDossierParties(null);
-      return;
-    }
-    let cancelled = false;
-    workflowService
-      .getDossierParties(selectedDossierId)
-      .then((parties) => {
-        if (!cancelled) setDossierParties(parties);
-      })
-      .catch(() => {
-        /* best-effort : repli sur effectiveFiche.associes */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedDossierId]);
 
   // Regle DURE des 16 jours : ecart entre la convocation et la date du PV. Miroir
   // exact de la validation backend (ModificationWorkflow.validateConvocation).
@@ -1064,9 +625,14 @@ function ModificationWorkflowPageBody() {
     if (viewStep !== 3 && viewStep !== 5) return;
     if (templates.length > 0) return;
     let cancelled = false;
-    setLoadingTemplates(true);
-    setLoadTemplatesError(null);
-    listTemplatesForWorkflow('MODIFICATION')
+    // Etat de chargement pose dans la promesse (et non de facon synchrone dans l'effet).
+    Promise.resolve()
+      .then(() => {
+        if (cancelled) return [];
+        setLoadingTemplates(true);
+        setLoadTemplatesError(null);
+        return listTemplatesForWorkflow('MODIFICATION');
+      })
       .then((items) => {
         if (cancelled) return;
         // Filtre par forme juridique : SARL_AU -> templates *_SARL_AU, sinon *_SARL.
@@ -1206,8 +772,8 @@ function ModificationWorkflowPageBody() {
         updateDoc(tpl.code, { depositedToDataroom: true });
       } catch (err) {
         // Best-effort : on remonte l'erreur dans le doc mais on n'invalide pas la validation.
-        const msg = err instanceof Error ? err.message : 'Echec depot Dataroom';
-        updateDoc(tpl.code, { error: `Genere/valide OK. Depot Dataroom : ${msg}` });
+        const msg = err instanceof Error ? err.message : 'échec du dépôt';
+        updateDoc(tpl.code, { error: `Document produit et validé, mais le dépôt dans la Data Room a échoué : ${msg}` });
       }
     },
     [
@@ -1219,167 +785,11 @@ function ModificationWorkflowPageBody() {
     ],
   );
 
-  // 2026-06-22 — Tous les hooks sont déclarés au-dessus : on place ICI les
-  // returns conditionnels (après le dernier hook) pour respecter les Rules of Hooks.
-  if (loading) return <Loader2 />;
-  if (!ticket || !progress)
-    return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger">
-        {error ?? 'Workflow introuvable'}
-      </div>
-    );
-
-  async function generateOne(tpl: TemplateInfo) {
-    updateDoc(tpl.code, { generating: true, error: null, validated: false });
-    try {
-      const { blob, filename } = await generateDocument('MODIFICATION', tpl.code, buildPayload());
-      updateDoc(tpl.code, {
-        generating: false,
-        generated: true,
-        blob,
-        filename,
-        previewOpen: true,
-        depositedToDataroom: false,
-      });
-    } catch (err) {
-      updateDoc(tpl.code, {
-        generating: false,
-        error: err instanceof Error ? err.message : 'Generation impossible',
-      });
-    }
-  }
-  function downloadOne(tpl: TemplateInfo) {
-    const st = docs[tpl.code];
-    if (st?.blob && st.filename) triggerBrowserDownload(st.blob, st.filename);
-  }
-  async function validateOne(tpl: TemplateInfo) {
-    const st = docs[tpl.code];
-    if (!st?.generated) return;
-    updateDoc(tpl.code, { validated: true });
-    // Depot auto dataroom (RG transverse 2026-06-05).
-    await depositGeneratedToDataroom(tpl, { ...st, validated: true });
-  }
-
-  // PREFLIGHT statut refondu — saisie d'un champ structuré manquant.
-  function setFicheOverride(key: string, val: string) {
-    setFicheOverrides((p) => ({ ...p, [key]: val }));
-  }
-
-  /**
-   * Charge le SCAN du statut d'origine (documentType=STATUTS) et l'affiche EN AIDE
-   * à la lecture (aperçu seul, sans OCR ni édition). Best-effort : message si absent.
-   */
-  async function openOriginalStatutsScan() {
-    const targetDossierId = selectedDossierId || ticket?.dossierId;
-    if (!targetDossierId) {
-      setScanError('Aucune société sélectionnée.');
-      return;
-    }
-    setScanLoading(true);
-    setScanError(null);
-    try {
-      const view = await dataroomService.getJuridique(targetDossierId);
-      const scan = view.documentsEnVigueur.find((d) => d.documentType === 'STATUTS');
-      if (!scan) {
-        setScanError("Aucun statut d'origine trouvé dans la Data Room de cette société.");
-        return;
-      }
-      setScanDocId(scan.id);
-      setScanOpen(true);
-    } catch {
-      setScanError("Impossible de charger le statut d'origine.");
-    } finally {
-      setScanLoading(false);
-    }
-  }
-
-  async function handleValidate() {
-    setError(null);
-    if (step === 1) {
-      const guard = validateStep1Inputs({
-        dossierId: selectedDossierId,
-        selectedTypes: selected,
-        datePV,
-        decisionType,
-      });
-      if (guard) {
-        setError(guard);
-        return;
-      }
-      // Convocation OPTIONNELLE — regle DURE des 16 jours (bloque si fournie et < 16 j).
-      if (convocationError) {
-        setError(convocationError);
-        return;
-      }
-      // Voie directeur : décisions officielles (id + resolutionType), `selectedTypes`
-      // = resolutionTypes. Le backend recalcule JAL/CAC/forme depuis les resolutionTypes.
-      await executeStep(1, {
-        dossierId: selectedDossierId,
-        // Fallback backend (RG-M06) si les faits dossier ne sont pas encore chargés.
-        formeJuridique: isAU ? 'SARL_AU' : 'SARL',
-        selectedDecisions: selectedDecisions.map((d) => ({
-          id: d.id,
-          resolutionType: d.resolutionType,
-          label: d.label,
-          group: d.group,
-          generic: !!d.generic,
-          newAssocie: !!d.newAssocie,
-        })),
-        selectedTypes: selectedResolutionTypes,
-        datePV,
-        decisionType,
-        assembleeNature,
-        convocation: convocationPayload(),
-      });
-    } else if (step === 2) {
-      // Saisie par résolution (anciennes valeurs affichées + OCR nouvel associé).
-      // Les résolutions typées sont persistées côté backend pour la génération
-      // (étape 3) et la synthèse. Validation métier fine portée par l'éditeur.
-      await executeStep(2, { valeurs: {}, resolutions });
-    } else if (step === 3) {
-      // RG-M12 : le PV (éditeur de résolutions) ET les statuts refondus doivent être
-      // validés. Le PV n'est plus dans la grille : on lit son état via `pvValidated`.
-      const missing: string[] = [];
-      if (!pvValidated) missing.push('le PV de modification');
-      const statutsTpl = templates.find((t) => t.code.startsWith('STATUTS_'));
-      if (statutsTpl && !docs[statutsTpl.code]?.validated) missing.push('les statuts');
-      if (missing.length > 0) {
-        setError('Validez tous les documents avant de continuer : ' + missing.join(', ') + '.');
-        return;
-      }
-      // La génération n'impose pas de payload bloquant ; on avance vers les pièces jointes.
-      const docFlags: Record<string, boolean> = { PV_MODIFICATION: pvValidated };
-      for (const [code, st] of Object.entries(docs)) docFlags[code] = !!st.validated;
-      await executeStep(3, { documents: docFlags });
-    } else if (step === 4) {
-      // Étape pièces jointes OPTIONNELLE : jamais bloquante (peut être vide).
-      await executeStep(4, {
-        piecesJointes: piecesJointes.map((p) => ({
-          id: p.id,
-          label: p.label,
-          filename: p.filename,
-          version: p.version ?? null,
-        })),
-      });
-    } else if (step === 5) {
-      // Finalisation : validation PV + statuts + (annonce légale si décision publiable).
-      const statutsValides = templates.some(
-        (t) => t.code.startsWith('STATUTS_') && docs[t.code]?.validated,
-      );
-      const annonceTpl = templates.find((t) => t.code.startsWith('ANNONCE_LEGALE_MODIFICATION'));
-      const jalValide = annonceTpl ? !!docs[annonceTpl.code]?.validated : false;
-      // RG-M13 : si une annonce est requise (décision publiable) mais non validée, on bloque
-      // avec un message clair AVANT l'appel backend.
-      if (hasPubliableDecision && !jalValide) {
-        setError(
-          "Validez l'annonce légale de modification (étape 3) avant de finaliser : sa publication "
-            + 'au Journal d\'Annonces Légales est obligatoire pour cette modification.',
-        );
-        return;
-      }
-      await executeStep(5, { pvValide: pvValidated, statutsValides, jalValide });
-    }
-  }
+  /** Payload convocation normalisé (ou undefined si aucune date renseignée). */
+  const convocationPayload = useCallback((): { date: string; heure?: string } | undefined => {
+    if (!convocationDate) return undefined;
+    return { date: convocationDate, heure: convocationHeure || undefined };
+  }, [convocationDate, convocationHeure]);
 
   /**
    * Contenu courant de l'étape — voir la note dans DissolutionWorkflowPage.
@@ -1432,30 +842,187 @@ function ModificationWorkflowPageBody() {
       }
       return null;
     },
-    [selected, datePV, decisionType, assembleeNature, convocationDate, convocationHeure,
+    [selected, datePV, decisionType, assembleeNature, convocationPayload,
       convocationSnapshot, selectedDossierId, resolutions, docs, ficheOverrides,
       piecesJointes, depotLegalNumero, depotLegalDate, pvSnapshot, feuilleSnapshot, statutsRefondus],
   );
 
   // `__stepKey` : les etapes 3 et 4 partagent la cle `step3` (cf. flushDraft).
+  // Appele avant les retours anticipes : l'ordre des hooks ne varie jamais.
   useStepAutosave(
-    step,
+    viewStep,
     () => {
-      const d = draftPayloadFor(step);
+      const d = draftPayloadFor(viewStep);
       return d ? { __stepKey: d.cle, ...d.payload } : null;
     },
     registerDirty,
   );
 
+  // 2026-06-22 — Tous les hooks sont déclarés au-dessus : on place ICI les
+  // returns conditionnels (après le dernier hook) pour respecter les Rules of Hooks.
+  if (loading) return <Loader2 />;
+  if (!ticket || !progress)
+    return (
+      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+        {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
+      </div>
+    );
+
+  async function generateOne(tpl: TemplateInfo) {
+    updateDoc(tpl.code, { generating: true, error: null, validated: false });
+    try {
+      const { blob, filename } = await generateDocument('MODIFICATION', tpl.code, buildPayload());
+      updateDoc(tpl.code, {
+        generating: false,
+        generated: true,
+        blob,
+        filename,
+        previewOpen: true,
+        depositedToDataroom: false,
+      });
+    } catch (err) {
+      updateDoc(tpl.code, {
+        generating: false,
+        error: err instanceof Error ? err.message : 'La génération a échoué : réessayez.',
+      });
+    }
+  }
+  function downloadOne(tpl: TemplateInfo) {
+    const st = docs[tpl.code];
+    if (st?.blob && st.filename) triggerBrowserDownload(st.blob, st.filename);
+  }
+  async function validateOne(tpl: TemplateInfo) {
+    const st = docs[tpl.code];
+    if (!st?.generated) return;
+    updateDoc(tpl.code, { validated: true });
+    // Depot auto dataroom (RG transverse 2026-06-05).
+    await depositGeneratedToDataroom(tpl, { ...st, validated: true });
+  }
+
+  // PREFLIGHT statut refondu — saisie d'un champ structuré manquant.
+  function setFicheOverride(key: string, val: string) {
+    setFicheOverrides((p) => ({ ...p, [key]: val }));
+  }
+
+  /**
+   * Charge le SCAN du statut d'origine (documentType=STATUTS) et l'affiche EN AIDE
+   * à la lecture (aperçu seul, sans OCR ni édition). Best-effort : message si absent.
+   */
+  async function openOriginalStatutsScan() {
+    const targetDossierId = selectedDossierId || ticket?.dossierId;
+    if (!targetDossierId) {
+      setScanError('Aucune société sélectionnée.');
+      return;
+    }
+    setScanLoading(true);
+    setScanError(null);
+    try {
+      const view = await dataroomService.getJuridique(targetDossierId);
+      const scan = view.documentsEnVigueur.find((d) => d.documentType === 'STATUTS');
+      if (!scan) {
+        setScanError('Aucun statut d’origine n’a été trouvé dans la Data Room de cette société.');
+        return;
+      }
+      setScanDocId(scan.id);
+      setScanOpen(true);
+    } catch {
+      setScanError('Impossible de charger le statut d’origine : réessayez.');
+    } finally {
+      setScanLoading(false);
+    }
+  }
+
+  async function handleValidate() {
+    setError(null);
+    if (step === 1) {
+      const guard = validateStep1Inputs({
+        dossierId: selectedDossierId,
+        selectedTypes: selected,
+        datePV,
+        decisionType,
+      });
+      if (guard) {
+        setError(guard);
+        return;
+      }
+      // Convocation OPTIONNELLE — regle DURE des 16 jours (bloque si fournie et < 16 j).
+      if (convocationError) {
+        setError(convocationError);
+        return;
+      }
+      // Voie directeur : décisions officielles (id + resolutionType), `selectedTypes`
+      // = resolutionTypes. Le backend recalcule JAL/CAC/forme depuis les resolutionTypes.
+      await executeStep(1, {
+        dossierId: selectedDossierId,
+        // Fallback backend (RG-M06) si les faits dossier ne sont pas encore chargés.
+        formeJuridique: isAU ? 'SARL_AU' : 'SARL',
+        selectedDecisions: selectedDecisions.map((d) => ({
+          id: d.id,
+          resolutionType: d.resolutionType,
+          label: d.label,
+          group: d.group,
+          generic: !!d.generic,
+          newAssocie: !!d.newAssocie,
+        })),
+        selectedTypes: selectedResolutionTypes,
+        datePV,
+        decisionType,
+        assembleeNature,
+        convocation: convocationPayload(),
+      });
+    } else if (step === 2) {
+      // Saisie par résolution (anciennes valeurs affichées + OCR nouvel associé).
+      // Les résolutions typées sont persistées côté backend pour la génération
+      // (étape 3) et la synthèse. Validation métier fine portée par l'éditeur.
+      await executeStep(2, { valeurs: {}, resolutions });
+    } else if (step === 3) {
+      // RG-M12 : le PV (éditeur de résolutions) ET les statuts refondus doivent être
+      // validés. Le PV n'est plus dans la grille : on lit son état via `pvValidated`.
+      const missing: string[] = [];
+      if (!pvValidated) missing.push('le procès-verbal de modification');
+      const statutsTpl = templates.find((t) => t.code.startsWith('STATUTS_'));
+      if (statutsTpl && !docs[statutsTpl.code]?.validated) missing.push('les statuts');
+      if (missing.length > 0) {
+        setError('Validez tous les documents avant de continuer : ' + missing.join(', ') + '.');
+        return;
+      }
+      // La génération n'impose pas de payload bloquant ; on avance vers les pièces jointes.
+      const docFlags: Record<string, boolean> = { PV_MODIFICATION: pvValidated };
+      for (const [code, st] of Object.entries(docs)) docFlags[code] = !!st.validated;
+      await executeStep(3, { documents: docFlags });
+    } else if (step === 4) {
+      // Étape pièces jointes OPTIONNELLE : jamais bloquante (peut être vide).
+      await executeStep(4, {
+        piecesJointes: piecesJointes.map((p) => ({
+          id: p.id,
+          label: p.label,
+          filename: p.filename,
+          version: p.version ?? null,
+        })),
+      });
+    } else if (step === 5) {
+      // Finalisation : validation PV + statuts + (annonce légale si décision publiable).
+      const statutsValides = templates.some(
+        (t) => t.code.startsWith('STATUTS_') && docs[t.code]?.validated,
+      );
+      const annonceTpl = templates.find((t) => t.code.startsWith('ANNONCE_LEGALE_MODIFICATION'));
+      const jalValide = annonceTpl ? !!docs[annonceTpl.code]?.validated : false;
+      // RG-M13 : si une annonce est requise (décision publiable) mais non validée, on bloque
+      // avec un message clair AVANT l'appel backend.
+      if (hasPubliableDecision && !jalValide) {
+        setError(
+          'Validez l’annonce légale de modification (étape 3) avant de finaliser : sa publication '
+            + 'dans un journal d’annonces légales est obligatoire pour cette modification.',
+        );
+        return;
+      }
+      await executeStep(5, { pvValide: pvValidated, statutsValides, jalValide });
+    }
+  }
+
   async function handleSaveDraft() {
     const d = draftPayloadFor(step);
     if (d) await saveDraft(step, { [d.cle]: d.payload });
-  }
-
-  /** Payload convocation normalisé (ou undefined si aucune date renseignée). */
-  function convocationPayload(): { date: string; heure?: string } | undefined {
-    if (!convocationDate) return undefined;
-    return { date: convocationDate, heure: convocationHeure || undefined };
   }
 
   async function handleCloturer() {
@@ -1464,7 +1031,7 @@ function ModificationWorkflowPageBody() {
       await ticketService.transition(ticket.id, { target: 'CLOTURE_DOSSIER' });
       navigate('/tickets');
     } catch (err) {
-      setError((err as Error)?.message ?? 'Echec de cloture');
+      setError((err as Error)?.message ?? 'La clôture du parcours a échoué : réessayez.');
     }
   }
 
@@ -1476,6 +1043,11 @@ function ModificationWorkflowPageBody() {
   const remove = (id: string) => setSelected((prev) => prev.filter((x) => x !== id));
 
   const isTerminated = progress.statut === 'TERMINE';
+  // Aide de l'etape 1 : ce qui manque encore (memes controles que la validation).
+  const manquantsEtape1 = [
+    validateStep1Inputs({ dossierId: selectedDossierId, selectedTypes: selected, datePV, decisionType }),
+    convocationError,
+  ].filter((m): m is string => !!m);
 
   function buildPayload(): Record<string, unknown> {
     // Backbone refonte statuts (2026-06-24) — on transmet l'ÉTAT STRUCTURÉ COMPLET
@@ -1607,14 +1179,21 @@ function ModificationWorkflowPageBody() {
         onSaveDraft={!isTerminated ? handleSaveDraft : undefined}
         onValidate={!isTerminated ? handleValidate : undefined}
         onCancel={() => setShowCancel(true)}
-        footer={{ validateLabel: step === 5 ? 'Finaliser' : "Valider l'etape" }}
+        footer={{ validateLabel: step === 5 ? 'Finaliser' : 'Valider l’étape' }}
       >
+        <AideEtape
+          parcours="modification"
+          etapes={ETAPES_MODIFICATION}
+          etape={step}
+          manquants={step === 1 ? manquantsEtape1 : undefined}
+        />
+
         {step === 1 && (
           <div className="space-y-5">
             <header>
-              <h2 className="text-lg font-semibold text-fg">Etape 1 — Selection des modifications</h2>
+              <h2 className="text-lg font-semibold text-fg">Étape 1 — Sélection des modifications</h2>
               <p className="text-sm text-fg-subtle">
-                Choisissez la societe puis les modifications a apporter. Les articles des statuts impactes seront detectes automatiquement.
+                Choisissez la société, puis les modifications à apporter. Les articles des statuts concernés sont détectés automatiquement.
               </p>
             </header>
 
@@ -1639,10 +1218,10 @@ function ModificationWorkflowPageBody() {
                 htmlFor="step1-societe-select"
                 className="mb-1 block text-sm font-semibold text-fg"
               >
-                Societe a modifier *
+                Société à modifier *
               </label>
               <p className="mb-2 text-xs text-fg-subtle">
-                Les documents generes seront deposes (et versionnes) dans la Data Room de cette societe.
+                Les documents produits seront déposés (et versionnés) dans la Data Room de cette société.
               </p>
               <select
                 id="step1-societe-select"
@@ -1653,7 +1232,7 @@ function ModificationWorkflowPageBody() {
                 className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               >
                 <option value="">
-                  {dossiersLoading ? 'Chargement…' : 'Selectionnez une societe…'}
+                  {dossiersLoading ? 'Chargement…' : 'Sélectionnez une société…'}
                 </option>
                 {dossiers.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -1665,7 +1244,7 @@ function ModificationWorkflowPageBody() {
               </select>
               {!selectedDossierId && !dossiersLoading && (
                 <p className="mt-1 text-xs text-fg-subtle">
-                  La societe est obligatoire pour pouvoir continuer.
+                  Choisissez la société pour pouvoir continuer.
                 </p>
               )}
             </div>
@@ -1697,7 +1276,7 @@ function ModificationWorkflowPageBody() {
                 </div>
                 <div className="max-h-[520px] overflow-y-auto p-2">
                   {visibleDecisions.length === 0 && (
-                    <p className="py-6 text-center text-xs text-fg-subtle">Aucun résultat.</p>
+                    <p className="py-6 text-center text-xs text-fg-subtle">Aucune modification ne correspond à votre recherche.</p>
                   )}
                   {visibleDecisions.map((it) => {
                     const checked = selected.includes(it.id);
@@ -1826,22 +1405,22 @@ function ModificationWorkflowPageBody() {
                   onChange={(e) => setConvocationHeure(e.target.value)}
                 />
                 <TextField
-                  label="Date du PV / de l'assemblée *"
+                  label="Date du procès-verbal / de l’assemblée *"
                   type="date"
                   value={datePV}
                   onChange={(e) => setDatePV(e.target.value)}
                 />
                 <Select
-                  label="Type d'assemblée *"
+                  label="Type d’assemblée *"
                   value={assembleeNature}
                   onChange={(e) => setAssembleeNature(e.target.value as AssembleeNature)}
                   options={NATURE_OPTIONS}
                 />
               </div>
               <p className="mt-2 text-[11px] text-fg-subtle">
-                Renseignez la date de convocation : la date du PV / de l'assemblée est fixée
-                automatiquement à <strong>+ {CONVOCATION_DELAI_JOURS} jours</strong> (règle des 16 jours).
-                Vous pouvez repousser la date du PV, jamais la rapprocher à moins de 16 jours.
+                Renseignez la date de convocation : la date du procès-verbal / de l’assemblée est fixée
+                automatiquement à <strong>+ {CONVOCATION_DELAI_JOURS} jours</strong> (règle des {CONVOCATION_DELAI_JOURS} jours).
+                Vous pouvez repousser cette date, jamais la rapprocher à moins de {CONVOCATION_DELAI_JOURS} jours.
               </p>
               {convocationError && (
                 <div
@@ -1855,28 +1434,28 @@ function ModificationWorkflowPageBody() {
               )}
               {formeJuridique && (
                 <p className="mt-2 text-xs text-fg-subtle" data-testid="mod-assemblee-hint">
-                  Forme juridique detectee : <strong>{formeJuridique}</strong> —{' '}
+                  Forme juridique détectée : <strong>{formeJuridique}</strong> —{' '}
                   {isAU
-                    ? `decision ${assembleeNature} de l'associe unique (SARL AU).`
-                    : `assemblee generale ${assembleeNature === 'ordinaire' ? 'ordinaire (AGO)' : 'extraordinaire (AGE)'}.`}
+                    ? `décision ${assembleeNature} de l’associé unique (SARL à associé unique).`
+                    : `assemblée générale ${assembleeNature === 'ordinaire' ? 'ordinaire (AGO)' : 'extraordinaire (AGE)'}.`}
                 </p>
               )}
               {(jalRequis || cacRequis || formeChangeRequis) && (
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {jalRequis && (
                     <span className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                      <Megaphone className="h-4 w-4" /> Publication au JAL obligatoire (RG-M13/M14)
+                      <Megaphone className="h-4 w-4" /> Publication d’une annonce légale obligatoire
                     </span>
                   )}
                   {cacRequis && (
                     <span className="flex items-center gap-2 rounded-lg bg-violet-50 px-3 py-2 text-xs font-medium text-violet-800">
-                      <Gavel className="h-4 w-4" /> Commissaire aux apports obligatoire (RG-M10)
+                      <Gavel className="h-4 w-4" /> Commissaire aux apports obligatoire
                     </span>
                   )}
                   {formeChangeRequis && (
                     <span className="flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-800 sm:col-span-2">
-                      <AlertTriangle className="h-4 w-4" /> Cette cession entrainera l'adaptation
-                      automatique des statuts en SARL pluri-associes (RG-M11)
+                      <AlertTriangle className="h-4 w-4" /> Cette cession entraînera l’adaptation
+                      automatique des statuts en SARL à plusieurs associés
                     </span>
                   )}
                 </div>
@@ -1888,15 +1467,15 @@ function ModificationWorkflowPageBody() {
               <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-sm font-semibold text-fg">
                 <ChevronRight className="h-4 w-4 transition group-open:rotate-90" />
                 <Megaphone className="h-4 w-4 text-accent" />
-                Convocation à l'assemblée (optionnelle)
-                <span className="ml-auto text-xs font-normal text-fg-subtle">Repliable — non obligatoire</span>
+                Convocation à l’assemblée (facultative)
+                <span className="ml-auto text-xs font-normal text-fg-subtle">Cliquez pour ouvrir — facultatif</span>
               </summary>
               <div className="space-y-3 border-t border-border p-4">
                 <p className="text-[11px] text-fg-subtle">
-                  La date de convocation et le type d'assemblée sont ceux saisis ci-dessus.
-                  Les <strong>associés</strong>, la <strong>gérance</strong> et l'<strong>ordre du
-                  jour</strong> (= modifications choisies) sont <strong>déjà pré-remplis</strong> —
-                  ajustez la présence si besoin, sans tout re-saisir.
+                  La date de convocation et le type d’assemblée sont ceux saisis ci-dessus.
+                  Les <strong>associés</strong>, la <strong>gérance</strong> et l’<strong>ordre du
+                  jour</strong> (les modifications choisies) sont <strong>déjà pré-remplis</strong> :
+                  ajustez la présence si besoin, sans rien ressaisir.
                 </p>
                 <ConvocationPanel
                   dossierId={selectedDossierId || ticket?.dossierId}
@@ -1944,9 +1523,9 @@ function ModificationWorkflowPageBody() {
               <h2 className="text-lg font-semibold text-fg">Étape 2 — Saisie des nouvelles valeurs</h2>
               <p className="text-sm text-fg-subtle">
                 Pour chaque décision, saisissez uniquement les <strong>nouvelles</strong> valeurs.
-                L'<strong>ancienne valeur</strong> est affichée à côté (lecture seule, depuis la BD).
-                Les données déjà connues ne sont jamais re-saisies. Pour l'entrée d'un nouvel
-                associé, importez sa CIN (OCR) — les champs se pré-remplissent.
+                L’<strong>ancienne valeur</strong> est affichée à côté (lecture seule, depuis le dossier).
+                Les données déjà connues ne sont jamais ressaisies. Pour l’entrée d’un nouvel
+                associé, importez sa CIN : les champs se pré-remplissent.
               </p>
             </header>
 
@@ -1987,7 +1566,7 @@ function ModificationWorkflowPageBody() {
 
             {resolutions.length === 0 && (
               <p className="rounded-lg border border-amber-200 bg-warning/10 p-3 text-xs text-amber-700">
-                Aucune décision sélectionnée — revenez à l'étape 1.
+                Aucune décision sélectionnée : revenez à l’étape 1 pour cocher les modifications.
               </p>
             )}
 
@@ -2079,10 +1658,10 @@ function ModificationWorkflowPageBody() {
                     return (
                       <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3" data-testid={`mod-newassocie-form-${r.id}`}>
                         <p className="mb-1 text-xs font-semibold text-emerald-800">
-                          Nouvel associé entrant — saisie de la personne (même logique qu'à la création)
+                          Nouvel associé entrant — saisie de la personne (comme à la création)
                         </p>
                         <p className="mb-3 text-[11px] text-emerald-700">
-                          L'extraction CIN (OCR) est <strong>optionnelle</strong> : elle pré-remplit les champs.
+                          La lecture automatique de la CIN est <strong>facultative</strong> : elle pré-remplit les champs.
                           Vous pouvez aussi tout saisir manuellement.
                         </p>
 
@@ -2157,7 +1736,7 @@ function ModificationWorkflowPageBody() {
                             <div className="sm:col-span-2 lg:col-span-3">
                               <TextField label="Dénomination" value={na.denomination ?? ''} onChange={(e) => setNa('denomination', e.target.value)} />
                             </div>
-                            <TextField label="Forme juridique" value={na.formeEntite ?? ''} onChange={(e) => setNa('formeEntite', e.target.value)} placeholder="Ex : SARL" />
+                            <TextField label="Forme juridique" value={na.formeEntite ?? ''} onChange={(e) => setNa('formeEntite', e.target.value)} placeholder="Ex. : SARL" />
                             <TextField label="RC" value={na.rc ?? ''} onChange={(e) => setNa('rc', e.target.value)} />
                             <TextField label="ICE" value={na.ice ?? ''} onChange={(e) => setNa('ice', e.target.value)} />
                             <div className="sm:col-span-2 lg:col-span-3">
@@ -2192,16 +1771,16 @@ function ModificationWorkflowPageBody() {
             <header className="mb-2">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-violet-600" />
-                <h2 className="text-lg font-semibold text-fg">Etape 3 — Generation des documents</h2>
+                <h2 className="text-lg font-semibold text-fg">Étape 3 — Génération des actes</h2>
               </div>
               <p className="text-sm text-fg-subtle">
-                Cliquez « Generer » sur chaque document pour produire la version finale a partir
-                des valeurs saisies. Une fois genere, l'apercu s'affiche par bloc avec les actions
-                Telecharger / Modifier / Valider. Le document valide est automatiquement depose
-                dans la Data Room du dossier (RG transverse).
+                Cliquez sur « Générer » pour chaque document afin de produire la version finale à
+                partir des valeurs saisies. Une fois le document produit, l’aperçu s’affiche avec les
+                actions Télécharger, Éditer et Valider. Le document validé est automatiquement
+                déposé dans la Data Room du dossier.
                 {jalRequis && (
                   <span className="ml-1 font-medium text-amber-700">
-                    L'annonce JAL est obligatoire pour cette modification (RG-M14).
+                    L’annonce légale est obligatoire pour cette modification.
                   </span>
                 )}
               </p>
@@ -2218,7 +1797,7 @@ function ModificationWorkflowPageBody() {
               <div className="mb-3 flex items-center gap-2">
                 <Gavel className="h-5 w-5 text-violet-600" />
                 <h3 className="text-base font-semibold text-fg">
-                  Procès-verbal de modification (AGE) — résolutions saisies à l'étape 2
+                  Procès-verbal de modification — résolutions saisies à l’étape 2
                 </h3>
               </div>
               <ModificationOperationForm
@@ -2282,7 +1861,7 @@ function ModificationWorkflowPageBody() {
               >
                 <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-danger">
                   <AlertCircle className="h-4 w-4" />
-                  Generation bloquee — completez les champs obligatoires :
+                  Génération bloquée : complétez les champs obligatoires suivants.
                 </div>
                 <ul className="space-y-2">
                   {preflight.blocking.map((b) => (
@@ -2304,7 +1883,7 @@ function ModificationWorkflowPageBody() {
                           data-testid={`preflight-goto-step2-${b.typeId}`}
                           className="flex-shrink-0 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-bg-raised hover:bg-accent-hover"
                         >
-                          Aller a l'etape 2
+                          Aller à l’étape 2
                         </button>
                       </div>
                     </li>
@@ -2320,8 +1899,8 @@ function ModificationWorkflowPageBody() {
               >
                 <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-warning">
                   <AlertTriangle className="h-4 w-4" />
-                  Types en "annexe a fournir" — generation autorisee mais l'acte
-                  separe devra etre depose manuellement :
+                  Modifications avec « annexe à fournir » : la génération est autorisée, mais l’acte
+                  séparé devra être déposé manuellement :
                 </div>
                 <ul className="ml-6 list-disc text-xs text-fg-muted">
                   {preflight.warnings.map((w) => (
@@ -2346,7 +1925,7 @@ function ModificationWorkflowPageBody() {
             )}
             {!loadingTemplates && templates.length === 0 && !loadTemplatesError && (
               <div className="rounded-xl border border-border bg-bg-raised p-6 text-sm text-fg-subtle">
-                Aucun template enregistre pour MODIFICATION — verifiez le manifest backend.
+                Aucun modèle de document n’est disponible pour ce parcours : signalez-le à l’administrateur de la plateforme.
               </div>
             )}
 
@@ -2361,13 +1940,13 @@ function ModificationWorkflowPageBody() {
               >
                 <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-amber-800">
                   <AlertTriangle className="h-4 w-4" />
-                  Statut refondu : complétez l'état structuré de la société
+                  Statuts mis à jour : complétez les données de la société
                 </div>
                 <p className="mb-3 text-xs text-amber-700">
-                  Le statut complet est généré depuis les données structurées (jamais depuis le
-                  scan). Renseignez les champs manquants ci-dessous — affichez le statut d'origine
-                  pour les lire. La génération du statut refondu reste bloquée tant que ces champs
-                  ne sont pas saisis.
+                  Les statuts complets sont produits à partir des données saisies (jamais à partir
+                  du document numérisé). Renseignez les champs manquants ci-dessous ; affichez les
+                  statuts d’origine pour les lire. La génération des statuts mis à jour reste
+                  bloquée tant que ces champs ne sont pas saisis.
                 </p>
                 <button
                   type="button"
@@ -2377,7 +1956,7 @@ function ModificationWorkflowPageBody() {
                   className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-amber-400 bg-bg-raised px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-60"
                 >
                   <Eye className="h-3.5 w-3.5" />
-                  {scanLoading ? 'Chargement…' : "Afficher le statut d'origine (scan)"}
+                  {scanLoading ? 'Chargement…' : 'Afficher les statuts d’origine (document numérisé)'}
                 </button>
                 {scanError && (
                   <p className="mb-2 text-xs text-danger" role="alert">{scanError}</p>
@@ -2468,18 +2047,18 @@ function ModificationWorkflowPageBody() {
                 data-testid="mod-depot-legal"
               >
                 <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-fg">
-                  <Megaphone className="h-4 w-4 text-accent" /> Dépôt légal de l'annonce (facultatif)
+                  <Megaphone className="h-4 w-4 text-accent" /> Dépôt légal de l’annonce (facultatif)
                 </p>
                 <p className="mb-3 text-xs text-fg-subtle">
                   Le numéro et la date de dépôt sont attribués par le greffe <strong>après</strong> le
-                  dépôt. Laissez vide pour générer l'annonce sans ces mentions (à compléter plus tard).
+                  dépôt. Laissez vide pour générer l’annonce sans ces mentions (à compléter plus tard).
                 </p>
                 <div className="grid gap-3 md:grid-cols-2">
                   <TextField
                     label="N° de dépôt légal"
                     value={depotLegalNumero}
                     onChange={(e) => setDepotLegalNumero(e.target.value)}
-                    placeholder="ex : 954333"
+                    placeholder="Ex. : 954333"
                   />
                   <TextField
                     label="Date de dépôt légal"
@@ -2607,10 +2186,10 @@ function ModificationWorkflowPageBody() {
         {step === 4 && (
           <div className="space-y-4" data-testid="mod-step4-pieces">
             <header>
-              <h2 className="text-lg font-semibold text-fg">Étape 4 — Pièces jointes (optionnelle)</h2>
+              <h2 className="text-lg font-semibold text-fg">Étape 4 — Pièces jointes (facultative)</h2>
               <p className="text-sm text-fg-subtle">
                 Déposez ici les <strong>versions légalisées</strong> des documents générés
-                (statuts, PV, annonce…). Cette étape est <strong>entièrement facultative</strong> :
+                (statuts, procès-verbal, annonce…). Cette étape est <strong>entièrement facultative</strong> :
                 vous pouvez la laisser vide et poursuivre vers la synthèse. Chaque dépôt est
                 versionné dans la Data Room de la société.
               </p>
@@ -2641,20 +2220,20 @@ function ModificationWorkflowPageBody() {
           <div className="space-y-4" data-testid="mod-synthese">
             <div className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-bg-raised">
               <CheckCircle className="mb-2 h-8 w-8" />
-              <h2 className="text-2xl font-bold">Synthese — Modification</h2>
+              <h2 className="text-2xl font-bold">Synthèse de la modification</h2>
               <p className="text-bg text-sm">
-                {selected.length} modification{selected.length > 1 ? 's' : ''} enregistree{selected.length > 1 ? 's' : ''} sur {dossier?.denomination || ticket.titre}.
+                {selected.length} modification{selected.length > 1 ? 's' : ''} enregistrée{selected.length > 1 ? 's' : ''} pour {dossier?.denomination || ticket.titre}.
               </p>
             </div>
 
             {/* 1) IDENTITE SOCIETE ─────────────────────────────────────── */}
             <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-societe">
               <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-fg">
-                <Building2 className="h-4 w-4 text-accent" /> Societe concernee
+                <Building2 className="h-4 w-4 text-accent" /> Société concernée
               </p>
               <div className="grid gap-4 rounded-lg bg-bg-overlay p-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                  <p className="text-xs text-fg-subtle">Denomination</p>
+                  <p className="text-xs text-fg-subtle">Dénomination</p>
                   <p className="text-sm font-medium text-fg">{dossier?.denomination || ticket.titre || '—'}</p>
                 </div>
                 <div>
@@ -2672,13 +2251,13 @@ function ModificationWorkflowPageBody() {
               </div>
               <div className="mt-3 grid gap-4 rounded-lg bg-bg-overlay p-3 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs text-fg-subtle">Date PV / Decision</p>
+                  <p className="text-xs text-fg-subtle">Date du procès-verbal / de la décision</p>
                   <p className="text-sm font-medium text-fg">{datePV || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-fg-subtle">Type d'assemblee</p>
+                  <p className="text-xs text-fg-subtle">Type d’assemblée</p>
                   <p className="text-sm font-medium text-fg">
-                    {isAU ? "Decision de l'associe unique" : 'Assemblee generale'}
+                    {isAU ? 'Décision de l’associé unique' : 'Assemblée générale'}
                     {' '}({assembleeNature}){' — '}
                     {DECISION_TYPES.find((d) => d.value === decisionType)?.label ?? decisionType}
                   </p>
@@ -2737,10 +2316,10 @@ function ModificationWorkflowPageBody() {
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-articles">
                 <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-fg">
-                  <FileText className="h-4 w-4 text-accent" /> Articles des statuts impactes
+                  <FileText className="h-4 w-4 text-accent" /> Articles des statuts concernés
                 </p>
                 {articlesImpactes.length === 0 ? (
-                  <p className="text-xs text-fg-subtle">Aucun article specifique detecte.</p>
+                  <p className="text-xs text-fg-subtle">Aucun article particulier détecté.</p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {articlesImpactes.map((a) => (
@@ -2754,25 +2333,25 @@ function ModificationWorkflowPageBody() {
 
               <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-exigences">
                 <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-fg">
-                  <AlertTriangle className="h-4 w-4 text-accent" /> Exigences detectees
+                  <AlertTriangle className="h-4 w-4 text-accent" /> Exigences détectées
                 </p>
                 {!jalRequis && !cacRequis && !formeChangeRequis ? (
-                  <p className="text-xs text-fg-subtle">Aucune exigence particuliere.</p>
+                  <p className="text-xs text-fg-subtle">Aucune exigence particulière.</p>
                 ) : (
                   <div className="flex flex-col gap-2">
                     {jalRequis && (
                       <span className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                        <Megaphone className="h-4 w-4" /> Publication au JAL obligatoire (RG-M13/M14)
+                        <Megaphone className="h-4 w-4" /> Publication d’une annonce légale obligatoire
                       </span>
                     )}
                     {cacRequis && (
                       <span className="flex items-center gap-2 rounded-lg bg-violet-50 px-3 py-2 text-xs font-medium text-violet-800">
-                        <Gavel className="h-4 w-4" /> Commissaire aux apports obligatoire (RG-M10)
+                        <Gavel className="h-4 w-4" /> Commissaire aux apports obligatoire
                       </span>
                     )}
                     {formeChangeRequis && (
                       <span className="flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-800">
-                        <AlertTriangle className="h-4 w-4" /> Passage SARL_AU → SARL (RG-M11)
+                        <AlertTriangle className="h-4 w-4" /> Passage de la SARL à associé unique à la SARL
                       </span>
                     )}
                   </div>
@@ -2784,7 +2363,7 @@ function ModificationWorkflowPageBody() {
             <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-documents">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="flex items-center gap-2 text-sm font-semibold text-fg">
-                  <FileText className="h-4 w-4 text-accent" /> Documents generes
+                  <FileText className="h-4 w-4 text-accent" /> Documents produits
                 </p>
                 <button
                   type="button"
@@ -2797,7 +2376,7 @@ function ModificationWorkflowPageBody() {
               </div>
               {synthesisDocs.length === 0 ? (
                 <p className="rounded-lg bg-bg-overlay p-3 text-xs text-fg-subtle">
-                  Aucun document genere a l'etape 3.
+                  Aucun document produit à l’étape 3 : revenez-y pour générer et valider les actes.
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -2814,11 +2393,11 @@ function ModificationWorkflowPageBody() {
                       <div className="flex flex-shrink-0 items-center gap-2">
                         {d.validated ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-success">
-                            <CheckCircle className="h-3 w-3" /> Valide
+                            <CheckCircle className="h-3 w-3" /> Validé
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-warning">
-                            <AlertCircle className="h-3 w-3" /> Non valide
+                            <AlertCircle className="h-3 w-3" /> Non validé
                           </span>
                         )}
                         {d.deposited && (
@@ -2864,14 +2443,14 @@ function ModificationWorkflowPageBody() {
             {/* 6) CONFIRMATION FINALE (inchangee fonctionnellement) ──────── */}
             {!isTerminated && (
               <div className="flex gap-2">
-                <Button onClick={handleCloturer}>Cloturer le workflow</Button>
+                <Button onClick={handleCloturer}>Clôturer le parcours</Button>
               </div>
             )}
             {isTerminated && (
               <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-800">
-                Ticket cloture — retour aux tickets.
+                Parcours terminé.
                 <Button className="ml-3" onClick={() => navigate('/tickets')}>
-                  Retour
+                  Retour aux tickets
                 </Button>
               </div>
             )}
@@ -2900,7 +2479,7 @@ function ModificationWorkflowPageBody() {
       <PdfPreviewModal
         open={scanOpen}
         documentId={scanDocId}
-        filename="Statuts d'origine"
+        filename="Statuts d’origine"
         canDownload={false}
         canPrint={false}
         onClose={() => setScanOpen(false)}
@@ -2947,16 +2526,15 @@ function DocumentBlock({ tpl, state, canGenerate, onGenerate, onDownload, onRege
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 flex-shrink-0 text-accent" />
-            <h4 className="truncate text-sm font-semibold text-fg" title={tpl.code}>
+            <h4 className="truncate text-sm font-semibold text-fg" title={title}>
               {title}
             </h4>
           </div>
-          <p className="mt-0.5 truncate text-[11px] text-fg-subtle">{tpl.code}</p>
         </div>
         {state.validated && (
           <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-success">
-            <CheckCircle className="h-3 w-3" /> Valide
-            {state.depositedToDataroom && <span className="text-[9px] font-normal opacity-80">· Dataroom</span>}
+            <CheckCircle className="h-3 w-3" /> Validé
+            {state.depositedToDataroom && <span className="text-[9px] font-normal opacity-80">· Data Room</span>}
           </span>
         )}
       </div>
@@ -2975,7 +2553,7 @@ function DocumentBlock({ tpl, state, canGenerate, onGenerate, onDownload, onRege
             onClick={onGenerate}
             disabled={state.generating || !canGenerate}
             data-testid={`generate-btn-${tpl.code}`}
-            title={!canGenerate ? "Completez les champs obligatoires (preflight)" : undefined}
+            title={!canGenerate ? 'Complétez d’abord les champs obligatoires signalés ci-dessus' : undefined}
             className={`flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium transition ${
               state.generating || !canGenerate
                 ? 'cursor-not-allowed bg-border text-fg-subtle'
@@ -2984,11 +2562,11 @@ function DocumentBlock({ tpl, state, canGenerate, onGenerate, onDownload, onRege
           >
             {state.generating ? (
               <>
-                <Loader className="h-4 w-4 animate-spin" /> Generation…
+                <Loader className="h-4 w-4 animate-spin" /> Génération…
               </>
             ) : (
               <>
-                <Sparkles className="h-4 w-4" /> Generer
+                <Sparkles className="h-4 w-4" /> Générer
               </>
             )}
           </button>
@@ -2996,7 +2574,7 @@ function DocumentBlock({ tpl, state, canGenerate, onGenerate, onDownload, onRege
           <>
             <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 p-2 text-xs">
               <CheckCircle className="h-4 w-4 text-success" />
-              <span className="flex-1 truncate text-fg">{state.filename ?? 'Document genere'}</span>
+              <span className="flex-1 truncate text-fg">{state.filename ?? 'Document produit'}</span>
             </div>
 
             {/* 2026-08-12 — Aperçu FIDÈLE (docx-preview) inline + plein écran,
@@ -3012,7 +2590,7 @@ function DocumentBlock({ tpl, state, canGenerate, onGenerate, onDownload, onRege
             {state.previewOpen && !state.blob && (
               <div className="rounded-lg border border-border bg-bg-overlay p-3 text-[11px] text-fg-subtle">
                 <Eye className="mr-1 inline h-3.5 w-3.5 align-text-bottom" />
-                Aperçu indisponible : régénérez le document pour l'afficher.
+                Aperçu indisponible : régénérez le document pour l’afficher.
               </div>
             )}
 
@@ -3025,7 +2603,7 @@ function DocumentBlock({ tpl, state, canGenerate, onGenerate, onDownload, onRege
                 className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent"
               >
                 <Eye className="h-3.5 w-3.5" />
-                {state.previewOpen ? 'Masquer apercu' : 'Aperçu'}
+                {state.previewOpen ? 'Masquer l’aperçu' : 'Aperçu'}
               </button>
               <button
                 type="button"

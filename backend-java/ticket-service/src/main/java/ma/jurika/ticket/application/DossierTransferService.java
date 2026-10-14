@@ -96,11 +96,11 @@ public class DossierTransferService {
         TenantContext.set(workspaceId);
         EntrepriseDossier dossier = loadDossier(workspaceId, dossierId);
         if (toUserId == null || toUserId.equals(actorId)) {
-            throw new ValidationException("Le destinataire doit etre un autre employe");
+            throw new ValidationException("Le destinataire doit \u00eatre un autre employ\u00e9");
         }
         // VOIE A : seul le responsable courant du dossier peut initier une demande.
         if (!actorId.equals(dossier.responsableId())) {
-            throw new AccessDeniedException("Seul le responsable du dossier peut le transferer");
+            throw new AccessDeniedException("Seul le responsable du dossier peut le transf\u00e9rer");
         }
         // Defense en profondeur (2026-06-30) : la cible DOIT etre un EMPLOYE. Un
         // SUPERVISEUR (oversight only) ne traite pas les workflows et n'a aucune
@@ -110,10 +110,10 @@ public class DossierTransferService {
         // interne -> refus ; auth-service injoignable -> exception (fail-closed).
         String targetRole = memberDirectory.roleOf(workspaceId, toUserId).orElse(null);
         if (!"EMPLOYE".equals(targetRole)) {
-            throw new ValidationException("Le destinataire d'un transfert doit etre un employe");
+            throw new ValidationException("Le destinataire d\u2019un transfert doit \u00eatre un employ\u00e9");
         }
         if (requestRepository.existsPendingForDossier(workspaceId, dossierId)) {
-            throw new ConflictException("Une demande de transfert est deja en attente pour ce dossier");
+            throw new ConflictException("Une demande de transfert est d\u00e9j\u00e0 en attente pour ce dossier");
         }
         DossierTransfertRequest saved = requestRepository.save(new DossierTransfertRequest(
                 null, workspaceId, dossierId, actorId, toUserId,
@@ -157,10 +157,10 @@ public class DossierTransferService {
         DossierTransfertRequest req = requestRepository.findById(workspaceId, requestId)
                 .orElseThrow(() -> new NotFoundException("Demande de transfert introuvable"));
         if (!actorId.equals(req.fromUserId())) {
-            throw new AccessDeniedException("Seul l'initiateur peut annuler la demande");
+            throw new AccessDeniedException("Seul l\u2019initiateur peut annuler la demande");
         }
         if (req.statut() != TransfertStatut.EN_ATTENTE) {
-            throw new ConflictException("Demande deja resolue");
+            throw new ConflictException("Cette demande est d\u00e9j\u00e0 trait\u00e9e.");
         }
         return requestRepository.save(new DossierTransfertRequest(
                 req.id(), req.workspaceId(), req.dossierId(), req.fromUserId(), req.toUserId(),
@@ -324,10 +324,10 @@ public class DossierTransferService {
         DossierTransfertRequest req = requestRepository.findById(workspaceId, requestId)
                 .orElseThrow(() -> new NotFoundException("Demande de transfert introuvable"));
         if (!actorId.equals(req.toUserId())) {
-            throw new AccessDeniedException("Cette demande ne vous est pas destinee");
+            throw new AccessDeniedException("Cette demande ne vous est pas destin\u00e9e");
         }
         if (req.statut() != TransfertStatut.EN_ATTENTE) {
-            throw new ConflictException("Demande deja resolue");
+            throw new ConflictException("Cette demande est d\u00e9j\u00e0 trait\u00e9e.");
         }
         return req;
     }
@@ -363,7 +363,7 @@ public class DossierTransferService {
                 }
                 default -> {
                     title = "Transfert de dossier";
-                    message = "Mise a jour du transfert du dossier " + dossierLabel + ".";
+                    message = "Mise \u00e0 jour du transfert du dossier " + dossierLabel + ".";
                 }
             }
             Map<String, Object> meta = new LinkedHashMap<>();

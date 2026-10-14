@@ -15,6 +15,7 @@ import {
   type WorkspaceKpis,
 } from '../../services/supervision.service';
 import { Sprint10SupervisorPanel } from '../../components/dashboard/Sprint10SupervisorPanel';
+import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { SupervisionDemandesPanel } from '../../components/dashboard/SupervisionDemandesPanel';
 import { EvolutionChart } from '../../components/dashboard/EvolutionChart';
 import { DistributionChart } from '../../components/dashboard/DistributionChart';
@@ -58,7 +59,18 @@ export function SupervisorDashboard() {
     <div className="p-6">
       <div className="mb-6">
         <h2 className="font-heading text-2xl font-semibold text-fg">Tableau de bord — Superviseur</h2>
-        <p className="text-sm text-fg-subtle">Vue d'ensemble & performances du cabinet</p>
+        <p className="text-sm text-fg-subtle">Vue d’ensemble et performances du cabinet</p>
+      </div>
+
+      <div className="mb-6">
+        <TexteAide cle="tableau-de-bord-superviseur" titre="Que suivre ici ?">
+          <p>
+            Les chiffres du cabinet (dossiers, employés, tickets en cours et clôturés), l’activité des
+            quatorze derniers jours et la charge de chaque employé. Vous consultez : seul l’employé
+            responsable d’un dossier fait avancer ses tickets. Pour confier un dossier à un autre
+            employé, ouvrez sa Data Room et utilisez « Réaffecter le dossier ».
+          </p>
+        </TexteAide>
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -69,7 +81,7 @@ export function SupervisorDashboard() {
         />
         <KpiCard
           icon={Users} bg="bg-accent/10" color="text-accent"
-          label="Employes" value={perEmploye.length}
+          label="Employés" value={perEmploye.length}
           tag="Actifs" tagColor="text-warning" loading={loading}
         />
         <KpiCard
@@ -79,19 +91,19 @@ export function SupervisorDashboard() {
         />
         <KpiCard
           icon={CheckCircle} bg="bg-emerald-50" color="text-success"
-          label="Cloturees" value={kpis?.ticketsClotures ?? 0}
-          tag={`${kpis?.ticketsAnnules ?? 0} annule${(kpis?.ticketsAnnules ?? 0) > 1 ? 's' : ''}`} tagColor="text-fg-subtle" loading={loading}
+          label="Clôturés" value={kpis?.ticketsClotures ?? 0}
+          tag={`${kpis?.ticketsAnnules ?? 0} annulé${(kpis?.ticketsAnnules ?? 0) > 1 ? 's' : ''}`} tagColor="text-fg-subtle" loading={loading}
         />
       </div>
 
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
         <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
           <div className="mb-5 flex items-center justify-between">
-            <h3 className="text-base font-semibold text-fg">Activite (14 derniers jours)</h3>
+            <h3 className="text-base font-semibold text-fg">Activité (14 derniers jours)</h3>
             <TrendingUp className="h-5 w-5 text-emerald-500" />
           </div>
           {dailySeries.length === 0 ? (
-            <p className="py-12 text-center text-sm text-fg-subtle">Pas de donnees</p>
+            <p className="py-12 text-center text-sm text-fg-subtle">Aucune donnée sur la période.</p>
           ) : (
             <EvolutionChart data={dailySeries} height={200} />
           )}
@@ -100,7 +112,7 @@ export function SupervisorDashboard() {
         <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
           <h3 className="mb-5 text-base font-semibold text-fg">Tickets par type</h3>
           {typeSeries.length === 0 ? (
-            <p className="py-12 text-center text-sm text-fg-subtle">Pas de donnees</p>
+            <p className="py-12 text-center text-sm text-fg-subtle">Aucune donnée sur la période.</p>
           ) : (
             <DistributionChart data={typeSeries} height={200} />
           )}
@@ -109,23 +121,25 @@ export function SupervisorDashboard() {
 
       <div className="rounded-xl border border-border bg-bg-raised shadow-sm">
         <div className="border-b border-border px-6 py-4">
-          <h3 className="text-base font-semibold text-fg">Performances par employe</h3>
+          <h3 className="text-base font-semibold text-fg">Performances par employé</h3>
         </div>
         <table className="w-full">
           <thead className="bg-bg-overlay">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-fg-subtle">Employe</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-fg-subtle">Employé</th>
               <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-fg-subtle">En cours</th>
-              <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-fg-subtle">Cloturees</th>
-              <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-fg-subtle">Annulees</th>
-              <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-fg-subtle">Score</th>
+              <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-fg-subtle">Clôturés</th>
+              <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-fg-subtle">Annulés</th>
+              <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-fg-subtle">
+                <span className="inline-flex items-center gap-1">Score <InfoBulle libelle="Comment le score est-il calculé ?" texte="Part des tickets clôturés parmi les tickets de l’employé (en cours, clôturés et annulés), en pourcentage." /></span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {perEmploye.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-6 py-12 text-center text-sm text-fg-subtle">
-                  Pas d'employes
+                  Aucun employé actif. Invitez vos employés depuis la page « Équipe ».
                 </td>
               </tr>
             )}

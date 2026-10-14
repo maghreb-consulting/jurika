@@ -58,7 +58,7 @@ public class GetDossierClientUseCase {
                 .setParameter(2, cmd.workspaceId())
                 .getResultList();
         if (rows.isEmpty()) {
-            throw new NotFoundException("Dossier introuvable");
+            throw new NotFoundException("Dossier introuvable.");
         }
         Object clientIdObj = rows.get(0);
         if (clientIdObj == null) {

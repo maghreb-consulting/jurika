@@ -22,14 +22,14 @@ export function CTAFinal({ onDemoClick }) {
             Démarrez avec <em>JURIKA</em> en quelques minutes
           </h2>
           <p className="cta-sub">
-            Découvrez comment l'IA juridique accélère la production de vos actes
+            Découvrez comment JURIKA accélère la production de vos actes
             et offre à vos clients un suivi temps réel de leurs dossiers.
           </p>
           <ul className="cta-recap" aria-label="Ce que couvre JURIKA">
             {[
-              { t: 'Workflows automatisés', d: 'Création, modifications, dissolution, liquidation — saisie CIN assistée par OCR/KIE' },
+              { t: 'Parcours guidés', d: 'Création, modifications, dissolution, liquidation — lecture assistée des pièces d’identité' },
               { t: 'Data Room multi-tenant', d: 'Dépôts client, permissions, archivage cloisonné' },
-              { t: 'Assistant IA sourcé', d: 'Chatbot RAG + copilote qui propose' },
+              { t: 'Assistant juridique sourcé', d: 'Réponses tirées de sources fiables, toujours citées' },
               { t: 'Pilotage & traçabilité', d: 'Tickets, dashboards, journal d’audit' },
             ].map((it) => (
               <li key={it.t}>

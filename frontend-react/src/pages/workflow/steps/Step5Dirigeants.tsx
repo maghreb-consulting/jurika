@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import {
   AlertTriangle,
   Building2,
@@ -20,7 +20,13 @@ import type { DirtyGetter } from '../useWorkflow';
 import { BlocageValidation } from '../../../components/workflow/BlocageValidation';
 import { ajouterExtraits, retirerExtraits } from '../provenance';
 import { AIDE_SIGNATAIRES } from '../../../lib/usagesCabinet';
-import { TexteAide } from '../../../components/ui/Aide';
+import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
+import {
+  agregerGerance,
+  dirigeantLabel,
+  unSeulAssocie,
+  type Dirigeant,
+} from './geranceDirigeants';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -60,104 +66,7 @@ interface Props {
   dossierId?: string | null;
 }
 
-/**
- * EX5 2026-06-09 — Un dirigeant peut etre une personne PHYSIQUE (champs CIN)
- * ou MORALE (entite avec RC/ICE/IF + representant legal physique).
- */
-type TypePersonne = 'PHYSIQUE' | 'MORALE';
 
-interface Dirigeant {
-  id: string;
-  /** Lot L4a (E3) : CIN, passeport ou carte de sejour ; absent = CIN (numero dans `cinNumero`). */
-  pieceType?: string;
-  /** Lot L3 : champs remplis par extraction d'une piece et confirmes (provenance EXTRAITE). */
-  _extraits?: string[];
-  typePersonne: TypePersonne;
-  // ---- PHYSIQUE ----
-  civilite: 'M' | 'Mme';
-  nom: string;
-  prenom: string;
-  cinNumero: string;
-  nationalite: string;
-  dateNaissance: string;
-  /** 2026-06-11 — Lieu de naissance pour les Statuts (placeholder gerant_lieu_naissance). */
-  lieuNaissance?: string;
-  /** 2026-06-11 — CIN/passeport valable jusqu'au (placeholder gerant_piece_validite). */
-  pieceValidite?: string;
-  adresse: string;
-  // ---- MORALE (EX5 2026-06-09) ----
-  /** Nom de l'entite morale (raison sociale). */
-  denomination?: string;
-  formeJuridiqueEntite?: string;
-  rc?: string;
-  ice?: string;
-  ifFiscal?: string;
-  siege?: string;
-  /** 2026-06-11 — Capital de l'entite (MAD) + date de deliberation pour Statuts. */
-  capitalEntite?: number;
-  deliberationDate?: string;
-  /** Representant legal de l'entite morale (toujours une personne PHYSIQUE).
-   *  2026-06-11 — Set de champs complet (idem dirigeant physique) :
-   *  civilite/nom/prenom/CIN/adresse/dateNaissance/lieuNaissance/nationalite/
-   *  pieceValidite (CIN valable jusqu'au) + qualite (Gerant/President/etc.). */
-  repCivilite?: 'M' | 'Mme';
-  repNom?: string;
-  repPrenom?: string;
-  repCin?: string;
-  repAdresse?: string;
-  repDateNaissance?: string;
-  repLieuNaissance?: string;
-  repNationalite?: string;
-  repPieceValidite?: string;
-  repQualite?: string;
-  /** Justificatifs MORALE : RC + statuts de l'entite. */
-  rcUploaded?: boolean;
-  rcFileName?: string;
-  statutsEntiteUploaded?: boolean;
-  statutsEntiteFileName?: string;
-  /** F2 2026-06-09 — Upload obligatoire de la CIN du representant legal (MORALE). */
-  repCinUploaded?: boolean;
-  repCinFileName?: string;
-  // ---- commun ----
-  fonction: 'GERANT' | 'CO_GERANT';
-  isStatutaire: boolean;
-  /**
-   * RG-C15 — Le dirigeant est-il aussi associe ? Pour SARL_AU, un seul
-   * dirigeant peut avoir cette case cochee. La valeur est propagee
-   * automatiquement a l'etape Associes via stepData.step5.dirigeants.
-   */
-  isAssociate?: boolean;
-  cinUploaded: boolean;
-  cinFileName?: string;
-  extracting: boolean;
-  /**
-   * 2026-08-18 — MANDAT ET POUVOIRS, PAR DIRIGEANT.
-   *
-   * Ces quatre données vivaient dans DEUX sections globales à la fin de l'étape :
-   * « Gouvernance de la gerance » (durée + rémunération) et « Designation &
-   * pouvoirs de la gerance » (mode de désignation + durée + limitation). Deux
-   * conséquences :
-   *  - la durée du mandat était saisie DEUX FOIS, sous deux formes différentes
-   *    (choix structuré d'un côté, texte libre « 99 années » de l'autre) — et
-   *    c'est le texte libre qui l'emportait vers les actes, si bien qu'un mandat
-   *    déclaré « illimité » ressortait « 99 années » ;
-   *  - une SARL peut nommer plusieurs gérants aux mandats distincts (durées,
-   *    rémunérations et limitations de pouvoirs différentes), ce qu'une saisie
-   *    unique rendait impossible à exprimer.
-   *
-   * Le mode de désignation n'est pas saisi : il découle de `isStatutaire`, coché
-   * en tête de la fiche du dirigeant.
-   *
-   * La LIMITATION DES POUVOIRS, en revanche, n'est PAS ici : c'est une clause
-   * statutaire portant sur la gérance comme ORGANE (« les actes suivants requièrent
-   * l'accord préalable des associés : … »), et non un attribut de personne. Elle se
-   * saisit une seule fois, sous la liste des dirigeants.
-   */
-  dureeMandatType: 'illimitee' | 'determinee';
-  dureeAnnees: number;
-  remunerationMode: '' | 'non_remunere' | 'decision_collective' | 'montant_fixe';
-  remunerationMontant: number;
-}
 
 function newDirigeant(): Dirigeant {
   return {
@@ -201,7 +110,7 @@ function newDirigeant(): Dirigeant {
     repLieuNaissance: '',
     repNationalite: 'Marocaine',
     repPieceValidite: '',
-    repQualite: 'Gerant',
+    repQualite: 'Gérant',
     rcUploaded: false,
     statutsEntiteUploaded: false,
     repCinUploaded: false,
@@ -213,7 +122,7 @@ function cinInvalidMessage(value: string): string | null {
   if (!value) return null;
   const v = value.replace(/\s+/g, '').toUpperCase();
   if (!/^[A-Z]{1,2}[0-9]{5,7}$/.test(v)) {
-    return 'Format CIN invalide (ex : X 123456)';
+    return 'Numéro de CIN invalide (ex. : X 123456).';
   }
   return null;
 }
@@ -223,7 +132,7 @@ function iceInvalidMessage(value: string): string | null {
   if (!value) return null;
   const v = value.replace(/[\s-]/g, '');
   if (!/^\d{15}$/.test(v)) {
-    return 'ICE invalide (15 chiffres)';
+    return 'ICE invalide : il compte 15 chiffres.';
   }
   return null;
 }
@@ -233,7 +142,7 @@ function rcInvalidMessage(value: string): string | null {
   if (!value) return null;
   const v = value.replace(/\s+/g, '');
   if (!/^\d{1,8}$/.test(v)) {
-    return 'RC invalide (chiffres uniquement)';
+    return 'Numéro de RC invalide : chiffres uniquement.';
   }
   return null;
 }
@@ -243,7 +152,7 @@ function ifInvalidMessage(value: string): string | null {
   if (!value) return null;
   const v = value.replace(/\s+/g, '');
   if (!/^\d{7,8}$/.test(v)) {
-    return 'IF invalide (7 a 8 chiffres)';
+    return 'Identifiant fiscal invalide : 7 ou 8 chiffres.';
   }
   return null;
 }
@@ -310,6 +219,20 @@ export function Step5Dirigeants({
   );
 
   /**
+   * RG-C15 (SARL_AU) — Quand l'utilisateur coche `isAssociate=true` sur un
+   * dirigeant, on decoche automatiquement tous les autres. Cas oppose
+   * (decochage) laisse l'etat tel quel : 0 ou 1 dirigeant peut etre associe.
+   *
+   * L6 : la regle s'applique dans le gestionnaire (`update`), qui garde le dirigeant
+   * QUE L'ON VIENT DE COCHER (avant, un effet gardait le dernier de la liste, meme
+   * quand on cochait le premier). Garde-fou au rendu pour une liste rechargee ou une
+   * forme qui passe en SARL AU : on garde le dernier coche, comme avant.
+   */
+  if (isSarlAu && dirigeants.filter((d) => d.isAssociate).length > 1) {
+    setDirigeants(unSeulAssocie(dirigeants));
+  }
+
+  /**
    * Lot L3 : `extraction` vrai quand le patch vient de la lecture d'une piece confirmee
    * (provenance EXTRAITE) ; sinon, les champs touches redeviennent des saisies.
    */
@@ -324,24 +247,10 @@ export function Step5Dirigeants({
         return { ...d, ...patch, ...(extraits ? { _extraits: extraits } : {}) };
       }),
     );
+    if (isSarlAu && patch.isAssociate === true) {
+      setDirigeants((arr) => unSeulAssocie(arr, id));
+    }
   }
-
-  /**
-   * RG-C15 (SARL_AU) — Quand l'utilisateur coche `isAssociate=true` sur un
-   * dirigeant, on decoche automatiquement tous les autres. Cas oppose
-   * (decochage) laisse l'etat tel quel : 0 ou 1 dirigeant peut etre associe.
-   */
-  useEffect(() => {
-    if (!isSarlAu) return;
-    const associates = dirigeants.filter((d) => d.isAssociate);
-    if (associates.length <= 1) return;
-    const keep = associates[associates.length - 1].id;
-    setDirigeants((arr) =>
-      arr.map((d) =>
-        d.isAssociate && d.id !== keep ? { ...d, isAssociate: false } : d,
-      ),
-    );
-  }, [dirigeants, isSarlAu]);
 
   /**
    * 2026-06-15 — Reçoit les valeurs CIN extraites par IdentityExtractor
@@ -383,7 +292,7 @@ export function Step5Dirigeants({
     if (meta?.archivedDocumentId) {
       update(id, {
         cinUploaded: true,
-        cinFileName: `Archive Data Room ${meta.archivedDocumentId.slice(0, 8)}`,
+        cinFileName: 'Pièce d’identité archivée dans la Data Room du dossier',
       });
     }
   }
@@ -600,9 +509,9 @@ export function Step5Dirigeants({
         if (!d.denomination) manques.push('dénomination');
         if (!d.repNom || !d.repPrenom) manques.push('représentant légal');
         if (!d.repCin || cinInvalidMessage(d.repCin ?? '')) manques.push('CIN du représentant');
-        if (!importMode && !d.repCinUploaded) manques.push('CIN du représentant extraite (bouton « Extraire »)');
-        if (!importMode && !d.rcUploaded) manques.push('RC de l’entité');
-        if (!importMode && !d.statutsEntiteUploaded) manques.push('statuts de l’entité');
+        if (!importMode && !d.repCinUploaded) manques.push('CIN du représentant lue (bouton « Extraire »)');
+        if (!importMode && !d.rcUploaded) manques.push('modèle J ou extrait du RC de la société');
+        if (!importMode && !d.statutsEntiteUploaded) manques.push('statuts de la société');
       } else {
         if (!d.nom) manques.push('nom');
         if (!d.prenom) manques.push('prénom');
@@ -616,7 +525,7 @@ export function Step5Dirigeants({
         }
         // LE piège : le fichier joint ne suffit pas, il faut lancer l'extraction.
         if (!importMode && !d.cinUploaded) {
-          manques.push('CIN extraite — joindre le fichier ne suffit pas, cliquez « Extraire »');
+          manques.push('CIN lue : joindre le fichier ne suffit pas, cliquez sur « Extraire »');
         }
         }
       }
@@ -663,23 +572,32 @@ export function Step5Dirigeants({
       }}
       className="mx-auto max-w-[880px] space-y-6"
     >
-      <div className="rounded-xl border border-border bg-accent/10 p-4 text-xs text-fg">
+      <div className="space-y-3 rounded-xl border border-border bg-accent/10 p-4 text-xs text-fg">
+        <h3 className="text-base font-bold text-fg">La gérance de la société</h3>
         {/* Lot 2 (2026-09-07) — le texte disait « aide optionnelle » alors que
             l'etape BLOQUE tant que l'extraction n'a pas ete lancee. L'un des
             deux mentait ; c'est celui-ci, puisque la regle metier veut que la
             CIN soit lue, pas seulement jointe. */}
-        Identifiez le ou les gerants de la societe. Au moins un gerant est
-        requis. <strong>Pour chaque dirigeant, la CIN doit etre jointe PUIS
-        lue</strong> : televersez le recto, cliquez &laquo; Extraire &raquo;,
-        puis &laquo; Appliquer au formulaire &raquo;. Les champs pre-remplis
-        restent modifiables a la main.
+        <p>
+          Identifiez le ou les gérants de la société. Au moins un gérant est
+          requis. <strong>Pour chaque dirigeant, la CIN doit être jointe puis
+          lue</strong> : importez le recto, cliquez sur « Extraire »,
+          puis sur « Appliquer au formulaire ». Les champs préremplis
+          restent modifiables à la main.
+        </p>
         {isSarlAu && (
-          <p className="mt-1 font-medium text-accent">
-            SARL_AU : un seul dirigeant peut etre coche comme &laquo; Associe
-            &raquo; (RG-C15) — il sera propage automatiquement a l'etape
-            Associes.
+          <p className="font-medium text-accent">
+            SARL AU : un seul dirigeant peut être coché comme « Également associé » ;
+            il est repris automatiquement à l’étape des associés.
           </p>
         )}
+        <TexteAide cle={importMode ? 'import-etape-gerance' : 'creation-etape-5'} titre="Ce qu’il faut faire">
+          Pour chaque gérant : son identité, son mandat (durée et rémunération) et, s’il
+          est aussi associé, la case « Également associé ». Puis, pour toute la gérance :
+          la limitation éventuelle des pouvoirs et la signature sociale. Ce qui manque est
+          listé au-dessus du bouton « Valider et continuer ». L’étape suivante porte sur
+          les associés et la répartition du capital.
+        </TexteAide>
       </div>
 
       {dirigeants.map((d, i) => {
@@ -700,6 +618,7 @@ export function Step5Dirigeants({
                   Dirigeant {i + 1}
                 </span>
                 <select
+                  aria-label={`Fonction du dirigeant ${i + 1}`}
                   value={d.fonction}
                   onChange={(e) =>
                     update(d.id, {
@@ -708,8 +627,8 @@ export function Step5Dirigeants({
                   }
                   className="h-8 rounded-lg border border-border bg-bg-raised px-2 text-xs font-medium"
                 >
-                  <option value="GERANT">Gerant</option>
-                  <option value="CO_GERANT">Co-Gerant</option>
+                  <option value="GERANT">Gérant</option>
+                  <option value="CO_GERANT">Cogérant</option>
                 </select>
                 {/* Badges d'etat : visibles d'un coup d'oeil */}
                 <div className="flex flex-wrap items-center gap-2">
@@ -720,7 +639,7 @@ export function Step5Dirigeants({
                   )}
                   {d.isAssociate && (
                     <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 text-[11px] font-bold uppercase text-accent">
-                      <UserPlus className="h-3 w-3" /> Aussi associe
+                      <UserPlus className="h-3 w-3" /> Aussi associé
                     </span>
                   )}
                 </div>
@@ -757,7 +676,7 @@ export function Step5Dirigeants({
                   <User className={`h-4 w-4 ${d.typePersonne === 'PHYSIQUE' ? 'text-accent' : 'text-fg-subtle'}`} />
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-fg">Personne physique</p>
-                    <p className="text-[11px] text-fg-subtle">Individu titulaire d'une CIN</p>
+                    <p className="text-[11px] text-fg-subtle">Une personne, titulaire d’une pièce d’identité</p>
                   </div>
                 </button>
                 <button
@@ -774,7 +693,7 @@ export function Step5Dirigeants({
                   <Building2 className={`h-4 w-4 ${d.typePersonne === 'MORALE' ? 'text-accent' : 'text-fg-subtle'}`} />
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-fg">Personne morale</p>
-                    <p className="text-[11px] text-fg-subtle">Societe / entite (RC + ICE + IF + representant legal)</p>
+                    <p className="text-[11px] text-fg-subtle">Une société (RC, ICE, IF et représentant légal)</p>
                   </div>
                 </button>
               </div>
@@ -808,11 +727,11 @@ export function Step5Dirigeants({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-fg">
-                    Gerant statutaire
+                    Gérant statutaire
                   </p>
                   <p className="mt-0.5 text-[11px] text-fg-subtle">
-                    Nomme directement dans les statuts (pas d'acte separe). Decoche
-                    si la nomination se fait par acte poste-statuts.
+                    Nommé directement dans les statuts (pas d’acte séparé). Décochez
+                    si la nomination se fait par un acte distinct des statuts.
                   </p>
                 </div>
               </button>
@@ -829,7 +748,7 @@ export function Step5Dirigeants({
                     ? 'border-accent bg-accent/5 shadow-sm'
                     : 'border-border bg-bg-overlay hover:border-accent/40 hover:bg-accent/5'
                 }`}
-                title="Si coche, le dirigeant est aussi associe -- ses infos seront propagees a l'etape Associes."
+                title="Cochée, le dirigeant est aussi associé : son identité est reprise à l’étape des associés."
               >
                 <div
                   className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${
@@ -844,14 +763,14 @@ export function Step5Dirigeants({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-fg">
-                    Egalement associe
+                    Également associé
                   </p>
                   <p className="mt-0.5 text-[11px] text-fg-subtle">
-                    Le dirigeant detient des parts sociales. Son identite sera
-                    propagee automatiquement a l'etape Associes.
+                    Le dirigeant détient des parts sociales. Son identité sera
+                    reprise automatiquement à l’étape des associés.
                     {isSarlAu && (
                       <span className="ml-1 font-medium text-accent">
-                        SARL_AU : un seul dirigeant peut etre coche.
+                        SARL AU : un seul dirigeant peut être coché.
                       </span>
                     )}
                   </p>
@@ -948,9 +867,10 @@ export function Step5Dirigeants({
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-xs text-fg-subtle">
-                    Civilite
+                    Civilité
                   </label>
                   <select
+                    aria-label="Civilité"
                     value={d.civilite}
                     onChange={(e) =>
                       update(d.id, { civilite: e.target.value as 'M' | 'Mme' })
@@ -968,7 +888,7 @@ export function Step5Dirigeants({
                   onChange={(e) => update(d.id, { nom: e.target.value })}
                 />
                 <Field
-                  label="Prenom"
+                  label="Prénom"
                   required
                   value={d.prenom}
                   onChange={(e) => update(d.id, { prenom: e.target.value })}
@@ -979,8 +899,12 @@ export function Step5Dirigeants({
                   onChange={(v) => update(d.id, { pieceType: v })}
                 />
                 <div>
-                  <label className="mb-1 block text-xs text-fg-subtle">
+                  <label className="mb-1 flex items-center gap-1 text-xs text-fg-subtle">
                     {libelleNumeroPiece(d.pieceType)} <span className="text-danger">*</span>
+                    <InfoBulle
+                      libelle="Format du numéro"
+                      texte="CIN marocaine : une ou deux lettres puis 5 à 7 chiffres (ex. : X 123456). Le numéro est lu sur la pièce par « Extraire » ; corrigez-le si la lecture est inexacte."
+                    />
                   </label>
                   <input aria-label="N° CIN"
                     type="text"
@@ -989,7 +913,7 @@ export function Step5Dirigeants({
                       update(d.id, { cinNumero: e.target.value.toUpperCase() })
                     }
                     placeholder="X 123456"
-                    title="Format CIN : 1 a 2 lettres puis 5 a 7 chiffres (ex : X 123456)"
+                    title="CIN : une ou deux lettres puis 5 à 7 chiffres (ex. : X 123456)"
                     aria-invalid={!!cinError}
                     className={`h-9 w-full rounded-lg border bg-bg-overlay px-3 text-sm uppercase ${
                       cinError ? 'border-danger' : 'border-border'
@@ -1027,7 +951,7 @@ export function Step5Dirigeants({
                   placeholder="Ville, pays"
                 />
                 <Field
-                  label="CIN valable jusqu'au"
+                  label="Pièce valable jusqu’au"
                   type="date"
                   value={d.pieceValidite ?? ''}
                   onChange={(e) =>
@@ -1042,7 +966,7 @@ export function Step5Dirigeants({
                     type="text"
                     value={d.adresse}
                     onChange={(e) => update(d.id, { adresse: e.target.value })}
-                    placeholder="Adresse complete"
+                    placeholder="Adresse complète"
                     className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm"
                   />
                 </div>
@@ -1052,8 +976,8 @@ export function Step5Dirigeants({
                 <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning/20 bg-warning/10 p-3">
                   <AlertTriangle className="h-4 w-4 flex-shrink-0 text-warning" />
                   <p className="text-xs text-warning">
-                    Gerant non statutaire — un acte de nomination separe sera
-                    genere a l'etape Statuts.
+                    Gérant non statutaire : un acte de nomination séparé sera
+                    généré avec les statuts.
                   </p>
                 </div>
               )}
@@ -1102,52 +1026,59 @@ export function Step5Dirigeants({
           htmlFor="limitation-pouvoirs-gerance"
           className="block text-sm font-bold text-fg"
         >
-          Limitation des pouvoirs de la gerance{' '}
-          <span className="font-normal text-fg-subtle">(optionnel)</span>
+          Limitation des pouvoirs de la gérance{' '}
+          <span className="font-normal text-fg-subtle">(facultatif)</span>
         </label>
         <p className="mt-1 text-xs text-fg-subtle">
-          Clause des statuts, commune a toute la gerance : &laquo; les actes suivants
-          requierent l'accord prealable des associes &raquo;.
+          Clause des statuts, commune à toute la gérance : « les actes suivants
+          requièrent l’accord préalable des associés ». Laissez vide s’il n’y en a pas.
         </p>
         <textarea
           id="limitation-pouvoirs-gerance"
           rows={2}
           value={limitationPouvoirs}
           onChange={(ev) => setLimitationPouvoirs(ev.target.value)}
-          placeholder="Ex: les actes de disposition superieurs a 100 000 MAD requierent l'accord des associes."
+          placeholder="Ex. : les actes de disposition supérieurs à 100 000 MAD."
           className="mt-3 w-full resize-none rounded-lg border-2 border-border bg-bg-overlay px-3 py-2 text-sm focus:border-accent focus:outline-none"
         />
       </div>
 
       {/* 2026-08 (contrat CREATION) — Signature sociale (art. 15). */}
       <div className="rounded-xl border border-border bg-bg-raised p-5 shadow-sm">
-        <p className="text-sm font-bold text-fg">Signature sociale (art. 15)</p>
+        <p className="flex items-center gap-1 text-sm font-bold text-fg">
+          Signature sociale (art. 15)
+          <InfoBulle
+            libelle="Qu’est-ce que la signature sociale ?"
+            texte="Elle fixe, dans les statuts, comment les gérants engagent la société : chacun seul (séparée), chacun seul jusqu’à un plafond par opération, ou à deux au moins (conjointe). Les signataires autorisés sont ceux qui signent pour la société."
+          />
+        </p>
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs font-medium text-fg">
               Mode de signature
             </label>
             <select
+              aria-label="Mode de signature"
               value={modeSignature}
               onChange={(ev) => setModeSignature(ev.target.value)}
               className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
             >
-              <option value="séparée">Separee (sans limitation)</option>
-              <option value="séparée avec plafond">Separee avec plafond</option>
+              <option value="séparée">Séparée (sans limitation)</option>
+              <option value="séparée avec plafond">Séparée avec plafond</option>
               <option value="conjointe">Conjointe (deux au moins)</option>
             </select>
           </div>
           {modeSignature === 'séparée avec plafond' && (
             <div>
               <label className="mb-1 block text-xs font-medium text-fg">
-                Plafond par operation (MAD)
+                Plafond par opération (MAD)
               </label>
-              <input aria-label="Plafond par operation (MAD)"
+              <input aria-label="Plafond par opération (MAD)"
                 type="number"
                 min={0}
                 value={signaturePlafond || ''}
                 onChange={(ev) => setSignaturePlafond(Number(ev.target.value))}
-                placeholder="Ex: 50000"
+                placeholder="Ex. : 50000"
                 className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
               />
             </div>
@@ -1157,6 +1088,7 @@ export function Step5Dirigeants({
               Signature des actes administratifs
             </label>
             <select
+              aria-label="Signature des actes administratifs"
               value={modeSignatureAdmin}
               onChange={(ev) =>
                 setModeSignatureAdmin(
@@ -1165,8 +1097,8 @@ export function Step5Dirigeants({
               }
               className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
             >
-              <option value="identique">Identique a la signature sociale</option>
-              <option value="signature seule">Signature seule du gerant</option>
+              <option value="identique">Identique à la signature sociale</option>
+              <option value="signature seule">Signature seule du gérant</option>
             </select>
           </div>
         </div>
@@ -1188,7 +1120,7 @@ export function Step5Dirigeants({
               <div key={s.id} className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_1fr_auto] md:items-end">
                 <div>
                   <label className="mb-1 block text-[10px] text-fg-subtle">Nom</label>
-                  <input aria-label="Nom"
+                  <input aria-label={`Nom du signataire ${idx + 1}`}
                     type="text"
                     list={signataireListId}
                     value={s.nom}
@@ -1202,8 +1134,8 @@ export function Step5Dirigeants({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-[10px] text-fg-subtle">Qualite</label>
-                  <input aria-label="Qualite"
+                  <label className="mb-1 block text-[10px] text-fg-subtle">Qualité</label>
+                  <input aria-label={`Qualité du signataire ${idx + 1}`}
                     type="text"
                     value={s.qualite}
                     onChange={(ev) =>
@@ -1211,7 +1143,7 @@ export function Step5Dirigeants({
                         arr.map((x, i) => (i === idx ? { ...x, qualite: ev.target.value } : x)),
                       )
                     }
-                    placeholder="Ex: Gerant"
+                    placeholder="Ex. : gérant"
                     className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm"
                   />
                 </div>
@@ -1231,7 +1163,7 @@ export function Step5Dirigeants({
             onClick={() =>
               setSignataires((arr) => [
                 ...arr,
-                { id: crypto.randomUUID(), nom: '', qualite: 'Gerant' },
+                { id: crypto.randomUUID(), nom: '', qualite: 'Gérant' },
               ])
             }
             className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-2 text-xs text-accent transition hover:border-accent hover:bg-accent/10"
@@ -1249,7 +1181,7 @@ export function Step5Dirigeants({
               onChange={(ev) => setSignatureMandataire(ev.target.checked)}
               className="h-4 w-4 accent-accent"
             />
-            Signature deleguee a un mandataire
+            Signature déléguée à un mandataire
           </label>
           {signatureMandataire && (
             <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -1265,13 +1197,13 @@ export function Step5Dirigeants({
               </div>
               <div>
                 <label className="mb-1 block text-xs text-fg-subtle">
-                  Reference de l'acte de delegation
+                  Référence de l’acte de délégation
                 </label>
-                <input aria-label="Reference de l'acte de delegation"
+                <input aria-label="Référence de l’acte de délégation"
                   type="text"
                   value={mandataireActeDelegation}
                   onChange={(ev) => setMandataireActeDelegation(ev.target.value)}
-                  placeholder="Ex: procuration du 01/01/2026"
+                  placeholder="Ex. : procuration du 01/01/2026"
                   className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
                 />
               </div>
@@ -1291,10 +1223,11 @@ export function Step5Dirigeants({
             onChange={(ev) => setCacNomme(ev.target.checked)}
             className="h-4 w-4 accent-accent"
           />
-          Commissaire aux comptes designe
+          Commissaire aux comptes désigné
         </label>
         <p className="mt-1 text-xs text-fg-subtle">
-          Optionnel — obligatoire pour SARL au CA &gt; 50 MDH (Loi 5-96 Art. 80).
+          Facultatif ; obligatoire pour une SARL dont le chiffre d’affaires dépasse
+          50 millions de dirhams (loi 5-96, article 80).
         </p>
         {cacNomme && (
           <input
@@ -1351,112 +1284,6 @@ function Field({
 }
 
 /**
- * EX5 2026-06-09 — Formulaire pour un dirigeant MORALE.
- * Champs entite (RC/ICE/IF/siege) + uploads (RC + statuts entite) + representant legal physique.
- */
-/** Mandat agrégé de la gérance, tel qu'il alimente les variables racine des modèles. */
-export interface GeranceAgregee {
-  dureeGerance: string;
-  remunerationMode: '' | 'non_remunere' | 'decision_collective' | 'montant_fixe';
-  remunerationMontant: number;
-}
-
-/**
- * Agrège en UNE valeur les mandats saisis dirigeant par dirigeant (2026-08-18).
- *
- * Les modèles directeur portent `$DUREE_GERANCE` et `$LIMITATION_POUVOIRS` À LA
- * RACINE, hors de la boucle `GERANTS` : les statuts écrivent « sont nommés premiers
- * gérants […] pour une durée de $DUREE_GERANCE » puis énumèrent les gérants. Un
- * seul mandat peut donc y être imprimé, alors que la saisie en autorise désormais
- * un par dirigeant — et les .docx sont intouchables.
- *
- * L'agrégation ne devine donc jamais :
- *  - mandats IDENTIQUES  -> la valeur commune ; le rendu est inchangé, ce qui est
- *    le cas courant (une gérance aux règles uniformes) ;
- *  - mandats DIFFÉRENTS  -> une énumération NOMINATIVE (« 3 année(s) pour
- *    M. Ahmed ALAOUI et illimitée (jusqu'à révocation) pour Mme Salma BENJELLOUN »),
- *    qui se lit correctement après « pour une durée de » et reste vraie.
- *
- * Retenir le mandat du premier gérant aurait été plus simple — et faux dès que
- * deux gérants diffèrent, sans que rien ne le signale.
- */
-export function agregerGerance(dirigeants: Dirigeant[]): GeranceAgregee {
-  // Les fiches encore vierges (aucun nom saisi) ne doivent pas peser sur
-  // l'agrégat : elles rendraient « différents » des mandats en réalité identiques.
-  const nommes = dirigeants.filter(
-    (d) => d.nom.trim() || d.prenom.trim() || (d.denomination ?? '').trim(),
-  );
-  const source = nommes.length > 0 ? nommes : dirigeants;
-
-  const commun = <T,>(lire: (d: Dirigeant) => T): T | null => {
-    if (source.length === 0) return null;
-    const premiere = lire(source[0]);
-    return source.every((d) => lire(d) === premiere) ? premiere : null;
-  };
-
-  const enumerer = (liste: Dirigeant[], lire: (d: Dirigeant) => string): string => {
-    const parts = liste
-      .map((d, i) => {
-        const v = lire(d).trim();
-        return v ? `${v} pour ${dirigeantLabel(d, i)}` : '';
-      })
-      .filter(Boolean);
-    if (parts.length === 0) return '';
-    if (parts.length === 1) return parts[0];
-    return `${parts.slice(0, -1).join(', ')} et ${parts[parts.length - 1]}`;
-  };
-
-  const dureeCommune = commun((d) => dureeMandatLabel(d));
-
-  return {
-    dureeGerance: dureeCommune ?? enumerer(source, (d) => dureeMandatLabel(d)),
-    remunerationMode: commun((d) => d.remunerationMode) ?? '',
-    remunerationMontant: commun((d) => d.remunerationMontant) ?? 0,
-  };
-}
-
-/* ------------------------------------------------------------------ *
- * Gérance — mandat et pouvoirs, PAR DIRIGEANT (2026-08-18)
- * ------------------------------------------------------------------ */
-
-/** Libellés des modes de rémunération, partagés par la saisie et l'agrégation. */
-export const REMUNERATION_LABELS: Record<string, string> = {
-  non_remunere: 'non rémunéré',
-  decision_collective: 'fixée par décision collective des associés',
-  montant_fixe: 'montant fixe',
-};
-
-/** Durée du mandat d'un dirigeant, en toutes lettres, prête pour les actes. */
-export function dureeMandatLabel(d: {
-  dureeMandatType?: string;
-  dureeAnnees?: number;
-}): string {
-  if (d.dureeMandatType === 'determinee' && Number(d.dureeAnnees) > 0) {
-    return `${d.dureeAnnees} année(s)`;
-  }
-  return "illimitée (jusqu'à révocation)";
-}
-
-/** Nom lisible d'un dirigeant, pour attribuer un mandat dans un acte. */
-export function dirigeantLabel(
-  d: {
-    typePersonne?: string;
-    civilite?: string;
-    prenom?: string;
-    nom?: string;
-    denomination?: string;
-  },
-  index: number,
-): string {
-  if (d.typePersonne === 'MORALE') {
-    return (d.denomination ?? '').trim() || `Gérant ${index + 1}`;
-  }
-  const civ = d.civilite === 'Mme' ? 'Mme' : 'M.';
-  const nom = [d.prenom, d.nom].filter(Boolean).join(' ').trim();
-  return nom ? `${civ} ${nom}` : `Gérant ${index + 1}`;
-}
-
-/**
  * Section UNIQUE « Gérance » d'un dirigeant.
  *
  * Elle remplace les deux sections globales de fin d'étape (« Gouvernance de la
@@ -1480,40 +1307,40 @@ function GeranceFields({
       data-testid={`gerance-${d.id}`}
     >
       <p className="text-xs font-bold text-fg">
-        Gerance — mandat et pouvoirs <span className="text-danger">*</span>
+        Gérance : mandat et pouvoirs <span className="text-danger">*</span>
       </p>
       <p className="mt-0.5 text-[10px] text-fg-subtle">
-        Propre a ce dirigeant : deux gerants peuvent avoir des mandats differents.
+        Propre à ce dirigeant : deux gérants peuvent avoir des mandats différents.
       </p>
 
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
         {/* Mode de designation — DERIVE de la case « Gerant statutaire », jamais saisi. */}
         <div>
           <label className="mb-1 block text-xs font-medium text-fg">
-            Mode de designation
+            Mode de désignation
           </label>
           <p
             data-testid={`gerance-mode-${d.id}`}
             className="flex h-9 items-center rounded-lg border border-border bg-bg-overlay px-3 text-sm text-fg-subtle"
           >
             {d.isStatutaire
-              ? 'Statutaire — nomme dans les statuts'
-              : 'Non statutaire — acte de nomination separe'}
+              ? 'Statutaire : nommé dans les statuts'
+              : 'Non statutaire : acte de nomination séparé'}
           </p>
           <p className="mt-0.5 text-[10px] text-fg-subtle">
-            Suit la case &laquo; Gerant statutaire &raquo; ci-dessus.
+            Suit la case « Gérant statutaire » ci-dessus.
           </p>
         </div>
 
         {/* Duree du mandat */}
         <div>
           <label className="mb-1 block text-xs font-medium text-fg">
-            Duree du mandat <span className="text-danger">*</span>
+            Durée du mandat <span className="text-danger">*</span>
           </label>
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={d.dureeMandatType}
-              aria-label={`Duree du mandat de ${qui}`}
+              aria-label={`Durée du mandat de ${qui}`}
               onChange={(e) =>
                 onChange({
                   dureeMandatType: e.target.value as 'illimitee' | 'determinee',
@@ -1521,8 +1348,8 @@ function GeranceFields({
               }
               className="h-9 rounded-lg border border-border bg-bg-overlay px-3 text-sm"
             >
-              <option value="illimitee">Illimitee (jusqu&apos;a revocation)</option>
-              <option value="determinee">Duree determinee</option>
+              <option value="illimitee">Illimitée (jusqu’à révocation)</option>
+              <option value="determinee">Durée déterminée</option>
             </select>
             {d.dureeMandatType === 'determinee' && (
               <div className="flex items-center gap-1">
@@ -1530,12 +1357,12 @@ function GeranceFields({
                   type="number"
                   min={1}
                   value={d.dureeAnnees || ''}
-                  aria-label={`Nombre d'annees du mandat de ${qui}`}
+                  aria-label={`Nombre d’années du mandat de ${qui}`}
                   onChange={(e) => onChange({ dureeAnnees: Number(e.target.value) })}
-                  placeholder="Annees"
+                  placeholder="Années"
                   className="h-9 w-24 rounded-lg border border-border bg-bg-overlay px-3 text-sm"
                 />
-                <span className="text-xs text-fg-subtle">annee(s)</span>
+                <span className="text-xs text-fg-subtle">année(s)</span>
               </div>
             )}
           </div>
@@ -1544,12 +1371,12 @@ function GeranceFields({
         {/* Remuneration */}
         <div>
           <label className="mb-1 block text-xs font-medium text-fg">
-            Remuneration de la gerance <span className="text-danger">*</span>
+            Rémunération de la gérance <span className="text-danger">*</span>
           </label>
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={d.remunerationMode}
-              aria-label={`Remuneration de ${qui}`}
+              aria-label={`Rémunération de ${qui}`}
               onChange={(e) =>
                 onChange({
                   remunerationMode: e.target.value as Dirigeant['remunerationMode'],
@@ -1558,9 +1385,9 @@ function GeranceFields({
               className="h-9 rounded-lg border border-border bg-bg-overlay px-3 text-sm"
             >
               <option value="">— Choisir —</option>
-              <option value="non_remunere">Fonctions non remunerees</option>
+              <option value="non_remunere">Fonctions non rémunérées</option>
               <option value="decision_collective">
-                Fixee par decision collective des associes
+                Fixée par décision collective des associés
               </option>
               <option value="montant_fixe">Montant fixe</option>
             </select>
@@ -1570,7 +1397,7 @@ function GeranceFields({
                   type="number"
                   min={1}
                   value={d.remunerationMontant || ''}
-                  aria-label={`Montant de la remuneration de ${qui} (MAD)`}
+                  aria-label={`Montant de la rémunération de ${qui} (MAD)`}
                   onChange={(e) =>
                     onChange({ remunerationMontant: Number(e.target.value) })
                   }
@@ -1588,6 +1415,10 @@ function GeranceFields({
   );
 }
 
+/**
+ * EX5 2026-06-09 — Formulaire pour un dirigeant MORALE.
+ * Champs entite (RC/ICE/IF/siege) + uploads (RC + statuts entite) + representant legal physique.
+ */
 function MoraleForm({
   dirigeant: d,
   dossierId,
@@ -1610,7 +1441,7 @@ function MoraleForm({
     onChange({ rcUploaded: true, rcFileName: file.name });
     void onPieceUploaded?.(
       `RC_DIRIGEANT_MORALE_${d.id.slice(0, 8)}`,
-      `RC entite dirigeante ${d.denomination || d.id.slice(0, 8)}`,
+      `RC de la société gérante ${d.denomination || ''}`.trim(),
       file,
     );
   }
@@ -1618,7 +1449,7 @@ function MoraleForm({
     onChange({ statutsEntiteUploaded: true, statutsEntiteFileName: file.name });
     void onPieceUploaded?.(
       `STATUTS_ENTITE_DIRIGEANT_${d.id.slice(0, 8)}`,
-      `Statuts entite dirigeante ${d.denomination || d.id.slice(0, 8)}`,
+      `Statuts de la société gérante ${d.denomination || ''}`.trim(),
       file,
     );
   }
@@ -1631,14 +1462,14 @@ function MoraleForm({
       {/* Identite de l'entite morale */}
       <div className="rounded-lg border border-border bg-bg-overlay p-4">
         <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase text-fg-subtle">
-          <Building2 className="h-3.5 w-3.5" /> Identification de l'entite
+          <Building2 className="h-3.5 w-3.5" /> Identification de la société gérante
         </p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs text-fg-subtle">
-              Denomination / Raison sociale <span className="text-danger">*</span>
+              Dénomination (raison sociale) <span className="text-danger">*</span>
             </label>
-            <input aria-label="Denomination / Raison sociale"
+            <input aria-label="Dénomination (raison sociale)"
               type="text"
               value={d.denomination ?? ''}
               onChange={(e) => onChange({ denomination: e.target.value })}
@@ -1650,6 +1481,7 @@ function MoraleForm({
               Forme juridique
             </label>
             <select
+              aria-label="Forme juridique de la société gérante"
               value={d.formeJuridiqueEntite ?? 'SARL'}
               onChange={(e) => onChange({ formeJuridiqueEntite: e.target.value })}
               className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
@@ -1666,9 +1498,9 @@ function MoraleForm({
           </div>
           <div>
             <label className="mb-1 block text-xs text-fg-subtle">
-              RC (n° Registre du commerce) <span className="text-danger">*</span>
+              Numéro du registre du commerce (RC) <span className="text-danger">*</span>
             </label>
-            <input aria-label="RC (n° Registre du commerce)"
+            <input aria-label="Numéro du registre du commerce (RC)"
               type="text"
               value={d.rc ?? ''}
               onChange={(e) => onChange({ rc: e.target.value })}
@@ -1701,9 +1533,9 @@ function MoraleForm({
           </div>
           <div>
             <label className="mb-1 block text-xs text-fg-subtle">
-              IF (Identifiant Fiscal) <span className="text-danger">*</span>
+              Identifiant fiscal (IF) <span className="text-danger">*</span>
             </label>
-            <input aria-label="IF (Identifiant Fiscal)"
+            <input aria-label="Identifiant fiscal (IF)"
               type="text"
               value={d.ifFiscal ?? ''}
               onChange={(e) => onChange({ ifFiscal: e.target.value.replace(/[^\d]/g, '') })}
@@ -1719,9 +1551,9 @@ function MoraleForm({
           </div>
           <div className="md:col-span-2">
             <label className="mb-1 block text-xs text-fg-subtle">
-              Adresse du siege <span className="text-danger">*</span>
+              Adresse du siège <span className="text-danger">*</span>
             </label>
-            <input aria-label="Adresse du siege"
+            <input aria-label="Adresse du siège"
               type="text"
               value={d.siege ?? ''}
               onChange={(e) => onChange({ siege: e.target.value })}
@@ -1734,19 +1566,19 @@ function MoraleForm({
       {/* Justificatifs entite : RC + statuts */}
       <div className="rounded-lg border border-border bg-bg-overlay p-4">
         <p className="mb-3 text-xs font-bold uppercase text-fg-subtle">
-          Justificatifs entite (obligatoires)
+          Justificatifs de la société gérante (obligatoires)
         </p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <UploadCard
             uploaded={!!d.rcUploaded}
             filename={d.rcFileName}
-            label="Modele J / RC recent"
+            label="Modèle J ou extrait récent du RC"
             onFile={uploadRcFor}
           />
           <UploadCard
             uploaded={!!d.statutsEntiteUploaded}
             filename={d.statutsEntiteFileName}
-            label="Statuts de l'entite"
+            label="Statuts de la société"
             onFile={uploadStatutsFor}
           />
         </div>
@@ -1755,7 +1587,7 @@ function MoraleForm({
       {/* Representant legal — personne physique + upload CIN obligatoire */}
       <div className="rounded-lg border border-accent/30 bg-accent/5 p-4">
         <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase text-accent">
-          <User className="h-3.5 w-3.5" /> Representant legal (personne physique)
+          <User className="h-3.5 w-3.5" /> Représentant légal (personne physique)
         </p>
         {/* 2026-06-19 — Representant legal = personne physique : meme assistant
             CIN recto/verso + toggle nouvelle/ancienne que pour un dirigeant PP.
@@ -1784,7 +1616,7 @@ function MoraleForm({
               // Room mais OCR reussi). Le numero CIN tient lieu de preuve.
               if (meta?.archivedDocumentId) {
                 patch.repCinUploaded = true;
-                patch.repCinFileName = `Archive Data Room ${meta.archivedDocumentId.slice(0, 8)}`;
+                patch.repCinFileName = 'archivée dans la Data Room du dossier';
               } else if (values.cin) {
                 patch.repCinUploaded = true;
                 patch.repCinFileName = `CIN ${values.cin.toUpperCase()}`;
@@ -1800,11 +1632,11 @@ function MoraleForm({
           <div className="mb-3 flex items-start gap-2 rounded-md border border-success/30 bg-success/5 p-2 text-xs">
             <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
             <div className="flex-1">
-              <p className="font-semibold text-success">CIN du representant captee</p>
+              <p className="font-semibold text-success">CIN du représentant lue</p>
               <p className="text-fg-subtle">
                 {d.repPrenom || d.repNom
                   ? `${d.repPrenom ?? ''} ${d.repNom ?? ''}`.trim() + (d.repCin ? ` — ${d.repCin}` : '')
-                  : (d.repCin ? `Numero : ${d.repCin}` : 'Donnees extraites')}
+                  : (d.repCin ? `Numéro : ${d.repCin}` : 'Données lues sur la pièce')}
                 {d.repCinFileName ? ` · ${d.repCinFileName}` : ''}
               </p>
             </div>
@@ -1812,8 +1644,9 @@ function MoraleForm({
         )}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Civilite</label>
+            <label className="mb-1 block text-xs text-fg-subtle">Civilité</label>
             <select
+              aria-label="Civilité du représentant"
               value={d.repCivilite ?? 'M'}
               onChange={(e) =>
                 onChange({ repCivilite: e.target.value as 'M' | 'Mme' })
@@ -1828,7 +1661,7 @@ function MoraleForm({
             <label className="mb-1 block text-xs text-fg-subtle">
               Nom <span className="text-danger">*</span>
             </label>
-            <input aria-label="Nom"
+            <input aria-label="Nom du représentant"
               type="text"
               value={d.repNom ?? ''}
               onChange={(e) => onChange({ repNom: e.target.value })}
@@ -1837,9 +1670,9 @@ function MoraleForm({
           </div>
           <div>
             <label className="mb-1 block text-xs text-fg-subtle">
-              Prenom <span className="text-danger">*</span>
+              Prénom <span className="text-danger">*</span>
             </label>
-            <input aria-label="Prenom"
+            <input aria-label="Prénom du représentant"
               type="text"
               value={d.repPrenom ?? ''}
               onChange={(e) => onChange({ repPrenom: e.target.value })}
@@ -1853,8 +1686,8 @@ function MoraleForm({
           {/* 2026-06-11 — Champs ajoutes : Adresse, Date+Lieu naissance,
               Nationalite, CIN valable jusqu'au + Qualite. */}
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Nationalite</label>
-            <input aria-label="Nationalite"
+            <label className="mb-1 block text-xs text-fg-subtle">Nationalité</label>
+            <input aria-label="Nationalité du représentant"
               type="text"
               value={d.repNationalite ?? ''}
               onChange={(e) => onChange({ repNationalite: e.target.value })}
@@ -1864,7 +1697,7 @@ function MoraleForm({
           </div>
           <div>
             <label className="mb-1 block text-xs text-fg-subtle">Date de naissance</label>
-            <input aria-label="Date de naissance"
+            <input aria-label="Date de naissance du représentant"
               type="date"
               value={d.repDateNaissance ?? ''}
               onChange={(e) => onChange({ repDateNaissance: e.target.value })}
@@ -1873,7 +1706,7 @@ function MoraleForm({
           </div>
           <div>
             <label className="mb-1 block text-xs text-fg-subtle">Lieu de naissance</label>
-            <input aria-label="Lieu de naissance"
+            <input aria-label="Lieu de naissance du représentant"
               type="text"
               value={d.repLieuNaissance ?? ''}
               onChange={(e) => onChange({ repLieuNaissance: e.target.value })}
@@ -1882,8 +1715,8 @@ function MoraleForm({
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">CIN valable jusqu'au</label>
-            <input aria-label="CIN valable jusqu'au"
+            <label className="mb-1 block text-xs text-fg-subtle">CIN valable jusqu’au</label>
+            <input aria-label="CIN du représentant valable jusqu’au"
               type="date"
               value={d.repPieceValidite ?? ''}
               onChange={(e) => onChange({ repPieceValidite: e.target.value })}
@@ -1894,23 +1727,23 @@ function MoraleForm({
             <label className="mb-1 block text-xs text-fg-subtle">
               Adresse <span className="text-danger">*</span>
             </label>
-            <input aria-label="Adresse"
+            <input aria-label="Adresse du représentant"
               type="text"
               value={d.repAdresse ?? ''}
               onChange={(e) => onChange({ repAdresse: e.target.value })}
-              placeholder="Adresse complete"
+              placeholder="Adresse complète"
               className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
             />
           </div>
           <div className="md:col-span-3">
             <label className="mb-1 block text-xs text-fg-subtle">
-              Qualite <span className="text-danger">*</span>
+              Qualité <span className="text-danger">*</span>
             </label>
-            <input aria-label="Qualite"
+            <input aria-label="Qualité du représentant"
               type="text"
               value={d.repQualite ?? ''}
               onChange={(e) => onChange({ repQualite: e.target.value })}
-              placeholder="Gerant / President / Mandataire..."
+              placeholder="Gérant, président, mandataire…"
               className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
             />
           </div>

@@ -43,12 +43,12 @@ export function SignupSuccess({ workspaceCode, email, contactEmail, selectedPlan
           </div>
 
           <h2 className="mb-3 font-heading text-3xl font-semibold text-fg">
-            Votre espace est pret !
+            Votre espace est prêt !
           </h2>
           <p className="mb-8 text-fg-subtle">Bienvenue dans la plateforme JURIKA.</p>
 
           <div className="mb-8 rounded-xl bg-accent/10 p-6">
-            <p className="mb-2 text-sm text-fg-subtle">Votre code workspace :</p>
+            <p className="mb-2 text-sm text-fg-subtle">Code de votre cabinet :</p>
 
             <div className="mb-4 flex items-center justify-center gap-3">
               <span className="font-mono text-3xl font-bold text-accent">
@@ -69,7 +69,7 @@ export function SignupSuccess({ workspaceCode, email, contactEmail, selectedPlan
             </div>
 
             <p className="text-xs text-fg-subtle">
-              Conservez ce code precieusement — il sera demande a chaque connexion.
+              Conservez précieusement ce code : il vous sera demandé à chaque connexion.
             </p>
           </div>
 
@@ -90,14 +90,14 @@ export function SignupSuccess({ workspaceCode, email, contactEmail, selectedPlan
               <div className="flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 flex-shrink-0 text-red-600 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-red-900">Email d'activation non envoye</p>
+                  <p className="font-semibold text-red-900">Courriel d’activation non envoyé</p>
                   <p className="mt-1 text-xs text-red-800">
-                    Une erreur technique a empeche l'envoi de votre mot de passe temporaire.
-                    Notez bien le code workspace ci-dessus et contactez{' '}
+                    Une erreur technique a empêché l’envoi de votre mot de passe temporaire.
+                    Notez bien le code du cabinet ci-dessus et contactez{' '}
                     <a href="mailto:support@jurika.ma" className="font-semibold underline">
                       support@jurika.ma
                     </a>{' '}
-                    en mentionnant ce code pour debloquer votre compte.
+                    en mentionnant ce code pour débloquer votre compte.
                   </p>
                 </div>
               </div>
@@ -114,14 +114,14 @@ export function SignupSuccess({ workspaceCode, email, contactEmail, selectedPlan
               </li>
               <li>
                 2. Connectez-vous avec votre identifiant{' '}
-                <span className="font-mono font-bold">{email}</span> + mot de passe
+                <span className="font-mono font-bold">{email}</span> et le mot de passe temporaire reçu par courriel
               </li>
-              <li>3. Configurez votre 2FA au premier login</li>
+              <li>3. Configurez votre double authentification à la première connexion</li>
             </ul>
             {/* BUG 7 (2026-06-08) — distinction identifiant vs notifications */}
             {contactEmail && contactEmail !== email && (
               <p className="mt-3 rounded border border-emerald-200 bg-emerald-100 px-2 py-1 text-[11px] text-emerald-800">
-                Vos notifications continuent d'arriver sur{' '}
+                Vos notifications continuent d’arriver sur{' '}
                 <span className="font-mono font-semibold">{contactEmail}</span>.
               </p>
             )}
@@ -132,7 +132,7 @@ export function SignupSuccess({ workspaceCode, email, contactEmail, selectedPlan
             onClick={() => navigate('/login')}
             className="h-12 w-full rounded-lg bg-accent font-semibold text-bg transition hover:bg-accent-hover"
           >
-            Aller a la connexion →
+            Aller à la connexion →
           </button>
         </div>
       </div>

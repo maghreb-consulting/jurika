@@ -106,7 +106,7 @@ class LiquidationWorkflowTest {
     void etapeHorsPlage_rejetee() {
         assertThatThrownBy(() -> run(5, Map.of()))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("1..4");
+                .hasMessageContaining("1 \u00e0 4");
     }
 
     // ── Etape 1 : selection de la societe ──────────────────────────────
@@ -143,7 +143,7 @@ class LiquidationWorkflowTest {
         facts.put("statut", "ACTIVE");
         StepResult res = run(1, step1Payload(), facts);
         assertThat(res.canAdvance()).isFalse();
-        assertThat(res.message()).contains("DISSOUTE");
+        assertThat(res.message()).contains("soci\u00e9t\u00e9s dissoutes");
     }
 
     @Test
@@ -153,7 +153,7 @@ class LiquidationWorkflowTest {
         p.remove("dossierId");
         StepResult res = run(1, p);
         assertThat(res.canAdvance()).isFalse();
-        assertThat(res.message()).contains("Selectionnez la societe");
+        assertThat(res.message()).contains("S\u00e9lectionnez la soci\u00e9t\u00e9");
     }
 
     // ── Etape 1 : ANTI-DUPLICATION (liquidateur + date de dissolution BD) ──
@@ -292,7 +292,7 @@ class LiquidationWorkflowTest {
         void clotureAvantDissolution_rejete() {
             StepResult res = clotureApres(-5);
             assertThat(res.canAdvance()).isFalse();
-            assertThat(res.message()).contains("preceder");
+            assertThat(res.message()).contains("pr\u00e9c\u00e9der");
         }
 
         @Test
@@ -388,7 +388,7 @@ class LiquidationWorkflowTest {
         p.remove("dateClotureLiquidation");
         StepResult res = run(1, p);
         assertThat(res.canAdvance()).isFalse();
-        assertThat(res.message()).contains("cloture de la");
+        assertThat(res.message()).contains("cl\u00f4ture de la");
     }
 
     @Test
@@ -437,7 +437,7 @@ class LiquidationWorkflowTest {
     void step2_pvNonValide_blocage() {
         StepResult res = run(2, Map.of("rapportValide", true, "annonceValide", true));
         assertThat(res.canAdvance()).isFalse();
-        assertThat(res.message()).contains("PV de cloture");
+        assertThat(res.message()).contains("PV de cl\u00f4ture");
     }
 
     @Test
@@ -453,7 +453,7 @@ class LiquidationWorkflowTest {
     void step2_annonceNonValide_blocage() {
         StepResult res = run(2, Map.of("pvValide", true, "rapportValide", true));
         assertThat(res.canAdvance()).isFalse();
-        assertThat(res.message()).contains("annonce legale");
+        assertThat(res.message()).contains("annonce l\u00e9gale");
     }
 
     @Test

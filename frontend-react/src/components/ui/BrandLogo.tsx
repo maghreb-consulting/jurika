@@ -1,27 +1,33 @@
 import { useThemeStore } from '../../store/themeStore';
-// Nouveau logo JURIKA (2026-07-27) : embleme officiel (ecusson navy + monogramme
-// J dore + balance/IA) livre en deux fonds — navy (surfaces sombres) et clair
-// (surfaces claires) — plus le lockup horizontal complet. Tuiles 512px (127 Ko),
-// nettes a 36-48px retina inclus.
-import emblemNavyUrl from '../../assets/brand/jurika-emblem-navy.png';
-import emblemClairUrl from '../../assets/brand/jurika-emblem-clair.png';
-import logoFullUrl from '../../assets/brand/jurika-logo-full.png';
+// Lot L6 (E6) : logo valide "Moucharabieh" (livraison ~/docs/logo/3-moucharabieh,
+// copie sous des noms ASCII). Vectoriel : net a toutes les tailles.
+// - embleme.svg : tuile marine, pour les surfaces claires ;
+// - embleme-ivoire.svg : tuile ivoire, pour les surfaces sombres ;
+// - logo-horizontal-clair.svg : embleme + "JURIKA" marine et or, fond transparent ;
+// - logo-horizontal-sombre-sans-fond.svg : variante sombre (tuile ivoire, lettres
+//   blanches et or) dont le fond marine plein a ete retire pour se poser sur
+//   l'en-tete sombre de l'application.
+import embleme from '../../assets/brand/moucharabieh/embleme.svg';
+import embleIvoire from '../../assets/brand/moucharabieh/embleme-ivoire.svg';
+import horizontalClair from '../../assets/brand/moucharabieh/logo-horizontal-clair.svg';
+import horizontalSombre from '../../assets/brand/moucharabieh/logo-horizontal-sombre-sans-fond.svg';
 
 /**
- * Logo JURIKA — source de verite unique pour l'affichage de la marque.
+ * Logo JURIKA -- source unique pour l'affichage de la marque.
  *
- *  - `variant='emblem'` (defaut) : ecusson carre. Le fond (`tone`) doit matcher
- *    la surface : `navy` sur fond sombre, `clair` sur fond clair. `tone='auto'`
- *    (defaut) resout automatiquement selon le theme applicatif (data-theme) :
- *    theme sombre -> navy, theme clair -> clair.
- *  - `variant='full'` : lockup horizontal (embleme + « JURIKA » + baseline).
- *    Fond velin clair inclus -> a reserver aux surfaces claires.
+ *  - `variant='emblem'` (defaut) : embleme carre ;
+ *  - `variant='full'` : logo horizontal (embleme + "JURIKA" + "Gestion juridique
+ *    des entreprises").
  *
- * `size` = hauteur en px (ratio preserve, `width: auto`).
+ * `tone` designe la SURFACE sur laquelle le logo est pose : `clair` (fond clair :
+ * embleme marine, lettres marine), `navy` (fond sombre : embleme ivoire, lettres
+ * blanches). `auto` (defaut) suit le theme de l'application.
+ *
+ * `size` = hauteur en pixels (proportions conservees).
  */
 interface BrandLogoProps {
   variant?: 'emblem' | 'full';
-  /** Fond de l'embleme. 'auto' (defaut) suit le theme applicatif. */
+  /** Surface sous le logo. 'auto' (defaut) suit le theme applicatif. */
   tone?: 'auto' | 'navy' | 'clair';
   /** Hauteur en pixels. Defaut 36. */
   size?: number;
@@ -30,13 +36,9 @@ interface BrandLogoProps {
 
 export function BrandLogo({ variant = 'emblem', tone = 'auto', size = 36, className }: BrandLogoProps) {
   const mode = useThemeStore((s) => s.mode);
-  const resolvedTone = tone === 'auto' ? (mode === 'dark' ? 'navy' : 'clair') : tone;
+  const sombre = tone === 'auto' ? mode === 'dark' : tone === 'navy';
   const src =
-    variant === 'full'
-      ? logoFullUrl
-      : resolvedTone === 'navy'
-        ? emblemNavyUrl
-        : emblemClairUrl;
+    variant === 'full' ? (sombre ? horizontalSombre : horizontalClair) : sombre ? embleIvoire : embleme;
   return (
     <img
       src={src}

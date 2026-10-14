@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import type { Ticket } from '../../types/ticket';
 import { TICKET_TYPE_LABELS } from '../../types/ticket';
+import { InfoBulle, TexteAide } from '../ui/Aide';
 import { WorkflowRoadmap, type RoadmapStep } from './WorkflowRoadmap';
 
 interface FooterButtons {
@@ -82,12 +83,12 @@ export function WorkflowShell({
             <div className="mt-1 flex flex-wrap gap-3 text-xs text-fg-subtle">
               {ticket.dossierId && (
                 <span className="inline-flex items-center gap-1">
-                  <FolderOpen className="h-3 w-3" /> Dossier : {ticket.dossierId.slice(0, 8)}
+                  <FolderOpen className="h-3 w-3" /> Rattaché à un dossier
                 </span>
               )}
               {ticket.deadline && (
                 <span className="inline-flex items-center gap-1">
-                  <Calendar className="h-3 w-3" /> Echeance : {new Date(ticket.deadline).toLocaleDateString('fr-FR')}
+                  <Calendar className="h-3 w-3" /> Échéance : {new Date(ticket.deadline).toLocaleDateString('fr-FR')}
                 </span>
               )}
             </div>
@@ -95,8 +96,12 @@ export function WorkflowShell({
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={() => navigate(-1)}>
-            <Save className="mr-1 h-4 w-4" /> Sauvegarder & Quitter
+            <ChevronLeft className="mr-1 h-4 w-4" /> Quitter
           </Button>
+          <InfoBulle
+            libelle="Que conserve « Quitter » ?"
+            texte="Les étapes validées sont conservées. La saisie en cours de l’étape affichée, non validée, n’est conservée que si vous l’avez sauvegardée en brouillon. Vous reprendrez le parcours depuis la page du ticket."
+          />
           {onCancel && (
             <Button variant="danger" onClick={onCancel}>
               <X className="mr-1 h-4 w-4" /> Annuler le ticket
@@ -107,12 +112,21 @@ export function WorkflowShell({
 
       {blocked && (
         <div className="rounded-2xl border-2 border-rose-300 bg-danger/10 p-4">
-          <p className="text-sm font-bold text-danger">ETAPE BLOQUANTE</p>
+          <p className="text-sm font-bold text-danger">Étape bloquante</p>
           {blockedReason && (
             <p className="mt-1 text-xs text-danger">{blockedReason}</p>
           )}
         </div>
       )}
+
+      <TexteAide cle="parcours-etapes" titre="Comment avancer dans le parcours">
+        Remplissez l’étape affichée, puis cliquez sur « {f.validateLabel} » : l’étape suivante
+        s’ouvre une fois celle-ci validée. Ce qui manque est signalé à côté du bouton de
+        validation. Vous pouvez revenir à une étape déjà validée en cliquant sur son numéro.
+        {f.showSaveDraft && onSaveDraft
+          ? ' « Sauvegarder le brouillon » conserve votre saisie sans la valider.'
+          : ''}
+      </TexteAide>
 
       <WorkflowRoadmap currentStep={currentStep} steps={steps} blocked={blocked} viewStep={viewStep} onNavigate={onNavigate} />
 
@@ -128,19 +142,19 @@ export function WorkflowShell({
         <div>
           {f.showPrev && onPrev && (
             <Button variant="secondary" onClick={onPrev} disabled={f.prevDisabled || saving}>
-              <ChevronLeft className="mr-1 h-4 w-4" /> Etape precedente
+              <ChevronLeft className="mr-1 h-4 w-4" /> Étape précédente
             </Button>
           )}
         </div>
         <div className="flex flex-wrap gap-2">
           {f.showSaveDraft && onSaveDraft && (
             <Button variant="ghost" onClick={onSaveDraft} disabled={saving}>
-              <Save className="mr-1 h-4 w-4" /> Sauvegarder brouillon
+              <Save className="mr-1 h-4 w-4" /> Sauvegarder le brouillon
             </Button>
           )}
           {f.showValidate && onValidate && (
             <Button onClick={onValidate} loading={saving} disabled={f.validateDisabled || saving}>
-              {saving ? 'Validation en cours...' : f.validateLabel}
+              {saving ? 'Validation en cours…' : f.validateLabel}
             </Button>
           )}
         </div>

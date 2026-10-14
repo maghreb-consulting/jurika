@@ -7,8 +7,6 @@ import {
   Square,
   Users,
 } from 'lucide-react';
-import {
-} from '../../../types/dataroom';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -69,11 +67,16 @@ export function Step5Validation({
   const dirigeantsBag = unwrap(data, 'step5', 'dirigeants');
   const gerants = (dirigeantsBag.dirigeants as GerantRow[] | undefined) ?? [];
   const juridique = unwrap(data, 'step7', 'juridique');
-  const docs = ((juridique.documents as unknown[]) ?? []) as Array<{
-    uploaded?: boolean;
-    uiType?: string;
-    type?: string;
-  }>;
+  const documentsJuridiques = juridique.documents;
+  const docs = useMemo(
+    () =>
+      ((documentsJuridiques as unknown[]) ?? []) as Array<{
+        uploaded?: boolean;
+        uiType?: string;
+        type?: string;
+      }>,
+    [documentsJuridiques],
+  );
   // Lot 2 (2026-09-07) — les recapitulatifs COMPTABLE et FISCAL sont retires.
   // Les etapes 8/9/10 qui les alimentaient ont disparu avec les dossiers
   // comptable et fiscal (lot 1) : les deux panneaux affichaient donc « 0 / 0 »
@@ -91,8 +94,16 @@ export function Step5Validation({
       const t = d.uiType ?? d.type;
       if (d.uploaded && t) set.add(t);
     });
-    const cats = ['STATUTS', 'BAIL', 'DOMICILIATION', 'CNIE', 'CN', 'RC', 'IF'];
-    return cats.map((c) => ({ value: c, done: set.has(c) }));
+    const cats: Array<[string, string]> = [
+      ['STATUTS', 'Statuts'],
+      ['BAIL', 'Contrat de bail'],
+      ['DOMICILIATION', 'Attestation de domiciliation'],
+      ['CNIE', 'Pièces d’identité (CNIE)'],
+      ['CN', 'Certificat négatif'],
+      ['RC', 'Registre du commerce'],
+      ['IF', 'Identifiant fiscal'],
+    ];
+    return cats.map(([c, label]) => ({ value: c, label, done: set.has(c) }));
   }, [docs]);
 
   return (
@@ -110,7 +121,7 @@ export function Step5Validation({
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
         <h3 className="mb-3 flex items-center gap-2 text-base font-bold text-fg">
           <ShieldCheck className="h-5 w-5 text-success" />
-          Fiche juridique consolidee
+          Fiche juridique consolidée
         </h3>
         <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
           <Item label="Raison sociale" value={String(denom.denomination ?? '—')} />
@@ -127,8 +138,8 @@ export function Step5Validation({
             value={String(capital.nombreParts ?? '—')}
           />
           <Item
-            label="Dossier rattache"
-            value={resolvedDossierId ? resolvedDossierId : 'A definir'}
+            label="Dossier rattaché"
+            value={resolvedDossierId ? 'Oui' : 'À définir'}
           />
         </div>
       </div>
@@ -138,15 +149,15 @@ export function Step5Validation({
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
         <h3 className="mb-3 flex items-center gap-2 text-base font-bold text-fg">
           <Users className="h-5 w-5 text-accent" />
-          Associes &amp; gerants
+          Associés et gérants
         </h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <p className="mb-1 text-xs font-semibold uppercase text-fg-subtle">
-              Associes ({associes.length})
+              Associés ({associes.length})
             </p>
             {associes.length === 0 ? (
-              <p className="text-xs text-fg-subtle">Aucun associe saisi.</p>
+              <p className="text-xs text-fg-subtle">Aucun associé saisi : complétez l’étape « Associés ».</p>
             ) : (
               <ul className="space-y-1 text-sm text-fg">
                 {associes.map((a, i) => (
@@ -167,10 +178,10 @@ export function Step5Validation({
           </div>
           <div>
             <p className="mb-1 text-xs font-semibold uppercase text-fg-subtle">
-              Gerants ({gerants.length})
+              Gérants ({gerants.length})
             </p>
             {gerants.length === 0 ? (
-              <p className="text-xs text-fg-subtle">Aucun gerant saisi.</p>
+              <p className="text-xs text-fg-subtle">Aucun gérant saisi : complétez l’étape « Dirigeants ».</p>
             ) : (
               <ul className="space-y-1 text-sm text-fg">
                 {gerants.map((g, i) => (
@@ -199,7 +210,7 @@ export function Step5Validation({
           <CompletenessPanel title="Juridique" items={completionJuridique} />
         </div>
         <p className="mt-2 text-[11px] text-fg-subtle">
-          Indicatif — un dossier vide ne bloque pas la finalisation.
+          À titre indicatif : un document manquant ne bloque pas la finalisation.
         </p>
       </div>
 
@@ -212,13 +223,16 @@ export function Step5Validation({
             className="mt-1 h-4 w-4 rounded"
           />
           <span>
-            Je certifie que les informations et documents importes sont exacts
-            et conformes a la realite de la societe.
+            Je certifie que les informations et documents repris sont exacts
+            et conformes à la réalité de la société.
           </span>
         </label>
       </div>
 
-      <div className="flex items-center justify-end pt-2">
+      <div className="flex items-center justify-end gap-3 pt-2">
+        {!validated && (
+          <p className="text-xs text-fg-subtle">Cochez la case de certification pour finaliser.</p>
+        )}
         <button
           type="submit"
           disabled={!validated || saving}
@@ -228,7 +242,7 @@ export function Step5Validation({
               : 'cursor-not-allowed bg-border text-fg-subtle'
           }`}
         >
-          {saving ? 'Validation en cours...' : 'Finaliser'}
+          {saving ? 'Validation en cours…' : 'Finaliser'}
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>

@@ -11,6 +11,7 @@ import {
   Smartphone,
 } from 'lucide-react';
 import { BrandLogo } from '../../components/ui/BrandLogo';
+import { InfoBulle } from '../../components/ui/Aide';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { TextField } from '../../components/ui/TextField';
@@ -173,7 +174,7 @@ export function Choose2faMethodPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'jurika-recovery-codes.txt';
+    a.download = 'jurika-codes-de-recuperation.txt';
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -181,9 +182,8 @@ export function Choose2faMethodPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-bg via-bg-raised to-accent/10 px-4 py-12">
       <div className="w-full max-w-lg">
-        <div className="mb-8 flex items-center justify-center gap-2">
-          <BrandLogo size={40} />
-          <span className="font-heading font-heading text-2xl font-semibold text-fg">JURIKA</span>
+        <div className="mb-8 flex items-center justify-center">
+          <BrandLogo variant="full" size={48} />
         </div>
 
         <Card className="p-8">
@@ -191,12 +191,16 @@ export function Choose2faMethodPage() {
             <div className="space-y-5">
               <div className="text-center">
                 <ShieldCheck className="mx-auto h-12 w-12 text-accent" />
-                <h2 className="mt-3 font-heading text-xl font-semibold text-fg">
-                  Activation 2FA obligatoire
-                </h2>
+                <h1 className="mt-3 flex items-center justify-center gap-1 font-heading text-xl font-semibold text-fg">
+                  Activez la double authentification
+                  <InfoBulle
+                    libelle="Aide sur la double authentification"
+                    texte="À chaque connexion, en plus du mot de passe, JURIKA vous demandera un code à 6 chiffres : celui de votre application d’authentification, ou celui reçu par SMS. Après l’activation, vous recevrez 10 codes de récupération à conserver, utiles si vous perdez votre téléphone."
+                  />
+                </h1>
                 <p className="mt-1 text-sm text-fg-muted">
-                  Pour proteger votre cabinet, vous devez activer la double authentification
-                  avant d'acceder a la plateforme.
+                  Pour protéger les dossiers de votre cabinet, la double authentification est
+                  obligatoire avant d’accéder à la plateforme. Choisissez une méthode.
                 </p>
               </div>
 
@@ -204,22 +208,22 @@ export function Choose2faMethodPage() {
                 type="button"
                 onClick={pickTotp}
                 disabled={loading}
-                className="flex w-full items-center gap-4 rounded-xl border-2 border-accent/40 bg-accent/10/30 p-4 text-left transition-colors hover:border-indigo-400 hover:bg-accent/10"
+                className="flex w-full items-center gap-4 rounded-xl border-2 border-accent/40 bg-accent/5 p-4 text-left transition-colors hover:border-accent hover:bg-accent/10"
               >
                 <div className="rounded-lg bg-accent/20 p-2">
                   <Smartphone className="h-6 w-6 text-accent" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="font-semibold text-fg">Google Authenticator (QR Code)</p>
+                    <p className="font-semibold text-fg">Application d’authentification (QR code)</p>
                     <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold text-bg-raised">
-                      Recommande
+                      Recommandée
                     </span>
                   </div>
                   <p className="mt-0.5 text-xs text-fg-subtle">
-                    Aucun numero de telephone requis. Scannez un QR Code avec
-                    n'importe quel telephone, tablette ou desktop avec une app
-                    d'authentification (Google Authenticator, Authy, 1Password, etc.)
+                    Aucun numéro de téléphone requis. Scannez un QR code avec une application
+                    d’authentification (Google Authenticator, Microsoft Authenticator, Authy,
+                    1Password…), sur téléphone, tablette ou ordinateur.
                   </p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-fg-subtle" />
@@ -244,8 +248,8 @@ export function Choose2faMethodPage() {
                       </span>
                     </p>
                     <p className="text-xs text-fg-subtle">
-                      La verification par SMS n'est pas encore disponible. Utilisez
-                      Google Authenticator ci-dessus.
+                      La vérification par SMS n’est pas encore disponible. Utilisez
+                      l’application d’authentification ci-dessus.
                     </p>
                   </div>
                 </div>
@@ -254,21 +258,21 @@ export function Choose2faMethodPage() {
                   type="button"
                   onClick={pickSms}
                   disabled={loading}
-                  className="flex w-full items-center gap-4 rounded-xl border border-border bg-bg-raised p-4 text-left transition-colors hover:border-emerald-300 hover:bg-emerald-50/40"
+                  className="flex w-full items-center gap-4 rounded-xl border border-border bg-bg-raised p-4 text-left transition-colors hover:border-success hover:bg-success/5"
                 >
-                  <div className="rounded-lg bg-emerald-100 p-2">
+                  <div className="rounded-lg bg-success/10 p-2">
                     <MessageSquare className="h-6 w-6 text-success" />
                   </div>
                   <div className="flex-1">
                     <p className="font-semibold text-fg">SMS</p>
                     <p className="text-xs text-fg-subtle">
-                      Code 6 chiffres envoye au{' '}
+                      Code à 6 chiffres envoyé au{' '}
                       {phoneHint ? (
                         <span className="font-mono">{phoneHint}</span>
                       ) : (
-                        'numero declare a l\'inscription'
+                        'numéro déclaré à l’inscription'
                       )}
-                      . Necessite un telephone avec une carte SIM active.
+                      . Nécessite un téléphone avec une carte SIM active.
                     </p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-fg-subtle" />
@@ -281,22 +285,22 @@ export function Choose2faMethodPage() {
                   <div className="flex-1">
                     <p className="font-semibold text-fg-muted">SMS indisponible</p>
                     <p className="text-xs text-fg-subtle">
-                      Aucun numero de telephone n'a ete renseigne lors de l'inscription.
-                      Utilisez Google Authenticator ci-dessus, ou ajoutez un telephone
-                      depuis votre profil pour activer cette methode.
+                      Aucun numéro de téléphone n’a été renseigné lors de l’inscription.
+                      Utilisez l’application d’authentification ci-dessus, ou faites ajouter
+                      votre numéro par votre cabinet pour activer cette méthode.
                     </p>
                   </div>
                 </div>
               ) : null}
 
               <p className="text-center text-xs text-fg-subtle">
-                Pas de telephone ? Choisissez <strong className="text-fg-muted">Google Authenticator</strong>.
-                Vous pouvez utiliser une app desktop sans SIM.
+                Pas de téléphone ? Choisissez l’<strong className="text-fg-muted">application d’authentification</strong> :
+                elle fonctionne aussi sur ordinateur, sans carte SIM.
               </p>
 
               {loading && (
                 <p className="flex items-center justify-center gap-2 text-sm text-fg-subtle">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Patientez...
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Patientez…
                 </p>
               )}
               {error && (
@@ -311,9 +315,10 @@ export function Choose2faMethodPage() {
             <form onSubmit={confirmTotp} className="space-y-5" noValidate>
               <div className="text-center">
                 <Smartphone className="mx-auto h-10 w-10 text-accent" />
-                <h2 className="mt-3 font-heading text-xl font-semibold text-fg">Scanner le QR Code</h2>
+                <h1 className="mt-3 font-heading text-xl font-semibold text-fg">Scannez le QR code</h1>
                 <p className="mt-1 text-sm text-fg-muted">
-                  Avec Google Authenticator, Authy ou Microsoft Authenticator.
+                  Avec votre application d’authentification, puis saisissez le code à 6 chiffres
+                  qu’elle affiche.
                 </p>
               </div>
 
@@ -321,7 +326,7 @@ export function Choose2faMethodPage() {
                 <div className="flex justify-center">
                   <img
                     src={`data:image/png;base64,${qrCode}`}
-                    alt="QR Code TOTP"
+                    alt="QR code à scanner avec votre application d’authentification"
                     className="h-48 w-48 rounded-lg border-2 border-border bg-bg-raised p-2"
                   />
                 </div>
@@ -329,13 +334,13 @@ export function Choose2faMethodPage() {
 
               <div className="space-y-1 rounded-lg border border-border bg-bg-overlay p-3">
                 <p className="text-xs font-medium text-fg-muted">
-                  Cle secrete (si vous ne pouvez pas scanner) :
+                  Clé secrète (si vous ne pouvez pas scanner) :
                 </p>
                 <code className="break-all text-xs font-mono text-fg">{secret}</code>
               </div>
 
               <TextField
-                label="Code a 6 chiffres genere par l'app"
+                label="Code à 6 chiffres affiché par l’application"
                 name="totpCode"
                 inputMode="numeric"
                 pattern="[0-9]{6}"
@@ -354,7 +359,7 @@ export function Choose2faMethodPage() {
               )}
 
               <Button type="submit" className="w-full" loading={loading} disabled={totpCode.length !== 6}>
-                Activer le 2FA
+                Activer la double authentification
               </Button>
             </form>
           )}
@@ -363,15 +368,15 @@ export function Choose2faMethodPage() {
             <form onSubmit={confirmSms} className="space-y-5" noValidate>
               <div className="text-center">
                 <MessageSquare className="mx-auto h-10 w-10 text-success" />
-                <h2 className="mt-3 font-heading text-xl font-semibold text-fg">Verification SMS</h2>
+                <h1 className="mt-3 font-heading text-xl font-semibold text-fg">Vérification par SMS</h1>
                 <p className="mt-1 text-sm text-fg-muted">
-                  Un code a 6 chiffres a ete envoye au <span className="font-mono">{maskedPhone}</span>.
-                  Il expire dans 5 minutes.
+                  Un code à 6 chiffres a été envoyé au <span className="font-mono">{maskedPhone}</span>.
+                  Il n’est valable que quelques minutes.
                 </p>
               </div>
 
               <TextField
-                label="Code SMS"
+                label="Code reçu par SMS"
                 name="smsCode"
                 inputMode="numeric"
                 pattern="[0-9]{6}"
@@ -390,7 +395,7 @@ export function Choose2faMethodPage() {
               )}
 
               <Button type="submit" className="w-full" loading={loading} disabled={smsCode.length !== 6}>
-                Activer le 2FA
+                Activer la double authentification
               </Button>
               <button
                 type="button"
@@ -406,14 +411,15 @@ export function Choose2faMethodPage() {
             <div className="space-y-5">
               <div className="text-center">
                 <Lock className="mx-auto h-10 w-10 text-warning" />
-                <h2 className="mt-3 font-heading text-xl font-semibold text-fg">Codes de recuperation</h2>
+                <h1 className="mt-3 font-heading text-xl font-semibold text-fg">Codes de récupération</h1>
                 <p className="mt-1 text-sm text-fg-muted">
-                  Conservez ces 10 codes en lieu sur. Ils ne seront plus jamais affiches.
-                  Chaque code n'est utilisable qu'une seule fois.
+                  Conservez ces 10 codes en lieu sûr : ils ne seront plus jamais affichés. Chaque
+                  code ne sert qu’une fois, si vous perdez l’accès à votre méthode de double
+                  authentification.
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 rounded-lg border border-amber-200 bg-warning/10 p-4">
+              <div className="grid grid-cols-2 gap-2 rounded-lg border border-warning/40 bg-warning/10 p-4">
                 {recoveryCodes.map((c) => (
                   <code
                     key={c}
@@ -429,7 +435,7 @@ export function Choose2faMethodPage() {
                   <Copy className="mr-2 h-4 w-4" /> Copier
                 </Button>
                 <Button variant="secondary" onClick={downloadRecoveryCodes}>
-                  Telecharger .txt
+                  Télécharger (.txt)
                 </Button>
               </div>
 
@@ -440,7 +446,7 @@ export function Choose2faMethodPage() {
                   onChange={(e) => setAcknowledged(e.target.checked)}
                   className="mt-0.5 h-4 w-4 rounded border-border-hi text-accent"
                 />
-                J'ai sauvegarde mes codes de recuperation en lieu sur.
+                J’ai mis mes codes de récupération en lieu sûr.
               </label>
 
               <Button onClick={finalize} disabled={!acknowledged} className="w-full">

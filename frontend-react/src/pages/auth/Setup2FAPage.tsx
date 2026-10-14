@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import { BrandLogo } from '../../components/ui/BrandLogo';
+import { InfoBulle } from '../../components/ui/Aide';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { Card } from '../../components/ui/Card';
@@ -19,12 +20,12 @@ export function Setup2FAPage() {
   const [secret, setSecret] = useState<string>('');
   const [code, setCode] = useState('');
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Vrai des le premier rendu : la preparation (QR code) part au montage.
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
     authService
       .setup2fa()
       .then((r) => {
@@ -77,18 +78,24 @@ export function Setup2FAPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-bg to-accent/10 px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="mb-8 flex items-center justify-center gap-2">
-          <BrandLogo size={40} />
-          <span className="font-heading font-heading text-2xl font-semibold text-fg">JURIKA</span>
+        <div className="mb-8 flex items-center justify-center">
+          <BrandLogo variant="full" size={48} />
         </div>
 
         {step !== 'SHOW_RECOVERY' && (
           <Card className="space-y-5 p-8">
             <div className="text-center">
               <ShieldCheck className="mx-auto h-10 w-10 text-success" />
-              <h1 className="mt-3 font-heading text-xl font-semibold text-fg">Activez la 2FA</h1>
+              <h1 className="mt-3 flex items-center justify-center gap-1 font-heading text-xl font-semibold text-fg">
+                Activez la double authentification
+                <InfoBulle
+                  libelle="Aide sur la double authentification"
+                  texte="1. Ouvrez une application d’authentification (Google Authenticator, Microsoft Authenticator…) sur votre téléphone. 2. Scannez le QR code, ou saisissez le code affiché dessous. 3. Saisissez le code à 6 chiffres que l’application affiche. Vous recevrez ensuite 10 codes de récupération à conserver."
+                />
+              </h1>
               <p className="mt-1 text-sm text-fg-muted">
-                Scannez le QR code avec Google Authenticator
+                Scannez le QR code avec votre application d’authentification, puis saisissez le code
+                à 6 chiffres qu’elle affiche.
               </p>
             </div>
 
@@ -96,7 +103,7 @@ export function Setup2FAPage() {
               <div className="flex justify-center">
                 <img
                   src={`data:image/png;base64,${qrPng}`}
-                  alt="QR code 2FA"
+                  alt="QR code à scanner avec votre application d’authentification"
                   className="h-56 w-56 rounded-lg border border-border bg-bg-raised p-2"
                 />
               </div>
@@ -104,14 +111,14 @@ export function Setup2FAPage() {
 
             {secret && (
               <div className="rounded-lg bg-bg-overlay p-3 text-center text-xs">
-                <p className="text-fg-subtle">Ou saisissez ce code manuellement :</p>
+                <p className="text-fg-subtle">Impossible de scanner ? Saisissez ce code dans l’application :</p>
                 <code className="mt-1 inline-block break-all font-mono text-sm text-fg">{secret}</code>
               </div>
             )}
 
             <form onSubmit={handleConfirm} className="space-y-3" noValidate>
               <TextField
-                label="Code a 6 chiffres"
+                label="Code à 6 chiffres"
                 name="code"
                 inputMode="numeric"
                 pattern="[0-9]{6}"
@@ -139,17 +146,18 @@ export function Setup2FAPage() {
             <div className="text-center">
               <ShieldCheck className="mx-auto h-10 w-10 text-success" />
               <h1 className="mt-3 font-heading text-xl font-semibold text-fg">
-                2FA activee — vos codes de recuperation
+                Double authentification activée : vos codes de récupération
               </h1>
               <p className="mt-1 text-sm text-fg-muted">
-                Ces 10 codes vous permettent de vous reconnecter si vous perdez votre telephone.
+                Ces 10 codes vous permettent de vous reconnecter si vous perdez votre téléphone.
+                Conservez-les en lieu sûr : ils ne seront plus affichés.
               </p>
             </div>
 
             <RecoveryCodesDisplay
               codes={recoveryCodes}
               context="INITIAL_SETUP"
-              continueLabel="J'ai sauvegarde mes codes, continuer"
+              continueLabel="J’ai mis mes codes en lieu sûr, continuer"
               onContinue={() => navigate('/dashboard', { replace: true })}
             />
           </Card>

@@ -1,13 +1,13 @@
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ConvocationPanel, FeuillePresencePanel } from '../SeanceDocPanels';
+import { SeanceFormFields } from '../SeanceForm';
 import {
-  SeanceFormFields,
   emptyAssocie,
   useSeanceForm,
   type SeanceDefaults,
   type SeanceSections,
-} from '../SeanceForm';
+} from '../seanceFormEtat';
 
 /**
  * L4d (E11b) : convocation et feuille de presence rendues par les modeles du corpus.

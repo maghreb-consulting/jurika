@@ -64,7 +64,7 @@ public class RemoveClientAccessUseCase {
                 .setParameter(2, cmd.workspaceId())
                 .getResultList();
         if (rows.isEmpty()) {
-            throw new NotFoundException("Dossier introuvable");
+            throw new NotFoundException("Dossier introuvable.");
         }
         Object[] row = rows.get(0);
         String raisonSociale = String.valueOf(row[1]);

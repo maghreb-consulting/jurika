@@ -39,7 +39,7 @@ public class EmployeEnCharge {
                 ? employe.equals(String.valueOf(r[2]))
                 : employe.equals(String.valueOf(r[0])) || employe.equals(String.valueOf(r[1]));
         if (!enCharge) {
-            throw new AccessDeniedException("Seul l'employé en charge du ticket peut le faire.");
+            throw new AccessDeniedException("Seul l\u2019employ\u00e9 en charge du ticket peut le faire.");
         }
     }
 }

@@ -10,6 +10,7 @@ import ma.jurika.auth.domain.port.SmsOtpCodeRepository.StoredOtp;
 import ma.jurika.auth.domain.port.TokenIssuer;
 import ma.jurika.auth.domain.port.UserRepository;
 import ma.jurika.auth.domain.service.VerificationTokenHasher;
+import ma.jurika.common.exception.BusinessException;
 import ma.jurika.common.exception.NotFoundException;
 import ma.jurika.common.exception.UnauthorizedException;
 import ma.jurika.common.exception.ValidationException;
@@ -82,16 +83,16 @@ public class VerifySmsOtpUseCase {
         TenantContext.set(cmd.workspaceId());
 
         StoredOtp otp = otpRepository.findLatestActive(cmd.userId(), cmd.purpose())
-                .orElseThrow(() -> new NotFoundException("Aucun code SMS actif"));
+                .orElseThrow(() -> new NotFoundException("Aucun code SMS en cours : demandez un nouveau code."));
 
         if (otp.isUsed()) {
-            throw new ValidationException("SMS_OTP_ALREADY_USED");
+            throw new BusinessException("SMS_OTP_ALREADY_USED", "Ce code a d\u00e9j\u00e0 \u00e9t\u00e9 utilis\u00e9 : demandez-en un nouveau.");
         }
         if (otp.isExpired()) {
-            throw new ValidationException("SMS_OTP_EXPIRED");
+            throw new BusinessException("SMS_OTP_EXPIRED", "Ce code a expir\u00e9 : demandez-en un nouveau.");
         }
         if (otp.isExhausted()) {
-            throw new ValidationException("SMS_OTP_TOO_MANY_ATTEMPTS");
+            throw new BusinessException("SMS_OTP_TOO_MANY_ATTEMPTS", "Trop d\u2019essais pour ce code : demandez-en un nouveau.");
         }
 
         String submittedHash = hasher.hash(cmd.code());
@@ -108,14 +109,14 @@ public class VerifySmsOtpUseCase {
                     Map.of("attempts", String.valueOf(otp.attempts() + 1),
                             "locked", String.valueOf(lockUntil != null)));
             throw new UnauthorizedException(lockUntil != null
-                    ? "Compte verrouille temporairement (trop d'echecs 2FA)"
-                    : "Code SMS invalide");
+                    ? "Compte verrouill\u00e9 temporairement apr\u00e8s trop d\u2019\u00e9checs de double authentification : r\u00e9essayez plus tard."
+                    : "Code re\u00e7u par SMS incorrect.");
         }
 
         // Lot L0 (E12b) : consommation ATOMIQUE avant les effets metier ; une
         // requete concurrente qui a deja consomme ce code fait echouer celle-ci.
         if (!otpRepository.markUsed(otp.id(), Instant.now())) {
-            throw new ValidationException("SMS_OTP_ALREADY_USED");
+            throw new BusinessException("SMS_OTP_ALREADY_USED", "Ce code a d\u00e9j\u00e0 \u00e9t\u00e9 utilis\u00e9 : demandez-en un nouveau.");
         }
         userRepository.resetFailedLogin(cmd.userId());
 
@@ -135,7 +136,7 @@ public class VerifySmsOtpUseCase {
         // mecanisme d'emission.
         if ("2FA_SETUP".equals(cmd.purpose())) {
             User refreshed = userRepository.findById(cmd.userId())
-                    .orElseThrow(() -> new NotFoundException("Utilisateur disparu apres setup SMS"));
+                    .orElseThrow(() -> new NotFoundException("Utilisateur introuvable apr\u00e8s la configuration du SMS."));
 
             // BUG 6 (decision 2026-06-08 chore) — Fin d'onboarding via SMS : si
             // le user est encore PENDING ET mcp=false ET 2FA configuree (SMS),
@@ -150,7 +151,7 @@ public class VerifySmsOtpUseCase {
                         cmd.ipAddress(), cmd.userAgent(),
                         Map.of("previousStatus", "PENDING", "onboardingStep", "2fa_confirm_sms"));
                 refreshed = userRepository.findById(refreshed.id())
-                        .orElseThrow(() -> new NotFoundException("Utilisateur disparu apres setStatus"));
+                        .orElseThrow(() -> new NotFoundException("Utilisateur introuvable apr\u00e8s le changement de statut."));
             }
 
             AuthTokens tokens = tokenIssuer.issue(refreshed);

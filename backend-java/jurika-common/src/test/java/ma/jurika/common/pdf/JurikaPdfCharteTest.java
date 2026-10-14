@@ -53,6 +53,26 @@ class JurikaPdfCharteTest {
         return doc.finish();
     }
 
+    /**
+     * Lot L6 (E1) : toutes les polices sont EMBARQUEES, pour un rendu identique sur tous les
+     * ordinateurs et a l'impression. Les titres etaient en Times non embarque (police standard 14) :
+     * chaque lecteur la remplacait par sa propre police, aux chasses differentes.
+     */
+    @Test
+    void toutes_les_polices_sont_embarquees() throws Exception {
+        try (PDDocument d = Loader.loadPDF(exemple(60))) {
+            List<String> nonEmbarquees = new ArrayList<>();
+            for (org.apache.pdfbox.pdmodel.PDPage page : d.getPages()) {
+                org.apache.pdfbox.pdmodel.PDResources res = page.getResources();
+                for (org.apache.pdfbox.cos.COSName nom : res.getFontNames()) {
+                    org.apache.pdfbox.pdmodel.font.PDFont f = res.getFont(nom);
+                    if (!f.isEmbedded()) nonEmbarquees.add(f.getName());
+                }
+            }
+            assertThat(nonEmbarquees).as("polices non embarquees").isEmpty();
+        }
+    }
+
     @Test
     void memes_donnees_memes_octets() {
         assertThat(exemple(3)).isEqualTo(exemple(3));

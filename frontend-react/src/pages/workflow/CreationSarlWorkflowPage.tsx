@@ -23,6 +23,8 @@ import { Step9Synthese } from './steps/Step9Synthese';
 import { CancelTicketDialog } from '../tickets/CancelTicketDialog';
 import { useWorkflow } from './useWorkflow';
 import { WorkflowBoot } from './WorkflowBoot';
+import { AideEtape } from './AideEtape';
+import { ETAPES_CREATION } from './aidesParcours';
 
 /** Forme juridique restreinte aux 2 valeurs supportees par la creation SARL. */
 type SarlForm = 'SARL' | 'SARL_AU';
@@ -179,7 +181,7 @@ function CreationSarlWorkflowPageBody() {
       } catch (err) {
         setDatasetWarnings((prev) => [
           ...prev,
-          `Enregistrement piece ${code} : ${err instanceof Error ? err.message : 'echec'}`,
+          `Enregistrement de la pièce « ${label} » : ${err instanceof Error ? err.message : 'échec'}`,
         ]);
       }
       // 2) Depot Dataroom (uniquement si dossier deja attache au ticket).
@@ -194,7 +196,7 @@ function CreationSarlWorkflowPageBody() {
         } catch (err) {
           setDatasetWarnings((prev) => [
             ...prev,
-            `Depot Dataroom ${label} : ${err instanceof Error ? err.message : 'echec'}`,
+            `Dépôt dans la Data Room de « ${label} » : ${err instanceof Error ? err.message : 'échec'}`,
           ]);
         }
       }
@@ -226,7 +228,7 @@ function CreationSarlWorkflowPageBody() {
       } catch (err) {
         setDatasetWarnings((prev) => [
           ...prev,
-          `Depot Dataroom (genere) ${title} : ${err instanceof Error ? err.message : 'echec'}`,
+          `Dépôt dans la Data Room du document produit « ${title} » : ${err instanceof Error ? err.message : 'échec'}`,
         ]);
       }
     },
@@ -348,8 +350,8 @@ function CreationSarlWorkflowPageBody() {
 
   if (!ticket || !progress) {
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger">
-        {error ?? 'Workflow introuvable'}
+      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+        {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
       </div>
     );
   }
@@ -360,8 +362,8 @@ function CreationSarlWorkflowPageBody() {
   const formeJuridique: SarlForm = ticketForme ?? readFormeJuridique(stepData);
   const formeLabel =
     formeJuridique === 'SARL_AU'
-      ? 'Mode : SARL_AU (1 associe)'
-      : 'Mode : SARL multi-associes';
+      ? 'SARL à associé unique'
+      : 'SARL à plusieurs associés';
 
   // 2026-08-12 (consultation lecture seule) — un workflow TERMINÉ, ou un ticket
   // CLOTURÉ / ANNULÉ, reste CONSULTABLE mais NON modifiable : valeurs saisies +
@@ -482,7 +484,7 @@ function CreationSarlWorkflowPageBody() {
         } catch (err) {
           setDatasetWarnings((prev) => [
             ...prev,
-            `Mise a jour des identifiants du dossier : ${extractError(err).message}`,
+            `Mise à jour des identifiants du dossier : ${extractError(err).message}`,
           ]);
         }
 
@@ -625,7 +627,7 @@ function CreationSarlWorkflowPageBody() {
           ) : (
             <>
               <Button variant="secondary" onClick={() => navigate(-1)}>
-                <Save className="mr-1 h-4 w-4" /> Sauvegarder & Quitter
+                <Save className="mr-1 h-4 w-4" /> Enregistrer et quitter
               </Button>
               <Button variant="danger" onClick={() => setShowCancel(true)}>
                 <X className="mr-1 h-4 w-4" /> Annuler le ticket
@@ -644,9 +646,9 @@ function CreationSarlWorkflowPageBody() {
 
       {step < maxStep && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          Vous consultez l'etape {step}/{progress.totalSteps} (etape la plus avancee atteinte : {maxStep}).
+          Vous consultez l’étape {step}/{progress.totalSteps} (étape la plus avancée atteinte : {maxStep}).
           {!readOnly &&
-            ' Vous pouvez modifier les valeurs puis revalider — la progression ne sera pas perdue.'}
+            ' Vous pouvez modifier les valeurs puis revalider : la progression ne sera pas perdue.'}
         </div>
       )}
 
@@ -656,7 +658,7 @@ function CreationSarlWorkflowPageBody() {
 
       {datasetWarnings.length > 0 && (
         <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
-          <p className="font-semibold">Avertissements Data Room :</p>
+          <p className="font-semibold">Avertissements de la Data Room (la saisie n’est pas bloquée) :</p>
           <ul className="ml-4 list-disc">
             {datasetWarnings.slice(-3).map((w, i) => (
               <li key={i}>{w}</li>
@@ -670,6 +672,10 @@ function CreationSarlWorkflowPageBody() {
             Effacer
           </button>
         </div>
+      )}
+
+      {!readOnly && (
+        <AideEtape parcours="creation" etapes={ETAPES_CREATION} etape={step} />
       )}
 
       <div className="rounded-2xl border border-border bg-bg-raised p-6">
@@ -686,7 +692,7 @@ function CreationSarlWorkflowPageBody() {
                   ? 'ticket annulé'
                   : ticket.statut === 'CLOTURE_DOSSIER'
                     ? 'ticket clôturé'
-                    : 'workflow terminé'}
+                    : 'parcours terminé'}
                 . Les valeurs saisies, les étapes et les documents générés sont
                 consultables ; aucune modification n'est possible.
               </span>
@@ -725,11 +731,11 @@ function CreationSarlWorkflowPageBody() {
 
       <footer className="flex flex-wrap items-center justify-between gap-2 pt-1">
         <Button variant="secondary" onClick={goPrev} disabled={step <= 1 || saving}>
-          <ChevronLeft className="mr-1 h-4 w-4" /> Precedent
+          <ChevronLeft className="mr-1 h-4 w-4" /> Étape précédente
         </Button>
         {step < maxStep && (
           <Button variant="secondary" onClick={goNext} disabled={saving}>
-            Suivant (sans modifier) <ChevronRight className="ml-1 h-4 w-4" />
+            Étape suivante (sans modifier) <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
         )}
       </footer>

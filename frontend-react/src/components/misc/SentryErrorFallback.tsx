@@ -14,8 +14,8 @@ export function SentryErrorFallback({ resetError }: SentryErrorFallbackProps) {
           Une erreur inattendue est survenue
         </h1>
         <p className="text-sm text-fg-muted mb-4">
-          L'incident a ete signale a notre equipe technique. Vous pouvez retenter
-          l'operation ou recharger la page.
+          Vous pouvez réessayer l’opération ou recharger la page. Si le problème persiste,
+          signalez-le au support en indiquant ce que vous faisiez à ce moment-là.
         </p>
         <div className="flex gap-2 justify-center">
           <button
@@ -23,7 +23,7 @@ export function SentryErrorFallback({ resetError }: SentryErrorFallbackProps) {
             className="px-4 py-2 rounded bg-fg text-bg-raised text-sm hover:bg-fg-muted"
             onClick={resetError}
           >
-            Reessayer
+            Réessayer
           </button>
           <button
             type="button"

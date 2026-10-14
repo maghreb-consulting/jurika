@@ -20,8 +20,8 @@ public enum DeadlineRule {
      * Severite : WARNING a J-15, CRITICAL a J-3.
      */
     CN_EXPIRY_90D(
-            "Expiration du Certificat Negatif",
-            "Le CN doit etre utilise pour deposer au RC avant son expiration (90 jours).",
+            "Expiration du Certificat N\u00e9gatif",
+            "Le CN doit \u00eatre utilis\u00e9 pour d\u00e9poser au RC avant son expiration (90 jours).",
             Period.ofDays(90),
             DeadlineSeverity.WARNING),
 
@@ -31,8 +31,8 @@ public enum DeadlineRule {
      * Declenche : ticket Creation passe en signatures completes.
      */
     RC_DEPOT_3M(
-            "Depot au Registre de Commerce",
-            "L'immatriculation au RC doit etre realisee dans les 3 mois suivant la signature des statuts.",
+            "D\u00e9p\u00f4t au Registre de Commerce",
+            "L\u2019immatriculation au RC doit \u00eatre r\u00e9alis\u00e9e dans les 3 mois suivant la signature des statuts.",
             Period.ofMonths(3),
             DeadlineSeverity.WARNING),
 
@@ -41,8 +41,8 @@ public enum DeadlineRule {
      * Declenche : remplissage du numero RC.
      */
     CNSS_DECL_30D(
-            "Declaration CNSS",
-            "La declaration d'affiliation CNSS doit etre faite dans les 30 jours suivant le RC.",
+            "D\u00e9claration CNSS",
+            "La d\u00e9claration d\u2019affiliation CNSS doit \u00eatre faite dans les 30 jours suivant le RC.",
             Period.ofDays(30),
             DeadlineSeverity.WARNING),
 
@@ -51,8 +51,8 @@ public enum DeadlineRule {
      * Declenche : changement annee exercice (uplaod premier document comptable).
      */
     CLOTURE_COMPTABLE_6M(
-            "Cloture comptable annuelle",
-            "Les comptes annuels doivent etre approuves dans les 6 mois suivant la cloture de l'exercice.",
+            "Cl\u00f4ture comptable annuelle",
+            "Les comptes annuels doivent \u00eatre approuv\u00e9s dans les 6 mois suivant la cl\u00f4ture de l\u2019exercice.",
             Period.ofMonths(6),
             DeadlineSeverity.INFO),
 
@@ -62,7 +62,7 @@ public enum DeadlineRule {
      */
     LIQUIDATION_PUBLI_16J(
             "Publication de la liquidation",
-            "La publication de la decision de liquidation doit intervenir dans les 16 jours (delai indicatif).",
+            "La publication de la d\u00e9cision de liquidation doit intervenir dans les 16 jours (d\u00e9lai indicatif).",
             Period.ofDays(16),
             DeadlineSeverity.INFO),
 
@@ -72,7 +72,7 @@ public enum DeadlineRule {
      */
     STEP_STALE_7D(
             "Ticket sans progression",
-            "Aucune transition depuis 7 jours. A relancer ou cloturer.",
+            "Aucune transition depuis 7 jours. \u00c0 relancer ou \u00e0 cl\u00f4turer.",
             Period.ofDays(7),
             DeadlineSeverity.WARNING);
 

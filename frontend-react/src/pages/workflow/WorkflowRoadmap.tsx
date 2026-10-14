@@ -1,5 +1,7 @@
 import { Check, Lock } from 'lucide-react';
-import { STEP_LABELS_CREATION } from '../../types/workflow';
+import { ETAPES_CREATION, libellesEtapes } from './aidesParcours';
+
+const LIBELLES_CREATION = libellesEtapes(ETAPES_CREATION);
 
 interface Props {
   /** HWM serveur — etape la plus avancee atteinte. */
@@ -9,7 +11,7 @@ interface Props {
   viewStep?: number;
   /** Si fourni, rend cliquables les etapes 1..currentStep. */
   onNavigate?: (step: number) => void;
-  /** Libelles d etapes optionnels (defaut = labels CREATION). */
+  /** Libelles d'etapes optionnels (defaut : etapes de la creation). */
   labels?: Record<number, string>;
 }
 
@@ -23,14 +25,14 @@ export function WorkflowRoadmap({
   const view = viewStep ?? currentStep;
   const steps = Array.from({ length: totalSteps }, (_, i) => i + 1);
   const labelFor = (n: number) =>
-    labels?.[n] ?? STEP_LABELS_CREATION[n] ?? `Etape ${n}`;
+    labels?.[n] ?? LIBELLES_CREATION[n] ?? `Étape ${n}`;
   // RG-UX : pourcentage de progression = (etapes validees) / total.
   // Une etape est validee si son numero < currentStep (HWM). On laisse 100% si
   // currentStep > totalSteps.
   const validatedCount = Math.min(currentStep - 1, totalSteps);
   const percent = Math.round((Math.max(0, validatedCount) / totalSteps) * 100);
   return (
-    <nav className="rounded-2xl border border-border bg-bg-raised p-4" aria-label="Progression du workflow">
+    <nav className="rounded-2xl border border-border bg-bg-raised p-4" aria-label="Progression du parcours">
       <ol className="flex items-center gap-1 overflow-x-auto">
         {steps.map((s) => {
           const validated = s < currentStep;
@@ -53,9 +55,9 @@ export function WorkflowRoadmap({
             ? 'cursor-not-allowed opacity-70'
             : '';
           const tooltip = isFuture
-            ? `Etape ${s} verrouillee — Completez l'etape precedente`
+            ? `Étape ${s} verrouillée : terminez d’abord l’étape précédente`
             : clickable
-            ? `Revenir a l'etape ${s}`
+            ? `Revenir à l’étape ${s}`
             : undefined;
 
           return (
@@ -111,7 +113,7 @@ export function WorkflowRoadmap({
           />
         </div>
         <span className="text-xs font-medium text-fg-subtle">
-          {Math.max(0, validatedCount)}/{totalSteps} etapes
+          {Math.max(0, validatedCount)}/{totalSteps} étapes validées
         </span>
       </div>
     </nav>

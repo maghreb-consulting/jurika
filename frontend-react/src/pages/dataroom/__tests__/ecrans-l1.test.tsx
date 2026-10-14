@@ -181,7 +181,7 @@ describe('4. Bouton de suppression d un document', () => {
     svc.mesDroits.mockResolvedValue({ peutSupprimerDocuments: true, motif: null });
     render(<MemoryRouter><DossierJuridiqueTab dossierId="d1" role="EMPLOYE" /></MemoryRouter>);
     await screen.findAllByText('Statuts');
-    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Supprimer' }).length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Supprimer le document' }).length).toBeGreaterThan(0));
     expect(screen.queryByRole('status')).toBeNull();
   });
 
@@ -192,7 +192,7 @@ describe('4. Bouton de suppression d un document', () => {
     await screen.findAllByText('Statuts');
     expect(await screen.findByRole('status')).toHaveTextContent('Vous pouvez ajouter des documents à ce dossier, mais pas en supprimer.');
     expect(screen.getByRole('status')).toHaveTextContent('demandez-le à votre superviseur');
-    expect(screen.queryByRole('button', { name: 'Supprimer' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Supprimer le document' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Qui peut supprimer un document ?' })).toBeInTheDocument();
   });
 
@@ -200,7 +200,7 @@ describe('4. Bouton de suppression d un document', () => {
     svc.getJuridique.mockResolvedValue(avecDocument());
     render(<MemoryRouter><DossierJuridiqueTab dossierId="d1" role="SUPERVISEUR" /></MemoryRouter>);
     await screen.findAllByText('Statuts');
-    expect(screen.queryByRole('button', { name: 'Supprimer' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Supprimer le document' })).toBeNull();
     expect(svc.mesDroits).not.toHaveBeenCalled();
   });
 });

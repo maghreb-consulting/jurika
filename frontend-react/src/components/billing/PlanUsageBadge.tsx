@@ -84,7 +84,7 @@ export function PlanUsageBadge({ variant = 'compact' }: PlanUsageBadgeProps) {
     >
       <header className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-widest text-fg-muted">Plan actuel</p>
+          <p className="text-xs uppercase tracking-widest text-fg-muted">Forfait actuel</p>
           <h3 className="font-heading text-xl font-semibold text-fg">{usage.planLabel}</h3>
         </div>
         <Link
@@ -124,9 +124,9 @@ export function PlanUsageBadge({ variant = 'compact' }: PlanUsageBadgeProps) {
           data-testid="plan-usage-alert"
         >
           <AlertCircle className="mr-1 inline h-4 w-4" />
-          Limite atteinte sur votre plan {usage.planLabel}.{' '}
+          Limite atteinte pour votre forfait {usage.planLabel}.{' '}
           <Link to="/app/billing" className="underline">
-            Passez au plan supérieur
+            Passez au forfait supérieur
           </Link>{' '}
           pour continuer.
         </div>

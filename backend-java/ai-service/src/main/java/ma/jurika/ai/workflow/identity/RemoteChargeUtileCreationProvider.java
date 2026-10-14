@@ -33,10 +33,10 @@ public class RemoteChargeUtileCreationProvider implements ChargeUtileCreationPro
         } catch (FeignException.NotFound e) {
             throw new NotFoundException("Ticket inconnu");
         } catch (FeignException.Forbidden e) {
-            throw new AccessDeniedException("Seul l'employé en charge du ticket génère ses documents.");
+            throw new AccessDeniedException("Seul l\u2019employ\u00e9 en charge du ticket g\u00e9n\u00e8re ses documents.");
         } catch (FeignException e) {
             throw new IdentiteSocieteIndisponibleException(
-                    "Les donnees du ticket n'ont pas pu etre lues (ticket " + ticketId + ")", e);
+                    "Les donn\u00e9es du ticket n\u2019ont pas pu \u00eatre lues (ticket " + ticketId + ")", e);
         }
     }
 
@@ -45,16 +45,16 @@ public class RemoteChargeUtileCreationProvider implements ChargeUtileCreationPro
         try {
             Map<String, Object> charge = client.chargeUtileAnnulation(ticketId, workspaceId, employeId);
             if (charge == null || charge.isEmpty()) {
-                throw new IdentiteSocieteIndisponibleException("Charge d'annulation vide pour le ticket " + ticketId, null);
+                throw new IdentiteSocieteIndisponibleException("Charge d\u2019annulation vide pour le ticket " + ticketId, null);
             }
             return charge;
         } catch (FeignException.NotFound e) {
             throw new NotFoundException("Ticket inconnu");
         } catch (FeignException.Forbidden e) {
-            throw new AccessDeniedException("Seul l'employ\u00e9 en charge du ticket g\u00e9n\u00e8re ses documents.");
+            throw new AccessDeniedException("Seul l\u2019employ\u00e9 en charge du ticket g\u00e9n\u00e8re ses documents.");
         } catch (FeignException e) {
             throw new IdentiteSocieteIndisponibleException(
-                    "Les donnees de l'annulation n'ont pas pu etre lues (ticket " + ticketId + ")", e);
+                    "Les donn\u00e9es de l\u2019annulation n\u2019ont pas pu \u00eatre lues (ticket " + ticketId + ")", e);
         }
     }
 

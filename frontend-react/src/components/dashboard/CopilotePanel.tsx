@@ -99,7 +99,7 @@ export function CopilotePanel() {
           <div>
             <h3 className="text-lg font-semibold text-fg">Copilote</h3>
             <p className="text-xs text-fg-subtle">
-              Suggestions de l'assistant — à valider
+              Suggestions de l’assistant — à valider
             </p>
           </div>
         </div>
@@ -133,7 +133,7 @@ export function CopilotePanel() {
 
       {rienASignaler ? (
         <p className="py-6 text-center text-sm text-fg-subtle">
-          Rien à signaler aujourd'hui — vos dossiers sont à jour.
+          Rien à signaler aujourd’hui — vos dossiers sont à jour.
         </p>
       ) : (
         <div className="space-y-5">

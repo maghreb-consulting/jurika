@@ -5,7 +5,19 @@ import {
   serializeAssocie,
   sanitizeFilename,
   emptyAssocie,
-} from '../SeanceForm';
+} from '../seanceFormEtat';
+
+// Forme lue par ces tests (le payload est un Record<string, unknown>).
+type Payload = {
+  associeUnique: boolean;
+  formeJuridique: string;
+  societe: { denomination: string; villeGreffe: string };
+  associes: unknown[];
+  documentsJoints: unknown[];
+  ordreDuJour: string[];
+  convocation: Record<string, unknown>;
+  seance: Record<string, unknown>;
+};
 
 describe('SeanceForm — contrat de séance partagé', () => {
   const societe = {
@@ -21,7 +33,7 @@ describe('SeanceForm — contrat de séance partagé', () => {
     const { result } = renderHook(() =>
       useSeanceForm({ formeJuridique: 'SARL', societe }),
     );
-    const p = result.current.buildPayload() as Record<string, any>;
+    const p = result.current.buildPayload() as Payload;
     expect(p.associeUnique).toBe(false);
     expect(p.formeJuridique).toBe('SARL');
     expect(p.societe.denomination).toBe('PARACOSME');
@@ -38,7 +50,7 @@ describe('SeanceForm — contrat de séance partagé', () => {
     const { result } = renderHook(() =>
       useSeanceForm({ formeJuridique: 'SARL_AU', societe }),
     );
-    const p = result.current.buildPayload() as Record<string, any>;
+    const p = result.current.buildPayload() as Payload;
     expect(p.associeUnique).toBe(true);
     expect(p.formeJuridique).toBe('SARL_AU');
   });
@@ -48,7 +60,7 @@ describe('SeanceForm — contrat de séance partagé', () => {
       useSeanceForm({ formeJuridique: 'SARL', societe }),
     );
     act(() => result.current.setOrdreDuJour(['  Approbation des comptes  ', '', 'Affectation']));
-    const p = result.current.buildPayload() as Record<string, any>;
+    const p = result.current.buildPayload() as Payload;
     expect(p.ordreDuJour).toEqual(['Approbation des comptes', 'Affectation']);
   });
 
@@ -61,5 +73,64 @@ describe('SeanceForm — contrat de séance partagé', () => {
 
   it('sanitizeFilename retire les caractères interdits', () => {
     expect(sanitizeFilename('Convocation - A/B:C*?')).toBe('Convocation - A B C');
+  });
+
+  // L6 : les reprises des sources du dossier se font au rendu (plus dans des effets).
+  // Ces tests gardent le comportement : la source arrivee apres le montage remplit un
+  // champ vide, sans jamais ecraser une saisie.
+  it('reprend le siège et la ville du greffe arrivés après le montage, sans écraser une saisie', () => {
+    const { result, rerender } = renderHook(
+      ({ s }) => useSeanceForm({ formeJuridique: 'SARL', societe: s }),
+      { initialProps: { s: { denomination: 'PARACOSME' } as typeof societe | { denomination: string } } },
+    );
+    expect(result.current.lieu).toBe('');
+    expect(result.current.lieuSignature).toBe('');
+    rerender({ s: societe });
+    expect(result.current.lieu).toBe('101 bd Zerktouni, Casablanca');
+    expect(result.current.lieuSignature).toBe('Casablanca');
+    act(() => result.current.setLieu('Salle du conseil'));
+    rerender({ s: { ...societe, siegeSocial: 'Autre siège' } });
+    expect(result.current.lieu).toBe('Salle du conseil');
+  });
+
+  it('propose le premier gérant comme président, et suit la date pilotée en amont', () => {
+    // Liste stable, comme les pages la fournissent (memo) : une liste recreee a chaque
+    // rendu relancerait la reprise des gerants sans fin.
+    const gerants = [{ civilite: 'M.', prenom: 'Ali', nom: 'ALAOUI' }];
+    const { result, rerender } = renderHook(
+      ({ date }) => useSeanceForm({
+        formeJuridique: 'SARL', societe, defaults: { date },
+        initialGerants: gerants,
+      }),
+      { initialProps: { date: '2026-10-01' } },
+    );
+    expect(result.current.presidentNom).toBe('M. Ali ALAOUI');
+    expect(result.current.date).toBe('2026-10-01');
+    rerender({ date: '2026-10-20' });
+    expect(result.current.date).toBe('2026-10-20');
+  });
+
+  it('ordre du jour verrouillé : suit la sélection, même recalculée à chaque rendu', () => {
+    const { result, rerender } = renderHook(
+      ({ odj }) => useSeanceForm({
+        formeJuridique: 'SARL', societe, initialOrdreDuJour: [...odj], lockOrdreDuJour: true,
+      }),
+      { initialProps: { odj: ['Transfert du siège'] } },
+    );
+    expect(result.current.ordreDuJour).toEqual(['Transfert du siège']);
+    rerender({ odj: ['Transfert du siège', 'Augmentation du capital'] });
+    expect(result.current.ordreDuJour).toEqual(['Transfert du siège', 'Augmentation du capital']);
+  });
+
+  it('ordre du jour non verrouillé : une édition manuelle n’est plus écrasée', () => {
+    const { result, rerender } = renderHook(
+      ({ odj }) => useSeanceForm({ formeJuridique: 'SARL', societe, initialOrdreDuJour: odj }),
+      { initialProps: { odj: ['Point A'] } },
+    );
+    rerender({ odj: ['Point B'] });
+    expect(result.current.ordreDuJour).toEqual(['Point B']);
+    act(() => result.current.setOrdreDuJour(['Point saisi']));
+    rerender({ odj: ['Point C'] });
+    expect(result.current.ordreDuJour).toEqual(['Point saisi']);
   });
 });

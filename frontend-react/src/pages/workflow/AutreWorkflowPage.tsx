@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
@@ -9,6 +9,10 @@ import { CancelTicketDialog } from '../tickets/CancelTicketDialog';
 import { useWorkflow } from './useWorkflow';
 import { WorkflowBoot } from './WorkflowBoot';
 import { GenerateDocumentPanel } from '../../components/workflow/GenerateDocumentPanel';
+import { InfoBulle, TexteAide } from '../../components/ui/Aide';
+import { TICKET_TYPE_LABELS } from '../../types/ticket';
+import { AIDE_PARCOURS_GENERIQUE } from './aidesParcours';
+import { useEtatReinitialise } from './parcoursHooks';
 
 /**
  * Monte {@link AutreWorkflowPageBody} SOUS {@link WorkflowBoot} : les champs de chaque
@@ -29,21 +33,22 @@ function AutreWorkflowPageBody() {
   const navigate = useNavigate();
   const { ticket, progress, loading, saving, error, setError, stepData, saveDraft, executeStep, viewStep, maxStep, goToStep, goPrev: navPrev } = useWorkflow();
   const [showCancel, setShowCancel] = useState(false);
-  const [rawJson, setRawJson] = useState('{}');
-
-  useEffect(() => {
-    if (progress) {
+  // Contenu de l'etape courante, recharge quand le parcours ou son etape courante change
+  // (ajustement pendant le rendu, et non plus dans un effet).
+  const [rawJson, setRawJson] = useEtatReinitialise(
+    progress ? `${progress.id}|${progress.currentStep}` : null,
+    () => {
+      if (!progress) return '{}';
       const current = (stepData[`step${progress.currentStep}`] as Record<string, unknown>) ?? {};
-      setRawJson(JSON.stringify(current, null, 2));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [progress?.currentStep, progress?.id]);
+      return JSON.stringify(current, null, 2);
+    },
+  );
 
   if (loading) return <Loader />;
   if (!ticket || !progress)
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger">
-        {error ?? 'Workflow introuvable'}
+      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+        {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
       </div>
     );
 
@@ -51,7 +56,7 @@ function AutreWorkflowPageBody() {
   const total = progress.totalSteps || 1;
   const steps: RoadmapStep[] = Array.from({ length: total }, (_, i) => ({
     number: i + 1,
-    label: `Etape ${i + 1}`,
+    label: `Étape ${i + 1}`,
   }));
   const isTerminated = progress.statut === 'TERMINE';
 
@@ -59,12 +64,12 @@ function AutreWorkflowPageBody() {
     try {
       const v = JSON.parse(rawJson);
       if (typeof v !== 'object' || Array.isArray(v) || v === null) {
-        setError('Le payload doit etre un objet JSON.');
+        setError('Le contenu saisi doit être un objet JSON, entre accolades { }.');
         return null;
       }
       return v as Record<string, unknown>;
     } catch {
-      setError('JSON invalide.');
+      setError('Le contenu saisi n’est pas un JSON valide : vérifiez les guillemets, les virgules et les accolades.');
       return null;
     }
   }
@@ -101,20 +106,44 @@ function AutreWorkflowPageBody() {
         onSaveDraft={!isTerminated ? handleSaveDraft : undefined}
         onValidate={!isTerminated ? handleValidate : undefined}
         onCancel={() => setShowCancel(true)}
-        footer={{ validateLabel: step === total ? 'Finaliser' : "Valider l'etape" }}
+        footer={{ validateLabel: step === total ? 'Finaliser' : 'Valider l’étape' }}
       >
         <div className="space-y-3">
           <header>
             <h2 className="text-lg font-semibold text-fg">
-              Workflow {progress.type} — Etape {step} / {total}
+              Parcours « {TICKET_TYPE_LABELS[ticket.type] ?? ticket.type} » — Étape {step} / {total}
             </h2>
             <p className="text-sm text-fg-subtle">
-              Ce workflow n'a pas de UI dediee. Saisissez le payload JSON pour cette etape.
+              Ce parcours n’a pas encore d’écran dédié : ses données se saisissent sous forme
+              structurée (JSON).
             </p>
           </header>
+          <TexteAide cle="parcours.autre" titre="Aide de cet écran">
+            <ul className="space-y-1">
+              <li>
+                <span className="font-medium text-fg">À faire : </span>
+                {AIDE_PARCOURS_GENERIQUE.faire}
+              </li>
+              <li>
+                <span className="font-medium text-fg">Ce qui manque : </span>
+                {AIDE_PARCOURS_GENERIQUE.manque}
+              </li>
+              <li>
+                <span className="font-medium text-fg">Ensuite : </span>
+                {AIDE_PARCOURS_GENERIQUE.ensuite}
+              </li>
+            </ul>
+          </TexteAide>
           <div>
-            <label className="mb-1 block text-sm font-medium text-fg-muted">Payload JSON</label>
+            <label htmlFor="parcours-autre-donnees" className="mb-1 flex items-center gap-1 text-sm font-medium text-fg-muted">
+              Données de l’étape (JSON)
+              <InfoBulle
+                libelle="Comment saisir les données ?"
+                texte="Saisissez un objet entre accolades, par exemple { &quot;motif&quot;: &quot;…&quot; }. Les données déjà enregistrées pour cette étape sont reprises ; « Sauvegarder brouillon » les conserve sans valider l’étape."
+              />
+            </label>
             <textarea
+              id="parcours-autre-donnees"
               rows={12}
               value={rawJson}
               onChange={(e) => setRawJson(e.target.value)}
@@ -123,7 +152,7 @@ function AutreWorkflowPageBody() {
           </div>
           {isTerminated && (
             <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800">
-              <CheckCircle className="mr-2 inline h-4 w-4" /> Workflow termine.
+              <CheckCircle className="mr-2 inline h-4 w-4" /> Parcours terminé.
               <Button className="ml-3" onClick={() => navigate('/tickets')}>
                 Retour aux tickets
               </Button>

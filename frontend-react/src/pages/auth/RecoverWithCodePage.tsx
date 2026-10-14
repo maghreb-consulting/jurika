@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail } from 'lucide-react';
 import { BrandLogo } from '../../components/ui/BrandLogo';
-import { BrandingPanel } from '../../components/auth/BrandingPanel';
+import { InfoBulle } from '../../components/ui/Aide';
 import { RecoveryCodeForm } from '../../components/auth/RecoveryCodeForm';
 import { Button } from '../../components/ui/Button';
 import { authService } from '../../services/auth.service';
@@ -44,7 +44,7 @@ export function RecoverWithCodePage() {
         patternMsg(
           workspaceCode.toUpperCase(),
           /^JUR-[A-Z0-9]{5}$/,
-          'Format attendu : JUR-XXXXX',
+          'Code du cabinet non valide : format attendu JUR- suivi de 5 lettres ou chiffres.',
         ),
     );
     if (wsErr) {
@@ -71,7 +71,7 @@ export function RecoverWithCodePage() {
         email,
         code,
       );
-      setSession(tokens, 'EMPLOYE', email);
+      setSession(tokens, 'EMPLOYE', email, workspaceCode.toUpperCase());
       navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(extractError(err).message);
@@ -82,31 +82,34 @@ export function RecoverWithCodePage() {
 
   return (
     <div className="flex min-h-screen bg-bg-raised">
-      <BrandingPanel />
-
-      <div className="relative flex w-full flex-col items-center justify-center bg-bg-raised p-8 lg:w-[58%] lg:p-12">
-        <div className="absolute top-6 left-6 flex items-center gap-2 lg:hidden">
-          <BrandLogo size={36} />
-          <span className="font-heading text-xl font-semibold text-fg">JURIKA</span>
-        </div>
+      {/* Lot L6 (E6) : l'ancien panneau de gauche (temoignages de cabinets inventes)
+          est retire, comme sur la page de connexion. */}
+      <div className="relative flex w-full flex-col items-center justify-center bg-bg-raised p-8 lg:p-12">
+        <Link to="/" className="absolute top-6 left-6 flex items-center" aria-label="JURIKA, retour à l’accueil">
+          <BrandLogo variant="full" size={44} />
+        </Link>
 
         <div className="w-full max-w-[480px]">
           {step === 'identify' && (
             <form onSubmit={handleIdentify} data-testid="recovery-identify-form" noValidate>
               <div className="mb-8">
-                <h1 className="mb-2 font-heading text-3xl font-semibold text-fg">
-                  Connexion avec code de recuperation
+                <h1 className="mb-2 flex items-center gap-1 font-heading text-3xl font-semibold text-fg">
+                  Connexion avec un code de récupération
+                  <InfoBulle
+                    libelle="Aide sur les codes de récupération"
+                    texte="À l’activation de la double authentification, JURIKA vous a remis 10 codes de récupération (fichier téléchargé ou copié). Chaque code ne sert qu’une fois. Après la connexion, pensez à régénérer vos codes depuis la page Sécurité de votre compte."
+                  />
                 </h1>
                 <p className="text-sm text-fg-subtle">
-                  Vous n'avez plus acces a votre authenticator ou a votre numero
-                  enregistre&nbsp;? Utilisez l'un de vos 10 codes de recuperation
-                  generes lors de l'activation 2FA.
+                  Vous n’avez plus accès à votre application d’authentification ni au numéro
+                  enregistré&nbsp;? Indiquez d’abord votre workspace et votre adresse, puis l’un de
+                  vos 10 codes de récupération.
                 </p>
               </div>
 
               <div className="mb-4">
                 <label htmlFor="ws-code" className="mb-2 block text-sm font-medium text-fg">
-                  Code workspace
+                  Code du cabinet
                 </label>
                 <input
                   id="ws-code"
@@ -125,7 +128,7 @@ export function RecoverWithCodePage() {
 
               <div className="mb-4">
                 <label htmlFor="email" className="mb-2 block text-sm font-medium text-fg">
-                  Email du compte
+                  Adresse électronique du compte
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-fg-subtle" />
@@ -160,7 +163,7 @@ export function RecoverWithCodePage() {
                 to="/login"
                 className="mt-6 flex w-full items-center justify-center gap-1 text-sm text-fg-subtle hover:text-fg"
               >
-                <ArrowLeft className="h-3.5 w-3.5" /> Retour a la connexion classique
+                <ArrowLeft className="h-3.5 w-3.5" /> Retour à la connexion
               </Link>
             </form>
           )}
@@ -182,7 +185,7 @@ export function RecoverWithCodePage() {
                 }}
                 className="mt-6 flex w-full items-center justify-center gap-1 text-sm text-fg-subtle hover:text-fg"
               >
-                <ArrowLeft className="h-3.5 w-3.5" /> Changer d'identifiants
+                <ArrowLeft className="h-3.5 w-3.5" /> Modifier le workspace ou l’adresse
               </button>
             </>
           )}

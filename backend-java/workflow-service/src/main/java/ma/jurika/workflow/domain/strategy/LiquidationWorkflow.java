@@ -91,7 +91,7 @@ public class LiquidationWorkflow extends AbstractWorkflow {
             case 2 -> stepGeneration(ctx);
             case 3 -> stepPiecesJointes(ctx);
             case 4 -> stepSynthese(ctx);
-            default -> StepResult.blocked("Etape inconnue : " + ctx.step());
+            default -> StepResult.blocked("\u00c9tape inconnue : " + ctx.step());
         };
     }
 
@@ -105,20 +105,20 @@ public class LiquidationWorkflow extends AbstractWorkflow {
         // --- Societe : UUID strict + statut DISSOUTE ---
         String dossierIdRaw = strOrNull(p.get("dossierId"));
         if (dossierIdRaw == null) {
-            return StepResult.blocked("Selectionnez la societe a liquider.");
+            return StepResult.blocked("S\u00e9lectionnez la soci\u00e9t\u00e9 \u00e0 liquider.");
         }
         try {
             UUID.fromString(dossierIdRaw);
         } catch (IllegalArgumentException e) {
             return StepResult.blocked(
-                    "Identifiant de societe invalide. Selectionnez la societe dans la liste.");
+                    "Identifiant de soci\u00e9t\u00e9 invalide. S\u00e9lectionnez la soci\u00e9t\u00e9 dans la liste.");
         }
         Map<String, Object> dossier = readDossier(ctx);
         String statut = strOrNull(dossier.get("statut"));
         if (statut != null && !STATUTS_AUTORISES.contains(statut)) {
             return StepResult.blocked(
-                    "Cette societe (statut « " + statut + " ») ne peut pas etre liquidee. "
-                            + "Seules les societes DISSOUTE sont eligibles.");
+                    "Cette soci\u00e9t\u00e9 (statut \u00ab " + statut + " \u00bb) ne peut pas \u00eatre liquid\u00e9e. "
+                            + "Seules les soci\u00e9t\u00e9s dissoutes peuvent \u00eatre liquid\u00e9es.");
         }
 
         // --- Date de dissolution : LUE EN BD, saisie de secours si absente ---
@@ -128,8 +128,8 @@ public class LiquidationWorkflow extends AbstractWorkflow {
                 dossier.get("dateDissolution"), p.get("dateDissolution")));
         if (dateDissolutionRaw == null) {
             return StepResult.blocked(
-                    "La date de dissolution est introuvable en base pour cette societe. "
-                            + "Renseignez-la (dossier anterieur a l'enregistrement automatique).");
+                    "La date de dissolution est introuvable en base pour cette soci\u00e9t\u00e9. "
+                            + "Renseignez-la (dossier ant\u00e9rieur \u00e0 l\u2019enregistrement automatique).");
         }
         LocalDate dateDissolution = parseDateOrNull(dateDissolutionRaw);
         if (dateDissolution == null) {
@@ -137,7 +137,7 @@ public class LiquidationWorkflow extends AbstractWorkflow {
                     "Date de dissolution invalide. Format attendu : AAAA-MM-JJ.");
         }
         if (dateDissolution.isAfter(LocalDate.now())) {
-            return StepResult.blocked("La date de dissolution ne peut pas etre dans le futur.");
+            return StepResult.blocked("La date de dissolution ne peut pas \u00eatre dans le futur.");
         }
 
         // --- Date de l'AGE de CLOTURE (extraordinaire uniquement) ---
@@ -145,17 +145,17 @@ public class LiquidationWorkflow extends AbstractWorkflow {
                 p.get("dateClotureLiquidation"), p.get("dateCloture"), p.get("dateAGE")));
         if (dateClotureRaw == null) {
             return StepResult.blocked(
-                    "La date de l'assemblee generale extraordinaire de cloture de la "
+                    "La date de l\u2019assembl\u00e9e g\u00e9n\u00e9rale extraordinaire de cl\u00f4ture de la "
                             + "liquidation est obligatoire.");
         }
         LocalDate dateCloture = parseDateOrNull(dateClotureRaw);
         if (dateCloture == null) {
             return StepResult.blocked(
-                    "Date de cloture invalide. Format attendu : AAAA-MM-JJ.");
+                    "Date de cl\u00f4ture invalide. Format attendu : AAAA-MM-JJ.");
         }
         if (dateCloture.isAfter(LocalDate.now().plusDays(30))) {
             return StepResult.blocked(
-                    "La date de cloture ne peut pas etre dans le futur (> 30 jours).");
+                    "La date de cl\u00f4ture ne peut pas \u00eatre dans le futur (> 30 jours).");
         }
 
         // --- RG-LI03 : regle DURE des 15 jours (jours calendaires, dissolution -> cloture) ---
@@ -173,8 +173,8 @@ public class LiquidationWorkflow extends AbstractWorkflow {
         String liquidateurNom = WorkflowSteps.identiteLiquidateur(liquidateur);
         if (liquidateurNom == null) {
             return StepResult.blocked(
-                    "Aucun liquidateur n'est enregistre pour cette societe : designez-le "
-                            + "(gerant ou associe existant, ou liquidateur externe). Il sera "
+                    "Aucun liquidateur n\u2019est enregistr\u00e9 pour cette soci\u00e9t\u00e9 : d\u00e9signez-le "
+                            + "(g\u00e9rant ou associ\u00e9 existant, ou liquidateur externe). Il sera "
                             + "ensuite repris automatiquement.");
         }
         String source = strOrNull(liquidateur.get("source"));
@@ -275,18 +275,18 @@ public class LiquidationWorkflow extends AbstractWorkflow {
         Map<String, Object> p = ctx.payload();
         if (!isTrue(p, "pvValide")) {
             return StepResult.blocked(
-                    "Le PV de cloture de la liquidation doit etre valide avant de poursuivre.");
+                    "Le PV de cl\u00f4ture de la liquidation doit \u00eatre valide avant de poursuivre.");
         }
         if (!isTrue(p, "rapportValide")) {
             return StepResult.blocked(
-                    "Le rapport de liquidation doit etre genere et valide.");
+                    "Le rapport de liquidation doit \u00eatre g\u00e9n\u00e9r\u00e9 et valide.");
         }
         if (!isTrue(p, "annonceValide")) {
             return StepResult.blocked(
-                    "L'annonce legale de cloture de liquidation doit etre validee : sa "
-                            + "publication au Journal d'Annonces Legales fonde la radiation au "
-                            + "registre du commerce (les numero et date de depot legal, attribues "
-                            + "par le greffe apres depot, restent facultatifs a ce stade).");
+                    "L\u2019annonce l\u00e9gale de cl\u00f4ture de liquidation doit \u00eatre valid\u00e9e : sa "
+                            + "publication au Journal d\u2019Annonces L\u00e9gales fonde la radiation au "
+                            + "registre du commerce (les num\u00e9ro et date de d\u00e9p\u00f4t l\u00e9gal, attribu\u00e9s "
+                            + "par le greffe apr\u00e8s d\u00e9p\u00f4t, restent facultatifs \u00e0 ce stade).");
         }
         Map<String, Object> out = new HashMap<>();
         out.put("pvValide", true);
@@ -327,10 +327,10 @@ public class LiquidationWorkflow extends AbstractWorkflow {
         List<String> ouvertes = succursalesOuvertes(ctx);
         if (!ouvertes.isEmpty()) {
             return StepResult.blocked(
-                    "Cette societe exploite encore " + ouvertes.size() + " succursale(s) : "
-                            + String.join(", ", ouvertes) + ". Fermez-les d'abord (workflow "
-                            + "« Fermeture de succursale ») : elles ne peuvent pas survivre a "
-                            + "la radiation de leur societe mere.");
+                    "Cette soci\u00e9t\u00e9 exploite encore " + ouvertes.size() + " succursale(s) : "
+                            + String.join(", ", ouvertes) + ". Fermez-les d\u2019abord (parcours "
+                            + "\u00ab Fermeture de succursale \u00bb) : elles ne peuvent pas survivre \u00e0 "
+                            + "la radiation de leur soci\u00e9t\u00e9 m\u00e8re.");
         }
 
         Map<String, Object> out = new HashMap<>();

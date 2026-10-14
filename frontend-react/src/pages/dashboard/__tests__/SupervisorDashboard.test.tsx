@@ -47,7 +47,7 @@ describe('SupervisorDashboard', () => {
 
     await waitFor(() => expect(screen.getByText(/Tableau de bord — Superviseur/i)).toBeInTheDocument());
     expect(screen.getByText('Total dossiers')).toBeInTheDocument();
-    expect(screen.getByText('Employes')).toBeInTheDocument();
+    expect(screen.getByText('Employés')).toBeInTheDocument();
     expect(screen.getByText('42')).toBeInTheDocument();
   });
 
@@ -59,10 +59,10 @@ describe('SupervisorDashboard', () => {
 
     render(<SupervisorDashboard />);
 
-    await waitFor(() => expect(screen.getByText(/Activite \(14 derniers jours\)/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Activité \(14 derniers jours\)/i)).toBeInTheDocument());
     // Plusieurs sections renvoient "Pas de donnees" (evolution + per-type),
     // ce qui est exactement le comportement attendu en empty state global.
-    expect(screen.getAllByText(/Pas de donnees/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Aucune donnée sur la période/i).length).toBeGreaterThanOrEqual(1);
   });
 
   it('rend les TicketsPerEmploye dans la KpiCard "Employes" (compte = longueur de la liste)', async () => {
@@ -80,6 +80,6 @@ describe('SupervisorDashboard', () => {
     // Attendre la DONNEE (le compte), pas le libelle statique "Employes" present des le
     // premier rendu : lire le compte juste apres le libelle echouait sous charge.
     expect(await screen.findByText('3')).toBeInTheDocument();
-    expect(screen.getByText('Employes')).toBeInTheDocument();
+    expect(screen.getByText('Employés')).toBeInTheDocument();
   });
 });

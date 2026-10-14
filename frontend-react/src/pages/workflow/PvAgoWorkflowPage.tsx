@@ -18,32 +18,25 @@ import { InfoBulle } from '../../components/ui/Aide';
 import { WorkflowShell } from '../../components/workflow/WorkflowShell';
 import type { RoadmapStep } from '../../components/workflow/WorkflowRoadmap';
 import { ticketService } from '../../services/ticket.service';
-import { workflowService, type DossierParties } from '../../services/workflow.service';
 import { CancelTicketDialog } from '../tickets/CancelTicketDialog';
 import { useWorkflow } from './useWorkflow';
 import { useStepAutosave } from './useStepAutosave';
 import { WorkflowBoot } from './WorkflowBoot';
+import { AideEtape } from './AideEtape';
+import { ETAPES_PV_AGO, etapesRoadmap } from './aidesParcours';
+import { useDossierParties, useEtatReinitialise } from './parcoursHooks';
 import { DossierAutocomplete } from '../../components/workflow/DossierAutocomplete';
 import { dataroomService } from '../../services/dataroom.service';
-import {
-  WorkflowDocumentBlock,
-  freshDocState,
-  useDocumentBlocks,
-  type DocState,
-} from '../../components/workflow/WorkflowDocumentBlock';
+import { WorkflowDocumentBlock, type DocState } from '../../components/workflow/WorkflowDocumentBlock';
+import { freshDocState, useDocumentBlocks } from '../../components/workflow/documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
 } from '../../services/workflowDocumentService';
 import { IncidentSeancePanel } from '../../components/workflow/IncidentSeancePanel';
 import { ConvocationPanel, FeuillePresencePanel } from '../../components/workflow/SeanceDocPanels';
-import {
-  SeanceFormFields,
-  sanitizeFilename,
-  useSeanceForm,
-  type AssocieInput,
-  type GerantInput,
-} from '../../components/workflow/SeanceForm';
+import { SeanceFormFields, type AssocieInput, type GerantInput } from '../../components/workflow/SeanceForm';
+import { sanitizeFilename, useSeanceForm } from '../../components/workflow/seanceFormEtat';
 import {
   PiecesJointesPanel,
   type PieceJointeEntry,
@@ -84,13 +77,7 @@ import {
  * pouvaient diverger du corps du PV.
  */
 
-const STEPS: RoadmapStep[] = [
-  { number: 1, label: 'Société + AGO' },
-  { number: 2, label: 'Données du PV' },
-  { number: 3, label: 'Génération' },
-  { number: 4, label: 'Pièces jointes' },
-  { number: 5, label: 'Synthèse' },
-];
+const STEPS: RoadmapStep[] = etapesRoadmap(ETAPES_PV_AGO);
 
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 10 }, (_, i) => `${currentYear - i}`);
@@ -173,25 +160,8 @@ function PvAgoWorkflowPageBody() {
    * base depuis la création — et la feuille de présence de l'AGO repartait d'une
    * liste d'associés vide. Ce chargement supprime toute re-saisie.
    */
-  const [dossierParties, setDossierParties] = useState<DossierParties | null>(null);
-  useEffect(() => {
-    if (!dossierId) {
-      setDossierParties(null);
-      return;
-    }
-    let cancelled = false;
-    workflowService
-      .getDossierParties(dossierId)
-      .then((p) => {
-        if (!cancelled) setDossierParties(p);
-      })
-      .catch(() => {
-        /* best-effort : la saisie manuelle reste possible */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [dossierId]);
+  // Best-effort : un echec de lecture laisse la saisie manuelle possible.
+  const { dossierParties } = useDossierParties(dossierId);
 
   const bdAssocies = useMemo<AssocieInput[]>(
     () =>
@@ -439,8 +409,8 @@ function PvAgoWorkflowPageBody() {
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [loadTplErr, setLoadTplErr] = useState<string | null>(null);
 
-  const [revealErrors, setRevealErrors] = useState(false);
-  useEffect(() => { setRevealErrors(false); }, [viewStep]);
+  // Remises a zero a chaque changement d'etape.
+  const [revealErrors, setRevealErrors] = useEtatReinitialise(viewStep, () => false);
 
   // Point 4 (audit directeur) — « si une variable a deja sa valeur, on la recupere
   // depuis la BD ». A la selection d'une societe, on pre-remplit l'identite depuis
@@ -531,7 +501,7 @@ function PvAgoWorkflowPageBody() {
     };
   }, [
     seance, siegeSocial, villeGreffe, dossier, exerciceClosDate, commissairePresent,
-    commissaireNom, resultatType, resultatNetNum, affectations, dividendeDistribue,
+    commissaireNom, resultatType, resultatNetNum, affectationsEffectives, dividendeDistribue,
     dividendeMontantTotal, dividendeParPart, dividendeMiseEnPaiementDate,
     quitusGerance, conventionsReglementees, conventionsDetail, rapportGestion,
     dossierReference, registrePvNumero, registrePvFeuillet, nombreOriginaux,
@@ -567,9 +537,14 @@ function PvAgoWorkflowPageBody() {
   useEffect(() => {
     if (viewStep < 3 || templates.length > 0) return;
     let cancelled = false;
-    setLoadingTemplates(true);
-    setLoadTplErr(null);
-    listTemplatesForWorkflow('PV_AGO')
+    // Etat de chargement pose dans la promesse (et non de facon synchrone dans l'effet).
+    Promise.resolve()
+      .then(() => {
+        if (cancelled) return [];
+        setLoadingTemplates(true);
+        setLoadTplErr(null);
+        return listTemplatesForWorkflow('PV_AGO');
+      })
       .then((items) => {
         if (cancelled) return;
         const filtered = items.filter((t) => {
@@ -588,7 +563,7 @@ function PvAgoWorkflowPageBody() {
       })
       .catch((e) => {
         if (!cancelled) {
-          setLoadTplErr(e instanceof Error ? e.message : 'Chargement modèles impossible.');
+          setLoadTplErr(e instanceof Error ? e.message : 'Le chargement des modèles a échoué : rechargez la page.');
         }
       })
       .finally(() => { if (!cancelled) setLoadingTemplates(false); });
@@ -612,21 +587,21 @@ function PvAgoWorkflowPageBody() {
     const e: Record<string, string> = {};
     if (viewStep === 1) {
       if (!dossierId) e.dossierId = 'Sélectionnez la société.';
-      if (!exercice) e.exercice = 'Exercice clos obligatoire.';
-      if (!dateAgo) e.dateAgo = "La date de l'assemblée générale ordinaire est obligatoire.";
+      if (!exercice) e.exercice = 'L’exercice clos est obligatoire.';
+      if (!dateAgo) e.dateAgo = 'La date de l’assemblée générale ordinaire est obligatoire.';
       if (convocationError) e.convocation = convocationError;
     }
     if (viewStep === 2) {
       if (!resultatNet || Number.isNaN(Number(resultatNet))) {
-        e.resultatNet = 'Résultat net obligatoire (valeur numérique).';
+        e.resultatNet = 'Le résultat net est obligatoire (valeur numérique).';
       }
       if (!exerciceClosDate) e.exerciceClosDate = 'Confirmez ou saisissez la date de clôture de l’exercice.';
       if (!resultatType) e.resultatType = 'Choisissez le sens du résultat (bénéfice ou perte).';
       if (!commissairePresent) e.commissairePresent = 'Indiquez si un commissaire aux comptes est en fonction.';
       if (isAU) {
         if (!dossierReference.trim()) e.dossierReference = 'Confirmez ou saisissez la référence du dossier.';
-        if (!registrePvNumero.trim()) e.registrePvNumero = 'Numéro du registre des décisions obligatoire.';
-        if (!registrePvFeuillet.trim()) e.registrePvFeuillet = 'Feuillet du registre obligatoire.';
+        if (!registrePvNumero.trim()) e.registrePvNumero = 'Le numéro du registre des décisions est obligatoire.';
+        if (!registrePvFeuillet.trim()) e.registrePvFeuillet = 'Le feuillet du registre est obligatoire.';
         if (!nombreOriginaux.trim()) e.nombreOriginaux = 'Confirmez ou saisissez le nombre d’originaux.';
       }
       if (!affectationOk) {
@@ -634,25 +609,25 @@ function PvAgoWorkflowPageBody() {
           + `(doit égaler le résultat net : ${resultatNetNum.toLocaleString('fr-FR')} MAD).`;
       }
       if (commissairePresent === 'oui' && !commissaireNom.trim()) {
-        e.commissaireNom = 'Nom du commissaire aux comptes obligatoire.';
+        e.commissaireNom = 'Le nom du commissaire aux comptes est obligatoire.';
       }
       if (dividendeDistribue === 'oui') {
         if (!dividendeMontantTotal.trim()) {
-          e.dividendeMontantTotal = 'Montant total des dividendes obligatoire.';
+          e.dividendeMontantTotal = 'Le montant total des dividendes est obligatoire.';
         } else if (num(dividendeMontantTotal) > Math.abs(resultatNetNum)) {
           e.dividendeMontantTotal =
             'Le montant total des dividendes dépasse le résultat à affecter.';
         }
         if (!dividendeParPart.trim()) {
-          e.dividendeParPart = 'Dividende par part obligatoire.';
+          e.dividendeParPart = 'Le dividende par part est obligatoire.';
         }
         if (!dividendeMiseEnPaiementDate) {
-          e.dividendeMiseEnPaiementDate = 'Date de mise en paiement obligatoire.';
+          e.dividendeMiseEnPaiementDate = 'La date de mise en paiement est obligatoire.';
         }
       }
       if (conventionsReglementees === 'oui' && !conventionsDetail.trim()) {
         e.conventionsDetail =
-          'Décrivez les conventions réglementées : elles figurent dans une résolution du PV.';
+          'Décrivez les conventions réglementées : elles figurent dans une résolution du procès-verbal.';
       }
     }
     return e;
@@ -664,83 +639,6 @@ function PvAgoWorkflowPageBody() {
     dividendeParPart, dividendeMiseEnPaiementDate, conventionsReglementees,
     conventionsDetail,
   ]);
-
-  if (loading) return <Loader />;
-  if (!ticket || !progress)
-    return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger">
-        {error ?? 'Workflow introuvable'}
-      </div>
-    );
-
-  const step = viewStep;
-  const isTerminated = progress.statut === 'TERMINE';
-  const showErr = (k: string): string | undefined => (revealErrors ? errors[k] : undefined);
-
-  async function handleValidate() {
-    setError(null);
-    const errs = Object.values(errors).filter(Boolean);
-    if (errs.length > 0) {
-      setRevealErrors(true);
-      setError(`Veuillez corriger ${errs.length} erreur${errs.length > 1 ? 's' : ''} (surlignées en rouge).`);
-      return;
-    }
-    if (step === 1) {
-      await executeStep(1, {
-        dossierId,
-        exerciceClos: exercice,
-        dateAGO: dateAgo,
-        convocation: convocationDate
-          ? { date: convocationDate, heure: convocationHeure || undefined }
-          : undefined,
-      });
-    } else if (step === 2) {
-      await executeStep(2, {
-        approbation: {
-          exerciceClosDate,
-          commissairePresent,
-          commissaireNom: commissairePresent === 'oui' ? commissaireNom : '',
-          resultatType,
-          resultatNet: resultatNetNum,
-          dossierReference, registrePvNumero, registrePvFeuillet, nombreOriginaux,
-          affectations: affectations
-            .filter((a) => a.libelle.trim() || a.montant.trim())
-            .map((a) => ({ libelle: a.libelle.trim(), montant: num(a.montant) })),
-          dividendeDistribue,
-          dividendeMontantTotal:
-            dividendeDistribue === 'oui' ? num(dividendeMontantTotal) : 0,
-          dividendeParPart: dividendeDistribue === 'oui' ? num(dividendeParPart) : 0,
-          dividendeMiseEnPaiementDate:
-            dividendeDistribue === 'oui' ? dividendeMiseEnPaiementDate : '',
-          quitusGerance,
-          conventionsReglementees,
-          conventionsDetail: conventionsReglementees === 'oui' ? conventionsDetail : '',
-        },
-      });
-    } else if (step === 3) {
-      if (!pvTemplate || !docs[pvTemplate.code]?.validated) {
-        setError("Générez puis validez le PV d'approbation avant de continuer.");
-        return;
-      }
-      await executeStep(3, {
-        pvValide: true,
-        // Rapport de gestion : OPTIONNEL, jamais bloquant.
-        rapportGestionValide: !!(rapportTemplate && docs[rapportTemplate.code]?.validated),
-      });
-    } else if (step === 4) {
-      // Étape OPTIONNELLE : jamais bloquante, peut rester vide.
-      await executeStep(4, {
-        piecesJointes: piecesJointes.map((p) => ({
-          id: p.id,
-          label: p.label,
-          filename: p.filename,
-          version: p.version ?? null,
-        })),
-      });
-    } else if (step === 5) {
-      await executeStep(5, {});
-    }
-  }
 
   /** Contenu courant de l'étape — voir la note dans DissolutionWorkflowPage. */
   const draftPayloadFor = useCallback(
@@ -790,14 +688,91 @@ function PvAgoWorkflowPageBody() {
       docs, piecesJointes],
   );
 
-  useStepAutosave(step, () => draftPayloadFor(step), registerDirty);
+  // Appele avant les retours anticipes : l'ordre des hooks ne varie jamais.
+  useStepAutosave(viewStep, () => draftPayloadFor(viewStep), registerDirty);
+
+  if (loading) return <Loader />;
+  if (!ticket || !progress)
+    return (
+      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+        {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
+      </div>
+    );
+
+  const step = viewStep;
+  const isTerminated = progress.statut === 'TERMINE';
+  const showErr = (k: string): string | undefined => (revealErrors ? errors[k] : undefined);
+
+  async function handleValidate() {
+    setError(null);
+    const errs = Object.values(errors).filter(Boolean);
+    if (errs.length > 0) {
+      setRevealErrors(true);
+      setError(`Veuillez corriger ${errs.length} erreur${errs.length > 1 ? 's' : ''} (signalée${errs.length > 1 ? 's' : ''} en rouge).`);
+      return;
+    }
+    if (step === 1) {
+      await executeStep(1, {
+        dossierId,
+        exerciceClos: exercice,
+        dateAGO: dateAgo,
+        convocation: convocationDate
+          ? { date: convocationDate, heure: convocationHeure || undefined }
+          : undefined,
+      });
+    } else if (step === 2) {
+      await executeStep(2, {
+        approbation: {
+          exerciceClosDate,
+          commissairePresent,
+          commissaireNom: commissairePresent === 'oui' ? commissaireNom : '',
+          resultatType,
+          resultatNet: resultatNetNum,
+          dossierReference, registrePvNumero, registrePvFeuillet, nombreOriginaux,
+          affectations: affectations
+            .filter((a) => a.libelle.trim() || a.montant.trim())
+            .map((a) => ({ libelle: a.libelle.trim(), montant: num(a.montant) })),
+          dividendeDistribue,
+          dividendeMontantTotal:
+            dividendeDistribue === 'oui' ? num(dividendeMontantTotal) : 0,
+          dividendeParPart: dividendeDistribue === 'oui' ? num(dividendeParPart) : 0,
+          dividendeMiseEnPaiementDate:
+            dividendeDistribue === 'oui' ? dividendeMiseEnPaiementDate : '',
+          quitusGerance,
+          conventionsReglementees,
+          conventionsDetail: conventionsReglementees === 'oui' ? conventionsDetail : '',
+        },
+      });
+    } else if (step === 3) {
+      if (!pvTemplate || !docs[pvTemplate.code]?.validated) {
+        setError('Générez puis validez le procès-verbal d’approbation avant de continuer.');
+        return;
+      }
+      await executeStep(3, {
+        pvValide: true,
+        // Rapport de gestion : OPTIONNEL, jamais bloquant.
+        rapportGestionValide: !!(rapportTemplate && docs[rapportTemplate.code]?.validated),
+      });
+    } else if (step === 4) {
+      // Étape OPTIONNELLE : jamais bloquante, peut rester vide.
+      await executeStep(4, {
+        piecesJointes: piecesJointes.map((p) => ({
+          id: p.id,
+          label: p.label,
+          filename: p.filename,
+          version: p.version ?? null,
+        })),
+      });
+    } else if (step === 5) {
+      await executeStep(5, {});
+    }
+  }
 
   async function handleSaveDraft() {
     const payload = draftPayloadFor(step);
     if (payload) await saveDraft(step, { [`step${step}`]: payload });
   }
 
-  const templateCode = isAU ? 'PV_APPROBATION_COMPTES_SARL_AU' : 'PV_APPROBATION_COMPTES_SARL';
 
   return (
     <>
@@ -813,20 +788,28 @@ function PvAgoWorkflowPageBody() {
         onSaveDraft={!isTerminated && step < 5 ? handleSaveDraft : undefined}
         onValidate={!isTerminated ? handleValidate : undefined}
         onCancel={() => setShowCancel(true)}
-        footer={{ validateLabel: step === 5 ? 'Finaliser' : "Valider l'étape" }}
+        footer={{ validateLabel: step === 5 ? 'Finaliser' : 'Valider l’étape' }}
       >
+        <AideEtape
+          parcours="pv-ago"
+          etapes={ETAPES_PV_AGO}
+          etape={step}
+          manquants={step <= 2 ? (Object.values(errors).filter(Boolean) as string[]) : undefined}
+        />
+
         {step === 1 && (
           <div className="space-y-4">
             <header>
               <h2 className="text-lg font-semibold text-fg">
-                Étape 1 — Société + exercice clos
+                Étape 1 — Société et exercice clos
               </h2>
               <p className="text-sm text-fg-subtle">
-                Sélectionnez la société (statut ACTIVE) puis l'exercice fiscal clos à approuver.
-                L'identité de la société est <strong>lue en base</strong> : les champs qu'elle
-                fournit sont verrouillés. Le modèle de PV s'adapte automatiquement à la forme
-                juridique. L'approbation des comptes relève <strong>toujours</strong> d'une
-                assemblée générale <strong>ordinaire</strong> — aucun type n'est à choisir.
+                Sélectionnez la société (statut « active ») puis l’exercice clos à approuver.
+                L’identité de la société est <strong>lue dans le dossier</strong> : les champs
+                qu’elle fournit sont verrouillés. Le modèle de procès-verbal s’adapte
+                automatiquement à la forme juridique. L’approbation des comptes relève{' '}
+                <strong>toujours</strong> d’une assemblée générale <strong>ordinaire</strong> :
+                aucun type n’est à choisir.
               </p>
             </header>
 
@@ -840,7 +823,7 @@ function PvAgoWorkflowPageBody() {
               }}
               allowedStatuts={ALLOWED_STATUTS}
               label="Société"
-              help="L'AGO concerne les sociétés ACTIVES (post-création, avant dissolution)."
+              help="L’AGO concerne les sociétés actives (après la création, avant la dissolution)."
             />
             {showErr('dossierId') && <FieldError msg={showErr('dossierId')!} />}
 
@@ -854,20 +837,20 @@ function PvAgoWorkflowPageBody() {
                 }}
                 onBlur={() => setRevealErrors(true)}
                 options={[
-                  { value: '', label: 'Sélectionnez...' },
+                  { value: '', label: 'Sélectionnez…' },
                   ...YEARS.map((y) => ({ value: y, label: y })),
                 ]}
                 error={showErr('exercice')}
               />
               <TextField
-                label="Date de l'AGO *"
+                label="Date de l’AGO *"
                 type="date"
                 value={dateAgo}
                 data-testid="pvago-date-ago"
                 onChange={(e) => setDateAgo(e.target.value)}
                 onBlur={() => setRevealErrors(true)}
                 error={showErr('dateAgo')}
-                hint="Assemblée ORDINAIRE par nature : aucun type à choisir. Elle se tient après la clôture."
+                hint="Assemblée ordinaire par nature : aucun type à choisir. Elle se tient après la clôture de l’exercice."
               />
               {formeAutoDetectee ? (
                 <div className="flex flex-col gap-1">
@@ -875,7 +858,7 @@ function PvAgoWorkflowPageBody() {
                   <div className="flex items-center gap-2 rounded-lg border border-border bg-bg-overlay px-3 py-2 text-sm">
                     <CheckCircle className="h-4 w-4 flex-shrink-0 text-success" />
                     <span className="font-medium text-fg">
-                      {isAU ? 'SARL AU (associé unique)' : 'SARL pluri-associés'}
+                      {isAU ? 'SARL à associé unique' : 'SARL à plusieurs associés'}
                     </span>
                   </div>
                   <p className="text-xs text-fg-subtle">Déduit du dossier</p>
@@ -887,8 +870,8 @@ function PvAgoWorkflowPageBody() {
                     value={formeJuridique}
                     onChange={(e) => setFormeOverride(e.target.value)}
                     options={[
-                      { value: 'SARL', label: 'SARL pluri-associés' },
-                      { value: 'SARL_AU', label: 'SARL AU (associé unique)' },
+                      { value: 'SARL', label: 'SARL à plusieurs associés' },
+                      { value: 'SARL_AU', label: 'SARL à associé unique' },
                     ]}
                   />
                   <p className="text-xs text-warning">
@@ -900,7 +883,7 @@ function PvAgoWorkflowPageBody() {
 
             <div className="rounded-xl border border-border bg-bg-overlay p-4">
               <h3 className="mb-3 text-sm font-semibold text-fg">
-                Identité de la société (pour l'en-tête du PV)
+                Identité de la société (pour l’en-tête du procès-verbal)
               </h3>
               <div className="grid gap-3 md:grid-cols-2">
                 <TextField label="Dénomination" value={denomination} readOnly hint="Depuis le dossier" />
@@ -911,7 +894,7 @@ function PvAgoWorkflowPageBody() {
                   readOnly={!!fromBd.capital}
                   hint={fromBd.capital ? 'Depuis le dossier' : undefined}
                   onChange={(e) => setCapital(e.target.value)}
-                  placeholder="Ex : 100000"
+                  placeholder="Ex. : 100000"
                 />
                 <div className="md:col-span-2">
                   <TextField
@@ -928,7 +911,7 @@ function PvAgoWorkflowPageBody() {
                   type="number"
                   value={nombreParts}
                   onChange={(e) => setNombreParts(e.target.value)}
-                  hint="Non stocké en colonne — saisi ici"
+                  hint="Absent du dossier : saisissez-le ici."
                 />
                 <TextField
                   label="N° RC"
@@ -943,12 +926,12 @@ function PvAgoWorkflowPageBody() {
                   readOnly={!!fromBd.villeGreffe}
                   hint={fromBd.villeGreffe ? 'Depuis le dossier' : undefined}
                   onChange={(e) => setVilleGreffe(e.target.value)}
-                  placeholder="Ex : Casablanca"
+                  placeholder="Ex. : Casablanca"
                 />
               </div>
               <p className="mt-2 text-[11px] text-fg-subtle">
-                Les champs « Depuis le dossier » sont en lecture seule : ils sont réimposés
-                depuis la base à la génération. Pour les corriger, passez par la Data Room →
+                Les champs « Depuis le dossier » sont en lecture seule : la génération reprend
+                toujours la valeur du dossier. Pour les corriger, passez par la Data Room →
                 onglet Juridique → <strong>Identifiants</strong>.
               </p>
             </div>
@@ -959,7 +942,7 @@ function PvAgoWorkflowPageBody() {
             >
               <div className="flex items-center gap-2">
                 <Megaphone className="h-4 w-4 text-accent" />
-                <h4 className="text-sm font-semibold text-fg">Convocation (optionnelle)</h4>
+                <h4 className="text-sm font-semibold text-fg">Convocation (facultative)</h4>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <TextField
@@ -981,9 +964,9 @@ function PvAgoWorkflowPageBody() {
                 />
               </div>
               <p className="text-[11px] text-fg-subtle">
-                Règle des <strong>{CONVOCATION_DELAI_JOURS} jours</strong> : l'assemblée ne peut se
+                Règle des <strong>{CONVOCATION_DELAI_JOURS} jours</strong> : l’assemblée ne peut se
                 tenir moins de {CONVOCATION_DELAI_JOURS} jours calendaires après la convocation.
-                Laisser vide si aucune convocation n'est émise.
+                Laissez vide si aucune convocation n’est émise.
               </p>
               {convocationError && (
                 <div
@@ -1001,9 +984,9 @@ function PvAgoWorkflowPageBody() {
               <div className="flex items-center gap-2">
                 <Info className="h-4 w-4 text-accent" />
                 <span>
-                  Modèle détecté : <code className="rounded bg-bg-overlay px-1.5 py-0.5">{templateCode}</code>
-                  {' '}— <strong>aucune annonce légale</strong> : l'approbation des comptes n'est
-                  pas opposable aux tiers.
+                  Acte produit : procès-verbal d’approbation des comptes
+                  {isAU ? ' (SARL à associé unique)' : ' (SARL)'} — <strong>aucune annonce légale</strong> :
+                  l’approbation des comptes n’est pas opposable aux tiers.
                 </span>
               </div>
             </div>
@@ -1018,11 +1001,11 @@ function PvAgoWorkflowPageBody() {
               </h2>
               <p className="text-sm text-fg-subtle">
                 Renseignez la tenue de la séance (président, présence des associés) puis le
-                résultat de l'exercice, son affectation, les dividendes, le quitus et les
-                conventions réglementées. L'<strong>ordre du jour</strong> et les{' '}
+                résultat de l’exercice, son affectation, les dividendes, le quitus et les
+                conventions réglementées. L’<strong>ordre du jour</strong> et les{' '}
                 <strong>résolutions</strong> sont <strong>déduits</strong> de ces données : ils
-                ne sont plus saisis à la main, pour qu'ils ne puissent pas contredire le corps
-                du PV.
+                ne se saisissent pas à la main, pour qu’ils ne puissent pas contredire le corps
+                du procès-verbal.
               </p>
             </header>
 
@@ -1031,12 +1014,12 @@ function PvAgoWorkflowPageBody() {
 
             {/* Bloc approbation des comptes. */}
             <div className="rounded-xl border border-border bg-bg-raised p-4">
-              <h3 className="mb-3 text-sm font-semibold text-fg">Comptes et résultat de l'exercice</h3>
+              <h3 className="mb-3 text-sm font-semibold text-fg">Comptes et résultat de l’exercice</h3>
               <div className="grid gap-3 md:grid-cols-3">
                 <div>
                   <ValeurProposee
                     id="pvago-exercice-clos"
-                    label="Date de clôture de l'exercice *"
+                    label="Date de clôture de l’exercice *"
                     type="date"
                     proposition={exerciceClosDefault}
                     valeur={exerciceClosDate || undefined}
@@ -1063,7 +1046,7 @@ function PvAgoWorkflowPageBody() {
                   value={resultatNet}
                   onChange={(e) => setResultatNet(e.target.value)}
                   onBlur={() => setRevealErrors(true)}
-                  placeholder="Ex : 250000"
+                  placeholder="Ex. : 250000"
                   error={showErr('resultatNet')}
                 />
               </div>
@@ -1090,10 +1073,10 @@ function PvAgoWorkflowPageBody() {
             {isAU && (
               <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="pvago-mentions-au">
                 <h3 className="mb-1 flex items-center gap-1 text-sm font-semibold text-fg">
-                  Mentions du procès-verbal de l'associé unique
+                  Mentions du procès-verbal de l’associé unique
                   <InfoBulle
                     libelle="Pourquoi ces mentions ?"
-                    texte="La décision de l'associé unique est répertoriée au registre des décisions, coté et paraphé (articles 76 et 112 de la loi 5-96) : le procès-verbal en imprime le numéro et le feuillet, la référence du dossier et le nombre d'originaux."
+                    texte="La décision de l’associé unique est répertoriée au registre des décisions, coté et paraphé (articles 76 et 112 de la loi 5-96) : le procès-verbal en imprime le numéro et le feuillet, la référence du dossier et le nombre d’originaux."
                   />
                 </h3>
                 <div className="grid gap-3 md:grid-cols-2">
@@ -1103,7 +1086,7 @@ function PvAgoWorkflowPageBody() {
                     {showErr('dossierReference') && <p className="mt-1 text-xs text-danger" role="alert">{showErr('dossierReference')}</p>}
                   </div>
                   <div>
-                    <ValeurProposee id="pvago-nombre-originaux" label="Nombre d'originaux *"
+                    <ValeurProposee id="pvago-nombre-originaux" label="Nombre d’originaux *"
                       proposition={USAGES_CABINET.nombreOriginauxEnLettres} valeur={nombreOriginaux || undefined} onChange={setNombreOriginaux} />
                     {showErr('nombreOriginaux') && <p className="mt-1 text-xs text-danger" role="alert">{showErr('nombreOriginaux')}</p>}
                   </div>
@@ -1118,7 +1101,13 @@ function PvAgoWorkflowPageBody() {
             {/* Affectation du résultat (liste : la somme doit égaler le résultat net). */}
             <div className="rounded-xl border border-border bg-bg-raised p-4">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-fg">Affectation du résultat</h3>
+                <h3 className="flex items-center gap-1 text-sm font-semibold text-fg">
+                  Affectation du résultat
+                  <InfoBulle
+                    libelle="Comment répartir le résultat ?"
+                    texte="Répartissez le résultat net entre les postes (réserve légale, report à nouveau…). La ligne « Dividendes » est ajoutée automatiquement à partir du bloc « Dividendes » : ne la saisissez pas ici. Le total affecté doit être égal au résultat net."
+                  />
+                </h3>
                 <button
                   type="button"
                   onClick={() => setAffectations((p) => [...p, { libelle: '', montant: '' }])}
@@ -1131,12 +1120,12 @@ function PvAgoWorkflowPageBody() {
                 {affectations.map((a, i) => (
                   <div key={i} className="grid items-end gap-2 md:grid-cols-[1fr_10rem_auto]">
                     <TextField
-                      label={i === 0 ? 'Poste d\'affectation' : undefined}
+                      label={i === 0 ? 'Poste d’affectation' : undefined}
                       value={a.libelle}
                       onChange={(e) =>
                         setAffectations((p) => p.map((x, j) => (j === i ? { ...x, libelle: e.target.value } : x)))
                       }
-                      placeholder="Ex : Réserve légale, Dividendes, Report à nouveau"
+                      placeholder="Ex. : Réserve légale, Report à nouveau"
                     />
                     <TextField
                       label={i === 0 ? 'Montant (MAD)' : undefined}
@@ -1151,7 +1140,7 @@ function PvAgoWorkflowPageBody() {
                       onClick={() => setAffectations((p) => p.filter((_, j) => j !== i))}
                       disabled={affectations.length <= 1}
                       className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-bg-raised text-fg-subtle transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
-                      aria-label="Supprimer"
+                      aria-label="Supprimer ce poste"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -1191,7 +1180,7 @@ function PvAgoWorkflowPageBody() {
                       onChange={(e) => setDividendeMontantTotal(e.target.value)}
                       onBlur={() => setRevealErrors(true)}
                       error={showErr('dividendeMontantTotal')}
-                      hint="Doit aussi figurer comme poste « Dividendes » dans l'affectation."
+                      hint="Repris automatiquement comme poste « Dividendes » de l’affectation du résultat."
                     />
                     <TextField
                       label="Dividende par part (MAD) *"
@@ -1249,13 +1238,13 @@ function PvAgoWorkflowPageBody() {
                       Description des conventions *
                     </label>
                     <textarea
-                      aria-label="Description des conventions reglementees"
+                      aria-label="Description des conventions réglementées"
                       rows={3}
                       value={conventionsDetail}
                       data-testid="pvago-conventions-detail"
                       onChange={(e) => setConventionsDetail(e.target.value)}
                       onBlur={() => setRevealErrors(true)}
-                      placeholder="Ex : convention de compte courant d'associé conclue le ..., bail consenti par le gérant ..."
+                      placeholder="Ex. : convention de compte courant d’associé conclue le …, bail consenti par le gérant…"
                       className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                     />
                     {showErr('conventionsDetail') && (
@@ -1265,15 +1254,15 @@ function PvAgoWorkflowPageBody() {
                 )}
               </div>
               <p className="mt-2 text-[11px] text-fg-subtle">
-                Ces deux réponses produisent directement les résolutions correspondantes du PV —
-                elles ne sont pas à retaper en texte libre.
+                Ces deux réponses produisent directement les résolutions correspondantes du
+                procès-verbal : elles ne sont pas à retaper en texte libre.
               </p>
             </div>
 
             {/* Lot L4d (E11e) : rapport de gestion (optionnel), modele du corpus selon la forme. */}
             <div className="rounded-xl border border-border bg-bg-overlay p-4">
               <h3 className="mb-3 text-sm font-semibold text-fg">
-                Contenu du rapport de gestion (optionnel)
+                Contenu du rapport de gestion (facultatif)
               </h3>
               <RapportGestionFields
                 valeur={rapportGestion}
@@ -1293,13 +1282,13 @@ function PvAgoWorkflowPageBody() {
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-violet-600" />
                 <h2 className="text-lg font-semibold text-fg">
-                  Étape 3 — Génération du PV d'approbation + rapport de gestion
+                  Étape 3 — Génération du procès-verbal d’approbation et du rapport de gestion
                 </h2>
               </div>
               <p className="text-sm text-fg-subtle">
-                Générez le PV d'approbation des comptes et, en option, le rapport de gestion. Les
-                documents validés sont automatiquement déposés en dataroom juridique. Modèle
-                appliqué : <code className="rounded bg-bg-overlay px-1.5 py-0.5">{templateCode}</code>
+                Générez le procès-verbal d’approbation des comptes et, si vous le souhaitez, le
+                rapport de gestion. Les documents validés sont automatiquement déposés dans la
+                Data Room juridique.
               </p>
             </header>
 
@@ -1311,7 +1300,7 @@ function PvAgoWorkflowPageBody() {
             )}
             {!loadingTemplates && templates.length === 0 && !loadTplErr && (
               <div className="rounded-lg border border-amber-200 bg-warning/10 p-3 text-sm text-amber-800">
-                Aucun modèle compatible n'a été trouvé pour ce dossier.
+                Aucun modèle compatible n’a été trouvé pour ce dossier : vérifiez la forme juridique à l’étape 1, puis rechargez la page.
               </div>
             )}
 
@@ -1336,7 +1325,7 @@ function PvAgoWorkflowPageBody() {
 
             {pvTemplate && !docs[pvTemplate.code]?.validated && (
               <p className="text-xs text-warning">
-                Le PV d'approbation doit être validé pour avancer. Le rapport de gestion est recommandé mais optionnel.
+                Le procès-verbal d’approbation doit être validé pour avancer. Le rapport de gestion est recommandé mais facultatif.
               </p>
             )}
             {rapportTemplate && rapportManquants.length > 0 && (
@@ -1430,14 +1419,14 @@ function PvAgoWorkflowPageBody() {
               <div className="flex items-center gap-2">
                 <Paperclip className="h-5 w-5 text-accent" />
                 <h2 className="text-lg font-semibold text-fg">
-                  Étape 4 — Pièces jointes (optionnelle)
+                  Étape 4 — Pièces jointes (facultative)
                 </h2>
               </div>
               <p className="text-sm text-fg-subtle">
                 Déposez ici les <strong>versions légalisées / signées</strong> (PV signé, rapport
                 de gestion signé, états de synthèse, liasse fiscale). Cette étape est{' '}
                 <strong>entièrement facultative</strong> : vous pouvez la laisser vide et
-                poursuivre vers la synthèse. Chaque dépôt est versionné en Data Room.
+                poursuivre vers la synthèse. Chaque dépôt est versionné dans la Data Room.
               </p>
             </header>
             <PiecesJointesPanel
@@ -1466,9 +1455,9 @@ function PvAgoWorkflowPageBody() {
           <div className="space-y-4" data-testid="pvago-synthese">
             <div className="rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 p-6 text-bg-raised">
               <CheckCircle className="mb-2 h-8 w-8" />
-              <h2 className="text-2xl font-bold">PV d'approbation {exercice} finalisé</h2>
+              <h2 className="text-2xl font-bold">Procès-verbal d’approbation {exercice} finalisé</h2>
               <p className="text-sm text-amber-100">
-                Exercice {exercice} — {templateCode}. PV et rapport déposés en dataroom.
+                Exercice {exercice} : les documents validés sont déposés dans la Data Room.
               </p>
             </div>
             <div className="rounded-xl border border-border bg-bg-raised p-4 text-sm">
@@ -1476,7 +1465,7 @@ function PvAgoWorkflowPageBody() {
               <ul className="space-y-1 text-fg-muted">
                 <li>• Société : <strong>{denomination || '—'}</strong></li>
                 <li>• Exercice clos : <strong>{exerciceClosDate || exercice}</strong></li>
-                <li>• Date de l'AGO : <strong>{dateAgo || '—'}</strong> (assemblée ordinaire)</li>
+                <li>• Date de l’AGO : <strong>{dateAgo || '—'}</strong> (assemblée ordinaire)</li>
                 <li>
                   • Convocation :{' '}
                   {convocationDate
@@ -1504,12 +1493,12 @@ function PvAgoWorkflowPageBody() {
                   • Commissaire aux comptes :{' '}
                   {commissairePresent === 'oui' ? commissaireNom || 'présent' : 'absent'}
                 </li>
-                <li>• PV d'approbation validé : ✓</li>
+                <li>• Procès-verbal d’approbation validé : ✓</li>
                 <li>
                   • Rapport de gestion :{' '}
                   {rapportTemplate && docs[rapportTemplate.code]?.validated
                     ? 'généré et validé'
-                    : 'non généré (optionnel)'}
+                    : 'non généré (facultatif)'}
                 </li>
                 <li>
                   • Pièces jointes :{' '}
@@ -1521,9 +1510,9 @@ function PvAgoWorkflowPageBody() {
             </div>
             <div className="rounded-xl border border-border bg-bg-raised p-4 text-sm text-fg-muted">
               <p>
-                <strong>Aucune annonce légale :</strong> l'approbation des comptes n'est pas
-                opposable aux tiers — elle ne fait l'objet d'aucune publication au Journal
-                d'Annonces Légales.
+                <strong>Aucune annonce légale :</strong> l’approbation des comptes n’est pas
+                opposable aux tiers — elle ne fait l’objet d’aucune publication dans un journal
+                d’annonces légales.
               </p>
             </div>
             {isTerminated && (

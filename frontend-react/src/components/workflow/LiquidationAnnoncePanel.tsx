@@ -18,14 +18,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Megaphone } from 'lucide-react';
 import { TextField } from '../ui/TextField';
-import { InfoBulle } from '../ui/Aide';
+import { InfoBulle, TexteAide } from '../ui/Aide';
 import { ValeurProposee } from './ValeurProposee';
-import {
-  WorkflowDocumentBlock,
-  freshDocState,
-  useDocumentBlocks,
-  type DocState,
-} from './WorkflowDocumentBlock';
+import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
+import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
@@ -125,18 +121,21 @@ export function LiquidationAnnoncePanel({
   const code = isAU ? ANNONCE_LIQUIDATION_SARL_AU : ANNONCE_LIQUIDATION_SARL;
 
   const [docs, setDocs] = useState<Record<string, DocState>>({});
-  const [tpl, setTpl] = useState<TemplateInfo>(() => makeTemplateInfo(code));
-
   // Libellé réel du modèle (documentKind) depuis le manifest — repli local si le
-  // service est indisponible (dégradation gracieuse, jamais bloquante).
+  // service est indisponible (dégradation gracieuse, jamais bloquante). L6 : le modele
+  // trouve est rattache a son code ; le repli se deduit au rendu.
+  const [trouve, setTrouve] = useState<TemplateInfo | null>(null);
+  const tpl = useMemo(
+    () => (trouve?.code === code ? trouve : makeTemplateInfo(code)),
+    [trouve, code],
+  );
   useEffect(() => {
     let cancelled = false;
-    setTpl(makeTemplateInfo(code));
     listTemplatesForWorkflow('LIQUIDATION')
       .then((items) => {
         if (cancelled) return;
         const found = items.find((t) => t.code === code);
-        if (found) setTpl(found);
+        if (found) setTrouve(found);
       })
       .catch(() => {
         /* best-effort */
@@ -209,15 +208,20 @@ export function LiquidationAnnoncePanel({
         <h4 className="text-sm font-semibold text-fg">Annonce légale de clôture de liquidation</h4>
       </div>
       <p className="text-xs text-fg-subtle">
-        Avis de clôture des opérations de liquidation à publier au Journal d'Annonces Légales.
-        La société (dénomination, capital, siège, RC, ville du greffe), la date de l'
-        {isAU ? "assemblée / décision de l'associé unique" : 'AGE de clôture'}, le liquidateur
-        et le résultat de liquidation sont repris de l'étape 1 et de la Data Room. Complétez
-        ci-dessous ce que l'avis publie en plus : l'acte de clôture, la date d'effet de la
+        Avis de clôture des opérations de liquidation à publier dans un journal d’annonces
+        légales. La société (dénomination, capital, siège, RC, ville du greffe), la date de{' '}
+        {isAU ? 'la décision de l’associé unique' : 'l’assemblée de clôture'}, le liquidateur
+        et le résultat de liquidation sont repris de l’étape 1 et de la Data Room. Complétez
+        ci-dessous ce que l’avis publie en plus : l’acte de clôture, la date d’effet de la
         dissolution, la date du compte définitif, le quitus et le siège de la liquidation. Avec le
         dépôt du dossier de clôture, cet avis fonde la <strong>radiation</strong> de la société au
         registre du commerce.
       </p>
+      <TexteAide cle="liquidation-annonce" titre="Ce qu’il faut faire">
+        Complétez les rubriques marquées d’un astérisque, générez l’avis, relisez l’aperçu
+        puis validez-le : il est déposé dans la Data Room du dossier. Le numéro et la date de
+        dépôt légal se saisissent quand le greffe les délivre ; régénérez alors l’avis.
+      </TexteAide>
 
       {onAvisChange && (
         <div className="grid gap-3 md:grid-cols-2" data-testid="avis-cloture">
@@ -226,21 +230,21 @@ export function LiquidationAnnoncePanel({
               Acte constatant la clôture *
               <InfoBulle
                 libelle="Quel acte constate la clôture ?"
-                texte="En principe la décision des associés (ou de l'associé unique) qui approuve le compte définitif. À défaut de délibération, ou si les comptes ne sont pas approuvés, le tribunal statue : l'avis le dit alors."
+                texte="En principe la décision des associés (ou de l’associé unique) qui approuve le compte définitif. À défaut de délibération, ou si les comptes ne sont pas approuvés, le tribunal statue : l’avis le dit alors."
               />
             </label>
             <select id="avis-acte-nature" className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
               value={avis?.acteNature ?? ''} onChange={(e) => onAvisChange({ ...avis, acteNature: e.target.value })}>
               <option value="">Choisir…</option>
               <option value={isAU ? "Décision de l'associé unique" : 'Décision des associés'}>
-                {isAU ? "Décision de l'associé unique" : 'Décision des associés'}
+                {isAU ? 'Décision de l’associé unique' : 'Décision des associés'}
               </option>
               <option value="Décision de justice">Décision de justice</option>
             </select>
           </div>
           <ValeurProposee
             id="avis-dissolution-date-effet"
-            label="Date d'effet de la dissolution *"
+            label="Date d’effet de la dissolution *"
             type="date"
             proposition={dateDissolution ?? ''}
             valeur={avis?.dissolutionDateEffet || undefined}
@@ -261,7 +265,7 @@ export function LiquidationAnnoncePanel({
           <div className="md:col-span-2">
             <TextField label="Siège de la liquidation *" value={avis?.siegeLiquidation ?? ''}
               onChange={(e) => onAvisChange({ ...avis, siegeLiquidation: e.target.value })}
-              hint="Adresse publiée en tête de l'avis (celle fixée à la dissolution)." />
+              hint="Adresse publiée en tête de l’avis (celle fixée à la dissolution)." />
           </div>
         </div>
       )}
@@ -273,7 +277,7 @@ export function LiquidationAnnoncePanel({
             {resultat.sens === 'boni' ? 'boni' : 'mali'} de liquidation de{' '}
             {resultat.montant.toLocaleString('fr-FR')} DH
           </strong>{' '}
-          — calculé depuis les comptes finaux de l'étape 1.
+          — calculé depuis les comptes finaux de l’étape 1.
         </p>
       )}
 
@@ -294,8 +298,8 @@ export function LiquidationAnnoncePanel({
       </div>
       <p className="text-[11px] text-fg-subtle">
         Ces deux informations sont attribuées par le greffe <strong>après</strong> le dépôt :
-        l'annonce se génère sans elles (les emplacements restent vides). Régénérez l'annonce
-        une fois le numéro connu si vous souhaitez l'y faire figurer.
+        l’annonce se génère sans elles (les emplacements restent vides). Régénérez l’annonce
+        une fois le numéro connu si vous souhaitez l’y faire figurer.
       </p>
 
       <WorkflowDocumentBlock

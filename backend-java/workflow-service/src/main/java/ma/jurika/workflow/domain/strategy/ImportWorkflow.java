@@ -71,7 +71,7 @@ public class ImportWorkflow extends AbstractWorkflow {
             case 7 -> handleUploadJuridique(ctx);
             case 8 -> handleDepot(ctx);
             case 9 -> handleSynthese(ctx);
-            default -> StepResult.blocked("Etape inconnue : " + ctx.step());
+            default -> StepResult.blocked("\u00c9tape inconnue : " + ctx.step());
         };
     }
 
@@ -87,21 +87,21 @@ public class ImportWorkflow extends AbstractWorkflow {
      */
     private StepResult handleDenomination(StepContext ctx) {
         Map<String, Object> p = ctx.payload();
-        requireWithLabel(p, "denomination", "Denomination / Raison sociale");
-        requireWithLabel(p, "rcNumero", "Numero de Registre de Commerce (RC)");
+        requireWithLabel(p, "denomination", "D\u00e9nomination / raison sociale");
+        requireWithLabel(p, "rcNumero", "Num\u00e9ro de Registre de Commerce (RC)");
         requireWithLabel(p, "ifNumero", "Identifiant Fiscal (IF)");
 
         Object iceVal = p.get("ice");
         if (iceVal == null) iceVal = p.get("icenumero");
         if (iceVal == null || (iceVal instanceof String s && s.isBlank())) {
-            return StepResult.blocked("Numero ICE requis (15 chiffres)");
+            return StepResult.blocked("Num\u00e9ro ICE requis (15 chiffres).");
         }
         // RG-C13 : ICE 15 chiffres exactement (espaces / tirets toleres).
         String ice = String.valueOf(iceVal).replaceAll("[\\s-]", "");
         if (!ice.matches("^\\d{15}$")) {
             return StepResult.blocked(
-                    "ICE invalide : doit comporter exactement 15 chiffres (recu : "
-                            + ice.length() + " caracteres). Reference RG-C13.");
+                    "ICE invalide : doit comporter exactement 15 chiffres (re\u00e7u : "
+                            + ice.length() + " caract\u00e8res). R\u00e9f\u00e9rence RG-C13.");
         }
 
         String forme = p.get("formeJuridique") == null ? "SARL" : String.valueOf(p.get("formeJuridique"));
@@ -132,7 +132,7 @@ public class ImportWorkflow extends AbstractWorkflow {
         if (jt != null && !String.valueOf(jt).isBlank()) {
             String type = String.valueOf(jt);
             if (!type.equals("BAIL") && !type.equals("DOMICILIATION")) {
-                return StepResult.blocked("justificatifType doit etre BAIL ou DOMICILIATION");
+                return StepResult.blocked("Le justificatif du si\u00e8ge doit \u00eatre un bail ou une attestation de domiciliation.");
             }
         }
         Map<String, Object> outSiege = new HashMap<>(p);
@@ -208,33 +208,33 @@ public class ImportWorkflow extends AbstractWorkflow {
             }
             String type = m.get("typePersonne") == null ? "PHYSIQUE" : String.valueOf(m.get("typePersonne"));
             if ("MORALE".equals(type)) {
-                requireStr(m, "denomination", "Dirigeant " + idx + " (MORALE) : denomination");
+                requireStr(m, "denomination", "Dirigeant " + idx + " (MORALE) : d\u00e9nomination");
                 requireStr(m, "rc", "Dirigeant " + idx + " (MORALE) : RC");
                 requireStr(m, "ice", "Dirigeant " + idx + " (MORALE) : ICE");
                 requireStr(m, "ifFiscal", "Dirigeant " + idx + " (MORALE) : IF");
-                requireStr(m, "siege", "Dirigeant " + idx + " (MORALE) : siege");
-                requireStr(m, "repNom", "Dirigeant " + idx + " (MORALE) : nom du representant legal");
-                requireStr(m, "repPrenom", "Dirigeant " + idx + " (MORALE) : prenom du representant legal");
-                requireStr(m, "repCin", "Dirigeant " + idx + " (MORALE) : CIN du representant legal");
-                requireStr(m, "repQualite", "Dirigeant " + idx + " (MORALE) : qualite du representant legal");
+                requireStr(m, "siege", "Dirigeant " + idx + " (MORALE) : si\u00e8ge");
+                requireStr(m, "repNom", "Dirigeant " + idx + " (MORALE) : nom du repr\u00e9sentant l\u00e9gal");
+                requireStr(m, "repPrenom", "Dirigeant " + idx + " (MORALE) : pr\u00e9nom du repr\u00e9sentant l\u00e9gal");
+                requireStr(m, "repCin", "Dirigeant " + idx + " (MORALE) : CIN du repr\u00e9sentant l\u00e9gal");
+                requireStr(m, "repQualite", "Dirigeant " + idx + " (MORALE) : qualit\u00e9 du repr\u00e9sentant l\u00e9gal");
             } else {
                 requireStr(m, "nom", "Dirigeant " + idx + " : nom");
-                requireStr(m, "prenom", "Dirigeant " + idx + " : prenom");
+                requireStr(m, "prenom", "Dirigeant " + idx + " : pr\u00e9nom");
                 requireStr(m, "cinNumero", "Dirigeant " + idx + " : CIN");
             }
         }
         Object geranceRaw = p.get("gerance");
         if (!(geranceRaw instanceof Map<?, ?> ger)) {
             return StepResult.blocked(
-                    "Gouvernance de la gerance requise (duree du mandat + remuneration).");
+                    "Gouvernance de la g\u00e9rance requise (dur\u00e9e du mandat + r\u00e9mun\u00e9ration).");
         }
         Object dureeMandatVal = ger.get("dureeMandat");
         if (dureeMandatVal == null || String.valueOf(dureeMandatVal).isBlank()) {
-            return StepResult.blocked("Duree du mandat des gerants requise.");
+            return StepResult.blocked("Dur\u00e9e du mandat des g\u00e9rants requise.");
         }
         Object remuModeVal = ger.get("remunerationMode");
         if (remuModeVal == null || String.valueOf(remuModeVal).isBlank()) {
-            return StepResult.blocked("Mode de remuneration de la gerance requis.");
+            return StepResult.blocked("Mode de r\u00e9mun\u00e9ration de la g\u00e9rance requis.");
         }
         Map<String, Object> out = new HashMap<>();
         out.put("dirigeants", list);
@@ -253,29 +253,29 @@ public class ImportWorkflow extends AbstractWorkflow {
         Map<String, Object> p = ctx.payload();
         Object associes = p.get("associes");
         if (!(associes instanceof List<?> list) || list.isEmpty()) {
-            return StepResult.blocked("Au moins un associe requis");
+            return StepResult.blocked("Au moins un associ\u00e9 requis");
         }
         int idx = 0;
         for (Object o : list) {
             idx++;
             if (!(o instanceof Map<?, ?> m)) {
-                return StepResult.blocked("Associe " + idx + " : format invalide");
+                return StepResult.blocked("Associ\u00e9 " + idx + " : format invalide");
             }
             String type = m.get("typePersonne") == null ? "PHYSIQUE" : String.valueOf(m.get("typePersonne"));
             if ("MORALE".equals(type)) {
-                requireStr(m, "denomination", "Associe " + idx + " (MORALE) : denomination");
-                requireStr(m, "rc", "Associe " + idx + " (MORALE) : RC");
-                requireStr(m, "ice", "Associe " + idx + " (MORALE) : ICE");
-                requireStr(m, "ifFiscal", "Associe " + idx + " (MORALE) : IF");
-                requireStr(m, "siege", "Associe " + idx + " (MORALE) : siege");
-                requireStr(m, "repNom", "Associe " + idx + " (MORALE) : nom du representant legal");
-                requireStr(m, "repPrenom", "Associe " + idx + " (MORALE) : prenom du representant legal");
-                requireStr(m, "repCin", "Associe " + idx + " (MORALE) : CIN du representant legal");
-                requireStr(m, "repQualite", "Associe " + idx + " (MORALE) : qualite du representant legal");
+                requireStr(m, "denomination", "Associ\u00e9 " + idx + " (MORALE) : d\u00e9nomination");
+                requireStr(m, "rc", "Associ\u00e9 " + idx + " (MORALE) : RC");
+                requireStr(m, "ice", "Associ\u00e9 " + idx + " (MORALE) : ICE");
+                requireStr(m, "ifFiscal", "Associ\u00e9 " + idx + " (MORALE) : IF");
+                requireStr(m, "siege", "Associ\u00e9 " + idx + " (MORALE) : si\u00e8ge");
+                requireStr(m, "repNom", "Associ\u00e9 " + idx + " (MORALE) : nom du repr\u00e9sentant l\u00e9gal");
+                requireStr(m, "repPrenom", "Associ\u00e9 " + idx + " (MORALE) : pr\u00e9nom du repr\u00e9sentant l\u00e9gal");
+                requireStr(m, "repCin", "Associ\u00e9 " + idx + " (MORALE) : CIN du repr\u00e9sentant l\u00e9gal");
+                requireStr(m, "repQualite", "Associ\u00e9 " + idx + " (MORALE) : qualit\u00e9 du repr\u00e9sentant l\u00e9gal");
             } else {
-                requireStr(m, "nom", "Associe " + idx + " : nom");
-                requireStr(m, "prenom", "Associe " + idx + " : prenom");
-                requireStr(m, "cin", "Associe " + idx + " : CIN");
+                requireStr(m, "nom", "Associ\u00e9 " + idx + " : nom");
+                requireStr(m, "prenom", "Associ\u00e9 " + idx + " : pr\u00e9nom");
+                requireStr(m, "cin", "Associ\u00e9 " + idx + " : CIN");
             }
         }
         String forme = p.get("formeJuridique") == null
@@ -283,7 +283,7 @@ public class ImportWorkflow extends AbstractWorkflow {
                 : String.valueOf(p.get("formeJuridique"));
         if ("SARL_AU".equals(forme) && list.size() != 1) {
             return StepResult.blocked(
-                    "SARL_AU = un seul associe (100% des parts). Trouve : " + list.size());
+                    "Une SARL AU compte un seul associ\u00e9 (100 % des parts). Associ\u00e9s saisis : " + list.size());
         }
         if ("SARL_AU".equals(forme)) {
             Object first = list.get(0);
@@ -393,9 +393,9 @@ public class ImportWorkflow extends AbstractWorkflow {
         }
         String support = texte(pub.get("support"));
         if (!"JAL".equals(support) && !"BO".equals(support)) {
-            manques.add("support (journal d'annonces l\u00e9gales ou Bulletin officiel)");
+            manques.add("support (journal d\u2019annonces l\u00e9gales ou Bulletin officiel)");
         } else if ("JAL".equals(support) && texte(pub.get("journal")) == null) {
-            manques.add("journal d'annonces l\u00e9gales");
+            manques.add("journal d\u2019annonces l\u00e9gales");
         }
         String date = texte(pub.get("dateParution"));
         if (date == null) {
@@ -443,12 +443,12 @@ public class ImportWorkflow extends AbstractWorkflow {
         Map<String, Object> denomination = unwrapStep(existing, "step1", "denomination");
         if (denomination == null || denomination.isEmpty()) {
             return StepResult.blocked(
-                    "Etape 1 non validee : denomination / immatriculation manquante. Reprendre l'etape 1.");
+                    "\u00c9tape 1 non valid\u00e9e : d\u00e9nomination / immatriculation manquante. Reprendre l\u2019\u00e9tape 1.");
         }
         Map<String, Object> juridique = unwrapStep(existing, "step7", "juridique");
         if (juridique == null || juridique.isEmpty()) {
             return StepResult.blocked(
-                    "Etape 7 non validee : dossier juridique non importe. Reprendre l'etape 7.");
+                    "\u00c9tape 7 non valid\u00e9e : dossier juridique non import\u00e9. Reprendre l\u2019\u00e9tape 7.");
         }
         Map<String, Object> siege = unwrapStep(existing, "step2", "siege");
         Map<String, Object> capital = unwrapStep(existing, "step3", "capital");

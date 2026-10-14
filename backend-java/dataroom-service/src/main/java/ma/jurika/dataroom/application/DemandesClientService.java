@@ -146,8 +146,8 @@ public class DemandesClientService {
                     .orElse(null);
             if (userId == null || !userId.equals(owner)) {
                 throw new AccessDeniedException(role == Role.CLIENT
-                        ? "Acces refuse a ce dossier (RG-DR15 : un client n'a acces qu'a SON dossier)."
-                        : "Vous n'etes pas responsable de ce dossier : acces aux demandes interdit.");
+                        ? "Acc\u00e8s refus\u00e9 \u00e0 ce dossier (RG-DR15 : un client n\u2019a acc\u00e8s qu\u2019\u00e0 son dossier)."
+                        : "Vous n\u2019\u00eates pas responsable de ce dossier : acc\u00e8s aux demandes interdit.");
             }
         }
         String dir = direction == null ? CLIENT_TO_EMPLOYE : direction;
@@ -279,7 +279,7 @@ public class DemandesClientService {
                     .orElse(null);
             if (userId == null || !userId.equals(responsable)) {
                 throw new AccessDeniedException(
-                        "Vous n'etes pas responsable de ce dossier : traitement interdit.");
+                        "Vous n\u2019\u00eates pas responsable de ce dossier : traitement interdit.");
             }
         }
         boolean devientTraitee = "TRAITEE".equals(req.statut()) && !"TRAITEE".equals(e.getStatut());
@@ -311,7 +311,7 @@ public class DemandesClientService {
         UUID ws = TenantContext.get();
         if (ws == null) throw new NotFoundException("Dossier introuvable");
         if (req.typeRequete() == null || !TYPES_REQUETE.contains(req.typeRequete())) {
-            throw new ValidationException("type_requete invalide. Valeurs : " + TYPES_REQUETE);
+            throw new ValidationException("Type de requ\u00eate invalide. Valeurs accept\u00e9es : " + TYPES_REQUETE);
         }
         DossierViewEntity dossier = dossiers.findByWorkspaceIdAndId(ws, req.dossierId())
                 .orElseThrow(() -> new NotFoundException("Dossier introuvable"));
@@ -344,10 +344,10 @@ public class DemandesClientService {
         DossierViewEntity dossier = requireDossier(ws, e.getDossierId());
         // Seul le CLIENT du dossier peut repondre.
         if (role != Role.CLIENT || userId == null || !userId.equals(dossier.getClientId())) {
-            throw new AccessDeniedException("Seul le client du dossier peut repondre a cette requete.");
+            throw new AccessDeniedException("Seul le client du dossier peut r\u00e9pondre \u00e0 cette requ\u00eate.");
         }
         if (!CLIENT_ACTIONNABLE.contains(e.getStatut())) {
-            throw new ConflictException("Transition invalide : la requete n'est pas en attente de votre reponse.");
+            throw new ConflictException("Transition invalide : la requ\u00eate n\u2019est pas en attente de votre r\u00e9ponse.");
         }
         e.setStatut("REPONDUE");
         e.setReponduAt(Instant.now());
@@ -371,7 +371,7 @@ public class DemandesClientService {
         DossierViewEntity dossier = requireDossier(ws, e.getDossierId());
         requireResponsableOrSuperviseur(dossier, userId, role);
         if (!"REPONDUE".equals(e.getStatut())) {
-            throw new ConflictException("Transition invalide : seule une requete REPONDUE peut etre cloturee.");
+            throw new ConflictException("Seule une requ\u00eate \u00e0 laquelle le client a r\u00e9pondu peut \u00eatre cl\u00f4tur\u00e9e.");
         }
         e.setStatut("CLOTUREE");
         e.setClotureAt(Instant.now());
@@ -389,7 +389,7 @@ public class DemandesClientService {
         DossierViewEntity dossier = requireDossier(ws, e.getDossierId());
         requireResponsableOrSuperviseur(dossier, userId, role);
         if (!"REPONDUE".equals(e.getStatut())) {
-            throw new ConflictException("Transition invalide : un complement se demande sur une requete REPONDUE.");
+            throw new ConflictException("Un compl\u00e9ment se demande sur une requ\u00eate \u00e0 laquelle le client a r\u00e9pondu.");
         }
         e.setStatut("A_COMPLETER");
         if (req != null && req.note() != null) e.setNoteInterne(req.note());
@@ -402,11 +402,11 @@ public class DemandesClientService {
     // ------------------------------------------------------------------ helpers
 
     private DemandeEntity loadRequete(UUID ws, UUID id) {
-        if (ws == null) throw new NotFoundException("Requete introuvable");
+        if (ws == null) throw new NotFoundException("Requ\u00eate introuvable.");
         DemandeEntity e = repo.findByWorkspaceIdAndId(ws, id)
-                .orElseThrow(() -> new NotFoundException("Requete introuvable"));
+                .orElseThrow(() -> new NotFoundException("Requ\u00eate introuvable."));
         if (!EMPLOYE_TO_CLIENT.equals(directionOf(e))) {
-            throw new ConflictException("Cette demande n'est pas une requete au client.");
+            throw new ConflictException("Cette demande n\u2019est pas une requ\u00eate au client.");
         }
         return e;
     }
@@ -420,7 +420,7 @@ public class DemandesClientService {
         boolean superviseur = role == Role.SUPERVISEUR || role == Role.SUPER_ADMIN;
         boolean responsable = userId != null && userId.equals(dossier.getResponsableId());
         if (!superviseur && !responsable) {
-            throw new AccessDeniedException("Vous n'etes pas responsable de ce dossier.");
+            throw new AccessDeniedException("Vous n\u2019\u00eates pas responsable de ce dossier.");
         }
     }
 

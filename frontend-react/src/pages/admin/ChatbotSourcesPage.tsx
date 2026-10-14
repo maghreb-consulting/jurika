@@ -5,7 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
-import { useToast } from '../../components/ui/Toast';
+import { useToast } from '../../components/ui/useToast';
 import { chatbotService } from '../../services/chatbot.service';
 import { extractError } from '../../lib/api';
 import { useAssistantStore } from '../../store/assistantStore';

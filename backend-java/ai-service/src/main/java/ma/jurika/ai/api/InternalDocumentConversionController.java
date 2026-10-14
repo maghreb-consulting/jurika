@@ -77,7 +77,7 @@ public class InternalDocumentConversionController {
     }
 
     private ResponseEntity<byte[]> libreOfficeUnavailable() {
-        String msg = "LibreOffice indisponible sur ce serveur — apercu Word/Excel converti "
+        String msg = "LibreOffice indisponible sur ce serveur \u2014 aper\u00e7u Word/Excel converti "
                 + "impossible. Le client doit retomber sur le document original.";
         return ResponseEntity.status(503)
                 .header(HDR_LO_UNAVAILABLE, "true")

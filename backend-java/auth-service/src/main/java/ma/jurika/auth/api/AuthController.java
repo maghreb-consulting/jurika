@@ -174,8 +174,8 @@ public class AuthController {
                 req.email(), req.firstName(), req.lastName(), req.phone(),
                 user.userId(), http.getRemoteAddr(), http.getHeader("User-Agent")));
         String msg = r.userCreated()
-                ? "Compte client cree. Un email a ete envoye avec les identifiants."
-                : "Client existant attache au dossier. Aucun email envoye.";
+                ? "Compte client cr\u00e9\u00e9. Un courriel lui a \u00e9t\u00e9 envoy\u00e9 avec ses identifiants."
+                : "Client existant rattach\u00e9 au dossier. Aucun courriel n\u2019a \u00e9t\u00e9 envoy\u00e9.";
         return new InviteClientResponse(r.userId(), r.userCreated(), r.tempPassword(),
                 r.loginEmail(), r.contactEmail(), msg);
     }
@@ -228,8 +228,8 @@ public class AuthController {
                 "previousClientId", r.previousClientId() == null ? "" : r.previousClientId().toString(),
                 "alreadyDetached", r.alreadyDetached(),
                 "message", r.alreadyDetached()
-                        ? "Le dossier n'avait pas de client lie. Aucune action effectuee."
-                        : "Acces client retire du dossier. Le client peut etre reinvite a tout moment."
+                        ? "Ce dossier n\u2019avait pas de client rattach\u00e9 : rien n\u2019a \u00e9t\u00e9 modifi\u00e9."
+                        : "L\u2019acc\u00e8s du client au dossier est retir\u00e9. Vous pourrez l\u2019inviter de nouveau \u00e0 tout moment."
         ));
     }
 
@@ -262,8 +262,8 @@ public class AuthController {
         body.put("loginEmail", r.loginEmail());
         body.put("contactEmail", r.contactEmail());
         body.put("message", r.emailDelivered()
-                ? "Invitation envoyee a " + req.email() + "."
-                : "Compte cree mais l'email n'a pas pu etre envoye — communiquez le code workspace au collaborateur.");
+                ? "Invitation envoy\u00e9e \u00e0 " + req.email() + "."
+                : "Compte cr\u00e9\u00e9, mais le courriel n\u2019a pas pu \u00eatre envoy\u00e9 : communiquez vous-m\u00eame le code workspace et les identifiants au collaborateur.");
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
@@ -358,9 +358,9 @@ public class AuthController {
                 "changed", r.changed(),
                 "message", r.changed()
                         ? (r.newStatus().name().equals("ACTIVE")
-                            ? "Compte reactive — l'utilisateur peut a nouveau se connecter."
-                            : "Compte desactive — l'utilisateur ne peut plus se connecter.")
-                        : "Statut deja a la valeur demandee."
+                            ? "Compte r\u00e9activ\u00e9 : l\u2019utilisateur peut de nouveau se connecter."
+                            : "Compte d\u00e9sactiv\u00e9 : l\u2019utilisateur ne peut plus se connecter.")
+                        : "Le compte a d\u00e9j\u00e0 ce statut."
         ));
     }
 
@@ -393,7 +393,7 @@ public class AuthController {
         var r = verifyEmailUseCase.execute(new VerifyEmailUseCase.Command(
                 req.token(), http.getRemoteAddr(), http.getHeader("User-Agent")));
         return new VerifyEmailResponse(r.workspaceId(), r.userId(), r.email(),
-                "Email verifie avec succes. Vous pouvez maintenant vous connecter.");
+                "Adresse \u00e9lectronique v\u00e9rifi\u00e9e. Vous pouvez maintenant vous connecter.");
     }
 
     @PostMapping("/resend-verification")

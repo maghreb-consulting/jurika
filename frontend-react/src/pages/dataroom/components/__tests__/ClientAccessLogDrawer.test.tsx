@@ -26,7 +26,7 @@ describe('ClientAccessLogDrawer', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Aucune activite enregistree/i)).toBeInTheDocument();
+      expect(screen.getByText(/Aucune activité enregistrée/i)).toBeInTheDocument();
     });
     expect(getAccessLog).toHaveBeenCalledWith('d1', 50, 0);
   });

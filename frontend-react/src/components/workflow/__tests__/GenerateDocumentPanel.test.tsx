@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
@@ -89,7 +88,7 @@ describe('<GenerateDocumentPanel>', () => {
       ).toBeInTheDocument();
     });
     expect(
-      screen.getByText(/Aucun document disponible pour ce workflow \(manifest vide\)/i),
+      screen.getByText(/Aucun modèle de document n’est disponible pour ce parcours/i),
     ).toBeInTheDocument();
   });
 

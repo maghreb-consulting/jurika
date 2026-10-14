@@ -17,9 +17,9 @@ export function pieceInvalidMessage(type: string | undefined | null, numero: str
   if (!numero) return null;
   const v = numero.replace(/\s+/g, '').toUpperCase();
   if (estCin(type)) {
-    return /^[A-Z]{1,2}[0-9]{5,7}$/.test(v) ? null : 'Format CIN invalide (ex : X 123456)';
+    return /^[A-Z]{1,2}[0-9]{5,7}$/.test(v) ? null : 'Numéro de CIN invalide (ex. : X 123456).';
   }
-  return /^[A-Z0-9-]{4,20}$/.test(v) ? null : 'Numéro de pièce invalide (lettres et chiffres)';
+  return /^[A-Z0-9-]{4,20}$/.test(v) ? null : 'Numéro de pièce invalide : lettres et chiffres uniquement.';
 }
 
 /** La lecture automatique ne sait lire que la CIN : les autres pièces se joignent simplement. */

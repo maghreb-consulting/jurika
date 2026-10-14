@@ -166,8 +166,8 @@ export const documentService = {
         ?.response?.headers;
       if (status === 503 && headers?.['x-libreoffice-unavailable'] === 'true') {
         throw new LibreOfficeUnavailableError(
-          'PDF fidele indisponible : LibreOffice n\'est pas installe sur le serveur. ' +
-            'Le .docx reste disponible au telechargement.',
+          'PDF fidèle indisponible : le convertisseur PDF n’est pas installé sur le serveur. ' +
+            'Le document Word (.docx) reste disponible au téléchargement.',
         );
       }
       throw err;

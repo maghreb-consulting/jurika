@@ -46,7 +46,7 @@ describe('WorkflowPiecesPanel', () => {
     render(<WorkflowPiecesPanel ticketId="t1" progress={progress} currentStep={5} />);
     expect(screen.getByText('Certificat negatif')).toBeDefined();
     expect(screen.getByText(/cn\.pdf/)).toBeDefined();
-    expect(screen.getByText(/etape 1/)).toBeDefined();
+    expect(screen.getByText(/étape 1/)).toBeDefined();
   });
 
   it('propose un bouton Importer pour les pieces connues NON encore deposees', () => {
@@ -95,6 +95,6 @@ describe('WorkflowPiecesPanel', () => {
     render(
       <WorkflowPiecesPanel ticketId="t1" progress={makeProgress({})} currentStep={1} />,
     );
-    expect(screen.getByText(/Aucune piece deposee/)).toBeDefined();
+    expect(screen.getByText(/Aucune pièce déposée/)).toBeDefined();
   });
 });

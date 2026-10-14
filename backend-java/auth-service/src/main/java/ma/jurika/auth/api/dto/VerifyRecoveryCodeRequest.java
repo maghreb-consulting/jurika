@@ -14,11 +14,11 @@ import jakarta.validation.constraints.Size;
  */
 public record VerifyRecoveryCodeRequest(
         @NotBlank
-        @Pattern(regexp = "^JUR-[A-Z0-9]{5}$", message = "Format attendu : JUR-XXXXX")
+        @Pattern(regexp = "^JUR-[A-Z0-9]{5}$", message = "Format attendu : JUR-XXXXX.")
         String workspaceCode,
         @NotBlank @Email String email,
         @NotBlank
         @Size(min = 16, max = 23,
-                message = "Code de recuperation attendu : 16 caracteres alphanumeriques (4 groupes de 4)")
+                message = "Code de r\u00e9cup\u00e9ration attendu : 16 lettres ou chiffres (4 groupes de 4).")
         String code
 ) {}

@@ -21,8 +21,8 @@
                         </p>
 
                         <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
-                            Votre workspace JURIKA a ete cree avec succes par
-                            <strong>Maghreb Consulting</strong>. Voici vos identifiants temporaires :
+                            Votre workspace JURIKA a bien &eacute;t&eacute; cr&eacute;&eacute;. Voici vos identifiants
+                            temporaires&nbsp;:
                         </p>
 
                         <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:20px;margin:24px 0;">
@@ -40,14 +40,14 @@
                                 </tr>
                                 <tr>
                                     <td style="padding:0 0 6px;font-family:'JetBrains Mono',Consolas,monospace;font-size:14px;color:#0F172A;font-weight:600;">
-                                        <!-- BUG 7 — loginEmail (= ${email} en V1, peut differer en V2 quand on
+                                        <!-- BUG 7 &mdash; loginEmail (= ${email} en V1, peut differer en V2 quand on
                                              rebascule cf jurika.auth.login-email-enabled). -->
                                         <span th:text="${loginEmail != null ? loginEmail : email}">karim.benali@jurika.ma</span>
                                     </td>
                                 </tr>
                                 <tr th:if="${contactEmail != null and contactEmail != loginEmail}">
                                     <td style="padding:0 0 16px;font-size:11px;color:#64748B;">
-                                        Notifications envoyees a <span th:text="${contactEmail}" style="color:#0F172A;">karim@cabinet.ma</span>.
+                                        Notifications envoy&eacute;es &agrave; <span th:text="${contactEmail}" style="color:#0F172A;">karim@cabinet.ma</span>.
                                     </td>
                                 </tr>
                                 <tr>
@@ -71,24 +71,23 @@
 
                         <div style="text-align:center;margin:32px 0;">
                             <a th:href="${verificationUrl}"
-                               style="display:inline-block;background:#0c1d3f;color:#c8a45c;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px;">
+                               style="display:inline-block;background:#0c1d3f;color:#c9a24a;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px;">
                                 Activer mon compte
                             </a>
                         </div>
 
                         <p style="margin:0 0 16px;font-size:13px;color:#64748B;line-height:1.55;">
                             Ce lien expire dans <strong th:text="${ttlHours} + ' heures'">24 heures</strong>.
-                            Au premier login, il vous sera demande de changer votre mot de passe et
-                            de configurer votre authentification a deux facteurs (SMS ou Google Authenticator).
+                            &Agrave; votre premi&egrave;re connexion, vous devrez changer votre mot de passe et
+                            activer la double authentification (SMS ou Google Authenticator).
                         </p>
 
                         <th:block th:replace="~{email/_base :: phishingBox}"/>
 
                         <div style="border-top:1px solid #E2E8F0;margin:24px 0 0;padding-top:24px;">
                             <p style="margin:0;font-size:12px;color:#94A3B8;line-height:1.55;">
-                                <strong>Securite :</strong> n'envoyez jamais vos identifiants par email ou SMS.
-                                Si vous n'avez pas demande cette inscription, ignorez cet email.
-                                Cet email est signe DKIM et envoye depuis un domaine verifie SPF.
+                                <strong>S&eacute;curit&eacute;&nbsp;:</strong> n&rsquo;envoyez jamais vos identifiants par courriel ni par SMS.
+                                Si vous n&rsquo;avez pas demand&eacute; cette inscription, ignorez ce courriel.
                             </p>
                         </div>
                     </td>

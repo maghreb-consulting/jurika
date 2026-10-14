@@ -7,7 +7,7 @@ import { responsableLabel, type Ticket } from '../../../types/ticket';
  * Vue Tableau des tickets (SUPERVISEUR) — colonne « Responsable ».
  *
  * Couvre : (1) un ticket assigne affiche le « Prenom Nom » resolu backend ;
- * (2) un ticket non assigne affiche « Non assigne » ; (3) aucun UUID brut n'est
+ * (2) un ticket non assigne affiche « Non assigné » ; (3) aucun UUID brut n'est
  * rendu (RG : jamais d'identifiant technique dans l'UI).
  */
 
@@ -38,9 +38,9 @@ describe('responsableLabel', () => {
     expect(responsableLabel({ assignePrenom: 'Karim', assigneNom: 'Bennani' })).toBe('Karim Bennani');
   });
 
-  it('renvoie « Non assigne » quand les deux champs sont vides', () => {
-    expect(responsableLabel({ assignePrenom: null, assigneNom: null })).toBe('Non assigne');
-    expect(responsableLabel({})).toBe('Non assigne');
+  it('renvoie « Non assigné » quand les deux champs sont vides', () => {
+    expect(responsableLabel({ assignePrenom: null, assigneNom: null })).toBe('Non assigné');
+    expect(responsableLabel({})).toBe('Non assigné');
   });
 });
 
@@ -65,9 +65,9 @@ describe('TableView — colonne Responsable', () => {
     expect(screen.queryByText(/emp-1/)).not.toBeInTheDocument();
   });
 
-  it('affiche « Non assigne » pour un ticket sans responsable', () => {
+  it('affiche « Non assigné » pour un ticket sans responsable', () => {
     render(<TableView tickets={[ticket({ id: 't-b', assigneId: null })]} onSelect={() => {}} />);
     const row = screen.getByText('Creation SARL').closest('tr') as HTMLElement;
-    expect(within(row).getByText('Non assigne')).toBeInTheDocument();
+    expect(within(row).getByText('Non assigné')).toBeInTheDocument();
   });
 });

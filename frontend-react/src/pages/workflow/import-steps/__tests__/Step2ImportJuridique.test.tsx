@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -41,7 +40,7 @@ describe('<Step2ImportJuridique> — type choisi par fichier', () => {
     // Le fichier apparaît dans la liste...
     await screen.findByText('document-mystere.pdf');
     // ...avec un libellé "Type a definir" et un avertissement global.
-    expect(screen.getByText(/Type a definir/i)).toBeInTheDocument();
+    expect(screen.getByText(/Type à définir/i)).toBeInTheDocument();
     expect(screen.getByTestId('untyped-warning')).toBeInTheDocument();
 
     // Laisse passer un tick : AUCUN upload ne doit avoir été déclenché.
@@ -72,7 +71,7 @@ describe('<Step2ImportJuridique> — type choisi par fichier', () => {
     await waitFor(() =>
       expect(dataroomService.uploadJuridique).toHaveBeenCalledTimes(1),
     );
-    const [dossierArg, params] = (dataroomService.uploadJuridique as any).mock
+    const [dossierArg, params] = vi.mocked(dataroomService.uploadJuridique).mock
       .calls[0];
     expect(dossierArg).toBe(DOSSIER_ID);
     // Le type backend (RC) est respecté et le fichier est renommé en conséquence.
@@ -109,7 +108,7 @@ describe('<Step2ImportJuridique> — type choisi par fichier', () => {
       expect(dataroomService.uploadJuridique).toHaveBeenCalledTimes(2),
     );
 
-    const calls = (dataroomService.uploadJuridique as any).mock.calls;
+    const calls = vi.mocked(dataroomService.uploadJuridique).mock.calls;
     // BAIL -> documentType CONTRAT_BAIL + nom CONTRAT_BAIL__…
     expect(calls[0][1].documentType).toBe('CONTRAT_BAIL');
     expect(calls[0][1].file.name).toMatch(/^CONTRAT_BAIL__ATLAS_CONSEIL_SARL\.pdf$/);

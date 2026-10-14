@@ -206,7 +206,7 @@ class DossierTransferServiceTest {
 
         assertThatThrownBy(() -> service().requestTransfer(WS, ANCIEN, DOSSIER, NOUVEAU, "surcharge"))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("employe");
+                .hasMessageContaining("employ\u00e9");
 
         // Aucune demande creee, aucune notification, aucun changement.
         verify(requestRepository, never()).save(any());

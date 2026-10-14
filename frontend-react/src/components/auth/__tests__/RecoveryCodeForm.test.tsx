@@ -21,12 +21,12 @@ describe('RecoveryCodeForm', () => {
       />,
     );
 
-    const input = screen.getByLabelText(/Code de recuperation/i) as HTMLInputElement;
+    const input = screen.getByLabelText(/Code de récupération/i) as HTMLInputElement;
     await user.type(input, 'a1b2c3d4e5f6g7h8');
     expect(input.value).toBe('A1B2-C3D4-E5F6-G7H8');
 
     // Bouton activable car 16 chars atteints
-    expect(screen.getByRole('button', { name: /Verifier & Acceder/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Vérifier et accéder/i })).toBeEnabled();
   });
 
   it('submit appelle onSubmit avec le code normalise (sans tirets)', async () => {
@@ -42,10 +42,10 @@ describe('RecoveryCodeForm', () => {
       />,
     );
 
-    const input = screen.getByLabelText(/Code de recuperation/i);
+    const input = screen.getByLabelText(/Code de récupération/i);
     await user.type(input, 'a1b2-c3d4-e5f6-g7h8');
 
-    await user.click(screen.getByRole('button', { name: /Verifier & Acceder/i }));
+    await user.click(screen.getByRole('button', { name: /Vérifier et accéder/i }));
     expect(onSubmit).toHaveBeenCalledWith('A1B2C3D4E5F6G7H8');
   });
 });

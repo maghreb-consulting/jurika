@@ -93,8 +93,8 @@ public class ChatbotController {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("status", 422);
         body.put("code", "DONNEE_PERSONNELLE");
-        body.put("message", "Votre question contient une donnée personnelle (" + liste + ") : elle n'a pas "
-                + "été envoyée. Reformulez-la sans cette donnée : le chatbot n'a besoin d'aucune donnée "
+        body.put("message", "Votre question contient une donn\u00e9e personnelle (" + liste + ") : elle n\u2019a pas "
+                + "\u00e9t\u00e9 envoy\u00e9e. Reformulez-la sans cette donn\u00e9e : le chatbot n\u2019a besoin d\u2019aucune donn\u00e9e "
                 + "de client pour répondre.");
         body.put("donnees", detail);
         return body;

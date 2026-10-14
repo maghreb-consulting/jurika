@@ -96,7 +96,7 @@ public class DossierIdentifiantsService {
         // le controller filtre deja par ROLE_EMPLOYE, on re-verrouille ici.
         if (role != Role.EMPLOYE) {
             throw new AccessDeniedException(
-                    "L'édition des identifiants est réservée à l'employé responsable "
+                    "L\u2019\u00e9dition des identifiants est r\u00e9serv\u00e9e \u00e0 l\u2019employ\u00e9 responsable "
                             + "(RG-U02-04 : le superviseur est en lecture seule).");
         }
         UUID resp = d.getResponsableId();
@@ -107,7 +107,7 @@ public class DossierIdentifiantsService {
 
         BigDecimal capital = req.capitalSocialMad();
         if (capital != null && capital.signum() < 0) {
-            throw new ValidationException("Le capital social ne peut pas etre negatif.");
+            throw new ValidationException("Le capital social ne peut pas \u00eatre n\u00e9gatif.");
         }
 
         // Lot L5 (E7, RG-FIC-03/04) : provenance SAISIE et auteur declares avant toute

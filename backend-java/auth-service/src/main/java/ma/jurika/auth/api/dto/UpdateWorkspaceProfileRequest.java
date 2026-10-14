@@ -14,29 +14,29 @@ import jakarta.validation.constraints.Size;
 public class UpdateWorkspaceProfileRequest {
 
     /** ICE : vide (efface) ou 15 chiffres. null = champ non modifie. */
-    @Pattern(regexp = "^(\\d{15})?$", message = "ICE : 15 chiffres requis.")
+    @Pattern(regexp = "^(\\d{15})?$", message = "ICE : 15 chiffres attendus.")
     private String ice;
 
-    @Size(max = 80, message = "Ville : 80 caracteres max.")
+    @Size(max = 80, message = "Ville : 80 caract\u00e8res au plus.")
     private String city;
 
     /**
      * En-tete PDF (2026-07-14) — nom affiche en en-tete des documents generes.
      * null = champ non modifie ; "" = effacement (repli sur la denomination).
      */
-    @Size(max = 150, message = "Nom affiche : 150 caracteres max.")
+    @Size(max = 150, message = "Nom affich\u00e9 : 150 caract\u00e8res au plus.")
     private String nomAfficheDocuments;
 
     // Papier a en-tete V31 — coordonnees du cabinet (tous optionnels ; "" efface).
-    @Size(max = 300, message = "Adresse : 300 caracteres max.")
+    @Size(max = 300, message = "Adresse : 300 caract\u00e8res au plus.")
     private String adresse;
-    @Size(max = 30, message = "Telephone : 30 caracteres max.")
+    @Size(max = 30, message = "T\u00e9l\u00e9phone : 30 caract\u00e8res au plus.")
     private String telephone;
-    @Size(max = 200, message = "Site web : 200 caracteres max.")
+    @Size(max = 200, message = "Site web : 200 caract\u00e8res au plus.")
     private String siteWeb;
-    @Size(max = 20, message = "RC : 20 caracteres max.")
+    @Size(max = 20, message = "RC : 20 caract\u00e8res au plus.")
     private String rcNumber;
-    @Size(max = 8, message = "Identifiant fiscal : 8 caracteres max.")
+    @Size(max = 8, message = "Identifiant fiscal : 8 caract\u00e8res au plus.")
     private String ifFiscal;
 
     public UpdateWorkspaceProfileRequest() {}

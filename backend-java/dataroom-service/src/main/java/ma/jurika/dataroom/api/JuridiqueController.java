@@ -182,7 +182,7 @@ public class JuridiqueController {
         if (file == null || file.isEmpty()) {
             log.error("uploadJuridique : aucun fichier. parts trouves = {}", req.getFileMap().keySet());
             throw new ma.jurika.common.exception.ValidationException(
-                    "FILE_MISSING : aucun fichier dans la requete (parts: " + req.getFileMap().keySet() + ")");
+                    "FILE_MISSING : aucun fichier dans la requ\u00eate (parts: " + req.getFileMap().keySet() + ")");
         }
         log.info("uploadJuridique file=[name={}, size={}, contentType={}]",
                 file.getOriginalFilename(), file.getSize(), file.getContentType());
@@ -275,14 +275,14 @@ public class JuridiqueController {
         }
         if (file == null || file.isEmpty()) {
             throw new ma.jurika.common.exception.ValidationException(
-                    "FILE_MISSING : aucun fichier dans la requete");
+                    "FILE_MISSING : aucun fichier dans la requ\u00eate");
         }
         String documentType = req.getParameter("documentType");
         String title = req.getParameter("title");
         String ticketIdStr = req.getParameter("ticketId");
         if (ticketIdStr == null || ticketIdStr.isBlank()) {
             throw new ma.jurika.common.exception.ValidationException(
-                    "ticketId obligatoire : un brouillon appartient a une operation");
+                    "ticketId obligatoire : un brouillon appartient \u00e0 une op\u00e9ration.");
         }
         String type = (documentType == null || documentType.isBlank()) ? "AUTRE" : documentType;
         String t = (title == null || title.isBlank()) ? defaultTitle(file) : title;
@@ -613,7 +613,7 @@ public class JuridiqueController {
         }
         if (file == null || file.isEmpty()) {
             throw new ma.jurika.common.exception.ValidationException(
-                    "FILE_MISSING : aucun fichier dans la requete");
+                    "FILE_MISSING : aucun fichier dans la requ\u00eate");
         }
         String motif = req.getParameter("motif");
         return juridique.replaceAsNewVersion(documentId, file, motif, user.userId());

@@ -97,7 +97,7 @@ public class DeboursUseCase {
     private Debours ligneDuTicket(UUID workspaceId, UUID ticketId, UUID deboursId) {
         return repository.findById(workspaceId, deboursId)
                 .filter(d -> ticketId.equals(d.ticketId()))
-                .orElseThrow(() -> new NotFoundException("Debours inconnu"));
+                .orElseThrow(() -> new NotFoundException("D\u00e9bours inconnu."));
     }
 
     /**
@@ -113,7 +113,7 @@ public class DeboursUseCase {
         }
         if (t.statut() == TicketStatut.ANNULE) {
             throw new ConflictException("TICKET_ANNULE_LECTURE_SEULE : le ticket est annul\u00e9, "
-                    + "ses d\u00e9bours ne peuvent plus \u00eatre modifi\u00e9s tant qu'il n'est pas repris.");
+                    + "ses d\u00e9bours ne peuvent plus \u00eatre modifi\u00e9s tant qu\u2019il n\u2019est pas repris.");
         }
         return t;
     }
@@ -126,7 +126,7 @@ public class DeboursUseCase {
         if (s.pieceDocumentId() == null) return s;
         if (ticket.dossierId() == null) {
             throw new BusinessException("DEBOURS_PIECE_SANS_DOSSIER",
-                    "Ce ticket n'est rattach\u00e9 \u00e0 aucun dossier : la pi\u00e8ce justificative ne peut "
+                    "Ce ticket n\u2019est rattach\u00e9 \u00e0 aucun dossier : la pi\u00e8ce justificative ne peut "
                             + "pas \u00eatre d\u00e9pos\u00e9e en Data Room.");
         }
         DocumentVu doc = documents.findByIds(workspaceId, List.of(s.pieceDocumentId())).stream()

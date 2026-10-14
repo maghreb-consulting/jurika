@@ -30,16 +30,16 @@ export function TicketsHeader({
   return (
     <div className="mb-2">
       <div className="text-sm text-fg-subtle mb-2">
-        Dashboard /{' '}
+        Tableau de bord /{' '}
         <span className="text-fg">
-          {isSupervisor ? 'Tous les Tickets' : 'Mes Tickets'}
+          {isSupervisor ? 'Tous les tickets' : 'Mes tickets'}
         </span>
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl md:text-3xl font-bold text-fg">
-            {isSupervisor ? 'Tous les Tickets' : 'Mes Tickets'}
+            {isSupervisor ? 'Tous les tickets' : 'Mes tickets'}
           </h1>
           {isSupervisor && (
             <span className="px-2 py-1 bg-accent/10 text-accent rounded text-xs font-bold">
@@ -50,7 +50,7 @@ export function TicketsHeader({
             {total}
           </span>
           <span className="text-xs text-fg-subtle hidden md:inline">
-            — {enCours} en cours, {nouveaux} nouveaux
+            — {enCours} en cours, {nouveaux} {nouveaux > 1 ? 'nouveaux' : 'nouveau'}
           </span>
         </div>
 
@@ -66,7 +66,7 @@ export function TicketsHeader({
               }`}
             >
               <LayoutGrid className="w-4 h-4" />
-              Kanban
+              Par statut
             </button>
             <button
               type="button"

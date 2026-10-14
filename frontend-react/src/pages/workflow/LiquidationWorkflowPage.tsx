@@ -19,7 +19,7 @@
  * après la dissolution. Contrôle **bloquant**, appliqué ici ET côté serveur
  * (`LiquidationWorkflow` / `WorkflowSteps.liquidationDelaiError`).
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
@@ -31,6 +31,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { InfoBulle } from '../../components/ui/Aide';
 import { TextField } from '../../components/ui/TextField';
 import { WorkflowShell } from '../../components/workflow/WorkflowShell';
 import type { RoadmapStep } from '../../components/workflow/WorkflowRoadmap';
@@ -39,17 +40,16 @@ import { CancelTicketDialog } from '../tickets/CancelTicketDialog';
 import { useWorkflow } from './useWorkflow';
 import { useStepAutosave } from './useStepAutosave';
 import { WorkflowBoot } from './WorkflowBoot';
+import { AideEtape } from './AideEtape';
+import { ETAPES_LIQUIDATION, etapesRoadmap } from './aidesParcours';
+import { bornesDateSeance, useDossierParties, useEtatReinitialise, useSuccursalesActives } from './parcoursHooks';
 import { DossierAutocomplete } from '../../components/workflow/DossierAutocomplete';
 import { SeanceOperationForm } from '../../components/workflow/SeanceOperationForm';
 import { ConvocationPanel, FeuillePresencePanel } from '../../components/workflow/SeanceDocPanels';
 import { IncidentSeancePanel } from '../../components/workflow/IncidentSeancePanel';
 import { LiquidationAnnoncePanel, type AvisCloture } from '../../components/workflow/LiquidationAnnoncePanel';
-import {
-  LiquidateurPicker,
-  buildLiquidateurOptions,
-  emptyLiquidateur,
-  type LiquidateurState,
-} from '../../components/workflow/LiquidateurPicker';
+import { LiquidateurPicker, type LiquidateurState } from '../../components/workflow/LiquidateurPicker';
+import { buildLiquidateurOptions, emptyLiquidateur } from '../../components/workflow/liquidateurOptions';
 import { champsPersonneMorale, estPersonneMorale, identiteLiquidateur } from '../../lib/liquidateur';
 import { champsMandatLiquidateur, type MentionsPv } from '../../lib/liquidationPv';
 import { RapportLiquidateurPanel } from '../../components/workflow/RapportLiquidateurPanel';
@@ -69,22 +69,12 @@ import {
   liquidationDelaiError,
 } from '../../components/workflow/liquidationDelai';
 import { buildDocFilename, formeLabel } from '../../components/workflow/workflowFilename';
-import {
-  workflowService,
-  type DossierLiquidateur,
-  type DossierParties,
-  type SuccursaleSummary,
-} from '../../services/workflow.service';
+import type { DossierLiquidateur } from '../../services/workflow.service';
 import type { TemplateInfo } from '../../services/workflowDocumentService';
 import type { AssocieInput, GerantInput } from '../../components/workflow/SeanceForm';
 import type { DossierBrief } from '../../types/dataroom';
 
-const STEPS: RoadmapStep[] = [
-  { number: 1, label: 'Saisie' },
-  { number: 2, label: 'Generation' },
-  { number: 3, label: 'Pieces jointes' },
-  { number: 4, label: 'Synthese' },
-];
+const STEPS: RoadmapStep[] = etapesRoadmap(ETAPES_LIQUIDATION);
 
 /**
  * RG-LI02 : la liquidation ne s'applique qu'aux sociétés DISSOUTES. (Le backend tolère
@@ -93,7 +83,7 @@ const STEPS: RoadmapStep[] = [
 const ALLOWED_STATUTS = ['DISSOUTE'];
 
 /** Libellé « type de document » pour le nommage `type - dénom - forme (- v<n>)`. */
-export function liquidationDocType(code: string): string {
+function liquidationDocType(code: string): string {
   if (code.startsWith('ANNONCE_LEGALE_LIQUIDATION')) return 'Annonce légale — Clôture de liquidation';
   if (code.startsWith('RAPPORT_LIQUIDATION')) return 'Rapport de liquidation';
   if (code.startsWith('PV_DISSOLUTION_LIQUIDATION')) return 'PV — Clôture de liquidation';
@@ -215,10 +205,10 @@ function LiquidationWorkflowPageBody() {
 
   // ---------- Etape 1 : saisie ----------
   const initialId = (stepData.step1?.dossierId as string) ?? ticket?.dossierId ?? '';
-  const [dossierId, setDossierId] = useState(initialId);
+  const [dossierIdSaisi, setDossierId] = useState(initialId);
+  // Societe du brouillon reprise quand la selection est videe (ancien effet de resynchronisation).
+  const dossierId = dossierIdSaisi || ((stepData.step1?.dossierId as string | undefined) ?? '');
   const [dossier, setDossier] = useState<DossierBrief | null>(null);
-  /** Succursales encore ACTIVE : bloquent la finalisation tant qu'elles ne sont pas fermees. */
-  const [succursalesOuvertes, setSuccursalesOuvertes] = useState<SuccursaleSummary[]>([]);
   const [dateCloture, setDateCloture] = useState(
     (stepData.step1?.dateClotureLiquidation as string) ?? '',
   );
@@ -230,7 +220,8 @@ function LiquidationWorkflowPageBody() {
     const cf = stepData.step1?.comptesFinaux as { totalPassif?: number } | undefined;
     return cf?.totalPassif != null ? String(cf.totalPassif) : '';
   });
-  const [revealErrors, setRevealErrors] = useState(false);
+  // Erreurs revelees a l'arrivee sur l'etape 1 si une saisie existe deja ; remises a zero a chaque changement d'etape.
+  const [revealErrors, setRevealErrors] = useEtatReinitialise(viewStep, () => viewStep === 1 && !!dateCloture);
   const [convocationDate, setConvocationDate] = useState(
     ((stepData.step1?.convocation as { date?: string } | undefined) ?? {}).date ?? '',
   );
@@ -240,9 +231,6 @@ function LiquidationWorkflowPageBody() {
   const [convocationSnapshot, setConvocationSnapshot] = useState<Record<string, unknown> | null>(
     (stepData.step1?.convocationSnapshot as Record<string, unknown>) ?? null,
   );
-  const [dossierParties, setDossierParties] = useState<DossierParties | null>(null);
-  const [partiesLoading, setPartiesLoading] = useState(false);
-
   // Cas de secours (dossier dissous avant la persistance du liquidateur / de la date).
   const [liquidateurSecours, setLiquidateurSecours] = useState<LiquidateurState>(
     () => (stepData.step1?.liquidateur as LiquidateurState | undefined) ?? emptyLiquidateur(),
@@ -286,65 +274,18 @@ function LiquidationWorkflowPageBody() {
     () => (stepData.step3?.piecesJointes as PieceJointeEntry[] | undefined) ?? [],
   );
 
-  useEffect(() => {
-    if (stepData.step1?.dossierId && !dossierId) {
-      setDossierId(stepData.step1.dossierId as string);
-    }
-  }, [stepData.step1?.dossierId, dossierId]);
-
-  useEffect(() => {
-    setRevealErrors(viewStep === 1 && !!dateCloture);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewStep]);
-
   // Parties prenantes + faits de dissolution (liquidateur, siège, date) DÈS la sélection
   // de la société : c'est la source unique — aucune de ces données n'est re-saisie.
-  useEffect(() => {
-    if (!dossierId) {
-      setDossierParties(null);
-      return;
-    }
-    let cancelled = false;
-    setPartiesLoading(true);
-    workflowService
-      .getDossierParties(dossierId)
-      .then((parties) => {
-        if (!cancelled) setDossierParties(parties);
-      })
-      .catch(() => {
-        /* best-effort : le cas de secours reste possible */
-      })
-      .finally(() => {
-        if (!cancelled) setPartiesLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [dossierId]);
+  // Best-effort : un echec de lecture laisse le cas de secours possible.
+  const { dossierParties, partiesLoading } = useDossierParties(dossierId);
 
   // Succursales encore ouvertes : la finalisation les REFUSE (une succursale n'a pas de
   // personnalite juridique distincte, elle ne survit pas a la radiation de sa mere). On
   // les affiche des l'etape 1 — l'employe doit le savoir AVANT de generer tous les actes.
   // Lecture LIVE a chaque affichage de l'etape : une succursale fermee entre-temps
   // disparait de l'avertissement sans re-valider l'etape 1.
-  useEffect(() => {
-    if (!dossierId) {
-      setSuccursalesOuvertes([]);
-      return;
-    }
-    let cancelled = false;
-    workflowService
-      .listSuccursales(dossierId)
-      .then((items) => {
-        if (!cancelled) setSuccursalesOuvertes(items.filter((s) => s.statut === 'ACTIVE'));
-      })
-      .catch(() => {
-        /* best-effort : la garde backend reste la source de verite */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [dossierId, viewStep]);
+  // Best-effort : la garde du serveur reste la source de verite.
+  const { succursales: succursalesOuvertes } = useSuccursalesActives(dossierId, viewStep);
 
   const formeJuridique = useMemo(
     () =>
@@ -383,16 +324,14 @@ function LiquidationWorkflowPageBody() {
    */
   const liquidateur: LiquidateurState = liquidateurSecours;
   /** Le liquidateur BD a-t-il déjà servi à amorcer les champs ? (une seule fois) */
-  const liquidateurSeedRef = useRef(false);
-  useEffect(() => {
-    if (liquidateurSeedRef.current) return;
-    if (!hasLiquidateurBd || !liquidateurBd) return;
-    liquidateurSeedRef.current = true;
-    // Une saisie déjà persistée dans le brouillon prime sur la BD : sinon on
-    // effacerait la correction faite au passage précédent.
-    if (stepData.step1?.liquidateur) return;
-    setLiquidateurSecours(toLiquidateurState(liquidateurBd));
-  }, [liquidateurBd, hasLiquidateurBd, stepData.step1?.liquidateur]);
+  const [liquidateurAmorce, setLiquidateurAmorce] = useState(false);
+  if (!liquidateurAmorce && hasLiquidateurBd && liquidateurBd) {
+    // Ajustement pendant le rendu (et non plus dans un effet). Une saisie déjà
+    // persistée dans le brouillon prime sur la BD : sinon on effacerait la
+    // correction faite au passage précédent.
+    setLiquidateurAmorce(true);
+    if (!stepData.step1?.liquidateur) setLiquidateurSecours(toLiquidateurState(liquidateurBd));
+  }
   const siegeLiquidation = dossierParties?.siegeLiquidation ?? '';
 
   const liquidateurOptions = useMemo(
@@ -468,8 +407,8 @@ function LiquidationWorkflowPageBody() {
     [convocationDate, dateCloture],
   );
 
-  const maxDate = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const [{ maxDate }] = useState(bornesDateSeance);
+  const [todayStr] = useState(() => new Date().toISOString().slice(0, 10));
 
   type FieldErrors = {
     dossierId?: string;
@@ -481,26 +420,26 @@ function LiquidationWorkflowPageBody() {
   };
   const fieldErrors = useMemo<FieldErrors>(() => {
     const errs: FieldErrors = {};
-    if (!dossierId.trim()) errs.dossierId = 'Selectionnez la societe dissoute a liquider.';
+    if (!dossierId.trim()) errs.dossierId = 'Sélectionnez la société dissoute à liquider.';
     if (!dateDissolution) {
       errs.dateDissolution =
-        "La date de dissolution est introuvable en base : renseignez-la (dossier anterieur a "
-        + "l'enregistrement automatique).";
+        'La date de dissolution est introuvable dans le dossier : renseignez-la (dossier antérieur à '
+        + 'l’enregistrement automatique).';
     }
     if (!dateCloture) {
-      errs.dateCloture = `La date de l'${isAU ? "assemblee / decision" : 'AGE'} de cloture est obligatoire.`;
+      errs.dateCloture = `La date ${isAU ? 'de la décision' : 'de l’AGE'} de clôture est obligatoire.`;
     } else if (delaiError) {
       errs.dateCloture = delaiError;
     }
     if (!identiteLiquidateur(liquidateur)) {
       errs.liquidateur =
-        "Aucun liquidateur n'est enregistre pour cette societe : designez-le (il sera ensuite "
+        'Aucun liquidateur n’est enregistré pour cette société : désignez-le (il sera ensuite '
         + 'repris automatiquement).';
     }
     if (boniMali === null) {
-      errs.comptes = "Le total de l'actif et le total du passif (MAD) sont obligatoires.";
+      errs.comptes = 'Le total de l’actif et le total du passif (MAD) sont obligatoires.';
     } else if (Number.parseFloat(totalActif) < 0 || Number.parseFloat(totalPassif) < 0) {
-      errs.comptes = "Les totaux d'actif et de passif doivent etre positifs ou nuls.";
+      errs.comptes = 'Les totaux d’actif et de passif doivent être positifs ou nuls.';
     }
     if (convocationError) errs.convocation = convocationError;
     return errs;
@@ -525,7 +464,7 @@ function LiquidationWorkflowPageBody() {
   );
 
   const depositMotif = useMemo(
-    () => `Liquidation : cloture au ${dateCloture || '—'}`,
+    () => `Liquidation : clôture au ${dateCloture || '—'}`,
     [dateCloture],
   );
 
@@ -571,11 +510,51 @@ function LiquidationWorkflowPageBody() {
       totalActif, totalPassif, dateDissolution, avisCloture, rapportLiquidateur],
   );
 
+  /** Contenu courant de l'étape — voir la note dans DissolutionWorkflowPage. */
+  const draftPayloadFor = useCallback(
+    (n: number): Record<string, unknown> | null => {
+      if (n === 1) {
+        return {
+          dossierId,
+          formeJuridique,
+          dateClotureLiquidation: dateCloture,
+          dateDissolution,
+          liquidateur,
+          comptesFinaux: {
+            totalActif: totalActif ? Number.parseFloat(totalActif) : null,
+            totalPassif: totalPassif ? Number.parseFloat(totalPassif) : null,
+          },
+          convocation: convocationPayload(),
+          convocationSnapshot,
+        };
+      }
+      if (n === 2) {
+        return {
+          pvValide: docsValidated,
+          rapportValide: docsValidated,
+          annonceValide: annonceValidated,
+          depotLegal: { numero: depotLegalNumero, date: depotLegalDate },
+          avisCloture,
+          mentionsPv,
+          rapportLiquidateur,
+        };
+      }
+      if (n === 3) return { piecesJointes };
+      return null;
+    },
+    [dossierId, formeJuridique, dateCloture, dateDissolution, liquidateur, totalActif, avisCloture, mentionsPv,
+      rapportLiquidateur, totalPassif, convocationPayload, convocationSnapshot, docsValidated,
+      annonceValidated, depotLegalNumero, depotLegalDate, piecesJointes],
+  );
+
+  // Appele avant les retours anticipes : l'ordre des hooks ne varie jamais.
+  useStepAutosave(viewStep, () => draftPayloadFor(viewStep), registerDirty);
+
   if (loading) return <Loader />;
   if (!ticket || !progress)
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger">
-        {error ?? 'Workflow introuvable'}
+      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+        {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
       </div>
     );
 
@@ -588,7 +567,7 @@ function LiquidationWorkflowPageBody() {
       const errs = Object.values(fieldErrors).filter(Boolean) as string[];
       if (errs.length > 0) {
         setRevealErrors(true);
-        setError(`Veuillez corriger ${errs.length} erreur${errs.length > 1 ? 's' : ''} (surlignees en rouge).`);
+        setError(`Veuillez corriger ${errs.length} erreur${errs.length > 1 ? 's' : ''} (signalée${errs.length > 1 ? 's' : ''} en rouge).`);
         return;
       }
       await executeStep(1, {
@@ -624,14 +603,14 @@ function LiquidationWorkflowPageBody() {
       });
     } else if (step === 2) {
       if (!docsValidated) {
-        setError('Generez puis validez le PV de cloture ET le rapport de liquidation avant de continuer.');
+        setError('Générez puis validez le procès-verbal de clôture et le rapport de liquidation avant de continuer.');
         return;
       }
       if (!annonceValidated) {
         setError(
-          "Generez puis validez l'annonce legale de cloture : sa publication au Journal "
-            + "d'Annonces Legales fonde la radiation au registre du commerce (les numero et "
-            + 'date de depot legal restent facultatifs a ce stade).',
+          'Générez puis validez l’annonce légale de clôture : sa publication dans un journal '
+            + 'd’annonces légales fonde la radiation au registre du commerce (le numéro et la '
+            + 'date du dépôt légal restent facultatifs à ce stade).',
         );
         return;
       }
@@ -662,46 +641,6 @@ function LiquidationWorkflowPageBody() {
     }
   }
 
-  /** Contenu courant de l'étape — voir la note dans DissolutionWorkflowPage. */
-  const draftPayloadFor = useCallback(
-    (n: number): Record<string, unknown> | null => {
-      if (n === 1) {
-        return {
-          dossierId,
-          formeJuridique,
-          dateClotureLiquidation: dateCloture,
-          dateDissolution,
-          liquidateur,
-          comptesFinaux: {
-            totalActif: totalActif ? Number.parseFloat(totalActif) : null,
-            totalPassif: totalPassif ? Number.parseFloat(totalPassif) : null,
-          },
-          convocation: convocationPayload(),
-          convocationSnapshot,
-        };
-      }
-      if (n === 2) {
-        return {
-          pvValide: docsValidated,
-          rapportValide: docsValidated,
-          annonceValide: annonceValidated,
-          depotLegal: { numero: depotLegalNumero, date: depotLegalDate },
-          avisCloture,
-          mentionsPv,
-          rapportLiquidateur,
-        };
-      }
-      if (n === 3) return { piecesJointes };
-      return null;
-    },
-    [dossierId, formeJuridique, dateCloture, dateDissolution, liquidateur, totalActif, avisCloture, mentionsPv,
-      rapportLiquidateur,
-      totalPassif, convocationDate, convocationHeure, convocationSnapshot, docsValidated,
-      annonceValidated, depotLegalNumero, depotLegalDate, piecesJointes],
-  );
-
-  useStepAutosave(step, () => draftPayloadFor(step), registerDirty);
-
   async function handleSaveDraft() {
     const payload = draftPayloadFor(step);
     if (payload) await saveDraft(step, { [`step${step}`]: payload });
@@ -713,14 +652,14 @@ function LiquidationWorkflowPageBody() {
       await ticketService.transition(ticket.id, { target: 'CLOTURE_DOSSIER' });
       navigate('/tickets');
     } catch (err) {
-      setError((err as Error)?.message ?? 'Echec de cloture');
+      setError((err as Error)?.message ?? 'La clôture du parcours a échoué : réessayez.');
     }
   }
 
   const showErr = (field: keyof FieldErrors): string | null =>
     revealErrors ? fieldErrors[field] ?? null : null;
 
-  const decisionLabel = isAU ? "Decision de l'associe unique" : 'Assemblee Generale Extraordinaire (AGE)';
+  const decisionLabel = isAU ? 'Décision de l’associé unique' : 'Assemblée générale extraordinaire (AGE)';
   const liquidateurLabel = identiteLiquidateur(liquidateur) || '—';
 
   // Identite complete de la societe : sans elle, les formulaires de seance
@@ -749,22 +688,29 @@ function LiquidationWorkflowPageBody() {
         onValidate={!isTerminated ? handleValidate : undefined}
         onCancel={() => setShowCancel(true)}
         footer={{
-          validateLabel: step === 4 ? 'Finaliser' : "Valider l'etape",
+          validateLabel: step === 4 ? 'Finaliser' : 'Valider l’étape',
           // La cloture est REFUSEE par le backend tant qu'une succursale reste ouverte :
           // on desactive le bouton plutot que de laisser l'employe buter sur une erreur.
           validateDisabled: step === 4 && succursalesOuvertes.length > 0,
         }}
       >
+        <AideEtape
+          parcours="liquidation"
+          etapes={ETAPES_LIQUIDATION}
+          etape={step}
+          manquants={step === 1 ? (Object.values(fieldErrors).filter(Boolean) as string[]) : undefined}
+        />
+
         {step === 1 && (
           <div className="space-y-5" data-testid="liquidation-step1">
             <header>
-              <h2 className="text-lg font-semibold text-fg">Etape 1 — Saisie</h2>
+              <h2 className="text-lg font-semibold text-fg">Étape 1 — Saisie</h2>
               <p className="text-sm text-fg-subtle">
-                Selectionnez la societe <strong>DISSOUTE</strong> a liquider, puis renseignez la
-                date de l'assemblee de cloture et les comptes finaux. L'identite de la societe,
-                la <strong>date de dissolution</strong> et le <strong>liquidateur</strong> (nomme
-                lors de la dissolution) sont lus en base : ils ne sont{' '}
-                <strong>jamais re-saisis</strong>.
+                Sélectionnez la société <strong>dissoute</strong> à liquider, puis renseignez la
+                date de l’assemblée de clôture et les comptes finaux. L’identité de la société,
+                la <strong>date de dissolution</strong> et le <strong>liquidateur</strong> (nommé
+                lors de la dissolution) sont lus dans le dossier : vous n’avez{' '}
+                <strong>jamais à les ressaisir</strong>.
               </p>
             </header>
 
@@ -776,8 +722,8 @@ function LiquidationWorkflowPageBody() {
                   setDossierId(d?.id ?? '');
                 }}
                 allowedStatuts={ALLOWED_STATUTS}
-                label="Societe a liquider"
-                help="Seules les societes DISSOUTE sont eligibles. Si la societe n'apparait pas, executez d'abord le workflow Dissolution."
+                label="Société à liquider"
+                help="Seules les sociétés dissoutes peuvent être liquidées. Si la société n’apparaît pas, menez d’abord le parcours « Dissolution »."
                 showDissolutionDelay
               />
               {showErr('dossierId') && (
@@ -790,16 +736,9 @@ function LiquidationWorkflowPageBody() {
 
             {dossierId && (
               <div className="rounded-lg border border-indigo-200 bg-accent/10 p-3 text-xs text-fg-muted" role="status">
-                Formalisme detecte : <strong>{decisionLabel}</strong> — Modeles :{' '}
-                <code className="rounded bg-bg-overlay px-1.5 py-0.5">
-                  {isAU ? 'PV_DISSOLUTION_LIQUIDATION_SARL_AU' : 'PV_DISSOLUTION_LIQUIDATION_SARL'}
-                </code>{' '}
-                +{' '}
-                <code className="rounded bg-bg-overlay px-1.5 py-0.5">RAPPORT_LIQUIDATION_DIRECTEUR</code>{' '}
-                +{' '}
-                <code className="rounded bg-bg-overlay px-1.5 py-0.5">
-                  {isAU ? 'ANNONCE_LEGALE_LIQUIDATION_SARL_AU' : 'ANNONCE_LEGALE_LIQUIDATION_SARL'}
-                </code>
+                Organe compétent : <strong>{decisionLabel}</strong>. Actes produits : procès-verbal
+                de clôture de liquidation{isAU ? ' (SARL à associé unique)' : ' (SARL)'}, rapport du
+                liquidateur et annonce légale de clôture.
               </div>
             )}
 
@@ -814,7 +753,7 @@ function LiquidationWorkflowPageBody() {
               >
                 <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning" />
                 <span>
-                  Cette societe exploite encore{' '}
+                  Cette société exploite encore{' '}
                   <strong>
                     {succursalesOuvertes.length} succursale
                     {succursalesOuvertes.length > 1 ? 's' : ''}
@@ -823,9 +762,9 @@ function LiquidationWorkflowPageBody() {
                   {succursalesOuvertes
                     .map((s) => `${s.denomination ?? 'Succursale'}${s.ville ? ` (${s.ville})` : ''}`)
                     .join(', ')}
-                  . La cloture de la liquidation sera <strong>refusee</strong> tant qu'elles ne
-                  sont pas fermees (workflow «&nbsp;Fermeture de succursale&nbsp;») : chacune doit
-                  etre radiee au greffe de son lieu d'exploitation.
+                  . La clôture de la liquidation sera <strong>refusée</strong> tant qu’elles ne
+                  sont pas fermées (parcours «&nbsp;Fermeture de succursale&nbsp;») : chacune doit
+                  être radiée au greffe de son lieu d’exploitation.
                 </span>
               </div>
             )}
@@ -841,12 +780,12 @@ function LiquidationWorkflowPageBody() {
                   <h4 className="text-sm font-semibold text-fg">Repris du dossier (lecture seule)</h4>
                 </div>
                 {partiesLoading && (
-                  <p className="text-[11px] text-fg-subtle">Chargement des donnees du dossier…</p>
+                  <p className="text-[11px] text-fg-subtle">Chargement des données du dossier…</p>
                 )}
 
                 <div className="grid gap-4 rounded-lg bg-bg-overlay p-3 sm:grid-cols-2">
                   <div>
-                    <p className="text-xs text-fg-subtle">Denomination</p>
+                    <p className="text-xs text-fg-subtle">Dénomination</p>
                     <p className="text-sm font-medium text-fg">{targetDenomination || '—'}</p>
                   </div>
                   <div>
@@ -856,13 +795,13 @@ function LiquidationWorkflowPageBody() {
                   <div>
                     <p className="text-xs text-fg-subtle">Date de dissolution</p>
                     <p className="text-sm font-medium text-fg" data-testid="liquidation-date-dissolution-bd">
-                      {hasDateDissolutionBd ? dateDissolution : '— non enregistree —'}
+                      {hasDateDissolutionBd ? dateDissolution : '— non enregistrée —'}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-fg-subtle">Liquidateur</p>
                     <p className="text-sm font-medium text-fg" data-testid="liquidation-liquidateur-bd">
-                      {hasLiquidateurBd ? liquidateurLabel : '— non enregistre —'}
+                      {hasLiquidateurBd ? liquidateurLabel : '— non enregistré —'}
                     </p>
                   </div>
                   {/* Le CIN etait absent de ce recapitulatif : il est publie dans
@@ -874,12 +813,12 @@ function LiquidationWorkflowPageBody() {
                     <p className="text-sm font-medium text-fg" data-testid="liquidation-liquidateur-cin-bd">
                       {(estPersonneMorale(liquidateur)
                         ? [liquidateur.rcNumero, liquidateur.rcVille].filter(Boolean).join(' — ')
-                        : liquidateur.cin) || '— a renseigner ci-dessous —'}
+                        : liquidateur.cin) || '— à renseigner ci-dessous —'}
                     </p>
                   </div>
                   {siegeLiquidation && (
                     <div className="sm:col-span-2">
-                      <p className="text-xs text-fg-subtle">Siege de la liquidation</p>
+                      <p className="text-xs text-fg-subtle">Siège de la liquidation</p>
                       <p className="text-sm font-medium text-fg">{siegeLiquidation}</p>
                     </div>
                   )}
@@ -887,7 +826,7 @@ function LiquidationWorkflowPageBody() {
 
                 {hasLiquidateurBd && hasDateDissolutionBd && (
                   <p className="text-[11px] text-fg-subtle">
-                    Ces donnees proviennent du workflow Dissolution : elles ne sont pas
+                    Ces données proviennent du parcours « Dissolution » : elles ne sont pas
                     modifiables ici.
                   </p>
                 )}
@@ -905,7 +844,7 @@ function LiquidationWorkflowPageBody() {
                   onChange={(e) => setDateDissolutionSecours(e.target.value)}
                   onBlur={() => setRevealErrors(true)}
                   error={showErr('dateDissolution') ?? undefined}
-                  hint="Aucune date de dissolution en base (dossier anterieur a l'enregistrement automatique) : saisissez-la une seule fois."
+                  hint="Aucune date de dissolution dans le dossier (dossier antérieur à l’enregistrement automatique) : saisissez-la une seule fois."
                 />
               </div>
             )}
@@ -920,9 +859,9 @@ function LiquidationWorkflowPageBody() {
                   >
                     <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>
-                      Aucun liquidateur n'est enregistre pour cette societe (dossier dissous avant
-                      l'enregistrement automatique). Designez-le <strong>une seule fois</strong> :
-                      il sera persiste au dossier et repris ensuite sans re-saisie.
+                      Aucun liquidateur n’est enregistré pour cette société (dossier dissous avant
+                      l’enregistrement automatique). Désignez-le <strong>une seule fois</strong> :
+                      il sera enregistré au dossier et repris ensuite sans ressaisie.
                     </span>
                   </div>
                 )}
@@ -934,9 +873,9 @@ function LiquidationWorkflowPageBody() {
                     <Lock className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
                     <span>
                       Liquidateur <strong>repris de la dissolution</strong> : les champs sont
-                      deja remplis, rien n'est a re-saisir. Completez seulement ce qui manque —
-                      typiquement le <strong>N° CIN</strong>, rarement present en Data Room et
-                      pourtant publie dans l'annonce. Toute correction est enregistree au dossier.
+                      déjà remplis, rien n’est à ressaisir. Complétez seulement ce qui manque —
+                      typiquement le <strong>n° de CIN</strong>, rarement présent dans la Data Room et
+                      pourtant publié dans l’annonce. Toute correction est enregistrée au dossier.
                     </span>
                   </div>
                 )}
@@ -953,7 +892,7 @@ function LiquidationWorkflowPageBody() {
 
             {/* ---- Date de l'AGE de clôture + règle des 15 jours ---- */}
             <TextField
-              label={`Date ${isAU ? 'de la decision' : "de l'AGE"} de cloture *`}
+              label={`Date ${isAU ? 'de la décision' : 'de l’AGE'} de clôture *`}
               type="date"
               value={dateCloture}
               min={dateDissolution || undefined}
@@ -964,8 +903,8 @@ function LiquidationWorkflowPageBody() {
               error={showErr('dateCloture') ?? undefined}
               hint={
                 isAU
-                  ? "La cloture releve de la decision de l'associe unique."
-                  : 'La cloture de la liquidation se decide toujours en assemblee generale EXTRAORDINAIRE.'
+                  ? 'La clôture relève de la décision de l’associé unique.'
+                  : 'La clôture de la liquidation se décide toujours en assemblée générale extraordinaire.'
               }
             />
 
@@ -977,7 +916,7 @@ function LiquidationWorkflowPageBody() {
               >
                 <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                 <div>
-                  <p className="font-semibold">Delai legal non respecte (RG-LI03)</p>
+                  <p className="font-semibold">Délai légal non respecté</p>
                   <p>{delaiError}</p>
                 </div>
               </div>
@@ -990,8 +929,8 @@ function LiquidationWorkflowPageBody() {
                 >
                   <CheckCircle className="h-4 w-4" />
                   <span>
-                    Delai legal respecte : {joursDepuisDissolution} jour
-                    {joursDepuisDissolution > 1 ? 's' : ''} entre la dissolution et la cloture
+                    Délai légal respecté : {joursDepuisDissolution} jour
+                    {joursDepuisDissolution > 1 ? 's' : ''} entre la dissolution et la clôture
                     (minimum {LIQUIDATION_DELAI_JOURS} jours).
                   </span>
                 </div>
@@ -1000,7 +939,13 @@ function LiquidationWorkflowPageBody() {
 
             {/* ---- Comptes finaux → boni / mali CALCULÉ ---- */}
             <section className="rounded-xl border border-border bg-bg-raised p-4" data-testid="liquidation-comptes">
-              <h4 className="mb-3 text-sm font-semibold text-fg">Comptes finaux de liquidation</h4>
+              <h4 className="mb-3 flex items-center gap-1 text-sm font-semibold text-fg">
+                Comptes finaux de liquidation
+                <InfoBulle
+                  libelle="Comment remplir les comptes finaux ?"
+                  texte="Indiquez le total de l’actif réalisé et le total du passif réglé, en dirhams. L’écart donne le boni (actif supérieur au passif) ou le mali de liquidation, calculé automatiquement et repris dans le procès-verbal, le rapport et l’annonce."
+                />
+              </h4>
               <div className="grid gap-3 md:grid-cols-3">
                 <TextField
                   label="Total actif (MAD) *"
@@ -1047,8 +992,8 @@ function LiquidationWorkflowPageBody() {
                 </p>
               )}
               <p className="mt-2 text-[11px] text-fg-subtle">
-                Le sens (boni ou mali) et son montant sont <strong>calcules</strong> depuis ces
-                deux totaux : ils alimentent directement le PV, le rapport et l'annonce legale.
+                Le sens (boni ou mali) et son montant sont <strong>calculés</strong> à partir de ces
+                deux totaux : ils alimentent directement le procès-verbal, le rapport et l’annonce légale.
               </p>
             </section>
 
@@ -1056,7 +1001,7 @@ function LiquidationWorkflowPageBody() {
             <section className="space-y-3 rounded-xl border border-border bg-bg-raised p-4" data-testid="liquidation-convocation">
               <div className="flex items-center gap-2">
                 <Megaphone className="h-4 w-4 text-accent" />
-                <h4 className="text-sm font-semibold text-fg">Convocation (optionnelle)</h4>
+                <h4 className="text-sm font-semibold text-fg">Convocation (facultative)</h4>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <TextField
@@ -1079,9 +1024,9 @@ function LiquidationWorkflowPageBody() {
                 />
               </div>
               <p className="text-[11px] text-fg-subtle">
-                Regle des <strong>{CONVOCATION_DELAI_JOURS} jours</strong> : l'assemblee ne peut
-                se tenir moins de {CONVOCATION_DELAI_JOURS} jours calendaires apres la
-                convocation. Laisser vide si aucune convocation n'est emise. Les associes a
+                Règle des <strong>{CONVOCATION_DELAI_JOURS} jours</strong> : l’assemblée ne peut
+                se tenir moins de {CONVOCATION_DELAI_JOURS} jours calendaires après la
+                convocation. Laissez vide si aucune convocation n’est émise. Les associés à
                 convoquer sont repris du dossier.
               </p>
               {convocationError && (
@@ -1130,14 +1075,14 @@ function LiquidationWorkflowPageBody() {
             <header>
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-violet-600" />
-                <h2 className="text-lg font-semibold text-fg">Etape 2 — Generation des actes</h2>
+                <h2 className="text-lg font-semibold text-fg">Étape 2 — Génération des actes</h2>
               </div>
               <p className="text-sm text-fg-subtle">
-                Le <strong>PV de cloture</strong>, le <strong>rapport de liquidation</strong> et
-                l'<strong>annonce legale de cloture</strong> sont generes a partir de l'etape 1
-                et de la Data Room : aucune donnee n'est re-saisie. A la validation, chaque
-                document est <strong>depose automatiquement</strong> et versionne dans la
-                dataroom juridique.
+                Le <strong>procès-verbal de clôture</strong>, le <strong>rapport de liquidation</strong> et
+                l’<strong>annonce légale de clôture</strong> sont produits à partir de l’étape 1
+                et de la Data Room : aucune donnée n’est ressaisie. À la validation, chaque
+                document est <strong>déposé automatiquement</strong> et versionné dans la
+                Data Room juridique.
               </p>
             </header>
 
@@ -1257,13 +1202,13 @@ function LiquidationWorkflowPageBody() {
             <header>
               <div className="flex items-center gap-2">
                 <Paperclip className="h-5 w-5 text-accent" />
-                <h2 className="text-lg font-semibold text-fg">Etape 3 — Pieces jointes (optionnelle)</h2>
+                <h2 className="text-lg font-semibold text-fg">Étape 3 — Pièces jointes (facultative)</h2>
               </div>
               <p className="text-sm text-fg-subtle">
-                Deposez ici les <strong>versions legalisees</strong> des documents generes (PV de
-                cloture signe, rapport signe, annonce publiee, modele J…). Cette etape est{' '}
-                <strong>entierement facultative</strong> : vous pouvez la laisser vide et
-                poursuivre vers la synthese. Chaque depot est versionne en Data Room.
+                Déposez ici les <strong>versions légalisées</strong> des documents produits (procès-verbal
+                de clôture signé, rapport signé, annonce publiée, modèle J…). Cette étape est{' '}
+                <strong>entièrement facultative</strong> : vous pouvez la laisser vide et
+                poursuivre vers la synthèse. Chaque dépôt est versionné dans la Data Room.
               </p>
             </header>
             <PiecesJointesPanel
@@ -1282,7 +1227,7 @@ function LiquidationWorkflowPageBody() {
             />
             {piecesJointes.length === 0 && (
               <p className="rounded-lg border border-border bg-bg-overlay p-3 text-xs text-fg-subtle">
-                Aucune piece jointe deposee pour le moment — cette etape est facultative.
+                Aucune pièce jointe déposée pour le moment — cette étape est facultative.
               </p>
             )}
           </div>
@@ -1297,17 +1242,17 @@ function LiquidationWorkflowPageBody() {
                 data-testid="liquidation-blocage-succursales"
               >
                 <AlertTriangle className="mb-2 h-8 w-8 text-danger" />
-                <h2 className="text-xl font-bold text-fg">Cloture impossible en l'etat</h2>
+                <h2 className="text-xl font-bold text-fg">Clôture impossible en l’état</h2>
                 <p className="mt-2 text-sm text-fg-muted">
-                  Cette societe exploite encore{' '}
+                  Cette société exploite encore{' '}
                   <strong>
                     {succursalesOuvertes.length} succursale
                     {succursalesOuvertes.length > 1 ? 's' : ''}
                   </strong>
-                  . Une succursale n'a pas de personnalite juridique distincte de sa societe :
-                  elle ne peut pas survivre a sa radiation. Fermez-les d'abord — chacune par le
-                  workflow «&nbsp;Fermeture de succursale&nbsp;», avec son PV, son annonce legale
-                  et sa radiation au greffe de son lieu d'exploitation.
+                  . Une succursale n’a pas de personnalité juridique distincte de sa société :
+                  elle ne peut pas survivre à sa radiation. Fermez-les d’abord — chacune par le
+                  parcours «&nbsp;Fermeture de succursale&nbsp;», avec son procès-verbal, son annonce légale
+                  et sa radiation au greffe de son lieu d’exploitation.
                 </p>
                 <ul className="mt-3 space-y-1 text-sm text-fg">
                   {succursalesOuvertes.map((s) => (
@@ -1322,20 +1267,20 @@ function LiquidationWorkflowPageBody() {
             ) : (
               <div className="rounded-xl bg-gradient-to-r from-violet-600 to-violet-700 p-6 text-bg-raised">
                 <CheckCircle className="mb-2 h-8 w-8" />
-                <h2 className="text-2xl font-bold">Liquidation finalisee</h2>
+                <h2 className="text-2xl font-bold">Liquidation finalisée</h2>
                 <p className="text-sm text-violet-100">
-                  Le PV de cloture, le rapport de liquidation et l'annonce legale ont ete generes,
-                  valides et deposes en dataroom. La societe est desormais{' '}
-                  <strong>liquidee</strong>.
+                  Le procès-verbal de clôture, le rapport de liquidation et l’annonce légale ont été
+                  produits, validés et déposés dans la Data Room. La société est désormais{' '}
+                  <strong>liquidée</strong>.
                 </p>
               </div>
             )}
 
             <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-societe">
-              <p className="mb-3 text-sm font-semibold text-fg">Societe et decision</p>
+              <p className="mb-3 text-sm font-semibold text-fg">Société et décision</p>
               <div className="grid gap-4 rounded-lg bg-bg-overlay p-3 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs text-fg-subtle">Denomination</p>
+                  <p className="text-xs text-fg-subtle">Dénomination</p>
                   <p className="text-sm font-medium text-fg">{targetDenomination || '—'}</p>
                 </div>
                 <div>
@@ -1348,7 +1293,7 @@ function LiquidationWorkflowPageBody() {
                 </div>
                 <div>
                   <p className="text-xs text-fg-subtle">
-                    Date {isAU ? 'de la decision' : "de l'AGE"} de cloture
+                    Date {isAU ? 'de la décision' : 'de l’AGE'} de clôture
                   </p>
                   <p className="text-sm font-medium text-fg">{dateCloture || '—'}</p>
                 </div>
@@ -1357,7 +1302,7 @@ function LiquidationWorkflowPageBody() {
                   <p className="text-sm font-medium text-fg">
                     {liquidateurLabel}{' '}
                     <span className="text-xs font-normal text-fg-subtle">
-                      ({hasLiquidateurBd ? 'nomme a la dissolution' : 'designe en liquidation'})
+                      ({hasLiquidateurBd ? 'nommé à la dissolution' : 'désigné à la liquidation'})
                     </span>
                   </p>
                 </div>
@@ -1365,7 +1310,7 @@ function LiquidationWorkflowPageBody() {
                   <p className="text-xs text-fg-subtle">Convocation</p>
                   <p className="text-sm font-medium text-fg">
                     {convocationDate
-                      ? `${convocationDate}${convocationHeure ? ` a ${convocationHeure}` : ''}`
+                      ? `${convocationDate}${convocationHeure ? ` à ${convocationHeure}` : ''}`
                       : 'Aucune'}
                   </p>
                 </div>
@@ -1388,7 +1333,7 @@ function LiquidationWorkflowPageBody() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-fg-subtle">Resultat</p>
+                  <p className="text-xs text-fg-subtle">Résultat</p>
                   <p className="text-sm font-medium text-fg">
                     {boniMali === null
                       ? '—'
@@ -1399,44 +1344,44 @@ function LiquidationWorkflowPageBody() {
             </div>
 
             <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-documents">
-              <p className="mb-3 text-sm font-semibold text-fg">Documents et depots</p>
+              <p className="mb-3 text-sm font-semibold text-fg">Documents et dépôts</p>
               <ul className="space-y-1 rounded-lg bg-bg-overlay p-3 text-sm text-fg-muted">
                 <li>
-                  PV de cloture + rapport de liquidation :{' '}
-                  {docsValidated ? 'generes et valides' : 'non valides'} — deposes en Data Room
-                  versionnee.
+                  Procès-verbal de clôture et rapport de liquidation :{' '}
+                  {docsValidated ? 'produits et validés' : 'non validés'} — déposés et versionnés
+                  dans la Data Room.
                 </li>
                 <li>
-                  Annonce legale de cloture : {annonceValidated ? 'generee et validee' : 'non validee'}
+                  Annonce légale de clôture : {annonceValidated ? 'produite et validée' : 'non validée'}
                   {depotLegalNumero || depotLegalDate
-                    ? ` — depot legal n° ${depotLegalNumero || '—'} du ${depotLegalDate || '—'}`
-                    : ' — depot legal (n° + date) a completer apres depot au greffe'}
+                    ? ` — dépôt légal n° ${depotLegalNumero || '—'} du ${depotLegalDate || '—'}`
+                    : ' — numéro et date du dépôt légal à compléter après le dépôt au greffe'}
                   .
                 </li>
                 <li>
-                  Pieces jointes :{' '}
+                  Pièces jointes :{' '}
                   {piecesJointes.length > 0
                     ? piecesJointes
                         .map((p) => `${p.label}${p.version ? ` (v${p.version})` : ''}`)
                         .join(', ')
-                    : 'aucune (etape facultative)'}
+                    : 'aucune (étape facultative)'}
                   .
                 </li>
               </ul>
             </div>
 
             <div className="rounded-xl border border-border bg-bg-raised p-4 text-sm text-fg-muted">
-              <p><strong>Statut societe :</strong> LIQUIDEE</p>
-              <p className="mt-1"><strong>Archivage Data Room :</strong> confirme.</p>
+              <p><strong>Statut de la société :</strong> liquidée</p>
+              <p className="mt-1"><strong>Archivage dans la Data Room :</strong> confirmé.</p>
               <p className="mt-1">
-                <strong>Prochaine etape suggeree :</strong> engager la radiation au Registre du
-                Commerce.
+                <strong>Prochaine étape suggérée :</strong> engager la radiation au registre du
+                commerce.
               </p>
             </div>
 
             {!isTerminated ? (
               <div className="flex gap-2">
-                <Button onClick={handleCloturer}>Cloturer le workflow</Button>
+                <Button onClick={handleCloturer}>Clôturer le parcours</Button>
               </div>
             ) : (
               <Button onClick={() => navigate('/tickets')}>Retour aux tickets</Button>

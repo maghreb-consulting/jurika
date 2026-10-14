@@ -24,10 +24,11 @@ public class TicketStateMachine {
 
     public void assertCanTransition(Ticket current, TicketStatut target, TicketStatutHandler.TransitionContext ctx) {
         if (current.statut() == target) {
-            throw new ConflictException("Le ticket est deja au statut " + target);
+            throw new ConflictException("Le ticket est d\u00e9j\u00e0 au statut \u00ab " + target.libelle() + " \u00bb.");
         }
         if (!current.statut().canTransitionTo(target)) {
-            throw new ConflictException("Transition invalide : " + current.statut() + " -> " + target);
+            throw new ConflictException("Transition invalide : le ticket ne peut pas passer du statut \u00ab "
+                    + current.statut().libelle() + " \u00bb au statut \u00ab " + target.libelle() + " \u00bb.");
         }
         TicketStatutHandler handler = handlers.get(target);
         if (handler == null) {

@@ -97,12 +97,12 @@ public class InviteEmployeUseCase {
     public Result execute(Command cmd) {
         if (!ALLOWED_ROLES.contains(cmd.role())) {
             throw new ValidationException(
-                    "INVALID_ROLE : seuls EMPLOYE et SUPERVISEUR peuvent etre invites via cet endpoint. "
-                            + "Pour un CLIENT, utiliser POST /auth/invite-client.");
+                    "Seuls un employ\u00e9 ou un superviseur peuvent \u00eatre invit\u00e9s ici. "
+                            + "Un client s\u2019invite depuis son dossier.");
         }
 
         var workspace = workspaceRepository.findById(cmd.workspaceId())
-                .orElseThrow(() -> new NotFoundException("Workspace introuvable"));
+                .orElseThrow(() -> new NotFoundException("Workspace introuvable."));
         TenantContext.set(workspace.id());
 
         // BUG 7 — anti-duplicate sur contact_email : 1 personne (= 1 email perso)
@@ -112,7 +112,7 @@ public class InviteEmployeUseCase {
         Optional<User> existing = userRepository.findByWorkspaceAndEmail(workspace.id(), cmd.email());
         if (existing.isPresent()) {
             throw new ConflictException(
-                    "Un compte existe deja dans ce workspace avec l'email " + cmd.email());
+                    "Un compte existe d\u00e9j\u00e0 dans ce workspace avec l\u2019adresse " + cmd.email());
         }
 
         // 2026-06-04 (fix P1) : enforce quota plan pour les invitations EMPLOYE
@@ -135,9 +135,9 @@ public class InviteEmployeUseCase {
                     .count();
             if (existingSupervisors >= 1) {
                 throw new ConflictException(
-                        "Un seul SUPERVISEUR est autorise par cabinet. "
-                                + "Desactivez l'actuel avant d'en inviter un nouveau, "
-                                + "ou invitez ce membre en tant qu'EMPLOYE.");
+                        "Un cabinet n\u2019a qu\u2019un seul superviseur. "
+                                + "D\u00e9sactivez le superviseur actuel avant d\u2019en inviter un nouveau, "
+                                + "ou invitez ce membre en tant qu\u2019employ\u00e9.");
             }
         }
 
@@ -175,15 +175,15 @@ public class InviteEmployeUseCase {
         vars.put("roleLabel", cmd.role() == Role.SUPERVISEUR ? "Superviseur" : "Employe");
         vars.put("loginUrl", loginUrl);
         vars.put("phishingWarning",
-                "JURIKA ne vous demandera JAMAIS votre mot de passe par email, SMS ou telephone. "
-                        + "En cas de message suspect, contactez immediatement support@jurika.ma.");
-        vars.put("subject", "Invitation a rejoindre " + workspace.name() + " sur JURIKA");
+                "JURIKA ne vous demandera jamais votre mot de passe, ni par courriel, ni par SMS, ni par t\u00e9l\u00e9phone. "
+                        + "En cas de message suspect, \u00e9crivez imm\u00e9diatement \u00e0 support@jurika.ma.");
+        vars.put("subject", "Invitation \u00e0 rejoindre " + workspace.name() + " sur JURIKA");
 
         boolean delivered;
         try {
             // BUG 7 — destinataire = contact_email (email perso de la personne).
             emailSender.sendTemplated(contactEmail,
-                    "Invitation a rejoindre " + workspace.name() + " sur JURIKA",
+                    "Invitation \u00e0 rejoindre " + workspace.name() + " sur JURIKA",
                     "employe-invite", vars);
             delivered = true;
         } catch (RuntimeException ex) {

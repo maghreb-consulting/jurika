@@ -1,7 +1,14 @@
 # Courriels de JURIKA — relais, fournisseur, domaine jurika.ma
 
 Lot L5 (E2). Règles : CDC RG-COM-09 à RG-COM-11. Décision du directeur : **Brevo** aujourd'hui,
-**Amazon SES** plus tard. Adresse d'envoi unique : `noreply@jurika.ma` (nom affiché : JURIKA).
+**Amazon SES** plus tard. Nom affiché de l'expéditeur : JURIKA.
+
+**Lot L6 (E5), décision de l'utilisateur du 2026-10-13 : le domaine jurika.ma n'est pas déployé et ne
+le sera qu'à la mise en production.** Rien n'est configuré pour jurika.ma ni pour jurika.org avant
+cette date. En test, l'expéditeur est l'adresse vérifiée dans Brevo par l'utilisateur, définie dans
+`.env.local` (`SMTP_FROM`), avec le nom affiché « JURIKA » (`SMTP_FROM_NAME`). Il n'existe plus
+d'adresse d'expéditeur par défaut : sans `SMTP_FROM`, Compose refuse de démarrer la pile, et auth
+refuse d'envoyer en le disant. Le § 3 ci-dessous ne s'applique qu'à la mise en production.
 
 ## 1. Principe : un relais SMTP, un fournisseur interchangeable
 
@@ -18,7 +25,7 @@ deux services (contrôle : `CourrielsComposeTest`). Aucun code ne change d'un fo
 | `SMTP_AUTH` / `SMTP_STARTTLS` | `true` / `true` | `true` / `true` |
 | `SMTP_USER` | identifiant SMTP du compte Brevo | identifiant SMTP SES (distinct des clés IAM) |
 | `SMTP_PASSWORD` | clé SMTP Brevo | mot de passe SMTP SES |
-| `SMTP_FROM` / `SMTP_FROM_NAME` | `noreply@jurika.ma` / `JURIKA` | idem |
+| `SMTP_FROM` / `SMTP_FROM_NAME` | adresse vérifiée dans Brevo (test) / `JURIKA` | adresse du domaine vérifié dans SES / `JURIKA` |
 
 `JURIKA_EMAIL_PROVIDER=log` n'envoie rien (journal seulement) : réservé au développement.
 Au démarrage, auth écrit la ligne « Courriels : relais SMTP <hôte>:<port>, ... » (jamais
@@ -54,7 +61,7 @@ Un courriel qui ne part pas (destinataire refusé, relais injoignable) est journ
 (« Courriel client NON envoye ») puis rangé **intact** dans la file `auth.courriels-client.echecs`,
 consultable et rejouable depuis la console RabbitMQ ; il n’est ni perdu ni rejoué en boucle.
 
-## 3. DNS du domaine jurika.ma (à publier chez le registraire)
+## 3. DNS du domaine jurika.ma (à la mise en production seulement, à publier chez le registraire)
 
 Un domaine n'a qu'**un seul** enregistrement SPF : pendant une transition Brevo → SES, les deux
 `include` cohabitent dans le même enregistrement.

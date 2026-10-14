@@ -43,15 +43,19 @@ public class PublicSignupController {
      * tester Brevo / le contenu du welcome.html.
      */
     private final boolean deferCredentialsAllowed;
+    private final String contactSupport;
     /** Lot L0 (E13a) : le workspace cree devient le workspace courant avant la transaction. */
     private final ma.jurika.auth.application.ContexteWorkspacePublic contextePublic;
 
     public PublicSignupController(SignupCabinetUseCase signupCabinetUseCase,
                                    @Value("${jurika.signup.defer-credentials-allowed:true}") boolean deferCredentialsAllowed,
+                                   @Value("${jurika.email.support:${jurika.email.from:}}") String contactSupport,
                                    ma.jurika.auth.application.ContexteWorkspacePublic contextePublic) {
         this.signupCabinetUseCase = signupCabinetUseCase;
         this.contextePublic = contextePublic;
         this.deferCredentialsAllowed = deferCredentialsAllowed;
+        // Lot L6 (E5) : contact cite au demandeur ; jurika.ma n'est pas deploye avant la mise en production.
+        this.contactSupport = contactSupport == null ? "" : contactSupport.trim();
         if (!deferCredentialsAllowed) {
             log.warn("Signup defer-credentials DESACTIVE par config -- le mail welcome partira AU SIGNUP "
                     + "meme si le wizard demande de le differer. Ne pas activer en prod.");
@@ -64,7 +68,7 @@ public class PublicSignupController {
             HttpServletRequest request) {
 
         if (!body.isCguAccepted()) {
-            throw new ValidationException("CGU non acceptees.");
+            throw new ValidationException("Vous devez accepter les conditions g\u00e9n\u00e9rales d\u2019utilisation.");
         }
 
         String ip = resolveClientIp(request);
@@ -109,12 +113,15 @@ public class PublicSignupController {
         // pour compat e2e.
         String message;
         if (effectiveDefer) {
-            message = "Cabinet cree. Vos identifiants seront envoyes apres validation du paiement.";
+            message = "Cabinet cr\u00e9\u00e9. Vos identifiants vous seront envoy\u00e9s apr\u00e8s la validation du paiement.";
         } else if (result.emailDelivered()) {
-            message = "Cabinet cree. Verifiez votre email pour activer votre compte.";
+            message = "Cabinet cr\u00e9\u00e9. Ouvrez le courriel que nous venons de vous envoyer pour activer votre compte.";
         } else {
-            message = "Cabinet cree mais l'email d'activation n'a pas pu etre envoye. "
-                    + "Contactez support@jurika.ma en mentionnant votre code workspace : " + result.workspaceCode();
+            message = "Cabinet cr\u00e9\u00e9, mais le courriel d\u2019activation n\u2019a pas pu \u00eatre envoy\u00e9. "
+                    + (contactSupport.isBlank()
+                        ? "Contactez JURIKA en indiquant le code de votre cabinet : "
+                        : "\u00c9crivez \u00e0 " + contactSupport + " en indiquant le code de votre cabinet : ")
+                    + result.workspaceCode();
         }
         java.util.HashMap<String, Object> resp = new java.util.HashMap<>();
         resp.put("workspaceCode", result.workspaceCode());

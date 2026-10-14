@@ -67,13 +67,13 @@ export function Hero({ onDemoClick }) {
           </span>
           <br />
           <span className={`hero-line hero-line-2 ${stage.line2 || (reduced && line1Done) ? 'is-revealed' : ''}`}>
-            <em className="hero-accent-italic">augmentée</em> par l'<em className="hero-accent-italic hero-accent-gradient">Intelligence Artificielle</em>
+            <em className="hero-accent-italic">rigoureuse</em> et <em className="hero-accent-italic hero-accent-gradient">traçable</em>
           </span>
         </h1>
         <p className={`hero-sub ${stage.subtitle ? 'is-in' : ''}`}>
           JURIKA digitalise et automatise l'ensemble du cycle de vie juridique de vos dossiers d'entreprises au Maroc :
-          création de sociétés, modifications statutaires, dissolution, liquidation. Génération documentaire IA,
-          extraction OCR intelligente, chatbot juridique RAG et Data Room sécurisée — le tout dans une plateforme conforme CNDP.
+          création de sociétés, modifications statutaires, dissolution, liquidation. Actes produits à partir des modèles
+          de votre cabinet, lecture assistée des pièces d’identité, assistant juridique qui cite ses sources et Data Room sécurisée.
         </p>
         <div className={`hero-cta ${stage.subtitle ? 'is-in' : ''}`}>
           <MagneticButton

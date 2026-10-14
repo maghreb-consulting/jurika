@@ -19,6 +19,7 @@ import { Sprint10EmployePanel } from '../../components/dashboard/Sprint10Employe
 import { EmployeeChartsPanel } from '../../components/dashboard/EmployeeChartsPanel';
 import { CopilotePanel } from '../../components/dashboard/CopilotePanel';
 import { PendingTransfersPanel } from '../../components/transfer/PendingTransfersPanel';
+import { TexteAide } from '../../components/ui/Aide';
 import type { Ticket } from '../../types/ticket';
 import type {
   DemandeSummary,
@@ -35,25 +36,25 @@ const KANBAN_STATUTS = [
   'CLOTURE_DOSSIER',
 ] as const;
 const KANBAN_LABELS: Record<string, string> = {
-  CREATION_TICKET: 'CREATION',
-  GENERATION_DOCUMENTS: 'GENERATION',
-  DEROULEMENT_DEMARCHE: 'DEMARCHES',
-  CLOTURE_DOSSIER: 'CLOTURE',
+  CREATION_TICKET: 'Création',
+  GENERATION_DOCUMENTS: 'Génération',
+  DEROULEMENT_DEMARCHE: 'Démarches',
+  CLOTURE_DOSSIER: 'Clôture',
 };
 
 const DEMANDE_COLUMNS: Array<{ key: 'NON_TRAITEE' | 'EN_COURS' | 'TRAITEE'; label: string; bg: string }> = [
-  { key: 'NON_TRAITEE', label: 'NON TRAITEES', bg: 'bg-danger' },
-  { key: 'EN_COURS', label: 'EN COURS', bg: 'bg-accent/70' },
-  { key: 'TRAITEE', label: 'TRAITEES', bg: 'bg-emerald-500' },
+  { key: 'NON_TRAITEE', label: 'Non traitées', bg: 'bg-danger' },
+  { key: 'EN_COURS', label: 'En cours', bg: 'bg-accent/70' },
+  { key: 'TRAITEE', label: 'Traitées', bg: 'bg-emerald-500' },
 ];
 
 // Lot AG — machine a etats des requetes EMPLOYE_TO_CLIENT, cote employe :
 //   À faire = OUVERTE + A_COMPLETER (chez le client) ; À valider = REPONDUE
 //   (le client a repondu, j'atteste) ; Terminé = CLOTUREE.
 const REQUETE_COLUMNS: Array<{ key: 'A_FAIRE' | 'A_VALIDER' | 'TERMINE'; label: string; match: RequeteStatut[]; bg: string }> = [
-  { key: 'A_FAIRE', label: 'CHEZ LE CLIENT', match: ['OUVERTE', 'A_COMPLETER'], bg: 'bg-accent/70' },
-  { key: 'A_VALIDER', label: 'A VALIDER', match: ['REPONDUE'], bg: 'bg-amber-500' },
-  { key: 'TERMINE', label: 'TERMINEES', match: ['CLOTUREE'], bg: 'bg-emerald-500' },
+  { key: 'A_FAIRE', label: 'Chez le client', match: ['OUVERTE', 'A_COMPLETER'], bg: 'bg-accent/70' },
+  { key: 'A_VALIDER', label: 'À valider', match: ['REPONDUE'], bg: 'bg-amber-500' },
+  { key: 'TERMINE', label: 'Terminées', match: ['CLOTUREE'], bg: 'bg-emerald-500' },
 ];
 
 /** Nom du dataroom (raison sociale) avec repli sur les 8 premiers car. de l'UUID. */
@@ -148,9 +149,20 @@ export function EmployeeDashboard() {
     <div className="p-6">
       <div className="mb-6">
         <h2 className="font-heading text-2xl font-semibold text-fg">
-          Bonjour, {user?.email?.split('@')[0] ?? 'Employe'}
+          Bonjour, {user?.email?.split('@')[0] ?? 'Employé'}
         </h2>
-        <p className="text-sm text-fg-subtle">Voici un resume de votre activite.</p>
+        <p className="text-sm text-fg-subtle">Votre journée en un coup d’œil : vos tickets par statut, les demandes de vos clients et les requêtes qui attendent une réponse.</p>
+      </div>
+
+      <div className="mb-6">
+        <TexteAide cle="tableau-de-bord-employe" titre="Par où commencer ?">
+          <p>
+            Traitez d’abord les transferts de dossier en attente et les demandes « Non traitées » de vos
+            clients. Ouvrez ensuite vos tickets : chaque ticket dit, à son statut, ce qu’il faut faire et
+            ce qui manque. Les requêtes « À valider » attendent votre vérification de la réponse du
+            client.
+          </p>
+        </TexteAide>
       </div>
 
       {/* V9 — Transferts de dossier en attente (recus a accepter/refuser + envoyes a annuler) */}
@@ -159,15 +171,15 @@ export function EmployeeDashboard() {
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard icon={FolderOpen} iconBg="bg-accent/10" iconColor="text-accent"
           label="Dossiers actifs" value={dossiersActifs}
-          tag={`${dossiers.length} dossier${dossiers.length > 1 ? 's' : ''} a moi`} tagColor="text-fg-subtle" loading={loading} />
+          tag={`${dossiers.length} dossier${dossiers.length > 1 ? 's' : ''} à vous`} tagColor="text-fg-subtle" loading={loading} />
         <KpiCard icon={TicketIcon} iconBg="bg-warning/10" iconColor="text-warning"
           label="Tickets en cours" value={ticketsEnCours}
           tag={`${ticketsNouveaux} nouveau${ticketsNouveaux > 1 ? 'x' : ''}`} tagColor="text-accent" loading={loading} />
         <KpiCard icon={AlertTriangle} iconBg="bg-rose-50" iconColor="text-rose-600"
-          label="Taches urgentes" value={taches}
+          label="Tâches urgentes" value={taches}
           tag={`sur ${tickets.length} de mes tickets`} tagColor="text-rose-600" loading={loading} />
         <KpiCard icon={CheckCircle} iconBg="bg-emerald-50" iconColor="text-success"
-          label="Cloturees" value={cloturesMois}
+          label="Clôturés" value={cloturesMois}
           tag={`${tickets.length} de mes tickets`} tagColor="text-fg-subtle" loading={loading} />
       </div>
 
@@ -175,7 +187,7 @@ export function EmployeeDashboard() {
         <div className="mb-6 flex items-center gap-3 rounded-lg border-l-4 border-amber-500 bg-warning/10 p-4">
           <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-500" />
           <p className="text-sm text-amber-900">
-            {taches} ticket{taches > 1 ? 's' : ''} en cours. Pensez a verifier les delais.
+            {taches} ticket{taches > 1 ? 's' : ''} en cours. Pensez à vérifier les délais.
           </p>
         </div>
       )}
@@ -184,7 +196,7 @@ export function EmployeeDashboard() {
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-fg">Mes tickets actifs</h3>
           <a href="/tickets" className="text-sm font-medium text-accent hover:underline">
-            Voir tous →
+            Voir tous les tickets →
           </a>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -220,7 +232,7 @@ export function EmployeeDashboard() {
             <h3 className="text-lg font-semibold text-fg group-hover:underline">Demandes de mes clients</h3>
             {nonTraitees > 0 && (
               <span className="rounded-full bg-danger px-2 py-0.5 text-[10px] font-bold text-bg-raised">
-                {nonTraitees} non traitee{nonTraitees > 1 ? 's' : ''}
+                {nonTraitees} non traitée{nonTraitees > 1 ? 's' : ''}
               </span>
             )}
           </button>
@@ -229,7 +241,7 @@ export function EmployeeDashboard() {
             onClick={() => navigate('/data-rooms')}
             className="text-sm font-medium text-violet-600 hover:underline"
           >
-            Voir tout →
+            Voir les Data Rooms →
           </button>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
@@ -261,7 +273,7 @@ export function EmployeeDashboard() {
         </div>
       </section>
 
-      {/* Lot AG — Mes requetes au client (direction EMPLOYE_TO_CLIENT) */}
+      {/* Lot AG — requetes du cabinet au client (direction EMPLOYE_TO_CLIENT) */}
       <section className="mb-6">
         <div className="mb-4 flex items-center justify-between">
           <button
@@ -271,17 +283,17 @@ export function EmployeeDashboard() {
             title="Ouvrir les Data Rooms"
           >
             <Send className="h-5 w-5 text-accent" />
-            <h3 className="text-lg font-semibold text-fg group-hover:underline">Mes requetes au client</h3>
+            <h3 className="text-lg font-semibold text-fg group-hover:underline">Requêtes du cabinet au client</h3>
             {aValider > 0 && (
               <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-bg-raised">
-                {aValider} a valider
+                {aValider} à valider
               </span>
             )}
           </button>
         </div>
         {requetes.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border bg-bg-raised p-6 text-center text-sm text-fg-subtle">
-            Aucune requete envoyee a vos clients.
+            Aucune requête envoyée à vos clients. Une requête se crée depuis la Data Room du dossier, onglet « Requêtes du cabinet ».
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-3">
@@ -296,7 +308,7 @@ export function EmployeeDashboard() {
                 <div className="space-y-3 pt-3">
                   {requetesByColumn[col.key].length === 0 && (
                     <div className="rounded-lg border border-dashed border-border bg-bg-raised p-4 text-center text-xs text-fg-subtle">
-                      Aucune requete
+                      Aucune requête
                     </div>
                   )}
                   {requetesByColumn[col.key].slice(0, 4).map((r) => (
@@ -385,9 +397,9 @@ function TicketMiniCard({ ticket }: { ticket: Ticket }) {
 /** Petit libelle « Dataroom : X » commun aux cartes demande / requete. */
 function DataroomTag({ name }: { name: string }) {
   return (
-    <div className="mb-1 flex items-center gap-1 text-[10px] text-fg-subtle" title={`Dataroom : ${name}`}>
+    <div className="mb-1 flex items-center gap-1 text-[10px] text-fg-subtle" title={`Data Room : ${name}`}>
       <Building2 className="h-3 w-3 shrink-0" />
-      <span className="truncate">Dataroom : {name}</span>
+      <span className="truncate">Data Room : {name}</span>
     </div>
   );
 }
@@ -416,7 +428,7 @@ function DemandeMiniCard({
           openDataroom();
         }
       }}
-      title="Ouvrir dans le Data Room"
+      title="Ouvrir dans la Data Room"
       className="cursor-pointer rounded-lg border border-border bg-bg-raised p-4 shadow-sm transition hover:border-violet-300 hover:shadow-md"
     >
       <div className="mb-2 flex items-center justify-between">
@@ -456,10 +468,11 @@ function DemandeMiniCard({
 
 function RequeteMiniCard({ requete, dossierName }: { requete: RequeteSummary; dossierName: string }) {
   const navigate = useNavigate();
-  // Clic sur la requete -> ouvre le Data Room du dossier, onglet Demandes (ou se
-  // trouve la section « Mes requetes au client » avec les actions valider/complement).
+  // Clic sur la requete -> ouvre la Data Room du dossier, onglet « Requetes du cabinet »
+  // (actions valider / complement). Lot L6 (E9) : l'onglet Demandes ne les porte plus
+  // depuis le lot 1 ; le lien y menait encore.
   const openDataroom = () =>
-    navigate(`/data-rooms?dossier=${requete.dossierId}&tab=demandes`);
+    navigate(`/data-rooms?dossier=${requete.dossierId}&tab=requetes`);
   return (
     <div
       role="button"
@@ -471,12 +484,12 @@ function RequeteMiniCard({ requete, dossierName }: { requete: RequeteSummary; do
           openDataroom();
         }
       }}
-      title="Ouvrir dans le Data Room"
+      title="Ouvrir dans la Data Room"
       className="cursor-pointer rounded-lg border border-border bg-bg-raised p-4 shadow-sm transition hover:border-accent/40 hover:shadow-md"
     >
       <div className="mb-2 flex items-center justify-between">
         <span className="rounded bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
-          {requete.typeRequete ? TYPE_REQUETE_LABELS[requete.typeRequete] : 'Requete'}
+          {requete.typeRequete ? TYPE_REQUETE_LABELS[requete.typeRequete] : 'Requête'}
         </span>
         <span className="font-mono text-[10px] text-fg-subtle">
           {requete.id.slice(0, 8).toUpperCase()}
@@ -489,7 +502,7 @@ function RequeteMiniCard({ requete, dossierName }: { requete: RequeteSummary; do
       </div>
       {requete.statut === 'REPONDUE' && requete.noteClient && (
         <p className="mb-2 line-clamp-2 rounded bg-emerald-50 p-1.5 text-[11px] text-emerald-800">
-          Reponse : {requete.noteClient}
+          Réponse : {requete.noteClient}
         </p>
       )}
       <span className="text-[10px] text-fg-subtle">

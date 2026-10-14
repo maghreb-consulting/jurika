@@ -14,24 +14,25 @@ export function SignupStep3Security({ onBack, onNext }: { onBack: () => void; on
   return (
     <div className="mx-auto max-w-2xl px-4 py-8" data-testid="signup-step-security">
       <div className="rounded-2xl bg-bg-raised p-6 shadow-md sm:p-8">
-        <h2 className="mb-2 font-heading text-2xl font-semibold text-fg">Securite du compte</h2>
+        <h2 className="mb-2 font-heading text-2xl font-semibold text-fg">Sécurité du compte</h2>
         <p className="mb-6 text-sm text-fg-subtle">
-          Politique de mot de passe et processus d'activation.
+          Comment votre mot de passe est créé et comment votre compte est activé. Rien à saisir ici :
+          lisez, puis continuez.
         </p>
         <div className="space-y-4">
           <Card icon={<Mail className="h-5 w-5 text-accent" />}
-                title="Mot de passe temporaire par email"
-                body="Pour garantir votre securite, nous generons un mot de passe aleatoire 12 caracteres et vous l'envoyons par email avec un lien d'activation (TTL 24h)." />
+                title="Mot de passe temporaire par courriel"
+                body="Pour votre sécurité, nous générons un mot de passe aléatoire de 12 caractères et vous l’envoyons par courriel avec un lien d’activation valable 24 heures." />
           <Card icon={<KeyRound className="h-5 w-5 text-accent" />}
-                title="Changement obligatoire au 1er login"
-                body="Vous serez invite a definir votre propre mot de passe (min 12 caracteres, majuscules + chiffres + caracteres speciaux) lors de votre premiere connexion." />
+                title="Changement obligatoire à la première connexion"
+                body="À votre première connexion, vous choisirez votre propre mot de passe : au moins 12 caractères, avec une majuscule, une minuscule, un chiffre et un caractère spécial." />
           <Card icon={<ShieldCheck className="h-5 w-5 text-accent" />}
-                title="2FA obligatoire (etape suivante)"
-                body="La 2FA est requise pour tous les comptes. Vous choisissez SMS ou Google Authenticator a l'etape suivante, puis vous activez la 2FA au 1er login." />
+                title="Double authentification obligatoire (étape suivante)"
+                body="La double authentification est exigée pour tous les comptes du cabinet. Vous choisissez votre méthode à l’étape suivante, puis vous l’activez à votre première connexion." />
         </div>
         <div className="mt-6 flex gap-3">
           <button type="button" onClick={onBack} className={btnSecondary} data-testid="signup-step3-back">← Retour</button>
-          <button type="button" onClick={onNext} className={btnPrimary} data-testid="signup-step3-next">Continuer → 2FA</button>
+          <button type="button" onClick={onNext} className={btnPrimary} data-testid="signup-step3-next">Continuer vers la double authentification</button>
         </div>
       </div>
     </div>

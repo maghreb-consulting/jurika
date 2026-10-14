@@ -1,13 +1,4 @@
-import {
-  Fragment,
-  createContext,
-  createElement,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { Fragment, createContext, createElement, useCallback, useContext, useEffect, useRef, useState, useLayoutEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { extractError } from '../../lib/api';
@@ -115,15 +106,19 @@ function useWorkflowEngine(): UseWorkflowState {
 
   // Refs : lectures stables pour les callbacks sans creer de churn de useCallback.
   const progressRef = useRef<WorkflowProgress | null>(null);
-  progressRef.current = progress;
 
   // P1 2026-06-21 — registre des dirty getters par etape. Lu par flushDraft()
   // avant tout changement de viewStep pour persister les saisies sans submit.
   const dirtyGettersRef = useRef<Map<number, DirtyGetter>>(new Map());
   const ticketIdRef = useRef<string | undefined>(ticketId);
-  ticketIdRef.current = ticketId;
   const viewStepRef = useRef<number | null>(viewStep);
-  viewStepRef.current = viewStep;
+  // Lot L6 : les refs ne s'ecrivent pas pendant le rendu ; elles suivent l'etat juste apres,
+  // avant tout effet et tout evenement qui les lit.
+  useLayoutEffect(() => {
+    progressRef.current = progress;
+    ticketIdRef.current = ticketId;
+    viewStepRef.current = viewStep;
+  });
 
   // load() est stable tant que ticketId ne change pas. Pas de dep sur progress.
   // La deduplication entre 2 mounts StrictMode est assuree par
@@ -163,7 +158,8 @@ function useWorkflowEngine(): UseWorkflowState {
   }, [ticketId]);
 
   useEffect(() => {
-    void load();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    Promise.resolve().then(load).catch(() => undefined);
   }, [load]);
 
   const saveDraft = useCallback(
@@ -246,7 +242,8 @@ function useWorkflowEngine(): UseWorkflowState {
     // signal, la sauvegarde automatique aurait ecrit `step4`, un bloc que la page
     // ne relit jamais : la saisie aurait paru enregistree puis disparu au retour.
     const cle = typeof payload.__stepKey === 'string' ? payload.__stepKey : `step${target}`;
-    const { __stepKey: _ignore, ...contenu } = payload;
+    const contenu: Record<string, unknown> = { ...payload };
+    delete contenu.__stepKey;
     const wrapped: Record<string, unknown> = { [cle]: contenu };
     try {
       const p = await workflowService.save(tid, target, wrapped);

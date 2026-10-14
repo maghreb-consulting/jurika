@@ -62,11 +62,11 @@ public class ResendWelcomeUseCase {
     public Result execute(UUID workspaceId, UUID adminUserId, String adminEmail,
                            String ipAddress, String userAgent) {
         Workspace workspace = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new NotFoundException("Workspace introuvable"));
+                .orElseThrow(() -> new NotFoundException("Workspace introuvable."));
         TenantContext.set(workspace.id());
 
         User adminUser = userRepository.findById(adminUserId)
-                .orElseThrow(() -> new NotFoundException("User admin introuvable pour ce workspace"));
+                .orElseThrow(() -> new NotFoundException("Superviseur introuvable pour ce workspace."));
 
         // Regenere un MDP temp et force must_change_password
         String newTemp = tempPasswordGenerator.generate();
@@ -83,15 +83,15 @@ public class ResendWelcomeUseCase {
         emailVars.put("verificationUrl", "");  // resend ne renvoie pas un lien (deja active s'il l'etait)
         emailVars.put("ttlHours", "0");
         emailVars.put("phishingWarning",
-                "Email envoye sur demande du support JURIKA. "
-                        + "JURIKA ne vous demandera JAMAIS votre mot de passe par email, SMS ou telephone.");
-        emailVars.put("subject", "Votre nouvel acces JURIKA (renvoye par support)");
+                "Courriel envoy\u00e9 \u00e0 la demande du support JURIKA. "
+                        + "JURIKA ne vous demandera jamais votre mot de passe, ni par courriel, ni par SMS, ni par t\u00e9l\u00e9phone.");
+        emailVars.put("subject", "Votre nouvel acc\u00e8s JURIKA (renvoy\u00e9 par le support)");
         emailVars.put("planLabel", null);
 
         boolean delivered;
         try {
             emailSender.sendTemplated(adminUser.email(),
-                    "JURIKA - Votre nouvel acces (renvoye par support)",
+                    "JURIKA - votre nouvel acc\u00e8s (renvoy\u00e9 par le support)",
                     "welcome", emailVars);
             delivered = true;
         } catch (RuntimeException ex) {

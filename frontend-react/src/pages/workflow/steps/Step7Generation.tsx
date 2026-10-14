@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useEffectEvent } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
@@ -31,6 +31,7 @@ import { DonneesAttendues } from '../../../components/workflow/DonneesAttendues'
 import { ClausesLibresPanel } from '../../../components/workflow/ClausesLibresPanel';
 import { ValeurProposee } from '../../../components/workflow/ValeurProposee';
 import { RetourGeneration } from '../../../components/workflow/RetourGeneration';
+import { BlocageValidation } from '../../../components/workflow/BlocageValidation';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 import { DocumentEditor } from '../../../components/document/DocumentEditor';
 import { CollaboraEditor } from '../../../components/document/CollaboraEditor';
@@ -45,6 +46,7 @@ import {
   type ChampCreation,
 } from './documents-creation';
 import { buildDocFilename } from '../../../components/workflow/workflowFilename';
+import { cleDeBoucle, codesRetenus } from './step7Codes';
 import type { DocumentType } from '../../../types/dataroom';
 import { USAGES_CABINET } from '../../../lib/usagesCabinet';
 
@@ -211,9 +213,9 @@ const DOCUMENT_LABELS: Record<string, string> = {
   STATUTS_SARL_AU: 'Statuts',
   ACTE_NOMINATION_GERANT: 'Acte de nomination du gérant',
   ANNONCE_LEGALE_CONSTITUTION: 'Annonce légale',
-  DEMANDE_TAXE_PROFESSIONNELLE: "Demande d'inscription à la taxe professionnelle",
-  DECLARATION_EXISTENCE: "Déclaration d'existence",
-  DECLARATION_IMMATRICULATION_RC: "Déclaration d'immatriculation au RC (modèle 2)",
+  DEMANDE_TAXE_PROFESSIONNELLE: 'Demande d’inscription à la taxe professionnelle',
+  DECLARATION_EXISTENCE: 'Déclaration d’existence',
+  DECLARATION_IMMATRICULATION_RC: 'Déclaration d’immatriculation au RC (modèle 2)',
   PV_DEFAUT_QUORUM_SARL: 'PV — Défaut de quorum',
   PV_IRREGULARITE_CONVOCATION_SARL: 'PV — Irrégularité de convocation',
 };
@@ -269,8 +271,8 @@ function BoucleSaisie({
 
       {occurrences.length === 0 && (
         <p className="mt-2 text-[11px] text-fg-subtle">
-          Aucune occurrence. Le document sortira sans cette section &mdash; ce qui est
-          correct si le dossier n&rsquo;en comporte pas.
+          Aucune ligne saisie. Le document sortira sans cette section, ce qui est
+          correct si le dossier n&rsquo;en comporte pas ; sinon, cliquez sur « Ajouter ».
         </p>
       )}
 
@@ -304,7 +306,7 @@ function BoucleSaisie({
                     onChange={(e) => modifier(index, champ.cle, e.target.value)}
                     className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg"
                   >
-                    <option value="">&mdash; non renseigne &mdash;</option>
+                    <option value="">&mdash; non renseigné &mdash;</option>
                     {(champ.options ?? []).map((o) => (
                       <option key={o} value={o}>
                         {o}
@@ -337,50 +339,16 @@ function BoucleSaisie({
   );
 }
 
+/** Libelle d'une donnee du magasin, par nom de variable (L6 : jamais le nom technique). */
+const LIBELLES_CHAMPS: Record<string, string> = Object.fromEntries(
+  CHAMPS_CREATION.map((c) => [c.variable, c.label]),
+);
+
 /** Libellé propre d'un template (jamais le code brut). */
 function docLabel(tpl: TemplateInfo): string {
   return DOCUMENT_LABELS[tpl.code] || tpl.documentKind || tpl.code;
 }
 
-/**
- * Lot B — LES CODES DE MODÈLE QUE LES LIGNES RETENUES IMPLIQUENT.
- *
- * Une ligne du parcours porte un ou deux modèles. Quand elle en porte deux,
- * l'employé ne choisit pas : la forme juridique décide entre SARL et SARL AU, la
- * voie retenue pour le siège décide entre bail et domiciliation. Si la donnée
- * n'est pas encore là, on retient les deux variantes plutôt qu'aucune — mieux
- * vaut un champ de trop qu'un document qu'on ne sait plus produire.
- */
-export function codesRetenus(
-  lignes: Set<number>,
-  formeJuridique: string | undefined,
-  voieSiege: string | undefined,
-): string[] {
-  const out: string[] = [];
-  for (const choix of CHOIX_STATUT_2) {
-    if (!lignes.has(choix.ligne)) continue;
-    if (choix.codes.length === 1) {
-      out.push(choix.codes[0]);
-      continue;
-    }
-    const variante = choix.codes.find((code) => {
-      if (code === 'STATUTS_SARL') return formeJuridique === 'SARL';
-      if (code === 'STATUTS_SARL_AU') return formeJuridique === 'SARL_AU';
-      if (code === 'CONTRAT_BAIL') return voieSiege === 'BAIL';
-      if (code === 'CONTRAT_DOMICILIATION') return voieSiege === 'DOMICILIATION';
-      return false;
-    });
-    if (variante) out.push(variante);
-    else out.push(...choix.codes);
-  }
-  return out;
-}
-
-/** `BENEFICIAIRES_EFFECTIFS` -> `beneficiairesEffectifs`, comme côté serveur. */
-export function cleDeBoucle(nom: string): string {
-  const mots = nom.toLowerCase().split('_');
-  return mots[0] + mots.slice(1).map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join('');
-}
 
 /**
  * Étape 7 (persistance 2026-08) — code template → `DocumentType` juridique sous
@@ -562,8 +530,10 @@ export function Step7Generation({
       actif = false;
     };
   }, [ticketId, readOnly]);
-  const [loadingTemplates, setLoadingTemplates] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  // L6 : resultat du dernier chargement de la liste, avec la cle de la demande ; le
+  // chargement « en cours » et l'erreur se DEDUISENT de la cle courante (plus de mise a
+  // jour synchrone d'etat au debut de l'effet).
+  const [chargement, setChargement] = useState<{ cle: string; erreur: string | null } | null>(null);
   const [docs, setDocs] = useState<Record<string, DocState>>(() => {
     const seed: Record<string, DocState> = {};
     for (const [code, st] of Object.entries(persistedDocs)) {
@@ -672,10 +642,11 @@ export function Step7Generation({
   const preflightBlocked = preflightMissing.length > 0;
 
   // Chargement des templates manifest.
+  const cleChargement = `${forme}|${hasNonStatutaire}|${STATUTS_TEMPLATE_CODE}|${ACTE_TEMPLATE_CODE}`;
+  const loadingTemplates = chargement?.cle !== cleChargement;
+  const loadError = chargement?.cle === cleChargement ? chargement.erreur : null;
   useEffect(() => {
     let cancelled = false;
-    setLoadingTemplates(true);
-    setLoadError(null);
     listTemplatesForWorkflow('CREATION_SARL')
       .then((items) => {
         if (cancelled) return;
@@ -708,24 +679,22 @@ export function Step7Generation({
           return (a.documentKind || a.code).localeCompare(b.documentKind || b.code);
         });
         setTemplates(sorted);
+        setChargement({ cle: cleChargement, erreur: null });
       })
       .catch((err) => {
         if (cancelled) return;
-        setLoadError(
-          err instanceof Error
+        setChargement({
+          cle: cleChargement,
+          erreur: err instanceof Error
             ? err.message
-            : 'Impossible de charger la liste des documents',
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingTemplates(false);
+            : 'Impossible de charger la liste des documents.',
+        });
       });
     return () => {
       cancelled = true;
     };
     // Re-filter quand forme ou presence de non-statutaire change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [forme, hasNonStatutaire, STATUTS_TEMPLATE_CODE, ACTE_TEMPLATE_CODE]);
+  }, [cleChargement, forme, hasNonStatutaire, STATUTS_TEMPLATE_CODE, ACTE_TEMPLATE_CODE]);
 
   /**
    * Lot L3 (P2, RG-VAR-05) -- LA CHARGE UTILE EST CONSTRUITE PAR LE SERVEUR.
@@ -775,10 +744,10 @@ export function Step7Generation({
    *
    * Exécuté une seule fois au montage (les blobs vivent en mémoire React).
    */
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
+  // Lot L6 : corps de la ré-hydratation en « événement d'effet » (useEffectEvent) : il lit les
+  // valeurs courantes sans être une dépendance ; l'effet ne se joue qu'au montage, sans
+  // désactiver la règle des dépendances.
+  const rehydrater = useEffectEvent(async (estAnnule: () => boolean) => {
       // Lot 2 — 0) LES BROUILLONS D'ABORD. Un document généré est persisté dès
       // sa génération : il se retrouve même si l'étape n'a jamais été soumise,
       // et il porte l'édition faite avant de quitter la page. C'est ce qui rend
@@ -792,7 +761,7 @@ export function Step7Generation({
           // best-effort : on retombe sur les documents en vigueur.
         }
       }
-      if (cancelled) return;
+      if (estAnnule()) return;
 
       const codesBrouillon = Object.entries(TEMPLATE_TO_DOCTYPE)
         .filter(([code, type]) =>
@@ -816,13 +785,13 @@ export function Step7Generation({
       });
 
       for (const code of codesBrouillon) {
-        if (cancelled) return;
+        if (estAnnule()) return;
         try {
           const type = TEMPLATE_TO_DOCTYPE[code];
           const b = brouillons.find((x) => x.documentType === type);
           if (!b) continue;
           const blob = await dataroomService.fetchDocumentBlob(b.id);
-          if (cancelled) return;
+          if (estAnnule()) return;
           updateDoc(code, {
             blob,
             documentId: b.id,
@@ -837,7 +806,7 @@ export function Step7Generation({
         } catch {
           // best-effort : la carte reste telle quelle, Régénérer reste dispo.
         } finally {
-          if (!cancelled) setRestoring((prev) => ({ ...prev, [code]: false }));
+          if (!estAnnule()) setRestoring((prev) => ({ ...prev, [code]: false }));
         }
       }
 
@@ -852,7 +821,7 @@ export function Step7Generation({
         }
       }
       for (const code of codesToRestore) {
-        if (cancelled) return;
+        if (estAnnule()) return;
         try {
           const wantType = TEMPLATE_TO_DOCTYPE[code];
           const match = wantType
@@ -867,7 +836,7 @@ export function Step7Generation({
           if (match) {
             // PRIORITÉ Data Room — récupère le blob déposé (sans re-télécharger).
             const blob = await dataroomService.fetchDocumentBlob(match.id);
-            if (cancelled) return;
+            if (estAnnule()) return;
             updateDoc(code, {
               blob,
               documentId: match.id,
@@ -883,25 +852,28 @@ export function Step7Generation({
               code,
               await chargeServeur(false),
             );
-            if (cancelled) return;
+            if (estAnnule()) return;
             updateDoc(code, { blob, filename });
           }
         } catch {
           // best-effort : la carte reste « générée », Régénérer reste dispo.
         } finally {
-          if (!cancelled) {
+          if (!estAnnule()) {
             setRestoring((prev) => ({ ...prev, [code]: false }));
           }
         }
       }
-    })();
+  });
 
+  useEffect(() => {
+    let cancelled = false;
+    // Lancement par promesse : aucun état posé de façon synchrone dans l'effet.
+    Promise.resolve().then(() => rehydrater(() => cancelled)).catch(() => undefined);
     return () => {
       cancelled = true;
     };
     // Montage uniquement : les blobs ne survivent pas au démontage, la
     // ré-hydratation doit se rejouer à chaque retour sur l'étape.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Étape 7 (noms propres 2026-08) — nom de fichier / libellé « soignés » pour un
@@ -1069,8 +1041,8 @@ export function Step7Generation({
         generating: false,
         error:
           err instanceof Error
-            ? `Telechargement DOCX echec : ${err.message}`
-            : 'Telechargement DOCX echec',
+            ? `Échec du téléchargement : ${err.message}`
+            : 'Échec du téléchargement. Réessayez.',
       });
     }
   }
@@ -1103,8 +1075,8 @@ export function Step7Generation({
         updateDoc(tpl.code, {
           generating: false,
           error: err instanceof Error
-            ? `Validation echec : ${err.message}`
-            : 'Validation echec',
+            ? `Échec de la validation : ${err.message}`
+            : 'Échec de la validation. Réessayez.',
         });
         return;
       }
@@ -1237,6 +1209,17 @@ export function Step7Generation({
             </p>
           </div>
         </div>
+        {!readOnly && (
+          <div className="mt-3">
+            <TexteAide cle="creation-etape-7" titre="Ce qu’il faut faire">
+              Cochez les documents à produire, indiquez le lieu et la date de signature,
+              complétez les champs qui s’affichent, puis cliquez sur « Générer » pour chaque
+              document. Vérifiez l’aperçu, modifiez au besoin, puis « Valider et déposer en
+              Data Room ». Les statuts doivent être générés et validés pour continuer ;
+              l’étape suivante rassemble les pièces jointes du dossier.
+            </TexteAide>
+          </div>
+        )}
       </div>
 
       {loadingTemplates && (
@@ -1265,10 +1248,8 @@ export function Step7Generation({
       */}
       {!loadingTemplates && templates.length === 0 && !loadError && (
         <div className="rounded-xl border border-border bg-bg-raised p-6 text-sm text-fg-subtle">
-          La génération des documents de création est en cours de refonte : les
-          23 modèles livrés le 9 septembre ont remplacé les précédents, et leur
-          alimentation reste à câbler. Aucun document n'est générable depuis cette
-          étape pour l'instant.
+          Aucun modèle de document n’est disponible pour cette création. Rechargez la
+          page ; si la liste reste vide, signalez-le à l’administrateur de la plateforme.
         </div>
       )}
 
@@ -1276,11 +1257,11 @@ export function Step7Generation({
         <div className="rounded-xl border-l-4 border-danger bg-danger/10 p-4">
           <p className="flex items-center gap-2 text-sm font-bold text-danger">
             <AlertCircle className="h-5 w-5" />
-            Informations obligatoires manquantes — à compléter avant de générer
+            Informations obligatoires manquantes : à compléter avant de générer
           </p>
           <p className="mt-1 text-xs text-fg-subtle">
-            La génération est bloquée tant que ces champs ne sont pas renseignés
-            (politique « valeur réelle ou saisie forcée »).
+            La génération est bloquée tant que ces champs ne sont pas renseignés :
+            la plateforme n’imprime jamais de valeur supposée.
           </p>
           <ul className="mt-3 space-y-1.5 text-sm text-fg">
             {preflightMissing.map((m) => (
@@ -1295,7 +1276,7 @@ export function Step7Generation({
                     onClick={() => onNavigate(m.step)}
                     className="rounded-md border border-danger/40 px-2 py-0.5 text-xs font-medium text-danger hover:bg-danger/10"
                   >
-                    Aller à l'étape {m.step}
+                    Aller à l’étape {m.step}
                   </button>
                 )}
               </li>
@@ -1466,7 +1447,7 @@ export function Step7Generation({
       {!readOnly && groupesChamps.length > 0 && (
         <div className="rounded-xl border border-border bg-bg-raised p-5">
           <h4 className="text-sm font-semibold text-fg">
-            Complements demandes par les documents retenus
+            Compléments demandés par les documents retenus
           </h4>
           <p className="mt-1 text-xs text-fg-subtle">
             Ces champs n&rsquo;apparaissent que parce que le document qui les consomme est
@@ -1496,7 +1477,7 @@ export function Step7Generation({
                       {champ.label}
                       {champ.documents.length > 1 && (
                         <span className="ml-1 font-normal text-fg-subtle">
-                          — sert aussi a{' '}
+                          — sert aussi à{' '}
                           {champ.documents
                             .filter((d) => d !== groupe.code)
                             .map(libelleDocument)
@@ -1516,7 +1497,7 @@ export function Step7Generation({
                         }
                         className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg"
                       >
-                        <option value="">&mdash; non renseigne &mdash;</option>
+                        <option value="">&mdash; non renseigné &mdash;</option>
                         {(champ.options ?? []).map((o) => (
                           <option key={o} value={o}>
                             {o}
@@ -1576,11 +1557,11 @@ export function Step7Generation({
           )}
 
           <div className="mt-5">
-            <ProvenanceDonnees variables={magasin} />
+            <ProvenanceDonnees variables={magasin} libelles={LIBELLES_CHAMPS} />
           </div>
           <div className="mt-5 rounded-lg border border-border bg-bg-overlay p-3">
             <p className="text-xs font-semibold text-fg">
-              Repris automatiquement &mdash; rien a ressaisir
+              Repris automatiquement &mdash; rien à ressaisir
             </p>
             <ul className="mt-1.5 space-y-0.5 text-[11px] text-fg-subtle">
               {REPRISES_AUTOMATIQUES.map((r) => (
@@ -1623,7 +1604,7 @@ export function Step7Generation({
                 </div>
                 {st.validated && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-success">
-                    <CheckCircle className="h-3 w-3" /> Valide
+                    <CheckCircle className="h-3 w-3" /> Validé
                   </span>
                 )}
               </div>
@@ -1662,11 +1643,11 @@ export function Step7Generation({
                   >
                     {st.generating ? (
                       <>
-                        <Loader className="h-4 w-4 animate-spin" /> Generation…
+                        <Loader className="h-4 w-4 animate-spin" /> Génération…
                       </>
                     ) : (
                       <>
-                        <Sparkles className="h-4 w-4" /> Generer
+                        <Sparkles className="h-4 w-4" /> Générer
                       </>
                     )}
                   </button>
@@ -1688,7 +1669,7 @@ export function Step7Generation({
                     {restoring[tpl.code] && (
                       <div className="flex items-center gap-2 rounded-lg border border-border bg-bg-overlay p-2 text-[11px] text-fg-subtle">
                         <Loader className="h-3.5 w-3.5 animate-spin" />
-                        Restauration de l'aperçu…
+                        Restauration de l’aperçu…
                       </div>
                     )}
                     {!st.blob && !restoring[tpl.code] && (
@@ -1762,7 +1743,7 @@ export function Step7Generation({
                         disabled={st.generating || restoring[tpl.code] || (readOnly ? !st.blob : preflightBlocked)}
                         className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent disabled:opacity-60"
                       >
-                        <Download className="h-3.5 w-3.5" /> .docx
+                        <Download className="h-3.5 w-3.5" /> Télécharger (Word)
                       </button>
                       {!readOnly && (
                         <>
@@ -1782,7 +1763,7 @@ export function Step7Generation({
                             className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent disabled:opacity-60"
                           >
                             <RefreshCcw className="h-3.5 w-3.5" />
-                            Regenerer
+                            Régénérer
                           </button>
                           <button
                             type="button"
@@ -1802,7 +1783,7 @@ export function Step7Generation({
                               disabled={st.generating || preflightBlocked}
                               className="col-span-2 flex h-9 items-center justify-center gap-1.5 rounded-lg bg-success text-xs font-semibold text-bg-raised transition hover:bg-success/85 disabled:cursor-wait disabled:opacity-60"
                             >
-                              <CheckCircle className="h-3.5 w-3.5" /> Valider et deposer en Dataroom
+                              <CheckCircle className="h-3.5 w-3.5" /> Valider et déposer en Data Room
                             </button>
                           ) : (
                             <button
@@ -1812,7 +1793,7 @@ export function Step7Generation({
                               }
                               className="col-span-2 flex h-9 items-center justify-center gap-1.5 rounded-lg border border-success bg-success/10 text-xs text-success"
                             >
-                              <RefreshCcw className="h-3.5 w-3.5" /> Document valide — Devalider pour modifier
+                              <RefreshCcw className="h-3.5 w-3.5" /> Document validé : annuler la validation pour le modifier
                             </button>
                           )}
                         </>
@@ -1831,12 +1812,12 @@ export function Step7Generation({
           <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
           <div className="text-xs">
             <p className="font-semibold text-warning">
-              {nonStatutaires.length} gerant(s) non statutaire(s)
+              {nonStatutaires.length} gérant(s) non statutaire(s)
             </p>
             <p className="mt-0.5 text-warning">
-              {nonStatutaires.map((d) => `${d.prenom} ${d.nom}`).join(', ')} —
-              un acte de nomination distinct doit etre genere ci-dessus
-              (template ACTE_NOMINATION).
+              {nonStatutaires.map((d) => `${d.prenom} ${d.nom}`).join(', ')} :
+              un acte de nomination distinct doit être généré ci-dessus
+              (document « Acte de nomination du gérant »).
             </p>
           </div>
         </div>
@@ -1846,13 +1827,23 @@ export function Step7Generation({
         <div className="flex items-start gap-3 rounded-xl border border-danger/30 bg-danger/10 p-4">
           <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-danger" />
           <p className="text-xs text-danger">
-            Aucun gerant statutaire detecte. Retournez a l'etape 5 pour en
-            designer au moins un avant de generer les statuts.
+            Aucun gérant statutaire. Retournez à l’étape 5 pour en
+            désigner au moins un avant de générer les statuts.
           </p>
         </div>
       )}
 
       {/* Consultation lecture seule : pas de validation d'étape. */}
+      {!readOnly && (
+        <BlocageValidation
+          testId="step7-blocage"
+          raisons={[
+            !statutsState?.generated && 'Générez les statuts (document principal).',
+            !!statutsState?.generated && !statutsState?.validated
+              && 'Validez les statuts : « Valider et déposer en Data Room ».',
+          ]}
+        />
+      )}
       {!readOnly && (
         <div className="flex items-center justify-end pt-2">
           <button
@@ -1866,7 +1857,7 @@ export function Step7Generation({
             title={
               canSubmit
                 ? undefined
-                : 'Les statuts (document principal) doivent etre generes et valides.'
+                : 'Les statuts (document principal) doivent être générés et validés.'
             }
           >
             {saving ? 'Enregistrement…' : 'Valider et continuer'}
@@ -2018,7 +2009,7 @@ export function Step7Generation({
               onClick={() => setEditingTplCode(null)}
             >
               <div className="max-w-md rounded-xl bg-bg-raised p-5 text-sm text-fg shadow-xl">
-                Ce document n'est pas encore enregistré : régénérez-le avant de l'éditer.
+                Ce document n’est pas encore enregistré : régénérez-le avant de le modifier.
               </div>
             </div>
           );

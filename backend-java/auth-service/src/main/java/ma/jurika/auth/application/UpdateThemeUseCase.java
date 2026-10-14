@@ -53,7 +53,7 @@ public class UpdateThemeUseCase {
         String normalized = theme == null ? "" : theme.toLowerCase().trim();
         if (!ALLOWED.contains(normalized)) {
             throw new BusinessException("THEME_INVALID",
-                    "theme doit etre 'dark' ou 'light' (recu : '" + theme + "')");
+                    "Th\u00e8me inconnu : choisissez le th\u00e8me clair ou sombre.");
         }
         WorkspaceEntity ws = workspaceRepo.findById(workspaceId)
                 .orElseThrow(() -> new BusinessException("WORKSPACE_NOT_FOUND",

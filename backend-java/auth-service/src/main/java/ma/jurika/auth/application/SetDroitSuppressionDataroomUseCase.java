@@ -44,9 +44,9 @@ public class SetDroitSuppressionDataroomUseCase {
         TenantContext.set(cmd.workspaceId());
         User cible = users.findById(cmd.employeId())
                 .filter(u -> cmd.workspaceId().equals(u.workspaceId()))
-                .orElseThrow(() -> new NotFoundException("Utilisateur introuvable"));
+                .orElseThrow(() -> new NotFoundException("Utilisateur introuvable."));
         if (cible.role() != Role.EMPLOYE) {
-            throw new ConflictException("Le droit de suppression ne s'accorde qu'a un employe");
+            throw new ConflictException("Le droit de suppression ne s\u2019accorde qu\u2019\u00e0 un employ\u00e9.");
         }
         boolean avant = droits.lire(cmd.workspaceId(), cible.id());
         if (avant == cmd.accorde()) {

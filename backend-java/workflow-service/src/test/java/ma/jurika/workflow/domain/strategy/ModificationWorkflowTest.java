@@ -74,7 +74,7 @@ class ModificationWorkflowTest {
         var ctx = new StepContext(ws, ticket, user, 1, p, existingWithDossier("SARL_AU"));
         StepResult res = workflow.executeStep(ctx);
         assertThat(res.canAdvance()).isFalse();
-        assertThat(res.message()).contains("associe unique");
+        assertThat(res.message()).contains("associ\u00e9 unique");
     }
 
     @Test
@@ -87,7 +87,7 @@ class ModificationWorkflowTest {
         var ctx = new StepContext(ws, ticket, user, 1, p, Map.of());
         StepResult res = workflow.executeStep(ctx);
         assertThat(res.canAdvance()).isFalse();
-        assertThat(res.message()).containsIgnoringCase("societe");
+        assertThat(res.message()).containsIgnoringCase("soci\u00e9t\u00e9");
     }
 
     @Test
@@ -167,7 +167,7 @@ class ModificationWorkflowTest {
         var ctx = new StepContext(ws, ticket, user, 1, p, existingWithDossier("SARL"));
         StepResult res = workflow.executeStep(ctx);
         assertThat(res.canAdvance()).isFalse();
-        assertThat(res.message()).containsIgnoringCase("resolution");
+        assertThat(res.message()).containsIgnoringCase("r\u00e9solution");
     }
 
     @Test
@@ -268,7 +268,7 @@ class ModificationWorkflowTest {
         var ctx = new StepContext(ws, ticket, user, 5, p, step3Data(false));
         StepResult res = workflow.executeStep(ctx);
         assertThat(res.canAdvance()).isFalse();
-        assertThat(res.message()).contains("proces-verbal");
+        assertThat(res.message()).contains("proc\u00e8s-verbal");
     }
 
     @Test
@@ -305,7 +305,7 @@ class ModificationWorkflowTest {
         var ctx = new StepContext(ws, ticket, user, 5, p, step3Data(true));
         StepResult res = workflow.executeStep(ctx);
         assertThat(res.canAdvance()).isFalse();
-        assertThat(res.message()).contains("Journal d'Annonces Legales");
+        assertThat(res.message()).contains("Journal d\u2019Annonces L\u00e9gales");
     }
 
     @Test

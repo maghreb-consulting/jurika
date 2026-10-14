@@ -88,7 +88,7 @@ public class SourceIngestionService {
 
     private IngestResult persist(UUID uploadedBy,
                                  String source, String text, Map<String, Object> meta) {
-        if (uploadedBy == null) throw new IllegalArgumentException("auteur du depot requis");
+        if (uploadedBy == null) throw new IllegalArgumentException("auteur du d\u00e9p\u00f4t requis");
         if (text == null || text.isBlank()) {
             throw new IllegalArgumentException("Aucun texte exploitable dans le document fourni.");
         }

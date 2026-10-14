@@ -30,7 +30,7 @@ public abstract class AbstractWorkflow implements WorkflowStrategy {
     private void validateStepRange(int step) {
         if (step < 1 || step > totalSteps()) {
             throw new ValidationException(
-                    "Etape " + step + " hors plage (1.." + totalSteps() + ")");
+                    "\u00c9tape " + step + " hors plage (1 \u00e0 " + totalSteps() + ").");
         }
     }
 }

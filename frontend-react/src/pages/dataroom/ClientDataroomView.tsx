@@ -16,7 +16,9 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
+import { TexteAide } from '../../components/ui/Aide';
 import { PdfPreviewModal } from '../../components/ui/PdfPreviewModal';
 import { dataroomService } from '../../services/dataroom.service';
 import { extractError } from '../../lib/api';
@@ -40,9 +42,9 @@ import { ClientDebours } from './components/ClientDebours';
 type Tab = 'juridique' | 'depots' | 'debours' | 'demandes';
 
 const STATUT_LABEL: Record<DemandeStatut, string> = {
-  NON_TRAITEE: 'Non traitee',
+  NON_TRAITEE: 'Non traitée',
   EN_COURS: 'En cours',
-  TRAITEE: 'Traitee',
+  TRAITEE: 'Traitée',
 };
 
 const STATUT_PILL: Record<DemandeStatut, { bg: string; text: string }> = {
@@ -102,7 +104,8 @@ export function ClientDataroomView() {
   }, []);
 
   useEffect(() => {
-    load();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(load);
   }, [load]);
 
   // Sprint 7 / TASK 5.3 -- WebSocket : reload du juridique + toast quand
@@ -118,10 +121,10 @@ export function ClientDataroomView() {
     (event: DataroomDocumentEvent) => {
       const verb =
         event.kind === 'UPLOADED'
-          ? 'Nouveau document ajoute'
+          ? 'Nouveau document ajouté'
           : event.kind === 'DELETED'
-            ? 'Document retire'
-            : 'Document mis a jour';
+            ? 'Document retiré'
+            : 'Document mis à jour';
       const label = event.title ?? event.documentType ?? 'Document';
       setRealtimeToast({ text: `${verb} : ${label}`, until: Date.now() + 4000 });
       if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -172,7 +175,7 @@ export function ClientDataroomView() {
     return (
       <div className="rounded-2xl border border-danger/40 bg-danger/10 p-6 text-center">
         <p className="text-sm text-danger">
-          {error ?? "Aucun Data Room n'est associe a votre compte."}
+          {error ?? "Aucune Data Room n’est associée à votre compte. Si votre cabinet vous a invité, contactez votre conseiller."}
         </p>
       </div>
     );
@@ -211,45 +214,23 @@ export function ClientDataroomView() {
                   {dossier.raisonSociale}
                 </h2>
                 <p className="text-sm text-fg-subtle">
-                  Dossier gere par : votre cabinet juridique
+                  Dossier géré par votre cabinet juridique
                 </p>
                 {lastUpdate ? (
                   <p className="text-xs text-fg-subtle mt-1">
-                    Derniere mise a jour :{' '}
+                    Dernière mise à jour :{' '}
                     {new Date(lastUpdate).toLocaleDateString('fr-FR')}
                   </p>
                 ) : (
                   <p className="text-xs text-fg-subtle mt-1">
-                    Aucun document publie pour le moment
+                    Aucun document publié pour le moment
                   </p>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={!canDownload}
-                className={`px-4 h-9 border-2 rounded-lg flex items-center gap-2 text-xs transition ${
-                  canDownload
-                    ? 'border-border text-fg hover:border-accent bg-bg-raised'
-                    : 'opacity-50 cursor-not-allowed border-border text-fg-subtle bg-bg-raised'
-                }`}
-                title="Telecharger tous les documents en vigueur"
-              >
-                <Download className="w-3.5 h-3.5" /> Tout telecharger
-              </button>
-              <button
-                type="button"
-                disabled={!canPrint}
-                className={`px-4 h-9 rounded-lg flex items-center gap-2 text-xs transition ${
-                  canPrint
-                    ? 'text-fg hover:bg-bg-overlay'
-                    : 'opacity-50 cursor-not-allowed text-fg-subtle'
-                }`}
-              >
-                <Printer className="w-3.5 h-3.5" /> Imprimer
-              </button>
-            </div>
+            {/* Lot L6 : les boutons « Tout télécharger » et « Imprimer » n'avaient aucune action
+                (contrôles inopérants) ; retirés. Chaque document se télécharge depuis sa ligne,
+                selon les permissions rappelées ci-dessous. */}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 md:gap-4 mt-4 pt-4 border-t border-border text-xs text-fg-subtle">
@@ -267,7 +248,7 @@ export function ClientDataroomView() {
               ) : (
                 <Lock className="w-3 h-3" />
               )}{' '}
-              Telecharger {canDownload ? '' : '(non autorise)'}
+              Télécharger {canDownload ? '' : '(non autorisé)'}
             </span>
             <span
               className={`flex items-center gap-1 ${
@@ -279,7 +260,7 @@ export function ClientDataroomView() {
               ) : (
                 <Lock className="w-3 h-3" />
               )}{' '}
-              Imprimer {canPrint ? '' : '(non autorise)'}
+              Imprimer {canPrint ? '' : '(non autorisé)'}
             </span>
             <span
               className={`flex items-center gap-1 ${
@@ -291,7 +272,7 @@ export function ClientDataroomView() {
               ) : (
                 <Lock className="w-3 h-3" />
               )}{' '}
-              Depot {canDepot ? '' : '(non autorise)'}
+              Déposer {canDepot ? '' : '(non autorisé)'}
             </span>
           </div>
 
@@ -305,6 +286,17 @@ export function ClientDataroomView() {
             </div>
           )}
         </div>
+
+        {/* Lot L6 (E9, CDC 15.4) : objet de l'espace et aide. */}
+        <TexteAide cle="espace-client-dataroom" titre="Votre espace documentaire">
+          <p>
+            Votre Data Room réunit les documents de votre société. « Dossier juridique » : les
+            documents publiés par votre cabinet, dans leur dernière version. « Dépôts du client » :
+            les pièces que vous transmettez au cabinet. « Débours » : les frais avancés pour vous.
+            « Demandes du client » : vos demandes au cabinet. « Requêtes du cabinet » : les pièces ou
+            réponses que votre conseiller attend de vous ; répondez-y en priorité.
+          </p>
+        </TexteAide>
 
         {/* Encart violet — Vos demandes */}
         <div className="bg-gradient-to-r from-[#F5F3FF] to-[#EFF6FF] rounded-xl p-4 md:p-5 shadow-sm border border-accent/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
@@ -320,15 +312,15 @@ export function ClientDataroomView() {
                 {counts.NON_TRAITEE > 0 ? (
                   <>
                     <span className="font-bold text-danger">
-                      {counts.NON_TRAITEE} non traitee
+                      {counts.NON_TRAITEE} non traitée
                       {counts.NON_TRAITEE > 1 ? 's' : ''}
                     </span>{' '}
-                    · {counts.EN_COURS} en cours · {counts.TRAITEE} traitee
+                    · {counts.EN_COURS} en cours · {counts.TRAITEE} traitée
                     {counts.TRAITEE > 1 ? 's' : ''}
                   </>
                 ) : (
                   <>
-                    {counts.EN_COURS} en cours · {counts.TRAITEE} traitee
+                    {counts.EN_COURS} en cours · {counts.TRAITEE} traitée
                     {counts.TRAITEE > 1 ? 's' : ''}
                   </>
                 )}
@@ -368,14 +360,14 @@ export function ClientDataroomView() {
                 onClick={() => setTab('juridique')}
                 color="#2563EB"
                 icon={<FileText className="w-4 h-4" />}
-                label="Dossier Juridique"
+                label="Dossier juridique"
               />
               <TabButton
                 active={tab === 'depots'}
                 onClick={() => setTab('depots')}
                 color="#F59E0B"
                 icon={<Upload className="w-4 h-4" />}
-                label="Depot"
+                label="Dépôts du client"
               />
               <TabButton
                 active={tab === 'debours'}
@@ -389,9 +381,17 @@ export function ClientDataroomView() {
                 onClick={() => setTab('demandes')}
                 color="#7C3AED"
                 icon={<MessageSquare className="w-4 h-4" />}
-                label="Mes Demandes"
+                label="Demandes du client"
                 badge={counts.NON_TRAITEE + counts.EN_COURS}
               />
+              {/* RG-DR-01 : quatrieme section, les requetes du cabinet ont leur page. */}
+              <Link
+                to="/mes-requetes"
+                className="flex items-center gap-2 whitespace-nowrap px-3 py-3 text-sm font-medium text-fg-subtle hover:text-fg md:px-4"
+                data-testid="lien-requetes-cabinet"
+              >
+                <Send className="w-4 h-4" /> Requêtes du cabinet
+              </Link>
             </div>
           </div>
 
@@ -423,7 +423,7 @@ export function ClientDataroomView() {
 
         <div className="text-center mt-2 text-xs text-fg-subtle">
           <p>
-            Espace securise propulse par{' '}
+            Espace sécurisé propulsé par{' '}
             <strong className="text-fg-subtle">JURIKA</strong> — Plateforme de
             gestion juridique
           </p>
@@ -490,7 +490,7 @@ function ClientJuridique({
         <Shield className="w-4 h-4 text-success flex-shrink-0" />
         <p className="text-xs text-success">
           Vous consultez les{' '}
-          <strong>dernieres versions</strong> de vos documents juridiques. Les
+          <strong>dernières versions</strong> de vos documents juridiques. Les
           anciennes versions ne sont pas accessibles depuis cet espace.
         </p>
       </div>
@@ -518,7 +518,7 @@ function ClientJuridique({
       <div className="text-center mt-6 pt-5 border-t border-border">
         <p className="text-xs text-fg-subtle">
           {docs.length} document{docs.length > 1 ? 's' : ''} juridique
-          {docs.length > 1 ? 's' : ''} — Versions actuelles uniquement
+          {docs.length > 1 ? 's' : ''} — versions actuelles uniquement
         </p>
       </div>
     </>
@@ -596,7 +596,7 @@ function ClientDocRow({
           ) : (
             <Lock className="w-3.5 h-3.5" />
           )}{' '}
-          {downloading ? '...' : 'PDF'}
+          {downloading ? '…' : 'Télécharger'}
         </button>
       </div>
       <PdfPreviewModal
@@ -686,7 +686,7 @@ function ClientDemandes({
           <MessageSquare className="w-4 h-4 text-accent flex-shrink-0" />
           <p className="text-xs text-accent">
             Envoyez vos <strong>demandes juridiques</strong> directement depuis
-            cet espace. Votre conseiller les traitera dans les meilleurs delais.
+            cet espace. Votre conseiller les traitera dans les meilleurs délais.
           </p>
         </div>
       )}
@@ -707,11 +707,11 @@ function ClientDemandes({
                 <CheckCircle className="w-7 h-7 text-success" />
               </div>
               <h4 className="text-base font-bold text-fg mb-1">
-                Demande envoyee !
+                Demande envoyée
               </h4>
               <p className="text-xs text-fg-subtle mb-4">
-                Votre conseiller juridique a ete notifie et traitera votre
-                demande dans les meilleurs delais.
+                Votre conseiller juridique a été prévenu et traitera votre
+                demande dans les meilleurs délais.
               </p>
               <button
                 type="button"
@@ -734,7 +734,7 @@ function ClientDemandes({
                   type="text"
                   value={sujet}
                   onChange={(e) => setSujet(e.target.value)}
-                  placeholder="Ex : Modification de l'objet social"
+                  placeholder="Exemple : modification de l’objet social"
                   className="w-full h-10 border border-border rounded-lg px-3 text-sm text-fg bg-bg-raised focus:border-accent focus:ring-1 focus:ring-[#7C3AED] outline-none"
                   required
                 />
@@ -747,7 +747,7 @@ function ClientDemandes({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={3}
-                  placeholder="Decrivez votre demande en detail... (facultatif)"
+                  placeholder="Décrivez votre demande en détail (facultatif)…"
                   className="w-full border border-border rounded-lg px-3 py-2.5 text-sm text-fg resize-none focus:border-accent focus:ring-1 focus:ring-[#7C3AED] outline-none"
                 />
               </div>
@@ -788,7 +788,7 @@ function ClientDemandes({
         <div className="text-center py-12">
           <MessageSquare className="w-10 h-10 text-fg-subtle mx-auto mb-3" />
           <p className="text-sm text-fg-subtle">
-            Vous n'avez pas encore envoye de demande.
+            Vous n’avez pas encore envoyé de demande. Cliquez sur « Nouvelle demande » pour en adresser une à votre conseiller.
           </p>
         </div>
       ) : (
@@ -831,10 +831,10 @@ function ClientDemandes({
                     </p>
                   )}
                   <p className="text-[10px] text-fg-subtle mt-1">
-                    Envoyee le{' '}
+                    Envoyée le{' '}
                     {new Date(dem.createdAt).toLocaleDateString('fr-FR')}
                     {dem.traiteAt
-                      ? ` • Traitee le ${new Date(
+                      ? ` • Traitée le ${new Date(
                           dem.traiteAt,
                         ).toLocaleDateString('fr-FR')}`
                       : ''}
@@ -902,7 +902,8 @@ function ClientDepots({
   }, [dossierId]);
 
   useEffect(() => {
-    reload();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(reload);
   }, [reload]);
 
   const uploadFiles = useCallback(
@@ -917,8 +918,8 @@ function ClientDepots({
         }
         setToast(
           list.length > 1
-            ? `${list.length} fichiers deposes`
-            : 'Fichier depose',
+            ? `${list.length} fichiers déposés`
+            : 'Fichier déposé',
         );
         setTimeout(() => setToast(null), 3000);
         await reload();
@@ -969,10 +970,10 @@ function ClientDepots({
         >
           <Upload className="w-8 h-8 text-warning mx-auto mb-2" />
           <p className="text-sm font-medium text-fg mb-1">
-            Deposez vos fichiers ici
+            Déposez vos fichiers ici
           </p>
           <p className="text-xs text-fg-subtle mb-3">
-            PDF, image ou tout autre document (10 Mo max par fichier)
+            PDF, image ou tout autre document (10 Mo au maximum par fichier)
           </p>
           <input
             ref={inputRef}
@@ -995,14 +996,14 @@ function ClientDepots({
             ) : (
               <Upload className="w-4 h-4 mr-2" />
             )}
-            {uploading ? 'Depot en cours...' : 'Choisir des fichiers'}
+            {uploading ? 'Dépôt en cours…' : 'Choisir des fichiers'}
           </Button>
         </div>
       ) : (
         <div className="bg-warning/10 border-l-4 border-warning rounded-lg p-3 mb-5 flex items-center gap-2">
           <Lock className="w-4 h-4 text-warning flex-shrink-0" />
           <p className="text-xs text-warning">
-            Le depot de documents n'est pas autorise par votre cabinet.
+            Votre cabinet n’a pas ouvert le dépôt de documents sur cet espace. Pour lui transmettre une pièce, contactez votre conseiller.
           </p>
         </div>
       )}
@@ -1021,7 +1022,7 @@ function ClientDepots({
         <div className="text-center py-12">
           <Upload className="w-10 h-10 text-fg-subtle mx-auto mb-3" />
           <p className="text-sm text-fg-subtle">
-            Vous n'avez encore rien depose.
+            Vous n’avez encore rien déposé. Glissez vos fichiers dans le cadre ci-dessus, ou cliquez sur « Choisir des fichiers ».
           </p>
         </div>
       ) : (
@@ -1034,7 +1035,7 @@ function ClientDepots({
 
       <div className="text-center mt-6 pt-5 border-t border-border">
         <p className="text-xs text-fg-subtle">
-          {depots.length} depot{depots.length > 1 ? 's' : ''}
+          {depots.length} dépôt{depots.length > 1 ? 's' : ''}
         </p>
       </div>
     </>
@@ -1088,13 +1089,13 @@ function ClientDepotRow({
           disabled={downloading}
           className="px-3 h-8 text-xs border rounded transition flex items-center gap-1 border-border text-fg hover:border-accent bg-bg-raised disabled:opacity-50"
         >
-          <Download className="w-3.5 h-3.5" /> {downloading ? '...' : 'PDF'}
+          <Download className="w-3.5 h-3.5" /> {downloading ? '…' : 'Télécharger'}
         </button>
         <button
           type="button"
           onClick={() => onDelete(depot.id)}
           className="px-2 h-8 text-xs border rounded transition flex items-center gap-1 border-border text-danger hover:border-danger bg-bg-raised"
-          title="Supprimer ce depot"
+          title="Supprimer ce dépôt" aria-label="Supprimer ce dépôt"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>

@@ -156,12 +156,12 @@ export function IdentifiantsDrawer({ open, view, onClose, onSaved, readOnly = fa
       )}
       {readOnly ? (
         <p className="mb-4 rounded-lg border border-border bg-bg-overlay px-3 py-2 text-sm text-fg-subtle">
-          Consultation en lecture seule. Seul l'employé responsable du dossier peut
+          Consultation en lecture seule. Seul l’employé responsable du dossier peut
           modifier ces identifiants (RG-U02-04).
         </p>
       ) : (
         <p className="mb-4 text-sm text-fg-subtle">
-          Complétez les identifiants obtenus après l'immatriculation. Les champs
+          Complétez les identifiants obtenus après l’immatriculation. Les champs
           laissés vides seront enregistrés comme non renseignés.
         </p>
       )}

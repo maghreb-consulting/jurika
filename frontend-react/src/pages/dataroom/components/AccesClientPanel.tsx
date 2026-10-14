@@ -19,7 +19,7 @@ const PERMISSIONS: { cle: Cle; libelle: string; aide: string }[] = [
   { cle: 'permConsultation', libelle: 'Consulter les documents', aide: 'Le client voit les documents de sa Data Room.' },
   { cle: 'permDownload', libelle: 'Télécharger', aide: 'Le client enregistre les documents sur son poste.' },
   { cle: 'permPrint', libelle: 'Imprimer', aide: 'Le client imprime les documents depuis la plateforme.' },
-  { cle: 'permDepot', libelle: 'Déposer des documents', aide: 'Le client ajoute ses propres pièces dans l’onglet « Dépôts ».' },
+  { cle: 'permDepot', libelle: 'Déposer des documents', aide: 'Le client ajoute ses propres pièces dans l’onglet « Dépôts du client ».' },
   { cle: 'permDemandes', libelle: 'Envoyer des demandes', aide: 'Le client adresse des demandes à l’employé responsable du dossier.' },
 ];
 

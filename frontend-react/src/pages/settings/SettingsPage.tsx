@@ -21,6 +21,7 @@ import { NotificationPreferencesTab } from './NotificationPreferencesTab';
 import { PreferencesTab } from './PreferencesTab';
 import { PlatformSettingsTab } from './PlatformSettingsTab';
 import type { Role } from '../../types/auth';
+import { TexteAide } from '../../components/ui/Aide';
 
 /**
  * BUG 11 (2026-06-08) — Page Parametres SaaS a onglets lateraux.
@@ -48,15 +49,15 @@ interface Tab {
 // Navigate to="profile" relatif -> /settings/profile/team/profile -> boucle).
 const TABS: Tab[] = [
   { to: '/settings/profile', label: 'Profil', icon: User, testid: 'settings-tab-profile' },
-  { to: '/settings/security', label: 'Securite & 2FA', icon: Shield, testid: 'settings-tab-security' },
+  { to: '/settings/security', label: 'Sécurité', icon: Shield, testid: 'settings-tab-security' },
   // Simplification inscription (2026-07-13) — completion ICE / infos cabinet (SUPERVISEUR).
   { to: '/settings/cabinet', label: 'Cabinet', icon: Building, roles: ['SUPERVISEUR'], testid: 'settings-tab-cabinet' },
-  { to: '/settings/team', label: 'Equipe', icon: Users, roles: ['SUPERVISEUR'], testid: 'settings-tab-team' },
+  { to: '/settings/team', label: 'Équipe', icon: Users, roles: ['SUPERVISEUR'], testid: 'settings-tab-team' },
   // Facturation = facturation du cabinet : masquee au CLIENT et au SUPER_ADMIN
   // (pas de workspace facturable cote plateforme).
   { to: '/settings/billing', label: 'Facturation', icon: CreditCard, roles: ['SUPERVISEUR', 'EMPLOYE'], testid: 'settings-tab-billing' },
   { to: '/settings/notifications', label: 'Notifications', icon: Bell, testid: 'settings-tab-notifications' },
-  { to: '/settings/preferences', label: 'Preferences', icon: Globe, testid: 'settings-tab-preferences' },
+  { to: '/settings/preferences', label: 'Préférences', icon: Globe, testid: 'settings-tab-preferences' },
   // Reglages plateforme (origines CORS…) — SUPER_ADMIN uniquement.
   { to: '/settings/platform', label: 'Plateforme', icon: ServerCog, roles: ['SUPER_ADMIN'], testid: 'settings-tab-platform' },
 ];
@@ -73,19 +74,26 @@ export function SettingsPage() {
     <div className="space-y-4" data-testid="settings-page">
       <header>
         <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold text-fg">
-          <SettingsIcon className="h-6 w-6 text-accent" /> Parametres
+          <SettingsIcon className="h-6 w-6 text-accent" /> Paramètres
         </h1>
         <p className="mt-1 text-sm text-fg-muted">
-          Profil, securite, equipe, facturation, notifications et preferences
-          dans un meme espace.
+          Votre compte, sa sécurité, vos notifications et vos préférences ; pour le responsable du
+          cabinet, la fiche du cabinet, l’équipe et la facturation.
         </p>
       </header>
+
+      <TexteAide cle="parametres" titre="Comment utiliser les paramètres">
+        <p>
+          Choisissez un onglet dans la colonne de gauche : chaque onglet s’enregistre séparément. Les
+          onglets affichés dépendent de votre rôle.
+        </p>
+      </TexteAide>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr]">
         {/* Sidebar onglets */}
         <nav
           className="flex flex-row gap-1 overflow-x-auto rounded-2xl border border-border bg-bg-raised p-2 md:flex-col md:overflow-visible"
-          aria-label="Onglets parametres"
+          aria-label="Onglets des paramètres"
         >
           {visibleTabs.map((t) => {
             const Icon = t.icon;

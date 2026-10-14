@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -27,19 +26,19 @@ describe('<SignupStep5Recap>', () => {
     expect(screen.getByText('Cabinet ATLAS Consulting')).toBeInTheDocument();
     expect(screen.getByText('Jean Dupont')).toBeInTheDocument();
     expect(screen.getByText(/Business/i)).toBeInTheDocument();
-    expect(screen.getByText(/TOTP/i)).toBeInTheDocument();
+    expect(screen.getByText('Application d’authentification')).toBeInTheDocument();
     expect(screen.getByTestId('signup-cgu-checkbox')).toBeInTheDocument();
     expect(screen.getByTestId('signup-step5-submit')).toBeInTheDocument();
   });
 
-  it('shows "a completer" when ICE is empty', () => {
+  it('shows "à compléter" when ICE is empty', () => {
     render(
       <BrowserRouter>
         <SignupStep5Recap profile={{ ...profile, ice: '' }} twoFactor="TOTP" selectedPlan="essentiel"
           onBack={vi.fn()} onSubmit={vi.fn().mockResolvedValue(undefined)} />
       </BrowserRouter>
     );
-    expect(screen.getByText(/completer plus tard/i)).toBeInTheDocument();
+    expect(screen.getByText(/compléter plus tard/i)).toBeInTheDocument();
   });
 
   it('blocks submit when CGU not checked', async () => {

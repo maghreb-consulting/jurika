@@ -30,12 +30,13 @@ import type { RecapitulatifCloture } from '../../types/demarche';
  */
 export function RecapitulatifPanel({ ticketId }: { ticketId: string }) {
   const [recap, setRecap] = useState<RecapitulatifCloture | null>(null);
-  const [chargement, setChargement] = useState(true);
+  /** Ticket dont la reponse (recapitulatif ou erreur) est arrivee : le chargement s'en deduit. */
+  const [chargePour, setChargePour] = useState<string | null>(null);
+  const chargement = chargePour !== ticketId;
   const [erreur, setErreur] = useState<string | null>(null);
 
   useEffect(() => {
     let vivant = true;
-    setChargement(true);
     demarcheService
       .recapitulatif(ticketId)
       .then((r) => {
@@ -45,7 +46,7 @@ export function RecapitulatifPanel({ ticketId }: { ticketId: string }) {
         }
       })
       .catch((err) => vivant && setErreur(extractError(err).message))
-      .finally(() => vivant && setChargement(false));
+      .finally(() => vivant && setChargePour(ticketId));
     return () => {
       vivant = false;
     };
@@ -144,7 +145,7 @@ export function RecapitulatifPanel({ ticketId }: { ticketId: string }) {
               {!d.visibleClient && (
                 <span
                   className="flex items-center gap-1 text-[11px] text-fg-subtle"
-                  title="Ce document n'est pas montré au client"
+                  title="Ce document n’est pas montré au client"
                 >
                   <EyeOff className="h-3 w-3" /> masqué
                 </span>

@@ -6,6 +6,7 @@ import ma.jurika.auth.domain.port.SmsOtpCodeRepository;
 import ma.jurika.auth.domain.port.SmsSender;
 import ma.jurika.auth.domain.port.UserRepository;
 import ma.jurika.auth.domain.service.VerificationTokenHasher;
+import ma.jurika.common.exception.BusinessException;
 import ma.jurika.common.exception.NotFoundException;
 import ma.jurika.common.exception.ValidationException;
 import ma.jurika.common.security.TenantContext;
@@ -69,17 +70,17 @@ public class SendSmsOtpUseCase {
         TenantContext.set(cmd.workspaceId());
 
         User user = userRepository.findById(cmd.userId())
-                .orElseThrow(() -> new NotFoundException("Utilisateur inconnu"));
+                .orElseThrow(() -> new NotFoundException("Utilisateur introuvable."));
 
         if (user.phone() == null || user.phone().isBlank()) {
-            throw new ValidationException("PHONE_NOT_SET");
+            throw new BusinessException("PHONE_NOT_SET", "Aucun num\u00e9ro de t\u00e9l\u00e9phone n\u2019est enregistr\u00e9 pour ce compte : choisissez l\u2019application d\u2019authentification ou demandez \u00e0 votre cabinet d\u2019ajouter votre num\u00e9ro.");
         }
 
         // Rate limit basique : si OTP existant non utilise et cree il y a moins de 60s, refuser
         otpRepository.findLatestActive(cmd.userId(), cmd.purpose()).ifPresent(existing -> {
             Instant minNext = existing.expiresAt().minus(Duration.ofMinutes(otpTtlMinutes - 1));
             if (Instant.now().isBefore(minNext)) {
-                throw new ValidationException("SMS_RATE_LIMIT_WAIT_60_SECONDS");
+                throw new BusinessException("SMS_RATE_LIMIT_WAIT_60_SECONDS", "Un code vient d\u2019\u00eatre envoy\u00e9 : attendez une minute avant d\u2019en demander un autre.");
             }
         });
 

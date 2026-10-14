@@ -93,7 +93,7 @@ public class SuccursaleEtrWorkflow extends AbstractWorkflow {
             case 3 -> stepGeneration(ctx);
             case 4 -> stepPiecesJointes(ctx);
             case 5 -> stepSynthese(ctx);
-            default -> StepResult.blocked("Etape inconnue : " + ctx.step());
+            default -> StepResult.blocked("\u00c9tape inconnue : " + ctx.step());
         };
     }
 
@@ -111,27 +111,27 @@ public class SuccursaleEtrWorkflow extends AbstractWorkflow {
                 UUID.fromString(dossierMereId);
             } catch (IllegalArgumentException e) {
                 return StepResult.blocked(
-                        "Identifiant de societe mere invalide. Selectionnez-la dans la liste.");
+                        "Identifiant de soci\u00e9t\u00e9 m\u00e8re invalide. S\u00e9lectionnez-la dans la liste.");
             }
         }
 
         Map<String, Object> mere = buildSocieteMere(p);
         if (dossierMereId == null && strOrNull(mere.get("denomination")) == null) {
             return StepResult.blocked(
-                    "Saisissez la societe mere etrangere (denomination), ou selectionnez-en "
-                            + "une deja enregistree.");
+                    "Saisissez la soci\u00e9t\u00e9 m\u00e8re \u00e9trang\u00e8re (d\u00e9nomination), ou s\u00e9lectionnez-en "
+                            + "une d\u00e9j\u00e0 enregistr\u00e9e.");
         }
         if (dossierMereId == null) {
             // Creation d'une nouvelle mere : les mentions publiees dans l'avis sont
             // obligatoires — sans elles, l'annonce partirait avec des trous.
             for (String[] champ : new String[][]{
-                    {"forme", "la forme juridique du pays d'origine"},
-                    {"pays", "le pays d'origine"},
-                    {"siege", "le siege social de la societe mere"}}) {
+                    {"forme", "la forme juridique du pays d\u2019origine"},
+                    {"pays", "le pays d\u2019origine"},
+                    {"siege", "le si\u00e8ge social de la soci\u00e9t\u00e9 m\u00e8re"}}) {
                 if (strOrNull(mere.get(champ[0])) == null) {
                     return StepResult.blocked(
-                            "Renseignez " + champ[1] + " : cette mention figure dans l'annonce "
-                                    + "legale d'ouverture.");
+                            "Renseignez " + champ[1] + " : cette mention figure dans l\u2019annonce "
+                                    + "l\u00e9gale d\u2019ouverture.");
                 }
             }
         }
@@ -141,30 +141,30 @@ public class SuccursaleEtrWorkflow extends AbstractWorkflow {
                 p.get("organeDate"), p.get("dateAssemblee")));
         if (dateRaw == null) {
             return StepResult.blocked(
-                    "La date de la decision de l'organe competent est obligatoire.");
+                    "La date de la d\u00e9cision de l\u2019organe comp\u00e9tent est obligatoire.");
         }
         LocalDate dateAg = parseDateOrNull(dateRaw);
         if (dateAg == null) {
-            return StepResult.blocked("Date de decision invalide. Format attendu : AAAA-MM-JJ.");
+            return StepResult.blocked("Date de d\u00e9cision invalide. Format attendu : AAAA-MM-JJ.");
         }
         if (dateAg.isAfter(LocalDate.now().plusDays(30))) {
             return StepResult.blocked(
-                    "La date de decision ne peut pas etre dans le futur (> 30 jours).");
+                    "La date de d\u00e9cision ne peut pas \u00eatre dans le futur (> 30 jours).");
         }
         if (dateAg.isBefore(LocalDate.now().minusYears(2))) {
             return StepResult.blocked(
-                    "La date de decision est trop ancienne (> 2 ans). Verifiez la saisie.");
+                    "La date de d\u00e9cision est trop ancienne (> 2 ans). V\u00e9rifiez la saisie.");
         }
 
         String typeAg = strOrNull(first0(p.get("typeAssemblee"), p.get("assembleeNature")));
         if (typeAg == null) {
             return StepResult.blocked(
-                    "Precisez le type de decision : ordinaire ou extraordinaire.");
+                    "Pr\u00e9cisez le type de d\u00e9cision : ordinaire ou extraordinaire.");
         }
         String typeNorm = typeAg.toLowerCase(Locale.ROOT);
         if (!TYPES_ASSEMBLEE.contains(typeNorm)) {
             return StepResult.blocked(
-                    "Type de decision invalide : attendu « ordinaire » ou « extraordinaire ».");
+                    "Type de d\u00e9cision invalide : attendu \u00ab ordinaire \u00bb ou \u00ab extraordinaire \u00bb.");
         }
 
         // Convocation OPTIONNELLE — regle DURE des 16 jours (jours calendaires).
@@ -179,7 +179,7 @@ public class SuccursaleEtrWorkflow extends AbstractWorkflow {
         }
         if (!manquants.isEmpty()) {
             return StepResult.blocked(
-                    "Controles de conformite manquants (bloquant) : " + String.join(", ", manquants));
+                    "Contr\u00f4les de conformit\u00e9 manquants (bloquant) : " + String.join(", ", manquants));
         }
 
         Map<String, Object> organe = readOrgane(p);
@@ -216,14 +216,14 @@ public class SuccursaleEtrWorkflow extends AbstractWorkflow {
         Map<String, Object> p = ctx.payload();
         if (!isTrue(p, "pvValide")) {
             return StepResult.blocked(
-                    "Le PV de creation de la succursale doit etre valide avant de poursuivre.");
+                    "Le PV de cr\u00e9ation de la succursale doit \u00eatre valide avant de poursuivre.");
         }
         if (!isTrue(p, "annonceValide")) {
             return StepResult.blocked(
-                    "L'annonce legale d'ouverture doit etre validee : sa publication au "
-                            + "Journal d'Annonces Legales est obligatoire (les numero et date "
-                            + "de depot legal, attribues par le greffe apres depot, restent "
-                            + "facultatifs a ce stade).");
+                    "L\u2019annonce l\u00e9gale d\u2019ouverture doit \u00eatre valid\u00e9e : sa publication au "
+                            + "Journal d\u2019Annonces L\u00e9gales est obligatoire (les num\u00e9ro et date "
+                            + "de d\u00e9p\u00f4t l\u00e9gal, attribu\u00e9s par le greffe apr\u00e8s d\u00e9p\u00f4t, restent "
+                            + "facultatifs \u00e0 ce stade).");
         }
 
         boolean isAu = readAssocieUniqueFromStep1(ctx, p);

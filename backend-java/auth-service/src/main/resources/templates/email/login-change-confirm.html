@@ -44,7 +44,7 @@
 
                         <div style="text-align:center;margin:32px 0;">
                             <a th:href="${confirmationUrl}"
-                               style="display:inline-block;background:#0c1d3f;color:#c8a45c;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px;">
+                               style="display:inline-block;background:#0c1d3f;color:#c9a24a;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px;">
                                 Confirmer mon nouvel identifiant
                             </a>
                         </div>
@@ -62,7 +62,7 @@
                                 N&rsquo;utilisez pas ce lien : aucune modification ne sera faite. Connectez-vous,
                                 annulez la demande depuis l&rsquo;&eacute;cran &laquo;&nbsp;Mon compte&nbsp;&raquo; et changez
                                 votre mot de passe. Pr&eacute;venez
-                                <a href="mailto:support@jurika.ma" style="color:#78350F;">support@jurika.ma</a>.
+                                <a th:href="${'mailto:' + supportEmail}" style="color:#78350F;" th:text="${supportEmail}">contact</a>.
                             </p>
                         </div>
 

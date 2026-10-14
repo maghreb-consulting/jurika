@@ -1,9 +1,13 @@
+import { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { AppTopNav } from './AppTopNav';
 import { ErrorBoundary } from './ErrorBoundary';
 import { IceReminderBanner } from './IceReminderBanner';
 import { AssistantJuridique } from '../chatbot/AssistantJuridique';
+import { VisiteGuidee } from '../ui/VisiteGuidee';
 import { useSessionKeepAlive } from '../../lib/useSessionKeepAlive';
+import { useAuthStore } from '../../store/authStore';
+import { useAidesStore } from '../../store/aidesStore';
 
 export function AppShell() {
   // 2026-07-26 — refresh proactif base activite : monte ici (uniquement pour les
@@ -11,6 +15,14 @@ export function AppShell() {
   // renouvelee avant l'expiration de l'access token, sans jamais le deconnecter
   // a tort pour "inactivite".
   useSessionKeepAlive();
+  // Lot L6 (E6) : les aides masquees de l'utilisateur sont lues UNE fois par
+  // session (le magasin ignore un second appel pour le meme utilisateur) ; le
+  // rendu des aides ne fait ensuite aucun appel reseau.
+  const userId = useAuthStore((s) => s.user?.userId);
+  const chargerAides = useAidesStore((s) => s.charger);
+  useEffect(() => {
+    if (userId) void chargerAides(userId);
+  }, [userId, chargerAides]);
   // 2026-06-30 — `key={pathname}` réinitialise l'ErrorBoundary à chaque
   // navigation : une erreur de rendu sur une route (ex. /chat) ne fige plus
   // les autres pages. La topnav reste HORS du boundary -> toujours cliquable.
@@ -27,8 +39,13 @@ export function AppShell() {
           </ErrorBoundary>
         </div>
       </main>
-      {/* Lot L5 E8 (RG-COM-01) : bulle du chatbot sur toutes les pages (roles du cabinet et super-admin). */}
-      <AssistantJuridique />
+      {/* Lot L5 E8 (RG-COM-01) : bulle du chatbot sur toutes les pages (roles du cabinet et super-admin).
+          Lot L6 (E6) : cible "chatbot" de la visite guidee. */}
+      <div data-visite="chatbot">
+        <AssistantJuridique />
+      </div>
+      {/* Lot L6 (E6, CDC 15.4) : premiere visite guidee du role. */}
+      <VisiteGuidee />
     </div>
   );
 }

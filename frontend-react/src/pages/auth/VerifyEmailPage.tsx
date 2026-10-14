@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, Mail, RefreshCw, ShieldAlert } from 'lucide-react';
 import { BrandLogo } from '../../components/ui/BrandLogo';
+import { InfoBulle } from '../../components/ui/Aide';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { TextField } from '../../components/ui/TextField';
@@ -32,9 +33,10 @@ export function VerifyEmailPage() {
   const [resent, setResent] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
+  // L'etat initial vaut deja 'verifying' quand un lien est present : l'effet ne
+  // fait que lancer la verification et ne change l'etat qu'a la reponse.
   useEffect(() => {
     if (!token) return;
-    setState('verifying');
     authService
       .verifyEmail(token)
       .then((r) => {
@@ -57,7 +59,7 @@ export function VerifyEmailPage() {
           patternMsg(
             workspaceCode.toUpperCase(),
             /^JUR-[A-Z0-9]{5}$/,
-            'Code workspace invalide (format JUR-XXXXX).',
+            'Code du cabinet non valide : format attendu JUR- suivi de 5 lettres ou chiffres.',
           ),
       ) ?? undefined,
       email: emailMsg(email) ?? undefined,
@@ -82,29 +84,32 @@ export function VerifyEmailPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-bg via-bg-raised to-accent/10 px-4">
       <div className="w-full max-w-md">
-        <div className="mb-8 flex items-center justify-center gap-2">
-          <BrandLogo size={40} />
-          <span className="font-heading font-heading text-2xl font-semibold text-fg">JURIKA</span>
-        </div>
+        <Link to="/" className="mb-8 flex items-center justify-center" aria-label="JURIKA, retour à l’accueil">
+          <BrandLogo variant="full" size={48} />
+        </Link>
 
         <Card className="p-8">
           {state === 'verifying' && (
             <div className="space-y-4 text-center">
               <RefreshCw className="mx-auto h-10 w-10 animate-spin text-accent" />
-              <h2 className="font-heading text-xl font-semibold text-fg">Verification en cours...</h2>
-              <p className="text-sm text-fg-muted">Nous validons votre email aupres du serveur.</p>
+              <h1 className="font-heading text-xl font-semibold text-fg">Vérification en cours…</h1>
+              <p className="text-sm text-fg-muted">Nous vérifions votre adresse électronique.</p>
             </div>
           )}
 
           {state === 'success' && (
             <div className="space-y-5 text-center">
               <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
-              <h2 className="font-heading text-xl font-semibold text-fg">Email verifie</h2>
+              <h1 className="font-heading text-xl font-semibold text-fg">Adresse vérifiée</h1>
               <p className="text-sm text-fg-muted">
-                {message ?? 'Email verifie avec succes. Vous pouvez vous connecter.'}
+                {message ?? 'Adresse électronique vérifiée. Vous pouvez maintenant vous connecter.'}
+              </p>
+              <p className="text-xs text-fg-subtle">
+                À la première connexion, vous choisirez un nouveau mot de passe puis la méthode de
+                double authentification.
               </p>
               <Link to="/login">
-                <Button className="w-full">Aller a la connexion</Button>
+                <Button className="w-full">Aller à la connexion</Button>
               </Link>
             </div>
           )}
@@ -112,8 +117,11 @@ export function VerifyEmailPage() {
           {state === 'error' && (
             <div className="space-y-5 text-center">
               <ShieldAlert className="mx-auto h-12 w-12 text-danger" />
-              <h2 className="font-heading text-xl font-semibold text-fg">Lien invalide ou expire</h2>
+              <h1 className="font-heading text-xl font-semibold text-fg">Lien non valide ou expiré</h1>
               <p className="text-sm text-fg-muted">{errorMsg}</p>
+              <p className="text-xs text-fg-subtle">
+                Demandez un nouveau lien : il vous sera envoyé par courriel, avec sa durée de validité.
+              </p>
               <Button variant="secondary" onClick={() => setState('resend')} className="w-full">
                 Renvoyer un lien
               </Button>
@@ -124,13 +132,20 @@ export function VerifyEmailPage() {
             <form onSubmit={handleResend} className="space-y-5" noValidate>
               <div className="text-center">
                 <Mail className="mx-auto h-10 w-10 text-accent" />
-                <h2 className="mt-3 font-heading text-xl font-semibold text-fg">Renvoyer l'email</h2>
+                <h1 className="mt-3 flex items-center justify-center gap-1 font-heading text-xl font-semibold text-fg">
+                  Recevoir un nouveau lien
+                  <InfoBulle
+                    libelle="Aide sur la vérification de l’adresse"
+                    texte="Le lien de vérification active votre compte. Indiquez le code de votre workspace (dans le courriel de bienvenue) et l’adresse électronique saisie à l’inscription : un nouveau lien vous sera envoyé."
+                  />
+                </h1>
                 <p className="mt-1 text-sm text-fg-muted">
-                  Indiquez votre code workspace et email pour recevoir un nouveau lien.
+                  Indiquez le code de votre workspace et votre adresse électronique pour recevoir un
+                  nouveau lien d’activation.
                 </p>
               </div>
               <TextField
-                label="Code workspace"
+                label="Code du cabinet"
                 name="workspaceCode"
                 placeholder="JUR-AB123"
                 value={workspaceCode}
@@ -144,7 +159,7 @@ export function VerifyEmailPage() {
                 error={fieldErrors.workspaceCode}
               />
               <TextField
-                label="Email"
+                label="Adresse électronique"
                 name="email"
                 type="email"
                 value={email}
@@ -161,8 +176,9 @@ export function VerifyEmailPage() {
                 </div>
               )}
               {resent && (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                  Si le compte existe, un email a ete envoye. Consultez votre boite mail.
+                <div role="status" className="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm text-success">
+                  Si ce compte existe, un courriel vient de lui être envoyé. Consultez votre messagerie
+                  (pensez aux courriers indésirables).
                 </div>
               )}
               <Button type="submit" className="w-full" loading={resending}>
@@ -172,7 +188,7 @@ export function VerifyEmailPage() {
                 to="/login"
                 className="block text-center text-sm font-medium text-accent hover:text-accent"
               >
-                Retour a la connexion
+                Retour à la connexion
               </Link>
             </form>
           )}

@@ -3,6 +3,7 @@ import { AlertTriangle, Briefcase, ChevronRight } from 'lucide-react';
 import { useStepAutosave } from '../useStepAutosave';
 import { normalizeActivites } from '../objetSocial';
 import { BlocageValidation } from '../../../components/workflow/BlocageValidation';
+import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -41,6 +42,21 @@ const CATEGORIES_ONA = [
   'Arts, spectacles et loisirs',
   'Autres services',
 ];
+
+/**
+ * Libelles affiches des categories et secteurs (L6, langue) : la valeur enregistree reste
+ * celle de la liste (donnees deja saisies inchangees), seul l'affichage est accentue.
+ */
+const LIBELLES_LISTES: Record<string, string> = {
+  'Agriculture, foret et peche': 'Agriculture, forêt et pêche',
+  'Industrie manufacturiere': 'Industrie manufacturière',
+  'BTP & Construction': 'BTP et construction',
+  'Hebergement et restauration': 'Hébergement et restauration',
+  'Activites immobilieres': 'Activités immobilières',
+  'Education et formation': 'Éducation et formation',
+  'Sante humaine et action sociale': 'Santé humaine et action sociale',
+  'Numerique / Tech': 'Numérique et technologies',
+};
 
 const SECTEURS = [
   'Primaire',
@@ -120,19 +136,26 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
         <div className="mb-1 flex items-center gap-2">
           <Briefcase className="h-5 w-5 text-accent" />
           <h3 className="text-lg font-bold text-fg">
-            Activite de la societe
+            Activité de la société
           </h3>
         </div>
-        <p className="mb-6 text-xs text-fg-subtle">
-          Decrivez l'ensemble des activites de la societe. Ce texte sera repris
-          dans l'objet social des statuts. <strong>Une activite par ligne</strong> :
-          les statuts les presenteront alors en liste (a tirets).
+        <p className="mb-4 text-xs text-fg-subtle">
+          Décrivez l’ensemble des activités de la société. Ce texte sera repris
+          dans l’objet social des statuts. <strong>Une activité par ligne</strong> :
+          les statuts les présenteront alors en liste (à tirets).
         </p>
+        <div className="mb-6">
+          <TexteAide cle={importMode ? 'import-etape-activite' : 'creation-etape-4'} titre="Ce qu’il faut faire">
+            {importMode
+              ? 'Reprenez l’objet social tel qu’il figure aux statuts, une activité par ligne, indiquez la date de début du premier exercice repris, puis cliquez sur « Valider et continuer ».'
+              : 'Saisissez les activités, une par ligne, en reprenant l’activité portée sur le certificat négatif. Indiquez si l’activité est réglementée : les autorisations seront alors demandées avec les pièces jointes. Cliquez ensuite sur « Valider et continuer » ; l’étape suivante porte sur la gérance.'}
+          </TexteAide>
+        </div>
 
         {/* Description — une activite par ligne (objet social multi-activites). */}
         <div className="mb-6">
           <label htmlFor="creation-activites" className="mb-2 block text-sm font-medium text-fg">
-            Activites de la societe{' '}
+            Activités de la société{' '}
             <span className="font-normal text-fg-subtle">(une par ligne)</span>
           </label>
           {/* Champ unique (hors liste) : `htmlFor` + `id` sont possibles ici, et
@@ -143,18 +166,18 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
             value={description}
             onChange={(ev) => setDescription(ev.target.value)}
             placeholder={
-              'Une activite par ligne, ex :\n' +
-              'Le conseil et l’ingenierie informatique\n' +
+              'Une activité par ligne, par exemple :\n' +
+              'Le conseil et l’ingénierie informatique\n' +
               'La formation professionnelle\n' +
-              'L’import-export de materiel'
+              'L’import-export de matériel'
             }
             className="w-full resize-none rounded-lg border-2 border-border bg-bg-overlay px-4 py-3 text-sm leading-relaxed focus:border-accent focus:outline-none"
           />
           <p className="mt-1 text-xs text-fg-subtle">
-            {description.length} caracteres — minimum 10 caracteres requis.
+            {description.length} caractères (plus de 10 caractères attendus).
             {activites.length > 1 && (
               <span className="ml-1 font-medium text-accent">
-                {activites.length} activites detectees (rendues en liste).
+                {activites.length} activités détectées (présentées en liste).
               </span>
             )}
           </p>
@@ -162,8 +185,12 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
 
         {/* Reglementee */}
         <div className="mb-6">
-          <label className="mb-3 block text-sm font-medium text-fg">
-            Activite reglementee ?
+          <label className="mb-3 flex items-center gap-1 text-sm font-medium text-fg">
+            Activité réglementée ?
+            <InfoBulle
+              libelle="Qu’est-ce qu’une activité réglementée ?"
+              texte="Une activité soumise à une autorisation, un agrément ou une licence préalable (transport, santé, enseignement, établissement financier, débit de boissons…). Répondez « Oui » en cas de doute : la pièce sera demandée à l’étape des pièces jointes."
+            />
           </label>
           <div className="flex gap-3">
             <button
@@ -196,11 +223,11 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
             <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
             <div>
               <p className="text-sm font-semibold text-warning">
-                Activite reglementee
+                Activité réglementée
               </p>
               <p className="text-xs text-warning">
-                Des autorisations prefectorales ou sectorielles seront exigees
-                a l'etape Pieces jointes (autorisation, agrement, licence…).
+                Des autorisations préfectorales ou sectorielles seront exigées
+                à l’étape des pièces jointes (autorisation, agrément, licence…).
               </p>
             </div>
           </div>
@@ -210,36 +237,38 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
         <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs font-medium text-fg">
-              Categorie ONA{' '}
-              <span className="font-normal text-fg-subtle">(optionnel)</span>
+              Catégorie ONA{' '}
+              <span className="font-normal text-fg-subtle">(facultatif)</span>
             </label>
             <select
+              aria-label="Catégorie ONA"
               value={categorieOna}
               onChange={(ev) => setCategorieOna(ev.target.value)}
               className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
             >
-              <option value="">— Selectionnez —</option>
+              <option value="">— Sélectionnez —</option>
               {CATEGORIES_ONA.map((c) => (
                 <option key={c} value={c}>
-                  {c}
+                  {LIBELLES_LISTES[c] ?? c}
                 </option>
               ))}
             </select>
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-fg">
-              Secteur economique{' '}
-              <span className="font-normal text-fg-subtle">(optionnel)</span>
+              Secteur économique{' '}
+              <span className="font-normal text-fg-subtle">(facultatif)</span>
             </label>
             <select
+              aria-label="Secteur économique"
               value={secteur}
               onChange={(ev) => setSecteur(ev.target.value)}
               className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
             >
-              <option value="">— Selectionnez —</option>
+              <option value="">— Sélectionnez —</option>
               {SECTEURS.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {LIBELLES_LISTES[s] ?? s}
                 </option>
               ))}
             </select>
@@ -267,7 +296,7 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
               className="h-10 w-full max-w-xs rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
             />
             <p className="mt-1 text-xs text-fg-subtle">
-              Alimente le suivi des exercices fiscaux (étape Suivi).
+              Sert au suivi des exercices comptables de la société (étape Suivi).
             </p>
           </div>
         )}
@@ -283,7 +312,7 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
             ? []
             : [
                 description.trim().length <= 10 &&
-                  'Décrivez les activités de la société (au moins 10 caractères).',
+                  'Décrivez les activités de la société (plus de 10 caractères).',
                 importMode && !dateDebutExercice &&
                   'Renseignez la date de début du premier exercice repris.',
               ]

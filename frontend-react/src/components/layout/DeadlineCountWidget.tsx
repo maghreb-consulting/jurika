@@ -37,7 +37,7 @@ export function DeadlineCountWidget() {
       type="button"
       onClick={() => navigate("/calendar")}
       className="relative p-2 text-fg-subtle transition hover:text-fg"
-      aria-label={`${count ?? 0} echeances ouvertes — ouvrir le calendrier`}
+      aria-label={`${count ?? 0} échéance(s) ouverte(s) : ouvrir le calendrier`}
       title="Ouvrir le calendrier"
       data-testid="deadline-widget"
     >

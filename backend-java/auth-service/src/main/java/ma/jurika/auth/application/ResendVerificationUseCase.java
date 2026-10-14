@@ -61,16 +61,16 @@ public class ResendVerificationUseCase {
     @Transactional
     public void execute(Command cmd) {
         Workspace workspace = workspaceRepository.findByCode(cmd.workspaceCode())
-                .orElseThrow(() -> new NotFoundException("Workspace inconnu"));
+                .orElseThrow(() -> new NotFoundException("Workspace introuvable."));
 
         if (workspace.status() != WorkspaceStatus.PENDING_VERIFICATION) {
-            throw new ConflictException("Le workspace est deja verifie ou suspendu");
+            throw new ConflictException("Ce workspace est d\u00e9j\u00e0 v\u00e9rifi\u00e9 ou suspendu.");
         }
 
         TenantContext.set(workspace.id());
 
         User user = userRepository.findByWorkspaceAndEmail(workspace.id(), cmd.email())
-                .orElseThrow(() -> new NotFoundException("Utilisateur inconnu pour cet email"));
+                .orElseThrow(() -> new NotFoundException("Aucun utilisateur n\u2019a cette adresse \u00e9lectronique."));
 
         String rawToken = tokenHasher.generateUuidToken();
         String tokenHash = tokenHasher.hash(rawToken);
@@ -88,7 +88,7 @@ public class ResendVerificationUseCase {
         vars.put("contactEmail", user.contactEmail());
         emailSender.sendTemplated(
                 user.contactEmail(),
-                "Nouveau lien de verification - JURIKA",
+                "JURIKA - nouveau lien de v\u00e9rification",
                 "verify-email",
                 vars);
 

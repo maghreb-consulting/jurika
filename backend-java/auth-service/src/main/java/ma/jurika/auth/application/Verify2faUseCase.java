@@ -77,18 +77,18 @@ public class Verify2faUseCase {
     @Transactional
     public AuthTokens execute(Command cmd) {
         Workspace workspace = workspaceRepository.findById(cmd.workspaceId())
-                .orElseThrow(() -> new NotFoundException("Workspace inconnu"));
+                .orElseThrow(() -> new NotFoundException("Workspace introuvable."));
         TenantContext.set(workspace.id());
 
         User user = userRepository.findById(cmd.userId())
-                .orElseThrow(() -> new UnauthorizedException("Utilisateur inconnu"));
+                .orElseThrow(() -> new UnauthorizedException("Utilisateur introuvable."));
 
         // HIGH-5 (audit) : refuse si compte deja verrouille par accumulation d'echecs
         // (login OU 2FA confondus, RG-AU37).
         if (user.isLocked()) {
             auditLogger.log(workspace.id(), user.id(), "LOGIN_2FA_LOCKED", "user", user.id(),
                     cmd.ipAddress(), cmd.userAgent(), Map.of());
-            throw new UnauthorizedException("Compte temporairement verrouille — reessayez plus tard");
+            throw new UnauthorizedException("Compte verrouill\u00e9 temporairement : r\u00e9essayez plus tard.");
         }
 
         // CRIT-3 fix : dispatch selon la methode 2FA reelle du user (avant ce fix,
@@ -102,13 +102,13 @@ public class Verify2faUseCase {
                     cmd.ipAddress(), cmd.userAgent()));
         } else if ("TOTP".equals(method) || user.totpEnabled()) {
             if (user.totpSecretEncrypted() == null) {
-                throw new UnauthorizedException("2FA TOTP non activee pour ce compte");
+                throw new UnauthorizedException("La double authentification par application n\u2019est pas activ\u00e9e pour ce compte.");
             }
             int totpCode;
             try {
                 totpCode = Integer.parseInt(cmd.code().replaceAll("\\s+", ""));
             } catch (NumberFormatException e) {
-                throw new UnauthorizedException("Code 2FA invalide");
+                throw new UnauthorizedException("Code de double authentification incorrect.");
             }
             String secret = encryptionService.decrypt(user.totpSecretEncrypted());
             // Lot L0 (E10d), anti-rejeu (RFC 6238, section 5.2) : le code n'est
@@ -130,13 +130,13 @@ public class Verify2faUseCase {
                         Map.of("method", "TOTP", "attempts", newAttempts,
                                 "locked", lockUntil != null, "rejeu", rejeu));
                 throw new UnauthorizedException(lockUntil != null
-                        ? "Compte verrouille temporairement (trop d'echecs 2FA)"
-                        : "Code 2FA invalide");
+                        ? "Compte verrouill\u00e9 temporairement apr\u00e8s trop d\u2019\u00e9checs de double authentification : r\u00e9essayez plus tard."
+                        : "Code de double authentification incorrect.");
             }
             // Succes TOTP : reset le compteur d'echecs (SMS le fait deja dans VerifySmsOtpUseCase).
             userRepository.resetFailedLogin(user.id());
         } else {
-            throw new UnauthorizedException("2FA non activee pour ce compte");
+            throw new UnauthorizedException("La double authentification n\u2019est pas activ\u00e9e pour ce compte.");
         }
 
         // HIGH-6 (audit 2026-06-02) : appliquer le quota max 5 sessions/user (RG-SAAS-12).

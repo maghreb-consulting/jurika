@@ -12,7 +12,7 @@
  * ZÉRO re-saisie : l'identité société (dénomination, capital, siège, RC, ville du greffe)
  * est lue en BD ; les données de l'étape 1 alimentent le PV ET l'annonce.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, AlertTriangle, CheckCircle, Megaphone, Paperclip, Sparkles } from 'lucide-react';
 import { InfoBulle } from '../../components/ui/Aide';
@@ -26,17 +26,16 @@ import { CancelTicketDialog } from '../tickets/CancelTicketDialog';
 import { useWorkflow } from './useWorkflow';
 import { useStepAutosave } from './useStepAutosave';
 import { WorkflowBoot } from './WorkflowBoot';
+import { AideEtape } from './AideEtape';
+import { ETAPES_DISSOLUTION, etapesRoadmap } from './aidesParcours';
+import { bornesDateSeance, useDossierParties, useEtatReinitialise } from './parcoursHooks';
 import { DossierAutocomplete } from '../../components/workflow/DossierAutocomplete';
 import { SeanceOperationForm } from '../../components/workflow/SeanceOperationForm';
 import { ConvocationPanel, FeuillePresencePanel } from '../../components/workflow/SeanceDocPanels';
 import { IncidentSeancePanel } from '../../components/workflow/IncidentSeancePanel';
 import { DissolutionAnnoncePanel } from '../../components/workflow/DissolutionAnnoncePanel';
-import {
-  LiquidateurPicker,
-  buildLiquidateurOptions,
-  emptyLiquidateur,
-  type LiquidateurState,
-} from '../../components/workflow/LiquidateurPicker';
+import { LiquidateurPicker, type LiquidateurState } from '../../components/workflow/LiquidateurPicker';
+import { buildLiquidateurOptions, emptyLiquidateur } from '../../components/workflow/liquidateurOptions';
 import { champsPersonneMorale, identiteLiquidateur, manqueLiquidateur } from '../../lib/liquidateur';
 import {
   champsMandatLiquidateur,
@@ -57,21 +56,16 @@ import {
   addDaysIso,
   convocationDelaiError,
 } from '../../components/workflow/convocationDelai';
+import { LIQUIDATION_DELAI_JOURS } from '../../components/workflow/liquidationDelai';
 import {
   buildDocFilename,
   formeLabel,
 } from '../../components/workflow/workflowFilename';
-import { workflowService, type DossierParties } from '../../services/workflow.service';
 import type { TemplateInfo } from '../../services/workflowDocumentService';
 import type { AssocieInput, GerantInput } from '../../components/workflow/SeanceForm';
 import type { DossierBrief } from '../../types/dataroom';
 
-const STEPS: RoadmapStep[] = [
-  { number: 1, label: 'Saisie' },
-  { number: 2, label: 'Generation' },
-  { number: 3, label: 'Pieces jointes' },
-  { number: 4, label: 'Synthese' },
-];
+const STEPS: RoadmapStep[] = etapesRoadmap(ETAPES_DISSOLUTION);
 
 const MOTIF_MIN_LENGTH = 20;
 
@@ -79,7 +73,7 @@ const MOTIF_MIN_LENGTH = 20;
 const ALLOWED_STATUTS = ['ACTIVE'];
 
 /** Libellé « type de document » pour le nommage `type - dénom - forme (- v<n>)`. */
-export function dissolutionDocType(code: string): string {
+function dissolutionDocType(code: string): string {
   if (code.startsWith('ANNONCE_LEGALE_DISSOLUTION')) return 'Annonce légale — Dissolution';
   if (code.startsWith('PV_DISSOLUTION_LIQUIDATION')) return 'PV — Dissolution';
   if (code.startsWith('CONVOCATION')) return 'Convocation';
@@ -157,7 +151,9 @@ function DissolutionWorkflowPageBody() {
 
   // ---------- Etape 1 : saisie ----------
   const initialId = (stepData.step1?.dossierId as string) ?? ticket?.dossierId ?? '';
-  const [dossierId, setDossierId] = useState(initialId);
+  const [dossierIdSaisi, setDossierId] = useState(initialId);
+  // Societe du brouillon reprise quand la selection est videe (ancien effet de resynchronisation).
+  const dossierId = dossierIdSaisi || ((stepData.step1?.dossierId as string | undefined) ?? '');
   const [dossier, setDossier] = useState<DossierBrief | null>(null);
   const [motif, setMotif] = useState((stepData.step1?.motif as string) ?? '');
   // L4a (E2) : nature de la dissolution, SAISIE (le serveur la deduisait du motif libre et
@@ -181,7 +177,11 @@ function DissolutionWorkflowPageBody() {
     () => (stepData.step2?.mentionsPv as MentionsPv | undefined) ?? {},
   );
   const [dateAGE, setDateAGE] = useState((stepData.step1?.dateAGE as string) ?? '');
-  const [revealErrors, setRevealErrors] = useState<boolean>(false);
+  // Erreurs revelees a l'arrivee sur l'etape 1 si une saisie existe deja ; remises a zero a chaque changement d'etape.
+  const [revealErrors, setRevealErrors] = useEtatReinitialise(
+    viewStep,
+    () => viewStep === 1 && (motif.length > 0 || !!dateAGE),
+  );
   const [liquidateur, setLiquidateur] = useState<LiquidateurState>(
     () => (stepData.step1?.liquidateur as LiquidateurState | undefined) ?? emptyLiquidateur(),
   );
@@ -197,8 +197,6 @@ function DissolutionWorkflowPageBody() {
   const [convocationSnapshot, setConvocationSnapshot] = useState<Record<string, unknown> | null>(
     (stepData.step1?.convocationSnapshot as Record<string, unknown>) ?? null,
   );
-  const [dossierParties, setDossierParties] = useState<DossierParties | null>(null);
-  const [partiesLoading, setPartiesLoading] = useState(false);
 
   // ---------- Etape 2 : generation ----------
   const [pvValidated, setPvValidated] = useState<boolean>(
@@ -219,41 +217,10 @@ function DissolutionWorkflowPageBody() {
     () => (stepData.step3?.piecesJointes as PieceJointeEntry[] | undefined) ?? [],
   );
 
-  useEffect(() => {
-    if (stepData.step1?.dossierId && !dossierId) {
-      setDossierId(stepData.step1.dossierId as string);
-    }
-  }, [stepData.step1?.dossierId, dossierId]);
-
-  useEffect(() => {
-    setRevealErrors(viewStep === 1 && (motif.length > 0 || !!dateAGE));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewStep]);
-
   // Parties prenantes (gerants/associes) DES la selection de la societe : elles
   // peuplent le selecteur de liquidateur ET la convocation, sans re-saisie.
-  useEffect(() => {
-    if (!dossierId) {
-      setDossierParties(null);
-      return;
-    }
-    let cancelled = false;
-    setPartiesLoading(true);
-    workflowService
-      .getDossierParties(dossierId)
-      .then((parties) => {
-        if (!cancelled) setDossierParties(parties);
-      })
-      .catch(() => {
-        /* best-effort : la saisie externe reste possible */
-      })
-      .finally(() => {
-        if (!cancelled) setPartiesLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [dossierId]);
+  // Best-effort : un echec de lecture laisse la saisie externe possible.
+  const { dossierParties, partiesLoading } = useDossierParties(dossierId);
 
   const formeJuridique = useMemo(
     () =>
@@ -310,8 +277,7 @@ function DissolutionWorkflowPageBody() {
     [dossierParties],
   );
 
-  const minDate = new Date(Date.now() - 2 * 365 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-  const maxDate = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  const [{ minDate, maxDate }] = useState(bornesDateSeance);
 
   // Regle DURE des 16 jours (miroir exact du backend WorkflowSteps.convocationDelaiError).
   const convocationError = useMemo(
@@ -342,8 +308,8 @@ function DissolutionWorkflowPageBody() {
   };
   const fieldErrors = useMemo<FieldErrors>(() => {
     const errs: FieldErrors = {};
-    if (!dossierId.trim()) errs.dossierId = 'Selectionnez la societe a dissoudre.';
-    if (!dateAGE) errs.dateAGE = "La date de l'AGE est obligatoire.";
+    if (!dossierId.trim()) errs.dossierId = 'Sélectionnez la société à dissoudre.';
+    if (!dateAGE) errs.dateAGE = isAU ? 'La date de la décision est obligatoire.' : 'La date de l’AGE est obligatoire.';
     if (!nature) errs.nature = 'Choisissez la nature de la dissolution.';
     if (!dateEffet) errs.dateEffet = "Confirmez ou saisissez la date d'effet de la dissolution.";
     if (nature === 'terme_statutaire' && !termeDate) errs.natureDetail = 'Indiquez la date du terme statutaire.';
@@ -356,7 +322,7 @@ function DissolutionWorkflowPageBody() {
     if (!siegeIdentique) errs.siegeIdentique = 'Indiquez si le siège de la liquidation est le siège social.';
     if (!mandatDateEffet) errs.mandatDateEffet = "Confirmez ou saisissez la date d'entrée en fonctions du liquidateur.";
     if (motif.trim().length < MOTIF_MIN_LENGTH) {
-      errs.motif = `Le motif est trop court (${motif.trim().length}/${MOTIF_MIN_LENGTH} caracteres minimum) — precisez la cause.`;
+      errs.motif = `Le motif est trop court (${motif.trim().length}/${MOTIF_MIN_LENGTH} caractères minimum) : précisez la cause.`;
     }
     // Lot L4d (E5) : personne physique ou morale, message nomme.
     const manque = manqueLiquidateur(liquidateur);
@@ -371,7 +337,7 @@ function DissolutionWorkflowPageBody() {
     Object.assign(errs, manquesDetailPv(nature, detailPv));
     return errs;
   }, [dossierId, dateAGE, motif, nature, dateEffet, termeDate, exerciceClosDate, clauseArticle, siegeIdentique,
-    mandatDateEffet, liquidateur, siegeLiquidation, convocationError, detailPv]);
+    mandatDateEffet, liquidateur, siegeLiquidation, convocationError, detailPv, isAU]);
 
   const targetDenomination = dossier?.raisonSociale ?? ticket?.titre ?? '';
 
@@ -388,7 +354,7 @@ function DissolutionWorkflowPageBody() {
   );
 
   const depositMotif = useMemo(
-    () => `Dissolution : ${motif || 'dissolution anticipee'}`,
+    () => `Dissolution : ${motif || 'dissolution anticipée'}`,
     [motif],
   );
 
@@ -430,93 +396,6 @@ function DissolutionWorkflowPageBody() {
     [liquidateur, siegeLiquidation, siegeIdentique, mandatDateEffet, dateAGE, dateEffet, termeDate,
       exerciceClosDate, clauseArticle, detailPv],
   );
-
-  if (loading) return <Loader />;
-  if (!ticket || !progress)
-    return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger">
-        {error ?? 'Workflow introuvable'}
-      </div>
-    );
-
-  const step = viewStep;
-  const isTerminated = progress.statut === 'TERMINE';
-
-  async function handleValidate() {
-    setError(null);
-    if (step === 1) {
-      const errs = Object.values(fieldErrors).filter(Boolean) as string[];
-      if (errs.length > 0) {
-        setRevealErrors(true);
-        setError(`Veuillez corriger ${errs.length} erreur${errs.length > 1 ? 's' : ''} (surlignees en rouge).`);
-        return;
-      }
-      await executeStep(1, {
-        dossierId,
-        motifDissolution: motif,
-        dateAGE,
-        formeJuridique: formeJuridique ?? undefined,
-        liquidateur: {
-          source: liquidateur.source,
-          civilite: liquidateur.civilite,
-          prenom: liquidateur.prenom,
-          nom: liquidateur.nom,
-          cin: liquidateur.cin || undefined,
-          adresse: liquidateur.adresse,
-          remuneration: liquidateur.remuneration,
-          ...champsPersonneMorale(liquidateur), // L4d (E5)
-          ...champsMandatLiquidateur(liquidateur), // L4d (E11d)
-          ...mandatPv(detailPv),
-          siege: siegeIdentique === 'non' ? siegeLiquidation : '',
-          siegeIdentique,
-          mandatDateEffet,
-        },
-        siegeLiquidation: siegeIdentique === 'non' ? siegeLiquidation : '',
-        siegeIdentique,
-        nature,
-        dateEffet,
-        termeDate,
-        exerciceClosDate,
-        clauseArticle,
-        detailPv,
-        convocation: convocationPayload(),
-      });
-    } else if (step === 2) {
-      if (!pvValidated) {
-        setError('Generez puis validez le PV de dissolution avant de continuer.');
-        return;
-      }
-      if (!annonceValidated) {
-        setError(
-          "Generez puis validez l'annonce legale de dissolution : sa publication au Journal "
-            + "d'Annonces Legales est obligatoire (les numero et date de depot legal restent "
-            + 'facultatifs a ce stade).',
-        );
-        return;
-      }
-      await executeStep(2, {
-        pvValide: true,
-        annonceValide: true,
-        mentionsPv,
-        depotLegal:
-          depotLegalNumero || depotLegalDate
-            ? { numero: depotLegalNumero || null, date: depotLegalDate || null }
-            : undefined,
-      });
-    } else if (step === 3) {
-      // Etape OPTIONNELLE : jamais bloquante, peut etre vide.
-      await executeStep(3, {
-        piecesJointes: piecesJointes.map((p) => ({
-          id: p.id,
-          label: p.label,
-          filename: p.filename,
-          version: p.version ?? null,
-        })),
-      });
-    } else if (step === 4) {
-      await executeStep(4, {});
-    }
-  }
 
   /**
    * Contenu courant de l'étape — source unique du brouillon (2026-08-14).
@@ -560,16 +439,103 @@ function DissolutionWorkflowPageBody() {
       if (n === 3) return { piecesJointes };
       return null;
     },
-    // convocationPayload lit convocationDate/Heure : dependances explicitees.
     [dossierId, motif, nature, dateEffet, termeDate, exerciceClosDate, clauseArticle, siegeIdentique,
       mandatDateEffet, dateAGE, formeJuridique, liquidateur, siegeLiquidation, detailPv, mentionsPv,
-      convocationDate, convocationHeure, convocationSnapshot, pvValidated,
+      convocationPayload, convocationSnapshot, pvValidated,
       annonceValidated, depotLegalNumero, depotLegalDate, piecesJointes],
   );
 
   // Enregistre le getter pour l'etape AFFICHEE : navigation ET sauvegarde
-  // automatique (20 s) persistent desormais la saisie en cours.
-  useStepAutosave(step, () => draftPayloadFor(step), registerDirty);
+  // automatique (20 s) persistent la saisie en cours. Appele avant les retours
+  // anticipes : l'ordre des hooks ne varie jamais.
+  useStepAutosave(viewStep, () => draftPayloadFor(viewStep), registerDirty);
+
+  if (loading) return <Loader />;
+  if (!ticket || !progress)
+    return (
+      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+        {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
+      </div>
+    );
+
+  const step = viewStep;
+  const isTerminated = progress.statut === 'TERMINE';
+
+  async function handleValidate() {
+    setError(null);
+    if (step === 1) {
+      const errs = Object.values(fieldErrors).filter(Boolean) as string[];
+      if (errs.length > 0) {
+        setRevealErrors(true);
+        setError(`Veuillez corriger ${errs.length} erreur${errs.length > 1 ? 's' : ''} (signalée${errs.length > 1 ? 's' : ''} en rouge).`);
+        return;
+      }
+      await executeStep(1, {
+        dossierId,
+        motifDissolution: motif,
+        dateAGE,
+        formeJuridique: formeJuridique ?? undefined,
+        liquidateur: {
+          source: liquidateur.source,
+          civilite: liquidateur.civilite,
+          prenom: liquidateur.prenom,
+          nom: liquidateur.nom,
+          cin: liquidateur.cin || undefined,
+          adresse: liquidateur.adresse,
+          remuneration: liquidateur.remuneration,
+          ...champsPersonneMorale(liquidateur), // L4d (E5)
+          ...champsMandatLiquidateur(liquidateur), // L4d (E11d)
+          ...mandatPv(detailPv),
+          siege: siegeIdentique === 'non' ? siegeLiquidation : '',
+          siegeIdentique,
+          mandatDateEffet,
+        },
+        siegeLiquidation: siegeIdentique === 'non' ? siegeLiquidation : '',
+        siegeIdentique,
+        nature,
+        dateEffet,
+        termeDate,
+        exerciceClosDate,
+        clauseArticle,
+        detailPv,
+        convocation: convocationPayload(),
+      });
+    } else if (step === 2) {
+      if (!pvValidated) {
+        setError('Générez puis validez le procès-verbal de dissolution avant de continuer.');
+        return;
+      }
+      if (!annonceValidated) {
+        setError(
+          'Générez puis validez l’annonce légale de dissolution : sa publication dans un journal '
+            + 'd’annonces légales est obligatoire (le numéro et la date du dépôt légal restent '
+            + 'facultatifs à ce stade).',
+        );
+        return;
+      }
+      await executeStep(2, {
+        pvValide: true,
+        annonceValide: true,
+        mentionsPv,
+        depotLegal:
+          depotLegalNumero || depotLegalDate
+            ? { numero: depotLegalNumero || null, date: depotLegalDate || null }
+            : undefined,
+      });
+    } else if (step === 3) {
+      // Etape OPTIONNELLE : jamais bloquante, peut etre vide.
+      await executeStep(3, {
+        piecesJointes: piecesJointes.map((p) => ({
+          id: p.id,
+          label: p.label,
+          filename: p.filename,
+          version: p.version ?? null,
+        })),
+      });
+    } else if (step === 4) {
+      await executeStep(4, {});
+    }
+  }
 
   async function handleSaveDraft() {
     const payload = draftPayloadFor(step);
@@ -582,11 +548,11 @@ function DissolutionWorkflowPageBody() {
       await ticketService.transition(ticket.id, { target: 'CLOTURE_DOSSIER' });
       navigate('/tickets');
     } catch (err) {
-      setError((err as Error)?.message ?? 'Echec de cloture');
+      setError((err as Error)?.message ?? 'La clôture du parcours a échoué : réessayez.');
     }
   }
 
-  const decisionLabel = isAU ? "Decision de l'associe unique" : 'Assemblee Generale Extraordinaire (AGE)';
+  const decisionLabel = isAU ? 'Décision de l’associé unique' : 'Assemblée générale extraordinaire (AGE)';
   const showErr = (field: keyof FieldErrors): string | null =>
     revealErrors ? fieldErrors[field] ?? null : null;
 
@@ -616,17 +582,24 @@ function DissolutionWorkflowPageBody() {
         onSaveDraft={!isTerminated && step < 4 ? handleSaveDraft : undefined}
         onValidate={!isTerminated ? handleValidate : undefined}
         onCancel={() => setShowCancel(true)}
-        footer={{ validateLabel: step === 4 ? 'Finaliser' : "Valider l'etape" }}
+        footer={{ validateLabel: step === 4 ? 'Finaliser' : 'Valider l’étape' }}
       >
+        <AideEtape
+          parcours="dissolution"
+          etapes={ETAPES_DISSOLUTION}
+          etape={step}
+          manquants={step === 1 ? (Object.values(fieldErrors).filter(Boolean) as string[]) : undefined}
+        />
+
         {step === 1 && (
           <div className="space-y-5" data-testid="dissolution-step1">
             <header>
-              <h2 className="text-lg font-semibold text-fg">Etape 1 — Saisie</h2>
+              <h2 className="text-lg font-semibold text-fg">Étape 1 — Saisie</h2>
               <p className="text-sm text-fg-subtle">
-                Selectionnez la societe <strong>ACTIVE</strong> a dissoudre, puis renseignez le
-                motif, la date de l'assemblee, le liquidateur et le siege de la liquidation.
-                L'identite de la societe (denomination, capital, siege, RC, ville du greffe) est
-                lue en base : elle n'est <strong>jamais re-saisie</strong>.
+                Sélectionnez la société <strong>active</strong> à dissoudre, puis renseignez le
+                motif, la date de l’assemblée, le liquidateur et le siège de la liquidation.
+                L’identité de la société (dénomination, capital, siège, RC, ville du greffe) est
+                lue dans le dossier : vous n’avez <strong>jamais à la ressaisir</strong>.
               </p>
             </header>
 
@@ -638,7 +611,7 @@ function DissolutionWorkflowPageBody() {
                   setDossierId(d?.id ?? '');
                 }}
                 allowedStatuts={ALLOWED_STATUTS}
-                help="Seules les societes au statut ACTIVE peuvent etre dissoutes."
+                help="Seules les sociétés au statut « active » peuvent être dissoutes."
               />
               {showErr('dossierId') && (
                 <p className="mt-1 flex items-start gap-1 text-xs text-danger" role="alert">
@@ -650,19 +623,14 @@ function DissolutionWorkflowPageBody() {
 
             {dossier && (
               <div className="rounded-lg border border-indigo-200 bg-accent/10 p-3 text-xs text-fg-muted" role="status">
-                Formalisme detecte : <strong>{decisionLabel}</strong> — Modeles :{' '}
-                <code className="rounded bg-bg-overlay px-1.5 py-0.5">
-                  {isAU ? 'PV_DISSOLUTION_ANTICIPEE_SARL_AU' : 'PV_DISSOLUTION_ANTICIPEE_SARL'}
-                </code>{' '}
-                +{' '}
-                <code className="rounded bg-bg-overlay px-1.5 py-0.5">
-                  {isAU ? 'ANNONCE_LEGALE_DISSOLUTION_SARL_AU' : 'ANNONCE_LEGALE_DISSOLUTION_SARL'}
-                </code>
+                Organe compétent : <strong>{decisionLabel}</strong>. Actes produits : procès-verbal
+                de dissolution anticipée{isAU ? ' (SARL à associé unique)' : ' (SARL)'} et annonce
+                légale de dissolution.
               </div>
             )}
 
             <TextField
-              label={`Date ${isAU ? 'de la decision' : "de l'AGE"} *`}
+              label={`Date ${isAU ? 'de la décision' : 'de l’AGE'} *`}
               type="date"
               value={dateAGE}
               min={minDate}
@@ -673,8 +641,8 @@ function DissolutionWorkflowPageBody() {
               error={showErr('dateAGE') ?? undefined}
               hint={
                 isAU
-                  ? "La dissolution releve de la decision de l'associe unique."
-                  : 'La dissolution se decide toujours en assemblee generale EXTRAORDINAIRE.'
+                  ? 'La dissolution relève de la décision de l’associé unique.'
+                  : 'La dissolution se décide toujours en assemblée générale extraordinaire.'
               }
             />
 
@@ -712,7 +680,7 @@ function DissolutionWorkflowPageBody() {
               <TextField label="Exercice clos le *" type="date" value={exerciceClosDate}
                 data-testid="dissolution-exercice-clos" onChange={(e) => setExerciceClosDate(e.target.value)}
                 error={showErr('natureDetail') ?? undefined}
-                hint="Date de clôture de l'exercice dont les états de synthèse constatent les pertes." />
+                hint="Date de clôture de l’exercice dont les états de synthèse constatent les pertes." />
             )}
             {nature === 'cause_statutaire' && (
               <TextField label="Article des statuts *" value={clauseArticle}
@@ -725,7 +693,7 @@ function DissolutionWorkflowPageBody() {
             <div>
               <ValeurProposee
                 id="dissolution-date-effet"
-                label="Date d'effet de la dissolution *"
+                label="Date d’effet de la dissolution *"
                 type="date"
                 proposition={dateAGE}
                 valeur={dateEffet || undefined}
@@ -735,7 +703,7 @@ function DissolutionWorkflowPageBody() {
                 <p className="mt-1 text-xs text-danger" role="alert">{showErr('dateEffet')}</p>
               )}
               <p className="mt-1 text-[11px] text-fg-subtle">
-                La date de l'assemblée est proposée ; l'avis légal imprime la date d'effet confirmée.
+                La date de l’assemblée est proposée ; l’avis légal imprime la date d’effet confirmée.
               </p>
             </div>
 
@@ -755,7 +723,7 @@ function DissolutionWorkflowPageBody() {
                 value={motif}
                 onChange={(e) => setMotif(e.target.value)}
                 onBlur={() => setRevealErrors(true)}
-                placeholder="Cessation d'activite, mesentente entre associes, perte d'agrement..."
+                placeholder="Cessation d’activité, mésentente entre associés, perte d’agrément…"
                 className={`w-full rounded-lg border bg-bg-raised px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
                   showErr('motif')
                     ? 'border-danger focus:border-danger focus:ring-danger/30'
@@ -764,7 +732,7 @@ function DissolutionWorkflowPageBody() {
                 aria-invalid={!!showErr('motif')}
               />
               <p className={`mt-1 text-xs ${motif.trim().length < MOTIF_MIN_LENGTH ? 'text-danger' : 'text-emerald-600'}`}>
-                {motif.trim().length} / {MOTIF_MIN_LENGTH} caracteres minimum
+                {motif.trim().length} / {MOTIF_MIN_LENGTH} caractères minimum
                 {motif.trim().length >= MOTIF_MIN_LENGTH && ' ✓'}
               </p>
               {showErr('motif') && (
@@ -815,7 +783,7 @@ function DissolutionWorkflowPageBody() {
                 Siège de la liquidation *
                 <InfoBulle
                   libelle="Où fixer le siège de la liquidation ?"
-                  texte="C'est l'adresse où la correspondance est adressée et où les actes de la liquidation sont notifiés ; l'avis légal la publie. Elle peut être le siège social ou une autre adresse."
+                  texte="C’est l’adresse où la correspondance est adressée et où les actes de la liquidation sont notifiés ; l’avis légal la publie. Elle peut être le siège social ou une autre adresse."
                 />
               </label>
               <select
@@ -847,7 +815,7 @@ function DissolutionWorkflowPageBody() {
             <section className="space-y-3 rounded-xl border border-border bg-bg-raised p-4" data-testid="dissolution-convocation">
               <div className="flex items-center gap-2">
                 <Megaphone className="h-4 w-4 text-accent" />
-                <h4 className="text-sm font-semibold text-fg">Convocation (optionnelle)</h4>
+                <h4 className="text-sm font-semibold text-fg">Convocation (facultative)</h4>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <TextField
@@ -870,9 +838,9 @@ function DissolutionWorkflowPageBody() {
                 />
               </div>
               <p className="text-[11px] text-fg-subtle">
-                Regle des <strong>{CONVOCATION_DELAI_JOURS} jours</strong> : l'assemblee ne peut se
-                tenir moins de {CONVOCATION_DELAI_JOURS} jours calendaires apres la convocation.
-                Laisser vide si aucune convocation n'est emise.
+                Règle des <strong>{CONVOCATION_DELAI_JOURS} jours</strong> : l’assemblée ne peut se
+                tenir moins de {CONVOCATION_DELAI_JOURS} jours calendaires après la convocation.
+                Laissez vide si aucune convocation n’est émise.
               </p>
               {convocationError && (
                 <div
@@ -920,13 +888,13 @@ function DissolutionWorkflowPageBody() {
             <header>
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-violet-600" />
-                <h2 className="text-lg font-semibold text-fg">Etape 2 — Generation des actes</h2>
+                <h2 className="text-lg font-semibold text-fg">Étape 2 — Génération des actes</h2>
               </div>
               <p className="text-sm text-fg-subtle">
-                Le <strong>PV de dissolution</strong> et l'<strong>annonce legale</strong> sont
-                generes a partir de l'etape 1 et de la Data Room : aucune donnee n'est re-saisie.
-                A la validation, chaque document est <strong>depose automatiquement</strong> et
-                versionne dans la dataroom juridique.
+                Le <strong>procès-verbal de dissolution</strong> et l’<strong>annonce légale</strong> sont
+                produits à partir de l’étape 1 et de la Data Room : aucune donnée n’est ressaisie.
+                À la validation, chaque document est <strong>déposé automatiquement</strong> et
+                versionné dans la Data Room juridique.
               </p>
             </header>
 
@@ -1033,13 +1001,13 @@ function DissolutionWorkflowPageBody() {
             <header>
               <div className="flex items-center gap-2">
                 <Paperclip className="h-5 w-5 text-accent" />
-                <h2 className="text-lg font-semibold text-fg">Etape 3 — Pieces jointes (optionnelle)</h2>
+                <h2 className="text-lg font-semibold text-fg">Étape 3 — Pièces jointes (facultative)</h2>
               </div>
               <p className="text-sm text-fg-subtle">
-                Deposez ici les <strong>versions legalisees</strong> des documents generes (PV
-                signe, annonce publiee, modele J…). Cette etape est{' '}
-                <strong>entierement facultative</strong> : vous pouvez la laisser vide et
-                poursuivre vers la synthese. Chaque depot est versionne en Data Room.
+                Déposez ici les <strong>versions légalisées</strong> des documents produits
+                (procès-verbal signé, annonce publiée, modèle J…). Cette étape est{' '}
+                <strong>entièrement facultative</strong> : vous pouvez la laisser vide et
+                poursuivre vers la synthèse. Chaque dépôt est versionné dans la Data Room.
               </p>
             </header>
             <PiecesJointesPanel
@@ -1058,7 +1026,7 @@ function DissolutionWorkflowPageBody() {
             />
             {piecesJointes.length === 0 && (
               <p className="rounded-lg border border-border bg-bg-overlay p-3 text-xs text-fg-subtle">
-                Aucune piece jointe deposee pour le moment — cette etape est facultative.
+                Aucune pièce jointe déposée pour le moment — cette étape est facultative.
               </p>
             )}
           </div>
@@ -1068,18 +1036,18 @@ function DissolutionWorkflowPageBody() {
           <div className="space-y-4" data-testid="dissolution-synthese">
             <div className="rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 p-6 text-bg-raised">
               <CheckCircle className="mb-2 h-8 w-8" />
-              <h2 className="text-2xl font-bold">Dissolution finalisee</h2>
+              <h2 className="text-2xl font-bold">Dissolution finalisée</h2>
               <p className="text-sm text-rose-100">
-                Le PV de dissolution et l'annonce legale ont ete generes, valides et deposes en
-                dataroom. La societe est desormais <strong>dissoute</strong>.
+                Le procès-verbal de dissolution et l’annonce légale ont été produits, validés et
+                déposés dans la Data Room. La société est désormais <strong>dissoute</strong>.
               </p>
             </div>
 
             <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-societe">
-              <p className="mb-3 text-sm font-semibold text-fg">Societe et decision</p>
+              <p className="mb-3 text-sm font-semibold text-fg">Société et décision</p>
               <div className="grid gap-4 rounded-lg bg-bg-overlay p-3 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs text-fg-subtle">Denomination</p>
+                  <p className="text-xs text-fg-subtle">Dénomination</p>
                   <p className="text-sm font-medium text-fg">{targetDenomination || '—'}</p>
                 </div>
                 <div>
@@ -1087,14 +1055,14 @@ function DissolutionWorkflowPageBody() {
                   <p className="text-sm font-medium text-fg">{formeJuridique || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-fg-subtle">Date {isAU ? 'de la decision' : "de l'AGE"}</p>
+                  <p className="text-xs text-fg-subtle">Date {isAU ? 'de la décision' : 'de l’AGE'}</p>
                   <p className="text-sm font-medium text-fg">{dateAGE || '—'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-fg-subtle">Convocation</p>
                   <p className="text-sm font-medium text-fg">
                     {convocationDate
-                      ? `${convocationDate}${convocationHeure ? ` a ${convocationHeure}` : ''}`
+                      ? `${convocationDate}${convocationHeure ? ` à ${convocationHeure}` : ''}`
                       : 'Aucune'}
                   </p>
                 </div>
@@ -1109,7 +1077,7 @@ function DissolutionWorkflowPageBody() {
               <p className="mb-3 text-sm font-semibold text-fg">Liquidateur</p>
               <div className="grid gap-4 rounded-lg bg-bg-overlay p-3 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs text-fg-subtle">Identite</p>
+                  <p className="text-xs text-fg-subtle">Identité</p>
                   <p className="text-sm font-medium text-fg">
                     {identiteLiquidateur(liquidateur) || '—'}{' '}
                     <span className="text-xs font-normal text-fg-subtle">
@@ -1122,47 +1090,47 @@ function DissolutionWorkflowPageBody() {
                   <p className="text-sm font-medium text-fg">{liquidateur.adresse || '—'}</p>
                 </div>
                 <div className="sm:col-span-2">
-                  <p className="text-xs text-fg-subtle">Siege de la liquidation</p>
+                  <p className="text-xs text-fg-subtle">Siège de la liquidation</p>
                   <p className="text-sm font-medium text-fg">{siegeLiquidation || '—'}</p>
                 </div>
               </div>
             </div>
 
             <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-documents">
-              <p className="mb-3 text-sm font-semibold text-fg">Documents et depots</p>
+              <p className="mb-3 text-sm font-semibold text-fg">Documents et dépôts</p>
               <ul className="space-y-1 rounded-lg bg-bg-overlay p-3 text-sm text-fg-muted">
                 <li>
-                  PV de dissolution : {pvValidated ? 'genere et valide' : 'non valide'} — deposes en
-                  Data Room versionnee.
+                  Procès-verbal de dissolution : {pvValidated ? 'produit et validé' : 'non validé'} — déposé
+                  et versionné dans la Data Room.
                 </li>
                 <li>
-                  Annonce legale de dissolution : {annonceValidated ? 'generee et validee' : 'non validee'}
+                  Annonce légale de dissolution : {annonceValidated ? 'produite et validée' : 'non validée'}
                   {depotLegalNumero || depotLegalDate
-                    ? ` — depot legal n° ${depotLegalNumero || '—'} du ${depotLegalDate || '—'}`
-                    : ' — depot legal (n° + date) a completer apres depot au greffe'}
+                    ? ` — dépôt légal n° ${depotLegalNumero || '—'} du ${depotLegalDate || '—'}`
+                    : ' — numéro et date du dépôt légal à compléter après le dépôt au greffe'}
                   .
                 </li>
                 <li>
-                  Pieces jointes : {piecesJointes.length > 0
+                  Pièces jointes : {piecesJointes.length > 0
                     ? piecesJointes.map((p) => p.label).join(', ')
-                    : 'aucune (etape facultative)'}
+                    : 'aucune (étape facultative)'}
                   .
                 </li>
               </ul>
             </div>
 
             <div className="rounded-xl border border-border bg-bg-raised p-4 text-sm text-fg-muted">
-              <p><strong>Statut societe :</strong> DISSOUTE</p>
-              <p className="mt-1"><strong>Archivage Data Room :</strong> confirme.</p>
+              <p><strong>Statut de la société :</strong> dissoute</p>
+              <p className="mt-1"><strong>Archivage dans la Data Room :</strong> confirmé.</p>
               <p className="mt-1">
-                <strong>Prochaine etape suggeree :</strong> ouvrir un ticket Liquidation lorsque le
-                delai legal de 16 jours est ecoule (RG-LI03).
+                <strong>Prochaine étape suggérée :</strong> ouvrir un ticket « Liquidation » lorsque le
+                délai de {LIQUIDATION_DELAI_JOURS} jours après la dissolution est écoulé.
               </p>
             </div>
 
             {!isTerminated ? (
               <div className="flex gap-2">
-                <Button onClick={handleCloturer}>Cloturer le workflow</Button>
+                <Button onClick={handleCloturer}>Clôturer le parcours</Button>
               </div>
             ) : (
               <Button onClick={() => navigate('/tickets')}>Retour aux tickets</Button>

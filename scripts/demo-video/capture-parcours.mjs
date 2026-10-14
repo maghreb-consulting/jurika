@@ -374,11 +374,12 @@ async function main() {
 
         // ══ 6. Assistant RAG ══════════════════════════════════════════
         section('Assistant juridique — question et sources');
-        await cliquer(page, page.getByRole('link', { name: /ChatBot IA/i }), 1100);
-        await page.waitForLoadState('networkidle').catch(() => {});
+        // Lot L5b (E2) : le chatbot s'ouvre dans le panneau lateral (bulle en bas a droite).
+        await cliquer(page, '[data-testid="assistant-bulle"]', 1100);
+        await page.locator('[data-testid="assistant-panneau"]').waitFor({ timeout: 15000 });
         await attendre(900);
-        await saisir(page, '[data-testid="chatbot-message-input"]',
-            'Que prevoient les statuts en cas de cession de parts a un tiers ?', 38);
+        await saisir(page, '#assistant-question',
+            'Que pr\u00e9voient les statuts en cas de cession de parts \u00e0 un tiers ?', 38);
         await page.keyboard.press('Enter');
         await attendre(2200);
         await defiler(page, 5, 130, 120);

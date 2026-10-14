@@ -35,7 +35,7 @@ describe('liquidationDelai — règle des 15 jours', () => {
   });
 
   it('REJETTE une clôture antérieure à la dissolution', () => {
-    expect(liquidationDelaiError('2026-05-15', '2026-05-01')).toContain('preceder');
+    expect(liquidationDelaiError('2026-05-15', '2026-05-01')).toContain('précéder');
   });
 
   it('ne contrôle rien si la date de dissolution est inconnue (dossier ancien)', () => {

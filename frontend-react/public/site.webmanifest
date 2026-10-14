@@ -1,11 +1,12 @@
 {
-  "name": "JURIKA — Gestion juridique augmentée",
+  "name": "JURIKA — Gestion juridique des entreprises",
   "short_name": "JURIKA",
+  "lang": "fr",
   "icons": [
-    { "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/favicon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
   ],
-  "theme_color": "#050d1f",
-  "background_color": "#050d1f",
+  "theme_color": "#0c1d3f",
+  "background_color": "#0c1d3f",
   "display": "standalone"
 }

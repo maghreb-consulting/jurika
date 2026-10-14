@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SignupStep0Plan, type PlanCode } from '../../components/signup/SignupStep0Plan';
 import { SignupStep1Cabinet, type SignupProfileData } from '../../components/signup/SignupStep1Cabinet';
@@ -9,6 +9,7 @@ import { SignupStepPayment, type SignupPaymentDraft } from '../../components/sig
 import { SignupSuccess } from '../../components/signup/SignupSuccess';
 import { SignupStepper } from '../../components/signup/SignupStepper';
 import { BrandLogo } from '../../components/ui/BrandLogo';
+import { InfoBulle } from '../../components/ui/Aide';
 import { authService, type SignupCabinetPayload, type SignupCabinetResponse } from '../../services/auth.service';
 import { extractError, tokenStorage } from '../../lib/api';
 import { emitBusinessEvent } from '../../services/analytics.service';
@@ -103,10 +104,14 @@ export function SignupPage() {
   );
   const [success, setSuccess] = useState<SignupCabinetResponse | null>(null);
 
-  // Sync plan avec ?plan= changements (back/forward navigation depuis landing)
-  useEffect(() => {
+  // Sync plan avec ?plan= changements (back/forward navigation depuis landing).
+  // Lot L6 (E6) : ajustement pendant le rendu (valeur precedente retenue), et non
+  // dans un effet, pour eviter un second rendu en cascade.
+  const [planUrlVu, setPlanUrlVu] = useState<PlanCode | null>(planFromUrl);
+  if (planFromUrl !== planUrlVu) {
+    setPlanUrlVu(planFromUrl);
     if (planFromUrl) setSelectedPlan(planFromUrl);
-  }, [planFromUrl]);
+  }
 
   // On garde le mode "plan toujours confirme" (pas de skip).
   useEffect(() => {
@@ -134,16 +139,17 @@ export function SignupPage() {
   }, [step]);
 
   // emit SIGNUP_STARTED au 1er mount + purge la session residuelle (un vieux JWT
-  // attache aux requetes /public/** ferait echouer le onboarding anonyme).
+  // attache aux requetes /public/** ferait echouer le onboarding anonyme). Le plan
+  // de l'URL a l'arrivee est retenu une fois (ref) : l'evenement ne part qu'une fois.
+  const planArrivee = useRef(planFromUrl);
   useEffect(() => {
     try { tokenStorage.clear(); } catch { /* no-op si indispo */ }
-    emitBusinessEvent('SIGNUP_STARTED', { properties: { plan: planFromUrl ?? 'unset' } });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    emitBusinessEvent('SIGNUP_STARTED', { properties: { plan: planArrivee.current ?? 'unset' } });
   }, []);
 
   async function handleSubmit(cguAccepted: boolean): Promise<void> {
     if (!selectedPlan) {
-      throw new Error('Veuillez choisir un forfait avant de finaliser l\'inscription.');
+      throw new Error('Choisissez un forfait avant de finaliser l’inscription.');
     }
     // Paiement-first : on cree le workspace en deferCredentials=true ; le backend
     // renvoie un access token transitoire utilise au Step Paiement. Le welcome
@@ -270,14 +276,13 @@ export function SignupPage() {
         <Link
           to="/"
           className="flex items-center gap-2 transition-opacity hover:opacity-80"
-          aria-label="Retour à l'accueil"
+          aria-label="JURIKA, retour à l’accueil"
         >
-          <BrandLogo size={36} />
-          <span className="font-heading text-xl font-semibold text-fg">JURIKA</span>
+          <BrandLogo variant="full" size={44} />
         </Link>
         {step !== 6 && (
           <p className="text-sm text-fg-muted">
-            Deja un compte ?{' '}
+            Déjà un compte ?{' '}
             <Link to="/login" className="font-medium text-accent hover:underline">
               Se connecter
             </Link>
@@ -293,6 +298,15 @@ export function SignupPage() {
       */}
       <div className="px-4 pt-20 sm:pt-24">
         <SignupStepper currentStep={step} />
+        {step !== 6 && (
+          <p className="mx-auto mt-2 flex max-w-2xl items-center justify-center gap-1 text-center text-xs text-fg-muted">
+            Création de l’espace de votre cabinet : vos saisies sont conservées si vous rechargez la page.
+            <InfoBulle
+              libelle="Aide sur l’inscription"
+              texte="Choisissez d’abord un forfait, puis renseignez votre profil et celui du cabinet. Vous choisissez ensuite la méthode de double authentification, vérifiez le récapitulatif et réglez l’abonnement. Vos identifiants de connexion vous sont envoyés par courriel après la validation du paiement."
+            />
+          </p>
+        )}
       </div>
       {content}
     </div>

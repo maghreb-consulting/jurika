@@ -107,7 +107,7 @@ class TicketDossierLabelTest {
         assertThat(ModificationSousTypes.libelle("modification_denomination"))
                 .isEqualTo("changement de dénomination");
         assertThat(ModificationSousTypes.libelle("modification_objet"))
-                .isEqualTo("changement de l'objet social");
+                .isEqualTo("changement de l\u2019objet social");
         assertThat(ModificationSousTypes.libelle("transfert_siege"))
                 .isEqualTo("transfert du siège social");
         // Le code courant, en majuscules, rend exactement le meme libelle.
@@ -129,8 +129,8 @@ class TicketDossierLabelTest {
     void plusieursTypes() {
         assertThat(TicketDossierLabel.compose("MODIFICATION", "T-2026-00902",
                 jour(2026, 9, 4),
-                List.of("transfert du siège social", "nomination d'un gérant")))
+                List.of("transfert du si\u00e8ge social", "nomination d\u2019un g\u00e9rant")))
                 .isEqualTo("Modification — transfert du siège social, "
-                        + "nomination d'un gérant — T-2026-00902 — 04/09/2026");
+                        + "nomination d\u2019un g\u00e9rant \u2014 T-2026-00902 \u2014 04/09/2026");
     }
 }

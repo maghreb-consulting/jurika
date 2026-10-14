@@ -54,7 +54,7 @@ public class DataroomSettingsService {
             String statut = rows.get(0) == null ? null : rows.get(0).toString();
             if ("RADIE".equals(statut)) {
                 throw new NotFoundException(
-                        "Ce dataroom a ete supprime (dossier RADIE).");
+                        "Cette Data Room a \u00e9t\u00e9 supprim\u00e9e (soci\u00e9t\u00e9 radi\u00e9e).");
             }
             SettingsEntity s = new SettingsEntity();
             s.setDossierId(dossierId);
@@ -122,7 +122,7 @@ public class DataroomSettingsService {
                     .setParameter(6, JSON.writeValueAsString(apres))
                     .executeUpdate();
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            throw new IllegalStateException("Historique de l'acces client illisible", e);
+            throw new IllegalStateException("Historique de l\u2019acc\u00e8s client illisible", e);
         }
     }
 
@@ -160,7 +160,7 @@ public class DataroomSettingsService {
         try {
             return JSON.readValue(json, new com.fasterxml.jackson.core.type.TypeReference<java.util.LinkedHashMap<String, Object>>() {});
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            throw new IllegalStateException("Historique de l'acces client illisible", e);
+            throw new IllegalStateException("Historique de l\u2019acc\u00e8s client illisible", e);
         }
     }
 

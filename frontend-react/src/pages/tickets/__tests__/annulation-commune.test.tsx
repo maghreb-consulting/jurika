@@ -89,7 +89,7 @@ describe('Documents d’annulation', () => {
     expect(within(screen.getByTestId('demarche-0')).queryByRole('button', { name: /Retirer/ })).toBeNull();
     expect(within(screen.getByTestId('demarche-1')).getByRole('button', { name: /Retirer/ })).toBeInTheDocument();
     // Aucune valeur pre-remplie : l'origine attend un choix.
-    expect(screen.getByLabelText("Origine de l'annulation")).toHaveValue('');
+    expect(screen.getByLabelText('Origine de l’annulation')).toHaveValue('');
     fireEvent.click(within(screen.getByTestId('doc-lettre-1')).getByRole('button', { name: 'Générer' }));
     await waitFor(() => expect(post).toHaveBeenCalledWith(
       '/ai/workflows/ANNULATION/documents/LETTRE_RETRAIT_DEPOT_SOCIETE_EXISTANTE',

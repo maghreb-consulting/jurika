@@ -109,8 +109,8 @@ class TracabiliteIT {
         // Aucune entite du workspace voisin (ws2) ne fuite.
         assertThat(page.items()).noneMatch(e -> ticket2.equals(e.entityId()));
         // Libelles FR mappes.
-        assertThat(page.items()).anyMatch(e -> "Ticket cree".equals(e.actionLabel()));
-        assertThat(page.items()).anyMatch(e -> "Dossier transfere".equals(e.actionLabel()));
+        assertThat(page.items()).anyMatch(e -> "Ticket cr\u00e9\u00e9".equals(e.actionLabel()));
+        assertThat(page.items()).anyMatch(e -> "Dossier transf\u00e9r\u00e9".equals(e.actionLabel()));
     }
 
     @Test

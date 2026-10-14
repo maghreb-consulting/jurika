@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertCircle, Check, Loader2, Trash2, Upload } from 'lucide-react';
 import { Drawer } from '../../../components/ui/Drawer';
 import { Button } from '../../../components/ui/Button';
@@ -79,13 +79,16 @@ export function MultiUploadDrawer({
   const [submitting, setSubmitting] = useState(false);
   const [recap, setRecap] = useState<{ ok: number; ko: number } | null>(null);
 
-  useEffect(() => {
+  // Remise a zero a l'ouverture, ajustee pendant le rendu (pas d'etat pose dans un effet).
+  const [ouvertVu, setOuvertVu] = useState<boolean | null>(null);
+  if (ouvertVu !== open) {
+    setOuvertVu(open);
     if (open) {
       setRows([]);
       setSubmitting(false);
       setRecap(null);
     }
-  }, [open]);
+  }
 
   function addFiles(list: FileList | null) {
     if (!list) return;
@@ -181,8 +184,8 @@ export function MultiUploadDrawer({
     <Drawer
       open={open}
       onClose={onClose}
-      title="Upload multiple"
-      subtitle="Pour chaque fichier : nouveau document, ou nouvelle version d'un document existant"
+      title="Ajouter plusieurs documents"
+      subtitle="Pour chaque fichier : nouveau document, ou nouvelle version d’un document existant"
       width="lg"
     >
       <div className="space-y-4">
@@ -337,7 +340,7 @@ export function MultiUploadDrawer({
                           value={r.motif}
                           disabled={r.status === 'UPLOADING' || r.status === 'DONE'}
                           onChange={(e) => patchRow(r.id, { motif: e.target.value })}
-                          placeholder="Ex. Version corrigée des statuts"
+                          placeholder="Exemple : version corrigée des statuts"
                           className={`h-8 w-full rounded-lg border bg-bg-raised px-2 text-xs ${
                             motifInvalid
                               ? 'border-danger focus:border-danger'

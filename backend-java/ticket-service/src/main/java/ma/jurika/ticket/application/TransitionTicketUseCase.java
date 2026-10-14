@@ -87,7 +87,7 @@ public class TransitionTicketUseCase {
             }
             if (reprise.retraitEffectue(cmd.workspaceId(), current.id())) {
                 throw new ma.jurika.common.exception.ConflictException(
-                        "Un retrait a \u00e9t\u00e9 effectu\u00e9 aupr\u00e8s d'une administration : la reprise est "
+                        "Un retrait a \u00e9t\u00e9 effectu\u00e9 aupr\u00e8s d\u2019une administration : la reprise est "
                                 + "impossible ; ouvrez un nouveau ticket.");
             }
         }
@@ -167,7 +167,7 @@ public class TransitionTicketUseCase {
         }
         if (reprise.retraitEffectue(workspaceId, ticketId)) {
             return new EtatReprise(true, anterieur, false,
-                    "Un retrait a \u00e9t\u00e9 effectu\u00e9 aupr\u00e8s d'une administration : ouvrez un nouveau ticket.");
+                    "Un retrait a \u00e9t\u00e9 effectu\u00e9 aupr\u00e8s d\u2019une administration : ouvrez un nouveau ticket.");
         }
         return new EtatReprise(true, anterieur, true, null);
     }

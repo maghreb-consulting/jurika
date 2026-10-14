@@ -33,10 +33,10 @@ const FALLBACK_TIERS: PricingTier[] = [
     features: [
       '2 utilisateurs',
       '30 dossiers actifs',
-      'Tous les workflows',
+      'Tous les parcours',
       'Data Room 5 Go',
-      'Chat client-employe',
-      'Generation de documents par IA',
+      'Messagerie entre le client et le cabinet',
+      'Génération automatique des documents',
     ],
     featured: false, quoteOnly: false,
   },
@@ -51,29 +51,29 @@ const FALLBACK_TIERS: PricingTier[] = [
     features: [
       '6 utilisateurs',
       '100 dossiers actifs',
-      'Tous les workflows',
+      'Tous les parcours',
       'Data Room 20 Go',
-      'Chat client-employe',
-      'Generation de documents par IA',
-      'Chatbot RAG (assistant juridique)',
+      'Messagerie entre le client et le cabinet',
+      'Génération automatique des documents',
+      'Assistant juridique (chatbot à réponses sourcées)',
     ],
-    featured: true, ribbon: 'Recommande', quoteOnly: false,
+    featured: true, ribbon: 'Recommandé', quoteOnly: false,
   },
   {
     id: 'entreprise', code: 'entreprise', label: 'Entreprise',
-    target: 'Reseaux & cabinets multi-sites',
+    target: 'Réseaux et cabinets multisites',
     currency: 'MAD', price: null, annualPrice: null, period: 'mois',
     quotas: { maxUsers: -1, maxDossiers: -1, maxStorageGb: -1,
       usersUnlimited: true, dossiersUnlimited: true, storageUnlimited: true },
     features: [
-      'Utilisateurs illimites',
+      'Utilisateurs illimités',
       'Plus de 100 dossiers',
-      'Tous les workflows',
+      'Tous les parcours',
       'Data Room sur mesure',
-      'Chat client-employe',
-      'Generation de documents par IA',
-      'Chatbot RAG',
-      'Accompagnement dedie',
+      'Messagerie entre le client et le cabinet',
+      'Génération automatique des documents',
+      'Assistant juridique (chatbot à réponses sourcées)',
+      'Accompagnement dédié',
     ],
     featured: false, quoteOnly: true,
   },
@@ -138,7 +138,7 @@ export function SignupStep0Plan({ initial, onNext }: Props) {
           Choisissez votre forfait
         </h2>
         <p className="mt-2 text-sm text-fg-subtle">
-          Selectionnez le plan qui correspond a votre cabinet.
+          Sélectionnez le forfait qui correspond à votre cabinet.
         </p>
       </div>
 
@@ -147,7 +147,7 @@ export function SignupStep0Plan({ initial, onNext }: Props) {
         className="mx-auto mb-8 inline-flex w-full max-w-xs items-center justify-center rounded-full border border-border bg-bg-raised p-1"
         data-testid="signup-period-toggle"
         role="group"
-        aria-label="Periode de facturation"
+        aria-label="Période de facturation"
       >
         <button
           type="button"
@@ -243,7 +243,7 @@ export function SignupStep0Plan({ initial, onNext }: Props) {
                             <span className="font-semibold text-fg">
                               {Math.round(tier.annualPrice / 12).toLocaleString('fr-FR')} MAD
                             </span>{' '}
-                            / mois facture annuellement
+                            / mois, facturé annuellement
                           </>
                         ) : (
                           <>
@@ -286,7 +286,7 @@ export function SignupStep0Plan({ initial, onNext }: Props) {
       </div>
 
       <p className="mt-8 text-center text-xs text-fg-subtle">
-        Vous pourrez changer de forfait a tout moment depuis votre espace de facturation.
+        Vous pourrez changer de forfait à tout moment depuis votre espace de facturation.
       </p>
     </div>
   );

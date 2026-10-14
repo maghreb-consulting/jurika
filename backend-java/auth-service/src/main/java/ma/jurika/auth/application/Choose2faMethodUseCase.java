@@ -2,6 +2,7 @@ package ma.jurika.auth.application;
 
 import ma.jurika.auth.domain.port.AuditLogger;
 import ma.jurika.auth.domain.port.UserRepository;
+import ma.jurika.common.exception.BusinessException;
 import ma.jurika.common.exception.ValidationException;
 import ma.jurika.common.security.TenantContext;
 import org.springframework.stereotype.Service;
@@ -40,7 +41,7 @@ public class Choose2faMethodUseCase {
     @Transactional
     public void execute(Command cmd) {
         if (cmd.method() == null || !ALLOWED.contains(cmd.method())) {
-            throw new ValidationException("2FA_METHOD_INVALID");
+            throw new BusinessException("2FA_METHOD_INVALID", "M\u00e9thode inconnue : choisissez SMS ou application d\u2019authentification.");
         }
         TenantContext.set(cmd.workspaceId());
         userRepository.updateTwofaMethod(cmd.userId(), cmd.method());

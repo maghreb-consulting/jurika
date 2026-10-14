@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Stepper } from '../../components/auth/Stepper';
 import { BrandLogo } from '../../components/ui/BrandLogo';
+import { InfoBulle } from '../../components/ui/Aide';
 import { Button } from '../../components/ui/Button';
 import { authService } from '../../services/auth.service';
 import { useAuthStore } from '../../store/authStore';
@@ -26,9 +27,9 @@ export function LoginPage() {
 
   // Message contextualise apres une deconnexion cote serveur (interceptor api.ts).
   const SESSION_NOTICES: Record<string, string> = {
-    session_revoked: 'Votre session a ete ouverte sur un autre appareil. Veuillez vous reconnecter.',
-    inactivity: 'Votre session a expire pour cause d’inactivite. Veuillez vous reconnecter.',
-    expired: 'Votre session a expire. Veuillez vous reconnecter.',
+    session_revoked: 'Votre session a été ouverte sur un autre appareil. Reconnectez-vous pour continuer.',
+    inactivity: 'Votre session a expiré après une période d’inactivité. Reconnectez-vous pour continuer.',
+    expired: 'Votre session a expiré. Reconnectez-vous pour continuer.',
   };
   const sessionNotice = SESSION_NOTICES[searchParams.get('reason') ?? ''] ?? null;
 
@@ -46,6 +47,8 @@ export function LoginPage() {
   const [userId, setUserId] = useState('');
 
   const [twofa, setTwofa] = useState('');
+  // Methode de la double authentification du compte (texte de l'etape 3).
+  const [methode2fa, setMethode2fa] = useState<'TOTP' | 'SMS' | null>(null);
 
   const currentStep: 1 | 2 | 3 = step === 'workspace' ? 1 : step === 'credentials' ? 2 : 3;
 
@@ -88,7 +91,7 @@ export function LoginPage() {
     const code = workspaceCode.toUpperCase();
     const invalid = firstError(
       () => requiredMsg(code),
-      () => patternMsg(code, /^JUR-[A-Z0-9]{5}$/, 'Code workspace invalide (format JUR-XXXXX).'),
+      () => patternMsg(code, /^JUR-[A-Z0-9]{5}$/, 'Code du cabinet incomplet : saisissez les 5 lettres ou chiffres qui suivent « JUR- ».'),
     );
     if (invalid) {
       setError(invalid);
@@ -128,6 +131,7 @@ export function LoginPage() {
     try {
       const result = await authService.login(workspaceCode.toUpperCase(), email, password);
       setUserId(result.userId);
+      setMethode2fa(result.twofaMethod);
       if (result.requires2fa) {
         if (result.twofaMethod === 'SMS') {
           try {
@@ -206,10 +210,9 @@ export function LoginPage() {
         <Link
           to="/"
           className="absolute top-6 left-6 flex items-center gap-2 transition-opacity hover:opacity-80"
-          aria-label="Retour à l'accueil"
+          aria-label="JURIKA, retour à l’accueil"
         >
-          <BrandLogo size={36} />
-          <span className="font-heading text-xl font-semibold text-fg">JURIKA</span>
+          <BrandLogo variant="full" size={44} />
         </Link>
 
         <div className="w-full max-w-[480px]">
@@ -232,11 +235,16 @@ export function LoginPage() {
                     <KeyRound className="h-7 w-7 text-accent" />
                   </div>
                 </div>
-                <h2 className="mb-3 text-center font-heading text-3xl font-semibold text-fg">
-                  Accedez a votre espace
-                </h2>
+                <h1 className="mb-3 text-center font-heading text-3xl font-semibold text-fg">
+                  Accédez à votre espace
+                </h1>
                 <p className="text-center text-sm text-fg-subtle">
-                  Entrez le code unique recu par email lors de votre inscription.
+                  Saisissez le code de votre cabinet (workspace), reçu par courriel à l’ouverture
+                  de votre compte.{' '}
+                  <InfoBulle
+                    libelle="Où trouver le code du cabinet ?"
+                    texte="Le code du cabinet commence par « JUR- » suivi de 5 lettres ou chiffres. Il figure dans le courriel de bienvenue ou d’invitation. Vous ne l’avez plus ? Demandez-le au superviseur de votre cabinet. Étape suivante : votre identifiant et votre mot de passe."
+                  />
                 </p>
               </div>
 
@@ -279,7 +287,7 @@ export function LoginPage() {
                     // centre, le sens etant porte par le titre au-dessus. Sans nom
                     // accessible, un lecteur d'ecran annoncait « zone de texte » sur
                     // le tout premier champ du produit.
-                    aria-label="Code workspace, les 5 caracteres apres JUR-"
+                    aria-label="Code du cabinet, les 5 caractères après JUR-"
                     inputMode="text"
                     maxLength={5}
                     autoComplete="organization"
@@ -296,9 +304,9 @@ export function LoginPage() {
               </Button>
 
               <p className="mt-6 text-center text-xs text-fg-subtle">
-                Pas encore d'espace ?{' '}
+                Votre cabinet n’a pas encore d’espace ?{' '}
                 <Link to="/signup" className="font-medium text-accent hover:underline">
-                  Creer un nouveau workspace
+                  Créer un workspace
                 </Link>
               </p>
             </form>
@@ -311,11 +319,12 @@ export function LoginPage() {
               </div>
 
               <div className="mb-8">
-                <h2 className="mb-3 font-heading text-3xl font-semibold text-fg">
+                <h1 className="mb-3 font-heading text-3xl font-semibold text-fg">
                   Bienvenue dans votre espace
-                </h2>
+                </h1>
                 <p className="text-sm text-fg-subtle">
-                  Connectez-vous avec vos identifiants.
+                  Connectez-vous avec votre identifiant et votre mot de passe. Si la double
+                  authentification est active sur votre compte, un code vous sera ensuite demandé.
                 </p>
               </div>
 
@@ -362,8 +371,8 @@ export function LoginPage() {
                     l'inscription/invitation. Pour les comptes legacy d'avant
                     V28, login_email = email perso (backfill 1:1). */}
                 <p className="mt-1 text-[11px] text-fg-muted">
-                  Identifiant <code>@jurika.ma</code> indique dans votre email de bienvenue.
-                  Les notifications continuent d'arriver sur votre email perso.
+                  Votre identifiant en <code>@jurika.ma</code> figure dans votre courriel de bienvenue.
+                  Les notifications continuent d’arriver à votre adresse personnelle.
                 </p>
               </div>
 
@@ -388,7 +397,7 @@ export function LoginPage() {
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-fg-subtle hover:text-fg"
-                    aria-label={showPassword ? 'Masquer' : 'Afficher'}
+                    aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -410,7 +419,7 @@ export function LoginPage() {
                   <ArrowLeft className="h-3.5 w-3.5" /> Changer de cabinet
                 </button>
                 <Link to="/reset-password" className="font-medium text-accent hover:underline">
-                  Mot de passe oublie ?
+                  Mot de passe oublié ?
                 </Link>
               </div>
             </form>
@@ -425,11 +434,13 @@ export function LoginPage() {
               </div>
 
               <div className="mb-8 text-center">
-                <h2 className="mb-3 font-heading text-3xl font-semibold text-fg">
-                  Verification en 2 etapes
-                </h2>
+                <h1 className="mb-3 font-heading text-3xl font-semibold text-fg">
+                  Double authentification
+                </h1>
                 <p className="text-sm text-fg-subtle">
-                  Entrez le code a 6 chiffres de votre application authenticator.
+                  {methode2fa === 'SMS'
+                    ? 'Saisissez le code à 6 chiffres que nous venons de vous envoyer par SMS.'
+                    : 'Saisissez le code à 6 chiffres affiché par votre application d’authentification.'}
                 </p>
               </div>
 
@@ -444,7 +455,7 @@ export function LoginPage() {
                   onChange={(e) => setTwofa(e.target.value.replace(/\D/g, ''))}
                   placeholder="123456"
                   // Meme cas que le code workspace : champ centre sans libelle visible.
-                  aria-label="Code de verification a 6 chiffres"
+                  aria-label="Code de vérification à 6 chiffres"
                   autoComplete="one-time-code"
                   required
                   className="h-14 w-full rounded-lg border-2 border-border bg-bg-overlay text-center font-mono text-2xl font-bold tracking-[0.5em] outline-none transition focus:border-accent"
@@ -452,7 +463,9 @@ export function LoginPage() {
               </div>
 
               <p className="mb-6 text-center text-xs text-fg-subtle">
-                Utilisez Google Authenticator ou Microsoft Authenticator
+                {methode2fa === 'SMS'
+                  ? 'Le code est valable quelques minutes. Vous n’avez rien reçu ? Revenez en arrière et reconnectez-vous pour en recevoir un nouveau.'
+                  : 'Google Authenticator, Microsoft Authenticator ou toute application compatible. Le code change toutes les 30 secondes.'}
               </p>
 
               {error && <ErrorBanner message={error} />}
@@ -463,14 +476,14 @@ export function LoginPage() {
                 loading={loading}
                 disabled={twofa.length !== 6}
               >
-                Verifier & Acceder
+                Vérifier et accéder
               </Button>
 
               <Link
                 to="/auth/recover-with-code"
                 className="mt-4 block text-center text-sm font-medium text-accent hover:underline"
               >
-                Utiliser un code de recuperation
+                Vous n’avez plus accès à votre téléphone ? Utiliser un code de récupération
               </Link>
 
               <button

@@ -17,6 +17,6 @@ public record InviteEmployeRequest(
         // Telephone international optionnel (2026-07-28) : le front stocke le
         // numero en E.164 via le selecteur d'indicatif pays (Maroc par defaut).
         // null tolere (champ optionnel) ; sinon E.164 valide (7 a 15 chiffres).
-        @Pattern(regexp = "^\\+[1-9]\\d{6,14}$", message = "Telephone : format international E.164 requis (ex. +212612345678).") String phone,
-        @NotNull @Pattern(regexp = "^(EMPLOYE|SUPERVISEUR)$", message = "Role doit etre EMPLOYE ou SUPERVISEUR") String role
+        @Pattern(regexp = "^\\+[1-9]\\d{6,14}$", message = "T\u00e9l\u00e9phone : format international attendu (par exemple +212612345678).") String phone,
+        @NotNull @Pattern(regexp = "^(EMPLOYE|SUPERVISEUR)$", message = "R\u00f4le inconnu : choisissez employ\u00e9 ou superviseur.") String role
 ) {}

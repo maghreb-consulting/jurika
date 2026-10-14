@@ -49,6 +49,6 @@ public class InternalWorkspaceUsersController {
                 .map(m -> new MemberRoleDto(m.userId(), m.role().name(), m.status().name()))
                 .map(ResponseEntity::ok)
                 .orElseThrow(() -> new NotFoundException(
-                        "Membre interne introuvable dans ce workspace: " + userId));
+                        "Membre du cabinet introuvable dans ce workspace : " + userId));
     }
 }

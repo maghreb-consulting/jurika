@@ -1,7 +1,8 @@
 import { useId, useState } from 'react';
 import { Building, Check, Hash, Mail, MapPin, User } from 'lucide-react';
 import { emailMsg, isFilled } from '../../lib/formValidation';
-import { PhoneNumberInput, isValidPhone } from '../../components/ui/PhoneNumberInput';
+import { PhoneNumberInput } from '../../components/ui/PhoneNumberInput';
+import { isValidPhone } from '../../components/ui/phoneNumber';
 import { MOROCCO_PROVINCES } from '../../data/morocco-localities';
 import {
   PROFESSIONAL_TYPES,
@@ -114,8 +115,8 @@ export function SignupStep1Cabinet({
     // Validation JS AVANT tout appel (le <form> porte noValidate : c'est ce bloc
     // qui decide de la validite, avec messages FR affiches dans le bandeau stylé).
     if (!professionalType) return setError('Veuillez choisir votre type de profil.');
-    if (!isFilled(data.firstName)) { focusField('signup-first-name'); return setError('Nom et prenom obligatoires.'); }
-    if (!isFilled(data.lastName)) { focusField('signup-last-name'); return setError('Nom et prenom obligatoires.'); }
+    if (!isFilled(data.firstName)) { focusField('signup-first-name'); return setError('Le prénom et le nom sont obligatoires.'); }
+    if (!isFilled(data.lastName)) { focusField('signup-last-name'); return setError('Le prénom et le nom sont obligatoires.'); }
     // Denomination : obligatoire uniquement pour les structures (Entreprise /
     // Centre d'affaires). Pour un profil individuel laisse vide, on retombe sur
     // « Prenom Nom » plus bas (on ne bloque pas la soumission).
@@ -132,10 +133,10 @@ export function SignupStep1Cabinet({
     // Telephone : E.164 valide pour le pays choisi (Maroc par defaut). La
     // validation par pays (longueur, plage nationale) est deleguee a
     // libphonenumber-js via isValidPhone().
-    if (!isValidPhone(data.phone.trim())) { focusField('signup-admin-phone'); return setError('Numero de telephone invalide pour le pays selectionne.'); }
+    if (!isValidPhone(data.phone.trim())) { focusField('signup-admin-phone'); return setError('Numéro de téléphone invalide pour le pays sélectionné.'); }
     if (!isFilled(data.city)) { focusField('signup-city'); return setError('Ville obligatoire.'); }
     const ice = data.ice.trim();
-    if (ice !== '' && !/^\d{15}$/.test(ice)) { focusField('signup-ice'); return setError('ICE : 15 chiffres requis (ou laissez vide).'); }
+    if (ice !== '' && !/^\d{15}$/.test(ice)) { focusField('signup-ice'); return setError('ICE : saisissez ses 15 chiffres, ou laissez le champ vide.'); }
     onNext({
       firstName: data.firstName.trim(),
       lastName: data.lastName.trim(),
@@ -152,7 +153,7 @@ export function SignupStep1Cabinet({
       <div className="rounded-2xl bg-bg-raised p-6 shadow-md sm:p-8">
         <h2 className="mb-2 font-heading text-2xl font-semibold text-fg">Votre profil</h2>
         <p className="mb-6 text-sm text-fg-subtle">
-          Quelques informations pour creer votre espace. Vous pourrez completer le reste plus tard.
+          Quelques informations pour créer votre espace. Vous pourrez compléter le reste plus tard.
         </p>
 
         {/* Selecteur de type de profil (requis). */}
@@ -188,7 +189,7 @@ export function SignupStep1Cabinet({
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field icon={<User className="h-3.5 w-3.5" />} label="Prenom" required>
+            <Field icon={<User className="h-3.5 w-3.5" />} label="Prénom" required>
               <input
                 type="text"
                 required
@@ -219,7 +220,7 @@ export function SignupStep1Cabinet({
             hint={
               nameRequired
                 ? 'Raison sociale de votre structure (obligatoire).'
-                : 'Optionnel — laissez vide si vous exercez en votre nom propre (nous utiliserons « Prenom Nom »).'
+                : 'Facultatif : laissez vide si vous exercez en votre nom propre (nous utiliserons « Prénom Nom »).'
             }
           >
             <input
@@ -235,7 +236,7 @@ export function SignupStep1Cabinet({
           </Field>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field icon={<Mail className="h-3.5 w-3.5" />} label="Email professionnel" required>
+            <Field icon={<Mail className="h-3.5 w-3.5" />} label="Adresse électronique professionnelle" required>
               <input
                 type="email"
                 required
@@ -250,14 +251,14 @@ export function SignupStep1Cabinet({
             {/* Telephone : selecteur d'indicatif pays (drapeau + code) + numero.
                 Maroc par defaut ; valeur stockee en E.164 dans data.phone. */}
             <PhoneNumberInput
-              label="Telephone"
+              label="Téléphone"
               required
               name="phone"
               data-testid="signup-admin-phone"
               value={data.phone}
               onChange={(v) => update('phone', v)}
               defaultCountry="MA"
-              hint="Numero mobile ou fixe. Sert au contact et, si active, au 2FA par SMS."
+              hint="Numéro mobile ou fixe. Il sert au contact et, quand elle est disponible, à la double authentification par SMS."
             />
             {/* Ville : liste deroulante recherchable des villes/provinces
                 marocaines (meme reference que Step2Siege). Free-text tolere. */}
@@ -283,7 +284,7 @@ export function SignupStep1Cabinet({
             <Field
               icon={<Hash className="h-3.5 w-3.5" />}
               label="ICE (optionnel)"
-              hint="15 chiffres. Vous pourrez le completer plus tard dans les parametres du cabinet."
+              hint="15 chiffres. Vous pourrez le compléter plus tard dans les paramètres du cabinet."
             >
               <input
                 type="text"
@@ -299,7 +300,7 @@ export function SignupStep1Cabinet({
           </div>
 
           {error && (
-            <div className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger" data-testid="signup-step1-error">
+            <div role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger" data-testid="signup-step1-error">
               {error}
             </div>
           )}
@@ -319,7 +320,7 @@ export function SignupStep1Cabinet({
               data-testid="signup-step1-next"
               className={btnPrimary}
             >
-              Continuer → Securite
+              Continuer vers la sécurité
             </button>
           </div>
         </form>

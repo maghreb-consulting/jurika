@@ -21,8 +21,8 @@ describe('convocationDelai — règle des 16 jours', () => {
   });
 
   it('rejette une convocation postérieure ou égale à l’assemblée', () => {
-    expect(convocationDelaiError('2026-04-10', '2026-04-10')).toContain('preceder');
-    expect(convocationDelaiError('2026-04-11', '2026-04-10')).toContain('preceder');
+    expect(convocationDelaiError('2026-04-10', '2026-04-10')).toContain('précéder');
+    expect(convocationDelaiError('2026-04-11', '2026-04-10')).toContain('précéder');
   });
 
   it('ne contrôle rien si la convocation est absente (elle est optionnelle)', () => {

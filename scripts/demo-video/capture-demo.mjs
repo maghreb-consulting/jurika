@@ -566,21 +566,19 @@ async function main() {
         // 5. Chatbot RAG
         // ══════════════════════════════════════════════════════════════
         chapitre('5. Chatbot — question metier');
-        await cliquer(page, page.getByRole('link', { name: /ChatBot IA/i }), 1300);
-        await page.waitForLoadState('networkidle').catch(() => {});
+        // Lot L5b (E2) : le chatbot n'a plus de page ; il s'ouvre dans le panneau
+        // lateral par la bulle en bas a droite. Ses sources sont communes a tous
+        // les cabinets et deposees par le super-administrateur (lot L5, E8).
+        await cliquer(page, '[data-testid="assistant-bulle"]', 1300);
+        await page.locator('[data-testid="assistant-panneau"]').waitFor({ timeout: 15000 });
         await attendre(1100);
-        // Le corpus interroge est celui du cabinet : les statuts refondus du
-        // dossier ont ete verses dans les « Sources fiables » du workspace.
-        await cliquer(page, page.getByRole('button', { name: /Sources fiables/i }), 800);
-        await attendre(LIRE - 400);
-        await cliquer(page, page.getByRole('button', { name: /Sources fiables/i }), 500);
 
         // Question posee en francais naturel : depuis que la recherche du corpus
         // ignore les interrogatifs et sait retomber sur un OU pondere, une vraie
         // question retrouve les passages (elle rendait 0 resultat auparavant, ce
         // qui imposait de formuler en groupe nominal).
-        const QUESTION = 'Que prevoient les statuts en cas de cession de parts a un tiers ?';
-        await saisir(page, '[data-testid="chatbot-message-input"]', QUESTION, 42);
+        const QUESTION = 'Que pr\u00e9voient les statuts en cas de cession de parts \u00e0 un tiers ?';
+        await saisir(page, '#assistant-question', QUESTION, 42);
         await page.keyboard.press('Enter');
         chapitre('5. Chatbot — reponse ancree sur les documents');
         await attendre(2100);

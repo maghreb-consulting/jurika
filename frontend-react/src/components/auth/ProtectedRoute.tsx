@@ -24,8 +24,9 @@ export function ProtectedRoute({ allowed }: Props) {
 
 function FullPageSpinner() {
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-bg-overlay">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
+    <div className="flex h-screen w-screen items-center justify-center bg-bg-overlay" role="status">
+      <div className="h-10 w-10 animate-spin rounded-full border-4 border-border border-t-accent" aria-hidden="true" />
+      <span className="sr-only">Chargement de votre session…</span>
     </div>
   );
 }

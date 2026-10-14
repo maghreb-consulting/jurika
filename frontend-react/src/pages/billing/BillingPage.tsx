@@ -15,6 +15,17 @@ function formatDate(iso: string | null | undefined): string {
 import { emitBusinessEvent } from '../../services/analytics.service';
 import { PlanPicker } from '../../components/billing/PlanPicker';
 import { formatMadCents, type InvoiceDto, type SubscriptionDto } from '../../types/billing';
+import { extractError } from '../../lib/api';
+import { STATUT_ABONNEMENT_LABELS, libelleCode, libelleForfait } from '../../lib/adminLabels';
+import { TexteAide } from '../../components/ui/Aide';
+
+const STATUT_FACTURE_LABELS: Record<InvoiceDto['status'], string> = {
+  paid: 'Payée',
+  open: 'À payer',
+  void: 'Annulée',
+  uncollectible: 'Irrécouvrable',
+  draft: 'Brouillon',
+};
 
 /**
  * Sprint 12 — page /app/billing rewrite complete (RG-BL01..10).
@@ -34,27 +45,22 @@ export function BillingPage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Chargement au montage : les mises a jour d'etat suivent la reponse.
   useEffect(() => {
     emitBusinessEvent('BILLING_PAGE_VIEWED');
-    void refresh();
+    Promise.all([
+      billingService.getSubscription(),
+      billingService.listInvoices(0, 3).catch(() => ({ items: [], total: 0, page: 0, size: 3 })),
+    ])
+      .then(([sub, invPage]) => {
+        setSubscription(sub);
+        setInvoices(invPage.items);
+      })
+      .catch((err) => {
+        setError(`L’abonnement n’a pas pu être chargé : ${extractError(err).message}`);
+      })
+      .finally(() => setLoading(false));
   }, []);
-
-  async function refresh() {
-    setLoading(true);
-    setError(null);
-    try {
-      const [sub, invPage] = await Promise.all([
-        billingService.getSubscription(),
-        billingService.listInvoices(0, 3).catch(() => ({ items: [], total: 0, page: 0, size: 3 })),
-      ]);
-      setSubscription(sub);
-      setInvoices(invPage.items);
-    } catch (err) {
-      setError((err as Error)?.message ?? 'Erreur de chargement billing');
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function openCustomerPortal() {
     setPortalLoading(true);
@@ -62,7 +68,7 @@ export function BillingPage() {
       const { url } = await billingService.createCustomerPortal();
       window.location.href = url;
     } catch (err) {
-      setError((err as Error)?.message ?? 'Customer Portal indisponible');
+      setError(`Le portail de gestion de l’abonnement est indisponible : ${extractError(err).message}`);
       setPortalLoading(false);
     }
   }
@@ -78,11 +84,19 @@ export function BillingPage() {
   return (
     <div className="space-y-6" data-testid="billing-page">
       <header className="rounded-2xl bg-bg-raised p-6 shadow-sm">
-        <h1 className="font-heading text-2xl font-semibold text-fg">Abonnement &amp; facturation</h1>
+        <h1 className="font-heading text-2xl font-semibold text-fg">Abonnement et facturation</h1>
         <p className="mt-1 text-sm text-fg-muted">
-          Gerez votre abonnement, votre moyen de paiement et vos factures.
+          Gérez votre abonnement, votre moyen de paiement et vos factures.
         </p>
       </header>
+
+      <TexteAide cle="facturation" titre="Que faire sur cet écran ?">
+        <p>
+          {subscription
+            ? 'Consultez votre forfait, la date de renouvellement et vos dernières factures (bouton « PDF » pour les télécharger). « Changer de forfait » ajuste votre abonnement ; « Gérer mon abonnement » ouvre le portail sécurisé du prestataire de paiement (carte, résiliation).'
+            : 'Votre cabinet n’a pas encore d’abonnement. Choisissez un forfait ci-dessous, mensuel ou annuel, puis le moyen de paiement à l’étape suivante.'}
+        </p>
+      </TexteAide>
 
       {error && (
         <div className="rounded-lg border border-danger/50 bg-danger/10 p-3 text-sm text-danger" role="alert">
@@ -108,7 +122,7 @@ export function BillingPage() {
             onPickPlan={(plan, period) => {
               navigate(`/app/billing/payment?plan=${encodeURIComponent(plan)}&period=${encodeURIComponent(period)}`);
             }}
-            onEnterpriseRequested={() => { window.location.href = `mailto:contact@jurika.ai?subject=Plan Entreprise`; }}
+            onEnterpriseRequested={() => { window.location.href = `mailto:contact@jurika.ai?subject=Forfait Entreprise`; }}
           />
         </section>
       )}
@@ -141,7 +155,8 @@ function BillingActiveView({ subscription, invoices, portalLoading, onPortal }: 
           <div>
             <h2 className="text-lg font-semibold text-fg">Votre abonnement</h2>
             <p className="text-sm text-fg-subtle">
-              Plan : <strong>{subscription.planCode}</strong> · statut : <strong>{subscription.status}</strong>
+              Forfait : <strong>{libelleForfait(subscription.planCode)}</strong> · statut :{' '}
+              <strong>{libelleCode(STATUT_ABONNEMENT_LABELS, subscription.status)}</strong>
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -163,7 +178,7 @@ function BillingActiveView({ subscription, invoices, portalLoading, onPortal }: 
               data-testid="billing-portal-cta"
             >
               {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
-              Gerer mon abonnement
+              Gérer mon abonnement
             </button>
           </div>
         </header>
@@ -173,7 +188,7 @@ function BillingActiveView({ subscription, invoices, portalLoading, onPortal }: 
             <dd className="font-medium text-fg">{formatDate(subscription.currentPeriodEnd)}</dd>
           </div>
           <div>
-            <dt className="text-fg-subtle">Periode courante</dt>
+            <dt className="text-fg-subtle">Période en cours</dt>
             <dd className="font-medium text-fg">
               {formatDate(subscription.currentPeriodStart)} → {formatDate(subscription.currentPeriodEnd)}
             </dd>
@@ -181,7 +196,7 @@ function BillingActiveView({ subscription, invoices, portalLoading, onPortal }: 
         </dl>
         {cancelled && (
           <p className="mt-3 rounded-lg border border-amber-300 bg-warning/10 p-3 text-sm text-warning" data-testid="billing-cancelled-banner">
-            Abonnement annule. Acces conserve jusqu'au <strong>{formatDate(subscription.currentPeriodEnd)}</strong>.
+            Abonnement résilié. Vous gardez l’accès jusqu’au <strong>{formatDate(subscription.currentPeriodEnd)}</strong>.
           </p>
         )}
       </section>
@@ -193,29 +208,33 @@ function BillingActiveView({ subscription, invoices, portalLoading, onPortal }: 
         {subscription.paymentMethod ? (
           <p className="text-sm text-fg-muted">
             {subscription.paymentMethod.brand?.toUpperCase() ?? 'Carte'} ••••{' '}
-            <strong>{subscription.paymentMethod.last4}</strong> — exp.{' '}
+            <strong>{subscription.paymentMethod.last4}</strong>, expire fin{' '}
             {subscription.paymentMethod.expMonth}/{subscription.paymentMethod.expYear}
           </p>
         ) : (
-          <p className="text-sm text-fg-subtle">Aucun moyen de paiement enregistre.</p>
+          <p className="text-sm text-fg-subtle">
+            Aucun moyen de paiement enregistré : ajoutez-en un avec « Gérer mon abonnement ».
+          </p>
         )}
       </section>
 
       <section className="rounded-2xl bg-bg-raised p-5 shadow-sm" data-testid="billing-invoices">
         <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-fg">
-          <Receipt className="h-5 w-5 text-fg-subtle" /> Dernieres factures
+          <Receipt className="h-5 w-5 text-fg-subtle" /> Dernières factures
         </h2>
         {invoices.length === 0 ? (
-          <p className="text-sm text-fg-subtle">Pas encore de facture.</p>
+          <p className="text-sm text-fg-subtle">
+            Pas encore de facture : la première apparaîtra ici après le premier paiement.
+          </p>
         ) : (
           <table className="w-full text-sm">
             <thead className="text-left text-fg-subtle">
               <tr>
-                <th className="py-2">Numero</th>
+                <th className="py-2">Numéro</th>
                 <th>Date</th>
                 <th>Montant TTC</th>
                 <th>Statut</th>
-                <th></th>
+                <th><span className="sr-only">Téléchargement</span></th>
               </tr>
             </thead>
             <tbody>
@@ -256,5 +275,9 @@ function StatusBadge({ status }: { status: InvoiceDto['status'] }) {
     : status === 'open'
       ? 'bg-amber-100 text-warning'
       : 'bg-bg-overlay text-fg-muted';
-  return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{status}</span>;
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
+      {STATUT_FACTURE_LABELS[status] ?? status}
+    </span>
+  );
 }

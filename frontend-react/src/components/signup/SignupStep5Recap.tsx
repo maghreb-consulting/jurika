@@ -28,7 +28,7 @@ export function SignupStep5Recap({ profile, twoFactor, selectedPlan, professiona
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!cguAccepted) {
-      setError('Vous devez accepter les CGU et la politique de confidentialite.');
+      setError('Cochez la case d’acceptation des CGU et de la politique de confidentialité pour continuer.');
       return;
     }
     setError(null);
@@ -36,7 +36,7 @@ export function SignupStep5Recap({ profile, twoFactor, selectedPlan, professiona
     try {
       await onSubmit(cguAccepted);
     } catch (e: unknown) {
-      const msg = (e as Error)?.message || 'Erreur lors de la creation du cabinet.';
+      const msg = (e as Error)?.message || 'La création du cabinet a échoué. Réessayez.';
       setError(msg);
     } finally {
       setSubmitting(false);
@@ -46,28 +46,33 @@ export function SignupStep5Recap({ profile, twoFactor, selectedPlan, professiona
   return (
     <div className="mx-auto max-w-2xl px-4 py-8" data-testid="signup-step-recap">
       <div className="rounded-2xl bg-bg-raised p-6 shadow-md sm:p-8">
-        <h2 className="mb-2 font-heading text-2xl font-semibold text-fg">Recapitulatif</h2>
+        <h2 className="mb-2 font-heading text-2xl font-semibold text-fg">Récapitulatif</h2>
         <p className="mb-6 text-sm text-fg-subtle">
-          Verifiez les informations avant de creer votre cabinet.
+          Vérifiez les informations avant de créer votre cabinet. Pour corriger une donnée, revenez
+          en arrière avec « Retour ».
         </p>
 
         <div className="mb-6 space-y-4">
           <RecapBlock title="Titulaire">
             <Line label="Nom" value={`${profile.firstName} ${profile.lastName}`} />
-            <Line label="Email professionnel" value={profile.email} />
-            <Line label="GSM" value={profile.phone} />
+            <Line label="Adresse électronique professionnelle" cle="email-professionnel" value={profile.email} />
+            <Line label="Téléphone" cle="gsm" value={profile.phone} />
           </RecapBlock>
           <RecapBlock title="Structure">
-            <Line label="Denomination" value={profile.workspaceName} />
+            <Line label="Dénomination" cle="denomination" value={profile.workspaceName} />
             <Line label="Ville" value={profile.city} />
-            <Line label="ICE" value={profile.ice.trim() === '' ? 'A completer plus tard' : profile.ice} />
+            <Line label="ICE" value={profile.ice.trim() === '' ? 'À compléter plus tard' : profile.ice} />
           </RecapBlock>
           <RecapBlock title="Configuration">
             {professionalType && (
               <Line label="Type de profil" value={PROFESSIONAL_TYPE_LABELS[professionalType]} />
             )}
-            <Line label="Plan selectionne" value={PLAN_LABELS[selectedPlan] || selectedPlan} />
-            <Line label="2FA preferee" value={twoFactor === 'SMS' ? 'SMS Twilio' : 'Google Authenticator (TOTP)'} />
+            <Line label="Forfait choisi" cle="plan-selectionne" value={PLAN_LABELS[selectedPlan] || selectedPlan} />
+            <Line
+              label="Double authentification"
+              cle="2fa-preferee"
+              value={twoFactor === 'SMS' ? 'Code par SMS' : 'Application d’authentification'}
+            />
           </RecapBlock>
         </div>
 
@@ -81,13 +86,13 @@ export function SignupStep5Recap({ profile, twoFactor, selectedPlan, professiona
               data-testid="signup-cgu-checkbox"
             />
             <span className="text-sm text-fg-muted">
-              J'accepte les <a href="/cgu" target="_blank" className="text-accent underline">CGU</a>{' '}
-              et la <a href="/privacy" target="_blank" className="text-accent underline">politique de confidentialite (CNDP)</a>.
+              J’accepte les <a href="/cgu" target="_blank" className="text-accent underline">CGU</a>{' '}
+              et la <a href="/privacy" target="_blank" className="text-accent underline">politique de confidentialité (CNDP)</a>.
             </span>
           </label>
 
           {error && (
-            <div className="flex items-start gap-2 rounded-lg bg-danger/10 p-3 text-sm text-danger" data-testid="signup-step5-error">
+            <div role="alert" className="flex items-start gap-2 rounded-lg bg-danger/10 p-3 text-sm text-danger" data-testid="signup-step5-error">
               <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
               <span>{error}</span>
             </div>
@@ -97,9 +102,9 @@ export function SignupStep5Recap({ profile, twoFactor, selectedPlan, professiona
             <button type="button" onClick={onBack} disabled={submitting} className={btnSecondary} data-testid="signup-step5-back">← Retour</button>
             <button type="submit" disabled={submitting} className={btnPrimary} data-testid="signup-step5-submit">
               {submitting ? (
-                <>Creation en cours...</>
+                <>Création en cours…</>
               ) : (
-                <><CheckCircle2 className="inline h-4 w-4 mr-1" />Creer mon cabinet</>
+                <><CheckCircle2 className="inline h-4 w-4 mr-1" />Créer mon cabinet</>
               )}
             </button>
           </div>
@@ -117,11 +122,12 @@ function RecapBlock({ title, children }: { title: string; children: React.ReactN
     </div>
   );
 }
-function Line({ label, value }: { label: string; value: string }) {
+/** `cle` fige l'identifiant de test quand le libelle affiche change (recap-<cle>). */
+function Line({ label, value, cle }: { label: string; value: string; cle?: string }) {
   return (
     <div className="flex justify-between gap-2 text-xs">
       <dt className="text-fg-subtle">{label}</dt>
-      <dd className="text-right text-fg font-medium" data-testid={`recap-${label.toLowerCase().replace(/\s+/g, '-')}`}>{value}</dd>
+      <dd className="text-right text-fg font-medium" data-testid={`recap-${cle ?? label.toLowerCase().replace(/\s+/g, '-')}`}>{value}</dd>
     </div>
   );
 }

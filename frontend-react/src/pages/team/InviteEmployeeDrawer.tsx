@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { AlertTriangle, CheckCircle, Mail, UserPlus, X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
-import { PhoneNumberInput, isValidPhone } from '../../components/ui/PhoneNumberInput';
+import { PhoneNumberInput } from '../../components/ui/PhoneNumberInput';
+import { isValidPhone } from '../../components/ui/phoneNumber';
 import { authService } from '../../services/auth.service';
 import { extractError } from '../../lib/api';
 import { emailMsg, requiredMsg, focusFirstError, hasErrors, type FieldErrors } from '../../lib/formValidation';
@@ -54,9 +55,9 @@ export function InviteEmployeeDrawer({ open, onClose, onInvited, supervisorTaken
     setError(null);
     // Validation JS AVANT l'appel API (form noValidate : pas de bulle native).
     const errors: FieldErrors = {};
-    const fnErr = requiredMsg(firstName, 'Le prenom est requis.');
+    const fnErr = requiredMsg(firstName, 'Le prénom est obligatoire.');
     if (fnErr) errors.firstName = fnErr;
-    const lnErr = requiredMsg(lastName, 'Le nom est requis.');
+    const lnErr = requiredMsg(lastName, 'Le nom est obligatoire.');
     if (lnErr) errors.lastName = lnErr;
     const emErr = emailMsg(email);
     if (emErr) errors.email = emErr;
@@ -67,7 +68,7 @@ export function InviteEmployeeDrawer({ open, onClose, onInvited, supervisorTaken
     }
     // Telephone optionnel : valide seulement s'il est renseigne (E.164).
     if (phone.trim() && !isValidPhone(phone.trim())) {
-      setError('Numero de telephone invalide pour le pays selectionne.');
+      setError('Numéro de téléphone invalide pour le pays sélectionné.');
       document.querySelector<HTMLElement>('[name="phone"]')?.focus();
       return;
     }
@@ -134,8 +135,8 @@ export function InviteEmployeeDrawer({ open, onClose, onInvited, supervisorTaken
                 <div className="text-sm text-emerald-800">
                   <p className="font-semibold">{result.message}</p>
                   <p className="mt-1 text-xs">
-                    Le nouveau membre apparait dans l'equipe avec le statut <strong>En attente</strong>.
-                    Il passera <strong>Actif</strong> automatiquement apres sa 1ere connexion reussie.
+                    Le nouveau membre apparaît dans l’équipe avec le statut <strong>En attente</strong>.
+                    Il passera <strong>Actif</strong> automatiquement après sa première connexion réussie.
                   </p>
                 </div>
               </div>
@@ -144,14 +145,14 @@ export function InviteEmployeeDrawer({ open, onClose, onInvited, supervisorTaken
               {result.loginEmail && (
                 <div className="rounded-lg border border-accent/40 bg-accent/10 p-3">
                   <p className="text-[11px] font-bold uppercase tracking-wide text-accent">
-                    Identifiant de connexion genere
+                    Identifiant de connexion attribué
                   </p>
                   <code className="mt-1 block break-all rounded bg-bg-raised px-2 py-1 font-mono text-sm text-fg">
                     {result.loginEmail}
                   </code>
                   {result.contactEmail && result.contactEmail !== result.loginEmail && (
                     <p className="mt-2 text-[11px] text-fg-muted">
-                      Notifications envoyees a <span className="font-mono">{result.contactEmail}</span>.
+                      Notifications envoyées à <span className="font-mono">{result.contactEmail}</span>.
                     </p>
                   )}
                 </div>
@@ -161,10 +162,10 @@ export function InviteEmployeeDrawer({ open, onClose, onInvited, supervisorTaken
                 <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-warning/10 p-3">
                   <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
                   <div className="text-xs text-amber-900">
-                    <p className="font-semibold">Email non delivre — communiquez le MDP temporaire</p>
+                    <p className="font-semibold">Courriel non remis : communiquez le mot de passe temporaire</p>
                     <p className="mt-1">
-                      Transmettez ces identifiants au membre par un canal sur (en personne, telephone).
-                      Il devra changer le MDP au 1er login.
+                      Transmettez ces identifiants au membre par un moyen sûr (en personne, par téléphone).
+                      Il devra changer ce mot de passe à sa première connexion.
                     </p>
                     <div className="mt-2 rounded bg-bg-raised px-2 py-1 font-mono text-sm text-fg">
                       {result.tempPassword}
@@ -197,13 +198,13 @@ export function InviteEmployeeDrawer({ open, onClose, onInvited, supervisorTaken
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <p className="text-xs text-fg-muted">
-                Cree un compte interne (EMPLOYE ou SUPERVISEUR) attache a votre workspace.
-                Un email avec MDP temporaire + lien de connexion est envoye automatiquement.
+                Crée un compte interne (employé ou superviseur) rattaché à votre cabinet. Un courriel
+                contenant un mot de passe temporaire et le lien de connexion lui est envoyé automatiquement.
               </p>
 
               <div className="grid grid-cols-2 gap-3">
                 <TextField
-                  label="Prenom"
+                  label="Prénom"
                   name="firstName"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
@@ -218,7 +219,7 @@ export function InviteEmployeeDrawer({ open, onClose, onInvited, supervisorTaken
                 />
               </div>
               <TextField
-                label="Email professionnel"
+                label="Adresse électronique professionnelle"
                 name="email"
                 type="email"
                 value={email}
@@ -227,7 +228,7 @@ export function InviteEmployeeDrawer({ open, onClose, onInvited, supervisorTaken
                 required
               />
               <PhoneNumberInput
-                label="Telephone (optionnel)"
+                label="Téléphone (facultatif)"
                 name="phone"
                 value={phone}
                 onChange={setPhone}
@@ -235,7 +236,7 @@ export function InviteEmployeeDrawer({ open, onClose, onInvited, supervisorTaken
               />
               <div>
                 <label className="mb-1 block text-xs font-medium text-fg-subtle">
-                  Role
+                  Rôle
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {(['EMPLOYE', 'SUPERVISEUR'] as const).map((r) => {
@@ -248,7 +249,7 @@ export function InviteEmployeeDrawer({ open, onClose, onInvited, supervisorTaken
                         disabled={disabled}
                         title={
                           disabled
-                            ? 'Un SUPERVISEUR existe deja dans ce cabinet (1 max).'
+                            ? 'Ce cabinet a déjà un superviseur (un seul par cabinet).'
                             : undefined
                         }
                         className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
@@ -259,20 +260,20 @@ export function InviteEmployeeDrawer({ open, onClose, onInvited, supervisorTaken
                               : 'border-border bg-bg-raised text-fg-subtle hover:bg-bg-overlay'
                         }`}
                       >
-                        {r === 'EMPLOYE' ? 'Employe' : 'Superviseur'}
+                        {r === 'EMPLOYE' ? 'Employé' : 'Superviseur'}
                       </button>
                     );
                   })}
                 </div>
                 <p className="mt-1 text-[11px] text-fg-muted">
                   {supervisorTaken
-                    ? 'Le siege SUPERVISEUR est deja occupe — desactivez d\'abord le titulaire pour en designer un autre.'
-                    : 'Seul un EMPLOYE compte dans le quota du plan. Un seul SUPERVISEUR par cabinet.'}
+                    ? 'Le poste de superviseur est déjà occupé : désactivez d’abord son titulaire pour en désigner un autre.'
+                    : 'Seuls les employés comptent dans le quota du forfait. Un seul superviseur par cabinet.'}
                 </p>
               </div>
 
               {error && (
-                <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+                <div role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
                   {error}
                 </div>
               )}
@@ -280,8 +281,9 @@ export function InviteEmployeeDrawer({ open, onClose, onInvited, supervisorTaken
               <div className="flex items-center gap-2 rounded-lg bg-accent/10 p-3 text-xs text-accent">
                 <Mail className="h-4 w-4 flex-shrink-0" />
                 <span>
-                  Le membre recevra : code workspace + email + MDP temporaire + lien direct
-                  de connexion. Il devra changer son MDP et choisir une 2FA au 1er login.
+                  Le membre recevra le code du cabinet, son identifiant, un mot de passe temporaire et le
+                  lien de connexion. À sa première connexion, il changera son mot de passe et choisira sa
+                  méthode de double authentification.
                 </span>
               </div>
 

@@ -30,7 +30,7 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
             case 7 -> handleGenerationStatuts(ctx);
             case 8 -> handlePiecesJointes(ctx);
             case 9 -> handleSynthese(ctx);
-            default -> StepResult.blocked("Etape inconnue : " + ctx.step());
+            default -> StepResult.blocked("\u00c9tape inconnue : " + ctx.step());
         };
     }
 
@@ -47,11 +47,11 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
         Object iceVal = p.get("ice");
         if (iceVal == null) iceVal = p.get("icenumero");
         // Autres champs obligatoires : message explicite par champ.
-        requireWithLabel(p, "denomination", "Denomination / Raison sociale");
-        requireWithLabel(p, "cnNumero", "N° Certificat Negatif");
-        requireWithLabel(p, "cnDate", "Date de delivrance du CN");
-        requireWithLabel(p, "activiteCn", "Activite (telle qu'inscrite au CN)");
-        requireWithLabel(p, "beneficiaire", "Beneficiaire du CN");
+        requireWithLabel(p, "denomination", "D\u00e9nomination / raison sociale");
+        requireWithLabel(p, "cnNumero", "N\u00b0 du certificat n\u00e9gatif");
+        requireWithLabel(p, "cnDate", "Date de d\u00e9livrance du CN");
+        requireWithLabel(p, "activiteCn", "Activit\u00e9 (telle qu\u2019inscrite au CN)");
+        requireWithLabel(p, "beneficiaire", "B\u00e9n\u00e9ficiaire du CN");
         // 2026-06-22 — sigle FACULTATIF : si vide, vaut « néant » (rempli côté
         // payload front). Plus de blocage serveur sur ce champ.
         // RG-S01 vs RG-C01 : forme juridique requise pour differencier SARL / SARL_AU
@@ -68,8 +68,8 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
             String ice = String.valueOf(iceVal).replaceAll("[\\s-]", "");
             if (!ice.matches("^\\d{15}$")) {
                 return StepResult.blocked(
-                        "ICE invalide : doit comporter exactement 15 chiffres (recu : "
-                                + ice.length() + " caracteres). Reference RG-C13.");
+                        "ICE invalide : doit comporter exactement 15 chiffres (re\u00e7u : "
+                                + ice.length() + " caract\u00e8res). R\u00e9f\u00e9rence RG-C13.");
             }
             // Persisté sous les deux clés pour les consommateurs existants.
             out.put("ice", ice);
@@ -88,7 +88,7 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
         require(p, "adresse", "province", "commune", "codePostal", "justificatifType");
         String type = String.valueOf(p.get("justificatifType"));
         if (!type.equals("BAIL") && !type.equals("DOMICILIATION")) {
-            return StepResult.blocked("justificatifType doit etre BAIL ou DOMICILIATION");
+            return StepResult.blocked("Le justificatif du si\u00e8ge doit \u00eatre un bail ou une attestation de domiciliation.");
         }
         // P1 2026-06-21 (Cowork) — preserve egalement certificatProprieteDocName,
         // attestationDocName etc. presents a plat ; le wrap historique etait deja
@@ -105,7 +105,7 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
         BigDecimal industrie = num(p, "apportIndustrie");
         BigDecimal capital = numeraire.add(nature).add(industrie);
         if (capital.compareTo(BigDecimal.ZERO) <= 0) {
-            return StepResult.blocked("Au moins un apport doit etre superieur a 0");
+            return StepResult.blocked("Au moins un apport doit \u00eatre sup\u00e9rieur \u00e0 0");
         }
         // EX2 2026-06-09 — Refonte regle 25% :
         //   Apport nature + industrie = libere a 100% par definition (decision interne JURIKA,
@@ -131,9 +131,9 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
                 .divide(BigDecimal.valueOf(100), 4, BigDecimal.ROUND_HALF_UP);
         if (libere.compareTo(ratio25) < 0) {
             return StepResult.blocked(
-                    "Liberation insuffisante — Le minimum legal de 25% du capital social total doit etre libere ("
+                    "Lib\u00e9ration insuffisante \u2014 Le minimum l\u00e9gal de 25% du capital social total doit \u00eatre lib\u00e9r\u00e9 ("
                             + ratio25 + " MAD min, actuellement " + libere + " MAD). "
-                            + "Nature et industrie sont liberes a 100% par defaut, augmentez la part liberee du numeraire.");
+                            + "Les apports en nature et en industrie sont lib\u00e9r\u00e9s \u00e0 100 % par d\u00e9faut ; augmentez la part lib\u00e9r\u00e9e du num\u00e9raire.");
         }
         Integer parts = (Integer) p.get("nombreParts");
         if (parts == null || parts <= 0) {
@@ -149,11 +149,11 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
         if (depotBloque) {
             Object depotBanque = p.get("depotBanqueNom");
             if (depotBanque == null || String.valueOf(depotBanque).isBlank()) {
-                return StepResult.blocked("Banque du depot de fonds requise (depot en compte bloque).");
+                return StepResult.blocked("Banque du d\u00e9p\u00f4t de fonds requise (d\u00e9p\u00f4t en compte bloqu\u00e9).");
             }
             Object depotNum = p.get("depotNumero");
             if (depotNum == null || String.valueOf(depotNum).isBlank()) {
-                return StepResult.blocked("Numero de l'attestation de depot requise (depot en compte bloque).");
+                return StepResult.blocked("Num\u00e9ro de l\u2019attestation de d\u00e9p\u00f4t requise (d\u00e9p\u00f4t en compte bloqu\u00e9).");
             }
         }
         // 2026-08 (Phase 3) — Options de constitution (voie directeur). Non bloquant
@@ -161,16 +161,16 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
         // libelles EXACTS attendus par les conditions des modeles quand ils sont fournis.
         String modeLib = normLabel(p.get("modeLiberation"));
         if (!modeLib.isEmpty() && !java.util.Set.of("integrale", "partielle").contains(modeLib)) {
-            return StepResult.blocked("Mode de liberation invalide : « integrale » ou « partielle ».");
+            return StepResult.blocked("Mode de lib\u00e9ration invalide : \u00ab integrale \u00bb ou \u00ab partielle \u00bb.");
         }
         String modeSig = normLabel(p.get("modeSignature"));
         if (!modeSig.isEmpty()
                 && !java.util.Set.of("separee", "separee avec plafond", "conjointe").contains(modeSig)) {
             return StepResult.blocked(
-                    "Mode de signature invalide : « separee », « separee avec plafond » ou « conjointe ».");
+                    "Mode de signature invalide : \u00ab s\u00e9par\u00e9e \u00bb, \u00ab s\u00e9par\u00e9e avec plafond \u00bb ou \u00ab conjointe \u00bb.");
         }
         if (modeSig.equals("separee avec plafond") && num(p, "signaturePlafond").signum() <= 0) {
-            return StepResult.blocked("Plafond de signature requis (> 0) pour « separee avec plafond ».");
+            return StepResult.blocked("Plafond de signature requis (> 0) pour \u00ab s\u00e9par\u00e9e avec plafond \u00bb.");
         }
         // Phase 4 — signature des documents administratifs (art. 15) : « identique » /
         // « signature seule ». Non bloquant si absent (le mapper applique « identique »).
@@ -237,7 +237,7 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
         if (!modeDesig.isEmpty()
                 && !java.util.Set.of("statutaire", "non statutaire").contains(modeDesig)) {
             return StepResult.blocked(
-                    "Mode de designation du gerant invalide : « statutaire » ou « non statutaire ».");
+                    "Mode de d\u00e9signation du g\u00e9rant invalide : \u00ab statutaire \u00bb ou \u00ab non statutaire \u00bb.");
         }
         int idx = 0;
         for (Object o : list) {
@@ -247,19 +247,19 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
             }
             String type = m.get("typePersonne") == null ? "PHYSIQUE" : String.valueOf(m.get("typePersonne"));
             if ("MORALE".equals(type)) {
-                requireStr(m, "denomination", "Dirigeant " + idx + " (MORALE) : denomination");
+                requireStr(m, "denomination", "Dirigeant " + idx + " (MORALE) : d\u00e9nomination");
                 requireStr(m, "rc", "Dirigeant " + idx + " (MORALE) : RC");
                 requireStr(m, "ice", "Dirigeant " + idx + " (MORALE) : ICE");
                 requireStr(m, "ifFiscal", "Dirigeant " + idx + " (MORALE) : IF");
-                requireStr(m, "siege", "Dirigeant " + idx + " (MORALE) : siege");
-                requireStr(m, "repNom", "Dirigeant " + idx + " (MORALE) : nom du representant legal");
-                requireStr(m, "repPrenom", "Dirigeant " + idx + " (MORALE) : prenom du representant legal");
-                requireStr(m, "repCin", "Dirigeant " + idx + " (MORALE) : CIN du representant legal");
-                requireStr(m, "repQualite", "Dirigeant " + idx + " (MORALE) : qualite du representant legal");
+                requireStr(m, "siege", "Dirigeant " + idx + " (MORALE) : si\u00e8ge");
+                requireStr(m, "repNom", "Dirigeant " + idx + " (MORALE) : nom du repr\u00e9sentant l\u00e9gal");
+                requireStr(m, "repPrenom", "Dirigeant " + idx + " (MORALE) : pr\u00e9nom du repr\u00e9sentant l\u00e9gal");
+                requireStr(m, "repCin", "Dirigeant " + idx + " (MORALE) : CIN du repr\u00e9sentant l\u00e9gal");
+                requireStr(m, "repQualite", "Dirigeant " + idx + " (MORALE) : qualit\u00e9 du repr\u00e9sentant l\u00e9gal");
             } else {
                 requireStr(m, "nom", "Dirigeant " + idx + " : nom");
-                requireStr(m, "prenom", "Dirigeant " + idx + " : prenom");
-                requireStr(m, "cinNumero", "Dirigeant " + idx + " : numero de piece d'identite (CIN, passeport ou carte de sejour)");
+                requireStr(m, "prenom", "Dirigeant " + idx + " : pr\u00e9nom");
+                requireStr(m, "cinNumero", "Dirigeant " + idx + " : num\u00e9ro de pi\u00e8ce d\u2019identit\u00e9 (CIN, passeport ou carte de s\u00e9jour)");
             }
         }
         // C1 2026-06-21 — Gouvernance de la gerance OBLIGATOIRE (politique stricte
@@ -268,15 +268,15 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
         Object geranceRaw = p.get("gerance");
         if (!(geranceRaw instanceof Map<?, ?> ger)) {
             return StepResult.blocked(
-                    "Gouvernance de la gerance requise (duree du mandat + remuneration).");
+                    "Gouvernance de la g\u00e9rance requise (dur\u00e9e du mandat + r\u00e9mun\u00e9ration).");
         }
         Object dureeMandatVal = ger.get("dureeMandat");
         if (dureeMandatVal == null || String.valueOf(dureeMandatVal).isBlank()) {
-            return StepResult.blocked("Duree du mandat des gerants requise.");
+            return StepResult.blocked("Dur\u00e9e du mandat des g\u00e9rants requise.");
         }
         Object remuModeVal = ger.get("remunerationMode");
         if (remuModeVal == null || String.valueOf(remuModeVal).isBlank()) {
-            return StepResult.blocked("Mode de remuneration de la gerance requis.");
+            return StepResult.blocked("Mode de r\u00e9mun\u00e9ration de la g\u00e9rance requis.");
         }
         // Persistance « bulletproof » 2026-08 — on preserve TOUT le payload Step5
         // (signataires, gerantModeDesignation, dureeGerance, limitationPouvoirs,
@@ -297,30 +297,30 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
         Map<String, Object> p = ctx.payload();
         Object associes = p.get("associes");
         if (!(associes instanceof java.util.List<?> list) || list.isEmpty()) {
-            return StepResult.blocked("Au moins un associe requis");
+            return StepResult.blocked("Au moins un associ\u00e9 requis");
         }
         // EX5 2026-06-09 — Validation par type d'associe (PHYSIQUE / MORALE).
         int idx = 0;
         for (Object o : list) {
             idx++;
             if (!(o instanceof Map<?, ?> m)) {
-                return StepResult.blocked("Associe " + idx + " : format invalide");
+                return StepResult.blocked("Associ\u00e9 " + idx + " : format invalide");
             }
             String type = m.get("typePersonne") == null ? "PHYSIQUE" : String.valueOf(m.get("typePersonne"));
             if ("MORALE".equals(type)) {
-                requireStr(m, "denomination", "Associe " + idx + " (MORALE) : denomination");
-                requireStr(m, "rc", "Associe " + idx + " (MORALE) : RC");
-                requireStr(m, "ice", "Associe " + idx + " (MORALE) : ICE");
-                requireStr(m, "ifFiscal", "Associe " + idx + " (MORALE) : IF");
-                requireStr(m, "siege", "Associe " + idx + " (MORALE) : siege");
-                requireStr(m, "repNom", "Associe " + idx + " (MORALE) : nom du representant legal");
-                requireStr(m, "repPrenom", "Associe " + idx + " (MORALE) : prenom du representant legal");
-                requireStr(m, "repCin", "Associe " + idx + " (MORALE) : CIN du representant legal");
-                requireStr(m, "repQualite", "Associe " + idx + " (MORALE) : qualite du representant legal");
+                requireStr(m, "denomination", "Associ\u00e9 " + idx + " (MORALE) : d\u00e9nomination");
+                requireStr(m, "rc", "Associ\u00e9 " + idx + " (MORALE) : RC");
+                requireStr(m, "ice", "Associ\u00e9 " + idx + " (MORALE) : ICE");
+                requireStr(m, "ifFiscal", "Associ\u00e9 " + idx + " (MORALE) : IF");
+                requireStr(m, "siege", "Associ\u00e9 " + idx + " (MORALE) : si\u00e8ge");
+                requireStr(m, "repNom", "Associ\u00e9 " + idx + " (MORALE) : nom du repr\u00e9sentant l\u00e9gal");
+                requireStr(m, "repPrenom", "Associ\u00e9 " + idx + " (MORALE) : pr\u00e9nom du repr\u00e9sentant l\u00e9gal");
+                requireStr(m, "repCin", "Associ\u00e9 " + idx + " (MORALE) : CIN du repr\u00e9sentant l\u00e9gal");
+                requireStr(m, "repQualite", "Associ\u00e9 " + idx + " (MORALE) : qualit\u00e9 du repr\u00e9sentant l\u00e9gal");
             } else {
-                requireStr(m, "nom", "Associe " + idx + " : nom");
-                requireStr(m, "prenom", "Associe " + idx + " : prenom");
-                requireStr(m, "cin", "Associe " + idx + " : numero de piece d'identite (CIN, passeport ou carte de sejour)");
+                requireStr(m, "nom", "Associ\u00e9 " + idx + " : nom");
+                requireStr(m, "prenom", "Associ\u00e9 " + idx + " : pr\u00e9nom");
+                requireStr(m, "cin", "Associ\u00e9 " + idx + " : num\u00e9ro de pi\u00e8ce d\u2019identit\u00e9 (CIN, passeport ou carte de s\u00e9jour)");
             }
         }
         // RG-C16/S04 : SARL_AU = 1 associe a 100% / SARL = somme parts == nombreParts total
@@ -329,12 +329,12 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
                 : String.valueOf(p.get("formeJuridique"));
         if ("SARL_AU".equals(forme) && list.size() != 1) {
             return StepResult.blocked(
-                    "SARL_AU = un seul associe (100% des parts). Trouve : " + list.size());
+                    "Une SARL AU compte un seul associ\u00e9 (100 % des parts). Associ\u00e9s saisis : " + list.size());
         }
         // SARL (pluralite) = au moins 2 associes. Un seul associe => SARL a associe unique.
         if (!"SARL_AU".equals(forme) && list.size() < 2) {
             return StepResult.blocked(
-                    "SARL : au moins 2 associes requis (1 seul associe = SARL a associe unique). Trouve : "
+                    "SARL : au moins 2 associ\u00e9s requis (un seul associ\u00e9 : SARL \u00e0 associ\u00e9 unique). Associ\u00e9s saisis : "
                             + list.size());
         }
         if ("SARL_AU".equals(forme)) {
@@ -403,7 +403,7 @@ public class CreationSarlWorkflow extends AbstractWorkflow {
     private StepResult handleGenerationStatuts(StepContext ctx) {
         Map<String, Object> p = ctx.payload();
         if (!Boolean.TRUE.equals(p.get("statutsValides"))) {
-            return StepResult.blocked("Les statuts doivent etre valides avant de continuer");
+            return StepResult.blocked("Les statuts doivent \u00eatre valides avant de continuer");
         }
         // Fix 2026-06-11 — Map.of() refuse les valeurs null : si le front
         // envoie statutsDocumentId=null ou actesNominationIds=null (ex: le

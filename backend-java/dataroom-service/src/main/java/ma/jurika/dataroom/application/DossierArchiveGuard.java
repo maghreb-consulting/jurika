@@ -123,9 +123,9 @@ public class DossierArchiveGuard {
             return;
         }
         throw new ValidationException(
-                "DOSSIER_ARCHIVED_READ_ONLY : la societe est " + statut
-                        + ". La Data Room est en lecture seule (archive legale) : "
-                        + "consultation et telechargement restent possibles, "
+                "DOSSIER_ARCHIVED_READ_ONLY : la soci\u00e9t\u00e9 est " + statut
+                        + ". La Data Room est en lecture seule (archive l\u00e9gale) : "
+                        + "consultation et t\u00e9l\u00e9chargement restent possibles, "
                         + "mais plus aucun ajout, remplacement ni suppression.");
     }
 
@@ -169,8 +169,8 @@ public class DossierArchiveGuard {
             return;
         }
         throw new ValidationException(
-                "DOSSIER_ARCHIVED_READ_ONLY : la societe est " + statut
-                        + ". La Data Room est en lecture seule (archive legale).");
+                "DOSSIER_ARCHIVED_READ_ONLY : la soci\u00e9t\u00e9 est " + statut
+                        + ". La Data Room est en lecture seule (archive l\u00e9gale).");
     }
 
     /** {@code true} si un workflow LIQUIDATION est encore ouvert sur ce dossier. */

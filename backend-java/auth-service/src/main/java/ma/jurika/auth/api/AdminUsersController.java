@@ -90,7 +90,7 @@ public class AdminUsersController {
                         rs.getString("ws_name"),
                         rs.getTimestamp("created_at").toInstant(),
                         rs.getTimestamp("last_login_at") == null
-                                ? null : rs.getTimestamp("last_login_at").toInstant()); },
+                                ? null : rs.getTimestamp("last_login_at").toInstant()).pourAffichage(); },
                 recherche, roleFiltre, workspaceId, safeLimit, safeOffset);
         if (rows.isEmpty() && safeOffset > 0) {
             // Page au-dela de la fin : le total vient d'une requete sans decalage.
@@ -129,7 +129,7 @@ public class AdminUsersController {
         // puis lecture et mise a jour se font en transaction, sous la RLS.
         UUID wsId = jdbc.queryForObject("SELECT admin_workspace_de_utilisateur(?)", UUID.class, userId);
         if (wsId == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur introuvable");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur introuvable.");
         }
         ma.jurika.common.security.TenantContext.set(wsId);
         transaction.executeWithoutResult(s -> {
@@ -137,11 +137,11 @@ public class AdminUsersController {
             try {
                 row = jdbc.queryForMap("SELECT role FROM users WHERE id = ?", userId);
             } catch (EmptyResultDataAccessException e) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur introuvable");
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur introuvable.");
             }
             if ("SUPER_ADMIN".equals(row.get("role"))) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Un compte SUPER_ADMIN ne peut pas etre suspendu ici.");
+                        "Le compte JURIKA (administration de la plateforme) ne peut pas \u00eatre suspendu ici.");
             }
             jdbc.update("UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?",
                     newStatus, userId);
@@ -168,7 +168,22 @@ public class AdminUsersController {
             String workspaceCode,
             String workspaceName,
             Instant createdAt,
-            Instant lastLoginAt) {}
+            Instant lastLoginAt) {
+
+        /** Nom affiche du compte d'administration de la plateforme (CDC 3.1). */
+        public static final String NOM_PLATEFORME = "JURIKA";
+
+        /**
+         * Lot L6 (E6, CDC 3.1) : "Le compte d'administration de la plateforme est
+         * presente sous le nom JURIKA dans toute l'interface." Son nom, son
+         * workspace d'hebergement et le code de celui-ci ne sont pas montres.
+         */
+        public UserRow pourAffichage() {
+            if (!"SUPER_ADMIN".equals(role)) return this;
+            return new UserRow(id, NOM_PLATEFORME, "", loginEmail, contactEmail, role, status, totpEnabled,
+                    workspaceId, NOM_PLATEFORME, "Administration de la plateforme", createdAt, lastLoginAt);
+        }
+    }
 
     public record PageResponse(
             List<UserRow> items,

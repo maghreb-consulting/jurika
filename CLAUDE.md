@@ -84,9 +84,11 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
   commande contenant `prune`, `docker volume rm`, `docker rm -v`. Toute autre commande Docker
   demande l'accord de l'utilisateur.
 - **Activation en fin de lot** : apres le verify vert et le push, `/lot-complet` active lui-meme
-  la branche du lot sur le Z440 : sauvegarde controlee d'abord (`pg_dump -Fc` de toutes les
-  bases, `pg_dumpall --globals-only`, verifies par `pg_restore --list` ; volume MinIO par
-  `scripts/sauvegarde-volume-par-exec.py`), reconstruction et recreation, etat sain, test de
+  la branche du lot sur le Z440 : sauvegarde controlee d'abord, services applicatifs arretes,
+  par `scripts/sauvegarde-lot.sh <dossier>` (`pg_dump -Fc` de toutes les bases,
+  `pg_dumpall --globals-only`, verifies par `pg_restore --list` ; volume MinIO par
+  `scripts/sauvegarde-volume-par-exec.py` ; documents MinIO reels, hors `.minio.sys`, rapproches
+  des documents en base par `scripts/controle-sauvegarde-minio.py`), reconstruction et recreation, etat sain, test de
   fumee ; resultat dans le rapport final. Echec : retour arriere du code (depuis `main`), jamais
   de restauration de donnees automatique. `/lot-activer <lot>` reste disponible (pas a pas).
 - Les commandes `/lot-demarrer`, `/lot-executer`, `/lot-verifier` et `/lot-cloturer` (mode
@@ -167,8 +169,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 - **Bump des actions CI** : `setup-java@v5`, et les versions d'actions ciblant Node 24 (les
   actions actuelles s'appuient sur des runtimes en fin de vie).
-- **Nettoyage du lint frontend herite** : `frontend-react` porte des avertissements de lint
-  preexistants (bruit dans les annotations CI), a resorber independamment.
 - **`out-of-order: true` : une cle qui ouvre plus que sa serrure.** Active sur CINQ services
   (ai, dashboard, workflow, dataroom, ticket) depuis l'import initial — jamais restreint a
   ticket. Elle affaiblit durablement la garantie d'ordre : une migration de version inferieure
@@ -208,11 +208,10 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L5b (corrections, 2026-10-13) -- dette relevee
 
-- **Titres des PDF de synthese en Times non embarque** (police standard 14, choisie pour une couche
-  texte exacte) : le rendu PDFBox du serveur la remplace par une police aux chasses differentes
-  (espacement irregulier sur les apercus PNG). A verifier dans un vrai lecteur et a l'impression ;
-  sinon embarquer une serif sans ligatures.
-- **Conversations du chatbot jamais purgees** : duree de conservation A_DECIDER directeur (CNDP).
+- **Conversations du chatbot : conservation** (decision du 2026-10-13) : gardees tant que le compte
+  existe, puis elles suivent le sort des donnees du cabinet. A faire en L7 / L8 : inclure
+  `chatbot_conversations` et `chatbot_echanges` (ai, colonne `workspace_id`) dans l'archivage a
+  l'arret du forfait et dans la suppression des donnees d'un cabinet sur sa demande.
 - **`chatbotService.ask` (front)** n'est plus appele par aucun ecran (garde pour
   `scripts/rag-quality-check.mjs`).
 - **Commentaire de dataroom V36** parle encore de Word (migration appliquee, intouchable).
@@ -245,22 +244,11 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   `au-ord-distribution` ("dividendes ou reserves") route vers les seuls dividendes ;
   `OfficialDecision.note` jamais affiche (motif 9). Exoneration de retenue : associe unique personne
   morale sans ecran d'identite.
-- **Ecrans** : `CabinetTab.tsx` annonce des "PDF generes (fiche client, etat des debours)" ;
-  `ProfileSecurityPage` "Changer mon mot de passe" mene a la page de changement obligatoire ;
-  `Sidebar.tsx` et `AppShellSidebar.tsx` ne sont plus montes (code mort) ; `useLenisScroll` exclut
-  encore `/chatbot` ; `scripts/demo-video/capture-demo.mjs` vise l'ancienne page du chatbot.
 - **Auth** : `InviteEmployeUseCase` cherche les doublons sur l'identifiant et non sur
-  `contact_email` ; gabarits de courriel existants (password-changed, verify-email...) et leurs
-  sujets sans accents ; libelles d'audit `DEBOURS_*` absents de `AuditActionLabels`.
+  `contact_email` ; libelles d'audit `DEBOURS_*` absents de `AuditActionLabels`.
 - **Debours** : lignes anterieures avec `piece_jointe_url` affichees sans lien Data Room ;
   dependance `io.minio` inutilisee dans le pom de ticket-service.
 - **Fiche** : un auteur d'un autre workspace s'affiche "Compte inconnu".
-- **Lint herite** (`react-hooks/set-state-in-effect` et autres) : LiquidationWorkflowPage,
-  SeanceOperationForm, modificationResolutions (react-refresh), DossierJuridiqueTab,
-  TicketDetailDrawer, ClientDataroomView, ChatPage, NotificationBell, DemandesTab,
-  RequetesAuClientSection, AuditLogPage.
-- **Tests vitest sensibles a la charge** (delais de 5 s) : step7-documents-conditionnels,
-  liquidation-annonce-corpus, LoginPage et d'autres sous charge machine elevee.
 
 ### Lot L4d (page de ticket, bascule du corpus, 2026-10-12) -- dette relevee
 
@@ -291,14 +279,30 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **Note interne `NOTE_DEFAUT_DECISION_ASSOCIE_UNIQUE_SARL_AU`** du corpus non branchee (constat de
   defaut de decision de l'associe unique).
 
-### Lot L6 (qualite de la langue, ergonomie) -- a prevoir
+### Lot L6 (ergonomie, langue, identite, 2026-10-13) -- dette relevee
 
-- **Passe complete d'ergonomie et d'aide integree** (CDC 15.4) sur tous les ecrans existants,
-  en particulier a chaque statut du ticket : ce qu'il faut faire, ce qui manque, ce qui vient
-  ensuite.
-- **Visite guidee** a la premiere connexion (masquable, reaffichable).
-- **Nouveau logo**, avec sa variante ivoire en mode sombre.
-- **Super-admin affiche "JURIKA"** (et non un nom de cabinet ou de compte).
+- **Messages par defaut de Bean Validation** (`@NotBlank` sans `message`) : en anglais si la JVM
+  n'est pas en francais ; aucun `ValidationMessages_fr` (jurika-common/config).
+- **Theme** : envoye au serveur (`UpdateThemeUseCase`) mais jamais relu par le front (motif 9) ;
+  l'ecran dit desormais "memorise dans ce navigateur".
+- **Recuperation par code** : le compte est cherche sur la colonne `email` et non sur
+  `login_email` ; un utilisateur qui ne connait que son identifiant pourrait echouer (a verifier).
+- **Ecrans** : `TicketPage` affiche les noms techniques des variables (ProvenanceDonnees sans
+  dictionnaire de libelles) ; `OcrSuggestionsPanel` affiche la source "tesseract / llm" ;
+  activite du client : colonne "Utilisateur" = 8 caracteres d'identifiant ; champ "Ticket lie"
+  d'une demande saisi a la main.
+- **Valeurs par defaut silencieuses de la creation** (etape 3 : numeraire 100 000, liberation
+  25 000, 1 000 parts ; etape 5 : nationalite "Marocaine") : a passer en valeurs proposees puis
+  confirmees (comme D6 de L3), A_DECIDER cabinet.
+- **Vitrine et pages legales** : affirmations commerciales non verifiees (hebergement OVH
+  Casablanca, SLA 99,9 %, tarifs et forfaits differents du CDC, "conforme CNDP" alors que la
+  declaration est en cours, messagerie client-employe) ; CGU et confidentialite en brouillon
+  (jargon technique, adresses legal@ / dpo@ / contact@jurika.ma) : A_DECIDER directeur.
+- **billing** : client Stripe cree avec "billing@jurika.ma" a defaut d'adresse ; adresse
+  commerciale par defaut "contact@jurika.ai" (BILLING_SALES_EMAIL).
+- **`scripts/demo-video/seed-demo-content.mjs`** (etape 6) depose des sources du chatbot avec le
+  jeton du cabinet : refuse depuis L5 (super-admin seul).
+- **`ProfessionalType.java`** : libelles non accentues (non affiches par le front).
 
 ### Lot L4b (demarches du corpus, D5, 2026-10-11) -- dette relevee
 
@@ -362,11 +366,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   (E5, E5b, E6) ; 46 fichiers du front citent `SUPERVISEUR`.
 - **Export ZIP du Dossier Juridique** : echec complet (`duplicate entry`) quand deux documents
   d'un meme type portent le meme nom de fichier (`exportSelectionAsZip`).
-- **Dockerfiles Java : `dependency:go-offline ... || true`** (les 10 services) : l'erreur de
-  prechargement reste avalee. La cause vue en E26 (collision du cache Maven partage entre
-  constructions paralleles) est levee depuis L5 E1 (`sharing=locked`) ; l'etape `package` echoue
-  toujours bruyamment. Retirer le `|| true` demande de verifier que go-offline passe sur les
-  modules du reacteur (jurika-common non publie).
 - **Exemple d'environnement serveur** : `.env.local.server.example` n'active pas le profil
   compose `mailhog` (`COMPOSE_PROFILES`) alors que `start-local.sh` attend `jurika-mailhog` :
   une installation faite depuis l'exemple n'atteint jamais 18/18.

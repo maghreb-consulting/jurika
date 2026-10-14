@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="fr">
 <head>
     <meta charset="UTF-8"/>
-    <title>Nouvelle connexion detectee - JURIKA</title>
+    <title>Nouvelle connexion d&eacute;tect&eacute;e - JURIKA</title>
 </head>
 <body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#0F172A;">
 
@@ -12,7 +12,7 @@
             <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
                    style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
 
-                <th:block th:replace="~{email/_base :: header(title='Nouvelle connexion a votre compte')}"/>
+                <th:block th:replace="~{email/_base :: header(title='Nouvelle connexion &agrave; votre compte')}"/>
 
                 <tr>
                     <td style="padding:32px;">
@@ -21,7 +21,7 @@
                         </p>
 
                         <p style="margin:0 0 16px;font-size:15px;line-height:1.55;">
-                            Une connexion a votre compte JURIKA vient d'etre effectuee depuis un
+                            Une connexion &agrave; votre compte JURIKA vient d&rsquo;&ecirc;tre effectu&eacute;e depuis un
                             <strong>appareil ou un emplacement inhabituel</strong>.
                         </p>
 
@@ -45,27 +45,27 @@
                         </div>
 
                         <p style="margin:0 0 16px;font-size:14px;color:#0F172A;line-height:1.55;">
-                            <strong>C'etait vous ?</strong> Aucune action n'est requise.
+                            <strong>C&rsquo;&eacute;tait vous&nbsp;?</strong> Aucune action n&rsquo;est requise.
                         </p>
 
                         <div style="background:#FEF2F2;border:1px solid #FCA5A5;border-radius:8px;padding:16px;margin:24px 0;">
                             <p style="margin:0 0 8px;font-size:13px;color:#991B1B;font-weight:600;">
-                                Ce n'etait pas vous ?
+                                Ce n&rsquo;&eacute;tait pas vous&nbsp;?
                             </p>
                             <p style="margin:0 0 12px;font-size:12px;color:#7F1D1D;line-height:1.55;">
-                                Votre compte est peut-etre compromis. Agissez immediatement :
+                                Votre compte est peut-&ecirc;tre compromis. Agissez imm&eacute;diatement&nbsp;:
                             </p>
                             <ol style="margin:0;padding-left:18px;font-size:12px;color:#7F1D1D;line-height:1.6;">
-                                <li>Changez votre mot de passe JURIKA</li>
-                                <li>Verifiez et regenerez vos codes de recuperation 2FA</li>
-                                <li>Contactez <a href="mailto:support@jurika.ma" style="color:#7F1D1D;">support@jurika.ma</a></li>
+                                <li>changez votre mot de passe JURIKA ;</li>
+                                <li>r&eacute;g&eacute;n&eacute;rez vos codes de r&eacute;cup&eacute;ration de double authentification ;</li>
+                                <li>&eacute;crivez &agrave; <a th:href="${'mailto:' + supportEmail}" style="color:#7F1D1D;" th:text="${supportEmail}">contact</a>.</li>
                             </ol>
                         </div>
 
                         <div style="text-align:center;margin:24px 0;">
                             <a th:href="${securityUrl}"
-                               style="display:inline-block;background:#0c1d3f;color:#c8a45c;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">
-                                Gerer la securite de mon compte
+                               style="display:inline-block;background:#0c1d3f;color:#c9a24a;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">
+                                G&eacute;rer la s&eacute;curit&eacute; de mon compte
                             </a>
                         </div>
 

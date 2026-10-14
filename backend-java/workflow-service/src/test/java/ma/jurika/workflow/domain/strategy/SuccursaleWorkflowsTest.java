@@ -97,7 +97,7 @@ class SuccursaleWorkflowsTest {
         SuccursaleMaWorkflow wf = new SuccursaleMaWorkflow();
         StepResult r = wf.executeStep(ctx(1, Map.of("dateAG", DATE_AG.toString()), Map.of()));
         assertThat(r.canAdvance()).isFalse();
-        assertThat(r.message()).contains("societe mere");
+        assertThat(r.message()).contains("soci\u00e9t\u00e9 m\u00e8re");
     }
 
     @Test
@@ -306,7 +306,7 @@ class SuccursaleWorkflowsTest {
         SuccursaleMaWorkflow wf = new SuccursaleMaWorkflow();
         assertThatThrownBy(() -> wf.executeStep(ctx(6, Map.of(), Map.of())))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("1..5");
+                .hasMessageContaining("1 \u00e0 5");
     }
 
     // ==================================================================
@@ -368,7 +368,7 @@ class SuccursaleWorkflowsTest {
         succOf(p).remove("ville");
         StepResult r = wf.executeStep(ctx(1, p, Map.of()));
         assertThat(r.canAdvance()).isFalse();
-        assertThat(r.message()).contains("succursale a fermer");
+        assertThat(r.message()).contains("succursale \u00e0 fermer");
     }
 
     @Test
@@ -423,7 +423,7 @@ class SuccursaleWorkflowsTest {
         succOf(p).remove("dateFermeture");
         StepResult r = wf.executeStep(ctx(1, p, Map.of()));
         assertThat(r.canAdvance()).isFalse();
-        assertThat(r.message()).contains("date d'effet");
+        assertThat(r.message()).contains("date d\u2019effet");
     }
 
     @Test
@@ -561,7 +561,7 @@ class SuccursaleWorkflowsTest {
         p.remove("denominationSocieteMere");
         StepResult r = wf.executeStep(ctx(1, p, Map.of()));
         assertThat(r.canAdvance()).isFalse();
-        assertThat(r.message()).contains("societe mere");
+        assertThat(r.message()).contains("soci\u00e9t\u00e9 m\u00e8re");
     }
 
     @Test
@@ -597,7 +597,7 @@ class SuccursaleWorkflowsTest {
         p.put("controleApostille", false);
         StepResult r = wf.executeStep(ctx(1, p, Map.of()));
         assertThat(r.canAdvance()).isFalse();
-        assertThat(r.message()).contains("conformite");
+        assertThat(r.message()).contains("conformit\u00e9");
     }
 
     @Test
@@ -698,6 +698,6 @@ class SuccursaleWorkflowsTest {
         SuccursaleEtrWorkflow wf = new SuccursaleEtrWorkflow();
         assertThatThrownBy(() -> wf.executeStep(ctx(8, Map.of(), Map.of())))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("1..5");
+                .hasMessageContaining("1 \u00e0 5");
     }
 }

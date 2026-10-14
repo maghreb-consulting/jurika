@@ -5,12 +5,12 @@ package ma.jurika.ticket.domain.model;
  * Les categories anterieures (V3) sont reprises par la migration ticket V40.
  */
 public enum DeboursCategorie {
-    DROITS_ENREGISTREMENT("Droits d'enregistrement"),
+    DROITS_ENREGISTREMENT("Droits d\u2019enregistrement"),
     FRAIS_GREFFE("Frais de greffe"),
     ANNONCE_LEGALE("Annonce l\u00e9gale"),
     TIMBRES("Timbres"),
     LEGALISATION("L\u00e9galisation"),
-    FRAIS_ORGANISME("Frais d'organisme"),
+    FRAIS_ORGANISME("Frais d\u2019organisme"),
     AUTRE("Autre");
 
     private final String libelle;

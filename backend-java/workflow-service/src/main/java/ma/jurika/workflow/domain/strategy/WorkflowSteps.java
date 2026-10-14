@@ -51,15 +51,15 @@ public final class WorkflowSteps {
     public static String liquidationDelaiError(LocalDate dateDissolution, LocalDate dateCloture) {
         if (dateDissolution == null || dateCloture == null) return null;
         if (dateCloture.isBefore(dateDissolution)) {
-            return "La date de cloture de la liquidation (" + dateCloture + ") ne peut pas "
-                    + "preceder la date de dissolution (" + dateDissolution + ").";
+            return "La date de cl\u00f4ture de la liquidation (" + dateCloture + ") ne peut pas "
+                    + "pr\u00e9c\u00e9der la date de dissolution (" + dateDissolution + ").";
         }
         long jours = ChronoUnit.DAYS.between(dateDissolution, dateCloture);
         if (jours < LIQUIDATION_DELAI_JOURS) {
-            return "Delai legal insuffisant : " + jours + " jour(s) entre la dissolution ("
-                    + dateDissolution + ") et la cloture de la liquidation (" + dateCloture
-                    + "). Une societe ne peut etre liquidee que " + LIQUIDATION_DELAI_JOURS
-                    + " jours au minimum apres sa dissolution.";
+            return "D\u00e9lai l\u00e9gal insuffisant : " + jours + " jour(s) entre la dissolution ("
+                    + dateDissolution + ") et la cl\u00f4ture de la liquidation (" + dateCloture
+                    + "). Une soci\u00e9t\u00e9 ne peut \u00eatre liquid\u00e9e que " + LIQUIDATION_DELAI_JOURS
+                    + " jours au minimum apr\u00e8s sa dissolution.";
         }
         return null;
     }
@@ -86,12 +86,12 @@ public final class WorkflowSteps {
             return "La date de convocation est invalide. Format attendu : AAAA-MM-JJ.";
         }
         if (!dateConv.isBefore(dateAssemblee)) {
-            return "La date de convocation doit preceder la date du PV / de l'assemblee.";
+            return "La date de convocation doit pr\u00e9c\u00e9der la date du PV / de l\u2019assembl\u00e9e.";
         }
         long jours = ChronoUnit.DAYS.between(dateConv, dateAssemblee);
         if (jours < CONVOCATION_DELAI_JOURS) {
-            return "Delai de convocation insuffisant : " + jours + " jour(s) entre la "
-                    + "convocation (" + dateConvStr + ") et l'assemblee (" + dateAssemblee
+            return "D\u00e9lai de convocation insuffisant : " + jours + " jour(s) entre la "
+                    + "convocation (" + dateConvStr + ") et l\u2019assembl\u00e9e (" + dateAssemblee
                     + "). Un minimum de " + CONVOCATION_DELAI_JOURS + " jours est requis.";
         }
         return null;

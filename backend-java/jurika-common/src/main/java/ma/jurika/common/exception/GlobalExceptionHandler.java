@@ -59,7 +59,7 @@ public class GlobalExceptionHandler {
                 .map(fe -> new ErrorResponse.FieldError(fe.getField(), fe.getDefaultMessage()))
                 .toList();
         return ResponseEntity.badRequest()
-                .body(new ErrorResponse("VALIDATION_ERROR", "Donnees invalides", errors));
+                .body(new ErrorResponse("VALIDATION_ERROR", "Donn\u00e9es invalides", errors));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -71,7 +71,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(new ErrorResponse("FORBIDDEN", "Acces refuse"));
+                .body(new ErrorResponse("FORBIDDEN", "Acc\u00e8s refus\u00e9"));
     }
 
     @ExceptionHandler(BusinessException.class)
@@ -127,7 +127,7 @@ public class GlobalExceptionHandler {
             Object value = ife.getValue();
             if (targetType != null && targetType.isEnum()) {
                 message = "Valeur invalide pour le champ '" + field + "' : \"" + value
-                        + "\". Valeurs acceptees : "
+                        + "\". Valeurs accept\u00e9es : "
                         + java.util.Arrays.toString(targetType.getEnumConstants());
             } else {
                 message = "Format invalide pour le champ '" + field + "' : \"" + value
@@ -136,7 +136,7 @@ public class GlobalExceptionHandler {
         } else {
             String rawMsg = ex.getMostSpecificCause() != null
                     ? ex.getMostSpecificCause().getMessage() : ex.getMessage();
-            message = "Requete JSON invalide : " + (rawMsg == null ? "format non reconnu" : rawMsg);
+            message = "Requ\u00eate JSON invalide : " + (rawMsg == null ? "format non reconnu" : rawMsg);
         }
         log.debug("400 JSON invalide : {}", message);
         return ResponseEntity.badRequest()
@@ -150,9 +150,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         Class<?> required = ex.getRequiredType();
-        String message = "Parametre '" + ex.getName() + "' invalide : \"" + ex.getValue() + "\""
+        String message = "Param\u00e8tre '" + ex.getName() + "' invalide : \"" + ex.getValue() + "\""
                 + (required != null && required.isEnum()
-                    ? " (valeurs acceptees : " + java.util.Arrays.toString(required.getEnumConstants()) + ")"
+                    ? " (valeurs accept\u00e9es : " + java.util.Arrays.toString(required.getEnumConstants()) + ")"
                     : (required != null ? " (attendu : " + required.getSimpleName() + ")" : ""));
         log.debug("400 parametre invalide : {}", message);
         return ResponseEntity.badRequest()

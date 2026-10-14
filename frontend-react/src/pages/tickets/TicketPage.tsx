@@ -20,6 +20,8 @@ import { DeboursPanel } from './DeboursPanel';
 import { DemarchesPanel } from './DemarchesPanel';
 import { NoteTicketPanel } from './NoteTicketPanel';
 import { RecapitulatifPanel } from './RecapitulatifPanel';
+import { AideStatutTicket } from './AideStatutTicket';
+import { profilTicket } from './textesAideStatut';
 
 /**
  * Lot L4d (E9) : la page du ticket, une seule pour tous les parcours. Elle réunit ce que
@@ -96,7 +98,7 @@ export function TicketPage() {
   }
 
   if (erreur) return <p role="alert" className="p-6 text-sm text-danger">{erreur}</p>;
-  if (!ticket) return <p className="p-6 text-sm text-fg-subtle">Chargement du ticket…</p>;
+  if (!ticket) return <p role="status" className="p-6 text-sm text-fg-subtle">Chargement du ticket…</p>;
 
   const docs: DocumentSummary[] = (documents?.dossier?.groupes ?? []).flatMap((g) => g.documents);
 
@@ -114,12 +116,18 @@ export function TicketPage() {
         <p className="text-sm text-fg-subtle">
           {ticket.reference} — {TICKET_TYPE_LABELS[ticket.type]}
         </p>
+        <p className="text-xs text-fg-subtle">
+          Où en est l’opération, ce qu’il reste à faire et tout ce que le ticket contient.
+        </p>
         {acces && !canAct && (
           <p className="text-xs text-fg-subtle" data-testid="acces-raison">
             {acces.raison ?? 'Consultation seule — actions réservées à l’employé responsable du dossier.'}
           </p>
         )}
       </header>
+
+      <AideStatutTicket statut={ticket.statut} profil={profilTicket(user?.role, acces?.enCharge === true)}
+        obstacles={passage ? passage.obstacles : null} renvoi />
 
       <TexteAide cle="page-ticket" titre="Comment utiliser cette page ?">
         <p>
@@ -138,7 +146,7 @@ export function TicketPage() {
           Passage de statut
           <InfoBulle
             libelle="Comment le ticket avance-t-il ?"
-            texte="Le ticket suit quatre statuts : création, génération des documents, déroulement de la démarche, clôture. Pour passer au suivant, les démarches obligatoires du statut en cours doivent être cochées et les données attendues saisies. Ce qui manque est listé ici avant toute demande."
+            texte="Le ticket suit quatre statuts : création, génération des documents, déroulement de la démarche, clôture. Pour passer au suivant, les démarches obligatoires du statut en cours doivent être cochées et les données attendues saisies. Ce qui manque est listé ici avant toute demande. Seul l’employé responsable du dossier fait passer le ticket au statut suivant."
           />
         </h2>
         {passage?.suivant ? (

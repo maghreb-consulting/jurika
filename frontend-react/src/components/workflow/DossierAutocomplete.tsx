@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useEffectEvent } from 'react';
 import { Search } from 'lucide-react';
+import { InfoBulle } from '../ui/Aide';
 import { dataroomService } from '../../services/dataroom.service';
 import { LIQUIDATION_DELAI_JOURS, joursCalendairesEntre } from './liquidationDelai';
 import { displayFormeJuridique } from '../../types/dataroom';
@@ -68,15 +69,31 @@ function computeDissolutionDelayBadge(d: DossierBrief): DelaiBadge {
   if (joursDepuis === null) return inconnue;
   if (joursDepuis >= LIQUIDATION_DELAI_JOURS) {
     return {
-      label: `Delai ${LIQUIDATION_DELAI_JOURS} j ecoule`,
+      label: `Délai de ${LIQUIDATION_DELAI_JOURS} jours écoulé`,
       className: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
     };
   }
   const reste = Math.max(0, LIQUIDATION_DELAI_JOURS - joursDepuis);
   return {
-    label: `Delai en cours (il reste ${reste} j)`,
+    label: `Délai en cours (il reste ${reste} jour(s))`,
     className: 'bg-warning/10 text-amber-800 border border-amber-300',
   };
+}
+
+/** L6 : statut de la société en clair (jamais le code interne). */
+const LIBELLES_STATUT: Record<string, string> = {
+  ACTIVE: 'en activité',
+  ACTIF: 'en activité',
+  DISSOUTE: 'dissoute',
+  RADIEE: 'radiée',
+  EN_COURS: 'en cours de création',
+  CLOTURE: 'clôturée',
+  ARCHIVE: 'archivée',
+};
+
+function libelleStatut(statut: unknown): string {
+  const code = (statut ?? '').toString().toUpperCase();
+  return LIBELLES_STATUT[code] ?? code.toLowerCase().replace(/_/g, ' ');
 }
 
 /**
@@ -90,7 +107,7 @@ export function DossierAutocomplete({
   value,
   onSelect,
   allowedStatuts,
-  label = 'Societe concernee',
+  label = 'Société concernée',
   help,
   disabled = false,
   requiredForme,
@@ -104,35 +121,38 @@ export function DossierAutocomplete({
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<DossierBrief | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
+  // Lot L6 : chargement au montage en « événement d'effet » (useEffectEvent) : il lit la valeur
+  // courante sans en dépendre, sans désactiver la règle des dépendances.
+  const chargerDossiers = useEffectEvent(async (estAnnule: () => boolean) => {
       setLoading(true);
       setError(null);
       try {
         const list = await dataroomService.listDossiers();
-        if (cancelled) return;
+        if (estAnnule()) return;
         setDossiers(list);
         if (value) {
           const cur = list.find((d) => d.id === value) ?? null;
           setSelected(cur);
         }
       } catch (e) {
-        if (!cancelled) {
+        if (!estAnnule()) {
           setError(
             (e as { message?: string })?.message ??
-              'Impossible de charger la liste des societes.',
+              'Impossible de charger la liste des sociétés. Rechargez la page.',
           );
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!estAnnule()) setLoading(false);
       }
-    }
-    void load();
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    // Lancement par promesse : aucun état posé de façon synchrone dans l'effet.
+    Promise.resolve().then(() => chargerDossiers(() => cancelled)).catch(() => undefined);
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = useMemo(() => {
@@ -176,7 +196,13 @@ export function DossierAutocomplete({
 
   return (
     <div className="space-y-1">
-      <label className="block text-sm font-medium text-fg-muted">{label} *</label>
+      <label className="flex items-center gap-1 text-sm font-medium text-fg-muted">
+        {label} *
+        <InfoBulle
+          libelle="Comment choisir la société ?"
+          texte="Tapez une partie du nom, de l’ICE ou de la ville, puis cliquez sur la société. Ses données (identité, associés, gérants) sont reprises du dossier : vous n’aurez pas à les ressaisir. Seules les sociétés concernées par cette opération sont proposées."
+        />
+      </label>
 
       {selected ? (
         <div className="flex items-center justify-between rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2">
@@ -191,7 +217,7 @@ export function DossierAutocomplete({
                 : selected.ice
                   ? `ICE ${selected.ice}`
                   : 'ICE manquant'}{' '}
-              · {selected.ville ?? '—'} · Statut {selected.statut}
+              · {selected.ville ?? '—'} · {libelleStatut(selected.statut)}
             </p>
             {showDissolutionDelay && (
               <span
@@ -208,7 +234,7 @@ export function DossierAutocomplete({
               type="button"
               onClick={handleClear}
               className="ml-3 rounded px-2 py-1 text-xs text-emerald-800 hover:bg-emerald-100"
-              aria-label="Changer la societe selectionnee"
+              aria-label="Changer la société sélectionnée"
             >
               Changer
             </button>
@@ -226,10 +252,10 @@ export function DossierAutocomplete({
                 setOpen(true);
               }}
               onFocus={() => setOpen(true)}
-              placeholder={loading ? 'Chargement...' : 'Rechercher par nom, ICE ou ville...'}
+              placeholder={loading ? 'Chargement…' : 'Rechercher par nom, ICE ou ville…'}
               disabled={disabled || loading}
               className="flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed"
-              aria-label="Recherche de societe"
+              aria-label="Recherche de société"
               aria-expanded={open}
             />
           </div>
@@ -245,9 +271,9 @@ export function DossierAutocomplete({
             >
               {filtered.length === 0 ? (
                 <li className="px-3 py-4 text-center text-xs text-fg-subtle">
-                  Aucune societe ne correspond aux criteres
+                  Aucune société ne correspond à la recherche
                   {allowedStatuts && allowedStatuts.length > 0
-                    ? ` (statut requis : ${allowedStatuts.join(', ')})`
+                    ? ` (seules les sociétés ${allowedStatuts.map(libelleStatut).join(' ou ')} sont proposées)`
                     : ''}
                   .
                 </li>
@@ -262,14 +288,14 @@ export function DossierAutocomplete({
                   >
                     <p className="text-sm font-semibold text-fg">{d.raisonSociale}</p>
                     <p className="text-[11px] text-fg-subtle">
-                      {displayFormeJuridique(d) ?? 'Forme ?'} ·{' '}
+                      {displayFormeJuridique(d) ?? 'Forme inconnue'} ·{' '}
                       {d.origine === 'ETRANGERE'
-                        ? (d.pays ?? 'Pays ?')
+                        ? (d.pays ?? 'Pays inconnu')
                         : d.ice
                           ? `ICE ${d.ice}`
-                          : 'ICE ?'}{' '}
+                          : 'ICE manquant'}{' '}
                       · {d.ville ?? '—'} ·{' '}
-                      <span className="font-medium">{d.statut}</span>
+                      <span className="font-medium">{libelleStatut(d.statut)}</span>
                     </p>
                     {showDissolutionDelay && (
                       <span

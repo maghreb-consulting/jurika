@@ -256,7 +256,7 @@ public class WorkflowDocumentController {
         if (templateCode.startsWith("STATUTS")) return variables;
         if (!docxTemplateEngine.emplacementClausesPrevu(mappingService.gabarit(workflowCode, templateCode, payload))) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-                    "Ce modèle ne prévoit pas d'emplacement pour une clause libre : retirez la clause de ce document.");
+                    "Ce mod\u00e8le ne pr\u00e9voit pas d\u2019emplacement pour une clause libre : retirez la clause de ce document.");
         }
         return ma.jurika.ai.document.ClausesLibres.inserer(templateCode, variables, clauses);
     }
@@ -300,11 +300,11 @@ public class WorkflowDocumentController {
                     docxTemplateEngine.articlesDuGabarit(templateCode);
             if (articles.isEmpty()) {
                 return Map.of("possible", false, "motif",
-                        "Ce mod\u00e8le de statuts n'a pas d'articles num\u00e9rot\u00e9s : la clause ne peut pas y \u00eatre plac\u00e9e.");
+                        "Ce mod\u00e8le de statuts n\u2019a pas d\u2019articles num\u00e9rot\u00e9s : la clause ne peut pas y \u00eatre plac\u00e9e.");
             }
             return Map.of("possible", true, "nature", "ARTICLE", "articles", articles,
                     "emplacement", ma.jurika.ai.document.ClausesStatuts.PREFIXE + articles.get(articles.size() - 1).numero(),
-                    "libelle", "Apr\u00e8s l'article choisi");
+                    "libelle", "Apr\u00e8s l\u2019article choisi");
         }
         boolean possible = docxTemplateEngine.emplacementClausesPrevu(
                 mappingService.gabarit(workflowCode, templateCode, Map.of()));
@@ -313,7 +313,7 @@ public class WorkflowDocumentController {
                         "emplacement", ma.jurika.ai.document.ClausesLibres.EMPLACEMENT,
                         "libelle", ma.jurika.ai.document.ClausesLibres.LIBELLE_EMPLACEMENT)
                 : Map.of("possible", false,
-                        "motif", "Ce mod\u00e8le ne pr\u00e9voit pas d'emplacement pour une r\u00e9solution libre.");
+                        "motif", "Ce mod\u00e8le ne pr\u00e9voit pas d\u2019emplacement pour une r\u00e9solution libre.");
     }
 
     /**
@@ -349,7 +349,7 @@ public class WorkflowDocumentController {
         UUID ticketId = ticketDe(payload);
         if (ticketId == null || workspaceId == null || employeId == null) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-                    "Les documents d'annulation se g\u00e9n\u00e8rent depuis le ticket : rechargez la page.");
+                    "Les documents d\u2019annulation se g\u00e9n\u00e8rent depuis le ticket : rechargez la page.");
         }
         Map<String, Object> charge = new java.util.LinkedHashMap<>(
                 chargeUtileCreation.chargerAnnulation(workspaceId, ticketId, employeId));

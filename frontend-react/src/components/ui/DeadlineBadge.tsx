@@ -28,7 +28,7 @@ function relativeFromNow(iso: string): string {
   const days = Math.round((due - now) / 86_400_000);
   if (days < -1) return `il y a ${Math.abs(days)} jours`;
   if (days === -1) return "hier";
-  if (days === 0) return "aujourd'hui";
+  if (days === 0) return 'aujourd’hui';
   if (days === 1) return "demain";
   if (days < 30) return `dans ${days} jours`;
   return `dans ${Math.round(days / 30)} mois`;

@@ -89,7 +89,7 @@ public class DocumentRenderController {
             log.error("Conversion DOCX->PDF echouee pour {} : {}", templateCode, ex.getMessage());
             return ResponseEntity.status(500)
                     .header(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE)
-                    .body(("Conversion PDF echouee : " + ex.getMessage()).getBytes());
+                    .body(("\u00c9chec de la conversion en PDF : " + ex.getMessage()).getBytes());
         }
         String filename = templateCode + ".pdf";
         return ResponseEntity.ok()
@@ -126,7 +126,7 @@ public class DocumentRenderController {
             log.error("Conversion DOCX->PDF echouee pour upload {} : {}", original, ex.getMessage());
             return ResponseEntity.status(500)
                     .header(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE)
-                    .body(("Conversion PDF echouee : " + ex.getMessage()).getBytes());
+                    .body(("\u00c9chec de la conversion en PDF : " + ex.getMessage()).getBytes());
         }
         String filename = basename + ".pdf";
         return ResponseEntity.ok()
@@ -153,7 +153,7 @@ public class DocumentRenderController {
     private ResponseEntity<byte[]> libreOfficeUnavailable() {
         String msg = "LibreOffice non disponible sur le serveur — installer LibreOffice "
                 + "ou definir jurika.docx-to-pdf.soffice-path. Le front doit basculer sur "
-                + "le telechargement .docx.";
+                + "le t\u00e9l\u00e9chargement .docx.";
         return ResponseEntity.status(503)
                 .header(HDR_LO_UNAVAILABLE, "true")
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE)

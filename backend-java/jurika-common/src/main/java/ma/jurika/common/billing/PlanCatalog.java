@@ -114,10 +114,10 @@ public final class PlanCatalog {
             List.of(
                     "2 utilisateurs",
                     "30 dossiers actifs",
-                    "Tous les workflows",
+                    "Tous les parcours juridiques",
                     "Data Room 5 Go",
-                    "Chat client-employe",
-                    "Generation de documents par IA"
+                    "Messagerie entre le client et le cabinet",
+                    "G\u00e9n\u00e9ration des documents juridiques"
             ),
             false,
             null,
@@ -136,35 +136,35 @@ public final class PlanCatalog {
             List.of(
                     "6 utilisateurs",
                     "100 dossiers actifs",
-                    "Tous les workflows",
+                    "Tous les parcours juridiques",
                     "Data Room 20 Go",
-                    "Chat client-employe",
-                    "Generation de documents par IA",
-                    "Chatbot RAG (assistant juridique conversationnel)"
+                    "Messagerie entre le client et le cabinet",
+                    "G\u00e9n\u00e9ration des documents juridiques",
+                    "Assistant juridique conversationnel"
             ),
             true,
-            "Recommande",
+            "Recommand\u00e9",
             false
     );
 
     public static final Plan ENTREPRISE = new Plan(
             "entreprise",
             "Entreprise",
-            "Reseaux & cabinets multi-sites",
+            "R\u00e9seaux et cabinets multisites",
             null,
             null,
             null,
             null,
             new Quotas(-1, -1, -1),
             List.of(
-                    "Utilisateurs illimites",
+                    "Utilisateurs illimit\u00e9s",
                     "Plus de 100 dossiers",
-                    "Tous les workflows",
+                    "Tous les parcours juridiques",
                     "Data Room sur mesure",
-                    "Chat client-employe",
-                    "Generation de documents par IA",
-                    "Chatbot RAG",
-                    "Accompagnement dedie"
+                    "Messagerie entre le client et le cabinet",
+                    "G\u00e9n\u00e9ration des documents juridiques",
+                    "Assistant juridique conversationnel",
+                    "Accompagnement d\u00e9di\u00e9"
             ),
             false,
             null,

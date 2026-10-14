@@ -15,12 +15,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Megaphone } from 'lucide-react';
 import { TextField } from '../ui/TextField';
-import {
-  WorkflowDocumentBlock,
-  freshDocState,
-  useDocumentBlocks,
-  type DocState,
-} from './WorkflowDocumentBlock';
+import { TexteAide } from '../ui/Aide';
+import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
+import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
@@ -112,18 +109,22 @@ export function DissolutionAnnoncePanel({
   const code = isAU ? ANNONCE_DISSOLUTION_SARL_AU : ANNONCE_DISSOLUTION_SARL;
 
   const [docs, setDocs] = useState<Record<string, DocState>>({});
-  const [tpl, setTpl] = useState<TemplateInfo>(() => makeTemplateInfo(code));
-
   // Libellé réel du modèle (documentKind) depuis le manifest — repli local si le
-  // service est indisponible (dégradation gracieuse, jamais bloquante).
+  // service est indisponible (dégradation gracieuse, jamais bloquante). L6 : le modele
+  // trouve est rattache a son code ; le repli se deduit au rendu (plus de mise a jour
+  // synchrone d'etat au debut de l'effet).
+  const [trouve, setTrouve] = useState<TemplateInfo | null>(null);
+  const tpl = useMemo(
+    () => (trouve?.code === code ? trouve : makeTemplateInfo(code)),
+    [trouve, code],
+  );
   useEffect(() => {
     let cancelled = false;
-    setTpl(makeTemplateInfo(code));
     listTemplatesForWorkflow('DISSOLUTION')
       .then((items) => {
         if (cancelled) return;
         const found = items.find((t) => t.code === code);
-        if (found) setTpl(found);
+        if (found) setTrouve(found);
       })
       .catch(() => {
         /* best-effort */
@@ -192,12 +193,17 @@ export function DissolutionAnnoncePanel({
         <h4 className="text-sm font-semibold text-fg">Annonce légale de dissolution</h4>
       </div>
       <p className="text-xs text-fg-subtle">
-        Avis de dissolution anticipée à publier au Journal d'Annonces Légales. La société
-        (dénomination, capital, siège, RC, ville du greffe), la date de l'
-        {isAU ? "assemblée / décision de l'associé unique" : 'AGE'}, le liquidateur et le
-        siège de la liquidation sont repris de l'étape 1 et de la Data Room —{' '}
-        <strong>rien à re-saisir</strong>.
+        Avis de dissolution anticipée à publier dans un journal d’annonces légales. La
+        société (dénomination, capital, siège, RC, ville du greffe), la date de{' '}
+        {isAU ? 'la décision de l’associé unique' : 'l’assemblée générale extraordinaire'}, le
+        liquidateur et le siège de la liquidation sont repris de l’étape 1 et de la Data
+        Room : <strong>rien à ressaisir</strong>.
       </p>
+      <TexteAide cle="dissolution-annonce" titre="Ce qu’il faut faire">
+        Générez l’avis, relisez l’aperçu puis validez-le : il est déposé dans la Data Room
+        du dossier. Le numéro et la date de dépôt légal se saisissent quand le greffe les
+        délivre ; régénérez alors l’avis pour qu’ils y figurent.
+      </TexteAide>
 
       <div className="grid gap-3 md:grid-cols-2">
         <TextField
@@ -216,8 +222,8 @@ export function DissolutionAnnoncePanel({
       </div>
       <p className="text-[11px] text-fg-subtle">
         Ces deux informations sont attribuées par le greffe <strong>après</strong> le dépôt :
-        l'annonce se génère sans elles (les emplacements restent vides). Régénérez l'annonce
-        une fois le numéro connu si vous souhaitez l'y faire figurer.
+        l’annonce se génère sans elles (les emplacements restent vides). Régénérez l’annonce
+        une fois le numéro connu si vous souhaitez l’y faire figurer.
       </p>
 
       <WorkflowDocumentBlock

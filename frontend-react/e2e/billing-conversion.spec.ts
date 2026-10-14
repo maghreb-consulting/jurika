@@ -20,6 +20,7 @@ test.describe('Billing — conversion trial -> active', () => {
     'Necessite Stripe TEST keys + Stripe CLI webhook forwarder (cf. PLAN §3)');
 
   test('signup -> checkout essentiel card 4242 -> active', async ({ page, authenticatedUser }) => {
+    void authenticatedUser; // active la fixture de connexion
     await page.goto('/app/billing');
     await expect(page.getByTestId('billing-page')).toBeVisible();
     await expect(page.getByTestId('billing-no-subscription')).toBeVisible();

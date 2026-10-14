@@ -66,7 +66,8 @@ export function RequetesAuClientSection({
   }, [dossierId]);
 
   useEffect(() => {
-    void load();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(load);
   }, [load]);
 
   const sorted = useMemo(
@@ -109,7 +110,7 @@ export function RequetesAuClientSection({
     <section className="mt-8">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="flex items-center gap-1 text-sm font-semibold text-fg">
-          Mes requêtes au client
+          Requêtes du cabinet au client
           <InfoBulle
             libelle="Aide sur les requêtes au client"
             texte="Une requête demande au client une pièce, une information ou une signature. Elle est « Non traitée » tant que le client n’a pas répondu, « En cours » quand sa réponse est à vérifier ou qu’un complément lui est demandé, « Traitée » une fois que vous avez validé sa réponse. Le client est averti par courriel de chaque nouvelle requête et de chaque complément demandé ; vous êtes notifié dans la cloche quand il répond."
@@ -135,7 +136,7 @@ export function RequetesAuClientSection({
         </div>
       ) : sorted.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border bg-bg-raised p-4 text-center text-xs text-fg-subtle">
-          Aucune requête envoyée à ce client.
+          Aucune requête envoyée à ce client. Quand une pièce ou une réponse vous manque, cliquez sur « Nouvelle requête » : le client la verra dans son espace.
         </p>
       ) : (
         <ul className="space-y-2">
@@ -262,7 +263,7 @@ function NouvelleRequeteModal({
       <div className="w-full max-w-md rounded-xl bg-bg-raised p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-base font-semibold text-fg">Nouvelle requête au client</h3>
-          <button type="button" onClick={onClose} className="text-fg-subtle hover:text-fg">
+          <button type="button" onClick={onClose} aria-label="Fermer" className="text-fg-subtle hover:text-fg">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -291,16 +292,16 @@ function NouvelleRequeteModal({
           onChange={(e) => setSujet(e.target.value)}
           maxLength={200}
           className="mb-3 w-full rounded-lg border border-border bg-bg-raised px-3 py-2 text-sm text-fg focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-          placeholder="Ex. : Fournir le contrat de bail signé"
+          placeholder="Exemple : fournir le contrat de bail signé"
         />
 
-        <label className="mb-1 block text-xs font-medium text-fg-subtle">Description (optionnel)</label>
+        <label className="mb-1 block text-xs font-medium text-fg-subtle">Description (facultatif)</label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
           className="w-full resize-none rounded-lg border border-border bg-bg-raised px-3 py-2 text-sm text-fg focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-          placeholder="Précisez ce que le client doit fournir / répondre…"
+          placeholder="Précisez ce que le client doit fournir ou répondre…"
         />
 
         {error && <p className="mt-2 text-xs text-danger">{error}</p>}

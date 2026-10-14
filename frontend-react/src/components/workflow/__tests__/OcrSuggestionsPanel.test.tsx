@@ -40,7 +40,7 @@ describe('OcrSuggestionsPanel', () => {
     expect(screen.getByText('002345678000077')).toBeDefined();
     expect(screen.getByText('ATLAS SARL')).toBeDefined();
     // Affiche la source et le mode lisible.
-    expect(screen.getByText(/PDF numerique \(couche texte\)/)).toBeDefined();
+    expect(screen.getByText(/PDF numérique \(couche texte\)/)).toBeDefined();
     expect(screen.getByText(/confiance 83%/)).toBeDefined();
 
     const buttons = screen.getAllByRole('button', { name: /Appliquer$/ });
@@ -81,7 +81,7 @@ describe('OcrSuggestionsPanel', () => {
       />,
     );
     expect(screen.getByText(/Aucun champ extrait automatiquement/)).toBeDefined();
-    expect(screen.getByText(/PDF numerique/)).toBeDefined();
+    expect(screen.getByText(/PDF numérique/)).toBeDefined();
     expect(screen.getByText(/ICE non detecte/)).toBeDefined();
   });
 

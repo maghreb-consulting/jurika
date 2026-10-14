@@ -641,7 +641,6 @@ function libelleDeBoucle(nom) {
 
 function ecrireTs(cat) {
   const l = [];
-  l.push('/* eslint-disable */');
   l.push('/**');
   l.push(' * FICHIER GENERE — ne pas editer a la main.');
   l.push(' *   node scripts/lotB/derive-champs-creation.mjs');

@@ -36,8 +36,8 @@ const BIG_TILES = [
   {
     size: 'lg',
     icon: <svg {...ICON_PROPS}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13l2 2 4-4"/></svg>,
-    title: 'Génération documentaire IA',
-    desc: 'Statuts, PV, actes, annonces légales, états débours — générés avec Spring AI 1.0. Validation humaine obligatoire avant publication.',
+    title: 'Génération des actes',
+    desc: 'Statuts, PV, actes, annonces légales — produits à partir des modèles validés de votre cabinet : mêmes données, même acte. Aucune intelligence artificielle ne rédige vos actes ; vous les relisez et les validez.',
   },
 ];
 

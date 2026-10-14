@@ -71,7 +71,7 @@ export function SupervisionDemandesPanel() {
         emptyLabel="Aucune demande client dans le cabinet."
       />
       <SupervisionBlock
-        title="Requêtes aux clients"
+        title="Requêtes du cabinet aux clients"
         icon={Send}
         iconColor="text-accent"
         direction="EMPLOYE_TO_CLIENT"
@@ -177,7 +177,7 @@ function SupervisionBlock({
             <thead className="sticky top-0 bg-bg-overlay">
               <tr>
                 <th className="px-6 py-2.5 text-left text-xs font-semibold uppercase text-fg-subtle">Sujet</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-fg-subtle">Dataroom</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-fg-subtle">Data Room</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-fg-subtle">Employé</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-fg-subtle">État</th>
               </tr>
@@ -186,9 +186,11 @@ function SupervisionBlock({
               {sorted.map((r) => (
                 <tr
                   key={r.id}
-                  onClick={() => navigate(`/data-rooms?dossier=${r.dossierId}&tab=demandes`)}
+                  // Lot L6 (E9) : une requete s'ouvre sur l'onglet « Requetes du cabinet »
+                  // (l'onglet Demandes ne les porte plus depuis le lot 1).
+                  onClick={() => navigate(`/data-rooms?dossier=${r.dossierId}&tab=${direction === 'EMPLOYE_TO_CLIENT' ? 'requetes' : 'demandes'}`)}
                   className="cursor-pointer hover:bg-bg-overlay"
-                  title="Ouvrir dans le Data Room"
+                  title="Ouvrir dans la Data Room"
                 >
                   <td className="max-w-[14rem] px-6 py-3">
                     <p className="truncate text-sm font-medium text-fg">{r.sujet}</p>

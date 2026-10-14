@@ -108,10 +108,10 @@ describe('ClientDashboard', () => {
     expect(listDepots).toHaveBeenCalledWith('dos-1');
 
     // KPIs.
-    expect(screen.getByText('Requetes a traiter')).toBeInTheDocument();
+    expect(screen.getByText('Requêtes à traiter')).toBeInTheDocument();
     expect(screen.getByText('Mes demandes en cours')).toBeInTheDocument();
     expect(screen.getByText('Documents disponibles')).toBeInTheDocument();
-    expect(screen.getByText('Depots effectues')).toBeInTheDocument();
+    expect(screen.getByText('Dépôts effectués')).toBeInTheDocument();
 
     // Requetes a traiter = OUVERTE + A_COMPLETER = 2 (KPI + badge liste).
     expect(screen.getAllByText('2').length).toBeGreaterThanOrEqual(2);
@@ -127,7 +127,7 @@ describe('ClientDashboard', () => {
     expect(screen.getByText('CIN illisible')).toBeInTheDocument();
 
     // Lien vers la page d'action.
-    const lien = screen.getByRole('link', { name: /Demandes de mon conseiller/i });
+    const lien = screen.getByRole('link', { name: /Répondre aux requêtes du cabinet/i });
     expect(lien).toHaveAttribute('href', '/mes-requetes');
 
     // Documents + depots recents.
@@ -149,17 +149,17 @@ describe('ClientDashboard', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByText(/Rien a faire pour le moment/i)).toBeInTheDocument(),
+      expect(screen.getByText(/Rien à faire pour le moment/i)).toBeInTheDocument(),
     );
-    expect(screen.getByText('Aucune demande envoyee.')).toBeInTheDocument();
-    expect(screen.getByText('Aucun document ni depot recent.')).toBeInTheDocument();
+    expect(screen.getByText(/^Aucune demande envoyée\./)).toBeInTheDocument();
+    expect(screen.getByText(/^Aucun document ni dépôt récent\./)).toBeInTheDocument();
 
     // Aucun donut rendu : les deux ChartCard affichent « Aucune donnée ».
     expect(screen.queryByTestId('donut')).not.toBeInTheDocument();
     expect(screen.getAllByText(/Aucune donnée/i)).toHaveLength(2);
 
     // Le KPI « Requetes a traiter » est bien present a 0.
-    const kpi = screen.getByText('Requetes a traiter').closest('div');
+    const kpi = screen.getByText('Requêtes à traiter').closest('div');
     expect(kpi && within(kpi).getByText('0')).toBeTruthy();
   });
 });

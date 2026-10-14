@@ -11,7 +11,7 @@ import {
 } from '../documents-creation';
 // La selection reelle de l'etape 7 : c'est elle qui traduit les lignes cochees
 // en codes de modele, et donc elle qui decide des champs affiches.
-import { codesRetenus } from '../Step7Generation';
+import { codesRetenus } from '../step7Codes';
 
 /**
  * Lot B (2026-09-11) — LE CATALOGUE DU PARCOURS DU 9 SEPTEMBRE.

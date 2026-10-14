@@ -24,9 +24,9 @@ public class CheckWorkspaceUseCase {
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public Result execute(String code) {
         Workspace workspace = workspaceRepository.findByCode(code)
-                .orElseThrow(() -> new NotFoundException("Code workspace inconnu"));
+                .orElseThrow(() -> new NotFoundException("Code workspace inconnu : v\u00e9rifiez le code de votre cabinet."));
         if (!workspace.isActive()) {
-            throw new UnauthorizedException("Ce workspace est suspendu ou desactive");
+            throw new UnauthorizedException("Ce workspace est suspendu ou d\u00e9sactiv\u00e9 : adressez-vous au support JURIKA.");
         }
         return new Result(workspace.id(), workspace.name());
     }

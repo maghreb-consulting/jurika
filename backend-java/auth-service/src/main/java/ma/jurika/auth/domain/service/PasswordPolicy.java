@@ -16,19 +16,19 @@ public class PasswordPolicy {
 
     public void check(String password) {
         if (password == null || password.length() < MIN_LENGTH) {
-            throw new ValidationException("Le mot de passe doit comporter au moins " + MIN_LENGTH + " caracteres");
+            throw new ValidationException("Le mot de passe doit comporter au moins " + MIN_LENGTH + " caract\u00e8res");
         }
         if (!UPPER.matcher(password).matches()) {
-            throw new ValidationException("Le mot de passe doit contenir au moins une majuscule");
+            throw new ValidationException("Le mot de passe doit contenir au moins une majuscule.");
         }
         if (!LOWER.matcher(password).matches()) {
-            throw new ValidationException("Le mot de passe doit contenir au moins une minuscule");
+            throw new ValidationException("Le mot de passe doit contenir au moins une minuscule.");
         }
         if (!DIGIT.matcher(password).matches()) {
-            throw new ValidationException("Le mot de passe doit contenir au moins un chiffre");
+            throw new ValidationException("Le mot de passe doit contenir au moins un chiffre.");
         }
         if (!SPECIAL.matcher(password).matches()) {
-            throw new ValidationException("Le mot de passe doit contenir au moins un caractere special");
+            throw new ValidationException("Le mot de passe doit contenir au moins un caract\u00e8re sp\u00e9cial.");
         }
     }
 }

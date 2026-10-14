@@ -59,7 +59,7 @@ export function SuperAdminDashboard() {
     <div className="space-y-6">
       <header>
         <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-fg-subtle">
-          Console Super Admin
+          Console du super-administrateur
         </p>
         <h1 className="font-heading text-2xl font-semibold text-fg">Plateforme JURIKA</h1>
         <p className="text-sm text-fg-subtle">
@@ -74,7 +74,7 @@ export function SuperAdminDashboard() {
           <ServerCog className="mx-auto mb-3 h-8 w-8 text-fg-subtle" />
           <p className="font-medium text-fg">Tableau de bord indisponible</p>
           <p className="mt-1 text-sm text-fg-subtle">
-            Le service de dashboard n'a pas répondu. Réessayez dans un instant.
+            Le service du tableau de bord n’a pas répondu. Réessayez dans un instant.
           </p>
         </Card>
       )}
@@ -116,7 +116,7 @@ function DashboardContent({ data }: { data: SuperAdminDashboardDto }) {
         <KpiCard
           label="Workspaces"
           value={data.totalWorkspaces}
-          hint={actifs !== null ? `${actifs} actif${actifs > 1 ? 's' : ''}` : `${data.activeWorkspaces30d} actifs sur 30j`}
+          hint={actifs !== null ? `${actifs} actif${actifs > 1 ? 's' : ''}` : `${data.activeWorkspaces30d} actifs sur 30 jours`}
           icon={<Building2 className="h-4 w-4" />}
         />
         <KpiCard
@@ -172,7 +172,7 @@ function DashboardContent({ data }: { data: SuperAdminDashboardDto }) {
           />
         </ChartCard>
         <ChartCard
-          title="Signups (30 jours)"
+          title="Inscriptions (30 jours)"
           icon={<TrendingUp className="h-4 w-4" />}
           empty={data.signups30d.length === 0}
         >
@@ -183,7 +183,7 @@ function DashboardContent({ data }: { data: SuperAdminDashboardDto }) {
       {/* Top workspaces + sante services */}
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard
-          title="Workspaces les plus actifs (7j)"
+          title="Workspaces les plus actifs (7 jours)"
           icon={<Database className="h-4 w-4" />}
           empty={topWs.length === 0}
         >
@@ -245,16 +245,16 @@ function ManagementCards() {
     {
       icon: Users,
       title: 'Utilisateurs',
-      desc: 'Vue cross-workspaces. Reset MDP, suspension.',
+      desc: 'Les utilisateurs de tous les cabinets : réinitialisation du mot de passe, suspension.',
       to: '/admin/users',
       cta: 'Voir les utilisateurs',
     },
     {
       icon: ScrollText,
-      title: "Journal d'audit",
-      desc: 'Toutes les actions plateforme (auth, transferts).',
+      title: "Journal d’audit",
+      desc: 'Toutes les actions de la plateforme (connexions, transferts).',
       to: '/admin/audit',
-      cta: "Consulter l'audit",
+      cta: "Consulter l’audit",
     },
   ];
   return (

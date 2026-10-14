@@ -1,12 +1,8 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
-import {
-  RES_SPECS,
-  ResolutionFieldsEditor,
-  flattenResolution,
-  newResolution,
-} from '../modificationResolutions';
+import { ResolutionFieldsEditor } from '../modificationResolutions';
+import { RES_SPECS, flattenResolution, newResolution } from '../modificationResolutionsSpecs';
 
 vi.mock('../../../services/workflowDocumentService', async (orig) => ({
   ...(await orig<typeof import('../../../services/workflowDocumentService')>()),

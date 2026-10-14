@@ -47,13 +47,13 @@ public class EtatDeboursService {
                 : dossiers.findById(workspaceId, ticket.dossierId()).orElse(null);
         if (dossier == null) {
             throw new BusinessException("ETAT_DEBOURS_SANS_SOCIETE",
-                    "L'\u00e9tat des d\u00e9bours identifie la soci\u00e9t\u00e9 : ce ticket n'est rattach\u00e9 "
+                    "L\u2019\u00e9tat des d\u00e9bours identifie la soci\u00e9t\u00e9 : ce ticket n\u2019est rattach\u00e9 "
                             + "\u00e0 aucun dossier.");
         }
         List<Debours> lignes = debours.findByTicket(workspaceId, ticket.id());
         if (lignes.isEmpty()) {
             throw new BusinessException("ETAT_DEBOURS_VIDE",
-                    "Aucun d\u00e9bours n'est saisi pour ce ticket : l'\u00e9tat ne peut pas \u00eatre \u00e9tabli.");
+                    "Aucun d\u00e9bours n\u2019est saisi pour ce ticket : l\u2019\u00e9tat ne peut pas \u00eatre \u00e9tabli.");
         }
         BigDecimal total = lignes.stream().map(Debours::montantMad).reduce(BigDecimal.ZERO, BigDecimal::add);
         return document.rendre(new EtatDebours(cabinet, dossier,

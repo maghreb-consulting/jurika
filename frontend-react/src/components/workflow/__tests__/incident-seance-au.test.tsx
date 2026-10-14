@@ -23,7 +23,7 @@ describe('Incident de séance en SARL à associé unique', () => {
     render(<IncidentSeancePanel formeJuridique="SARL_AU" societe={{ denomination: 'PARACOSME' }} />);
     fireEvent.click(screen.getByTestId('incident-seance-toggle'));
     expect(await screen.findByTestId('incident-seance-aucun')).toHaveTextContent(
-      'il n\'y a ni quorum ni convocation',
+      'il n’y a ni quorum ni convocation',
     );
   });
 });

@@ -140,7 +140,7 @@ public class DataroomJuridiqueService {
         UUID assignedClient = d.getClientId();
         if (assignedClient == null || !assignedClient.equals(clientUserId)) {
             throw new org.springframework.security.access.AccessDeniedException(
-                    "Acces refuse a ce dossier (RG-DR15 : un client n'a acces qu'a SON dossier).");
+                    "Acc\u00e8s refus\u00e9 \u00e0 ce dossier (RG-DR15 : un client n\u2019a acc\u00e8s qu\u2019\u00e0 son dossier).");
         }
     }
 
@@ -415,7 +415,7 @@ public class DataroomJuridiqueService {
             } catch (Exception ex) {
                 log.error("uploadVersionBatch echec fichier {}/{} ({}): {}",
                         idx, files.size(), f.getOriginalFilename(), ex.getMessage(), ex);
-                throw new RuntimeException("Upload batch echec sur fichier " + idx
+                throw new RuntimeException("Upload batch \u00e9chec sur fichier " + idx
                         + "/" + files.size() + " (" + f.getOriginalFilename() + ") : "
                         + ex.getMessage(), ex);
             }
@@ -578,7 +578,7 @@ public class DataroomJuridiqueService {
                                                  MultipartFile file, UUID uploaderId) {
         if (ticketId == null) {
             throw new ValidationException(
-                    "Un brouillon appartient a une operation : ticketId obligatoire");
+                    "Un brouillon appartient \u00e0 une op\u00e9ration : ticketId obligatoire.");
         }
         // Un dossier archive n'accueille pas davantage de brouillons que d'actes.
         archiveGuard.assertWritable(dossierId, ticketId);
@@ -728,7 +728,7 @@ public class DataroomJuridiqueService {
         DocumentEntity e = documents.findByWorkspaceIdAndId(ws, documentId)
                 .orElseThrow(() -> new NotFoundException("Brouillon inconnu"));
         if (!e.isBrouillon()) {
-            throw new ValidationException("Ce document n'est pas un brouillon");
+            throw new ValidationException("Ce document n\u2019est pas un brouillon");
         }
         documents.delete(e);
         try {
@@ -778,7 +778,7 @@ public class DataroomJuridiqueService {
                 .orElseThrow(() -> new NotFoundException("Document inconnu"));
         if (!previous.isCurrent()) {
             throw new IllegalStateException(
-                    "Le document ciblé n'est plus la version active. "
+                    "Le document cibl\u00e9 n\u2019est plus la version active. "
                             + "Rechargez la liste pour récupérer la version courante.");
         }
         // §A — dossier archive : versionner est interdit. Seule exception, le
@@ -871,7 +871,7 @@ public class DataroomJuridiqueService {
                 && target.getTitle().equals(anchor.getTitle());
         if (!sameSlot) {
             throw new IllegalArgumentException(
-                    "La version ciblée n'appartient pas au même Document logique.");
+                    "La version cibl\u00e9e n\u2019appartient pas au m\u00eame Document logique.");
         }
         // §A — restaurer une ancienne version modifie l'etat en vigueur : interdit
         // sur un dossier archive, sans derogation.
@@ -920,7 +920,7 @@ public class DataroomJuridiqueService {
                 && target.getTitle().equals(anchor.getTitle());
         if (!sameSlot) {
             throw new IllegalArgumentException(
-                    "La version ciblée n'appartient pas au même Document logique.");
+                    "La version cibl\u00e9e n\u2019appartient pas au m\u00eame Document logique.");
         }
         return target;
     }
@@ -989,7 +989,7 @@ public class DataroomJuridiqueService {
                                         boolean pourClient) {
         if (documentIds == null || documentIds.isEmpty()) {
             throw new ma.jurika.common.exception.ValidationException(
-                    "Aucun document selectionne");
+                    "Aucun document s\u00e9lectionn\u00e9");
         }
         org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DataroomJuridiqueService.class);
 

@@ -35,7 +35,7 @@ public class AnnuleHandler implements TicketStatutHandler {
     public void validateTransition(Ticket current, TransitionContext ctx) {
         if (ctx.comment() == null || ctx.comment().trim().length() < MIN_COMMENT_LENGTH) {
             throw new ValidationException(
-                    "Commentaire d'annulation obligatoire (min " + MIN_COMMENT_LENGTH + " caracteres)");
+                    "Commentaire d\u2019annulation obligatoire (min " + MIN_COMMENT_LENGTH + " caract\u00e8res)");
         }
     }
 }

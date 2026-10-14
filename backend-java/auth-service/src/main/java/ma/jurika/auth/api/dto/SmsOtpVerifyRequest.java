@@ -5,5 +5,5 @@ import jakarta.validation.constraints.Pattern;
 
 public record SmsOtpVerifyRequest(
         @NotBlank @Pattern(regexp = "PHONE_VERIFICATION|2FA_LOGIN") String purpose,
-        @NotBlank @Pattern(regexp = "\\d{4,10}", message = "code doit etre numerique") String code
+        @NotBlank @Pattern(regexp = "\\d{4,10}", message = "Le code ne contient que des chiffres.") String code
 ) {}

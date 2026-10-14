@@ -16,7 +16,7 @@ interface Props {
  * Panneau "Activite" contextuel (E2) — historique audit_log d'une entite precise
  * (dossier / ticket). Ouvert a EMPLOYE + SUPERVISEUR.
  */
-export function EntityActivityPanel({ entityType, entityId, title = 'Activite' }: Props) {
+export function EntityActivityPanel({ entityType, entityId, title = 'Activité' }: Props) {
   const [items, setItems] = useState<TracabiliteEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +36,8 @@ export function EntityActivityPanel({ entityType, entityId, title = 'Activite' }
   }, [entityType, entityId]);
 
   useEffect(() => {
-    load();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(load);
   }, [load]);
 
   return (
@@ -57,7 +58,7 @@ export function EntityActivityPanel({ entityType, entityId, title = 'Activite' }
           <Loader2 className="h-5 w-5 animate-spin text-accent" />
         </div>
       ) : items.length === 0 ? (
-        <p className="py-4 text-center text-xs text-fg-subtle">Aucune activite enregistree.</p>
+        <p className="py-4 text-center text-xs text-fg-subtle">Aucune activité enregistrée.</p>
       ) : (
         <ul className="space-y-2">
           {items.map((e) => (

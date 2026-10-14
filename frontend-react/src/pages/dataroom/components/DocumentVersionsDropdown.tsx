@@ -52,7 +52,7 @@ export function DocumentVersionsDropdown({
       const data = await dataroomService.listVersions(documentId);
       setVersions(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Echec du chargement des versions');
+      setError(err instanceof Error ? err.message : 'Échec du chargement des versions');
     } finally {
       setLoading(false);
     }
@@ -69,7 +69,7 @@ export function DocumentVersionsDropdown({
     try {
       await dataroomService.downloadVersion(documentId, v.id, v.filename);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Echec du téléchargement');
+      setError(err instanceof Error ? err.message : 'Échec du téléchargement');
     }
   }
 
@@ -91,7 +91,7 @@ export function DocumentVersionsDropdown({
       await load();
       await onChanged?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Echec de la restauration');
+      setError(err instanceof Error ? err.message : 'Échec de la restauration');
     } finally {
       setRestoringId(null);
     }
@@ -162,7 +162,7 @@ export function DocumentVersionsDropdown({
                       type="button"
                       onClick={() => setPreviewTarget(v)}
                       data-testid={`preview-version-${v.id}`}
-                      title="Apercu de cette version"
+                      title="Aperçu de cette version"
                       className="rounded p-1 text-fg-subtle hover:bg-bg-raised hover:text-fg"
                     >
                       <Eye className="h-3.5 w-3.5" />

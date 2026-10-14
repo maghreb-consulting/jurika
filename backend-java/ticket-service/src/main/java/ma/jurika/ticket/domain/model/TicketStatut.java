@@ -47,6 +47,20 @@ public enum TicketStatut {
                            DEROULEMENT_DEMARCHE, CLOTURE_DOSSIER)
     );
 
+    /**
+     * Libelle affiche a l'utilisateur (L6 E11) : les messages d'erreur nomment le statut
+     * comme l'ecran du ticket, jamais par son code interne.
+     */
+    public String libelle() {
+        return switch (this) {
+            case CREATION_TICKET -> "Cr\u00e9ation du ticket et collecte d\u2019information";
+            case GENERATION_DOCUMENTS -> "G\u00e9n\u00e9ration des documents";
+            case DEROULEMENT_DEMARCHE -> "D\u00e9roulement de la d\u00e9marche";
+            case CLOTURE_DOSSIER -> "Cl\u00f4ture de dossier";
+            case ANNULE -> "Ticket annul\u00e9";
+        };
+    }
+
     /** Ordre d'affichage dans la progression (ANNULE est hors parcours : -1). */
     public int position() {
         return this == ANNULE ? -1 : ordinal() + 1;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Filter, Search, X } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Drawer } from '../../../components/ui/Drawer';
@@ -9,6 +9,7 @@ import {
   type DocumentType,
   type VersionScope,
 } from '../../../types/dataroom';
+import { DEFAULT_FILTERS, type SearchFilters } from './juridiqueFiltres';
 
 /**
  * Sprint 7 / TASK 1.5 -- Barre de recherche + drawer filtres avances
@@ -23,21 +24,6 @@ import {
  * Sync URL : volontairement OUT pour V1 (eviter scope creep). A ajouter
  * via useSearchParams si demande utilisateur (TASK 1 plan ligne 115).
  */
-export interface SearchFilters {
-  q: string;
-  types: (DocumentType | string)[];
-  from: string; // YYYY-MM-DD ou ''
-  to: string;
-  versionScope: VersionScope;
-}
-
-export const DEFAULT_FILTERS: SearchFilters = {
-  q: '',
-  types: [],
-  from: '',
-  to: '',
-  versionScope: 'CURRENT',
-};
 
 interface Props {
   filters: SearchFilters;
@@ -66,10 +52,12 @@ export function JuridiqueSearchBar({
   const [localQuery, setLocalQuery] = useState(filters.q);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    // Sync entrant si parent reset filtres
+  // Synchronisation entrante (le parent remet les filtres a zero), ajustee pendant le rendu.
+  const [qVue, setQVue] = useState(filters.q);
+  if (qVue !== filters.q) {
+    setQVue(filters.q);
     setLocalQuery(filters.q);
-  }, [filters.q]);
+  }
 
   function handleQueryChange(v: string) {
     setLocalQuery(v);
@@ -127,7 +115,7 @@ export function JuridiqueSearchBar({
           <TextField
             value={localQuery}
             onChange={(e) => handleQueryChange(e.target.value)}
-            placeholder="Rechercher dans les documents juridiques (titre, nom de fichier)..."
+            placeholder="Rechercher dans les documents juridiques (titre, nom de fichier)…"
             className="pl-9"
           />
         </div>
@@ -151,7 +139,7 @@ export function JuridiqueSearchBar({
               variant="ghost"
               size="sm"
               onClick={resetAll}
-              title="Reinitialiser tous les filtres"
+              title="Réinitialiser tous les filtres"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -162,8 +150,8 @@ export function JuridiqueSearchBar({
       {(filters.q || activeFiltersCount > 0) && (
         <p className="text-xs text-fg-subtle">
           {loading
-            ? 'Recherche en cours...'
-            : `${totalResults ?? 0} resultat${(totalResults ?? 0) > 1 ? 's' : ''}`}
+            ? 'Recherche en cours…'
+            : `${totalResults ?? 0} résultat${(totalResults ?? 0) > 1 ? 's' : ''}`}
           {filters.q && <> pour <strong>"{filters.q}"</strong></>}
         </p>
       )}
@@ -181,7 +169,7 @@ export function JuridiqueSearchBar({
               size="sm"
               onClick={() => setDraft({ ...DEFAULT_FILTERS, q: filters.q })}
             >
-              Reinitialiser
+              Réinitialiser
             </Button>
             <Button size="sm" onClick={applyDraft}>
               Appliquer
@@ -268,24 +256,4 @@ export function JuridiqueSearchBar({
       </Drawer>
     </>
   );
-}
-
-/**
- * Helper : convertit SearchFilters (UI) -> SearchJuridiqueParams (API).
- * Conversion date YYYY-MM-DD vers Instant ISO 8601 (UTC, debut/fin du jour).
- */
-export function filtersToApiParams(f: SearchFilters): {
-  q?: string;
-  types?: string[];
-  from?: string;
-  to?: string;
-  versionScope?: VersionScope;
-} {
-  return {
-    q: f.q.trim() || undefined,
-    types: f.types.length > 0 ? f.types : undefined,
-    from: f.from ? `${f.from}T00:00:00Z` : undefined,
-    to: f.to ? `${f.to}T23:59:59Z` : undefined,
-    versionScope: f.versionScope,
-  };
 }

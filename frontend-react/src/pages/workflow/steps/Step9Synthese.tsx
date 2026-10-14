@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { useStepAutosave } from '../useStepAutosave';
 import type { DirtyGetter } from '../useWorkflow';
+import { DOCUMENTS_PARCOURS } from './documents-creation';
+import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 
 interface Props {
   data: Record<string, Record<string, unknown>>;
@@ -104,6 +106,17 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
     articleDesignationStatuts,
   };
 
+  /*
+   * L6 : les documents VALIDES a l'etape 7, sous leur libelle du parcours. Avant, la
+   * liste etait ecrite en dur (« Statuts_X.pdf » meme sans statuts generes, au format
+   * PDF retire) et son bouton « Telecharger » ne faisait rien.
+   */
+  const step7 = (data.step7 ?? {}) as Record<string, unknown>;
+  const etatsDocs = (step7.documents ?? step7.generated ?? {}) as Record<string, { validated?: boolean }>;
+  const documentsValides = Object.entries(etatsDocs)
+    .filter(([, st]) => st?.validated === true)
+    .map(([code]) => DOCUMENTS_PARCOURS.find((d) => d.code === code)?.libelle ?? 'Document de la création');
+
   // Flush au navigation (persiste step9.acteParams sans clic explicite).
   useStepAutosave(9, () => ({ acteParams }), registerDirty);
 
@@ -128,25 +141,25 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
   const valeurNominale = Number(cap.valeurNominale ?? 0);
 
   const recap = [
-    { label: 'Denomination', value: denomination },
+    { label: 'Dénomination', value: denomination },
     // Fix B2 (2026-08-16) — la forme était codée en dur : une SARL AU était
     // présentée comme une « SARL » dans sa propre synthèse de création.
     { label: 'Forme juridique', value: formeLabel },
-    { label: 'N° Certificat Negatif', value: String(den.cnNumero ?? '—') },
+    { label: 'N° du certificat négatif', value: String(den.cnNumero ?? '—') },
     { label: 'ICE', value: String(den.ice ?? '—') },
     {
       label: 'Capital social',
       value: `${capitalSocial.toLocaleString('fr-MA')} MAD`,
     },
     {
-      label: 'Capital libere',
+      label: 'Capital libéré',
       value: `${capitalLibere.toLocaleString('fr-MA')} MAD (${pctLibere}%)`,
     },
     {
       label: 'Parts sociales',
-      value: `${nbParts} parts x ${valeurNominale.toFixed(2)} MAD`,
+      value: `${nbParts} parts × ${valeurNominale.toFixed(2)} MAD`,
     },
-    { label: 'Siege social', value: pick([siege, siegeRaw], 'adresse') || '—' },
+    { label: 'Siège social', value: pick([siege, siegeRaw], 'adresse') || '—' },
     {
       // Fix A3 — le tribunal est saisi tantôt à l'étape 1 (tribunal du certificat
       // négatif), tantôt à l'étape 2 (ville du greffe) : on regarde les deux, et
@@ -162,14 +175,14 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
         ) || '—',
     },
     {
-      label: 'Activite',
+      label: 'Activité',
       value: (pick([act, actRaw], 'description', 'objet') || '—').slice(0, 120),
     },
     { label: 'Durée', value: pick([cap, capRaw], 'dureeAnnees') ? `${pick([cap, capRaw], 'dureeAnnees')} ans` : 'non confirmée' },
     {
       // Fix A3 — la date de commencement d'exercice a migré à l'étape Capital
       // (dé-dup 2026-08) : on lit les deux étapes plutôt qu'une seule.
-      label: 'Date debut exercice',
+      label: 'Début de l’exercice',
       value:
         pick(
           [cap, capRaw, act, actRaw],
@@ -179,7 +192,7 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
         ) || '—',
     },
     {
-      label: 'Gerant(s)',
+      label: 'Gérant(s)',
       value:
         dirs.length > 0
           ? dirs
@@ -191,7 +204,7 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
           : '—',
     },
     {
-      label: 'Associes',
+      label: 'Associés',
       value:
         ass.length > 0
           ? ass
@@ -211,18 +224,18 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
           <CheckCircle className="h-12 w-12" />
         </div>
         <h2 className="text-2xl font-black text-success">
-          Dossier finalise !
+          Dossier finalisé
         </h2>
         <p className="text-sm text-fg-subtle">
-          La creation de <strong>{denomination}</strong> a ete finalisee. Tous les
-          documents sont disponibles dans la Data Room du client.
+          La création de <strong>{denomination}</strong> a été finalisée. Les
+          documents validés sont disponibles dans la Data Room du dossier.
         </p>
         <div className="rounded-xl border border-success/20 bg-success/10 p-5 text-left text-sm">
-          <p className="mb-2 font-semibold text-success">Prochaines etapes</p>
+          <p className="mb-2 font-semibold text-success">Prochaines étapes</p>
           <ul className="list-disc space-y-1 pl-5 text-fg-muted">
-            <li>Depot des documents au greffe du tribunal de commerce</li>
-            <li>Publication de l'annonce au Journal d'Annonces Legales (JAL)</li>
-            <li>Recuperation du numero RC et finalisation administrative</li>
+            <li>Dépôt des documents au greffe du tribunal de commerce</li>
+            <li>Publication de l’annonce au journal d’annonces légales</li>
+            <li>Obtention du numéro de RC et finalisation administrative</li>
           </ul>
         </div>
       </div>
@@ -236,18 +249,24 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
           <CheckCircle className="h-8 w-8" />
           <h2 className="text-2xl font-black">
             {/* Fix B2 — titre aligné sur la forme réelle du dossier. */}
-            Synthese — Creation {formeLabel}
+            Synthèse — Création {formeLabel}
           </h2>
         </div>
         <p className="text-green-100">
-          Toutes les etapes sont completees. Voici le recapitulatif du dossier.
+          Toutes les étapes sont complétées. Voici le récapitulatif du dossier.
         </p>
       </div>
+      <TexteAide cle="creation-etape-9" titre="Ce qu’il faut faire">
+        Relisez le récapitulatif ; une erreur se corrige à l’étape concernée (cliquez sur
+        son numéro). Complétez au besoin les paramètres de l’acte, puis cliquez sur
+        « Finaliser le dossier ». Viennent ensuite le dépôt au greffe, la publication de
+        l’annonce légale et l’obtention du numéro de RC.
+      </TexteAide>
 
       {/* 2026-08 (contrat CREATION) — Paramètres de l'acte (voie directeur). */}
       <div className="rounded-xl border border-border bg-bg-raised shadow-sm">
         <div className="border-b border-border p-5">
-          <h3 className="text-base font-bold text-fg">Parametres de l'acte</h3>
+          <h3 className="text-base font-bold text-fg">Paramètres de l’acte</h3>
           <p className="mt-1 text-xs text-fg-subtle">
             Éléments de rédaction repris dans les statuts et l’acte. L’exercice social, le
             commissaire aux comptes, le nombre d’originaux et le lieu, la date et l’heure de
@@ -257,13 +276,13 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
         <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs font-medium text-fg">
-              Cloture du premier exercice (optionnel)
+              Clôture du premier exercice (facultatif)
             </label>
-            <input aria-label="Cloture du premier exercice (optionnel)"
+            <input aria-label="Clôture du premier exercice (facultatif)"
               type="text"
               value={premierExerciceCloture}
               onChange={(e) => setPremierExerciceCloture(e.target.value)}
-              placeholder="Ex: 31 décembre 2026"
+              placeholder="Ex. : 31 décembre 2026"
               className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
             />
           </div>
@@ -293,26 +312,30 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
             </p>
           </div>
           <div className="md:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Article de designation des statuts (optionnel)
+            <label className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
+              Article de désignation des statuts (facultatif)
+              <InfoBulle
+                libelle="Qu’est-ce que l’article de désignation ?"
+                texte="L’article des statuts qui désigne les premiers gérants (par exemple « Article 14 ») ; il est cité dans l’acte. Laissez vide s’il n’y a pas lieu de le citer."
+              />
             </label>
-            <input aria-label="Article de designation des statuts (optionnel)"
+            <input aria-label="Article de désignation des statuts (facultatif)"
               type="text"
               value={articleDesignationStatuts}
               onChange={(e) => setArticleDesignationStatuts(e.target.value)}
-              placeholder="Ex: Article 14"
+              placeholder="Ex. : Article 14"
               className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
             />
           </div>
           <div className="md:col-span-2">
             <label className="mb-1 block text-xs font-medium text-fg">
-              Engagements repris au titre du mandat (optionnel)
+              Engagements repris au titre du mandat (facultatif)
             </label>
-            <textarea aria-label="Engagements repris au titre du mandat (optionnel)"
+            <textarea aria-label="Engagements repris au titre du mandat (facultatif)"
               rows={2}
               value={engagementsMandat}
               onChange={(e) => setEngagementsMandat(e.target.value)}
-              placeholder="Actes accomplis pour le compte de la societe en formation…"
+              placeholder="Actes accomplis pour le compte de la société en formation…"
               className="w-full resize-none rounded-lg border-2 border-border bg-bg-overlay px-3 py-2 text-sm focus:border-accent focus:outline-none"
             />
           </div>
@@ -323,7 +346,7 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
       <div className="rounded-xl border border-border bg-bg-raised shadow-sm">
         <div className="border-b border-border p-5">
           <h3 className="text-base font-bold text-fg">
-            Recapitulatif de la societe
+            Récapitulatif de la société
           </h3>
         </div>
         <div className="p-5">
@@ -349,36 +372,30 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
       <div className="rounded-xl border border-border bg-bg-raised shadow-sm">
         <div className="border-b border-border p-5">
           <h3 className="text-base font-bold text-fg">
-            Documents generes
+            Documents validés
           </h3>
         </div>
         <div className="space-y-2 p-5">
-          <DocLine name={`Statuts_${denomination.replace(/\s/g, '_')}.pdf`} />
-          {dirs
-            .filter((d) => !d.isStatutaire)
-            .map((d) => (
-              <DocLine
-                key={`${d.prenom}-${d.nom}`}
-                name={`Acte_Nomination_${d.prenom}_${d.nom}.pdf`}
-              />
-            ))}
+          {documentsValides.length === 0 ? (
+            <p className="text-sm text-fg-subtle">
+              Aucun document validé pour l’instant. Revenez à l’étape 7 pour générer et
+              valider les documents de la création.
+            </p>
+          ) : (
+            documentsValides.map((libelle, i) => <DocLine key={`${i}-${libelle}`} name={libelle} />)
+          )}
         </div>
       </div>
 
       {/* Actions finales */}
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
-        <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="mb-4">
           <button
             type="button"
-            className="flex h-12 items-center justify-center gap-2 rounded-xl border-2 border-border text-sm font-medium text-fg transition hover:border-accent"
+            onClick={() => window.print()}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-border text-sm font-medium text-fg transition hover:border-accent"
           >
-            <Printer className="h-4 w-4" /> Imprimer la synthese
-          </button>
-          <button
-            type="button"
-            className="flex h-12 items-center justify-center gap-2 rounded-xl border-2 border-border text-sm font-medium text-fg transition hover:border-accent"
-          >
-            <FileText className="h-4 w-4" /> Exporter en PDF
+            <Printer className="h-4 w-4" /> Imprimer la synthèse (ou l’enregistrer en PDF)
           </button>
         </div>
         <button
@@ -404,12 +421,7 @@ function DocLine({ name }: { name: string }) {
       <FileText className="h-5 w-5 text-danger" />
       <span className="flex-1 text-sm font-medium text-fg">{name}</span>
       <CheckCircle className="h-4 w-4 text-success" />
-      <button
-        type="button"
-        className="text-xs text-accent hover:underline"
-      >
-        Telecharger
-      </button>
+      <span className="text-xs text-fg-subtle">Dans la Data Room du dossier</span>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useLayoutEffect } from 'react';
 import type { DirtyGetter } from './useWorkflow';
 
 /**
@@ -27,7 +27,10 @@ export function useStepAutosave(
   // Ref vers la derniere implementation du getter : evite de re-register a
   // chaque render (la fonction passee par le parent change a chaque render).
   const getterRef = useRef<DirtyGetter>(getPayload);
-  getterRef.current = getPayload;
+  // Mise a jour apres le rendu (lot L6 : un ref ne s'ecrit pas pendant le rendu).
+  useLayoutEffect(() => {
+    getterRef.current = getPayload;
+  });
 
   useEffect(() => {
     if (!registerDirty) return;

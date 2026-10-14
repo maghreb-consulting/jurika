@@ -1,4 +1,4 @@
-import type { DragEvent } from 'react';
+import { useState, type DragEvent } from 'react';
 import { Calendar, ArrowRightLeft } from 'lucide-react';
 import { TICKET_TYPE_LABELS, responsableLabel } from '../../types/ticket';
 import type { Ticket } from '../../types/ticket';
@@ -42,6 +42,8 @@ const PRIO_COLORS: Record<
  * Backend ne renvoie pas encore ces donnees -> placeholders supprimes pour rester fidele au modele.
  */
 export function TicketCard({ ticket, onClick, onDragStart }: Props) {
+  // Instant de reference fige au montage de la carte (rendu pur).
+  const [maintenant] = useState(() => Date.now());
   const typeColor = TYPE_COLORS[ticket.type] ?? {
     bg: 'bg-bg-overlay',
     text: 'text-fg-subtle',
@@ -49,9 +51,9 @@ export function TicketCard({ ticket, onClick, onDragStart }: Props) {
   const prio = PRIO_COLORS[ticket.priorite];
 
   // Responsable (assigneId resolu backend) : ligne discrete + avatar initiales.
-  // Le superviseur voit ainsi qui porte chaque ticket ; "Non assigne" sinon.
+  // Le superviseur voit ainsi qui porte chaque ticket ; "Non assigné" sinon.
   const responsable = responsableLabel(ticket);
-  const assigned = responsable !== 'Non assigne';
+  const assigned = responsable !== 'Non assigné';
   const initials = assigned
     ? responsable
         .split(/\s+/)
@@ -63,7 +65,7 @@ export function TicketCard({ ticket, onClick, onDragStart }: Props) {
 
   const overdue =
     ticket.deadline &&
-    new Date(ticket.deadline).getTime() < Date.now() &&
+    new Date(ticket.deadline).getTime() < maintenant &&
     ticket.statut !== 'CLOTURE_DOSSIER' &&
     ticket.statut !== 'ANNULE';
 
@@ -100,9 +102,9 @@ export function TicketCard({ ticket, onClick, onDragStart }: Props) {
           {ticket.transferred && (
             <span
               className="flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent"
-              title="Ticket repris suite a un transfert de dossier"
+              title="Ticket repris à la suite d’un transfert de dossier"
             >
-              <ArrowRightLeft className="h-2.5 w-2.5" /> Transfere
+              <ArrowRightLeft className="h-2.5 w-2.5" /> Transféré
             </span>
           )}
         </div>
@@ -124,7 +126,7 @@ export function TicketCard({ ticket, onClick, onDragStart }: Props) {
       )}
 
       {/* Responsable du ticket : avatar initiales + nom (jamais l'UUID). */}
-      <div className="mt-3 flex items-center gap-1.5 text-xs" title={`Responsable : ${responsable}`}>
+      <div className="mt-3 flex items-center gap-1.5 text-xs" title={`Responsable : ${assigned ? responsable : 'non assigné'}`}>
         <span
           className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${
             assigned ? 'bg-accent/15 text-accent' : 'bg-bg-raised text-fg-subtle'
@@ -133,7 +135,7 @@ export function TicketCard({ ticket, onClick, onDragStart }: Props) {
           {initials}
         </span>
         <span className={`truncate ${assigned ? 'text-fg-muted' : 'text-fg-subtle italic'}`}>
-          {responsable}
+          {assigned ? responsable : 'Non assigné'}
         </span>
       </div>
 
@@ -149,7 +151,7 @@ export function TicketCard({ ticket, onClick, onDragStart }: Props) {
           </span>
         </div>
         <span className="text-[10px] text-fg-subtle">
-          Cree le{' '}
+          Créé le{' '}
           {new Date(ticket.createdAt).toLocaleDateString('fr-FR')}
         </span>
       </div>

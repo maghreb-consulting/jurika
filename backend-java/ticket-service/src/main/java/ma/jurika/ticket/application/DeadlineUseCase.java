@@ -116,9 +116,10 @@ public class DeadlineUseCase {
     public Deadline markCompleted(UUID workspaceId, UUID deadlineId) {
         TenantContext.set(workspaceId);
         Deadline d = repository.findById(workspaceId, deadlineId)
-                .orElseThrow(() -> new NotFoundException("Deadline inconnue"));
+                .orElseThrow(() -> new NotFoundException("\u00c9ch\u00e9ance inconnue."));
         if (d.statut() != DeadlineStatut.OUVERTE) {
-            throw new ConflictException("Deadline deja " + d.statut().name().toLowerCase());
+            throw new ConflictException(d.statut() == DeadlineStatut.TERMINEE
+                    ? "Cette \u00e9ch\u00e9ance est d\u00e9j\u00e0 trait\u00e9e." : "Cette \u00e9ch\u00e9ance est d\u00e9j\u00e0 ignor\u00e9e.");
         }
         return repository.save(d.asCompleted(Instant.now(clock)));
     }
@@ -127,9 +128,10 @@ public class DeadlineUseCase {
     public Deadline dismiss(UUID workspaceId, UUID deadlineId) {
         TenantContext.set(workspaceId);
         Deadline d = repository.findById(workspaceId, deadlineId)
-                .orElseThrow(() -> new NotFoundException("Deadline inconnue"));
+                .orElseThrow(() -> new NotFoundException("\u00c9ch\u00e9ance inconnue."));
         if (d.statut() != DeadlineStatut.OUVERTE) {
-            throw new ConflictException("Deadline deja " + d.statut().name().toLowerCase());
+            throw new ConflictException(d.statut() == DeadlineStatut.TERMINEE
+                    ? "Cette \u00e9ch\u00e9ance est d\u00e9j\u00e0 trait\u00e9e." : "Cette \u00e9ch\u00e9ance est d\u00e9j\u00e0 ignor\u00e9e.");
         }
         return repository.save(d.asDismissed(Instant.now(clock)));
     }

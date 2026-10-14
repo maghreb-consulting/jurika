@@ -51,8 +51,8 @@ const DOC_TYPE_LABELS: Record<UiDocType, string> = {
   BAIL: 'Contrat de bail',
   DOMICILIATION: 'Contrat de domiciliation',
   CNIE: 'CNIE / Carte nationale',
-  CN: 'Certificat negatif',
-  RC: 'Registre de commerce',
+  CN: 'Certificat négatif',
+  RC: 'Registre du commerce',
   IF: 'Identifiant fiscal',
   AUTRE: 'Autre document',
 };
@@ -227,8 +227,8 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
     if (!file) return;
     if (!dossierId) {
       setGlobalError(
-        "Dossier non rattache au ticket -- impossible de deposer dans la dataroom. "
-          + 'Revenez aux tickets et relancez le workflow.',
+        'Aucun dossier n’est rattaché à ce ticket : le dépôt dans la Data Room est impossible. '
+          + 'Revenez à la liste des tickets et rouvrez le parcours.',
       );
       return;
     }
@@ -258,7 +258,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
         title: canonicalName.replace(/\.[^.]+$/, ''),
       });
     } catch (err) {
-      uploadError = (err as Error)?.message ?? 'Echec depot dataroom.';
+      uploadError = (err as Error)?.message ?? 'Le dépôt dans la Data Room a échoué : réessayez.';
     }
 
     setDocs((arr) =>
@@ -290,7 +290,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
       // ne devrait pas etre visible dans ce cas, mais on protege quand meme.
       setDocs((arr) =>
         arr.map((d) => (d.id === id
-          ? { ...d, extractError: "Aucun schema d'extraction pour ce type de document." }
+          ? { ...d, extractError: 'Aucune extraction automatique n’est disponible pour ce type de document.' }
           : d)),
       );
       return;
@@ -303,7 +303,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
     try {
       extraction = await aiService.extract(file, binding.aiSchema);
     } catch (err) {
-      extractError = (err as Error)?.message ?? 'Extraction IA indisponible.';
+      extractError = (err as Error)?.message ?? 'L’extraction automatique est indisponible.';
     }
     setDocs((arr) =>
       arr.map((d) => {
@@ -445,21 +445,20 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
       className="mx-auto max-w-[900px] space-y-6"
     >
       <div className="rounded-xl border border-accent/20 bg-accent/10 p-4 text-xs text-fg">
-        Deposez les documents juridiques deja existants (statuts, bail, CNIE,
-        RC, IF, certificat negatif...). Pour chaque fichier,{' '}
-        <strong>choisissez son type</strong> : le depot dans la Data Room
-        juridique ne se declenche qu'<strong>une fois le type defini</strong>
-        {' '}(et le fichier est renomme selon ce type) — {uploadedCount} /{' '}
-        {docs.length} deposes.{' '}
-        <strong>L'extraction OCR est strictement OPTIONNELLE</strong> et
-        s'active a la demande via le bouton "Extraire" : elle ne bloque
-        jamais la progression.
+        Déposez les documents juridiques existants (statuts, bail, CNIE, RC, IF,
+        certificat négatif…). Pour chaque fichier,{' '}
+        <strong>choisissez son type</strong> : le dépôt dans la Data Room
+        juridique ne se déclenche qu’<strong>une fois le type défini</strong>
+        {' '}(et le fichier est renommé selon ce type) — {uploadedCount} /{' '}
+        {docs.length} déposé{uploadedCount > 1 ? 's' : ''}.{' '}
+        <strong>L’extraction automatique est facultative</strong> : elle se lance
+        à la demande avec le bouton « Extraire » et ne bloque jamais la progression.
       </div>
 
       {!dossierId && (
         <div className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
-          Le ticket n a pas de dossier rattache. Revenez aux tickets et
-          relancez le workflow.
+          Aucun dossier n’est rattaché à ce ticket. Revenez à la liste des tickets
+          et rouvrez le parcours.
         </div>
       )}
 
@@ -487,10 +486,10 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
         >
           <Upload className="mx-auto mb-3 h-10 w-10 text-accent" />
           <p className="text-sm font-semibold text-fg">
-            Glissez-deposez vos PDF / images
+            Glissez-déposez vos fichiers PDF ou images
           </p>
           <p className="text-xs text-fg-subtle">
-            ou cliquez pour parcourir (multi-fichiers)
+            ou cliquez pour les choisir (plusieurs fichiers possibles)
           </p>
           <input
             id="import-files"
@@ -512,15 +511,15 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
       {docs.length > 0 && (
         <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
           <h3 className="mb-1 text-base font-bold text-fg">
-            Documents deposes ({uploadedCount}/{docs.length})
+            Documents déposés ({uploadedCount}/{docs.length})
           </h3>
           {untypedCount > 0 && (
             <p
               className="mb-3 text-[11px] text-warning"
               data-testid="untyped-warning"
             >
-              {untypedCount} fichier(s) en attente de type — choisissez un type
-              pour declencher le depot.
+              {untypedCount} fichier{untypedCount > 1 ? 's' : ''} en attente de type : choisissez un
+              type pour déclencher le dépôt.
             </p>
           )}
           <ul className="space-y-3">
@@ -540,7 +539,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
                       {d.uiType ? (
                         DOC_TYPE_LABELS[d.uiType]
                       ) : (
-                        <span className="text-warning">Type a definir</span>
+                        <span className="text-warning">Type à définir</span>
                       )}
                     </p>
                     {d.error && (
@@ -575,12 +574,12 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
                   ) : !d.uiType ? (
                     <span
                       className="text-[11px] text-warning"
-                      title="Choisissez un type pour deposer"
+                      title="Choisissez un type pour déposer le document"
                     >
                       Type requis
                     </span>
                   ) : (
-                    <span className="text-[11px] text-warning" title="Non depose">
+                    <span className="text-[11px] text-warning" title="Document non déposé : réessayez en le retirant puis en le déposant de nouveau" aria-label="Document non déposé">
                       ⚠
                     </span>
                   )}
@@ -611,7 +610,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
                           ? 'cursor-wait bg-border text-fg-subtle'
                           : 'bg-accent/15 text-accent hover:bg-accent/25'
                       }`}
-                      title="Lance une extraction OCR pour pre-remplir Step1 (optionnel)"
+                      title="Lance une extraction automatique pour pré-remplir la fiche de la société (facultatif)"
                     >
                       {d.extracting ? (
                         <>
@@ -619,21 +618,21 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
                         </>
                       ) : d.fields && Object.keys(d.fields).length > 0 ? (
                         <>
-                          <Sparkles className="h-3.5 w-3.5" /> Re-extraire
+                          <Sparkles className="h-3.5 w-3.5" /> Extraire de nouveau
                         </>
                       ) : (
                         <>
-                          <Sparkles className="h-3.5 w-3.5" /> Extraire (optionnel)
+                          <Sparkles className="h-3.5 w-3.5" /> Extraire (facultatif)
                         </>
                       )}
                     </button>
                     <span className="text-[11px] text-fg-subtle">
-                      L'extraction sert UNIQUEMENT a pre-remplir l'etape suivante.
+                      L’extraction sert uniquement à pré-remplir la fiche de la société.
                       Vous pouvez valider et continuer sans extraire.
                     </span>
                     {d.extractError && (
                       <p className="w-full text-[11px] text-warning">
-                        Extraction IA : {d.extractError}
+                        Extraction automatique : {d.extractError}
                       </p>
                     )}
                   </div>
@@ -681,7 +680,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
               : 'cursor-not-allowed bg-border text-fg-subtle'
           }`}
         >
-          {saving ? 'Validation en cours...' : 'Valider et continuer'}
+          {saving ? 'Validation en cours…' : 'Valider et continuer'}
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>

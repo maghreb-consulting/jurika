@@ -39,20 +39,20 @@ final class SuccursaleSaisieStep {
         Map<String, Object> succ = buildSuccursale(p);
 
         String enseigne = strOrNull(succ.get("enseigne"));
-        if (enseigne == null) return StepResult.blocked("L'enseigne de la succursale est obligatoire.");
+        if (enseigne == null) return StepResult.blocked("L\u2019enseigne de la succursale est obligatoire.");
         String adresse = strOrNull(succ.get("adresse"));
-        if (adresse == null) return StepResult.blocked("L'adresse de la succursale est obligatoire.");
+        if (adresse == null) return StepResult.blocked("L\u2019adresse de la succursale est obligatoire.");
         String ville = strOrNull(succ.get("ville"));
         if (ville == null) return StepResult.blocked("La ville de la succursale est obligatoire.");
         String activite = strOrNull(succ.get("activite"));
-        if (activite == null) return StepResult.blocked("L'activite de la succursale est obligatoire.");
+        if (activite == null) return StepResult.blocked("L\u2019activit\u00e9 de la succursale est obligatoire.");
 
         String dateOuvRaw = strOrNull(succ.get("dateOuverture"));
         if (dateOuvRaw == null) {
-            return StepResult.blocked("La date d'ouverture de la succursale est obligatoire.");
+            return StepResult.blocked("La date d\u2019ouverture de la succursale est obligatoire.");
         }
         if (parseDateOrNull(dateOuvRaw) == null) {
-            return StepResult.blocked("Date d'ouverture invalide. Format attendu : AAAA-MM-JJ.");
+            return StepResult.blocked("Date d\u2019ouverture invalide. Format attendu : AAAA-MM-JJ.");
         }
 
         succ.put("villeGreffe", strOrNull(first0(succ.get("villeGreffe"), ville)));
@@ -61,8 +61,8 @@ final class SuccursaleSaisieStep {
         Long dotation = toLong(first0(succ.get("dotationMontant"), succ.get("dotationChiffres")));
         if (dotationPresente && (dotation == null || dotation <= 0)) {
             return StepResult.blocked(
-                    "Dotation annoncee : precisez son montant (en dirhams). Le montant en "
-                            + "lettres est calcule automatiquement.");
+                    "Dotation annonc\u00e9e : pr\u00e9cisez son montant (en dirhams). Le montant en "
+                            + "lettres est calcul\u00e9 automatiquement.");
         }
         if (!dotationPresente) {
             succ.remove("dotationMontant");
@@ -78,27 +78,27 @@ final class SuccursaleSaisieStep {
             String source = strOrNull(resp.get("source"));
             if (source != null && !responsableSources.contains(source.toUpperCase(Locale.ROOT))) {
                 return StepResult.blocked(
-                        "Origine du responsable invalide : attendu « BD » (gerant / associe du "
+                        "Origine du responsable invalide : attendu \u00ab BD \u00bb (g\u00e9rant / associ\u00e9 du "
                                 + "dossier) ou « EXTERNE » (saisie manuelle).");
             }
             if (source != null) resp.put("source", source.toUpperCase(Locale.ROOT));
             if (strOrNull(resp.get("nom")) == null) {
                 return StepResult.blocked(
-                        "Designez le responsable de la succursale : choisissez un gerant ou un "
-                                + "associe existant, ou saisissez un responsable externe.");
+                        "D\u00e9signez le responsable de la succursale : choisissez un g\u00e9rant ou un "
+                                + "associ\u00e9 existant, ou saisissez un responsable externe.");
             }
             if (strOrNull(resp.get("adresse")) == null) {
-                return StepResult.blocked("L'adresse du responsable de la succursale est obligatoire.");
+                return StepResult.blocked("L\u2019adresse du responsable de la succursale est obligatoire.");
             }
             if (strOrNull(resp.get("pieceNumero")) == null && strOrNull(resp.get("cin")) == null) {
                 return StepResult.blocked(
-                        "Le numero de piece d'identite du responsable est obligatoire "
-                                + "(depot CIN recto-verso + OCR a l'appui).");
+                        "Le num\u00e9ro de pi\u00e8ce d\u2019identit\u00e9 du responsable est obligatoire "
+                                + "(d\u00e9p\u00f4t CIN recto-verso + OCR \u00e0 l\u2019appui).");
             }
             if (strOrNull(resp.get("pouvoirs")) == null) {
                 return StepResult.blocked(
-                        "Precisez les pouvoirs conferes au responsable de la succursale : "
-                                + "ils sont publies dans l'annonce legale.");
+                        "Pr\u00e9cisez les pouvoirs conf\u00e9r\u00e9s au responsable de la succursale : "
+                                + "ils sont publi\u00e9s dans l\u2019annonce l\u00e9gale.");
             }
             succ.put("responsable", resp);
         } else {

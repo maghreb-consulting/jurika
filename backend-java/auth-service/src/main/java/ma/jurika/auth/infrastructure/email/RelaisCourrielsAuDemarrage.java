@@ -60,6 +60,10 @@ public class RelaisCourrielsAuDemarrage {
     @EventListener(ApplicationReadyEvent.class)
     public void annoncer() {
         log.info(resume(fournisseur, hote, port, authentifie, starttls, expediteur));
+        if ("smtp".equals(fournisseur) && (expediteur == null || expediteur.isBlank())) {
+            log.error("Courriels : aucune adresse d'expediteur (SMTP_FROM) : aucun courriel ne partira. "
+                    + "Definir SMTP_FROM, adresse verifiee chez le fournisseur (voir infrastructure/COURRIELS.md).");
+        }
         if (relaisLocal(fournisseur, hote)) {
             log.warn("Courriels : relais local ({}) : dans un conteneur, aucun courriel ne partira. "
                     + "Definir SMTP_HOST (voir infrastructure/COURRIELS.md).", hote);

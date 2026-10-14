@@ -123,8 +123,8 @@ public class GuideTransitionChecks implements TransitionChecks {
             DemarcheEtat e = etat == null ? DemarcheEtat.A_FAIRE : etat.etat();
             if (e != DemarcheEtat.A_FAIRE) continue;
             obstacles.add(d.obligatoire()
-                    ? "Demarche " + d.ordre() + " (obligatoire) non cochee : " + d.libelle()
-                    : "Demarche " + d.ordre() + " (conditionnelle) ni cochee ni ecartee : " + d.libelle());
+                    ? "D\u00e9marche " + d.ordre() + " (obligatoire) non coch\u00e9e : " + d.libelle()
+                    : "D\u00e9marche " + d.ordre() + " (conditionnelle) ni coch\u00e9e ni \u00e9cart\u00e9e : " + d.libelle());
         }
 
         // Controle propre au passage « Generation des documents » -> « Deroulement
@@ -158,8 +158,8 @@ public class GuideTransitionChecks implements TransitionChecks {
         for (String variable : aVerifier.keySet()) {
             Object valeur = RESOLVEURS.get(variable).apply(dossier.get());
             if (valeur == null || String.valueOf(valeur).isBlank()) {
-                manquantes.add("Variable " + variable + " non renseignee sur le dossier "
-                        + "(point de controle du guide : « jeu de variables complet »).");
+                manquantes.add("Variable " + variable + " non renseign\u00e9e sur le dossier "
+                        + "(point de contr\u00f4le du guide : \u00ab jeu de variables complet \u00bb).");
             }
         }
         return manquantes;

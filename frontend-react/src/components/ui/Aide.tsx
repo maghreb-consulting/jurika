@@ -1,5 +1,6 @@
 import { useId, useState, type ReactNode } from 'react';
 import { Info, X } from 'lucide-react';
+import { useAideMasquee, useAidesStore } from '../../store/aidesStore';
 
 /**
  * Aide integree (cahier des charges, section 15.4 ; regle de CLAUDE.md du 2026-10-10) :
@@ -8,7 +9,9 @@ import { Info, X } from 'lucide-react';
  * - `InfoBulle` : une icone focalisable ; le texte s'affiche au survol, au focus
  *   clavier ou au clic (role="tooltip", relie par aria-describedby).
  * - `TexteAide` : un encadre d'aide masquable, puis reaffichable ; le choix est
- *   memorise dans le navigateur (simple commodite : sans stockage, l'aide s'affiche).
+ *   memorise cote serveur, par utilisateur (lot L6, `store/aidesStore`). Le rendu
+ *   lit le magasin, hydrate une fois a la connexion : aucun appel reseau ; sans
+ *   serveur, l'aide s'affiche.
  */
 
 export function InfoBulle({ texte, libelle = 'Aide' }: { texte: string; libelle?: string }) {
@@ -43,35 +46,16 @@ export function InfoBulle({ texte, libelle = 'Aide' }: { texte: string; libelle?
   );
 }
 
-function lireMasquee(cle: string): boolean {
-  try {
-    return window.localStorage.getItem(cle) === '1';
-  } catch {
-    return false;
-  }
-}
-
-function ecrireMasquee(cle: string, masquee: boolean): void {
-  try {
-    if (masquee) window.localStorage.setItem(cle, '1');
-    else window.localStorage.removeItem(cle);
-  } catch {
-    // Stockage indisponible (navigation privee...) : le choix vaut pour la session d'ecran.
-  }
-}
-
 export function TexteAide({ cle, titre, children }: { cle: string; titre: string; children: ReactNode }) {
-  const stockage = `jurika.aide.${cle}.masquee`;
-  const [masquee, setMasquee] = useState(() => lireMasquee(stockage));
+  const masquee = useAideMasquee(cle);
+  const masquer = useAidesStore((s) => s.masquer);
+  const reafficher = useAidesStore((s) => s.reafficher);
 
   if (masquee) {
     return (
       <button
         type="button"
-        onClick={() => {
-          setMasquee(false);
-          ecrireMasquee(stockage, false);
-        }}
+        onClick={() => reafficher(cle)}
         className="inline-flex items-center gap-1 text-xs text-fg-subtle underline hover:text-fg"
       >
         <Info className="h-3.5 w-3.5" aria-hidden="true" />
@@ -91,10 +75,7 @@ export function TexteAide({ cle, titre, children }: { cle: string; titre: string
         type="button"
         aria-label="Masquer l’aide"
         title="Masquer l’aide"
-        onClick={() => {
-          setMasquee(true);
-          ecrireMasquee(stockage, true);
-        }}
+        onClick={() => masquer(cle)}
         className="absolute right-2 top-2 rounded p-0.5 text-fg-subtle hover:text-fg"
       >
         <X className="h-3.5 w-3.5" aria-hidden="true" />

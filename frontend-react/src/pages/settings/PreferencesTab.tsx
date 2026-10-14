@@ -1,6 +1,7 @@
 import { Globe, Moon, Sun } from 'lucide-react';
 import { useThemeStore } from '../../store/themeStore';
 import { Button } from '../../components/ui/Button';
+import { TexteAide } from '../../components/ui/Aide';
 
 /**
  * BUG 11 (2026-06-08) — Onglet Preferences dans /settings.
@@ -20,12 +21,19 @@ export function PreferencesTab() {
     <div className="space-y-4">
       <div>
         <h2 className="flex items-center gap-2 text-lg font-semibold text-fg">
-          <Globe className="h-5 w-5 text-accent" /> Preferences
+          <Globe className="h-5 w-5 text-accent" /> Préférences
         </h2>
         <p className="mt-1 text-sm text-fg-muted">
-          Personnalisez l'apparence et la langue de votre espace JURIKA.
+          Personnalisez l’apparence et la langue de votre espace JURIKA.
         </p>
       </div>
+
+      <TexteAide cle="preferences" titre="Apparence et langue">
+        <p>
+          Cliquez sur « Mode clair » ou « Mode sombre » : le changement est immédiat, rien d’autre à
+          enregistrer.
+        </p>
+      </TexteAide>
 
       {/* Theme */}
       <section className="rounded-2xl border border-border bg-bg-raised p-5">
@@ -49,8 +57,7 @@ export function PreferencesTab() {
           </Button>
         </div>
         <p className="mt-3 text-xs text-fg-muted">
-          Le mode s'applique immediatement et reste synchronise sur tous vos
-          appareils connectes au meme compte (synchro DB).
+          Le mode s’applique immédiatement et reste mémorisé dans ce navigateur.
         </p>
       </section>
 
@@ -61,17 +68,17 @@ export function PreferencesTab() {
         </h3>
         <div className="flex items-center gap-2">
           <Button variant="primary" disabled>
-            Francais (FR)
+            Français (FR)
           </Button>
-          <Button variant="secondary" disabled title="Bientot — Sprint 13 i18n">
+          <Button variant="secondary" disabled title="Pas encore disponible">
             العربية (AR)
           </Button>
-          <Button variant="secondary" disabled title="Bientot — Sprint 13 i18n">
+          <Button variant="secondary" disabled title="Pas encore disponible">
             English (EN)
           </Button>
         </div>
         <p className="mt-3 text-xs text-fg-muted">
-          L'internationalisation AR/EN arrive avec la phase Sprint 13.
+          L’interface est en français. L’arabe et l’anglais ne sont pas encore disponibles.
         </p>
       </section>
     </div>

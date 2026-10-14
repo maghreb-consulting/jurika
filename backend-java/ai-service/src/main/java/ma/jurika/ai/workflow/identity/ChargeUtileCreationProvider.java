@@ -13,6 +13,6 @@ public interface ChargeUtileCreationProvider {
 
     /** Lot L4a (E5) : charge des documents d'annulation, construite par workflow-service. */
     default Map<String, Object> chargerAnnulation(UUID workspaceId, UUID ticketId, UUID employeId) {
-        throw new UnsupportedOperationException("charge d'annulation non disponible");
+        throw new UnsupportedOperationException("charge d\u2019annulation non disponible");
     }
 }

@@ -44,14 +44,14 @@ export function SensitiveTransitionDialog({
 
   const commentValid = comment.trim().length >= minLength;
   const helper =
-    minLength > 1 ? `${comment.trim().length} / ${minLength} caracteres min` : 'Motif obligatoire';
+    minLength > 1 ? `${comment.trim().length} / ${minLength} caractères au minimum` : 'Motif obligatoire';
 
   async function handleConfirm() {
     if (!commentValid) {
       setError(
         minLength > 1
-          ? `Le motif doit comporter au moins ${minLength} caracteres`
-          : 'Le motif est obligatoire',
+          ? `Le motif doit comporter au moins ${minLength} caractères.`
+          : 'Le motif est obligatoire.',
       );
       return;
     }
@@ -110,7 +110,7 @@ export function SensitiveTransitionDialog({
               }}
               rows={4}
               className="mt-3 w-full rounded-lg border border-border-hi px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              placeholder="Ex : Reprise demandee par le client suite a..."
+              placeholder="Exemple : reprise demandée par le client à la suite de…"
             />
             <p className="mt-1 text-xs text-fg-subtle">{helper}</p>
             {error && <p className="mt-1 text-xs text-rose-600">{error}</p>}
@@ -127,7 +127,7 @@ export function SensitiveTransitionDialog({
 
         {step === 'final' && (
           <>
-            <p className="text-sm text-fg-muted">Confirmer definitivement cette action ?</p>
+            <p className="text-sm text-fg-muted">Confirmer définitivement cette action ?</p>
             <div className="mt-3 rounded-lg border border-border bg-bg-overlay p-3 text-xs italic text-fg-muted">
               "{comment}"
             </div>

@@ -68,7 +68,7 @@ describe('ChatPage — accès superviseur (BUG 2)', () => {
 
     // L'input de saisie est présent -> l'envoi n'est plus gaté par isReadOnly.
     expect(
-      await screen.findByPlaceholderText('Ecrire un message...'),
+      await screen.findByPlaceholderText('Écrire un message…'),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Mode superviseur — lecture seule/i)).not.toBeInTheDocument();
   });

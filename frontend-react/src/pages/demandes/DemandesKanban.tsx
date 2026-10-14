@@ -22,9 +22,9 @@ import type {
 // Reprend STATUT_LABEL / STATUT_PILL de ClientDataroomView (non exportes la-bas)
 // pour rester coherent avec l'onglet "Mes Demandes" de la Data Room.
 const STATUT_LABEL: Record<DemandeStatut, string> = {
-  NON_TRAITEE: 'Non traitee',
+  NON_TRAITEE: 'Non traitée',
   EN_COURS: 'En cours',
-  TRAITEE: 'Traitee',
+  TRAITEE: 'Traitée',
 };
 
 const STATUT_PILL: Record<DemandeStatut, { bg: string; text: string }> = {
@@ -86,7 +86,8 @@ export function DemandesKanban() {
   }, []);
 
   useEffect(() => {
-    load();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(load);
   }, [load]);
 
   const grouped = useMemo(() => {
@@ -117,12 +118,13 @@ export function DemandesKanban() {
     <div className="space-y-6 p-6">
       <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs text-fg-subtle">Espace client securise</p>
+          <p className="text-xs text-fg-subtle">Espace client sécurisé</p>
           <h1 className="font-heading text-2xl font-semibold text-fg">
             Mes demandes
           </h1>
           <p className="text-sm text-fg-subtle">
-            Soumettez vos demandes au cabinet et suivez leur avancement.
+            Adressez vos demandes au cabinet et suivez leur avancement : « Non traitée » tant que
+            votre conseiller ne l’a pas prise en charge, puis « En cours », puis « Traitée ».
           </p>
         </div>
         <Button
@@ -145,7 +147,7 @@ export function DemandesKanban() {
         <div className="rounded-2xl border border-border bg-bg-raised p-12 text-center">
           <MessageSquare className="mx-auto mb-3 h-10 w-10 text-fg-subtle" />
           <p className="text-sm text-fg-subtle">
-            Aucun Data Room n'est associe a votre compte.
+            Aucune Data Room n’est associée à votre compte. Si votre cabinet vous a invité, contactez votre conseiller.
           </p>
         </div>
       ) : (
@@ -419,7 +421,7 @@ function NouvelleDemandeModal({
               type="text"
               value={sujet}
               onChange={(e) => setSujet(e.target.value)}
-              placeholder="Ex : Modification de l'objet social"
+              placeholder="Exemple : modification de l’objet social"
               className="h-10 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm text-fg outline-none focus:border-accent focus:ring-1 focus:ring-[#7C3AED]"
               required
             />
@@ -432,7 +434,7 @@ function NouvelleDemandeModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              placeholder="Decrivez votre demande en detail..."
+              placeholder="Décrivez votre demande en détail…"
               className="w-full resize-none rounded-lg border border-border bg-bg-raised px-3 py-2.5 text-sm text-fg outline-none focus:border-accent focus:ring-1 focus:ring-[#7C3AED]"
             />
           </div>

@@ -22,10 +22,10 @@ export function CancelTicketDialog({ ticket, onClose, onConfirm }: Props) {
     <SensitiveTransitionDialog
       title="Annuler le ticket"
       intro={
-        "L'annulation conserve le statut atteint. Depuis la fiche du ticket, vous préparerez ensuite "
-        + "la note d'annulation, une lettre de retrait pour chaque administration où un dépôt a été fait, "
+        "L’annulation conserve le statut atteint. Depuis la fiche du ticket, vous préparerez ensuite "
+        + "la note d’annulation, une lettre de retrait pour chaque administration où un dépôt a été fait, "
         + "et le bordereau de restitution des pièces. Le ticket pourra être repris à son statut antérieur "
-        + "tant qu'aucun retrait n'a été effectué. Vous allez annuler le ticket"
+        + "tant qu’aucun retrait n’a été effectué. Vous allez annuler le ticket"
       }
       reference={ticket.reference}
       minLength={10}

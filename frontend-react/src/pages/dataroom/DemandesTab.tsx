@@ -88,7 +88,8 @@ export function DemandesTab({
   }, [dossierId]);
 
   useEffect(() => {
-    load();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(load);
   }, [load]);
 
   const counts = useMemo(() => {
@@ -145,7 +146,9 @@ export function DemandesTab({
           )}
           {!loading && demandes.length === 0 && (
             <li className="px-5 py-8 text-center text-sm text-fg-subtle">
-              Aucune demande pour ce dossier.
+              {role === 'CLIENT'
+                ? 'Aucune demande pour ce dossier. Cliquez sur « Nouvelle demande » pour écrire au cabinet.'
+                : 'Aucune demande du client pour ce dossier. Les demandes qu’il adresse au cabinet apparaîtront ici.'}
             </li>
           )}
           {demandes.map((demande) => (
@@ -219,7 +222,7 @@ function DemandeRow({ demande, editable, onChanged }: DemandeRowProps) {
             </Badge>
             {demande.ticketId && (
               <Badge variant="neutral" className="text-[10px]">
-                Ticket lie
+                Ticket lié
               </Badge>
             )}
           </div>
@@ -230,7 +233,7 @@ function DemandeRow({ demande, editable, onChanged }: DemandeRowProps) {
           )}
           <p className="mt-1 text-xs text-fg-subtle">
             Soumise le {formatDateTime(demande.createdAt)}
-            {demande.traiteAt ? ` • Traitee le ${formatDateTime(demande.traiteAt)}` : ''}
+            {demande.traiteAt ? ` • Traitée le ${formatDateTime(demande.traiteAt)}` : ''}
           </p>
           {demande.noteInterne && !editing && (
             <div className="mt-2 rounded-lg border border-border bg-bg-overlay px-3 py-2 text-xs text-fg-muted">
@@ -245,7 +248,7 @@ function DemandeRow({ demande, editable, onChanged }: DemandeRowProps) {
                 size="sm"
                 variant="secondary"
                 onClick={() => setTicketDrawerOpen(true)}
-                title="Créer un ticket à partir de cette demande (optionnel)"
+                title="Ouvrir un ticket pour l’opération demandée ; il sera lié à la demande"
               >
                 <TicketPlus className="mr-1 h-4 w-4" />
                 Créer un ticket
@@ -267,10 +270,11 @@ function DemandeRow({ demande, editable, onChanged }: DemandeRowProps) {
             options={STATUT_OPTIONS}
           />
           <TextField
-            label="Ticket lie (optionnel)"
+            label="Ticket lié (facultatif)"
             value={ticketId}
             onChange={(e) => setTicketId(e.target.value)}
-            placeholder="UUID du ticket"
+            placeholder="Identifiant du ticket"
+            hint="Le plus simple : le bouton « Créer un ticket » ouvre le ticket et le lie à la demande."
           />
           <div className="flex flex-col gap-1 md:col-span-2">
             <label className="text-sm font-medium text-fg-muted">
@@ -349,7 +353,10 @@ function CreateTicketDrawer({ open, onClose, demande, onCreated }: CreateTicketD
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Remise a zero a l'ouverture, ajustee pendant le rendu (pas d'etat pose dans un effet).
+  const [ouvertureVue, setOuvertureVue] = useState<{ open: boolean; demande: DemandeSummary } | null>(null);
+  if (!ouvertureVue || ouvertureVue.open !== open || ouvertureVue.demande !== demande) {
+    setOuvertureVue({ open, demande });
     if (open) {
       setTitre(demande.sujet ?? '');
       setDescription(demande.description ?? '');
@@ -357,7 +364,7 @@ function CreateTicketDrawer({ open, onClose, demande, onCreated }: CreateTicketD
       setPriorite('NORMALE');
       setError(null);
     }
-  }, [open, demande]);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -390,7 +397,7 @@ function CreateTicketDrawer({ open, onClose, demande, onCreated }: CreateTicketD
       open={open}
       onClose={onClose}
       title="Créer un ticket"
-      subtitle="À partir de cette demande client (optionnel)"
+      subtitle="Le ticket ouvert sera lié à cette demande du client."
       width="md"
     >
       <form onSubmit={submit} noValidate className="space-y-4">
@@ -460,13 +467,16 @@ function NewDemandeDrawer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Remise a zero a l'ouverture, ajustee pendant le rendu (pas d'etat pose dans un effet).
+  const [ouvertVu, setOuvertVu] = useState<boolean | null>(null);
+  if (ouvertVu !== open) {
+    setOuvertVu(open);
     if (open) {
       setSujet('');
       setDescription('');
       setError(null);
     }
-  }, [open]);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -497,7 +507,7 @@ function NewDemandeDrawer({
       open={open}
       onClose={onClose}
       title="Nouvelle demande"
-      subtitle="Votre demande sera transmise au cabinet"
+      subtitle="Votre demande sera transmise au cabinet."
       width="md"
     >
       <form onSubmit={submit} noValidate className="space-y-4">
@@ -505,7 +515,7 @@ function NewDemandeDrawer({
           label="Sujet"
           value={sujet}
           onChange={(e) => setSujet(e.target.value)}
-          placeholder="Ex : Modification de l'objet social"
+          placeholder="Exemple : modification de l’objet social"
           required
         />
         <div className="flex flex-col gap-1">
@@ -516,7 +526,7 @@ function NewDemandeDrawer({
             rows={4}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Decrivez votre besoin..."
+            placeholder="Décrivez votre besoin…"
             className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
           />
         </div>

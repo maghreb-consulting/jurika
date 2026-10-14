@@ -18,11 +18,11 @@ export function SignupStepper({ currentStep }: SignupStepperProps) {
   const steps = [
     { number: 0 as const, label: 'Forfait' },
     { number: 1 as const, label: 'Profil' },
-    { number: 2 as const, label: 'Securite' },
-    { number: 3 as const, label: '2FA' },
-    { number: 4 as const, label: 'Recap' },
+    { number: 2 as const, label: 'Sécurité' },
+    { number: 3 as const, label: 'Authentification' },
+    { number: 4 as const, label: 'Récapitulatif' },
     { number: 5 as const, label: 'Paiement' },
-    { number: 6 as const, label: 'Succes' },
+    { number: 6 as const, label: 'Terminé' },
   ];
 
   return (

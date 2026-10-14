@@ -6,8 +6,6 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
-import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
@@ -86,27 +84,26 @@ public final class JurikaPdfDocument implements AutoCloseable {
 
     JurikaPdfDocument() {
         try {
-            // Titres en serif = Times (Standard-14), volontairement NON embarque.
-            // Les serifs elegants embarques (Playfair, Lora...) ont un GSUB 'liga'
-            // dont PDFBox genere une table ToUnicode incorrecte : « Identifiants »
-            // s'extrayait « Identiants », cassant Ctrl+F / copier-coller / indexation.
-            // Times garantit une couche texte exacte (encodage WinAnsi standard,
-            // pas de subset ni de ToUnicode a generer) — critere non negociable pour
-            // un document remis a une banque/administration. Inter (corps) est
-            // embarque et s'extrait proprement (verifie par test).
-            this.serif = new PDType1Font(Standard14Fonts.FontName.TIMES_ROMAN);
-            this.serifBold = new PDType1Font(Standard14Fonts.FontName.TIMES_BOLD);
-            this.sans = loadFont(JurikaPdfTheme.FONT_SANS, Standard14Fonts.FontName.HELVETICA);
-            this.sansBold = loadFont(JurikaPdfTheme.FONT_SANS_BOLD, Standard14Fonts.FontName.HELVETICA_BOLD);
+            // Lot L6 (E1) : toutes les polices sont EMBARQUEES (Inter, licence libre SIL OFL 1.1),
+            // pour un rendu identique sur tous les ordinateurs et a l'impression. Les titres etaient
+            // en Times non embarque (police standard 14) : chaque lecteur la remplacait par sa propre
+            // police, aux chasses differentes (espacement irregulier constate en L5b). Inter est
+            // embarque en entier (voir loadFont) : la couche texte reste exacte.
+            this.sans = loadFont(JurikaPdfTheme.FONT_SANS);
+            this.sansBold = loadFont(JurikaPdfTheme.FONT_SANS_BOLD);
+            this.serif = this.sans;
+            this.serifBold = this.sansBold;
             startPage();
         } catch (IOException ex) {
             throw new RuntimeException("Echec initialisation PDF : " + ex.getMessage(), ex);
         }
     }
 
-    private PDFont loadFont(String resource, Standard14Fonts.FontName fallback) {
+    private PDFont loadFont(String resource) {
         try (InputStream in = getClass().getResourceAsStream(resource)) {
-            if (in == null) return new PDType1Font(fallback);
+            // Lot L6 (E1) : plus de repli silencieux sur une police non embarquee (Helvetica) :
+            // une police absente est un defaut de livraison, il doit se voir.
+            if (in == null) throw new IllegalStateException("Police absente du classpath : " + resource);
             // embedSubset = false : on embarque Inter en entier. Le sous-ensemble de
             // PDFBox corrompt la table ToUnicode des glyphes atteignables par ligature
             // (ff/fl/ffi) -> la couche texte (Ctrl+F, copier-coller, indexation)
@@ -114,7 +111,7 @@ public final class JurikaPdfDocument implements AutoCloseable {
             // par PDF (Inter Regular + Bold complets), acceptable.
             return PDType0Font.load(doc, in, false);
         } catch (IOException ex) {
-            return new PDType1Font(fallback);
+            throw new IllegalStateException("Police illisible : " + resource, ex);
         }
     }
 

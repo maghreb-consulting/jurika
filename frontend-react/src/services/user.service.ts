@@ -21,7 +21,6 @@ export const userService = {
       // Backend V22 pas encore appliqué -> degrade gracieux, on ne lève pas.
       // L'utilisateur reste sur sa préférence locale (localStorage).
       if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
         console.warn('[userService] setPreferredTheme deferred (backend V22 pending):', err);
       }
     }

@@ -155,6 +155,6 @@ class LoginUseCaseTest {
         assertThatThrownBy(() -> useCase.execute(new LoginUseCase.Command(
                 "JUR-AB123", "u@j.ma", "p", "ip", "ua")))
                 .isInstanceOf(UnauthorizedException.class)
-                .hasMessageContaining("Workspace inactif");
+                .hasMessageContaining("Ce workspace n\u2019est pas actif : adressez-vous au support JURIKA.");
     }
 }

@@ -14,11 +14,11 @@ interface Rule {
 }
 
 const RULES: Rule[] = [
-  { label: 'Au moins 12 caracteres', test: (v) => v.length >= 12 },
+  { label: 'Au moins 12 caractères', test: (v) => v.length >= 12 },
   { label: 'Une majuscule', test: (v) => /[A-Z]/.test(v) },
   { label: 'Une minuscule', test: (v) => /[a-z]/.test(v) },
   { label: 'Un chiffre', test: (v) => /[0-9]/.test(v) },
-  { label: 'Un caractere special (!@#$%...)', test: (v) => /[^A-Za-z0-9]/.test(v) },
+  { label: 'Un caractère spécial (!@#$%…)', test: (v) => /[^A-Za-z0-9]/.test(v) },
 ];
 
 export function ForceChangePasswordPage() {
@@ -58,23 +58,23 @@ export function ForceChangePasswordPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-warning/10 via-bg-raised to-accent/10 px-4">
       <div className="w-full max-w-md">
-        <div className="mb-8 flex items-center justify-center gap-2">
-          <BrandLogo size={40} />
-          <span className="font-heading font-heading text-2xl font-semibold text-fg">JURIKA</span>
+        <div className="mb-8 flex items-center justify-center">
+          <BrandLogo variant="full" size={48} />
         </div>
 
         <Card className="p-8">
           <div className="space-y-2 text-center">
             <KeyRound className="mx-auto h-10 w-10 text-warning" />
-            <h2 className="font-heading text-xl font-semibold text-fg">Changement obligatoire</h2>
+            <h1 className="font-heading text-xl font-semibold text-fg">Choisissez votre mot de passe</h1>
             <p className="text-sm text-fg-muted">
-              Pour des raisons de securite, vous devez definir un nouveau mot de passe avant de continuer.
+              Par sécurité, remplacez le mot de passe temporaire reçu par courriel avant de continuer.
+              Étape suivante : la double authentification.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
             <TextField
-              label="Mot de passe temporaire (recu par email)"
+              label="Mot de passe temporaire (reçu par courriel)"
               type="password"
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
@@ -90,7 +90,7 @@ export function ForceChangePasswordPage() {
               required
             />
             <TextField
-              label="Confirmer le mot de passe"
+              label="Confirmez le nouveau mot de passe"
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
@@ -98,20 +98,20 @@ export function ForceChangePasswordPage() {
               required
             />
 
-            <ul className="space-y-1 rounded-lg border border-border bg-bg-overlay px-3 py-2 text-xs">
+            <ul aria-label="Règles du mot de passe" className="space-y-1 rounded-lg border border-border bg-bg-overlay px-3 py-2 text-xs">
               {ruleStatus.map((r) => (
                 <li
                   key={r.label}
-                  className={`flex items-center gap-2 ${r.ok ? 'text-emerald-700' : 'text-fg-subtle'}`}
+                  className={`flex items-center gap-2 ${r.ok ? 'text-success' : 'text-fg-subtle'}`}
                 >
-                  {r.ok ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
+                  {r.ok ? <Check className="h-3.5 w-3.5" aria-label="respectée" /> : <X className="h-3.5 w-3.5" aria-label="à respecter" />}
                   {r.label}
                 </li>
               ))}
               <li
-                className={`flex items-center gap-2 ${passwordsMatch ? 'text-emerald-700' : 'text-fg-subtle'}`}
+                className={`flex items-center gap-2 ${passwordsMatch ? 'text-success' : 'text-fg-subtle'}`}
               >
-                {passwordsMatch ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
+                {passwordsMatch ? <Check className="h-3.5 w-3.5" aria-label="respectée" /> : <X className="h-3.5 w-3.5" aria-label="à respecter" />}
                 Les deux saisies correspondent
               </li>
             </ul>
@@ -124,7 +124,7 @@ export function ForceChangePasswordPage() {
 
             <Button type="submit" className="w-full" loading={loading} disabled={!canSubmit}>
               <ShieldCheck className="mr-2 h-4 w-4" />
-              Definir et continuer
+              Enregistrer et continuer
             </Button>
           </form>
         </Card>

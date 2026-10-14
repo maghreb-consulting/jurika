@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FileText, Upload, X, CheckCircle } from 'lucide-react';
+import { InfoBulle } from '../ui/Aide';
 import { workflowService } from '../../services/workflow.service';
 import type { WorkflowProgress } from '../../types/workflow';
 
@@ -71,7 +72,7 @@ export function WorkflowPiecesPanel({
       });
       onProgressUpdate?.(updated);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Echec enregistrement piece');
+      setError(err instanceof Error ? err.message : 'Échec de l’enregistrement de la pièce. Réessayez.');
     } finally {
       setBusy(null);
     }
@@ -84,7 +85,7 @@ export function WorkflowPiecesPanel({
       const updated = await workflowService.unregisterPiece(ticketId, code);
       onProgressUpdate?.(updated);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Echec suppression piece');
+      setError(err instanceof Error ? err.message : 'Échec du retrait de la pièce. Réessayez.');
     } finally {
       setBusy(null);
     }
@@ -97,13 +98,17 @@ export function WorkflowPiecesPanel({
     <section className="rounded-2xl border border-border bg-bg-raised p-4">
       <header className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-fg">
-          Pieces jointes du dossier
+          Pièces jointes du dossier
+          <InfoBulle
+            libelle="À quoi sert cette liste ?"
+            texte="Elle rassemble les pièces importées au fil du parcours. Importez une pièce attendue avec « Importer » ; retirez-la avec la croix pour la remplacer."
+          />
           <span className="ml-2 text-xs font-normal text-fg-subtle">
-            {registered.length} deposee{registered.length > 1 ? 's' : ''}
+            {registered.length} déposée{registered.length > 1 ? 's' : ''}
           </span>
         </h3>
         <p className="text-xs text-fg-subtle">
-          Une piece uploadee reste disponible dans toutes les etapes suivantes.
+          Une pièce importée reste disponible dans toutes les étapes suivantes.
         </p>
       </header>
 
@@ -114,7 +119,7 @@ export function WorkflowPiecesPanel({
       )}
 
       {registered.length === 0 && missingKnown.length === 0 && (
-        <p className="text-xs text-fg-subtle">Aucune piece deposee pour l'instant.</p>
+        <p className="text-xs text-fg-subtle">Aucune pièce déposée pour l’instant : importez-les au fil des étapes.</p>
       )}
 
       <ul className="space-y-2">
@@ -129,7 +134,7 @@ export function WorkflowPiecesPanel({
               <p className="truncate text-xs text-fg-subtle">
                 {p.filename ?? '—'}
                 {p.sizeBytes ? ` · ${humanSize(p.sizeBytes)}` : ''}
-                {p.uploadedAtStep ? ` · etape ${p.uploadedAtStep}` : ''}
+                {p.uploadedAtStep ? ` · étape ${p.uploadedAtStep}` : ''}
               </p>
             </div>
             <button
@@ -138,7 +143,7 @@ export function WorkflowPiecesPanel({
               disabled={busy === p.code}
               className="rounded p-1 text-fg-subtle hover:bg-danger/10 hover:text-danger disabled:opacity-50"
               aria-label={`Retirer ${p.label}`}
-              title="Retirer cette piece"
+              title="Retirer cette pièce"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -159,11 +164,11 @@ export function WorkflowPiecesPanel({
                   </span>
                 )}
               </p>
-              <p className="text-xs text-fg-subtle">A deposer</p>
+              <p className="text-xs text-fg-subtle">À déposer</p>
             </div>
             <label className="flex cursor-pointer items-center gap-1 rounded-md border border-accent/40 bg-accent/10 px-2 py-1 text-xs text-accent hover:bg-accent/20">
               <Upload className="h-3 w-3" />
-              {busy === k.code ? 'Envoi...' : 'Importer'}
+              {busy === k.code ? 'Envoi…' : 'Importer'}
               <input
                 type="file"
                 accept="application/pdf,image/*"

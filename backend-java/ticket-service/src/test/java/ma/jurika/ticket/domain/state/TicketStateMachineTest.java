@@ -82,7 +82,7 @@ class TicketStateMachineTest {
         Ticket t = ticket(TicketStatut.CREATION_TICKET, null);
         assertThatThrownBy(() -> transition(t, TicketStatut.GENERATION_DOCUMENTS, ""))
                 .isInstanceOf(ConflictException.class)
-                .hasMessageContaining("assigne");
+                .hasMessageContaining("assign\u00e9");
     }
 
     @Test
@@ -113,7 +113,10 @@ class TicketStateMachineTest {
         Ticket t = ticket(TicketStatut.GENERATION_DOCUMENTS, UUID.randomUUID());
         assertThatThrownBy(() -> transition(t, TicketStatut.CLOTURE_DOSSIER, null))
                 .isInstanceOf(ConflictException.class)
-                .hasMessageContaining("Transition invalide");
+                .hasMessageContaining("Transition invalide")
+                // L6 E11 : les statuts sont nommes par leur libelle, jamais par leur code.
+                .hasMessageContaining("du statut \u00ab G\u00e9n\u00e9ration des documents \u00bb au statut \u00ab Cl\u00f4ture de dossier \u00bb")
+                .hasMessageNotContaining("GENERATION_DOCUMENTS");
         assertThat(appels).as("le controle metier ne doit meme pas etre sollicite").isEmpty();
     }
 
@@ -140,7 +143,7 @@ class TicketStateMachineTest {
         Ticket t = ticket(TicketStatut.DEROULEMENT_DEMARCHE, UUID.randomUUID());
         assertThatThrownBy(() -> transition(t, TicketStatut.DEROULEMENT_DEMARCHE, null))
                 .isInstanceOf(ConflictException.class)
-                .hasMessageContaining("deja au statut");
+                .hasMessageContaining("d\u00e9j\u00e0 au statut \u00ab D\u00e9roulement de la d\u00e9marche \u00bb");
     }
 
     @Test
@@ -184,7 +187,7 @@ class TicketStateMachineTest {
         Ticket t = ticket(source, UUID.randomUUID());
         assertThatThrownBy(() -> transition(t, TicketStatut.ANNULE, "court"))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("10 caracteres");
+                .hasMessageContaining("10 caract\u00e8res");
     }
 
     // =================================================================

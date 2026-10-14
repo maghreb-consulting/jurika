@@ -283,17 +283,17 @@ public class WopiService {
         Instant now = Instant.now();
         if (pourEcriture ? !s.ecritureAutorisee(now) : !s.lectureAutorisee(now)) {
             throw new WopiAccesRefuse(pourEcriture
-                    ? "seance close ou expiree, hors fenetre de grace"
-                    : "seance close ou expiree");
+                    ? "s\u00e9ance close ou expir\u00e9e, hors fen\u00eatre de gr\u00e2ce"
+                    : "s\u00e9ance close ou expir\u00e9e");
         }
         // Le fileId de l'URL ne porte aucune autorite : il doit correspondre.
         if (!s.getDocumentId().equals(fileIdDeLUrl)) {
-            throw new WopiAccesRefuse("le fileId ne correspond pas a la seance");
+            throw new WopiAccesRefuse("le fileId ne correspond pas \u00e0 la s\u00e9ance");
         }
         // Cloisonnement multi-tenant EXPLICITE, a chaque appel. On ne suppose
         // jamais que la RLS filtrera : jurika_user a BYPASSRLS ici.
         DocumentEntity doc = documents.findByWorkspaceIdAndId(s.getWorkspaceId(), fileIdDeLUrl)
-                .orElseThrow(() -> new WopiAccesRefuse("document hors du workspace de la seance"));
+                .orElseThrow(() -> new WopiAccesRefuse("document hors du workspace de la s\u00e9ance"));
 
         // LE DOCUMENT EFFECTIF DE LA SEANCE.
         //
@@ -409,7 +409,7 @@ public class WopiService {
         Instant now = Instant.now();
 
         WopiVerrouEntity actuel = verrouVivant(s.getWorkspaceId(), s.getDocumentId(), now)
-                .orElseThrow(() -> new WopiVerrouConflit("", null, "aucun verrou a rafraichir"));
+                .orElseThrow(() -> new WopiVerrouConflit("", null, "aucun verrou \u00e0 rafraichir"));
         if (!estLeSien(actuel, s, lockId)) {
             throw conflit(actuel, "verrou detenu par un autre editeur");
         }
@@ -430,7 +430,7 @@ public class WopiService {
         Instant now = Instant.now();
 
         WopiVerrouEntity actuel = verrouVivant(s.getWorkspaceId(), s.getDocumentId(), now)
-                .orElseThrow(() -> new WopiVerrouConflit("", null, "aucun verrou a relacher"));
+                .orElseThrow(() -> new WopiVerrouConflit("", null, "aucun verrou \u00e0 relacher"));
         if (!estLeSien(actuel, s, lockId)) {
             throw conflit(actuel, "verrou detenu par un autre editeur");
         }
@@ -510,7 +510,7 @@ public class WopiService {
     }
 
     private static String nomOuDefaut(String nom) {
-        return (nom == null || nom.isBlank()) ? "un autre employe" : nom;
+        return (nom == null || nom.isBlank()) ? "un autre employ\u00e9" : nom;
     }
 
     @Transactional(readOnly = true)
@@ -592,7 +592,7 @@ public class WopiService {
         // jeton invalide reçoit une réponse différente selon le corps de la
         // requête, ce qui renseigne un attaquant sur ce qui a échoué.
         if (contenu == null || contenu.length == 0) {
-            throw new IllegalArgumentException("corps vide : ce n'est pas une sauvegarde");
+            throw new IllegalArgumentException("corps vide : ce n\u2019est pas une sauvegarde");
         }
         WopiSessionEntity s = c.session();
         DocumentEntity d = c.document();
@@ -626,7 +626,7 @@ public class WopiService {
                 // elle n'est pas écrasée.
                 var resume = juridique.replaceAsNewVersion(
                         d.getId(), new ContenuEnMemoire(contenu, nomDeFichier(d), d.getContentType()),
-                        "Édition manuelle dans l'éditeur bureautique", s.getUserId());
+                        "\u00c9dition manuelle dans l\u2019\u00e9diteur bureautique", s.getUserId());
                 DocumentEntity nouvelle = documents
                         .findByWorkspaceIdAndId(s.getWorkspaceId(), resume.id())
                         .orElseThrow(() -> new IllegalStateException("version creee introuvable"));
@@ -666,7 +666,7 @@ public class WopiService {
         try (var in = new java.io.ByteArrayInputStream(contenu)) {
             storage.upload(cle, in, contenu.length, TYPE_DOCX);
         } catch (java.io.IOException ex) {
-            throw new IllegalStateException("Echec ecriture du document edite : " + ex.getMessage(), ex);
+            throw new IllegalStateException("\u00c9chec ecriture du document edite : " + ex.getMessage(), ex);
         }
         d.setObjectKey(cle);
         d.setSizeBytes(contenu.length);

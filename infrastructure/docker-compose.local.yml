@@ -81,7 +81,9 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_AUTH: ${SMTP_AUTH:-false}
       SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
-      SMTP_FROM: ${SMTP_FROM:-noreply@jurika.ma}
+      # Lot L6 (E5) : aucune adresse par defaut. jurika.ma n'est pas deploye (mise en production) :
+      # l'expediteur est l'adresse verifiee chez le fournisseur, definie dans .env.local.
+      SMTP_FROM: "${SMTP_FROM:?SMTP_FROM absent : adresse d'expediteur verifiee chez le fournisseur, dans .env.local}"
       # Plan limits enforcement (T3) actif par defaut en demo.
       JURIKA_PLAN_LIMITS_ENABLED: "true"
     volumes:

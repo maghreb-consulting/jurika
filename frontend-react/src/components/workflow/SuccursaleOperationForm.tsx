@@ -23,28 +23,25 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Sparkles } from 'lucide-react';
+import { TexteAide } from '../ui/Aide';
 import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
 import { TypePieceProposee, ValeurProposee } from './ValeurProposee';
-import {
-  WorkflowDocumentBlock,
-  freshDocState,
-  useDocumentBlocks,
-  type DocState,
-} from './WorkflowDocumentBlock';
+import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
+import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
 } from '../../services/workflowDocumentService';
+import { SeanceFormFields } from './SeanceForm';
 import {
-  SeanceFormFields,
   sanitizeFilename,
   useSeanceForm,
   type AssocieInput,
   type GerantInput,
   type SeanceSections,
   type SeanceSocieteInput,
-} from './SeanceForm';
+} from './seanceFormEtat';
 import type { DocumentType } from '../../types/dataroom';
 import { USAGES_CABINET } from '../../lib/usagesCabinet';
 
@@ -310,8 +307,11 @@ export function SuccursaleOperationForm({
 
   const [docs, setDocs] = useState<Record<string, DocState>>({});
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
-  const [loadTemplatesError, setLoadTemplatesError] = useState<string | null>(null);
+  // L6 : erreur de chargement rattachee a la demande ; « en cours » se deduit (plus de
+  // mise a jour synchrone d'etat au debut de l'effet). La liste chargee n'est jamais vide.
+  const [erreurModeles, setErreurModeles] = useState<{ cle: string; message: string } | null>(null);
+  const loadTemplatesError = erreurModeles?.cle === pvCode ? erreurModeles.message : null;
+  const loadingTemplates = templates.length === 0 && !loadTemplatesError;
 
   /**
    * Valeurs EFFECTIVES du bloc succursale. Avec `locked`, la source de vérité est
@@ -470,8 +470,6 @@ export function SuccursaleOperationForm({
   useEffect(() => {
     if (templates.length > 0) return;
     let cancelled = false;
-    setLoadingTemplates(true);
-    setLoadTemplatesError(null);
     listTemplatesForWorkflow(workflowCode)
       .then((items) => {
         if (cancelled) return;
@@ -480,12 +478,7 @@ export function SuccursaleOperationForm({
       })
       .catch((err) => {
         if (cancelled) return;
-        setLoadTemplatesError(
-          err instanceof Error ? err.message : 'Impossible de charger le modèle.',
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingTemplates(false);
+        setErreurModeles({ cle: pvCode, message: err instanceof Error ? err.message : 'Impossible de charger le modèle.', });
       });
     return () => {
       cancelled = true;
@@ -498,12 +491,17 @@ export function SuccursaleOperationForm({
 
   return (
     <div className="space-y-5">
+      <TexteAide cle="succursale-operation" titre="Ce qu’il faut faire">
+        Complétez la séance et, s’il y a lieu, l’identité de la société mère, puis générez le
+        procès-verbal, relisez son aperçu et validez-le : il est déposé dans la Data Room du
+        dossier. Une donnée manquante vous est nommée à la génération.
+      </TexteAide>
       {isEtr && (
         <Section title="Société mère étrangère">
           <div className="grid gap-3 md:grid-cols-2">
             <TextField label="Dénomination" value={mereDenomination} onChange={(e) => setMereDenomination(e.target.value)} />
-            <TextField label="Forme juridique (pays d'origine)" value={mereForme} onChange={(e) => setMereForme(e.target.value)} placeholder="Ltd, GmbH, SAS…" />
-            <TextField label="Pays d'origine" value={merePays} onChange={(e) => setMerePays(e.target.value)} />
+            <TextField label="Forme juridique (pays d’origine)" value={mereForme} onChange={(e) => setMereForme(e.target.value)} placeholder="Ltd, GmbH, SAS…" />
+            <TextField label="Pays d’origine" value={merePays} onChange={(e) => setMerePays(e.target.value)} />
             <TextField label="Capital" value={mereCapital} onChange={(e) => setMereCapital(e.target.value)} placeholder="Ex : 500 000 EUR" />
             <div className="md:col-span-2">
               <TextField label="Siège social" value={mereSiege} onChange={(e) => setMereSiege(e.target.value)} />
@@ -518,13 +516,13 @@ export function SuccursaleOperationForm({
       )}
 
       {isEtr && (
-        <Section title="Organe compétent (décision d'ouverture)">
+        <Section title="Organe compétent (décision d’ouverture)">
           <div className="grid gap-3 md:grid-cols-2">
-            <TextField label="Organe compétent" value={organeCompetent} onChange={(e) => setOrganeCompetent(e.target.value)} placeholder="Ex : le conseil d'administration" />
+            <TextField label="Organe compétent" value={organeCompetent} onChange={(e) => setOrganeCompetent(e.target.value)} placeholder="Ex : le conseil d’administration" />
             <TextField label="Date de la décision" type="date" value={organeDate} onChange={(e) => setOrganeDate(e.target.value)} />
             <TextField label="Heure" type="time" value={organeHeure} onChange={(e) => setOrganeHeure(e.target.value)} />
             <TextField label="Lieu" value={organeLieu} onChange={(e) => setOrganeLieu(e.target.value)} />
-            <TextField label="Voix pour" value={organeVoixPour} onChange={(e) => setOrganeVoixPour(e.target.value)} placeholder="Ex : 5 / l'unanimité" />
+            <TextField label="Voix pour" value={organeVoixPour} onChange={(e) => setOrganeVoixPour(e.target.value)} placeholder="Ex : 5 / l’unanimité" />
           </div>
         </Section>
       )}
@@ -585,7 +583,7 @@ export function SuccursaleOperationForm({
           {isFermeture ? (
             <>
               <TextField label="N° RC secondaire" value={rcNumero} onChange={(e) => setRcNumero(e.target.value)} />
-              <TextField label="Date d'effet de la fermeture" type="date" value={dateFermeture} onChange={(e) => setDateFermeture(e.target.value)} />
+              <TextField label="Date d’effet de la fermeture" type="date" value={dateFermeture} onChange={(e) => setDateFermeture(e.target.value)} />
               <div className="md:col-span-2">
                 <ValeurProposee id="succ-motif-fermeture" label="Motif de la fermeture"
                   proposition="cessation de l'activité exercée dans la succursale"
@@ -594,7 +592,7 @@ export function SuccursaleOperationForm({
             </>
           ) : (
             <>
-              <TextField label="Date d'ouverture" type="date" value={dateOuverture} onChange={(e) => setDateOuverture(e.target.value)} />
+              <TextField label="Date d’ouverture" type="date" value={dateOuverture} onChange={(e) => setDateOuverture(e.target.value)} />
               <Select
                 label="Dotation présente ?"
                 value={dotationPresente}

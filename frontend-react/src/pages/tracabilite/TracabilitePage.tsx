@@ -6,6 +6,7 @@ import { TextField } from '../../components/ui/TextField';
 import { Select } from '../../components/ui/Select';
 import { tracabiliteService } from '../../services/tracabilite.service';
 import { extractError } from '../../lib/api';
+import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { formatDateTime } from '../../lib/date';
 import { useWorkspaceDirectory } from '../../components/tracabilite/useWorkspaceDirectory';
 import { useEntityNames } from '../../components/tracabilite/useEntityNames';
@@ -16,20 +17,20 @@ const PAGE_SIZE = 50;
 // Actions metier les plus utiles en filtre rapide (le backend accepte tout code).
 const ACTION_OPTIONS = [
   { value: '', label: 'Toutes les actions' },
-  { value: 'TICKET_CREATED', label: 'Ticket cree' },
-  { value: 'TICKET_TRANSITIONED', label: 'Statut ticket modifie' },
-  { value: 'TICKET_ASSIGNED', label: 'Ticket reassigne' },
-  { value: 'DOSSIER_TRANSFERE', label: 'Dossier transfere' },
-  { value: 'DOCUMENT_UPLOADED', label: 'Document juridique depose' },
-  { value: 'COMPTABLE_UPLOADED', label: 'Document comptable depose' },
-  { value: 'FISCAL_UPLOADED', label: 'Document fiscal depose' },
+  { value: 'TICKET_CREATED', label: 'Ticket créé' },
+  { value: 'TICKET_TRANSITIONED', label: 'Statut du ticket modifié' },
+  { value: 'TICKET_ASSIGNED', label: 'Ticket réattribué' },
+  { value: 'DOSSIER_TRANSFERE', label: 'Dossier transféré' },
+  { value: 'DOCUMENT_UPLOADED', label: 'Document juridique déposé' },
+  { value: 'COMPTABLE_UPLOADED', label: 'Document comptable déposé' },
+  { value: 'FISCAL_UPLOADED', label: 'Document fiscal déposé' },
   { value: 'EXERCICE_OPENED', label: 'Exercice ouvert' },
-  { value: 'DATAROOM_DELETED', label: 'Data Room supprime' },
-  { value: 'PERMISSIONS_CHANGED', label: 'Permissions modifiees' },
+  { value: 'DATAROOM_DELETED', label: 'Data Room supprimée' },
+  { value: 'PERMISSIONS_CHANGED', label: 'Droits d’accès modifiés' },
 ];
 
 const ENTITY_OPTIONS = [
-  { value: '', label: 'Toutes les entites' },
+  { value: '', label: 'Tous les éléments' },
   { value: 'ticket', label: 'Ticket' },
   { value: 'dossier', label: 'Dossier' },
   { value: 'document', label: 'Document' },
@@ -39,14 +40,20 @@ const ENTITY_OPTIONS = [
 const ACTOR_STATUS_OPTIONS = [
   { value: '', label: 'Tous' },
   { value: 'ACTIVE', label: 'Actifs' },
-  { value: 'RETIRED', label: 'Retires (desactives / supprimes)' },
+  { value: 'RETIRED', label: 'Retirés (désactivés ou supprimés)' },
 ];
+
+/** Libelle d'un type d'element trace (ticket, dossier, document). */
+function libelleTypeElement(type: string | null | undefined): string {
+  if (!type) return '—';
+  return ENTITY_OPTIONS.find((o) => o.value === type)?.label ?? type;
+}
 
 export function TracabilitePage() {
   const [items, setItems] = useState<TracabiliteEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<TracabiliteFilters>({});
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -59,7 +66,7 @@ export function TracabilitePage() {
   const actorGroups = useMemo(() => {
     const fmt = (u: (typeof directory)[number]) => {
       const name = `${u.firstName} ${u.lastName}`.trim() || u.email;
-      const retired = u.status === 'INACTIVE' ? ' (retire)' : '';
+      const retired = u.status === 'INACTIVE' ? ' (retiré)' : '';
       return { u, name, retired };
     };
     const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'fr');
@@ -77,7 +84,7 @@ export function TracabilitePage() {
         label: `${name}${retired}${u.email ? ` — ${u.email}` : ''}`,
       }));
     const groups: { label: string; options: { value: string; label: string }[] }[] = [];
-    if (employees.length) groups.push({ label: 'Employes & superviseur', options: employees });
+    if (employees.length) groups.push({ label: 'Employés et superviseur', options: employees });
     if (clients.length) groups.push({ label: 'Clients', options: clients });
     return groups;
   }, [directory]);
@@ -96,30 +103,40 @@ export function TracabilitePage() {
         ...tickets.map((t) => ({ value: t.id, label: `${t.reference} — ${t.titre}` })),
       ];
     }
-    return [{ value: '', label: 'Choisir un type d’entite d’abord' }];
+    return [{ value: '', label: 'Choisissez d’abord un type d’élément' }];
   }, [entityType, dossiers, tickets]);
 
   // Le <Select> entite n'est pertinent que pour les types listables (dossier/ticket).
   const entitySelectable = entityType === 'dossier' || entityType === 'ticket';
 
-  const load = useCallback(async (off: number, f: TracabiliteFilters) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const page = await tracabiliteService.search({ ...f, limit: PAGE_SIZE, offset: off });
-      setItems(page.items);
-      setTotal(page.total);
-      setOffset(page.offset);
-    } catch (err) {
-      setError(extractError(err).message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Recuperation seule : les mises a jour d'etat suivent la reponse.
+  const recuperer = useCallback(
+    (off: number, f: TracabiliteFilters) =>
+      tracabiliteService
+        .search({ ...f, limit: PAGE_SIZE, offset: off })
+        .then((page) => {
+          setItems(page.items);
+          setTotal(page.total);
+          setOffset(page.offset);
+          setError(null);
+        })
+        .catch((err) => setError(extractError(err).message))
+        .finally(() => setLoading(false)),
+    [],
+  );
 
   useEffect(() => {
-    load(0, {});
-  }, [load]);
+    void recuperer(0, {});
+  }, [recuperer]);
+
+  const load = useCallback(
+    (off: number, f: TracabiliteFilters) => {
+      setLoading(true);
+      setError(null);
+      void recuperer(off, f);
+    },
+    [recuperer],
+  );
 
   function applyFilters() {
     load(0, filters);
@@ -140,12 +157,20 @@ export function TracabilitePage() {
           <History className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-fg">Tracabilite</h1>
+          <h1 className="text-2xl font-bold text-fg">Traçabilité</h1>
           <p className="text-sm text-fg-subtle">
-            Journal d'activite du cabinet : qui a fait quoi, et quand.
+            Journal d’activité du cabinet : qui a fait quoi, et quand.
           </p>
         </div>
       </header>
+
+      <TexteAide cle="tracabilite" titre="Retrouver une action">
+        <p>
+          Choisissez une action, un dossier ou un ticket, une personne ou une période, puis cliquez sur
+          « Filtrer ». « Réinitialiser » affiche de nouveau toute l’activité. Le journal se consulte
+          seulement : aucune ligne ne peut être modifiée ni supprimée.
+        </p>
+      </TexteAide>
 
       <Card className="p-4">
         <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
@@ -158,7 +183,7 @@ export function TracabilitePage() {
           />
           <Select
             name="filter-entity-type"
-            label="Type d'entite"
+            label="Type d’élément"
             value={filters.entityType ?? ''}
             onChange={(e) =>
               // Le changement de type invalide l'entite choisie precedemment.
@@ -168,7 +193,7 @@ export function TracabilitePage() {
           />
           <Select
             name="filter-entity"
-            label="Entite"
+            label="Élément"
             value={filters.entityId ?? ''}
             disabled={!entitySelectable}
             onChange={(e) => setFilters((f) => ({ ...f, entityId: e.target.value || undefined }))}
@@ -176,15 +201,15 @@ export function TracabilitePage() {
           />
           <Select
             name="filter-user"
-            label="Acteur"
+            label="Auteur"
             value={filters.userId ?? ''}
             onChange={(e) => setFilters((f) => ({ ...f, userId: e.target.value || undefined }))}
-            options={[{ value: '', label: 'Tous les acteurs' }]}
+            options={[{ value: '', label: 'Tous les auteurs' }]}
             groups={actorGroups}
           />
           <Select
             name="filter-actor-status"
-            label="Statut de l'acteur"
+            label="Statut de l’auteur"
             value={filters.actorStatus ?? ''}
             onChange={(e) =>
               setFilters((f) => ({
@@ -215,32 +240,38 @@ export function TracabilitePage() {
               Filtrer
             </Button>
             <Button variant="secondary" onClick={reset}>
-              <RotateCcw className="mr-1 h-4 w-4" /> Reinitialiser
+              <RotateCcw className="mr-1 h-4 w-4" /> Réinitialiser
             </Button>
           </div>
         </div>
 
         {/* Recherche avancee par UUID — pour les cas hors liste (ex. documents) */}
         <div className="mt-3 border-t border-border pt-3">
+          <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => setAdvancedOpen((v) => !v)}
             className="flex items-center gap-1 text-xs font-medium text-fg-subtle transition hover:text-fg"
           >
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
-            Recherche avancee par UUID
+            Recherche avancée par identifiant technique
           </button>
+          <InfoBulle
+            libelle="Aide : recherche par identifiant"
+            texte="Pour un élément absent des listes (un document, par exemple) : collez son identifiant technique exact, tel qu’il figure dans un rapport ou un message d’erreur."
+          />
+          </div>
           {advancedOpen && (
             <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               <TextField
-                label="ID entite (UUID exact)"
-                placeholder="UUID exact"
+                label="Identifiant de l’élément (exact)"
+                placeholder="Identifiant exact"
                 value={filters.entityId ?? ''}
                 onChange={(e) => setFilters((f) => ({ ...f, entityId: e.target.value || undefined }))}
               />
               <TextField
-                label="ID utilisateur (UUID exact)"
-                placeholder="UUID exact"
+                label="Identifiant de l’utilisateur (exact)"
+                placeholder="Identifiant exact"
                 value={filters.userId ?? ''}
                 onChange={(e) => setFilters((f) => ({ ...f, userId: e.target.value || undefined }))}
               />
@@ -250,7 +281,7 @@ export function TracabilitePage() {
       </Card>
 
       {error && (
-        <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+        <div role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           {error}
         </div>
       )}
@@ -261,7 +292,9 @@ export function TracabilitePage() {
             <Loader2 className="h-8 w-8 animate-spin text-accent" />
           </div>
         ) : items.length === 0 ? (
-          <p className="py-12 text-center text-sm text-fg-subtle">Aucune activite pour ces criteres.</p>
+          <p className="py-12 text-center text-sm text-fg-subtle">
+            Aucune activité pour ces critères. Élargissez la période ou cliquez sur « Réinitialiser ».
+          </p>
         ) : (
           <table className="w-full text-sm">
             <thead>
@@ -269,7 +302,7 @@ export function TracabilitePage() {
                 <th className="px-4 py-2 font-medium">Quand</th>
                 <th className="px-4 py-2 font-medium">Qui</th>
                 <th className="px-4 py-2 font-medium">Action</th>
-                <th className="px-4 py-2 font-medium">Entite</th>
+                <th className="px-4 py-2 font-medium">Élément</th>
                 <th className="px-4 py-2 font-medium">Service</th>
               </tr>
             </thead>
@@ -285,16 +318,16 @@ export function TracabilitePage() {
                       {isRetired(e.userId) && (
                         <span
                           className="rounded-full border border-border bg-bg-overlay px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-fg-subtle"
-                          title="Compte desactive ou supprime"
+                          title="Compte désactivé ou supprimé"
                         >
-                          retire
+                          retiré
                         </span>
                       )}
                     </span>
                   </td>
                   <td className="px-4 py-2 text-fg">{e.actionLabel}</td>
                   <td className="px-4 py-2 text-fg-subtle">
-                    {e.entityType ?? '—'}
+                    {libelleTypeElement(e.entityType)}
                     {e.entityId ? ` · ${entityLabelOf(e.entityType, e.entityId)}` : ''}
                   </td>
                   <td className="px-4 py-2 text-xs text-fg-subtle">{e.sourceService ?? '—'}</td>
@@ -316,7 +349,7 @@ export function TracabilitePage() {
             disabled={offset === 0 || loading}
             onClick={() => load(Math.max(offset - PAGE_SIZE, 0), filters)}
           >
-            Precedent
+            Précédent
           </Button>
           <Button
             variant="secondary"

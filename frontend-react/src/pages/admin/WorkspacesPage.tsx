@@ -1,22 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, ChevronRight, RefreshCw, Search } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { useToast } from '../../components/ui/Toast';
+import { useToast } from '../../components/ui/useToast';
 import { adminService } from '../../services/admin.service';
 import type { AdminWorkspaceRow, WorkspaceStatusAction } from '../../types/admin';
 import { FORFAIT_LABELS, labelOf } from '../../lib/dashboardLabels';
+import { extractError } from '../../lib/api';
+import { TexteAide } from '../../components/ui/Aide';
 
 const ACTION_META: Record<
   WorkspaceStatusAction,
-  { label: string; verb: string; targetStatus: string; variant: 'primary' | 'danger' }
+  { label: string; verb: string; done: string; targetStatus: string; variant: 'primary' | 'danger' }
 > = {
-  activate: { label: 'Activer', verb: 'activer', targetStatus: 'ACTIVE', variant: 'primary' },
-  suspend: { label: 'Suspendre', verb: 'suspendre', targetStatus: 'SUSPENDED', variant: 'danger' },
-  deactivate: { label: 'Désactiver', verb: 'désactiver', targetStatus: 'DEACTIVATED', variant: 'danger' },
+  activate: { label: 'Activer', verb: 'activer', done: 'activé', targetStatus: 'ACTIVE', variant: 'primary' },
+  suspend: { label: 'Suspendre', verb: 'suspendre', done: 'suspendu', targetStatus: 'SUSPENDED', variant: 'danger' },
+  deactivate: { label: 'Désactiver', verb: 'désactiver', done: 'désactivé', targetStatus: 'DEACTIVATED', variant: 'danger' },
 };
 
 export function WorkspacesPage() {
@@ -28,20 +30,28 @@ export function WorkspacesPage() {
   const [pending, setPending] = useState<{ ws: AdminWorkspaceRow; action: WorkspaceStatusAction } | null>(null);
   const [acting, setActing] = useState(false);
 
-  async function load() {
-    setError(false);
-    setRows(null);
-    try {
-      const data = await adminService.listWorkspaces();
-      setRows(data);
-    } catch {
-      setError(true);
-    }
-  }
+  // Recuperation seule (setState dans la promesse) : appelee au montage et par « Actualiser ».
+  const recuperer = useCallback(
+    () =>
+      adminService
+        .listWorkspaces()
+        .then((data) => {
+          setRows(data);
+          setError(false);
+        })
+        .catch(() => setError(true)),
+    [],
+  );
 
   useEffect(() => {
-    void load();
-  }, []);
+    void recuperer();
+  }, [recuperer]);
+
+  function load() {
+    setError(false);
+    setRows(null);
+    void recuperer();
+  }
 
   const filtered = useMemo(() => {
     if (!rows) return [];
@@ -60,7 +70,7 @@ export function WorkspacesPage() {
     setActing(true);
     try {
       await adminService.setWorkspaceStatus(pending.ws.id, pending.action);
-      toast.success(`« ${pending.ws.name} » — ${ACTION_META[pending.action].verb} effectué.`);
+      toast.success(`Cabinet « ${pending.ws.name} » ${ACTION_META[pending.action].done}.`);
       // Mise a jour locale du statut (evite un rechargement complet).
       setRows((prev) =>
         (prev ?? []).map((w) =>
@@ -68,8 +78,8 @@ export function WorkspacesPage() {
         ),
       );
       setPending(null);
-    } catch {
-      toast.error("L'action a échoué. Réessayez.");
+    } catch (e) {
+      toast.error(`L’action a échoué : ${extractError(e).message}`);
     } finally {
       setActing(false);
     }
@@ -80,16 +90,25 @@ export function WorkspacesPage() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold text-fg">
-            <Building2 className="h-6 w-6 text-accent" /> Workspaces
+            <Building2 className="h-6 w-6 text-accent" /> Cabinets
           </h1>
           <p className="mt-1 text-sm text-fg-subtle">
-            Tous les cabinets clients de la plateforme. Activez, suspendez ou désactivez un workspace.
+            Tous les cabinets clients de la plateforme. Activez, suspendez ou désactivez un cabinet.
           </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => void load()}>
+        <Button variant="secondary" size="sm" onClick={load}>
           <RefreshCw className="mr-2 h-4 w-4" /> Actualiser
         </Button>
       </header>
+
+      <TexteAide cle="admin-cabinets" titre="Que faire sur cet écran ?">
+        <p>
+          Cliquez sur une ligne pour ouvrir la fiche du cabinet (abonnement, équipe, utilisateurs). Les
+          boutons de la colonne « Actions » changent son statut : « Suspendre » et « Désactiver » coupent
+          l’accès au cabinet sans effacer aucune de ses données ; « Activer » le rétablit. Une
+          confirmation vous est toujours demandée.
+        </p>
+      </TexteAide>
 
       <div className="relative max-w-sm">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" />
@@ -98,6 +117,7 @@ export function WorkspacesPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Rechercher par code, nom ou contact…"
+          aria-label="Rechercher un cabinet"
           className="w-full rounded-lg border border-border bg-bg-raised py-2 pl-9 pr-3 text-sm text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none"
         />
       </div>
@@ -105,8 +125,8 @@ export function WorkspacesPage() {
       {error && (
         <Card className="p-8 text-center">
           <p className="font-medium text-fg">Chargement impossible</p>
-          <p className="mt-1 text-sm text-fg-subtle">La liste des workspaces n'a pas pu être récupérée.</p>
-          <Button variant="secondary" size="sm" className="mt-4" onClick={() => void load()}>
+          <p className="mt-1 text-sm text-fg-subtle">La liste des cabinets n’a pas pu être récupérée.</p>
+          <Button variant="secondary" size="sm" className="mt-4" onClick={load}>
             Réessayer
           </Button>
         </Card>
@@ -123,7 +143,9 @@ export function WorkspacesPage() {
       {!error && rows !== null && filtered.length === 0 && (
         <Card className="p-10 text-center">
           <p className="text-sm text-fg-subtle">
-            {rows.length === 0 ? 'Aucun workspace enregistré.' : 'Aucun workspace ne correspond à la recherche.'}
+            {rows.length === 0
+              ? 'Aucun cabinet inscrit pour le moment : les cabinets apparaissent ici après leur inscription.'
+              : 'Aucun cabinet ne correspond à la recherche. Vérifiez le code ou le nom saisi.'}
           </p>
         </Card>
       )}
@@ -206,10 +228,10 @@ export function WorkspacesPage() {
       <ConfirmDialog
         open={pending !== null}
         onOpenChange={(o) => !o && setPending(null)}
-        title={pending ? `${ACTION_META[pending.action].label} le workspace` : ''}
+        title={pending ? `${ACTION_META[pending.action].label} le cabinet` : ''}
         description={
           pending
-            ? `Confirmer ${ACTION_META[pending.action].verb} « ${pending.ws.name} » (${pending.ws.code}) ?`
+            ? `Voulez-vous vraiment ${ACTION_META[pending.action].verb} le cabinet « ${pending.ws.name} » (${pending.ws.code}) ?`
             : undefined
         }
         confirmLabel={pending ? ACTION_META[pending.action].label : 'Confirmer'}
@@ -256,5 +278,6 @@ function formatStorage(w: AdminWorkspaceRow): string {
   if (w.storageBytes === null || w.storageBytes === undefined) return '—';
   const gb = w.storageBytes / (1024 * 1024 * 1024);
   const size = gb >= 0.01 ? `${gb.toFixed(2)} Go` : `${Math.round(w.storageBytes / (1024 * 1024))} Mo`;
-  return `${size} · ${w.storageFiles ?? 0} doc`;
+  const n = w.storageFiles ?? 0;
+  return `${size} · ${n} document${n > 1 ? 's' : ''}`;
 }

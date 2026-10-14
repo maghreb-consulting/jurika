@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { CheckCircle, Copy, Mail, UserPlus, X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
-import { PhoneNumberInput, isValidPhone } from '../../components/ui/PhoneNumberInput';
+import { PhoneNumberInput } from '../../components/ui/PhoneNumberInput';
+import { isValidPhone } from '../../components/ui/phoneNumber';
 import { authService } from '../../services/auth.service';
 import { extractError } from '../../lib/api';
 import { firstError, requiredMsg, emailMsg } from '../../lib/formValidation';
+import { useCurrentUser } from '../../store/authStore';
 
 interface Props {
   open: boolean;
@@ -15,6 +17,7 @@ interface Props {
 }
 
 export function InviteClientDrawer({ open, dossierId, raisonSociale, onClose }: Props) {
+  const user = useCurrentUser();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -41,7 +44,7 @@ export function InviteClientDrawer({ open, dossierId, raisonSociale, onClose }: 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     // Validation JS in-app AVANT l'appel API (aucune bulle native).
-    const firstNameErr = requiredMsg(firstName, 'Le prenom est requis.');
+    const firstNameErr = requiredMsg(firstName, 'Le prénom est requis.');
     if (firstNameErr) {
       setError(firstNameErr);
       focus('firstName');
@@ -61,7 +64,7 @@ export function InviteClientDrawer({ open, dossierId, raisonSociale, onClose }: 
     }
     // Telephone optionnel : valide seulement s'il est renseigne (E.164).
     if (phone.trim() && !isValidPhone(phone.trim())) {
-      setError('Numero de telephone invalide pour le pays selectionne.');
+      setError('Numéro de téléphone invalide pour le pays sélectionné.');
       focus('phone');
       return;
     }
@@ -85,7 +88,14 @@ export function InviteClientDrawer({ open, dossierId, raisonSociale, onClose }: 
 
   function copyCreds() {
     if (!result?.temporaryPassword) return;
-    const creds = `Workspace : JUR-DEMO1\nEmail : ${email}\nMot de passe temporaire : ${result.temporaryPassword}`;
+    // Lot L6 (E9) : le code du cabinet est celui de l'employe connecte (il etait ecrit en dur,
+    // JUR-DEMO1, faux pour tout autre cabinet) ; absent, la ligne n'est pas ecrite.
+    const lignes = [
+      ...(user?.workspaceCode ? [`Code du cabinet : ${user.workspaceCode}`] : []),
+      `Identifiant : ${result.loginEmail ?? email}`,
+      `Mot de passe temporaire : ${result.temporaryPassword}`,
+    ];
+    const creds = lignes.join('\n');
     navigator.clipboard.writeText(creds).catch(() => {});
   }
 
@@ -121,8 +131,9 @@ export function InviteClientDrawer({ open, dossierId, raisonSociale, onClose }: 
 
         <div className="p-5">
           <p className="mb-4 text-xs text-fg-muted">
-            Cree un compte CLIENT pour <strong>{raisonSociale}</strong>. Un email
-            avec les identifiants temporaires sera envoye automatiquement.
+            Créez le compte du client de <strong>{raisonSociale}</strong> : il pourra consulter sa
+            Data Room selon les permissions réglées dans « Accès du client ». Un courriel avec ses
+            identifiants temporaires lui est envoyé automatiquement.
           </p>
 
           {result ? (
@@ -132,8 +143,8 @@ export function InviteClientDrawer({ open, dossierId, raisonSociale, onClose }: 
                 <div className="text-sm text-emerald-800">
                   <p className="font-semibold">{result.message}</p>
                   <p className="mt-1 text-xs">
-                    Le client se connectera via <code>/login</code> avec son email et le mot
-                    de passe temporaire. Il devra le changer au premier login.
+                    Le client se connectera depuis la page de connexion avec son identifiant et le
+                    mot de passe temporaire, qu’il devra changer à sa première connexion.
                   </p>
                 </div>
               </div>
@@ -142,14 +153,14 @@ export function InviteClientDrawer({ open, dossierId, raisonSociale, onClose }: 
               {result.loginEmail && (
                 <div className="rounded-lg border border-accent/40 bg-accent/10 p-3">
                   <p className="text-[11px] font-bold uppercase tracking-wide text-accent">
-                    Identifiant de connexion genere
+                    Identifiant de connexion attribué
                   </p>
                   <code className="mt-1 block break-all rounded bg-bg-raised px-2 py-1 font-mono text-sm text-fg">
                     {result.loginEmail}
                   </code>
                   {result.contactEmail && result.contactEmail !== result.loginEmail && (
                     <p className="mt-2 text-[11px] text-fg-muted">
-                      Notifications envoyees a <span className="font-mono">{result.contactEmail}</span>.
+                      Notifications envoyées à <span className="font-mono">{result.contactEmail}</span>.
                     </p>
                   )}
                 </div>
@@ -158,7 +169,7 @@ export function InviteClientDrawer({ open, dossierId, raisonSociale, onClose }: 
               {result.temporaryPassword && (
                 <div className="rounded-lg border border-amber-200 bg-warning/10 p-3">
                   <p className="mb-2 text-xs font-bold text-amber-900">
-                    Mot de passe temporaire (a noter ou copier)
+                    Mot de passe temporaire (à noter ou à copier)
                   </p>
                   <div className="flex items-center justify-between gap-2">
                     <code className="break-all rounded bg-bg-raised px-2 py-1 font-mono text-sm">
@@ -185,7 +196,7 @@ export function InviteClientDrawer({ open, dossierId, raisonSociale, onClose }: 
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <TextField
-                  label="Prenom"
+                  label="Prénom"
                   name="firstName"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
@@ -200,7 +211,7 @@ export function InviteClientDrawer({ open, dossierId, raisonSociale, onClose }: 
                 />
               </div>
               <TextField
-                label="Email"
+                label="Adresse électronique"
                 name="email"
                 type="email"
                 value={email}
@@ -209,7 +220,7 @@ export function InviteClientDrawer({ open, dossierId, raisonSociale, onClose }: 
                 required
               />
               <PhoneNumberInput
-                label="Telephone (optionnel)"
+                label="Téléphone (facultatif)"
                 name="phone"
                 value={phone}
                 onChange={setPhone}
@@ -225,8 +236,8 @@ export function InviteClientDrawer({ open, dossierId, raisonSociale, onClose }: 
               <div className="flex items-center gap-2 rounded-lg bg-accent/10 p-3 text-xs text-accent">
                 <Mail className="h-4 w-4 flex-shrink-0" />
                 <span>
-                  Le client recevra par email : code workspace + email + mot de passe temporaire +
-                  lien direct de connexion.
+                  Le client recevra par courriel le code du cabinet, son identifiant, un mot de passe
+                  temporaire et le lien de connexion.
                 </span>
               </div>
 

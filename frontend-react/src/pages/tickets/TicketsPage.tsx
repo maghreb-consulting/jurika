@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useCurrentUser } from '../../store/authStore';
+import { TexteAide } from '../../components/ui/Aide';
 import { ticketService } from '../../services/ticket.service';
 import type {
   Ticket,
@@ -78,7 +79,8 @@ export function TicketsPage() {
 
   useEffect(() => {
     if (view !== 'table') return;
-    void loadTable(0);
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(() => loadTable(0));
   }, [view, loadTable]);
 
   const reloadAll = useCallback(async () => {
@@ -125,6 +127,23 @@ export function TicketsPage() {
         nouveaux={totaux.nouveaux}
       />
 
+      <p className="-mt-3 text-sm text-fg-subtle">
+        {user?.role === 'EMPLOYE'
+          ? 'Les opérations juridiques des dossiers dont vous êtes responsable, rangées par statut.'
+          : 'Les opérations juridiques de tout le cabinet, rangées par statut, en consultation.'}
+      </p>
+
+      <TexteAide cle="liste-tickets" titre="Comment suivre les tickets ?">
+        <p>
+          Chaque ticket suit une opération en quatre statuts : création, génération des documents,
+          déroulement de la démarche, clôture. Cliquez sur un ticket pour voir ce qu’il faut faire et
+          ce qui manque ; « Ouvrir la page du ticket » réunit tout.
+          {user?.role === 'EMPLOYE'
+            ? ' Pour une nouvelle opération, cliquez sur « Nouveau ticket ».'
+            : ' Seul l’employé responsable du dossier fait avancer un ticket.'}
+        </p>
+      </TexteAide>
+
       <TicketsFilters
         query={query}
         onQueryChange={setQuery}
@@ -135,6 +154,14 @@ export function TicketsPage() {
         filterStatut={filterStatut}
         onFilterStatutChange={setFilterStatut}
       />
+
+      {!loading && aucunChargement && !query && !filterType && !filterPriorite && !filterStatut && (
+        <p role="status" className="rounded-lg border border-border bg-bg-overlay px-3 py-2 text-sm text-fg-muted">
+          {user?.role === 'EMPLOYE'
+            ? 'Aucun ticket pour l’instant. Cliquez sur « Nouveau ticket » pour ouvrir une opération.'
+            : 'Aucun ticket pour l’instant : les tickets apparaissent ici dès qu’un employé ouvre une opération.'}
+        </p>
+      )}
 
       {loading && aucunChargement ? (
         <div className="flex h-64 items-center justify-center">

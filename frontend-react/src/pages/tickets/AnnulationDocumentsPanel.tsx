@@ -6,7 +6,7 @@ import { TextField } from '../../components/ui/TextField';
 import { Select } from '../../components/ui/Select';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { RetourGeneration } from '../../components/workflow/RetourGeneration';
-import { triggerBrowserDownload } from '../../components/workflow/WorkflowDocumentBlock';
+import { triggerBrowserDownload } from '../../components/workflow/documentBlocks';
 import {
   generateDocument,
   GenerationRefuseeError,
@@ -132,7 +132,7 @@ export function AnnulationDocumentsPanel({ ticket, canAct }: { ticket: Ticket; c
   }, [ticket.id, appliquer]);
 
   const documents: Doc[] = useMemo(() => {
-    const l: Doc[] = [{ cle: 'note', code: `NOTE_ANNULATION_DOSSIER${suffixe}`, libelle: "Note d'annulation", type: 'NOTE_ANNULATION' }];
+    const l: Doc[] = [{ cle: 'note', code: `NOTE_ANNULATION_DOSSIER${suffixe}`, libelle: "Note d’annulation", type: 'NOTE_ANNULATION' }];
     demarches.forEach((d, i) => {
       l.push({
         cle: `lettre-${i}`,
@@ -217,7 +217,7 @@ export function AnnulationDocumentsPanel({ ticket, canAct }: { ticket: Ticket; c
     if (await enregistrer(supplement)) await generer(doc);
   }
 
-  if (chargement) return <p className="text-sm text-fg-muted">Chargement des documents d'annulation…</p>;
+  if (chargement) return <p className="text-sm text-fg-muted">Chargement des documents d’annulation…</p>;
 
   const v = vars;
   const decisionAdoptee = v.ANNULATION_DECISION_SOCIALE_ETAT !== '' && v.ANNULATION_DECISION_SOCIALE_ETAT !== ETATS_DECISION[0];
@@ -229,10 +229,10 @@ export function AnnulationDocumentsPanel({ ticket, canAct }: { ticket: Ticket; c
         <FileText className="h-4 w-4" /> Documents d'annulation
         <InfoBulle
           libelle="À quoi servent ces documents ?"
-          texte="La note d'annulation constate l'abandon de l'opération (motif, statut atteint, démarches interrompues). Chaque dépôt fait auprès d'une administration appelle une lettre de retrait. Le bordereau constate la restitution des pièces au client."
+          texte="La note d’annulation constate l’abandon de l’opération (motif, statut atteint, démarches interrompues). Chaque dépôt fait auprès d’une administration appelle une lettre de retrait. Le bordereau constate la restitution des pièces au client."
         />
       </h3>
-      <TexteAide cle="annulation-documents" titre="Comment préparer les documents d'annulation">
+      <TexteAide cle="annulation-documents" titre="Comment préparer les documents d’annulation">
         Le statut atteint, la date et le motif de l'annulation viennent du ticket ; les dépôts cochés au suivi des
         démarches sont repris. Complétez ce que la plateforme ne peut pas savoir, enregistrez, puis générez chaque
         document. Si une donnée manque, la génération la nomme : saisissez-la et relancez. Déposez enfin les
@@ -242,9 +242,9 @@ export function AnnulationDocumentsPanel({ ticket, canAct }: { ticket: Ticket; c
       {erreur && <p role="alert" className="text-sm text-danger">{erreur}</p>}
 
       <fieldset disabled={lecture} className="grid gap-3 sm:grid-cols-2">
-        <Select label="Origine de l'annulation" value={v.ANNULATION_ORIGINE} options={options(ORIGINES)}
+        <Select label="Origine de l’annulation" value={v.ANNULATION_ORIGINE} options={options(ORIGINES)}
           onChange={(e) => set('ANNULATION_ORIGINE', e.target.value)}
-          hint="Case cochée dans la note d'annulation." />
+          hint="Case cochée dans la note d’annulation." />
         {v.ANNULATION_ORIGINE === "Refus de l'administration" && (
           <>
             <TextField label="Administration qui a refusé" value={v.ANNULATION_ADMINISTRATION}
@@ -260,7 +260,7 @@ export function AnnulationDocumentsPanel({ ticket, canAct }: { ticket: Ticket; c
               hint="Ex. : transfert du siège social. Imprimée dans la note, les lettres et le bordereau." />
             <Select label="État de la décision sociale" value={v.ANNULATION_DECISION_SOCIALE_ETAT}
               options={options(ETATS_DECISION)} onChange={(e) => set('ANNULATION_DECISION_SOCIALE_ETAT', e.target.value)}
-              hint="L'annulation du ticket ne rapporte pas une décision déjà adoptée : la note le précise." />
+              hint="L’annulation du ticket ne rapporte pas une décision déjà adoptée : la note le précise." />
             {decisionAdoptee && (
               <>
                 <Select label="Organe qui a adopté la décision" value={v.ANNULATION_DECISION_ORGANE}
@@ -273,16 +273,16 @@ export function AnnulationDocumentsPanel({ ticket, canAct }: { ticket: Ticket; c
               <TextField type="date" label="Date de la décision qui la rapporte (si adoptée)"
                 value={v.ANNULATION_DECISION_RAPPORT_DATE}
                 onChange={(e) => set('ANNULATION_DECISION_RAPPORT_DATE', e.target.value)}
-                hint="Laissez vide si la décision n'est pas encore rapportée : la note le dira." />
+                hint="Laissez vide si la décision n’est pas encore rapportée : la note le dira." />
             )}
             <Select label="Des formalités ont-elles déjà produit effet ?" value={v.ANNULATION_FORMALITES_EFFET}
               options={options(OUI_NON)} onChange={(e) => set('ANNULATION_FORMALITES_EFFET', e.target.value)}
               hint="Enregistrement, dépôt au greffe, inscription, annonce parue : elles ne se retirent pas par lettre." />
             {v.ANNULATION_FORMALITES_EFFET === 'oui' && (
               <>
-                <TextField type="date" label="Date d'enregistrement de l'acte (s'il a été enregistré)"
+                <TextField type="date" label="Date d’enregistrement de l’acte (s’il a été enregistré)"
                   value={v.ENREGISTREMENT_ACTE_DATE} onChange={(e) => set('ENREGISTREMENT_ACTE_DATE', e.target.value)} />
-                <TextField label="Référence d'enregistrement" value={v.ENREGISTREMENT_ACTE_REFERENCE}
+                <TextField label="Référence d’enregistrement" value={v.ENREGISTREMENT_ACTE_REFERENCE}
                   onChange={(e) => set('ENREGISTREMENT_ACTE_REFERENCE', e.target.value)} />
                 <TextField label="Autres formalités accomplies" value={v.ANNULATION_FORMALITES_AUTRES}
                   onChange={(e) => set('ANNULATION_FORMALITES_AUTRES', e.target.value)} />
@@ -303,7 +303,7 @@ export function AnnulationDocumentsPanel({ ticket, canAct }: { ticket: Ticket; c
         )}
         <TextField label="Pièces non restituées (facultatif)" value={v.PIECES_MANQUANTES}
           onChange={(e) => set('PIECES_MANQUANTES', e.target.value)}
-          hint="Pièces encore détenues par une administration, s'il y en a." />
+          hint="Pièces encore détenues par une administration, s’il y en a." />
         {!creation && demarches.length > 0 && (
           <Select label="Signataire des lettres de retrait" value={v.RETRAIT_SIGNATAIRE_TYPE}
             options={options(SIGNATAIRES)} onChange={(e) => set('RETRAIT_SIGNATAIRE_TYPE', e.target.value)} />
@@ -314,12 +314,12 @@ export function AnnulationDocumentsPanel({ ticket, canAct }: { ticket: Ticket; c
         <p className="flex items-center gap-1 text-sm font-medium text-fg">
           Démarches interrompues ({demarches.length})
           <InfoBulle
-            libelle="D'où viennent ces démarches ?"
-            texte="Les dépôts cochés au suivi des démarches, sans retrait coché, sont repris d'office et ne se retirent pas d'ici. Ajoutez une démarche faite hors du suivi si besoin. Chacune donne une lettre de retrait."
+            libelle="D’où viennent ces démarches ?"
+            texte="Les dépôts cochés au suivi des démarches, sans retrait coché, sont repris d’office et ne se retirent pas d’ici. Ajoutez une démarche faite hors du suivi si besoin. Chacune donne une lettre de retrait."
           />
         </p>
         {demarches.length === 0 && (
-          <p className="text-xs text-fg-subtle">Aucun dépôt en cours : la note le dira et aucune lettre de retrait n'est nécessaire.</p>
+          <p className="text-xs text-fg-subtle">Aucun dépôt en cours : la note le dira et aucune lettre de retrait n’est nécessaire.</p>
         )}
         {demarches.map((d, i) => (
           <fieldset key={i} disabled={lecture} data-testid={`demarche-${i}`}
@@ -334,7 +334,7 @@ export function AnnulationDocumentsPanel({ ticket, canAct }: { ticket: Ticket; c
               onChange={(e) => setLigne('demarches', i, 'DEMARCHE_REFERENCE', e.target.value)} />
             <TextField label="Suite à donner" value={d.DEMARCHE_SUITE ?? ''}
               onChange={(e) => setLigne('demarches', i, 'DEMARCHE_SUITE', e.target.value)} hint="Ex. : lettre de retrait." />
-            <TextField label="Adresse de l'administration" value={d.RETRAIT_ADMINISTRATION_ADRESSE ?? ''}
+            <TextField label="Adresse de l’administration" value={d.RETRAIT_ADMINISTRATION_ADRESSE ?? ''}
               onChange={(e) => setLigne('demarches', i, 'RETRAIT_ADMINISTRATION_ADRESSE', e.target.value)} />
             <Select label="Objet de la lettre" value={d.RETRAIT_OBJET ?? ''} options={options(OBJETS_RETRAIT)}
               onChange={(e) => setLigne('demarches', i, 'RETRAIT_OBJET', e.target.value)} />
@@ -389,7 +389,7 @@ export function AnnulationDocumentsPanel({ ticket, canAct }: { ticket: Ticket; c
               onChange={(e) => setLigne('pieces', i, 'PIECE_DESIGNATION', e.target.value)} />
             <TextField label="Forme" value={p.PIECE_FORME ?? ''} hint="Original, copie, copie légalisée."
               onChange={(e) => setLigne('pieces', i, 'PIECE_FORME', e.target.value)} />
-            <TextField label="Nombre d'exemplaires" inputMode="numeric" value={p.PIECE_NOMBRE ?? ''}
+            <TextField label="Nombre d’exemplaires" inputMode="numeric" value={p.PIECE_NOMBRE ?? ''}
               onChange={(e) => setLigne('pieces', i, 'PIECE_NOMBRE', e.target.value)} />
             <TextField label="Observation (facultatif)" value={p.PIECE_OBSERVATION ?? ''}
               onChange={(e) => setLigne('pieces', i, 'PIECE_OBSERVATION', e.target.value)} />

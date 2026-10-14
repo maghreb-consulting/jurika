@@ -141,8 +141,12 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_AUTH: ${SMTP_AUTH:-false}
       SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
-      SMTP_FROM: ${SMTP_FROM:-noreply@jurika.ma}
+      # Lot L6 (E5) : aucune adresse par defaut. jurika.ma n'est pas deploye (mise en production) :
+      # l'expediteur est l'adresse verifiee chez le fournisseur, definie dans .env.local.
+      SMTP_FROM: "${SMTP_FROM:?SMTP_FROM absent : adresse d'expediteur verifiee chez le fournisseur, dans .env.local}"
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-JURIKA}
+      # Lot L6 (E5) : contact cite dans les courriels (vide = adresse d'expediteur).
+      JURIKA_SUPPORT_EMAIL: ${JURIKA_SUPPORT_EMAIL:-}
       # Liens des courriels (verification d'adresse, confirmation d'un changement de
       # compte) : adresse publique du front. Sans elle, le lien visait localhost:5173.
       FRONTEND_URL: ${FRONTEND_URL:-http://${JURIKA_LAN_HOST:-localhost}}

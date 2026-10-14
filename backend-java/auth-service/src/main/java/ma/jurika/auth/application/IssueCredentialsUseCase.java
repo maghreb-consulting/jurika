@@ -107,22 +107,22 @@ public class IssueCredentialsUseCase {
         emailVars.put("verificationUrl", "");
         emailVars.put("ttlHours", "0");
         emailVars.put("phishingWarning",
-                "JURIKA ne vous demandera JAMAIS votre mot de passe par email, SMS ou telephone.");
-        emailVars.put("subject", "Vos identifiants JURIKA — paiement valide");
+                "JURIKA ne vous demandera jamais votre mot de passe, ni par courriel, ni par SMS, ni par t\u00e9l\u00e9phone.");
+        emailVars.put("subject", "Vos identifiants JURIKA - paiement valid\u00e9");
         emailVars.put("planLabel", null);
         // Fix 2026-06-07 (BUG 5) : welcome.html attend roleLabel + roleHint
         // (sinon ${roleLabel} rend "null" cote Thymeleaf). Ici on est forcement
         // SUPERVISEUR (admin cabinet) puisque c'est le compte cree au signup.
-        emailVars.put("roleLabel", "Superviseur (Administrateur cabinet)");
+        emailVars.put("roleLabel", "Superviseur");
         emailVars.put("roleHint",
-                "Ce compte est l'administrateur principal du cabinet. Une fois "
-                        + "connecte, vous pourrez inviter vos employes et autres "
-                        + "superviseurs depuis Parametres > Equipe -- chacun recevra "
-                        + "ses propres identifiants par email.");
+                "Ce compte est le compte superviseur du cabinet. Une fois "
+                        + "connect\u00e9, vous pourrez inviter vos employ\u00e9s "
+                        + "depuis Param\u00e8tres, onglet \u00c9quipe : chacun recevra "
+                        + "ses propres identifiants par courriel.");
 
         try {
             emailSender.sendTemplated(deliveryEmail,
-                    "Bienvenue chez JURIKA — Vos identifiants de connexion",
+                    "Bienvenue sur JURIKA - vos identifiants de connexion",
                     "welcome", emailVars);
             log.info("Identifiants emis post-paiement workspace={} deliveryTo={} loginEmail={} reason={}",
                     workspace.code(), deliveryEmail, admin.loginEmail(), reason);

@@ -33,7 +33,7 @@ describe('Référentiel des démarches', () => {
     post.mockResolvedValueOnce({ data: { id: 'x', version: 'CORPUS_2026-10-03', statut: 'APPLIQUE', lignes: 7006, decisions: 301, renvois: 24, motif: null } });
     get.mockResolvedValueOnce({ data: { versionActive: 'CORPUS_2026-10-03', imports: [imp('APPLIQUE')] } });
     render(<ReferentielDemarchesPage />);
-    expect(await screen.findByText(/n'ont pas encore de démarches du corpus/)).toBeInTheDocument();
+    expect(await screen.findByText(/n’ont pas encore de démarches du corpus/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Importer le référentiel/ }));
     expect(await screen.findByTestId('resultat-import')).toHaveTextContent('7006 démarches, 301 décisions, 24 renvois');
     expect(await screen.findByTestId('version-active')).toHaveTextContent('CORPUS_2026-10-03');

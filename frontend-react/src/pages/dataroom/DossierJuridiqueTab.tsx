@@ -40,20 +40,16 @@ import type { DroitsDossier } from '../../types/dataroom';
 import { InfoBulle } from '../../components/ui/Aide';
 import { STATUT_LABELS_COURTS } from '../../types/ticket';
 import type { TicketStatut } from '../../types/ticket';
-import {
-  DEFAULT_FILTERS,
-  JuridiqueSearchBar,
-  filtersToApiParams,
-  type SearchFilters,
-} from './components/JuridiqueSearchBar';
+import { JuridiqueSearchBar } from './components/JuridiqueSearchBar';
+import { DEFAULT_FILTERS, filtersToApiParams, type SearchFilters } from './components/juridiqueFiltres';
 import { OperationsTimeline } from './components/OperationsTimeline';
+import { TimelineFiltersDrawer } from './components/TimelineFiltersDrawer';
 import {
   countActiveTimelineFilters,
   DEFAULT_TIMELINE_FILTERS,
-  TimelineFiltersDrawer,
   timelineFiltersToApiParams,
   type TimelineFilters,
-} from './components/TimelineFiltersDrawer';
+} from './components/timelineFiltres';
 import { UploadDocumentDialog } from './components/UploadDocumentDialog';
 import { MultiUploadDrawer } from './components/MultiUploadDrawer';
 import { DocumentVersionsDropdown } from './components/DocumentVersionsDropdown';
@@ -192,21 +188,30 @@ export function DossierJuridiqueTab({
   }, [dossierId, timelineFilters]);
 
   useEffect(() => {
-    load();
+    // Chargement par promesse : aucun etat pose de facon synchrone dans l'effet.
+    void Promise.resolve().then(load);
   }, [load]);
 
   // Effet recherche : se declenche a chaque changement filtres si recherche active.
+  // Les etats sont poses dans la promesse : aucun etat pose de facon synchrone dans l'effet.
   useEffect(() => {
+    let cancelled = false;
     if (!isSearchActive) {
-      setSearchResults(null);
-      setSearchTotal(0);
-      return;
+      void Promise.resolve().then(() => {
+        if (cancelled) return;
+        setSearchResults(null);
+        setSearchTotal(0);
+      });
+      return () => {
+        cancelled = true;
+      };
     }
     const params = filtersToApiParams(filters);
-    let cancelled = false;
-    setSearching(true);
-    dataroomService
-      .searchJuridique(dossierId, params)
+    void Promise.resolve()
+      .then(() => {
+        if (!cancelled) setSearching(true);
+        return dataroomService.searchJuridique(dossierId, params);
+      })
       .then((res) => {
         if (cancelled) return;
         setSearchResults(res.items);
@@ -284,7 +289,7 @@ export function DossierJuridiqueTab({
               {selectedIds.size}
             </span>
             <span className="text-sm font-medium text-accent">
-              document{selectedIds.size > 1 ? 's' : ''} selectionne{selectedIds.size > 1 ? 's' : ''}
+              document{selectedIds.size > 1 ? 's' : ''} sélectionné{selectedIds.size > 1 ? 's' : ''}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -295,7 +300,7 @@ export function DossierJuridiqueTab({
               loading={bulkBusy}
             >
               <Download className="mr-1 h-4 w-4" />
-              Telecharger ZIP
+              Télécharger (ZIP)
             </Button>
             {canRemove && (
               <Button
@@ -311,7 +316,7 @@ export function DossierJuridiqueTab({
             )}
             <Button size="sm" variant="ghost" onClick={clearSelection}>
               <X className="mr-1 h-4 w-4" />
-              Deselectionner tout
+              Tout désélectionner
             </Button>
           </div>
         </div>
@@ -323,7 +328,7 @@ export function DossierJuridiqueTab({
             <div className="flex items-center gap-2">
               <Search className="h-4 w-4 text-accent" />
               <h3 className="text-sm font-semibold text-fg">
-                Resultats de recherche
+                Résultats de la recherche
               </h3>
               <Badge variant="neutral">{searchTotal}</Badge>
             </div>
@@ -331,12 +336,12 @@ export function DossierJuridiqueTab({
           <ul className="divide-y divide-border">
             {searching && (
               <li className="px-5 py-8 text-center text-sm text-fg-subtle">
-                Recherche en cours...
+                Recherche en cours…
               </li>
             )}
             {!searching && (searchResults?.length ?? 0) === 0 && (
               <li className="px-5 py-8 text-center text-sm text-fg-subtle">
-                Aucun document ne correspond aux criteres.
+                Aucun document ne correspond à la recherche. Essayez un autre mot, ou retirez des filtres.
               </li>
             )}
             {!searching &&
@@ -396,14 +401,14 @@ export function DossierJuridiqueTab({
                   variant="secondary"
                   onClick={() => setIdentifiantsOpen(true)}
                   data-testid="open-identifiants"
-                  title="Saisir les identifiants obtenus apres immatriculation (RC, IF, patente, CNSS)"
+                  title="Saisir les identifiants obtenus après l’immatriculation (RC, IF, taxe professionnelle, CNSS)"
                 >
                   <IdCard className="mr-1 h-4 w-4" />
                   Identifiants
                   {missingIdentity.length > 0 && role === 'EMPLOYE' && (
                     <span
                       className="ml-1.5 rounded-full bg-warning/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700"
-                      title={`${missingIdentity.length} identifiant(s) a completer`}
+                      title={`${missingIdentity.length} identifiant(s) à compléter`}
                     >
                       {missingIdentity.length}
                     </span>
@@ -446,11 +451,11 @@ export function DossierJuridiqueTab({
                     data-testid="open-versioned-upload"
                   >
                     <Upload className="mr-1 h-4 w-4" />
-                    Uploader document
+                    Ajouter un document
                   </Button>
                   <Button size="sm" variant="secondary" onClick={() => setUploadOpen(true)}>
                     <Upload className="mr-1 h-4 w-4" />
-                    Upload multiple
+                    Ajouter plusieurs documents
                   </Button>
                 </>
               )}
@@ -512,7 +517,7 @@ export function DossierJuridiqueTab({
           <div className="flex items-center gap-2">
             <History className="h-4 w-4 text-accent" />
             <h3 className="text-sm font-semibold text-fg">
-              Historique des operations
+              Historique des opérations
             </h3>
             <Badge variant="neutral">{view.historiqueOperations.length}</Badge>
           </div>
@@ -536,7 +541,7 @@ export function DossierJuridiqueTab({
                 variant="ghost"
                 size="sm"
                 onClick={() => setTimelineFilters(DEFAULT_TIMELINE_FILTERS)}
-                title="Reinitialiser les filtres"
+                title="Réinitialiser les filtres" aria-label="Réinitialiser les filtres"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -548,13 +553,13 @@ export function DossierJuridiqueTab({
           renderDocumentRow={(doc) => <DocumentRow key={doc.id} doc={doc} />}
           emptyTitle={
             timelineFiltersCount > 0
-              ? 'Aucune operation ne correspond aux filtres'
-              : 'Aucune operation cloturee a ce jour'
+              ? 'Aucune opération ne correspond aux filtres'
+              : 'Aucune opération clôturée à ce jour'
           }
           emptyHint={
             timelineFiltersCount > 0
-              ? "Essayez de relacher la periode ou retirer un type d'operation."
-              : 'Les operations cloturees apparaitront ici, groupees par mois.'
+              ? "Élargissez la période ou retirez un type d’opération."
+              : 'Les opérations clôturées apparaîtront ici, groupées par mois.'
           }
         />
       </Card>
@@ -563,7 +568,7 @@ export function DossierJuridiqueTab({
         open={bulkDeleteOpen}
         onOpenChange={setBulkDeleteOpen}
         title="Supprimer les documents"
-        description={`Supprimer ${selectedIds.size} document(s) selectionne(s) ?`}
+        description={`Supprimer ${selectedIds.size} document(s) sélectionné(s) ? Ils restent en archive et la suppression est tracée.`}
         variant="danger"
         confirmLabel="Supprimer"
         loading={bulkBusy}
@@ -679,7 +684,7 @@ function DossierDeTicket({
 
       {ouvert && horsTicket && (
         <p className="border-b border-border bg-bg-overlay/30 px-5 py-2 text-xs text-fg-subtle">
-          Documents antérieurs au classement par ticket, ou déposés hors workflow.
+          Documents antérieurs au classement par ticket, ou déposés en dehors d’un parcours.
           Ils restent consultables et téléchargeables.
         </p>
       )}
@@ -810,7 +815,7 @@ function DocumentRow({
               onChange={onToggleSelect}
               onClick={(e) => e.stopPropagation()}
               className="h-4 w-4 cursor-pointer accent-indigo-600"
-              aria-label={`Selectionner ${doc.title}`}
+              aria-label={`Sélectionner ${doc.title}`}
             />
           )}
           <div className="rounded-lg bg-bg-overlay p-2">
@@ -838,10 +843,10 @@ function DocumentRow({
               size="sm"
               variant="ghost"
               onClick={() => setPreviewOpen(true)}
-              title="Apercu"
+              title="Aperçu"
             >
               <Eye className="mr-1 h-3.5 w-3.5" />
-              Apercu
+              Aperçu
             </Button>
           )}
           {canDownload && (
@@ -852,7 +857,7 @@ function DocumentRow({
               loading={downloading}
             >
               <Download className="mr-1 h-3.5 w-3.5" />
-              Telecharger
+              Télécharger
             </Button>
           )}
           {canDelete && canRemove && (
@@ -861,8 +866,8 @@ function DocumentRow({
               onClick={() => setConfirmDeleteOpen(true)}
               disabled={deleting}
               className="rounded-lg p-2 text-danger hover:bg-danger/10 hover:text-danger disabled:opacity-50"
-              aria-label="Supprimer"
-              title="Supprimer"
+              aria-label="Supprimer le document"
+              title="Supprimer le document"
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -890,7 +895,7 @@ function DocumentRow({
         open={confirmDeleteOpen}
         onOpenChange={setConfirmDeleteOpen}
         title="Supprimer le document"
-        description={`Supprimer "${doc.title}" ?`}
+        description={`Supprimer « ${doc.title} » ? Le document reste en archive et la suppression est tracée.`}
         variant="danger"
         confirmLabel="Supprimer"
         loading={deleting}

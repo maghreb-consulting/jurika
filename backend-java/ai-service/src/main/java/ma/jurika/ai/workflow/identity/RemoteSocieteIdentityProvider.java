@@ -37,7 +37,7 @@ public class RemoteSocieteIdentityProvider implements SocieteIdentityProvider {
             // les donnees de la societe. La generation echoue et le dit.
             log.error("Identite societe illisible (dossier={}) : {}", dossierId, ex.getMessage());
             throw new IdentiteSocieteIndisponibleException(
-                    "Les donnees de la societe n'ont pas pu etre lues (dossier " + dossierId + ")", ex);
+                    "Les donn\u00e9es de la soci\u00e9t\u00e9 n\u2019ont pas pu \u00eatre lues (dossier " + dossierId + ")", ex);
         }
     }
 }

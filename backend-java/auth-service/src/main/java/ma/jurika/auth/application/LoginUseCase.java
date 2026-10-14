@@ -96,9 +96,9 @@ public class LoginUseCase {
     @Transactional
     public Result execute(Command cmd) {
         Workspace workspace = workspaceRepository.findByCode(cmd.workspaceCode())
-                .orElseThrow(() -> new NotFoundException("Code workspace inconnu"));
+                .orElseThrow(() -> new NotFoundException("Code workspace inconnu : v\u00e9rifiez le code de votre cabinet."));
         if (!workspace.isActive()) {
-            throw new UnauthorizedException("Workspace inactif");
+            throw new UnauthorizedException("Ce workspace n\u2019est pas actif : adressez-vous au support JURIKA.");
         }
         TenantContext.set(workspace.id());
 
@@ -114,17 +114,17 @@ public class LoginUseCase {
         User user;
         if (loginEmailEnabled) {
             user = userRepository.findByWorkspaceAndLoginEmail(workspace.id(), cmd.email())
-                    .orElseThrow(() -> new UnauthorizedException("Identifiants invalides"));
+                    .orElseThrow(() -> new UnauthorizedException("Identifiant ou mot de passe incorrect."));
         } else {
             user = userRepository.findByWorkspaceAndEmail(workspace.id(), cmd.email())
-                    .orElseThrow(() -> new UnauthorizedException("Identifiants invalides"));
+                    .orElseThrow(() -> new UnauthorizedException("Identifiant ou mot de passe incorrect."));
         }
 
         if (!user.active()) {
-            throw new UnauthorizedException("Compte desactive");
+            throw new UnauthorizedException("Ce compte est d\u00e9sactiv\u00e9 : adressez-vous \u00e0 votre cabinet.");
         }
         if (user.isLocked()) {
-            throw new UnauthorizedException("Compte temporairement verrouille — reessayez plus tard");
+            throw new UnauthorizedException("Compte verrouill\u00e9 temporairement : r\u00e9essayez plus tard.");
         }
 
         if (!passwordHasher.matches(cmd.rawPassword(), user.passwordHash())) {
@@ -136,7 +136,7 @@ public class LoginUseCase {
             auditLogger.log(workspace.id(), user.id(), "LOGIN_FAILED", "user", user.id(),
                     cmd.ipAddress(), cmd.userAgent(), Map.of("attempts", attempts));
             businessMetrics.loginFailed(lockUntil != null ? "locked" : "bad_password");
-            throw new UnauthorizedException("Identifiants invalides");
+            throw new UnauthorizedException("Identifiant ou mot de passe incorrect.");
         }
 
         userRepository.resetFailedLogin(user.id());
@@ -232,7 +232,7 @@ public class LoginUseCase {
             vars.put("contactEmail", user.contactEmail());
             // BUG 7 — destinataire = contact_email (notification, pas identifiant).
             emailSender.sendTemplated(user.contactEmail(),
-                    "JURIKA - nouvelle connexion a votre compte",
+                    "JURIKA - nouvelle connexion \u00e0 votre compte",
                     "login-new-device",
                     vars);
         } catch (RuntimeException ex) {

@@ -45,7 +45,7 @@ public class ClientDataroomPermissionGuard {
         exigerConsultation(s);
         if (!s.isPermDownload()) {
             throw new AccessDeniedException(
-                    "Le telechargement n'est pas autorise pour votre acces (perm_download desactivee).");
+                    "Le t\u00e9l\u00e9chargement n\u2019est pas autoris\u00e9 pour votre acc\u00e8s : le cabinet n\u2019a pas ouvert ce droit.");
         }
     }
 
@@ -72,14 +72,14 @@ public class ClientDataroomPermissionGuard {
         SettingsEntity s = loadActive(dossierId);
         if (!s.isPermDemandes()) {
             throw new AccessDeniedException(
-                    "L'envoi de demandes n'est pas autorise pour votre acces (perm_demandes desactivee).");
+                    "L\u2019envoi de demandes n\u2019est pas autoris\u00e9 pour votre acc\u00e8s : le cabinet n\u2019a pas ouvert ce droit.");
         }
     }
 
     private static void exigerConsultation(SettingsEntity s) {
         if (!s.isPermConsultation()) {
             throw new AccessDeniedException(
-                    "La consultation des documents n'est pas autorisee pour votre acces (perm_consultation desactivee).");
+                    "La consultation des documents n\u2019est pas autoris\u00e9e pour votre acc\u00e8s : le cabinet n\u2019a pas ouvert ce droit.");
         }
     }
 
@@ -89,7 +89,7 @@ public class ClientDataroomPermissionGuard {
         SettingsEntity s = loadActive(dossierId);
         if (!s.isPermDepot()) {
             throw new AccessDeniedException(
-                    "Le depot de documents n'est pas autorise pour votre acces (perm_depot desactivee).");
+                    "Le d\u00e9p\u00f4t de documents n\u2019est pas autoris\u00e9 pour votre acc\u00e8s : le cabinet n\u2019a pas ouvert ce droit.");
         }
     }
 

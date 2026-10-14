@@ -79,18 +79,21 @@ export function ClientAccessLogDrawer({
   // Reset + premier chargement a l'ouverture
   useEffect(() => {
     if (!open) return;
-    setItems([]);
-    setOffset(0);
-    setTotal(0);
-    load(0, true);
+    // Remise a zero par promesse : aucun etat pose de facon synchrone dans l'effet
+    void Promise.resolve().then(() => {
+      setItems([]);
+      setOffset(0);
+      setTotal(0);
+      return load(0, true);
+    });
   }, [open, load]);
 
   return (
     <Drawer
       open={open}
       onClose={onClose}
-      title="Activite client"
-      subtitle={raisonSociale ?? 'Historique des consultations cote client'}
+      title="Activité du client"
+      subtitle={raisonSociale ?? 'Historique des consultations du client'}
       width="xl"
       footer={
         <div className="flex items-center justify-between border-t border-border px-6 py-3">
@@ -105,7 +108,7 @@ export function ClientAccessLogDrawer({
               disabled={loading}
             >
               <RefreshCw className="mr-1 h-4 w-4" />
-              Rafraichir
+              Actualiser
             </Button>
             {items.length < total && (
               <Button
@@ -129,7 +132,7 @@ export function ClientAccessLogDrawer({
       {!error && items.length === 0 && !loading && (
         <div className="flex flex-col items-center gap-2 py-12 text-center text-sm text-fg-subtle">
           <Activity className="h-8 w-8 text-fg-subtle" />
-          <p>Aucune activite enregistree pour ce dossier.</p>
+          <p>Aucune activité enregistrée pour ce dossier : le client n’a encore rien consulté ni téléchargé.</p>
         </div>
       )}
 
@@ -140,9 +143,9 @@ export function ClientAccessLogDrawer({
               <tr>
                 <th className="px-3 py-2 font-semibold">Date</th>
                 <th className="px-3 py-2 font-semibold">Action</th>
-                <th className="px-3 py-2 font-semibold">User</th>
+                <th className="px-3 py-2 font-semibold">Utilisateur</th>
                 <th className="px-3 py-2 font-semibold">Document</th>
-                <th className="px-3 py-2 font-semibold">IP</th>
+                <th className="px-3 py-2 font-semibold">Adresse IP</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

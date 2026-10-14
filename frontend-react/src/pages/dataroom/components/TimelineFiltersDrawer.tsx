@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '../../../components/ui/Button';
 import { Drawer } from '../../../components/ui/Drawer';
 import { TextField } from '../../../components/ui/TextField';
+import { DEFAULT_TIMELINE_FILTERS, type TimelineFilters } from './timelineFiltres';
 
 /**
  * Sprint 7 / TASK 2.3 -- Drawer filtres pour la timeline historique
@@ -11,27 +12,16 @@ import { TextField } from '../../../components/ui/TextField';
  * Guide_Workflows_V2.md (CREATION, MODIFICATION, DISSOLUTION, LIQUIDATION,
  * AGO, SUCCURSALE, FERMETURE_SUCCURSALE). Liste extensible.
  */
-export interface TimelineFilters {
-  types: string[];
-  from: string; // YYYY-MM-DD
-  to: string;
-}
-
-export const DEFAULT_TIMELINE_FILTERS: TimelineFilters = {
-  types: [],
-  from: '',
-  to: '',
-};
 
 const TICKET_TYPE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'CREATION', label: 'Creation' },
+  { value: 'CREATION', label: 'Création' },
   { value: 'MODIFICATION', label: 'Modification' },
   { value: 'DISSOLUTION', label: 'Dissolution' },
   { value: 'LIQUIDATION', label: 'Liquidation' },
   { value: 'AGO', label: 'PV AGO' },
   { value: 'SUCCURSALE', label: 'Succursale' },
-  { value: 'FERMETURE_SUCCURSALE', label: 'Fermeture succursale' },
-  { value: 'IMPORT', label: 'Import dossier' },
+  { value: 'FERMETURE_SUCCURSALE', label: 'Fermeture de succursale' },
+  { value: 'IMPORT', label: 'Import de dossier' },
 ];
 
 interface Props {
@@ -44,9 +34,12 @@ interface Props {
 export function TimelineFiltersDrawer({ open, filters, onClose, onApply }: Props) {
   const [draft, setDraft] = useState<TimelineFilters>(filters);
 
-  useEffect(() => {
+  // Remise a zero a l'ouverture, ajustee pendant le rendu (pas d'etat pose dans un effet).
+  const [ouvertureVue, setOuvertureVue] = useState<{ open: boolean; filters: TimelineFilters } | null>(null);
+  if (!ouvertureVue || ouvertureVue.open !== open || ouvertureVue.filters !== filters) {
+    setOuvertureVue({ open, filters });
     if (open) setDraft(filters);
-  }, [open, filters]);
+  }
 
   function toggleType(t: string) {
     setDraft((d) => {
@@ -62,8 +55,8 @@ export function TimelineFiltersDrawer({ open, filters, onClose, onApply }: Props
     <Drawer
       open={open}
       onClose={onClose}
-      title="Filtres de la timeline"
-      subtitle="Affinez l'historique des operations cloturees"
+      title="Filtres de l’historique"
+      subtitle="Affinez l’historique des opérations clôturées"
       width="md"
       footer={
         <div className="flex justify-between gap-2 border-t border-border px-6 py-3">
@@ -72,7 +65,7 @@ export function TimelineFiltersDrawer({ open, filters, onClose, onApply }: Props
             size="sm"
             onClick={() => setDraft(DEFAULT_TIMELINE_FILTERS)}
           >
-            Reinitialiser
+            Réinitialiser
           </Button>
           <div className="flex gap-2">
             <Button variant="secondary" size="sm" onClick={onClose}>
@@ -94,7 +87,7 @@ export function TimelineFiltersDrawer({ open, filters, onClose, onApply }: Props
       <div className="space-y-6">
         <section>
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
-            Type d'operation
+            Type d’opération
           </h4>
           <div className="flex flex-wrap gap-2">
             {TICKET_TYPE_OPTIONS.map(({ value, label }) => {
@@ -119,7 +112,7 @@ export function TimelineFiltersDrawer({ open, filters, onClose, onApply }: Props
 
         <section>
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
-            Periode de cloture
+            Période de clôture
           </h4>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -143,24 +136,4 @@ export function TimelineFiltersDrawer({ open, filters, onClose, onApply }: Props
       </div>
     </Drawer>
   );
-}
-
-/** Helper UI -> API params. */
-export function timelineFiltersToApiParams(f: TimelineFilters): {
-  types?: string[];
-  from?: string;
-  to?: string;
-} {
-  return {
-    types: f.types.length > 0 ? f.types : undefined,
-    from: f.from ? `${f.from}T00:00:00Z` : undefined,
-    to: f.to ? `${f.to}T23:59:59Z` : undefined,
-  };
-}
-
-export function countActiveTimelineFilters(f: TimelineFilters): number {
-  let n = 0;
-  if (f.types.length > 0) n += 1;
-  if (f.from || f.to) n += 1;
-  return n;
 }

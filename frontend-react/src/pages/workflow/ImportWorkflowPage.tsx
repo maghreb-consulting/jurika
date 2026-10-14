@@ -24,31 +24,17 @@ import { Step5Validation } from './import-steps/Step5Validation';
 import { CancelTicketDialog } from '../tickets/CancelTicketDialog';
 import { useWorkflow } from './useWorkflow';
 import { WorkflowBoot } from './WorkflowBoot';
+import { AideEtape } from './AideEtape';
+import { ETAPES_IMPORT, libellesEtapes } from './aidesParcours';
 
 /** Forme juridique restreinte aux 2 valeurs supportees par l'import SARL. */
 type SarlForm = 'SARL' | 'SARL_AU';
 
-const IMPORT_STEP_LABELS: Record<number, string> = {
-  1: 'Denomination',
-  2: 'Siege',
-  3: 'Capital',
-  4: 'Activite',
-  5: 'Dirigeants',
-  6: 'Associes',
-  7: 'Upload juridique',
-  // Lot 1 (2026-09-04) — les dossiers comptable et fiscal sortent du perimetre :
-  // les anciennes etapes 8 / 9 / 10 (comptable, fiscal, suivi des exercices)
-  // laissent place a un simple depot de pieces. 11 etapes -> 9.
-  8: 'Depot des pieces',
-  9: 'Validation',
-};
+// Lot 1 (2026-09-04) — les dossiers comptable et fiscal sortent du perimetre :
+// les anciennes etapes 8 / 9 / 10 (comptable, fiscal, suivi des exercices)
+// laissent place a un simple depot de pieces. 11 etapes -> 9.
+const IMPORT_STEP_LABELS: Record<number, string> = libellesEtapes(ETAPES_IMPORT);
 
-/** Resultat d'ouverture d'un exercice a la finalisation de l'import. */
-export interface ExerciceOpenResult {
-  annee: number;
-  status: 'OPENED' | 'EXISTS' | 'ERROR';
-  message?: string;
-}
 
 /**
  * Lit la couche metier d'une step en tolerant le nicheage backend
@@ -185,7 +171,7 @@ function ImportWorkflowPageBody() {
         } catch (err) {
           setDatasetWarnings((prev) => [
             ...prev,
-            `Depot Dataroom ${label} : ${err instanceof Error ? err.message : 'echec'}`,
+            `Dépôt dans la Data Room de « ${label} » : ${err instanceof Error ? err.message : 'échec'}`,
           ]);
         }
       }
@@ -286,8 +272,8 @@ function ImportWorkflowPageBody() {
 
   if (!ticket || !progress) {
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger">
-        {error ?? 'Workflow introuvable'}
+      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+        {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
       </div>
     );
   }
@@ -295,7 +281,7 @@ function ImportWorkflowPageBody() {
   const step = viewStep;
   const formeJuridique: SarlForm = ticketForme ?? readImportForme(stepData);
   const formeLabel =
-    formeJuridique === 'SARL_AU' ? 'Mode : SARL_AU (1 associe)' : 'Mode : SARL multi-associes';
+    formeJuridique === 'SARL_AU' ? 'SARL à associé unique' : 'SARL à plusieurs associés';
   const denomination =
     (unwrap(stepData, 'step1', 'denomination').denomination as string | undefined) ?? null;
 
@@ -340,7 +326,7 @@ function ImportWorkflowPageBody() {
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => navigate(-1)}>
-            <Save className="mr-1 h-4 w-4" /> Sauvegarder & Quitter
+            <Save className="mr-1 h-4 w-4" /> Enregistrer et quitter
           </Button>
           <Button variant="danger" onClick={() => setShowCancel(true)}>
             <X className="mr-1 h-4 w-4" /> Annuler le ticket
@@ -358,7 +344,7 @@ function ImportWorkflowPageBody() {
 
       {step < maxStep && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          Vous consultez l'etape {step}/{progress.totalSteps} (etape la plus avancee
+          Vous consultez l’étape {step}/{progress.totalSteps} (étape la plus avancée
           atteinte : {maxStep}). Vous pouvez modifier les valeurs puis revalider.
         </div>
       )}
@@ -371,7 +357,7 @@ function ImportWorkflowPageBody() {
 
       {datasetWarnings.length > 0 && (
         <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
-          <p className="font-semibold">Avertissements Data Room :</p>
+          <p className="font-semibold">Avertissements de la Data Room (la saisie n’est pas bloquée) :</p>
           <ul className="ml-4 list-disc">
             {datasetWarnings.slice(-3).map((w, i) => (
               <li key={i}>{w}</li>
@@ -385,6 +371,10 @@ function ImportWorkflowPageBody() {
             Effacer
           </button>
         </div>
+      )}
+
+      {progress.statut !== 'TERMINE' && (
+        <AideEtape parcours="import" etapes={ETAPES_IMPORT} etape={step} />
       )}
 
       <div className="rounded-2xl border border-border bg-bg-raised p-6">
@@ -495,8 +485,8 @@ function ImportWorkflowPageBody() {
 
         {progress.statut === 'TERMINE' && (
           <div className="mt-6 rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-800">
-            <p className="font-semibold">Import termine</p>
-            <p className="mt-1">Le dossier {ticket.reference} a ete consolide.</p>
+            <p className="font-semibold">Reprise terminée</p>
+            <p className="mt-1">Le dossier {ticket.reference} a été consolidé.</p>
             <Button className="mt-3" onClick={() => navigate('/tickets')}>
               Retour aux tickets
             </Button>
@@ -506,11 +496,11 @@ function ImportWorkflowPageBody() {
 
       <footer className="flex flex-wrap items-center justify-between gap-2 pt-1">
         <Button variant="secondary" onClick={goPrev} disabled={step <= 1 || saving}>
-          <ChevronLeft className="mr-1 h-4 w-4" /> Etape precedente
+          <ChevronLeft className="mr-1 h-4 w-4" /> Étape précédente
         </Button>
         {step < maxStep && (
           <Button variant="secondary" onClick={goNext} disabled={saving}>
-            Suivant (sans modifier) <ChevronRight className="ml-1 h-4 w-4" />
+            Étape suivante (sans modifier) <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
         )}
       </footer>

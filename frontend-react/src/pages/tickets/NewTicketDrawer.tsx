@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { TexteAide } from '../../components/ui/Aide';
 import { Drawer } from '../../components/ui/Drawer';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
@@ -112,7 +113,7 @@ export function NewTicketDrawer({ open, onClose, onCreated }: Props) {
     }
     // Regroupement UI "Divers" : un sous-type reel doit etre selectionne.
     if (categorie === 'DIVERS' && !sousType) {
-      setError('Veuillez choisir un type d’operation.');
+      setError('Veuillez choisir un type d’opération.');
       return;
     }
     // Creation / Import : la raison sociale du dossier auto-cree est requise.
@@ -164,10 +165,18 @@ export function NewTicketDrawer({ open, onClose, onCreated }: Props) {
       open={open}
       onClose={onClose}
       title="Nouveau ticket"
-      subtitle="Le ticket declenchera automatiquement le workflow correspondant"
+      subtitle="Ouvrez le ticket d’une opération juridique : le parcours correspondant démarre aussitôt."
       width="md"
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        <TexteAide cle="nouveau-ticket" titre="Ouvrir un ticket">
+          <p>
+            Un ticket suit une opération du début à la fin : création du ticket, génération des
+            documents, déroulement de la démarche, clôture. Donnez-lui un titre parlant et choisissez
+            le type d’opération. Pour une création ou un import, la société et sa Data Room sont créées
+            en même temps. Vous arrivez ensuite sur le parcours, où vous saisissez les données.
+          </p>
+        </TexteAide>
         <TextField
           label="Titre"
           name="titre"
@@ -177,7 +186,7 @@ export function NewTicketDrawer({ open, onClose, onCreated }: Props) {
           required
         />
         <Select
-          label="Type d'operation"
+          label="Type d’opération"
           value={categorie}
           onChange={(e) => setCategorie(e.target.value as TicketCategorie)}
           options={CATEGORIE_OPTIONS}
@@ -194,7 +203,7 @@ export function NewTicketDrawer({ open, onClose, onCreated }: Props) {
         {needsCompanyInfo && (
           <fieldset className="space-y-3 rounded-lg border border-accent/40 bg-accent/10/40 p-3">
             <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-accent">
-              Societe a {type === 'CREATION' ? 'creer' : 'importer'}
+              Société à {type === 'CREATION' ? 'créer' : 'importer'}
             </legend>
             <TextField
               label="Raison sociale"
@@ -211,19 +220,19 @@ export function NewTicketDrawer({ open, onClose, onCreated }: Props) {
               options={FORME_OPTIONS}
             />
             <p className="text-[11px] text-accent/80">
-              Un dossier d'entreprise et son Data Room seront crees automatiquement.
+              Le dossier de la société et sa Data Room seront créés automatiquement.
             </p>
           </fieldset>
         )}
 
         <Select
-          label="Priorite"
+          label="Priorité"
           value={priorite}
           onChange={(e) => setPriorite(e.target.value as TicketPriorite)}
           options={PRIORITY_OPTIONS}
         />
         <TextField
-          label="Echeance (optionnel)"
+          label="Échéance (facultatif)"
           type="date"
           value={deadline}
           onChange={(e) => setDeadline(e.target.value)}
@@ -247,7 +256,7 @@ export function NewTicketDrawer({ open, onClose, onCreated }: Props) {
             Annuler
           </Button>
           <Button type="submit" loading={loading} disabled={loading}>
-            Creer et lancer le workflow
+            Créer et ouvrir le parcours
           </Button>
         </div>
       </form>
