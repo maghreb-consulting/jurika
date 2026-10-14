@@ -593,6 +593,7 @@ function CreationSarlWorkflowPageBody() {
           saving={saving}
           onSubmit={(p) => submit(8, p)}
           onPieceUploaded={onPieceUploaded}
+          registerDirty={effectiveRegisterDirty}
         />
       )}
       {step === 9 && (

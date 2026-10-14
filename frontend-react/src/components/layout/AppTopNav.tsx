@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import {
   Banknote,
   Bot,
@@ -36,6 +36,7 @@ import type { Role } from '../../types/auth';
 import { DeadlineCountWidget } from './DeadlineCountWidget';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
+import { useDeconnexion } from './useDeconnexion';
 import { NOM_PLATEFORME, libelleRole } from './identite';
 
 interface NavItem {
@@ -107,16 +108,17 @@ const CLASSE_ENTREE_MENU =
  */
 export function AppTopNav() {
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
   const reafficherAide = useAidesStore((s) => s.reafficher);
   const reafficherTout = useAidesStore((s) => s.reafficherTout);
   const viderAides = useAidesStore((s) => s.vider);
-  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [annonce, setAnnonce] = useState('');
   // Badge « Chat » = vrai nombre de messages non lus (remplace l'ancien 3 figé).
   useChatUnreadSync();
   const chatUnread = useChatUnreadStore((s) => s.total);
+  // Lot L7 (E12) : les saisies gardees dans ce navigateur partent avant la deconnexion,
+  // ou l'employe confirme leur perte.
+  const { deconnecter, dialogue: dialogueDeconnexion } = useDeconnexion(viderAides);
 
   if (!user) return null;
 
@@ -132,9 +134,7 @@ export function AppTopNav() {
 
   async function handleLogout() {
     setMenuOpen(false);
-    viderAides();
-    await logout();
-    navigate('/login', { replace: true });
+    await deconnecter();
   }
 
   function revoirVisite() {
@@ -320,6 +320,7 @@ export function AppTopNav() {
       <p role="status" aria-live="polite" className="sr-only">
         {annonce}
       </p>
+      {dialogueDeconnexion}
     </header>
   );
 }

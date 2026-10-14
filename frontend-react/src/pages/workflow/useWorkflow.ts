@@ -1,7 +1,9 @@
 import { Fragment, createContext, createElement, useCallback, useContext, useEffect, useRef, useState, useLayoutEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
-import { extractError } from '../../lib/api';
+import { STORAGE_ACCESS, extractError } from '../../lib/api';
+import { useAuthStore } from '../../store/authStore';
+import { ConflitsBrouillon } from '../../components/workflow/ConflitsBrouillon';
 import { ticketService } from '../../services/ticket.service';
 import { workflowService } from '../../services/workflow.service';
 import type { Ticket } from '../../types/ticket';
@@ -15,6 +17,28 @@ import {
   type EtatEnregistrement,
 } from './enregistrementAuto';
 import type { RegisterDirty } from './useStepAutosave';
+import {
+  EVENEMENT_AVANT_DECONNEXION,
+  EVENEMENT_SESSION_OUVERTE,
+  accuserReception,
+  canonique,
+  ecrireBrouillon,
+  effacerBrouillon,
+  lireBrouillons,
+  lireConflits,
+  natureEchec,
+  retirerSiIdentique,
+  signalerParcoursOuvert,
+  synchroniserBrouillons,
+  type AuteurBrouillon,
+  type BrouillonLocal,
+} from './brouillonsLocaux';
+
+/** Auteur des brouillons locaux : l'utilisateur connecte (aucun sans session). */
+function auteurCourant(): AuteurBrouillon | null {
+  const u = useAuthStore.getState().user;
+  return u?.userId && u.workspaceId ? { userId: u.userId, workspaceId: u.workspaceId } : null;
+}
 
 /**
  * Fix 2026-06-11 — Cache module-scope (PAS un hook) qui partage la Promise du
@@ -89,6 +113,14 @@ export interface UseWorkflowState {
    * (defaut : viewStep courant). Utile avant un onBlur explicite.
    */
   flushDraft: (step?: number) => Promise<void>;
+  /**
+   * Lot L7 (E12) : brouillons de ce navigateur en conflit avec le serveur (l'etape a
+   * ete modifiee ailleurs depuis). Rien n'est ecrase tant que l'employe n'a pas choisi.
+   */
+  conflits: BrouillonLocal[];
+  resoudreConflit: (b: BrouillonLocal, garder: 'local' | 'serveur') => Promise<void>;
+  /** Incremente quand les champs doivent relire le serveur (brouillon local retenu). */
+  generation: number;
 }
 
 /**
@@ -115,6 +147,12 @@ function useWorkflowEngine(): UseWorkflowState {
   const [error, setError] = useState<string | null>(null);
   const [viewStep, setViewStep] = useState<number | null>(null);
   const [enregistrement, setEnregistrement] = useState<EtatEnregistrement>({ type: 'repos' });
+  const [conflits, setConflits] = useState<BrouillonLocal[]>([]);
+  const [generation, setGeneration] = useState(0);
+  // Lot L7 (E12) : version du serveur connue par cle d'etape (forme canonique), base
+  // des brouillons locaux ; derniere saisie ecrite dans ce navigateur, par cle.
+  const serveurConnuRef = useRef<Map<string, string>>(new Map());
+  const dernierLocalRef = useRef<Map<string, string>>(new Map());
 
   // Refs : lectures stables pour les callbacks sans creer de churn de useCallback.
   const progressRef = useRef<WorkflowProgress | null>(null);
@@ -159,7 +197,24 @@ function useWorkflowEngine(): UseWorkflowState {
         // Liberation de la Promise une fois resolue, pour autoriser un reload() ulterieur.
         void pPromise.finally(() => loadPromiseByTicket.delete(ticketId));
       }
-      const p = await pPromise;
+      let p = await pPromise;
+      // Lot L7 (E12) : a l'ouverture du parcours, la saisie gardee dans ce navigateur
+      // (session expiree, coupure) est renvoyee AVANT que les champs ne montent : ils
+      // relisent alors le serveur, qui la porte. Conflit : rien n'est ecrase.
+      const auteur = auteurCourant();
+      if (auteur) {
+        if (progressRef.current == null && lireBrouillons(auteur, ticketId).length > 0) {
+          try {
+            p = (await synchroniserBrouillons(auteur, ticketId, p)).progress;
+          } catch {
+            // Renvoi impossible : les brouillons restent dans ce navigateur.
+          }
+        }
+        setConflits(lireConflits(auteur, ticketId));
+      }
+      serveurConnuRef.current = new Map(
+        Object.entries(p.data ?? {}).map(([k, v]) => [k, canonique(v)]),
+      );
       setProgress(p);
       setViewStep((prev) => (prev == null ? p.currentStep : prev));
     } catch (err) {
@@ -180,6 +235,13 @@ function useWorkflowEngine(): UseWorkflowState {
       setSaving(true);
       try {
         const p = await workflowService.save(ticketId, currentStep, data);
+        const auteur = auteurCourant();
+        for (const [cle, contenu] of Object.entries(data)) {
+          if (!contenu || typeof contenu !== 'object') continue;
+          serveurConnuRef.current.set(cle, canonique(contenu));
+          dernierLocalRef.current.delete(cle);
+          if (auteur) accuserReception(auteur, ticketId, cle, contenu as Record<string, unknown>);
+        }
         setProgress(p);
       } catch (err) {
         setError(extractError(err).message);
@@ -205,6 +267,16 @@ function useWorkflowEngine(): UseWorkflowState {
             "L'etape ne peut pas etre validee. Verifiez les donnees.";
           setError(msg);
         } else {
+          // Lot L7 (E12) : l'etape validee est au serveur ; son brouillon local n'a plus d'objet.
+          const cle = `step${step}`;
+          serveurConnuRef.current.set(cle, canonique(r.progress.data?.[cle]));
+          dernierLocalRef.current.delete(cle);
+          const auteur = auteurCourant();
+          if (auteur) {
+            for (const b of lireBrouillons(auteur, ticketId)) {
+              if (b.cle === cle && !b.conflit) effacerBrouillon(b);
+            }
+          }
           const nextDisplayStep = step >= r.progress.totalSteps ? step : step + 1;
           setViewStep(nextDisplayStep);
         }
@@ -240,8 +312,80 @@ function useWorkflowEngine(): UseWorkflowState {
   const dernierEnregistreRef = useRef<Map<string, string>>(new Map());
   const fileRef = useRef<Promise<void>>(Promise.resolve());
   // Saisie dont l'envoi a echoue : la lecture periodique ne la renvoie pas en
-  // boucle ; elle repart a la prochaine modification, navigation ou sortie.
+  // boucle ; elle repart a la prochaine modification, navigation ou sortie, au
+  // retour du reseau ou a la reprise de la session (lot L7, E12).
   const echecRef = useRef<Map<string, string>>(new Map());
+
+  /**
+   * Lot L7 (E12) : ecrit la saisie dans ce navigateur AVANT tout envoi. Elle y reste
+   * jusqu'a l'accuse du serveur. Renvoie faux si le navigateur refuse de la garder.
+   */
+  const garderLocalement = useCallback(
+    (step: number, cle: string, contenu: Record<string, unknown>, serialise: string): boolean => {
+      const auteur = auteurCourant();
+      const tid = ticketIdRef.current;
+      if (!auteur || !tid) return false;
+      if (dernierLocalRef.current.get(cle) === serialise) return true;
+      const base = serveurConnuRef.current.get(cle) ?? canonique(undefined);
+      const ok = ecrireBrouillon(auteur, tid, cle, step, contenu, base);
+      if (ok) dernierLocalRef.current.set(cle, serialise);
+      return ok;
+    },
+    [],
+  );
+
+  /** Envoi d'une saisie deja serialisee (et deja gardee localement). */
+  const envoyer = useCallback(
+    (step: number, cle: string, contenu: Record<string, unknown>, serialise: string,
+      gardee: boolean, fiable: boolean): Promise<void> => {
+      const tid = ticketIdRef.current;
+      if (!tid) return Promise.resolve();
+      const wrapped: Record<string, unknown> = { [cle]: contenu };
+      const envoi = async () => {
+        setEnregistrement({ type: 'en-cours' });
+        try {
+          const p = fiable
+            ? await envoyerBrouillonFiable(tid, step, wrapped)
+            : await workflowService.save(tid, step, wrapped);
+          if (p) setProgress(p);
+          echecRef.current.delete(cle);
+          serveurConnuRef.current.set(cle, canonique(contenu));
+          dernierLocalRef.current.delete(cle);
+          const auteur = auteurCourant();
+          if (auteur) accuserReception(auteur, tid, cle, contenu);
+          setEnregistrement({ type: 'enregistre', a: new Date() });
+        } catch (err) {
+          // La saisie reste a l'ecran (et dans ce navigateur) ; elle sera renvoyee.
+          if (dernierEnregistreRef.current.get(cle) === serialise) {
+            dernierEnregistreRef.current.delete(cle);
+          }
+          echecRef.current.set(cle, serialise);
+          const nature = natureEchec(err);
+          const auteur = auteurCourant();
+          if (nature === 'refus') {
+            // Refus definitif du serveur (droit, ticket clos) : la renvoyer a chaque
+            // connexion n'y changerait rien ; le message reste a l'ecran.
+            if (auteur) retirerSiIdentique(auteur, tid, cle, contenu);
+            dernierLocalRef.current.delete(cle);
+          }
+          if (nature === 'session' && gardee) {
+            setEnregistrement({ type: 'session-expiree' });
+          } else if (nature === 'hors-ligne' && gardee) {
+            setEnregistrement({ type: 'hors-ligne' });
+          } else {
+            const message = err instanceof ErreurEnvoiFiable ? err.message : extractError(err).message;
+            setEnregistrement({ type: 'erreur', message, gardeLocalement: gardee && nature !== 'refus' });
+          }
+        }
+      };
+      // Page qui se ferme : envoi immediat, sans attendre la file.
+      if (fiable) return envoi();
+      const suite = fileRef.current.then(envoi);
+      fileRef.current = suite;
+      return suite;
+    },
+    [],
+  );
 
   const enregistrerSiChange = useCallback(
     (step: number, getter: DirtyGetter, fiable = false): Promise<void> => {
@@ -263,34 +407,11 @@ function useWorkflowEngine(): UseWorkflowState {
       const serialise = JSON.stringify(contenu);
       if (dernierEnregistreRef.current.get(cle) === serialise) return Promise.resolve();
       dernierEnregistreRef.current.set(cle, serialise);
-      const wrapped: Record<string, unknown> = { [cle]: contenu };
-
-      const envoi = async () => {
-        setEnregistrement({ type: 'en-cours' });
-        try {
-          const p = fiable
-            ? await envoyerBrouillonFiable(tid, step, wrapped)
-            : await workflowService.save(tid, step, wrapped);
-          if (p) setProgress(p);
-          echecRef.current.delete(cle);
-          setEnregistrement({ type: 'enregistre', a: new Date() });
-        } catch (err) {
-          // La saisie reste a l'ecran ; elle sera renvoyee a la prochaine lecture.
-          if (dernierEnregistreRef.current.get(cle) === serialise) {
-            dernierEnregistreRef.current.delete(cle);
-          }
-          echecRef.current.set(cle, serialise);
-          const message = err instanceof ErreurEnvoiFiable ? err.message : extractError(err).message;
-          setEnregistrement({ type: 'erreur', message });
-        }
-      };
-      // Page qui se ferme : envoi immediat, sans attendre la file.
-      if (fiable) return envoi();
-      const suite = fileRef.current.then(envoi);
-      fileRef.current = suite;
-      return suite;
+      // Lot L7 (E12) : ecrite dans ce navigateur AVANT l'envoi (401, coupure, fermeture).
+      const gardee = garderLocalement(step, cle, contenu, serialise);
+      return envoyer(step, cle, contenu, serialise, gardee, fiable);
     },
-    [],
+    [garderLocalement, envoyer],
   );
 
   // P1 2026-06-21 -- registre des getters par etape ; chaque etape s'y inscrit au
@@ -337,26 +458,36 @@ function useWorkflowEngine(): UseWorkflowState {
     let derniereLecture: string | null = null;
     let enAttenteDepuis: number | null = null;
 
-    const lire = () => {
+    const lireCourante = (): { target: number; getter: DirtyGetter; cle: string;
+      contenu: Record<string, unknown>; serialise: string } | null => {
       const target = viewStepRef.current;
       const getter = target == null ? null : dirtyGettersRef.current.get(target);
-      if (target == null || !getter) return;
+      if (target == null || !getter) return null;
       let payload: Record<string, unknown> | null = null;
       try {
         payload = getter();
       } catch {
-        return;
+        return null;
       }
-      if (!payload) return;
+      if (!payload) return null;
       const cle = typeof payload.__stepKey === 'string' ? payload.__stepKey : `step${target}`;
       const contenu: Record<string, unknown> = { ...payload };
       delete contenu.__stepKey;
-      const serialise = JSON.stringify(contenu);
+      return { target, getter, cle, contenu, serialise: JSON.stringify(contenu) };
+    };
+
+    const lire = () => {
+      const l = lireCourante();
+      if (!l) return;
+      const { target, getter, cle, contenu, serialise } = l;
       if (dernierEnregistreRef.current.get(cle) === serialise || echecRef.current.get(cle) === serialise) {
         derniereLecture = null;
         enAttenteDepuis = null;
         return;
       }
+      // Lot L7 (E12) : la saisie est gardee dans ce navigateur des qu'elle est lue,
+      // avant meme l'envoi (au plus une seconde de frappe expose a une fermeture brutale).
+      garderLocalement(target, cle, contenu, serialise);
       const maintenant = Date.now();
       const stable = serialise === derniereLecture;
       derniereLecture = serialise;
@@ -367,7 +498,8 @@ function useWorkflowEngine(): UseWorkflowState {
       void enregistrerSiChange(target, getter);
     };
 
-    // Onglet masque ou ferme : envoi fiable de ce qui n'est pas encore parti.
+    // Onglet masque ou ferme : envoi fiable de ce qui n'est pas encore parti (la
+    // saisie est ecrite dans ce navigateur avant l'envoi).
     const envoiFiable = () => {
       const target = viewStepRef.current;
       const getter = target == null ? null : dirtyGettersRef.current.get(target);
@@ -377,15 +509,93 @@ function useWorkflowEngine(): UseWorkflowState {
       if (document.visibilityState === 'hidden') envoiFiable();
     };
 
+    // Lot L7 (E12) : retour du reseau, nouvelle session (ici ou dans un autre onglet) :
+    // la saisie en echec et les brouillons de ce ticket repartent.
+    const relancer = () => {
+      echecRef.current.clear();
+      const auteur = auteurCourant();
+      const tid = ticketIdRef.current;
+      const l = lireCourante();
+      if (l) void enregistrerSiChange(l.target, l.getter);
+      if (!auteur || !tid) return;
+      // Brouillons des autres etapes : renvoyes avec le controle de conflit (le
+      // serveur doit porter encore la version sur laquelle ils ont ete faits).
+      if (!lireBrouillons(auteur, tid).some((b) => !b.conflit && b.cle !== l?.cle)) return;
+      synchroniserBrouillons(auteur, tid, undefined, l?.cle)
+        .then((r) => {
+          for (const [k, v] of Object.entries(r.progress.data ?? {})) {
+            if (k !== l?.cle) serveurConnuRef.current.set(k, canonique(v));
+          }
+          setProgress(r.progress);
+          setConflits(r.conflits);
+        })
+        .catch(() => undefined);
+    };
+    const onStockage = (e: StorageEvent) => {
+      if (e.key === STORAGE_ACCESS && e.newValue) relancer();
+    };
+    // Deconnexion volontaire : la saisie a l'ecran est ecrite, l'appelant l'envoie.
+    const avantDeconnexion = () => {
+      const l = lireCourante();
+      if (l && dernierEnregistreRef.current.get(l.cle) !== l.serialise) {
+        garderLocalement(l.target, l.cle, l.contenu, l.serialise);
+      }
+    };
+
     const id = window.setInterval(lire, LECTURE_SAISIE_MS);
     document.addEventListener('visibilitychange', onVisibilite);
     window.addEventListener('pagehide', envoiFiable);
+    window.addEventListener('online', relancer);
+    window.addEventListener(EVENEMENT_SESSION_OUVERTE, relancer);
+    window.addEventListener('storage', onStockage);
+    window.addEventListener(EVENEMENT_AVANT_DECONNEXION, avantDeconnexion);
     return () => {
       window.clearInterval(id);
       document.removeEventListener('visibilitychange', onVisibilite);
       window.removeEventListener('pagehide', envoiFiable);
+      window.removeEventListener('online', relancer);
+      window.removeEventListener(EVENEMENT_SESSION_OUVERTE, relancer);
+      window.removeEventListener('storage', onStockage);
+      window.removeEventListener(EVENEMENT_AVANT_DECONNEXION, avantDeconnexion);
     };
-  }, [enregistrerSiChange]);
+  }, [enregistrerSiChange, garderLocalement]);
+
+  // Lot L7 (E12) : le renvoi global (reconnexion, retour du reseau) laisse ce ticket
+  // au moteur, qui connait la saisie a l'ecran.
+  useEffect(() => (ticketId ? signalerParcoursOuvert(ticketId) : undefined), [ticketId]);
+
+  /**
+   * Lot L7 (E12) : choix de l'employe face a un brouillon en conflit. `local` : la
+   * saisie de ce navigateur remplace l'etape au serveur et les champs la relisent ;
+   * `serveur` : le brouillon local est efface.
+   */
+  const resoudreConflit = useCallback(async (b: BrouillonLocal, garder: 'local' | 'serveur') => {
+    const tid = ticketIdRef.current;
+    if (!tid) return;
+    if (garder === 'serveur') {
+      effacerBrouillon(b);
+      setConflits((c) => c.filter((x) => x.idConflit !== b.idConflit));
+      return;
+    }
+    setError(null);
+    try {
+      const p = await workflowService.save(tid, b.step, { [b.cle]: b.contenu });
+      effacerBrouillon(b);
+      // Une saisie faite depuis sur la version du serveur est remplacee par ce choix.
+      const auteur = auteurCourant();
+      if (auteur) {
+        for (const x of lireBrouillons(auteur, tid)) if (x.cle === b.cle && !x.conflit) effacerBrouillon(x);
+      }
+      serveurConnuRef.current.set(b.cle, canonique(b.contenu));
+      dernierEnregistreRef.current.set(b.cle, JSON.stringify(b.contenu));
+      dernierLocalRef.current.delete(b.cle);
+      setProgress(p);
+      setConflits((c) => c.filter((x) => x.idConflit !== b.idConflit));
+      setGeneration((g) => g + 1);
+    } catch (err) {
+      setError(extractError(err).message);
+    }
+  }, []);
 
   // goToStep / goPrev / goNext : DEPS STABLES (vide) -- lisent progressRef.current.
   // Garantit que la reference de la callback ne change pas entre renders.
@@ -448,6 +658,9 @@ function useWorkflowEngine(): UseWorkflowState {
     registerDirty,
     flushDraft,
     enregistrement,
+    conflits,
+    resoudreConflit,
+    generation,
   };
 }
 
@@ -510,10 +723,18 @@ export function WorkflowDataProvider({
     const msg = state.error ?? 'Workflow introuvable';
     return createElement(Fragment, null, renderError ? renderError(msg) : null);
   }
+  // Lot L7 (E12) : un brouillon de ce navigateur en conflit avec le serveur est
+  // presente au-dessus du parcours ; `generation` remonte les champs quand
+  // l'employe retient la saisie locale (ils relisent alors le serveur).
   return createElement(
     WorkflowCtx.Provider,
     { value: state },
-    createElement(EnregistrementCtx.Provider, { value: state.enregistrement }, children),
+    createElement(
+      EnregistrementCtx.Provider,
+      { value: state.enregistrement },
+      createElement(ConflitsBrouillon, { conflits: state.conflits, onResoudre: state.resoudreConflit }),
+      createElement(Fragment, { key: state.generation }, children),
+    ),
   );
 }
 

@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
+import { useStepAutosave, type RegisterDirty } from '../useStepAutosave';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -26,6 +27,12 @@ interface Props {
     label: string,
     file: File,
   ) => Promise<void> | void;
+  /**
+   * Lot L7 (E12) : enregistrement automatique de la saisie de l'etape (choix des
+   * pieces, pieces complementaires, pieces retirees, libelle en cours). Les fichiers
+   * eux-memes partent a l'import (registre et Data Room) et ne sont jamais renvoyes.
+   */
+  registerDirty?: RegisterDirty;
 }
 
 interface RegisteredPiece {
@@ -96,6 +103,7 @@ export function Step8PiecesJointes({
   saving,
   onSubmit,
   onPieceUploaded,
+  registerDirty,
 }: Props) {
   // Pre-remplit a partir du registre + ancien stockage local (compat).
   // L6 : memoise (la liste servait de dependance a un useMemo et changeait a chaque rendu).
@@ -154,8 +162,22 @@ export function Step8PiecesJointes({
       : null;
   }, [data?.step7]);
 
+  // Lot L7 (E12) : saisie de l'etape relue (brouillon enregistre ou etape validee).
+  const detailsBruts = existing?.piecesDetails;
+  const retireesBrutes = existing?.piecesRetirees;
+  const detailsSaisis = useMemo(
+    () => (Array.isArray(detailsBruts) ? (detailsBruts as Piece[]) : []),
+    [detailsBruts],
+  );
+  const retireesSaisies = useMemo(
+    () => (Array.isArray(retireesBrutes)
+      ? (retireesBrutes as unknown[]).filter((c): c is string => typeof c === 'string')
+      : []),
+    [retireesBrutes],
+  );
+
   const initialPieces: Piece[] = useMemo(() => {
-    return DEFAULT_PIECES.map((p) => {
+    const reprises = DEFAULT_PIECES.map((p): Piece => {
       const reg = registeredPieces?.[p.code];
       if (reg) {
         return {
@@ -178,15 +200,40 @@ export function Step8PiecesJointes({
       if (p.code === 'STATUTS_VALIDES' && statutsValides) {
         return { ...p, fileName: statutsValides, fromRegistry: true };
       }
+      // Lot L7 (E12) : nom du fichier importe a cette etape, tel que saisi.
+      const saisie = detailsSaisis.find((d) => d.code === p.code);
+      if (saisie?.fileName) {
+        return { ...p, fileName: saisie.fileName, ...(saisie.fromRegistry ? { fromRegistry: true } : {}) };
+      }
       if (uploadedFromData.includes(p.code)) {
         return { ...p, fileName: `${p.code}.pdf` };
       }
       return p;
     });
-  }, [registeredPieces, uploadedFromData, cnArchivedId, justificatifSiege, statutsValides]);
+    // Lot L7 (E12) : pieces complementaires ajoutees a cette etape (libelle et fichier).
+    const complementaires = detailsSaisis
+      .filter((d) => typeof d?.code === 'string' && d.code.startsWith('EXTRA_') && typeof d.label === 'string')
+      .map((d): Piece => ({
+        code: d.code,
+        label: d.label,
+        description: typeof d.description === 'string' ? d.description : 'Document complémentaire',
+        obligatoire: false,
+        ...(d.fileName ? { fileName: d.fileName } : {}),
+        ...(d.fromRegistry ? { fromRegistry: true } : {}),
+      }));
+    // Lot L7 (E12) : une piece retiree a cette etape le reste a la relecture (le
+    // fichier depose en Data Room n'est pas supprime pour autant).
+    return [...reprises, ...complementaires].map((p) =>
+      retireesSaisies.includes(p.code) ? { ...p, fileName: undefined, fromRegistry: false } : p,
+    );
+  }, [registeredPieces, uploadedFromData, cnArchivedId, justificatifSiege, statutsValides,
+    detailsSaisis, retireesSaisies]);
 
   const [pieces, setPieces] = useState<Piece[]>(initialPieces);
-  const [extraLabel, setExtraLabel] = useState('');
+  const [retirees, setRetirees] = useState<string[]>(retireesSaisies);
+  const [extraLabel, setExtraLabel] = useState(
+    typeof existing?.libellePieceComplementaire === 'string' ? existing.libellePieceComplementaire : '',
+  );
 
   // Construit la liste des personnes (dirigeants + associes) depuis le stepData
   // amont. Chaque CIN devient un bloc dedie pre-rempli depuis le registre.
@@ -263,6 +310,7 @@ export function Step8PiecesJointes({
   }, [data?.step5, data?.step6, registeredPieces]);
 
   function uploadFor(code: string, file: File, label: string) {
+    setRetirees((r) => r.filter((c) => c !== code));
     setPieces((arr) =>
       arr.map((p) =>
         p.code === code ? { ...p, fileName: file.name, fromRegistry: true } : p,
@@ -271,6 +319,7 @@ export function Step8PiecesJointes({
     void onPieceUploaded?.(code, label, file);
   }
   function removeFor(code: string) {
+    setRetirees((r) => (r.includes(code) ? r : [...r, code]));
     setPieces((arr) =>
       arr.map((p) =>
         p.code === code ? { ...p, fileName: undefined, fromRegistry: false } : p,
@@ -291,6 +340,26 @@ export function Step8PiecesJointes({
     ]);
     setExtraLabel('');
   }
+
+  /**
+   * Saisie de l'etape, dans la forme que le serveur range sous `step8` a la validation
+   * (CreationSarlWorkflow.handlePiecesJointes : `piecesUploaded`, `pieces.uploaded`...)
+   * et que cette etape relit. Les fichiers n'y figurent pas : seulement leur nom.
+   */
+  function saisieEtape(): Record<string, unknown> {
+    const uploaded = pieces.filter((p) => p.fileName).map((p) => p.code);
+    const cinUploaded = cinPersonnes.filter((p) => p.fileName).map((p) => p.code);
+    const piecesUploaded = [...uploaded, ...cinUploaded];
+    return {
+      piecesUploaded,
+      piecesDetails: pieces,
+      cinPersonnes,
+      pieces: { uploaded: piecesUploaded },
+      piecesRetirees: retirees,
+      libellePieceComplementaire: extraLabel,
+    };
+  }
+  useStepAutosave(8, saisieEtape, registerDirty);
 
   const obligatoires = pieces.filter((p) => p.obligatoire);
   const optionnelles = pieces.filter((p) => !p.obligatoire);
@@ -464,15 +533,7 @@ export function Step8PiecesJointes({
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
-        const uploaded = pieces.filter((p) => p.fileName).map((p) => p.code);
-        const cinUploaded = cinPersonnes
-          .filter((p) => p.fileName)
-          .map((p) => p.code);
-        onSubmit({
-          piecesUploaded: [...uploaded, ...cinUploaded],
-          piecesDetails: pieces,
-          cinPersonnes,
-        });
+        onSubmit(saisieEtape());
       }}
       className="mx-auto max-w-[860px] space-y-6"
     >
@@ -493,7 +554,9 @@ export function Step8PiecesJointes({
         Importez les pièces que vous avez déjà ; aucune ne bloque l’étape, vous pourrez
         compléter plus tard depuis la Data Room. Ajoutez au besoin une pièce
         complémentaire par son libellé, puis cliquez sur « Valider et continuer » :
-        l’étape suivante présente la synthèse du dossier.
+        l’étape suivante présente la synthèse du dossier. Vos choix (pièces importées,
+        retirées ou ajoutées, libellé en cours) sont enregistrés automatiquement ; un
+        fichier importé part tout de suite dans la Data Room et n’est jamais renvoyé.
       </TexteAide>
 
       {/* Bloc CIN regroupees par personne */}

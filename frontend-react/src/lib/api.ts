@@ -274,7 +274,7 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
  * de permission (PERMISSION_DENIED, SETUP_2FA_REQUIRED, PASSWORD_CHANGE_REQUIRED,
  * TRIAL_EXPIRED, etc.) qu'un refresh ne resoudra pas.
  */
-function isPermissionDenied(body: unknown): boolean {
+export function isPermissionDenied(body: unknown): boolean {
   if (!body || typeof body !== 'object') return false;
   const code = (body as { code?: string }).code;
   if (!code) return false;

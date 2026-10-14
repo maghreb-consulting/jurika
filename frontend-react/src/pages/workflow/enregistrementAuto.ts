@@ -14,7 +14,11 @@ export type EtatEnregistrement =
   | { type: 'repos' }
   | { type: 'en-cours' }
   | { type: 'enregistre'; a: Date }
-  | { type: 'erreur'; message: string };
+  | { type: 'erreur'; message: string; gardeLocalement: boolean }
+  /** Lot L7 (E12) : jeton expire et non renouvele ; la saisie est gardee dans ce navigateur. */
+  | { type: 'session-expiree' }
+  /** Lot L7 (E12) : aucune reponse du serveur ; la saisie est gardee dans ce navigateur. */
+  | { type: 'hors-ligne' };
 
 export const EnregistrementCtx = createContext<EtatEnregistrement | null>(null);
 
@@ -39,9 +43,14 @@ const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://
 
 /** Refus du serveur lors d'un envoi fiable (message deja redige pour l'ecran). */
 export class ErreurEnvoiFiable extends Error {
-  constructor(message: string) {
+  /** Statut HTTP de la reponse ; corps lu s'il est en JSON (code metier du refus). */
+  readonly status: number;
+  readonly corps: unknown;
+  constructor(message: string, status: number, corps?: unknown) {
     super(message);
     this.name = 'ErreurEnvoiFiable';
+    this.status = status;
+    this.corps = corps;
   }
 }
 
@@ -67,10 +76,18 @@ export async function envoyerBrouillonFiable(
     keepalive: new TextEncoder().encode(corps).length < LIMITE_KEEPALIVE_OCTETS,
   });
   if (!reponse.ok) {
+    let corps: unknown;
+    try {
+      corps = await reponse.json();
+    } catch {
+      corps = undefined;
+    }
     throw new ErreurEnvoiFiable(
       reponse.status === 401
         ? 'Votre session a expiré. Reconnectez-vous, puis réessayez.'
         : `Le serveur a refusé l’enregistrement (code ${reponse.status}).`,
+      reponse.status,
+      corps,
     );
   }
   try {

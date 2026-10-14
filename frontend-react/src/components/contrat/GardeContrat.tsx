@@ -1,21 +1,16 @@
 import type { ReactNode } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { Clock, LogOut } from 'lucide-react';
 import { BrandLogo } from '../ui/BrandLogo';
 import { TexteAide } from '../ui/Aide';
-import { useAuthStore } from '../../store/authStore';
 import { useContratStore } from '../../store/contratStore';
+import { useDeconnexion } from '../layout/useDeconnexion';
 
 /** Mise en page reduite pendant l'attente : logo, deconnexion, contenu. */
 export function EcranContratRestreint({ children }: { children: ReactNode }) {
-  const logout = useAuthStore((s) => s.logout);
   const viderContrat = useContratStore((s) => s.vider);
-  const navigate = useNavigate();
-  async function deconnecter() {
-    viderContrat();
-    await logout();
-    navigate('/login', { replace: true });
-  }
+  // Lot L7 (E12) : saisies gardees dans ce navigateur envoyees avant la deconnexion.
+  const { deconnecter, dialogue } = useDeconnexion(viderContrat);
   return (
     <div className="flex min-h-screen flex-col bg-bg text-fg">
       <header className="flex items-center justify-between border-b border-border px-6 py-3">
@@ -31,6 +26,7 @@ export function EcranContratRestreint({ children }: { children: ReactNode }) {
       <main className="flex-1">
         <div className="mx-auto max-w-7xl px-6 py-8">{children}</div>
       </main>
+      {dialogue}
     </div>
   );
 }

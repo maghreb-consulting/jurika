@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { tokenStorage } from '../lib/api';
 import { authService } from '../services/auth.service';
+import { EVENEMENT_SESSION_OUVERTE, effacerBrouillonsUtilisateur } from '../pages/workflow/brouillonsLocaux';
 import type { AuthTokens, Role, User } from '../types/auth';
 
 interface AuthState {
@@ -49,6 +50,9 @@ export const useAuthStore = create<AuthState>()(
           role: decoded?.role ?? role,
         };
         set({ user, isAuthenticated: true, isHydrating: false });
+        // Lot L7 (E12) : les saisies gardees dans ce navigateur pour CET utilisateur
+        // (session expiree, coupure) sont renvoyees (useRenvoiBrouillons, App).
+        if (typeof window !== 'undefined') window.dispatchEvent(new Event(EVENEMENT_SESSION_OUVERTE));
       },
 
       hydrate: async () => {
@@ -79,6 +83,11 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
+        // Lot L7 (E12) : deconnexion VOLONTAIRE. Les brouillons locaux contiennent des
+        // donnees de dossier : ils sont effaces. L'appelant (useDeconnexion) les a
+        // d'abord envoyes, ou a obtenu la confirmation de l'employe.
+        const userId = get().user?.userId;
+        if (userId) effacerBrouillonsUtilisateur(userId);
         const refresh = tokenStorage.getRefreshToken();
         try {
           await authService.logout(refresh ?? undefined);

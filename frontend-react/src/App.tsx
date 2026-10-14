@@ -56,10 +56,14 @@ import { useThemeStore } from './store/themeStore';
 import { GrainOverlay } from './components/layout/GrainOverlay';
 import { ToastProvider } from './components/ui/Toast';
 import { useLenisScroll } from './lib/useLenisScroll';
+import { useRenvoiBrouillons } from './pages/workflow/useRenvoiBrouillons';
 
 function App() {
   const hydrate = useAuthStore((s) => s.hydrate);
   const applyDomTheme = useThemeStore((s) => s.applyDomTheme);
+
+  // Lot L7 (E12) : saisies de parcours gardees dans ce navigateur, renvoyees a la reconnexion.
+  useRenvoiBrouillons();
 
   useEffect(() => {
     // Sprint 12.5 T2 — applique data-theme dès le mount (avant tout rendu visible)
