@@ -23,8 +23,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -140,15 +142,28 @@ public class CycleEssaiService {
         }
         String code = ws.getCode();
         int objets = purgeObjets.purger(workspaceId);
+        // V45 : une ligne par table nommee ; lignes NULL = table absente de la base
+        // (service non migre), rapportee telle quelle, jamais comptee 0.
         Map<String, Long> lignes = new LinkedHashMap<>();
-        jdbc.query("SELECT table_nom, lignes FROM essai_supprimer_definitivement(?)",
-                rs -> { lignes.put(rs.getString(1), rs.getLong(2)); }, workspaceId);
+        List<String> absentes = new ArrayList<>();
+        jdbc.query("SELECT table_nom, lignes FROM essai_supprimer_definitivement(?)", rs -> {
+            long n = rs.getLong(2);
+            if (rs.wasNull()) {
+                absentes.add(rs.getString(1));
+            } else {
+                lignes.put(rs.getString(1), n);
+            }
+        }, workspaceId);
         long total = lignes.values().stream().mapToLong(Long::longValue).sum();
         // La trace est ecrite hors du workspace supprime (workspace NULL), sans donnee personnelle.
         Map<String, Object> meta = new HashMap<>();
         meta.put("workspaceCode", code);
         meta.put("objetsMinio", objets);
         meta.put("lignes", total);
+        if (!absentes.isEmpty()) {
+            meta.put("tablesAbsentes", absentes);
+            log.warn("Essai {} : tables absentes de la base lors de la suppression : {}", code, absentes);
+        }
         audit.log(null, null, "ESSAI_SUPPRIME_DEFINITIVEMENT", "workspace", workspaceId, null, null, meta);
         log.warn("Essai {} supprime definitivement : {} objets, {} lignes", code, objets, total);
         return lignes;

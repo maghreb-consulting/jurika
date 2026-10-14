@@ -360,6 +360,11 @@ class EssaiGratuitIT {
                 .isZero();
         assertThat(jdbc.queryForObject("SELECT supprime_le FROM essais_registre WHERE workspace_id = ?",
                 Timestamp.class, ws)).isNotNull();
+        // Trace : les tables absentes de ce schema (auth seul) sont nommees, jamais comptees 0.
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM audit_log WHERE action = 'ESSAI_SUPPRIME_DEFINITIVEMENT'
+                   AND entity_id = ? AND metadata -> 'tablesAbsentes' @> '["tickets"]'::jsonb
+                """, Long.class, ws)).isOne();
     }
 
     @Test
@@ -422,27 +427,26 @@ class EssaiGratuitIT {
     }
 
     @Test
-    void suppression_vide_les_tables_liees_par_cle_etrangere_sans_cascade() throws Exception {
+    void suppression_sur_schema_d_auth_seul_rapporte_les_tables_absentes() throws Exception {
+        // V45 : liste explicite. Ce contexte ne migre que le schema d'auth : les
+        // tables des autres services sont rendues avec lignes = NULL (absentes),
+        // jamais comptees 0. La couverture complete est gardee par
+        // SuppressionEssaiCouvertureIT (schema complet de jurika_db).
         UUID ws = ouvrirEssai(nouvelleIdentite(), "10.7.7.7", null);
-        jdbc.execute("""
-                CREATE TABLE IF NOT EXISTS essai_test_parent (id uuid PRIMARY KEY, workspace_id uuid NOT NULL);
-                CREATE TABLE IF NOT EXISTS essai_test_enfant (id uuid PRIMARY KEY, workspace_id uuid NOT NULL,
-                    parent_id uuid NOT NULL REFERENCES essai_test_parent(id));
-                """);
-        UUID parent = UUID.randomUUID();
-        jdbc.update("INSERT INTO essai_test_parent VALUES (?, ?)", parent, ws);
-        jdbc.update("INSERT INTO essai_test_enfant VALUES (?, ?, ?)", UUID.randomUUID(), ws, parent);
         jdbc.update("""
                 UPDATE workspaces SET trial_status = 'TRIAL_EXPIRED', essai_expire_le = now() - interval '31 days',
                        essai_avertissement_le = now() - interval '31 days' WHERE id = ?
                 """, ws);
         var lignes = jdbc.queryForList("SELECT * FROM essai_supprimer_definitivement(?)", ws);
         assertThat(lignes).anySatisfy(l -> {
-            assertThat(l.get("table_nom")).isEqualTo("essai_test_enfant");
+            assertThat(l.get("table_nom")).isEqualTo("tickets");
+            assertThat(l.get("lignes")).isNull();
+        });
+        assertThat(lignes).anySatisfy(l -> {
+            assertThat(l.get("table_nom")).isEqualTo("users");
             assertThat(l.get("lignes")).isEqualTo(1L);
         });
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM essai_test_parent WHERE workspace_id = ?",
-                Long.class, ws)).isZero();
+        assertThat(lignes.get(lignes.size() - 1)).containsEntry("table_nom", "workspaces").containsEntry("lignes", 1L);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM workspaces WHERE id = ?", Long.class, ws)).isZero();
     }
 
