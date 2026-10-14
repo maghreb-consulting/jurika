@@ -279,8 +279,8 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **CMI** : branchement au vrai CMI A_DECIDER (contrat) ; points de la specification a confirmer
   (ordre du tri du hash, reponses texte, type de transaction) isoles dans `CmiSpecification` ;
   `frontend-react/e2e/billing-*.spec.ts` decrivent encore le parcours Stripe.
-- **Essai** : fournisseur SMS reel A_DECIDER (sans lui, le code SMS est ecrit dans le journal
-  d'auth) ; texte des conditions de l'essai repris de la piece D du projet de contrat (non
+- **Essai** : SMS de verification par **Brevo SMS a la mise en production** (decision du
+  2026-10-14 ; d'ici la, le code SMS est ecrit dans le journal d'auth) ; texte des conditions de l'essai repris de la piece D du projet de contrat (non
   valide) ; boutons de telechargement encore visibles pendant l'essai (le serveur refuse) ;
   apercu des documents Office refuse pendant l'essai sur le Z440 (pas de LibreOffice) ; aucun
   controle de stockage sur l'enregistrement Collabora (WOPI PutFile) ; conservation du registre
@@ -369,6 +369,8 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   d'erreurs (dead-letter) ou la rejouer.
 - **Bascule `jurika_app` restante** : supervision, dashboard, ai et billing se connectent encore
   en proprietaire (superutilisateur sur le Z440), donc hors RLS.
+  **billing sur `jurika_app` : lot L9** (decision du 2026-10-14 ; RLS de `factures` et du
+  contrat posee mais inoperante jusque-la).
 - **Seed e2e expose** : la passerelle route `/api/v1/test/**` (route `test-seed`) vers le seed
   de dataroom, actif sur le Z440 (`JURIKA_TEST_SEED_ENABLED=true`) : creation de workspaces et
   mots de passe en clair par un appel anonyme. A fermer (route hors profil de test, ou seed
