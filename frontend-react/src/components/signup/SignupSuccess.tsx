@@ -9,15 +9,17 @@ interface SignupSuccessProps {
   /** BUG 7 (2026-06-08) — email perso destinataire des notifications. Affiche
    *  uniquement s'il differe du login_email. */
   contactEmail?: string;
-  selectedPlan?: string; // essentiel | business | entreprise (spec 2026-06-02)
+  selectedPlan?: string; // essentiel | professionnel | max (lot L7, CDC 4.3)
   /** HIGH-4 (audit) : false si l'envoi SMTP a echoue cote backend. */
   emailDelivered?: boolean;
 }
 
+// Lot L7 (E5) : grille du CDC 4.3, prix hors taxes.
 const PLAN_LABELS: Record<string, string> = {
-  essentiel: 'Essentiel — 499 MAD/mois',
-  business: 'Business — 1 199 MAD/mois',
-  entreprise: 'Entreprise — sur devis',
+  essentiel: 'Essentiel — 375 DH HT par mois ou 3 750 DH HT par an',
+  professionnel: 'Professionnel — 750 DH HT par mois ou 7 500 DH HT par an',
+  max: 'Max — 1 500 DH HT par mois ou 15 000 DH HT par an',
+  sur_devis: 'Sur Devis — selon devis',
 };
 
 export function SignupSuccess({ workspaceCode, email, contactEmail, selectedPlan, emailDelivered = true }: SignupSuccessProps) {

@@ -8,6 +8,7 @@ import { DonutChart } from './charts/DonutChart';
 import { TrendLineChart } from './charts/TrendLineChart';
 import { ChartCard } from './charts/ChartCard';
 import { KpiCard } from './KpiCard';
+import { FonctionHorsForfait } from '../billing/FonctionHorsForfait';
 import { chartTheme, statutTicketColors, statutDemandeColors } from '../../lib/chartTheme';
 import {
   STATUT_TICKET_LABELS,
@@ -64,15 +65,23 @@ export function Sprint10SupervisorPanel() {
     count: c.count,
   }));
 
+  // Lot L7 (E5), CDC 4.5 : indicateurs de productivite seulement dans les forfaits Max et Sur Devis.
+  const productivite = data.productiviteIncluse !== false;
+
   return (
     <div className="mt-6 space-y-4">
+      {!productivite && (
+        <FonctionHorsForfait compact fonction="Tableaux de bord de productivité" disponibleDes="Max" />
+      )}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard label="Tickets ouverts" value={data.ticketsOuverts} variant="warning" />
         <KpiCard label="Clos sur 30 jours" value={data.ticketsClos30d} variant="success" />
-        <KpiCard
-          label="Temps moyen de clôture"
-          value={`${data.tempsMoyenClotureHeures.toFixed(1)} h`}
-        />
+        {productivite && (
+          <KpiCard
+            label="Temps moyen de clôture"
+            value={`${data.tempsMoyenClotureHeures.toFixed(1)} h`}
+          />
+        )}
         <KpiCard
           label="Dossiers à risque"
           value={data.dossiersARisque.length}
@@ -101,6 +110,7 @@ export function Sprint10SupervisorPanel() {
 
       {/* Evolution mensuelle (crees vs clotures) + demandes clients par statut */}
       <div className="grid gap-4 lg:grid-cols-2">
+        {productivite && (
         <ChartCard
           title="Évolution mensuelle (6 mois)"
           icon={<TrendingUp className="h-4 w-4" />}
@@ -115,6 +125,7 @@ export function Sprint10SupervisorPanel() {
             ]}
           />
         </ChartCard>
+        )}
 
         <ChartCard
           title="Demandes des clients par statut"
@@ -126,14 +137,16 @@ export function Sprint10SupervisorPanel() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-bg-raised p-4">
-          <h4 className="mb-2 text-sm font-semibold text-fg">Évolution des tickets (30 jours)</h4>
-          {data.evolutionTickets30j.length === 0 ? (
-            <p className="py-8 text-center text-xs text-fg-subtle">Aucune donnée</p>
-          ) : (
-            <EvolutionChart data={data.evolutionTickets30j} />
-          )}
-        </div>
+        {productivite && (
+          <div className="rounded-xl border border-border bg-bg-raised p-4">
+            <h4 className="mb-2 text-sm font-semibold text-fg">Évolution des tickets (30 jours)</h4>
+            {data.evolutionTickets30j.length === 0 ? (
+              <p className="py-8 text-center text-xs text-fg-subtle">Aucune donnée</p>
+            ) : (
+              <EvolutionChart data={data.evolutionTickets30j} />
+            )}
+          </div>
+        )}
 
         <div className="rounded-xl border border-border bg-bg-raised p-4">
           <div className="mb-2 flex items-center gap-2">

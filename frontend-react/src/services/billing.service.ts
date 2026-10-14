@@ -1,66 +1,89 @@
 import { api } from '../lib/api';
 import type {
-  BillingPeriod,
-  ChangePlanRequest,
-  ChangePlanResponse,
-  ChangePlanPreviewResponse,
-  CheckoutSessionRequest,
-  CheckoutSessionResponse,
+  AbonnementAdminVue,
+  AbonnementVue,
+  ApercuChangementVue,
+  BilanTacheVue,
+  ChangementForfaitRequest,
+  ChangementForfaitVue,
   ContactSalesRequest,
   ContactSalesResponse,
-  CustomerPortalDto,
-  InvoicesPageDto,
-  PaymentMethod,
-  PaymentsListDto,
-  PreparePaymentRequest,
-  PreparePaymentResponse,
-  PaymentDto,
+  EnregistrementPaiementRequest,
+  FactureVue,
+  PaiementVue,
+  PreparationPaiementRequest,
+  PreparationPaiementVue,
   PricingResponse,
-  SubscriptionDto,
+  SurDevisVue,
   UsageSnapshot,
+  ValidationPaiementRequest,
 } from '../types/billing';
 
 /**
- * Sprint 12 — client billing-service.
- *
- * <p>Endpoints (gateway -> billing-service port 8090) :
- *  - GET    /api/v1/billing/subscription
- *  - GET    /api/v1/billing/invoices?page&size
- *  - POST   /api/v1/billing/checkout-session
- *  - POST   /api/v1/billing/customer-portal
- *  - POST   /api/v1/billing/contact-sales
- *
- * <p>404 sur /subscription = workspace n'a pas encore souscrit (cas trial).
+ * Lot L7 (E5) : client de la facturation (billing-service via la passerelle). Stripe est retire ;
+ * le paiement par carte passe par la page hebergee du CMI (formulaire auto-soumis), et n'est acquis
+ * qu'au retour serveur signe du CMI.
  */
 export const billingService = {
-  async getSubscription(): Promise<SubscriptionDto | null> {
+  /** Grille publique (auth-service, catalogue du CDC 4.3). */
+  async getPricing(): Promise<PricingResponse> {
+    const { data } = await api.get<PricingResponse>('/public/pricing');
+    return data;
+  },
+
+  /** Usage du forfait (dossiers du mois d'abonnement, acces employes, stockage). 204 : controle coupe. */
+  async getUsage(): Promise<UsageSnapshot | null> {
     try {
-      const { data } = await api.get<SubscriptionDto>('/billing/subscription');
+      const { data, status } = await api.get<UsageSnapshot>('/workspace/usage');
+      if (status === 204) return null;
       return data;
     } catch (err) {
-      if (isStatus(err, 404)) return null;
+      if ((err as { response?: { status?: number } })?.response?.status === 404) return null;
       throw err;
     }
   },
 
-  async listInvoices(page = 0, size = 20): Promise<InvoicesPageDto> {
-    const { data } = await api.get<InvoicesPageDto>('/billing/invoices', {
-      params: { page, size },
-    });
+  async getAbonnement(): Promise<AbonnementVue> {
+    const { data } = await api.get<AbonnementVue>('/billing/abonnement');
     return data;
   },
 
-  invoiceDownloadUrl(invoiceId: number): string {
-    return `${api.defaults.baseURL ?? ''}/billing/invoices/${invoiceId}/download`;
-  },
-
-  async createCheckoutSession(req: CheckoutSessionRequest): Promise<CheckoutSessionResponse> {
-    const { data } = await api.post<CheckoutSessionResponse>('/billing/checkout-session', req);
+  async apercuChangement(req: ChangementForfaitRequest): Promise<ApercuChangementVue> {
+    const { data } = await api.post<ApercuChangementVue>('/billing/changement-forfait/apercu', req);
     return data;
   },
 
-  async createCustomerPortal(): Promise<CustomerPortalDto> {
-    const { data } = await api.post<CustomerPortalDto>('/billing/customer-portal', {});
+  async changerForfait(req: ChangementForfaitRequest): Promise<ChangementForfaitVue> {
+    const { data } = await api.post<ChangementForfaitVue>('/billing/changement-forfait', req);
+    return data;
+  },
+
+  async annulerChangement(): Promise<void> {
+    await api.delete('/billing/changement-forfait');
+  },
+
+  async preparerPaiement(req: PreparationPaiementRequest): Promise<PreparationPaiementVue> {
+    const { data } = await api.post<PreparationPaiementVue>('/billing/paiements', req);
+    return data;
+  },
+
+  async listerPaiements(): Promise<PaiementVue[]> {
+    const { data } = await api.get<PaiementVue[]>('/billing/paiements');
+    return data;
+  },
+
+  async getPaiement(id: number): Promise<PaiementVue> {
+    const { data } = await api.get<PaiementVue>(`/billing/paiements/${id}`);
+    return data;
+  },
+
+  async listerFactures(): Promise<FactureVue[]> {
+    const { data } = await api.get<FactureVue[]>('/billing/factures');
+    return data;
+  },
+
+  async telechargerFacture(id: number): Promise<Blob> {
+    const { data } = await api.get<Blob>(`/billing/factures/${id}/pdf`, { responseType: 'blob' });
     return data;
   },
 
@@ -68,66 +91,81 @@ export const billingService = {
     const { data } = await api.post<ContactSalesResponse>('/billing/contact-sales', req);
     return data;
   },
+};
 
-  /**
-   * Sprint Beta (pricing-deploy) — Recupere le catalogue plans public
-   * (Essentiel/Business/Entreprise + quotas + lookup_keys Stripe — spec
-   * directeur 2026-06-02). Endpoint non-authentifie servi par auth-service
-   * depuis PlanCatalog (source unique de verite).
-   */
-  async getPricing(): Promise<PricingResponse> {
-    const { data } = await api.get<PricingResponse>('/public/pricing');
+/** Lot L7 (E5) : facturation vue du super-admin (tous les cabinets). */
+export const billingAdminService = {
+  async paiementsAEnregistrer(): Promise<PaiementVue[]> {
+    const { data } = await api.get<PaiementVue[]>('/billing/admin/paiements/a-enregistrer');
     return data;
   },
 
-  /**
-   * Sprint Beta (pricing-deploy) — Snapshot consommation plan
-   * (utilisateurs, dossiers, stockage). 204 si enforcement coupe.
-   */
-  async getUsage(): Promise<UsageSnapshot | null> {
-    try {
-      const { data, status } = await api.get<UsageSnapshot>('/workspace/usage');
-      if (status === 204) return null;
-      return data;
-    } catch (err) {
-      if (isStatus(err, 404) || isStatus(err, 204)) return null;
-      throw err;
-    }
-  },
-
-  // ─── BUG 8 (2026-06-07) — Change plan ────────────────────────────────
-  async changePlan(req: ChangePlanRequest): Promise<ChangePlanResponse> {
-    const { data } = await api.post<ChangePlanResponse>('/billing/change-plan', req);
+  async paiementsRecents(): Promise<PaiementVue[]> {
+    const { data } = await api.get<PaiementVue[]>('/billing/admin/paiements');
     return data;
   },
 
-  async previewChangePlan(req: ChangePlanRequest): Promise<ChangePlanPreviewResponse> {
-    const { data } = await api.post<ChangePlanPreviewResponse>('/billing/change-plan/preview', req);
+  async enregistrer(req: EnregistrementPaiementRequest): Promise<PaiementVue> {
+    const { data } = await api.post<PaiementVue>('/billing/admin/paiements', req);
     return data;
   },
 
-  // ─── BUG 14 (2026-06-07) — Multi-method payments ────────────────────
-  async preparePayment(req: PreparePaymentRequest): Promise<PreparePaymentResponse> {
-    const { data } = await api.post<PreparePaymentResponse>('/billing/prepare-payment', req);
+  async valider(id: number, req: ValidationPaiementRequest): Promise<PaiementVue> {
+    const { data } = await api.post<PaiementVue>(`/billing/admin/paiements/${id}/valider`, req);
     return data;
   },
 
-  async listPayments(): Promise<PaymentsListDto> {
-    const { data } = await api.get<PaymentsListDto>('/billing/payments');
+  async rejeter(id: number, motif: string): Promise<PaiementVue> {
+    const { data } = await api.post<PaiementVue>(`/billing/admin/paiements/${id}/rejeter`, { motif });
     return data;
   },
 
-  async validatePayment(paymentId: number, notes?: string): Promise<PaymentDto> {
-    const { data } = await api.patch<PaymentDto>(`/billing/payments/${paymentId}/validate`,
-      { notes: notes ?? null });
+  async abonnements(): Promise<AbonnementAdminVue[]> {
+    const { data } = await api.get<AbonnementAdminVue[]>('/billing/admin/abonnements');
+    return data;
+  },
+
+  async surDevis(workspaceId: string): Promise<SurDevisVue> {
+    const { data } = await api.get<SurDevisVue>(`/billing/admin/abonnements/${workspaceId}/sur-devis`);
+    return data;
+  },
+
+  async factures(workspaceId?: string): Promise<FactureVue[]> {
+    const { data } = await api.get<FactureVue[]>('/billing/admin/factures', {
+      params: workspaceId ? { workspaceId } : undefined,
+    });
+    return data;
+  },
+
+  async telechargerFacture(id: number): Promise<Blob> {
+    const { data } = await api.get<Blob>(`/billing/admin/factures/${id}/pdf`, { responseType: 'blob' });
+    return data;
+  },
+
+  async tacheFacturesEnAttente(): Promise<BilanTacheVue> {
+    const { data } = await api.post<BilanTacheVue>('/billing/admin/taches/factures-en-attente');
+    return data;
+  },
+
+  async tacheActivations(): Promise<BilanTacheVue> {
+    const { data } = await api.post<BilanTacheVue>('/billing/admin/taches/activations');
+    return data;
+  },
+
+  async tacheArchivage(): Promise<BilanTacheVue> {
+    const { data } = await api.post<BilanTacheVue>('/billing/admin/taches/archivage');
     return data;
   },
 };
 
-// Re-export pour le compose helper
-export type { BillingPeriod, PaymentMethod };
-
-function isStatus(err: unknown, status: number): boolean {
-  const e = err as { response?: { status?: number } };
-  return e?.response?.status === status;
+/** Ouvre le telechargement d'un PDF recu en blob (facture). */
+export function enregistrerPdf(blob: Blob, nom: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nom;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

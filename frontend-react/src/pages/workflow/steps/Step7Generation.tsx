@@ -36,6 +36,7 @@ import { BlocageValidation } from '../../../components/workflow/BlocageValidatio
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 import { DocumentEditor } from '../../../components/document/DocumentEditor';
 import { CollaboraEditor } from '../../../components/document/CollaboraEditor';
+import { useForfait } from '../../../lib/useForfait';
 import { dataroomService } from '../../../services/dataroom.service';
 import {
   bouclesParDocument,
@@ -433,6 +434,11 @@ export function Step7Generation({
   readOnly = false,
   registerDirty,
 }: Props) {
+  // Lot L7 (E5), CDC 4.5 : edition integree des actes, forfaits Max et Sur Devis (le serveur refuse
+  // aussi l'ouverture de la seance : FONCTION_HORS_FORFAIT). Hors forfait, le bouton l'explique.
+  const forfait = useForfait();
+  const editionIncluse = forfait.inclut('EDITION_INTEGREE_ACTES');
+  const editionDes = forfait.disponibleDes('EDITION_INTEGREE_ACTES') ?? 'Max';
   // 2026-06-10 — Fix persistance : le onSubmit envoie { documents: {...} }
   // directement, sans wrapper "generation". Le bug pre-existant lisait
   // "existing.generation.documents" et trouvait toujours vide -> l'employe
@@ -1775,11 +1781,13 @@ export function Step7Generation({
                           <button
                             type="button"
                             onClick={() => setEditingTplCode(tpl.code)}
-                            disabled={st.generating || restoring[tpl.code] || !st.blob}
+                            disabled={st.generating || restoring[tpl.code] || !st.blob || !editionIncluse}
                             className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-accent/30 bg-accent/5 text-xs font-medium text-accent hover:bg-accent/10 disabled:opacity-60"
-                            title="Éditer le document (style Word)"
+                            title={editionIncluse
+                              ? 'Éditer le document (style Word)'
+                              : `Édition des actes intégrée à la plateforme : incluse dès le forfait ${editionDes}. Téléchargez le document pour le modifier dans Word.`}
                           >
-                            <Pencil className="h-3.5 w-3.5" /> Éditer
+                            <Pencil className="h-3.5 w-3.5" /> {editionIncluse ? 'Éditer' : `Éditer (forfait ${editionDes})`}
                           </button>
                           {/* 2026-06-22 — Bouton .pdf retiré (conversion LibreOffice
                               jugée non fiable). Export PDF depuis Word si besoin. */}

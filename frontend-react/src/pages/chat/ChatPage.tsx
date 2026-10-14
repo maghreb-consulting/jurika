@@ -12,6 +12,8 @@ import { getSocket } from '../../lib/realtimeSocket';
 import { useCurrentUser } from '../../store/authStore';
 import { refreshChatUnread } from '../../store/chatUnreadStore';
 import { extractError } from '../../lib/api';
+import { useForfait } from '../../lib/useForfait';
+import { FonctionHorsForfait } from '../../components/billing/FonctionHorsForfait';
 import type { ChatMessage, Conversation } from '../../types/chat';
 import type { WorkspaceUser } from '../../types/auth';
 
@@ -45,7 +47,23 @@ function formatDate(iso?: string | null): string {
   }
 }
 
+/**
+ * Lot L7 (E5), CDC 4.5 : la messagerie interne est une fonction des forfaits Professionnel, Max et
+ * Sur Devis. Hors forfait, l'ecran l'explique (le serveur la refuse aussi : FORFAIT_SANS_MESSAGERIE).
+ */
 export function ChatPage() {
+  const forfait = useForfait();
+  if (!forfait.inclut('MESSAGERIE_INTERNE')) {
+    return (
+      <div className="p-6">
+        <FonctionHorsForfait fonction="Messagerie interne" disponibleDes={forfait.disponibleDes('MESSAGERIE_INTERNE')} />
+      </div>
+    );
+  }
+  return <MessagerieInterne />;
+}
+
+function MessagerieInterne() {
   const user = useCurrentUser();
   // 2026-06-26 — Le chat reste OUVERT au superviseur : c'est l'exception voulue
   // à la règle « superviseur oversight-only » (Lot G). Lot L5 (E9, RG-COM-06) :

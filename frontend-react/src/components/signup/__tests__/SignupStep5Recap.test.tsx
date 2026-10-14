@@ -19,13 +19,13 @@ describe('<SignupStep5Recap>', () => {
   it('shows recap with titulaire + structure + plan + 2FA preference', () => {
     render(
       <BrowserRouter>
-        <SignupStep5Recap profile={profile} twoFactor="TOTP" selectedPlan="business"
+        <SignupStep5Recap profile={profile} twoFactor="TOTP" selectedPlan="professionnel"
           onBack={vi.fn()} onSubmit={vi.fn().mockResolvedValue(undefined)} />
       </BrowserRouter>
     );
     expect(screen.getByText('Cabinet ATLAS Consulting')).toBeInTheDocument();
     expect(screen.getByText('Jean Dupont')).toBeInTheDocument();
-    expect(screen.getByText(/Business/i)).toBeInTheDocument();
+    expect(screen.getByText(/Professionnel \(750 DH HT par mois/)).toBeInTheDocument();
     expect(screen.getByText('Application d’authentification')).toBeInTheDocument();
     expect(screen.getByTestId('signup-cgu-checkbox')).toBeInTheDocument();
     expect(screen.getByTestId('signup-step5-submit')).toBeInTheDocument();

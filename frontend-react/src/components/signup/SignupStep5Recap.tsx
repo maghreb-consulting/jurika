@@ -4,11 +4,11 @@ import type { SignupProfileData } from './SignupStep1Cabinet';
 import type { TwoFactorPreference } from './SignupStep4TwoFactor';
 import { PROFESSIONAL_TYPE_LABELS, type ProfessionalType } from '../../types/professional';
 
-// Spec directeur 2026-06-02 : essentiel / business / entreprise.
+// Lot L7 (E5) : grille du CDC 4.3, prix hors taxes.
 const PLAN_LABELS: Record<string, string> = {
-  essentiel: 'Essentiel (499 MAD/mois)',
-  business: 'Business (1 199 MAD/mois)',
-  entreprise: 'Entreprise (sur devis)',
+  essentiel: 'Essentiel (375 DH HT par mois ou 3 750 DH HT par an)',
+  professionnel: 'Professionnel (750 DH HT par mois ou 7 500 DH HT par an)',
+  max: 'Max (1 500 DH HT par mois ou 15 000 DH HT par an)',
 };
 
 interface Props {

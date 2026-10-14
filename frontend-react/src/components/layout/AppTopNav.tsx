@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import {
+  Banknote,
   Bot,
   Building,
   Building2,
@@ -15,6 +16,7 @@ import {
   Lock,
   LogOut,
   MessageSquare,
+  Receipt,
   ScrollText,
   Settings,
   Shield,
@@ -72,6 +74,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Dossiers à vérifier', to: '/dossiers-a-verifier', icon: UserCheck, roles: ['SUPERVISEUR'] },
   // SUPER_ADMIN : gestion plateforme uniquement (RG-U07).
   { label: 'Cabinets', to: '/admin/workspaces', icon: Building2, roles: ['SUPER_ADMIN'] },
+  // Lot L7 (E5) : abonnements des cabinets et paiements a enregistrer (RG-PAY-02).
+  { label: 'Abonnements', to: '/admin/abonnements', icon: Receipt, roles: ['SUPER_ADMIN'] },
+  { label: 'Paiements', to: '/admin/paiements', icon: Banknote, roles: ['SUPER_ADMIN'] },
   { label: 'Utilisateurs', to: '/admin/users', icon: Users, roles: ['SUPER_ADMIN'] },
   { label: 'Journal d’audit', to: '/admin/audit', icon: ScrollText, roles: ['SUPER_ADMIN'] },
   { label: 'Référentiel des démarches', to: '/admin/referentiel-demarches', icon: ListChecks, roles: ['SUPER_ADMIN'] },

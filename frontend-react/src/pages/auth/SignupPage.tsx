@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SignupStep0Plan, type PlanCode } from '../../components/signup/SignupStep0Plan';
+import { lireRythmeInscription } from '../../lib/forfaits';
 import { SignupStep1Cabinet, type SignupProfileData } from '../../components/signup/SignupStep1Cabinet';
 import { SignupStep3Security } from '../../components/signup/SignupStep3Security';
 import { SignupStep4TwoFactor, type TwoFactorPreference } from '../../components/signup/SignupStep4TwoFactor';
@@ -20,7 +21,8 @@ const EMPTY_PROFILE: SignupProfileData = {
   firstName: '', lastName: '', workspaceName: '', email: '', phone: '', city: '', ice: '',
 };
 // Spec directeur 2026-06-02 : codes canoniques essentiel / business / entreprise.
-const ALLOWED_PLANS = new Set<PlanCode>(['essentiel', 'business', 'entreprise']);
+// Lot L7 (E5) : forfaits souscriptibles en ligne (Sur Devis : demande de devis).
+const ALLOWED_PLANS = new Set<PlanCode>(['essentiel', 'professionnel', 'max']);
 
 // Simplification inscription (2026-07-13) : Cabinet + Admin fusionnes en une
 // seule etape "Profil". Le wizard passe de 8 a 7 etapes :
@@ -75,7 +77,7 @@ function clearDraft(): void {
  * personne physique / morale et sans double email. Etapes restantes :
  * Forfait / Profil / Securite / 2FA / Recap / Paiement / Succes.
  *
- * Querystring `?plan=essentiel|business|entreprise` preselectionne le plan
+ * Querystring `?plan=essentiel|professionnel|max` preselectionne le plan
  * depuis la landing jurika.ai — le choix reste confirme par l'utilisateur.
  */
 export function SignupPage() {
@@ -209,7 +211,8 @@ export function SignupPage() {
         workspaceId: success.workspaceId,
         workspaceCode: success.workspaceCode,
         planCode: selectedPlan as CheckoutPlanCode,
-        billingPeriod: 'monthly' as BillingPeriod, // TODO Sprint 13 : lire periode du Step0Plan
+        // Lot L7 (E5) : rythme choisi au premier ecran (memorise), annuel a defaut.
+        billingPeriod: (lireRythmeInscription() ?? 'yearly') as BillingPeriod,
         contactEmail: profile.email,
         workspaceName: profile.workspaceName,
         accessToken: success.accessToken,

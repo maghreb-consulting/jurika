@@ -14,7 +14,10 @@ export type NotificationType =
   // Lot L5 (E9, RG-COM-08) : nouvelle demande du client ou requête répondue,
   // quota du forfait approchant.
   | 'DEMANDE_CLIENT'
-  | 'QUOTA_APPROCHANT';
+  | 'QUOTA_APPROCHANT'
+  // Lot L7 (E5) : canal du super-admin (quota d'un cabinet a 80 %, paiement a enregistrer).
+  | 'QUOTA_CABINET_APPROCHANT'
+  | 'PAIEMENT_A_ENREGISTRER';
 
 export interface Notification {
   id: string;
@@ -50,6 +53,8 @@ export const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
   WORKSPACE_EVENT: 'Événement du cabinet',
   DEMANDE_CLIENT: 'Demande ou réponse du client',
   QUOTA_APPROCHANT: 'Quota du forfait',
+  QUOTA_CABINET_APPROCHANT: 'Quota d’un cabinet',
+  PAIEMENT_A_ENREGISTRER: 'Paiement à enregistrer',
 };
 
 /**
@@ -68,6 +73,8 @@ export const NOTIFICATION_TYPES: NotificationType[] = [
   'WORKSPACE_EVENT',
   'DEMANDE_CLIENT',
   'QUOTA_APPROCHANT',
+  'QUOTA_CABINET_APPROCHANT',
+  'PAIEMENT_A_ENREGISTRER',
 ];
 
 /**

@@ -281,7 +281,28 @@ function isPermissionDenied(body: unknown): boolean {
       || code === 'PASSWORD_CHANGE_REQUIRED'
       || code === 'SETUP_2FA_REQUIRED'
       || code === 'TRIAL_EXPIRED'
-      || code === 'PAYMENT_REQUIRED';
+      || code === 'PAYMENT_REQUIRED'
+      // Lot L7 (E5) : refus de forfait ou workspace archive : un refresh n'y change rien.
+      || code === 'WORKSPACE_ARCHIVE'
+      || code === 'FORFAIT_SANS_MESSAGERIE'
+      || code === 'FONCTION_HORS_FORFAIT';
+}
+
+/** Page du cabinet archive (lot L7, RG-TAR-07 et RG-TAR-09). */
+export const PAGE_ARCHIVE = '/app/archive';
+
+/**
+ * Lot L7 (E5), RG-TAR-07 : le serveur refuse (403 WORKSPACE_ARCHIVE) tout chemin hors facturation
+ * quand le cabinet est archive. Le superviseur est conduit a la page du cabinet archive (nouvelle
+ * souscription, export et suppression au lot L8). Renvoie vrai si une redirection est faite.
+ */
+export function redirigerSiArchive(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false;
+  const code = (error.response?.data as { code?: string } | undefined)?.code;
+  if (error.response?.status !== 403 || code !== 'WORKSPACE_ARCHIVE') return false;
+  if (typeof window === 'undefined' || window.location.pathname.startsWith(PAGE_ARCHIVE)) return false;
+  window.location.href = PAGE_ARCHIVE;
+  return true;
 }
 
 api.interceptors.response.use(
@@ -293,6 +314,7 @@ api.interceptors.response.use(
     // de refresh ni de fin de session : un 401/403 y est soit attendu, soit sans
     // rapport avec une session utilisateur. (Corrige la redirection depuis /signup.)
     const skipSessionHandling = isPublicApiPath(original?.url ?? '');
+    if (redirigerSiArchive(error)) return Promise.reject(error);
 
     // Lot L7 (E6, RG-CTR-03) : la passerelle refuse les routes du cabinet tant que son contrat
     // d'abonnement attend l'acceptation du superviseur ; la garde de l'ecran (GardeContrat)

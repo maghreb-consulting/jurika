@@ -33,7 +33,8 @@ export const STATUT_DEMANDE_LABELS: Record<string, string> = {
 export const FORFAIT_LABELS: Record<string, string> = {
   essentiel: 'Essentiel',
   professionnel: 'Professionnel',
-  entreprise: 'Entreprise',
+  max: 'Max',
+  sur_devis: 'Sur Devis',
   non_defini: 'Non défini',
 };
 
@@ -42,6 +43,8 @@ export const STATUT_WORKSPACE_LABELS: Record<string, string> = {
   ESSAI: 'Essai',
   SUSPENDED: 'Suspendu',
   DEACTIVATED: 'Désactivé',
+  // Lot L7 (E5), RG-TAR-07 : forfait arrêté, rien n'est supprimé.
+  ARCHIVED: 'Archivé',
 };
 
 /** Renvoie le libelle FR d'une cle via une map, avec repli sur la cle brute. */

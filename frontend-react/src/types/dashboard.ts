@@ -105,6 +105,11 @@ export interface SuperviseurDashboardDto {
   evolutionMensuelle: MonthlyFlow[];
   demandesParStatut: CategoryCount[];
   generatedAt: string;
+  /**
+   * Lot L7 (E5), CDC 4.5 : tableaux de bord de productivite (forfaits Max et Sur Devis). Faux : temps
+   * moyen de cloture, evolutions et parcours frequents ne sont pas rendus par le serveur.
+   */
+  productiviteIncluse?: boolean;
 }
 
 // EMPLOYE

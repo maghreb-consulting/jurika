@@ -34,7 +34,10 @@ import { ReferentielDemarchesPage } from './pages/admin/ReferentielDemarchesPage
 import { DelaisGreffePage } from './pages/referentiel/DelaisGreffePage';
 import { TicketPage } from './pages/tickets/TicketPage';
 import { BillingPage } from './pages/billing/BillingPage';
-import { BillingSuccessPage } from './pages/billing/BillingSuccessPage';
+import { PaiementRetourPage } from './pages/billing/PaiementRetourPage';
+import { ArchivePage } from './pages/billing/ArchivePage';
+import { PaiementsAdminPage } from './pages/admin/PaiementsAdminPage';
+import { AbonnementsAdminPage } from './pages/admin/AbonnementsAdminPage';
 import { TeamPage } from './pages/team/TeamPage';
 import { TracabilitePage } from './pages/tracabilite/TracabilitePage';
 import { DossiersAVerifierPage } from './pages/dossiers/DossiersAVerifierPage';
@@ -80,6 +83,11 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/register" element={<Navigate to="/signup" replace />} />
+        {/* Lot L7 (E5), RG-PAY-05 : retour du navigateur apres la page du CMI (aussi a l'inscription,
+            avec le jeton transitoire) ; l'etat du paiement est lu sur le serveur, jamais deduit du retour. */}
+        <Route path="/app/billing/paiement/retour" element={<PaiementRetourPage />} />
+        <Route path="/billing/success" element={<Navigate to="/app/billing" replace />} />
+        <Route path="/app/billing/success" element={<Navigate to="/app/billing" replace />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth/recover-with-code" element={<RecoverWithCodePage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -120,9 +128,8 @@ function App() {
             <Route path="/app/billing/change-plan" element={<ChangePlanPage />} />
             {/* BUG 14 (2026-06-07) -- page paiement multi-moyens entre choix forfait et activation */}
             <Route path="/app/billing/payment" element={<PaymentPage />} />
-            {/* Sprint 12 -- redirection Stripe Checkout success */}
-            <Route path="/billing/success" element={<BillingSuccessPage />} />
-            <Route path="/app/billing/success" element={<BillingSuccessPage />} />
+            {/* Lot L7 (E5) : cabinet archive (RG-TAR-07 a RG-TAR-09). */}
+            <Route path="/app/archive" element={<ArchivePage />} />
           </Route>
         </Route>
 
@@ -193,6 +200,9 @@ function App() {
           <Route element={<AppShell />}>
             <Route path="/admin/workspaces" element={<WorkspacesPage />} />
             <Route path="/admin/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
+            {/* Lot L7 (E5) : abonnements des cabinets et paiements a enregistrer (RG-PAY-02). */}
+            <Route path="/admin/abonnements" element={<AbonnementsAdminPage />} />
+            <Route path="/admin/paiements" element={<PaiementsAdminPage />} />
             <Route path="/admin/users" element={<UsersPage />} />
             <Route path="/admin/audit" element={<AuditLogPage />} />
             <Route path="/admin/referentiel-demarches" element={<ReferentielDemarchesPage />} />

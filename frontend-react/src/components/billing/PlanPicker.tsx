@@ -1,323 +1,116 @@
-import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ExternalLink, Loader2, Mail } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Check, Minus } from 'lucide-react';
 import { billingService } from '../../services/billing.service';
-import { extractError } from '../../lib/api';
-import type {
-  BillingPeriod,
-  CheckoutPlanCode,
-  CheckoutSessionRequest,
-  PlanCode,
-  PricingTier,
-} from '../../types/billing';
+import { InfoBulle } from '../ui/Aide';
+import { FONCTIONS_COMMUNES, GRILLE_CDC, lignesQuotas } from '../../lib/forfaits';
+import { formatMad, type BillingPeriod, type PricingTier } from '../../types/billing';
+
+export interface PlanPickerProps {
+  period: BillingPeriod;
+  onPeriodChange: (p: BillingPeriod) => void;
+  /** Forfait actuel du cabinet (marque "Votre forfait"). */
+  forfaitActuel?: string | null;
+  /** Choix d'un forfait (Sur Devis compris : a l'hote de proposer la demande de devis). */
+  onChoisir: (tier: PricingTier) => void;
+  /** Libelle du bouton d'un forfait. */
+  libelleAction?: (tier: PricingTier) => string;
+  /** Prefixe des identifiants de test (plan-essentiel, plan-period-yearly...). */
+  testIdPrefix?: string;
+  desactive?: boolean;
+}
 
 /**
- * Sprint 12 + Sprint Beta (pricing-deploy) — composant de selection de plan.
- *
- * <p>3 cards Essentiel / Business / Entreprise + toggle Mensuel / Annuel
- * (spec directeur 2026-06-02). Source : GET /api/v1/public/pricing
- * (auth-service lit PlanCatalog). Affiche les quotas (maxUsers,
- * maxDossiers, maxStorageGb) en plus des features marketing.
- *
- *  - Essentiel / Business -> POST /billing/checkout-session (Stripe RG-BL03)
- *  - Entreprise -> formulaire contact-sales (RG-BL10)
- *
- * <p>Ribbon "Recommande" et "featured" pris depuis le catalogue. Si l'API
- * tombe, fallback statique aligne sur la grille canonique.
+ * Lot L7 (E5) : grille des forfaits du cahier des charges (4.3 et 4.5). Prix HORS TAXES ; le
+ * forfait est souscrit pour un an, regle en une fois (annuel) ou en douze mensualites (mensuel).
+ * La grille est lue sur /public/pricing (catalogue du serveur) ; la grille de secours du CDC sert
+ * pendant le premier affichage.
  */
-export interface PlanPickerProps {
-  workspaceName: string;
-  contactEmail: string;
-  onCheckoutStart?: (planCode: PlanCode, period: BillingPeriod) => void;
-  onEnterpriseRequested?: () => void;
-  /** Force la periode au mount (sinon defaut mensuel + toggle libre). */
-  defaultPeriod?: BillingPeriod;
-  /**
-   * BUG 14 (2026-06-07) — si fourni, REMPLACE le flux Stripe checkout par
-   * un callback custom (ex. navigate vers /app/billing/payment qui propose
-   * les 4 moyens). Le callback peut etre async ; le PlanPicker l'attend
-   * avant de relacher le loading state.
-   */
-  onPickPlan?: (planCode: CheckoutPlanCode, period: BillingPeriod) => void | Promise<void>;
-}
+export function PlanPicker({ period, onPeriodChange, forfaitActuel, onChoisir, libelleAction,
+  testIdPrefix = 'plan', desactive = false }: PlanPickerProps) {
+  const [tiers, setTiers] = useState<PricingTier[]>(GRILLE_CDC);
 
-const FALLBACK_TIERS: PricingTier[] = [
-  {
-    id: 'essentiel', code: 'essentiel', label: 'Essentiel',
-    target: 'Petites structures juridiques',
-    currency: 'MAD', price: 499, annualPrice: 4999, period: 'mois',
-    monthly: { priceMad: 499, stripeLookupKey: 'essentiel_monthly' },
-    yearly: { priceMad: 4999, stripeLookupKey: 'essentiel_yearly' },
-    quotas: { maxUsers: 2, maxDossiers: 30, maxStorageGb: 5,
-      usersUnlimited: false, dossiersUnlimited: false, storageUnlimited: false },
-    features: [
-      '2 utilisateurs',
-      '30 dossiers actifs',
-      'Tous les parcours',
-      'Data Room 5 Go',
-      'Messagerie entre le client et le cabinet',
-      'Génération automatique des documents',
-    ],
-    featured: false, quoteOnly: false,
-  },
-  {
-    id: 'business', code: 'business', label: 'Business',
-    target: 'Cabinets en croissance',
-    currency: 'MAD', price: 1199, annualPrice: 11999, period: 'mois',
-    monthly: { priceMad: 1199, stripeLookupKey: 'business_monthly' },
-    yearly: { priceMad: 11999, stripeLookupKey: 'business_yearly' },
-    quotas: { maxUsers: 6, maxDossiers: 100, maxStorageGb: 20,
-      usersUnlimited: false, dossiersUnlimited: false, storageUnlimited: false },
-    features: [
-      '6 utilisateurs',
-      '100 dossiers actifs',
-      'Tous les parcours',
-      'Data Room 20 Go',
-      'Messagerie entre le client et le cabinet',
-      'Génération automatique des documents',
-      'Assistant juridique (chatbot à réponses sourcées)',
-    ],
-    featured: true, ribbon: 'Recommandé', quoteOnly: false,
-  },
-  {
-    id: 'entreprise', code: 'entreprise', label: 'Entreprise',
-    target: 'Réseaux et cabinets multisites',
-    currency: 'MAD', price: null, annualPrice: null, period: 'mois',
-    quotas: { maxUsers: -1, maxDossiers: -1, maxStorageGb: -1,
-      usersUnlimited: true, dossiersUnlimited: true, storageUnlimited: true },
-    features: [
-      'Utilisateurs illimités',
-      'Plus de 100 dossiers',
-      'Tous les parcours',
-      'Data Room sur mesure',
-      'Messagerie entre le client et le cabinet',
-      'Génération automatique des documents',
-      'Assistant juridique (chatbot à réponses sourcées)',
-      'Accompagnement dédié',
-    ],
-    featured: false, quoteOnly: true,
-  },
-];
-
-function formatMad(value: number): string {
-  return new Intl.NumberFormat('fr-FR').format(value);
-}
-
-/** Lit la periode pre-selectionnee au signup (sessionStorage), sinon defaut. */
-function readSignupPeriod(): BillingPeriod | null {
-  try {
-    const v = sessionStorage.getItem('jurika.signup.billingPeriod');
-    return v === 'monthly' || v === 'yearly' ? v : null;
-  } catch {
-    return null;
-  }
-}
-
-export function PlanPicker(props: PlanPickerProps) {
-  const [tiers, setTiers] = useState<PricingTier[]>(FALLBACK_TIERS);
-  // Priorite : prop explicite > choix memorise au wizard signup > defaut mensuel.
-  const [period, setPeriod] = useState<BillingPeriod>(
-    () => props.defaultPeriod ?? readSignupPeriod() ?? 'monthly'
-  );
-  const [loading, setLoading] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  // Charge le catalogue depuis l'API au mount.
   useEffect(() => {
-    let cancelled = false;
-    billingService
-      .getPricing()
-      .then((res) => {
-        if (!cancelled && res?.tiers?.length) setTiers(res.tiers);
-      })
-      .catch(() => {
-        // Pas de toast : on garde le fallback statique. L'erreur reseau
-        // est tolerable pour cet ecran (catalogue purement marketing).
-      });
-    return () => { cancelled = true; };
+    let annule = false;
+    billingService.getPricing()
+      .then((res) => { if (!annule && res?.tiers?.length) setTiers(res.tiers); })
+      .catch(() => { /* grille de secours du CDC */ });
+    return () => { annule = true; };
   }, []);
 
-  const savings = useMemo(() => {
-    const biz = tiers.find((t) => t.code === 'business');
-    if (!biz?.monthly || !biz?.yearly) return null;
-    const yearlyFullPrice = biz.monthly.priceMad * 12;
-    const pct = Math.round((1 - biz.yearly.priceMad / yearlyFullPrice) * 100);
-    return pct > 0 ? pct : null;
-  }, [tiers]);
-
-  async function onPick(tier: PricingTier) {
-    if (tier.quoteOnly) {
-      props.onEnterpriseRequested?.();
-      return;
-    }
-    const planCode = tier.code as CheckoutPlanCode;
-    setError(null);
-    setLoading(planCode);
-    props.onCheckoutStart?.(planCode, period);
-
-    // BUG 14 (2026-06-07) — si l'host fournit onPickPlan (cas BillingPage qui
-    // route vers /app/billing/payment), on lui delegue COMPLETEMENT le
-    // pick et on n'appelle PAS createCheckoutSession (le checkout Stripe
-    // sera initie depuis la PaymentPage si l'utilisateur choisit CARD).
-    if (props.onPickPlan) {
-      try {
-        await props.onPickPlan(planCode, period);
-      } catch (err) {
-        setError(`Le choix du forfait n’a pas abouti : ${extractError(err).message}`);
-      } finally {
-        setLoading(null);
-      }
-      return;
-    }
-
-    try {
-      const req: CheckoutSessionRequest = {
-        planCode,
-        billingPeriod: period,
-        contactEmail: props.contactEmail,
-        workspaceName: props.workspaceName,
-      };
-      const res = await billingService.createCheckoutSession(req);
-      window.location.assign(res.checkoutUrl);
-    } catch (err) {
-      setError(`La page de paiement n’a pas pu être ouverte : ${extractError(err).message}`);
-      setLoading(null);
-    }
-  }
-
-  function priceLabelFor(tier: PricingTier): { main: string; sub: string } {
-    if (tier.quoteOnly) return { main: 'Sur devis', sub: 'Tarif personnalisé' };
-    const slice = period === 'yearly' ? tier.yearly : tier.monthly;
-    if (!slice) return { main: '—', sub: '' };
-    return period === 'yearly'
-      ? { main: `${formatMad(slice.priceMad)} MAD`, sub: '/ an HT' }
-      : { main: `${formatMad(slice.priceMad)} MAD`, sub: '/ mois HT' };
-  }
-
-  function quotasLine(tier: PricingTier): string {
-    const q = tier.quotas;
-    const users = q.usersUnlimited ? 'Utilisateurs illimités' : `${q.maxUsers} utilisateurs`;
-    const dossiers = q.dossiersUnlimited
-      ? 'Dossiers illimités'
-      : tier.code === 'entreprise'
-        ? '> 100 dossiers'
-        : `${q.maxDossiers} dossiers`;
-    const storage = q.storageUnlimited ? 'Stockage sur mesure' : `${q.maxStorageGb} Go`;
-    return `${users} · ${dossiers} · ${storage}`;
-  }
+  const annuel = period === 'yearly';
 
   return (
-    <div className="space-y-4" data-testid="plan-picker">
-      {error && (
-        <div className="rounded-lg border border-danger/50 bg-danger/10 p-3 text-sm text-danger" role="alert">
-          {error}
+    <div data-testid={`${testIdPrefix}-picker`}>
+      <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+        <div role="group" aria-label="Rythme de paiement"
+          className="inline-flex items-center rounded-full border border-border bg-bg-raised p-1">
+          {(['monthly', 'yearly'] as BillingPeriod[]).map((p) => (
+            <button key={p} type="button" onClick={() => onPeriodChange(p)} aria-pressed={period === p}
+              data-testid={`${testIdPrefix}-period-${p}`}
+              className={['rounded-full px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                period === p ? 'bg-accent text-bg' : 'text-fg-subtle hover:text-fg'].join(' ')}>
+              {p === 'monthly' ? 'Paiement mensuel' : 'Paiement annuel'}
+            </button>
+          ))}
         </div>
-      )}
-
-      {/* Toggle Mensuel / Annuel */}
-      <div className="flex items-center justify-center gap-3" data-testid="period-toggle">
-        <button
-          type="button"
-          onClick={() => setPeriod('monthly')}
-          aria-pressed={period === 'monthly'}
-          className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-            period === 'monthly'
-              ? 'bg-fg text-bg shadow-card'
-              : 'bg-bg-raised text-fg-muted border border-border hover:text-fg'
-          }`}
-          data-testid="period-monthly"
-        >
-          Mensuel
-        </button>
-        <button
-          type="button"
-          onClick={() => setPeriod('yearly')}
-          aria-pressed={period === 'yearly'}
-          className={`relative rounded-full px-4 py-1.5 text-sm font-medium transition ${
-            period === 'yearly'
-              ? 'bg-fg text-bg shadow-card'
-              : 'bg-bg-raised text-fg-muted border border-border hover:text-fg'
-          }`}
-          data-testid="period-yearly"
-        >
-          Annuel
-          {savings !== null && (
-            <span className="ml-2 inline-flex items-center rounded-full bg-success/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-success">
-              -{savings}%
-            </span>
-          )}
-        </button>
+        <InfoBulle texte="Le forfait est souscrit pour un an. Paiement annuel : un seul règlement par an. Paiement mensuel : douze mensualités égales au dixième du prix annuel ; le paiement annuel revient donc à deux mois offerts. Prix hors taxes." />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {tiers.map((tier) => {
-          const labels = priceLabelFor(tier);
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {tiers.map((t) => {
+          const actuel = forfaitActuel === t.code;
+          const prix = annuel ? t.yearly?.priceMad : t.monthly?.priceMad;
           return (
-            <article
-              key={tier.code}
-              data-testid={`plan-${tier.code}`}
-              className={`relative flex flex-col rounded-2xl border bg-bg-raised p-5 shadow-card ${
-                tier.featured ? 'border-accent ring-2 ring-accent/30' : 'border-border'
-              }`}
-            >
-              <header className="mb-3 flex items-center justify-between">
-                <h3 className="font-heading text-lg font-semibold text-fg">{tier.label}</h3>
-                {tier.featured && tier.ribbon && (
-                  <span className="rounded-full bg-gradient-to-r from-accent to-accent-hover px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-bg shadow-card">
-                    {tier.ribbon}
-                  </span>
-                )}
-              </header>
-              <p className="text-xs uppercase tracking-wider text-fg-muted">{tier.target}</p>
-
-              <div className="my-3">
-                <p className="font-heading text-2xl font-semibold text-fg">{labels.main}</p>
-                {labels.sub && <p className="text-xs text-fg-muted">{labels.sub}</p>}
+            <div key={t.code} data-testid={`${testIdPrefix}-${t.code}`}
+              className={['flex flex-col rounded-2xl border-2 bg-bg-raised p-5',
+                actuel ? 'border-accent' : 'border-border'].join(' ')}>
+              <div className="flex items-baseline justify-between gap-2">
+                <h3 className="font-heading text-xl font-semibold text-fg">{t.label}</h3>
+                {actuel && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">Votre forfait</span>}
               </div>
-
-              <p
-                className="rounded-lg bg-bg-overlay px-3 py-2 text-xs font-medium text-fg-muted"
-                data-testid={`plan-${tier.code}-quotas`}
-              >
-                {quotasLine(tier)}
-              </p>
-
-              <ul className="mt-3 flex-1 space-y-1 text-sm text-fg-muted">
-                {tier.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none text-success" />
-                    <span>{f}</span>
+              <div className="my-3 min-h-[4rem]">
+                {t.quoteOnly || prix === undefined ? (
+                  <>
+                    <p className="text-lg font-semibold text-fg">Selon devis</p>
+                    <p className="text-xs text-fg-subtle">Calculé selon l’usage réel ; devis établi par JURIKA.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-fg">
+                      {formatMad(prix)} <span className="text-sm font-normal text-fg-subtle">HT / {annuel ? 'an' : 'mois'}</span>
+                    </p>
+                    <p className="text-xs text-fg-subtle">
+                      {annuel
+                        ? `ou ${formatMad(t.monthly?.priceMad ?? 0)} HT par mois en paiement mensuel`
+                        : `soit ${formatMad(t.totalAnnuelEnMensuelMad ?? 0)} HT sur un an ; ${formatMad(t.yearly?.priceMad ?? 0)} HT en paiement annuel`}
+                    </p>
+                  </>
+                )}
+              </div>
+              <ul className="mb-3 space-y-1 text-sm text-fg">
+                {lignesQuotas(t).map((l) => (
+                  <li key={l} className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-success" aria-hidden="true" />{l}</li>
+                ))}
+              </ul>
+              <ul className="mb-4 flex-1 space-y-1 text-xs">
+                {FONCTIONS_COMMUNES.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-fg-muted"><Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-success" aria-hidden="true" />{f}</li>
+                ))}
+                {t.fonctions.map((f) => (
+                  <li key={f.code} className={['flex items-start gap-2', f.incluse ? 'text-fg-muted' : 'text-fg-subtle line-through'].join(' ')}>
+                    {f.incluse
+                      ? <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-success" aria-hidden="true" />
+                      : <Minus className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />}
+                    <span>{f.libelle}{f.incluse ? '' : ' (non incluse)'}</span>
                   </li>
                 ))}
               </ul>
-
-              {tier.quoteOnly ? (
-                <button
-                  type="button"
-                  onClick={() => props.onEnterpriseRequested?.()}
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border-hi bg-bg-raised px-4 py-2 text-sm font-medium text-fg-muted hover:bg-bg-overlay"
-                  data-testid={`plan-${tier.code}-contact`}
-                >
-                  <Mail className="h-4 w-4" /> Contacter les ventes
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={loading !== null}
-                  onClick={() => onPick(tier)}
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-bg hover:bg-accent-hover disabled:opacity-50"
-                  data-testid={`plan-${tier.code}-cta`}
-                >
-                  {loading === tier.code ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <ExternalLink className="h-4 w-4" />
-                  )}
-                  {loading === tier.code
-                    ? 'Redirection vers le paiement…'
-                    : `Choisir ${tier.label}`}
-                </button>
-              )}
-            </article>
+              <button type="button" disabled={desactive} onClick={() => onChoisir(t)}
+                data-testid={`${testIdPrefix}-choisir-${t.code}`}
+                className="mt-auto rounded-lg border border-accent px-4 py-2 text-sm font-semibold text-accent hover:bg-accent hover:text-bg disabled:cursor-not-allowed disabled:opacity-60">
+                {libelleAction ? libelleAction(t) : t.quoteOnly ? 'Demander un devis' : `Choisir ${t.label}`}
+              </button>
+            </div>
           );
         })}
       </div>
