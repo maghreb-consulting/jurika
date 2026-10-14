@@ -280,9 +280,10 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   (ordre du tri du hash, reponses texte, type de transaction) isoles dans `CmiSpecification` ;
   `frontend-react/e2e/billing-*.spec.ts` decrivent encore le parcours Stripe.
 - **Essai** : SMS de verification par **Brevo SMS a la mise en production** (decision du
-  2026-10-14 ; d'ici la, le code SMS est ecrit dans le journal d'auth) ; texte des conditions de l'essai repris de la piece D du projet de contrat (non
-  valide) ; boutons de telechargement encore visibles pendant l'essai (le serveur refuse) ;
-  apercu des documents Office refuse pendant l'essai sur le Z440 (pas de LibreOffice) ; aucun
+  2026-10-14 ; d'ici la, le code SMS est ecrit dans le journal d'auth) ; apercu de l'essai en pages
+  filigranees : seuls PDF, images et .docx sont rendus (.doc, .xlsx, .odt : refus nomme), mise en
+  page du .docx approchee (`MiseEnPageDocx`, sans LibreOffice) ; billing (`/api/v1/billing/**`)
+  hors du filtre de l'essai ; impression de l'ecran de synthese (etape 9) encore possible ; aucun
   controle de stockage sur l'enregistrement Collabora (WOPI PutFile) ; conservation du registre
   des essais supprimes (empreintes, IP, appareil) A_DECIDER (CNDP).
 - **Disponibilite d'auth et de billing** : le filtre de l'essai (503 si l'etat est illisible) et
@@ -291,13 +292,19 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **Notifications des services Java** : `JURIKA_REALTIME_BASE_URL` absent en compose pour ticket
   (alertes de delais) et les autres services hors auth et billing : ils visent localhost:3000,
   notifications probablement perdues (journalisees seulement).
-- **Contrat** : mentions entre crochets du texte (articles 4.4, 4.5, 5.2, 11.3, 12.2, 13.3, 14,
-  18, piece C art. 5 et 8) a arbitrer par la direction, puis publier une version ;
-  "$RYTHME_PAIEMENT (annuel ou mensuel)" s'imprime "Annuel (annuel ou mensuel)" (ecart du
-  modele) ; quotas du Sur Devis imprimes "selon devis".
+- **Contrat (version 1 publiee)** : "$RYTHME_PAIEMENT (annuel ou mensuel)" s'imprime "Annuel
+  (annuel ou mensuel)" (ecart du modele) ; quotas du Sur Devis imprimes "selon devis" ; la
+  presentation annonce quatre pieces alors que l'exemplaire du contrat ne reproduit pas la piece D
+  (essai, acceptee a part, RG-CTR-10).
 - **Sur Devis** : prix par dossier A_DECIDER (`PRIX_PAR_DOSSIER_HT_A_DECIDER`) ; quotas
-  d'utilisateurs et de stockage du Sur Devis ; delai de grace avant archivage
-  (`DELAI_GRACE_JOURS_A_DECIDER = 0`) ; banque et RIB de l'editeur (`JURIKA_VIREMENT_*`).
+  d'utilisateurs et de stockage du Sur Devis ; banque et RIB de l'editeur (`JURIKA_VIREMENT_*`).
+- **Suppression d'un essai (auth V45, liste explicite)** : toute nouvelle table de donnees d'un
+  cabinet dans `jurika_db` doit etre ajoutee a `essai_supprimer_definitivement` par une nouvelle
+  migration d'auth (sinon `SuppressionEssaiCouvertureIT` casse le verify). Hors fonction : un essai
+  qui a commence un paiement peut laisser dans `jurika_billing` `payments`, `cmi_retours`,
+  `contrat_avis` et des pieces de contrat inalterables ; conservation A_DECIDER (CNDP).
+- **Brouillons locaux des saisies** (navigateur) : aucune expiration d'un brouillon non renvoye
+  sur un poste ou l'utilisateur ne se reconnecte pas ; duree A_DECIDER (CNDP).
 - **Export CSV d'activite** : aucun ecran ne l'appelle.
 - **Import, etape 7** : publicites relues sous `juridique`, qui ne les porte pas (perte probable
   au rechargement, a verifier).
