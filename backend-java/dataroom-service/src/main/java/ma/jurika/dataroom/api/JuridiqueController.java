@@ -711,6 +711,10 @@ public class JuridiqueController {
         permissionGuard.assertCanDownload(doc.getDossierId(), user);
         OfficePreviewSupport.Rendered rd =
                 officePreview.render(doc.getObjectKey(), doc.getFilename(), doc.getContentType());
+        // Lot L7 (E4) : pendant l'essai, filigrane RG-ESS-06 ; apercu jamais transforme en telechargement.
+        if (apercuEssai != null) {
+            rd = apercuEssai.adapter(rd, doc.getWorkspaceId());
+        }
         if (user != null) {
             accessLogger.log(doc.getDossierId(), versionId, "PREVIEW_VERSION", user);
         }
@@ -723,4 +727,13 @@ public class JuridiqueController {
     }
 
     public record RestoreVersionRequest(String motif) {}
+
+    /** Lot L7 (E4) : apercu pendant l'essai gratuit (filigrane, aucun telechargement). */
+    private ma.jurika.dataroom.application.ApercuEssai apercuEssai;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setApercuEssai(ma.jurika.dataroom.application.ApercuEssai apercuEssai) {
+        this.apercuEssai = apercuEssai;
+    }
+
 }

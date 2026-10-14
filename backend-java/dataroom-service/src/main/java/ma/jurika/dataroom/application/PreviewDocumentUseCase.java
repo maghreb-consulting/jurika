@@ -69,6 +69,13 @@ public class PreviewDocumentUseCase {
         this.watermarkEnabled = watermarkEnabled;
     }
 
+    private ApercuEssai apercuEssai;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setApercuEssai(ApercuEssai apercuEssai) {
+        this.apercuEssai = apercuEssai;
+    }
+
     private static final DateTimeFormatter TS = DateTimeFormatter.ISO_INSTANT;
 
     @Transactional(readOnly = true)
@@ -101,6 +108,10 @@ public class PreviewDocumentUseCase {
         // d'acces (SUSPENDED ci-dessus), sur les memes octets deja autorises.
         OfficePreviewSupport.Rendered rd =
                 office.render(doc.getObjectKey(), doc.getFilename(), doc.getContentType());
+        // Lot L7 (E4) : pendant l'essai, filigrane RG-ESS-06 ; apercu jamais transforme en telechargement.
+        if (apercuEssai != null) {
+            rd = apercuEssai.adapter(rd, doc.getWorkspaceId());
+        }
         InputStream stream = rd.stream();
         String contentType = rd.contentType();
 

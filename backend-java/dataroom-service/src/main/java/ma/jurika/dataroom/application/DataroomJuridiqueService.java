@@ -118,6 +118,19 @@ public class DataroomJuridiqueService {
         }
     }
 
+    /** Lot L7 (E4), RG-ESS-04 : limite de stockage de l'essai gratuit (500 Mo). */
+    private org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.EssaiQuotas> essaiQuotas;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setEssaiQuotas(org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.EssaiQuotas> q) {
+        this.essaiQuotas = q;
+    }
+
+    private void verifierStockageEssai(UUID workspaceId, long octets) {
+        ma.jurika.common.trial.EssaiQuotas q = essaiQuotas == null ? null : essaiQuotas.getIfAvailable();
+        if (q != null) q.verifierStockage(workspaceId, octets);
+    }
+
     @Transactional(readOnly = true)
     public DossierJuridiqueView view(UUID dossierId) {
         return view(dossierId, null, null, null, false);
@@ -477,6 +490,7 @@ public class DataroomJuridiqueService {
         archiveGuard.assertWritable(dossierId, ticketId);
         verifierStockage(file == null ? 0L : file.getSize());
         UUID workspaceId = TenantContext.get();
+        verifierStockageEssai(workspaceId, file.getSize());
         short nextVersion = 1;
         Instant now = Instant.now();
 
@@ -605,6 +619,7 @@ public class DataroomJuridiqueService {
         archiveGuard.assertWritable(dossierId, ticketId);
         verifierStockage(file == null ? 0L : file.getSize());
         UUID workspaceId = TenantContext.get();
+        verifierStockageEssai(workspaceId, file.getSize());
         Instant now = Instant.now();
 
         String safeName = (file.getOriginalFilename() == null ? "document" : file.getOriginalFilename())
@@ -808,6 +823,7 @@ public class DataroomJuridiqueService {
         // d'un acte de cloture) : la derogation est portee par le ticket du slot.
         archiveGuard.assertWritable(previous.getDossierId(), previous.getTicketId());
         verifierStockage(file == null ? 0L : file.getSize());
+        verifierStockageEssai(workspaceId, file.getSize());
         Instant now = Instant.now();
 
         // 1. Marquer l'ancienne en historique + persister le motif.

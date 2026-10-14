@@ -266,7 +266,8 @@ public class WopiService {
                                  boolean SupportsExtendedLockLength, boolean SupportsRename,
                                  String Version, String LastModifiedTime,
                                  boolean DisablePrint, boolean DisableExport, boolean DisableCopy,
-                                 boolean HideUserList, String PostMessageOrigin) {}
+                                 boolean HideUserList, String PostMessageOrigin,
+                                 boolean HidePrintOption, boolean HideExportOption) {}
 
     /**
      * Résout la séance ET le document, en vérifiant tout ce qui doit l'être.
@@ -518,6 +519,7 @@ public class WopiService {
         Contexte c = resoudre(fileId, token, false);
         DocumentEntity d = c.document();
         WopiSessionEntity s = c.session();
+        boolean essai = enEssai(d.getWorkspaceId());
 
         return new CheckFileInfo(
                 nomDeFichier(d),
@@ -542,8 +544,11 @@ public class WopiService {
                 false,
                 versionOpaque(d),
                 d.getCreatedAt() == null ? "" : d.getCreatedAt().toString(),
-                false, false, false, false,
-                postMessageOrigin == null ? "" : postMessageOrigin);
+                // Lot L7 (E4), RG-ESS-05 : pendant l'essai, ni impression, ni export
+                // (telecharger sous...), ni copie depuis l'editeur.
+                essai, essai, essai, false,
+                postMessageOrigin == null ? "" : postMessageOrigin,
+                essai, essai);
     }
 
     /** GetFile — le binaire .docx tel qu'il est stocké. */
@@ -741,6 +746,27 @@ public class WopiService {
         }
         @Override public void transferTo(java.io.File dest) throws java.io.IOException {
             java.nio.file.Files.write(dest.toPath(), octets);
+        }
+    }
+
+
+    /** Lot L7 (E4) : etat de l'essai du cabinet (RG-ESS-05). */
+    private org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.TrialAccessChecker> essais;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setEssais(org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.TrialAccessChecker> e) {
+        this.essais = e;
+    }
+
+    /** Etat illisible : traite comme un essai (export coupe), jamais l'inverse. */
+    private boolean enEssai(UUID workspaceId) {
+        ma.jurika.common.trial.TrialAccessChecker c = essais == null ? null : essais.getIfAvailable();
+        if (c == null) return false;
+        try {
+            return c.getState(workspaceId).map(ma.jurika.common.trial.TrialAccessChecker.TrialState::enEssai)
+                    .orElse(false);
+        } catch (RuntimeException ex) {
+            return true;
         }
     }
 

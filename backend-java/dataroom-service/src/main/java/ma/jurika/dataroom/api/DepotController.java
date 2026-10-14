@@ -99,6 +99,10 @@ public class DepotController {
         // Lot AB — Word/Excel converti en PDF a la volee (fallback original sinon).
         OfficePreviewSupport.Rendered rd =
                 officePreview.render(e.getObjectKey(), e.getFilename(), e.getContentType());
+        // Lot L7 (E4) : pendant l'essai, filigrane RG-ESS-06 ; apercu jamais transforme en telechargement.
+        if (apercuEssai != null) {
+            rd = apercuEssai.adapter(rd, e.getWorkspaceId());
+        }
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "inline; filename=\"" + rd.filename() + "\"")
@@ -115,4 +119,13 @@ public class DepotController {
         depots.softDelete(id, user.userId(), user.role());
         return ResponseEntity.noContent().build();
     }
+
+    /** Lot L7 (E4) : apercu pendant l'essai gratuit (filigrane, aucun telechargement). */
+    private ma.jurika.dataroom.application.ApercuEssai apercuEssai;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setApercuEssai(ma.jurika.dataroom.application.ApercuEssai apercuEssai) {
+        this.apercuEssai = apercuEssai;
+    }
+
 }

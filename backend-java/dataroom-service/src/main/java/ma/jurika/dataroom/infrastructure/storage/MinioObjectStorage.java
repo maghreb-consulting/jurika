@@ -1,6 +1,9 @@
 package ma.jurika.dataroom.infrastructure.storage;
 
 import io.minio.GetObjectArgs;
+import io.minio.ListObjectsArgs;
+import io.minio.Result;
+import io.minio.messages.Item;
 import io.minio.GetObjectResponse;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
@@ -58,6 +61,20 @@ public class MinioObjectStorage implements ObjectStorage {
                     .bucket(bucket).object(objectKey).build());
         } catch (Exception ex) {
             throw new BusinessException("STORAGE_DELETE_FAILED", "Echec delete MinIO : " + ex.getMessage());
+        }
+    }
+
+    @Override
+    public java.util.List<String> lister(String prefixe) {
+        try {
+            java.util.List<String> cles = new java.util.ArrayList<>();
+            for (Result<Item> r : client.listObjects(ListObjectsArgs.builder()
+                    .bucket(bucket).prefix(prefixe).recursive(true).build())) {
+                cles.add(r.get().objectName());
+            }
+            return cles;
+        } catch (Exception ex) {
+            throw new BusinessException("STORAGE_LIST_FAILED", "Echec listage MinIO : " + ex.getMessage());
         }
     }
 }

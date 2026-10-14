@@ -11,7 +11,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Sprint 12 — client Feign vers auth-service pour le statut workspace.
+ * Sprint 12 \u2014 client Feign vers auth-service pour le statut workspace.
  *
  * <p>Utilise par :
  *  - {@code RemoteTrialAccessChecker} (jurika-common) pour 5 microservices
@@ -20,7 +20,7 @@ import java.util.UUID;
  *    transitions de status (T7)
  *
  * <p>L'endpoint cote auth-service est {@code /internal/workspaces/{id}/status}
- * — securise par convention X-Internal-Token (ou network-only via service mesh
+ * \u2014 securise par convention X-Internal-Token (ou network-only via service mesh
  * en prod). En dev local, le filtrage est passe au gateway.
  */
 @FeignClient(name = "auth-service", url = "${jurika.auth.internal-url:http://auth-service}")
@@ -36,7 +36,7 @@ public interface WorkspaceStatusFeignClient {
                        @RequestParam(value = "accessUntil", required = false) String accessUntilIso);
 
     /**
-     * BUG 8 (2026-06-07) — snapshot consommation reelle d'un workspace
+     * BUG 8 (2026-06-07) \u2014 snapshot consommation reelle d'un workspace
      * (employes / dossiers / stockage) servi depuis auth-service via
      * {@link ma.jurika.common.billing.PlanLimitsService}. Appele par
      * {@code ChangePlanUseCase} (billing-service) pour interdire un
@@ -46,10 +46,10 @@ public interface WorkspaceStatusFeignClient {
     UsageSnapshotDto getUsage(@PathVariable("workspaceId") UUID workspaceId);
 
     /**
-     * BUG 14 (2026-06-07) — re-emission des identifiants (workspace code +
+     * BUG 14 (2026-06-07) \u2014 re-emission des identifiants (workspace code +
      * mot de passe temporaire) apres validation d'un paiement hors-ligne
      * (virement / cheque / espece) ou apres conversion CARD. Le caller
-     * indique la raison ({@code reason=PAYMENT_COMPLETED}) pour traçabilite
+     * indique la raison ({@code reason=PAYMENT_COMPLETED}) pour tra\u00e7abilite
      * audit. 204 No Content si l'envoi a ete declenche (best-effort SMTP).
      */
     @PostMapping("/internal/workspaces/{workspaceId}/issue-credentials")
@@ -57,10 +57,10 @@ public interface WorkspaceStatusFeignClient {
                            @RequestParam(value = "reason", required = false) String reason);
 
     /**
-     * 2026-06-30 — résout le rôle d'un membre interne (EMPLOYE/SUPERVISEUR) du
-     * workspace. Utilisé par ticket-service (DossierTransferService) pour
-     * refuser un transfert de dossier vers un non-EMPLOYE (défense en
-     * profondeur ; le front filtre déjà). {@code 404} (FeignException.NotFound)
+     * 2026-06-30 \u2014 r\u00e9sout le r\u00f4le d'un membre interne (EMPLOYE/SUPERVISEUR) du
+     * workspace. Utilis\u00e9 par ticket-service (DossierTransferService) pour
+     * refuser un transfert de dossier vers un non-EMPLOYE (d\u00e9fense en
+     * profondeur ; le front filtre d\u00e9j\u00e0). {@code 404} (FeignException.NotFound)
      * si l'userId n'est pas un membre interne connu (CLIENT/SUPER_ADMIN/inconnu).
      */
     @GetMapping("/internal/workspaces/{workspaceId}/users/{userId}/role")
@@ -70,7 +70,7 @@ public interface WorkspaceStatusFeignClient {
     /** Mirror de InternalWorkspaceUsersController.MemberRoleDto (auth-service). */
     record MemberRoleDto(UUID userId, String role, String status) {}
 
-    /** BUG 8 — DTO miroir de PlanLimitsService.UsageSnapshot pour Feign. */
+    /** BUG 8 \u2014 DTO miroir de PlanLimitsService.UsageSnapshot pour Feign. */
     record UsageSnapshotDto(
             String planCode,
             String planLabel,
@@ -80,7 +80,7 @@ public interface WorkspaceStatusFeignClient {
     ) {}
 
     /**
-     * DTO de reponse — mirror de TrialAccessChecker.TrialState + champs
+     * DTO de reponse \u2014 mirror de TrialAccessChecker.TrialState + champs
      * supplementaires pour le subscription (Sprint 12).
      */
     record WorkspaceStatusResponse(

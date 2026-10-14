@@ -73,6 +73,14 @@ public class DataroomDepotService {
     // Upload
     // ================================================================
 
+    /** Lot L7 (E4), RG-ESS-04 : limite de stockage de l'essai gratuit. */
+    private org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.EssaiQuotas> essaiQuotas;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setEssaiQuotas(org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.EssaiQuotas> q) {
+        this.essaiQuotas = q;
+    }
+
     @Transactional
     @Auditable(action = "DEPOT_UPLOADED", resourceType = "depot", resourceIdExpr = "#dossierId")
     public DepotSummary upload(UUID dossierId, String title, MultipartFile file, UUID uploaderId, Role role) {
@@ -92,6 +100,9 @@ public class DataroomDepotService {
         verifierStockage(file.getSize());
 
         UUID ws = TenantContext.get();
+        // Lot L7 (E4), RG-ESS-04 : pendant l'essai gratuit, 500 Mo au plus (bloquant).
+        ma.jurika.common.trial.EssaiQuotas quotasEssai = essaiQuotas == null ? null : essaiQuotas.getIfAvailable();
+        if (quotasEssai != null) quotasEssai.verifierStockage(ws, file.getSize());
         String safeName = (file.getOriginalFilename() == null ? "doc" : file.getOriginalFilename())
                 .replaceAll("[^a-zA-Z0-9._-]", "_");
         String key = "ws/" + ws + "/dossier/" + dossierId + "/depots/"

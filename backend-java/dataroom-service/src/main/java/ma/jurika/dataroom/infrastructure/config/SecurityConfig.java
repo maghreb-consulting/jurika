@@ -1,6 +1,8 @@
 package ma.jurika.dataroom.infrastructure.config;
 
+import org.springframework.beans.factory.ObjectProvider;
 import ma.jurika.common.security.JwtAuthFilter;
+import ma.jurika.common.trial.TrialSoftLockFilter;
 import ma.jurika.common.security.JwtProperties;
 import ma.jurika.common.security.JwtPublicKeyProvider;
 import ma.jurika.common.security.JwtPublicKeyProviderFactory;
@@ -28,7 +30,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   ObjectProvider<TrialSoftLockFilter> filtresEssai, JwtAuthFilter jwtAuthFilter) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(AbstractHttpConfigurer::disable)
@@ -57,10 +60,19 @@ public class SecurityConfig {
                         // autre workspace refuse, fileId ne correspondant pas au
                         // jeton refuse, droit d'ecriture absent -> PutFile refuse.
                         .requestMatchers("/api/v1/dataroom/wopi/**").permitAll()
+                        // Lot L7 (E4) : purge des objets d'un essai supprime, appelee par
+                        // auth-service (route interne, non routee par la passerelle ; le
+                        // garde-fou metier -- essai en lecture seule -- est dans le service).
+                        .requestMatchers("/internal/essais/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-        // UX-3 (2026-06-02) : TrialSoftLockFilter supprime (concept trial efface).
+        // Lot L7 (E4) : controles serveur de l'essai gratuit (RG-ESS-05 aucun telechargement,
+        // RG-ESS-10 lecture seule), apres JwtAuthFilter qui pose le workspace courant.
+        TrialSoftLockFilter filtreEssai = filtresEssai.getIfAvailable();
+        if (filtreEssai != null) {
+            http.addFilterAfter(filtreEssai, JwtAuthFilter.class);
+        }
         return http.build();
     }
 }
