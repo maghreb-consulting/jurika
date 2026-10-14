@@ -96,6 +96,11 @@ jurika:
         monthly: ${STRIPE_PRICE_BUSINESS_MONTHLY:${STRIPE_PRICE_BUSINESS:price_PLACEHOLDER_business_monthly}}
         yearly:  ${STRIPE_PRICE_BUSINESS_YEARLY:price_PLACEHOLDER_business_yearly}
 
+  # Lot L7 (E6) : contrat d'abonnement. Identite du cabinet et du signataire lue chez
+  # auth-service avec le jeton du superviseur (nom du service sur le reseau Docker).
+  contrat:
+    auth-url: ${JURIKA_CONTRAT_AUTH_URL:http://auth-service:8081}
+
   billing:
     tva-rate-percent: ${BILLING_TVA_RATE_PERCENT:20.00}
     sales-email: ${BILLING_SALES_EMAIL:contact@jurika.ai}

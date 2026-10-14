@@ -57,6 +57,9 @@ public class SecurityConfig {
                         // Spring Security 6.4 sur les paths /api/v1/billing/webhook/**.
                         .requestMatchers(
                                 new AntPathRequestMatcher("/api/v1/billing/webhook/**"),
+                                // Lot L7 (E6) : controle "contrat en attente" de la passerelle
+                                // (appel interne ; /internal/** est refuse a l'entree publique).
+                                new AntPathRequestMatcher("/internal/contrat/**"),
                                 new AntPathRequestMatcher("/actuator/**"),
                                 new AntPathRequestMatcher("/v3/api-docs/**"),
                                 new AntPathRequestMatcher("/swagger-ui.html"),

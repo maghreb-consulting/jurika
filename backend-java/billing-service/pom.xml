@@ -111,6 +111,14 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Lot L7 (E6) : exemplaire PDF du contrat d'abonnement (RG-CTR-04), rendu par le
+             theme partage ma.jurika.common.pdf (dependance optionnelle de jurika-common). -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.3</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head><meta charset="UTF-8"/><title>Nouvelle version des conditions générales</title></head>
+<body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#0F172A;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:12px;overflow:hidden;">
+            <tr th:replace="~{email/_billing-base :: header(title='Nouvelle version des conditions générales')}"></tr>
+            <tr><td style="padding:32px;">
+                <p style="margin:0 0 16px;">Bonjour,</p>
+                <p style="margin:0 0 16px;">Une nouvelle version des conditions générales d’abonnement JURIKA
+                    (version <strong th:text="${version}">version</strong>) entrera en vigueur le
+                    <strong th:text="${entreeEnVigueur}">date</strong>.</p>
+                <p style="margin:0 0 16px;">Le superviseur du cabinet <span th:text="${cabinet}">cabinet</span> sera invité
+                    à l’accepter à sa première connexion suivant cette date. Jusque-là, la version antérieure continue
+                    de s’appliquer ; le cabinet qui refuse la nouvelle version peut résilier sans frais à l’échéance
+                    (article 16 des conditions générales).</p>
+                <p style="margin:0;font-size:13px;color:#64748B;">Toutes les versions sont consultables depuis l’écran
+                    « Contrat d’abonnement » de votre espace JURIKA.</p>
+            </td></tr>
+            <tr th:replace="~{email/_billing-base :: footer}"></tr>
+        </table>
+    </td></tr>
+</table>
+</body>
+</html>
