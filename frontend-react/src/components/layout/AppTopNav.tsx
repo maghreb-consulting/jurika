@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import {
   Bot,
+  Building,
   Building2,
   ChevronDown,
   Compass,
+  FileSignature,
   History,
   Home,
   Inbox,
@@ -74,6 +76,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Journal d’audit', to: '/admin/audit', icon: ScrollText, roles: ['SUPER_ADMIN'] },
   { label: 'Référentiel des démarches', to: '/admin/referentiel-demarches', icon: ListChecks, roles: ['SUPER_ADMIN'] },
   { label: 'Sources du chatbot', to: '/admin/chatbot-sources', icon: Bot, roles: ['SUPER_ADMIN'] },
+  // Lot L7 (E6) : contrats d'abonnement des cabinets et identite de l'editeur.
+  { label: 'Contrats', to: '/admin/contrats', icon: FileSignature, roles: ['SUPER_ADMIN'] },
+  { label: 'Éditeur', to: '/admin/editeur', icon: Building, roles: ['SUPER_ADMIN'] },
 ];
 
 /** Roles qui ont acces au calendrier des echeances (/calendar). */
@@ -277,6 +282,12 @@ export function AppTopNav() {
               <Link role="menuitem" to="/settings/security" onClick={() => setMenuOpen(false)} className={CLASSE_ENTREE_MENU}>
                 <Shield className="h-4 w-4" aria-hidden="true" /> Sécurité de connexion
               </Link>
+              {/* Lot L7 (E6) : contrat d'abonnement du cabinet (superviseur). */}
+              {isSupervisor && (
+                <Link role="menuitem" to="/app/contrat" onClick={() => setMenuOpen(false)} className={CLASSE_ENTREE_MENU}>
+                  <FileSignature className="h-4 w-4" aria-hidden="true" /> Contrat d’abonnement
+                </Link>
+              )}
               {/* BUG 11 (2026-06-08) — page a onglets /settings. */}
               <Link role="menuitem" to="/settings" onClick={() => setMenuOpen(false)} className={CLASSE_ENTREE_MENU}>
                 <Settings className="h-4 w-4" aria-hidden="true" /> Paramètres

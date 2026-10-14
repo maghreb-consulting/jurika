@@ -294,6 +294,14 @@ api.interceptors.response.use(
     // rapport avec une session utilisateur. (Corrige la redirection depuis /signup.)
     const skipSessionHandling = isPublicApiPath(original?.url ?? '');
 
+    // Lot L7 (E6, RG-CTR-03) : la passerelle refuse les routes du cabinet tant que son contrat
+    // d'abonnement attend l'acceptation du superviseur ; la garde de l'ecran (GardeContrat)
+    // relit alors l'etat et affiche l'ecran du contrat.
+    if (status === 423 && (error.response?.data as { code?: string } | undefined)?.code === 'CONTRAT_EN_ATTENTE'
+        && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('jurika:contrat-en-attente'));
+    }
+
     // HIGH-12 (audit 2026-06-02) : trigger refresh aussi sur 403. JwtAuthFilter de
     // jurika-common renvoie en effet 403 (Spring Security default) sur token
     // expire ou signature invalide, pas 401. Sans ce fix, le user etait

@@ -42,6 +42,9 @@ import { CalendarPage } from './pages/calendar/CalendarPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { ChangePlanPage } from './pages/billing/ChangePlanPage';
 import { PaymentPage } from './pages/billing/PaymentPage';
+import { ContratPage } from './pages/contrat/ContratPage';
+import { ContratsAdminPage } from './pages/admin/ContratsAdminPage';
+import { EditeurParametresPage } from './pages/admin/EditeurParametresPage';
 import { useAuthStore } from './store/authStore';
 import { useThemeStore } from './store/themeStore';
 import { GrainOverlay } from './components/layout/GrainOverlay';
@@ -141,6 +144,8 @@ function App() {
         <Route element={<ProtectedRoute allowed={['SUPERVISEUR']} />}>
           <Route element={<AppShell />}>
             <Route path="/app/team" element={<TeamPage />} />
+            {/* Lot L7 (E6) : contrat d'abonnement du cabinet (CDC 4.8). */}
+            <Route path="/app/contrat" element={<ContratPage />} />
             <Route path="/tracabilite" element={<TracabilitePage />} />
             {/* Lot L1 (D1) : dossiers dont le responsable a ete designe d'office. */}
             <Route path="/dossiers-a-verifier" element={<DossiersAVerifierPage />} />
@@ -193,6 +198,9 @@ function App() {
             <Route path="/admin/referentiel-demarches" element={<ReferentielDemarchesPage />} />
             {/* Lot L5 E8 : sources fiables communes du chatbot (CDC 3.1, RG-ADM-03). */}
             <Route path="/admin/chatbot-sources" element={<ChatbotSourcesPage />} />
+            {/* Lot L7 (E6) : contrats d'abonnement et parametres de l'editeur. */}
+            <Route path="/admin/contrats" element={<ContratsAdminPage />} />
+            <Route path="/admin/editeur" element={<EditeurParametresPage />} />
           </Route>
         </Route>
 
