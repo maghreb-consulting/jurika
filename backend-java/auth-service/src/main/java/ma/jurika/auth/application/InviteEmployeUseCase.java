@@ -119,6 +119,9 @@ public class InviteEmployeUseCase {
         // (SUPERVISEUR : pas de quota plan car il y en a au maximum UN par
         // workspace — voir garde-fou immediatement apres).
         // Throw PlanLimitException 402 -> handler global -> frontend affiche upsell.
+        if (cmd.role() == Role.EMPLOYE) {
+            verifierEmployeEssai(workspace.id());
+        }
         if (cmd.role() == Role.EMPLOYE && planLimitsService != null) {
             planLimitsService.enforceUserLimit(workspace.id());
         }
@@ -201,4 +204,17 @@ public class InviteEmployeUseCase {
 
         return new Result(u.id(), true, tempPassword, loginEmail, contactEmail, delivered);
     }
+    /** Lot L7 (E4), RG-ESS-04 : pendant l'essai gratuit, 1 superviseur et 1 employe. */
+    private org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.EssaiQuotas> essaiQuotas;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setEssaiQuotas(org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.EssaiQuotas> q) {
+        this.essaiQuotas = q;
+    }
+
+    private void verifierEmployeEssai(java.util.UUID workspaceId) {
+        ma.jurika.common.trial.EssaiQuotas q = essaiQuotas == null ? null : essaiQuotas.getIfAvailable();
+        if (q != null) q.verifierNouvelEmploye(workspaceId);
+    }
+
 }

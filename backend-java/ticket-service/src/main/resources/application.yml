@@ -60,11 +60,13 @@ jurika:
   # seulement en profil dev (document de profil en fin de fichier).
   demo-seed: false
   # 2026-07-02 — cible de WorkspaceStatusFeignClient (lookup role membre pour le
-  # transfert de dossier). En mode local (services lances sur l'hote), auth-service
-  # ecoute sur localhost:8081 ; le defaut du @FeignClient (http://auth-service) ne
-  # resout qu'a l'interieur du reseau Docker.
+  # transfert de dossier) et, depuis L7 (E4), de l'etat de l'essai gratuit.
+  # Lot L7 (E4) : defaut aligne sur la pile Docker (nom du service compose, port
+  # 8081) : l'ancien defaut localhost:8081 ne joignait pas auth-service depuis le
+  # conteneur, et le filtre de l'essai refuserait toute modification (HTTP 503).
+  # Services lances sur l'hote : AUTH_INTERNAL_URL=http://localhost:8081.
   auth:
-    internal-url: ${AUTH_INTERNAL_URL:http://localhost:8081}
+    internal-url: ${AUTH_INTERNAL_URL:http://auth-service:8081}
   observability:
     prometheus:
       password: ${PROMETHEUS_OPS_PASSWORD:}

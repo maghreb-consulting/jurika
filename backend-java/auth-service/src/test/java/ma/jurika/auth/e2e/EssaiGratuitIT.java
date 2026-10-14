@@ -116,6 +116,7 @@ class EssaiGratuitIT {
     @Autowired private ObjectMapper json;
     @Autowired private CycleEssaiService cycle;
     @Autowired private CycleEssaiJob job;
+    @Autowired private ma.jurika.auth.application.InviteEmployeUseCase inviter;
 
     /** Preparation et assertions en PROPRIETAIRE, hors RLS. */
     private final JdbcTemplate jdbc = new JdbcTemplate(new org.springframework.jdbc.datasource.DriverManagerDataSource(
@@ -463,4 +464,20 @@ class EssaiGratuitIT {
                 .isEqualTo("Usage abusif constat\u00e9");
         verify(emailSender).sendTemplated(anyString(), anyString(), eq("essai-avertissement-suppression"), anyMap());
     }
+
+    @Test
+    void essai_limite_a_un_employe() throws Exception {
+        UUID ws = ouvrirEssai(nouvelleIdentite(), "10.10.10.10", null);
+        TenantContext.set(ws);
+        inviter.execute(new ma.jurika.auth.application.InviteEmployeUseCase.Command(ws, "employe1@cabinet-essai.ma",
+                "Salma", "Idrissi", null, ma.jurika.common.security.Role.EMPLOYE, null, null, null));
+        TenantContext.set(ws);
+        assertThatThrownBy(() -> inviter.execute(new ma.jurika.auth.application.InviteEmployeUseCase.Command(ws,
+                "employe2@cabinet-essai.ma", "Omar", "Alami", null, ma.jurika.common.security.Role.EMPLOYE,
+                null, null, null)))
+                .isInstanceOf(ma.jurika.common.exception.PlanLimitException.class)
+                .hasMessageContaining("1 employ\u00e9");
+        TenantContext.clear();
+    }
+
 }
