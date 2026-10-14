@@ -11,12 +11,12 @@ import { Icon } from './icons.jsx';
  * Aucune extraction CIN ici (elle vit dans le workflow, cf. WorkflowMockup).
  */
 const REQUETES = [
-  { title: 'Certificat négatif', meta: 'Demandé au client · 24/07 09:12', state: 'Ouverte', tone: 'warning', ico: 'fileText' },
-  { title: 'CIN du gérant', meta: 'Complément demandé · 25/07 16:40', state: 'À compléter', tone: 'accent', ico: 'fileText' },
-  { title: 'Justificatif de siège', meta: 'Déposé par le client · à valider', state: 'Répondue', tone: 'success', ico: 'checkCircle' },
+  { title: 'Certificat négatif', meta: 'Demandé au client · 24/07 09:12', state: 'Non traitée', tone: 'warning', ico: 'fileText' },
+  { title: 'CIN du gérant', meta: 'Complément demandé · 25/07 16:40', state: 'En cours', tone: 'accent', ico: 'fileText' },
+  { title: 'Justificatif de siège', meta: 'Déposé par le client · à valider', state: 'Traitée', tone: 'success', ico: 'checkCircle' },
 ];
 const DEMANDES = [
-  { title: 'Question — délai de dépôt au RC ?', meta: 'Envoyée par le client · 26/07 14:32', state: 'Ouverte', tone: 'warning', ico: 'messageSquare' },
+  { title: 'Question — délai de dépôt au RC ?', meta: 'Envoyée par le client · 26/07 14:32', state: 'Non traitée', tone: 'warning', ico: 'messageSquare' },
 ];
 
 export function CollaborationMockup() {
@@ -37,7 +37,7 @@ export function CollaborationMockup() {
           </div>
 
           <div className="mk-perm">
-            <Icon name="lock" size={13} /> Permissions : voir · télécharger · imprimer — journal d'accès horodaté
+            <Icon name="lock" size={13} /> Permissions : consultation · téléchargement · dépôt · demandes — chaque modification tracée
           </div>
 
           <div className="mk-card mk-docs">

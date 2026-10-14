@@ -995,7 +995,7 @@
 }
 .footer-inner {
   display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr 1fr;
+  grid-template-columns: 1.6fr 1fr 1fr;
   gap: 48px;
   padding-bottom: 56px;
 }
@@ -1166,4 +1166,44 @@
   background: #22c55e; color: #fff;
   font-size: 32px; line-height: 56px; font-weight: 700;
   margin: 0 auto 18px;
+}
+
+/* ============ TARIFS : quatre forfaits, essai et socle commun (lot L7 E3) ============ */
+.pricing-grid--4 {
+  grid-template-columns: repeat(4, 1fr);
+  max-width: 1240px;
+}
+.pricing-grid--4 .price-card { padding: 32px 22px; }
+.pricing-grid--4 .price .amount { font-size: 34px; }
+.pricing-annexes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  max-width: 1240px;
+  margin: 48px auto 0;
+}
+.pricing-annexe {
+  background: var(--white);
+  border: 1px solid var(--ink-100);
+  border-radius: 16px;
+  padding: 28px 24px;
+}
+.pricing-annexe h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.pricing-annexe__lead { font-size: 14px; color: var(--ink-500); margin-bottom: 16px; }
+.pricing-annexe ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.pricing-annexe ul li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; }
+.pricing-annexe .tick {
+  flex-shrink: 0;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--emerald-500);
+  display: flex; align-items: center; justify-content: center;
+}
+@media (max-width: 1180px) {
+  .pricing-grid--4 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+  .pricing-grid--4,
+  .pricing-annexes { grid-template-columns: 1fr; }
 }

@@ -12,11 +12,10 @@ import { BrowserFrame } from '../mockups/DeviceFrame.jsx';
  * Fond navy pour contraster avec les piliers clairs. Le Kanban et les
  * odomètres gèrent déjà reduced-motion (état final figé).
  */
+// Lot L7 E3 : chiffres du cahier des charges (RG-TKT-01, RG-DR-01), aucun indicateur invente.
 const KPIS = [
-  { to: 4, label: 'états de ticket', suffix: '' },
-  { to: 9, label: 'étapes guidées', suffix: '' },
-  { to: 100, label: 'actions tracées', suffix: '%' },
-  { to: 0, label: 'fuite inter-cabinet (RLS)', suffix: '' },
+  { to: 5, label: 'statuts de ticket', suffix: '' },
+  { to: 4, label: 'sections de Data Room', suffix: '' },
 ];
 
 export function PilotageShowcase() {
@@ -27,13 +26,13 @@ export function PilotageShowcase() {
     <section className="section section-pilotage" id="pilotage-live" ref={ref}>
       <div className="container">
         <div className="section-head">
-          <span className="eyebrow eyebrow-light" data-reveal>Pilotage en direct</span>
+          <span className="eyebrow eyebrow-light" data-reveal>Suivi des tickets</span>
           <h2 className="section-title section-title-light" data-reveal>
             Chaque ticket avance <em className="text-gold-italic">sous vos yeux</em>
           </h2>
           <p className="section-sub section-sub-light" data-reveal>
-            Nouveau → En cours → Clôturé : la machine à états déclenche le bon workflow, et le tableau de bord
-            se met à jour en temps réel — le tout journalisé, cabinet par cabinet.
+            Les statuts se suivent dans l’ordre et chaque passage est contrôlé par le serveur ;
+            chaque action porte son auteur, sa date et son heure.
           </p>
         </div>
 

@@ -1,29 +1,42 @@
 import { useState } from 'react';
 
 /**
- * v2 Flagship — FAQ accordion : 6 questions, height auto smooth, chevron rotate.
- * Une seule réponse ouverte à la fois (mais cliquable indépendamment).
+ * Questions frequentes (lot L7 E3) : chaque reponse reprend le cahier des charges
+ * (4.2 a 4.7, 15.3, P1, 18) ou le contrat d'abonnement ; rien n'y est ajoute.
+ * Une seule reponse ouverte a la fois.
  */
 const FAQS = [
   {
-    q: "Mes données sont-elles hébergées au Maroc ?",
-    a: "Oui pour le plan Entreprise, sur OVH Casablanca. Pour les plans Essentiel et Business, hébergement européen (Hetzner Allemagne) conforme CNDP via clause de transfert international. Vous pouvez migrer vers l'hébergement Maroc à tout moment.",
+    q: 'Où sont hébergées les données ?',
+    a: "La plateforme est hébergée chez Amazon Web Services, à Paris (Union européenne). L'hébergement hors du Maroc est soumis à l'autorisation de transfert de la CNDP, que Maghreb Consulting obtient avant la mise en production ; la démarche est en cours.",
   },
   {
-    q: "JURIKA est-il conforme CNDP / Loi 09-08 ?",
-    a: "Oui. Déclaration CNDP en cours, chiffrement AES-256 au repos, TLS 1.3 en transit, audit log complet, durée de rétention paramétrable. Notre DPO est joignable à dpo@maghreb-consulting.ma.",
+    q: 'Comment les données de mon cabinet sont-elles protégées ?',
+    a: "Au même niveau pour tous les forfaits : chiffrement des échanges (HTTPS), double authentification, cloisonnement strict des cabinets, droits par rôle vérifiés côté serveur, traçabilité des actions, sauvegardes quotidiennes testées par restauration et export complet de vos données. Vous restez seul propriétaire de vos données.",
   },
   {
-    q: "Combien coûte JURIKA ?",
-    a: "Trois plans : Essentiel 499 MAD/mois (2 utilisateurs), Business 1 199 MAD/mois (jusqu'à 6 utilisateurs, chatbot RAG inclus), Entreprise sur devis (utilisateurs illimités, hébergement Maroc, SSO). 2 mois offerts en facturation annuelle.",
+    q: 'Combien coûte JURIKA ?',
+    a: "Quatre forfaits, souscrits pour un an, prix hors taxes : Essentiel 3 750 DH par an ou 375 DH par mois (jusqu'à 25 dossiers par mois) ; Professionnel 7 500 DH par an ou 750 DH par mois (jusqu'à 50 dossiers) ; Max 15 000 DH par an ou 1 500 DH par mois (jusqu'à 100 dossiers) ; Sur Devis au-delà de 100 dossiers. En paiement mensuel, douze mensualités égales au dixième du prix annuel : le paiement annuel revient à deux mois offerts.",
   },
   {
-    q: "Comment migrer depuis mon outil actuel (Excel, Word, autre SaaS) ?",
-    a: "Notre équipe d'onboarding migre gratuitement vos dossiers actifs depuis Excel/Word, Sage, EBP ou un autre SaaS lors de votre activation. Compris dans tous les plans payants. Aucune perte de données : audit log complet de la migration.",
+    q: "Comment fonctionne l'essai gratuit ?",
+    a: "L'essai dure 7 jours, sans moyen de paiement, un essai par cabinet. Il donne accès aux fonctions du forfait Professionnel, dans la limite de 3 dossiers, 1 superviseur et 1 employé, 500 Mo de stockage et 20 questions au chatbot. Aucun téléchargement n'est permis : les documents se consultent en aperçu et les actes portent la mention « VERSION D'ÉVALUATION — SANS VALEUR JURIDIQUE ». Si vous souscrivez, vous conservez tout votre travail.",
   },
   {
-    q: "Quel support proposez-vous ?",
-    a: "Plan Essentiel : email J+1 ouvré. Plan Business : prioritaire 24h ouvrées + chat in-app. Plan Entreprise : account manager dédié, SLA 4h, 2 sessions de formation sur site, hotline directe.",
+    q: 'Puis-je changer de forfait ?',
+    a: "Oui, à tout moment. Un forfait supérieur s'applique dès la confirmation du paiement ; vous réglez la différence au prorata de la période restante. Un forfait inférieur s'applique à la prochaine échéance, sans remboursement de la période en cours, si votre usage tient dans le forfait choisi. Le rythme de paiement peut être changé à la prochaine échéance.",
+  },
+  {
+    q: "Que deviennent mes données si j'arrête mon forfait ?",
+    a: "Tout votre travail est archivé, jamais supprimé : dossiers, tickets, actes, pièces, Data Rooms, comptes et historique. Les accès sont fermés, mais le superviseur peut toujours se connecter pour exporter l'intégralité des données ou en demander la suppression définitive. Si vous souscrivez de nouveau, votre espace est réactivé dans l'état exact où vous l'avez laissé.",
+  },
+  {
+    q: 'Les actes sont-ils rédigés par une intelligence artificielle ?',
+    a: "Non. Les actes sont générés à partir de modèles validés : à données identiques, acte identique. Aucune intelligence artificielle ne rédige un acte. Vous relisez chaque acte avant sa signature ou son dépôt.",
+  },
+  {
+    q: 'Quelle disponibilité est prévue ?',
+    a: "L'objectif est de 99,5 % de disponibilité en heures ouvrées. Il s'agit d'un objectif ; un engagement de service contractuel n'est prévu que pour le forfait Sur Devis, dans les conditions de son offre.",
   },
 ];
 

@@ -3,15 +3,13 @@ import { useReducedMotion } from '../../hooks/useReducedMotion.js';
 import { HERO_TIMING } from '../../config/motion.js';
 
 /**
- * v2 Flagship — Kanban LIVE : carte "Création ATLAS TECH" glisse
- * Nouveau → En cours (t=2.5s) puis En cours → Clôturé (t=4.0s) avec
- * sceau or "Validé" stamp bounce. Loop 8s.
- *
- * Si reduced-motion : carte fixée à l'état final "Clôturé".
+ * Kanban anime : la carte "Creation ATLAS TECH" passe de la collecte d'information au
+ * deroulement de la demarche, puis a la cloture du dossier (statuts RG-TKT-01, lot L7 E3).
+ * Boucle de 8 s. Si reduced-motion : carte figee a l'etat final.
  */
 export function KanbanLiving() {
   const reduced = useReducedMotion();
-  const [stage, setStage] = useState(reduced ? 2 : 0); // 0=Nouveau, 1=En cours, 2=Clôturé
+  const [stage, setStage] = useState(reduced ? 2 : 0); // 0=collecte, 1=demarche, 2=cloture
 
   useEffect(() => {
     if (reduced) return undefined;
@@ -31,25 +29,25 @@ export function KanbanLiving() {
   }, [reduced]);
 
   return (
-    <div className="kanban-live" data-testid="kanban-living" aria-label="Démo : carte qui progresse Nouveau → En cours → Clôturé">
+    <div className="kanban-live" data-testid="kanban-living" aria-label="Illustration : un ticket passe de la collecte d’information à la clôture du dossier">
       <div className="kanban-col">
-        <div className="kanban-title"><span className="status new" /> Nouveau</div>
+        <div className="kanban-title"><span className="status new" /> Collecte d’information</div>
         <div className={`kanban-card live ${stage === 0 ? 'is-here' : 'is-gone'}`}>
           <div className="kanban-tag tag-blue">SARL AU</div>
           <div className="kanban-name">Création — ATLAS TECH</div>
-          <div className="kanban-meta">Étape 3/9 · IA génération</div>
+          <div className="kanban-meta">Saisie des associés</div>
         </div>
         <div className="kanban-card">
           <div className="kanban-tag tag-purple">Modification</div>
-          <div className="kanban-name">Cession parts — BMH</div>
+          <div className="kanban-name">Cession de parts — BMH</div>
         </div>
       </div>
       <div className="kanban-col">
-        <div className="kanban-title"><span className="status progress" /> En cours</div>
+        <div className="kanban-title"><span className="status progress" /> Déroulement de la démarche</div>
         <div className={`kanban-card live ${stage === 1 ? 'is-here' : 'is-gone'}`}>
           <div className="kanban-tag tag-blue">SARL AU</div>
           <div className="kanban-name">Création — ATLAS TECH</div>
-          <div className="kanban-meta">Étape 7/9 · PV en attente</div>
+          <div className="kanban-meta">Dépôt au greffe à cocher</div>
         </div>
         <div className="kanban-card">
           <div className="kanban-tag tag-amber">Dissolution</div>
@@ -57,11 +55,11 @@ export function KanbanLiving() {
         </div>
       </div>
       <div className="kanban-col">
-        <div className="kanban-title"><span className="status done" /> Clôturé</div>
+        <div className="kanban-title"><span className="status done" /> Clôture du dossier</div>
         <div className={`kanban-card live ${stage === 2 ? 'is-here' : 'is-gone'}`}>
           <div className="kanban-tag tag-green">Terminé</div>
           <div className="kanban-name">Création — ATLAS TECH</div>
-          <div className="kanban-meta">Validé · 9/9 étapes</div>
+          <div className="kanban-meta">Démarches accomplies</div>
           {stage === 2 && <div className="seal-validated" aria-hidden="true">✓</div>}
         </div>
         <div className="kanban-card">

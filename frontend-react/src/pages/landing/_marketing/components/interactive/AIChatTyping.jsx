@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { useReducedMotion } from '../../hooks/useReducedMotion.js';
 
 /**
- * v2 Flagship — AI chat dont le bot tape la réponse progressivement.
- * Sources highlight via underline or qui se trace après la fin.
+ * Conversation d'illustration du chatbot, dont la reponse se tape progressivement.
+ * Lot L7 E3 : la reponse rappelle la regle P1 (aucune IA ne redige un acte) au lieu
+ * de montrer un chatbot qui genere des statuts ; aucun contenu juridique n'y est affirme.
  */
-const FULL_REPLY = "Statuts générés ✓ — 14 articles selon la loi 5-96. Capital de 100 000 DH (1 000 parts de 100 DH), gérant unique nommé pour une durée illimitée.";
+const FULL_REPLY = "Je ne rédige pas d'acte : les statuts sont générés par le parcours de création, à partir des modèles validés. Je peux répondre à vos questions juridiques générales, en citant mes sources.";
 
 export function AIChatTyping({ delayMs = 1800 }) {
   const reduced = useReducedMotion();
@@ -14,9 +15,10 @@ export function AIChatTyping({ delayMs = 1800 }) {
 
   useEffect(() => {
     if (reduced) return undefined;
-    let timer1, intervalId, timer2;
+    let timer2;
+    let intervalId;
     let i = 0;
-    timer1 = setTimeout(() => {
+    const timer1 = setTimeout(() => {
       intervalId = setInterval(() => {
         i += 2;
         setTyped(FULL_REPLY.slice(0, i));
@@ -38,12 +40,12 @@ export function AIChatTyping({ delayMs = 1800 }) {
       <div className="ai-chat-head">
         <div className="ai-avatar">J</div>
         <div>
-          <strong>JURIKA Assistant</strong>
-          <span>en ligne · cite ses sources</span>
+          <strong>Chatbot juridique</strong>
+          <span>cite ses sources</span>
         </div>
       </div>
       <div className="ai-msg user">
-        <p>Génère les statuts d'une SARL AU pour un capital de 100 000 DH, gérant unique marocain.</p>
+        <p>Peux-tu rédiger les statuts de ma SARL à associé unique ?</p>
       </div>
       <div className="ai-msg bot">
         {typed.length < FULL_REPLY.length && (
@@ -53,15 +55,9 @@ export function AIChatTyping({ delayMs = 1800 }) {
         )}
         <p>{typed}{typed.length < FULL_REPLY.length && <span className="typewriter-caret" aria-hidden="true">|</span>}</p>
         {showSources && (
-          <>
-            <div className="bot-cite">
-              Source : <code className="src-underline">Code_commerce_MA_art46.pdf</code> · <code className="src-underline">modele_SARL_AU_v3.docx</code>
-            </div>
-            <div className="bot-actions">
-              <button type="button">Télécharger .docx</button>
-              <button type="button" className="ghost">Voir le diff</button>
-            </div>
-          </>
+          <div className="bot-cite">
+            Ne saisissez aucune donnée de client dans le chatbot.
+          </div>
         )}
       </div>
     </div>
