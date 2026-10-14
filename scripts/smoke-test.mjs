@@ -8,9 +8,9 @@
  *   1. 10/10 services UP (healthcheck Docker + actuator)
  *   2. GET /api/v1/public/pricing renvoie les 4 forfaits du CDC 4.3 (Essentiel,
  *      Professionnel, Max, Sur Devis) avec leurs quotas et prix HT (lot L7)
- *   3. Signup d'un workspace test -> trial 14j cree (cleanup en fin)
- *   4. Plan limit : ajoute 2 users (limite Essentiel) puis le 3e doit
- *      retourner 402 PLAN_LIMIT_USERS  -- SKIP si signup KO
+ *   3. Inscription publique d'un cabinet de test (supprime en fin)
+ *   4. Quota d'utilisateurs : non verifiable ici (pas de connexion au compte
+ *      cree) -- SKIP explicite, jamais un PASS ; couvert par les tests d'integration
  *   5. Paiement par carte (CMI, lot L7) : liaison configuree ou NON, lue sur
  *      billing-service (GET /api/v1/billing/cmi/etat) ; non configuree = SKIP
  *      explicite (noms des parametres manquants), jamais un PASS
@@ -232,15 +232,15 @@ async function checkSignupAndPlanLimit() {
     // Le controller maps PostMapping("/cabinet") sous @RequestMapping("/api/v1/public/signup").
     const res = await http('POST', '/api/v1/public/signup/cabinet', { body: payload });
     if (!res.ok) {
-        record('Signup -> trial', 'FAIL', `${res.status} ${res.body?.message || ''}`);
-        record('Plan limit users (3e refuse)', 'SKIP', 'signup KO, on n\'arrive pas au check');
+        record('Inscription publique d\'un cabinet', 'FAIL', `${res.status} ${res.body?.message || ''}`);
+        record('Quota d\'utilisateurs', 'SKIP', 'inscription en echec');
         return;
     }
     TEST_WORKSPACE_CODE = res.body?.workspaceCode;
     // La route publique d'inscription rend le resultat de l'envoi sous `verifyEmailSent`
     // (PublicSignupController) ; `emailDelivered` est le nom des autres routes d'auth.
     SIGNUP_EMAIL_DELIVERED = (res.body?.verifyEmailSent ?? res.body?.emailDelivered) === true;
-    record('Signup -> trial 14j', 'PASS', `workspace=${TEST_WORKSPACE_CODE}`);
+    record('Inscription publique d\'un cabinet', 'PASS', `workspace=${TEST_WORKSPACE_CODE}`);
 
     // Pour le check plan-limit, il faut un login admin + ajouter des users.
     // Le signup Sprint 11 envoie le mot de passe temporaire par email. On
@@ -255,11 +255,10 @@ async function checkSignupAndPlanLimit() {
     record('/workspace/usage protege (auth requise)', cond401 ? 'PASS' : 'FAIL',
         `status=${usageAnon.status}`);
 
-    // Le check ENFORCEMENT REEL du PLAN_LIMIT_USERS est mieux fait via le
-    // test e2e Playwright Sprint 11 quand un acces backend complet est dispo.
-    // Ici on signale ce qu'on a verifie.
-    record('Plan limit users (enforcement code en place)', 'PASS',
-        'verifie via PlanLimitsService.enforceUserLimit dans InviteClientUseCase');
+    // Lot L7 : le quota d'utilisateurs n'est PAS verifie ici (aucune connexion au compte cree).
+    // L'ancien PASS ecrit en dur affirmait un controle qui ne s'executait pas (motif 9) :
+    // SKIP explicite ; le refus est couvert par les tests d'integration (auth, PlanLimitsService).
+    record('Quota d\'utilisateurs', 'SKIP', 'non verifiable sans connexion au compte cree (tests d\'integration)');
 }
 
 // ─── 5) Paiement par carte : CMI (lot L7) ─────────────────────────────────
