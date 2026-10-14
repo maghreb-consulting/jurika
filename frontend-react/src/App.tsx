@@ -3,6 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { LandingPage } from './pages/landing/LandingPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { SignupPage } from './pages/auth/SignupPage';
+import { EssaiGratuitPage } from './pages/auth/EssaiGratuitPage';
+import { EssaiConfirmerPage } from './pages/auth/EssaiConfirmerPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import { RecoverWithCodePage } from './pages/auth/RecoverWithCodePage';
 import { Setup2FAPage } from './pages/auth/Setup2FAPage';
@@ -28,6 +30,7 @@ import { RedirectionChatbot } from './components/chatbot/RedirectionChatbot';
 import { ChatbotSourcesPage } from './pages/admin/ChatbotSourcesPage';
 import AuditLogPage from './pages/admin/AuditLogPage';
 import { WorkspacesPage } from './pages/admin/WorkspacesPage';
+import { EssaisPage } from './pages/admin/EssaisPage';
 import { WorkspaceDetailPage } from './pages/admin/WorkspaceDetailPage';
 import { UsersPage } from './pages/admin/UsersPage';
 import { ReferentielDemarchesPage } from './pages/admin/ReferentielDemarchesPage';
@@ -82,6 +85,9 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        {/* Lot L7 (E4) : inscription a l'essai gratuit (CDC 4.2), distincte de l'inscription payante. */}
+        <Route path="/essai" element={<EssaiGratuitPage />} />
+        <Route path="/essai/confirmer" element={<EssaiConfirmerPage />} />
         <Route path="/register" element={<Navigate to="/signup" replace />} />
         {/* Lot L7 (E5), RG-PAY-05 : retour du navigateur apres la page du CMI (aussi a l'inscription,
             avec le jeton transitoire) ; l'etat du paiement est lu sur le serveur, jamais deduit du retour. */}
@@ -204,6 +210,8 @@ function App() {
             <Route path="/admin/abonnements" element={<AbonnementsAdminPage />} />
             <Route path="/admin/paiements" element={<PaiementsAdminPage />} />
             <Route path="/admin/users" element={<UsersPage />} />
+            {/* Lot L7 (E4) : essais gratuits (RG-ESS-03, RG-ESS-11). */}
+            <Route path="/admin/essais" element={<EssaisPage />} />
             <Route path="/admin/audit" element={<AuditLogPage />} />
             <Route path="/admin/referentiel-demarches" element={<ReferentielDemarchesPage />} />
             {/* Lot L5 E8 : sources fiables communes du chatbot (CDC 3.1, RG-ADM-03). */}

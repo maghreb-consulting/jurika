@@ -191,6 +191,7 @@ export function isAuthRejection(error: unknown): boolean {
 const PUBLIC_PAGE_PREFIXES = [
   '/login',
   '/signup',
+  '/essai',
   '/register',
   '/reset-password',
   '/verify-email',
@@ -369,6 +370,8 @@ export const MESSAGE_ERREUR_INCONNUE =
 function messageParStatut(status: number | undefined): string {
   if (status === 401) return 'Votre session a expiré. Reconnectez-vous, puis réessayez.';
   if (status === 403) return 'Vous n’avez pas les droits nécessaires pour cette action.';
+  // Lot L7 (E4) : refus de l'essai gratuit ou d'une limite du forfait, sans message lisible (reponse binaire).
+  if (status === 402) return 'Action impossible avec votre formule : aucun téléchargement n’est permis pendant l’essai gratuit, ou une limite de votre forfait est atteinte.';
   if (status === 404) return 'L’élément demandé est introuvable : il a peut-être été supprimé.';
   if (status === 413) return 'Le fichier est trop volumineux.';
   if (status === 429) return 'Trop de demandes en peu de temps. Patientez quelques instants, puis réessayez.';

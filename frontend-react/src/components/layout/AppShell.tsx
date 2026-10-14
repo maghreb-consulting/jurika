@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { AppTopNav } from './AppTopNav';
 import { ErrorBoundary } from './ErrorBoundary';
 import { IceReminderBanner } from './IceReminderBanner';
+import { BandeauEssai } from './BandeauEssai';
 import { AssistantJuridique } from '../chatbot/AssistantJuridique';
 import { VisiteGuidee } from '../ui/VisiteGuidee';
 import { useSessionKeepAlive } from '../../lib/useSessionKeepAlive';
@@ -62,6 +63,8 @@ export function AppShell() {
       <AppTopNav />
       {/* Simplification inscription (2026-07-13) — rappel discret si ICE manquant. */}
       <IceReminderBanner />
+      {/* Lot L7 (E4) : essai gratuit (rappels J-3 et J-1, lecture seule, date de suppression). */}
+      <BandeauEssai />
       <main className="flex-1">
         <div className="mx-auto max-w-7xl px-6 py-8">
           <ErrorBoundary key={pathname}>
