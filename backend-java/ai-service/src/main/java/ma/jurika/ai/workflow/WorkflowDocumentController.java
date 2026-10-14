@@ -225,9 +225,15 @@ public class WorkflowDocumentController {
         refuserSiTrouGrammatical(workflowCode, templateCode, result);
         reclamerDonneesExternes(workflowCode, templateCode, enriched, workspaceId, result);
 
+        // Lot L7 (E4) : pendant l'essai gratuit, l'acte est rendu pour l'APERCU seulement
+        // (Content-Disposition inline, RG-ESS-05) et porte la mention d'evaluation sur
+        // chaque page (RG-ESS-06). Memes donnees et meme statut : memes octets.
+        boolean essai = enEssai(workspaceId);
+        byte[] octets = essai ? ma.jurika.ai.document.FiligraneEssaiDocx.appliquer(result.bytes()) : result.bytes();
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + result.filename() + "\"")
+                        (essai ? "inline" : "attachment") + "; filename=\"" + result.filename() + "\"")
+                .header("X-Jurika-Essai", essai ? "VERSION_EVALUATION" : "NON")
                 .header("X-Workflow-Code", workflowCode)
                 .header("X-Template-Code", templateCode)
                 .header("X-Missing-Variables", String.join(",", result.missingVariables()))
@@ -236,7 +242,7 @@ public class WorkflowDocumentController {
                 .header("X-Donnees-A-Obtenir",
                         DocxTemplateEngine.enteteDonneesAObtenir(result, docxTemplateEngine.dictionnaire()))
                 .contentType(MediaType.parseMediaType(result.contentType()))
-                .body(result.bytes());
+                .body(octets);
     }
 
     /**
@@ -438,4 +444,26 @@ public class WorkflowDocumentController {
                         "error", "Unprocessable Entity",
                         "message", ex.getMessage()));
     }
+
+    /** Lot L7 (E4) : etat de l'essai du cabinet (filigrane, apercu seul). */
+    private org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.TrialAccessChecker> essais;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setEssais(org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.TrialAccessChecker> e) {
+        this.essais = e;
+    }
+
+    /** Etat illisible : traite comme un essai (mention posee, apercu seul), jamais l'inverse. */
+    boolean enEssai(UUID workspaceId) {
+        ma.jurika.common.trial.TrialAccessChecker c = essais == null ? null : essais.getIfAvailable();
+        if (c == null || workspaceId == null) return false;
+        try {
+            return c.getState(workspaceId).map(ma.jurika.common.trial.TrialAccessChecker.TrialState::enEssai)
+                    .orElse(false);
+        } catch (RuntimeException ex) {
+            log.error("Etat d'essai illisible pour {} : acte rendu avec la mention d'evaluation", workspaceId, ex);
+            return true;
+        }
+    }
+
 }

@@ -112,6 +112,7 @@ public class ConversationsChatbotService {
      */
     public Map<String, Object> creer(Proprietaire p, String question) {
         String q = questionFiltree(question);
+        compterQuestionEssai(p.workspaceId());
         Map<String, Object> reponse = rag.ask(q);
         return dansLeCabinet(p, () -> {
             UUID id = jdbc.queryForObject(
@@ -130,6 +131,7 @@ public class ConversationsChatbotService {
         String q = questionFiltree(question);
         // Controle avant la recherche : pas de reponse calculee pour une conversation refusee.
         dansLeCabinet(p, () -> exigerActive(trouver(p, id)));
+        compterQuestionEssai(p.workspaceId());
         Map<String, Object> reponse = rag.ask(q);
         return dansLeCabinet(p, () -> {
             // Verrou : un archivage concurrent ne laisse pas passer la question.
@@ -299,4 +301,16 @@ public class ConversationsChatbotService {
             throw new IllegalStateException("Sources d\u2019un echange non serialisables", ex);
         }
     }
+    /** Lot L7 (E4), RG-ESS-04 : 20 questions au chatbot pendant l'essai gratuit. */
+    private QuestionsEssaiChatbot questionsEssai;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setQuestionsEssai(QuestionsEssaiChatbot questionsEssai) {
+        this.questionsEssai = questionsEssai;
+    }
+
+    private void compterQuestionEssai(java.util.UUID workspaceId) {
+        if (questionsEssai != null) questionsEssai.consommer(workspaceId);
+    }
+
 }

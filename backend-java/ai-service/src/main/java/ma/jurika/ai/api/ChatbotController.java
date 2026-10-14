@@ -75,6 +75,7 @@ public class ChatbotController {
         if (!natures.isEmpty()) {
             throw new DonneePersonnelleDetecteeException(natures);
         }
+        compterQuestionEssai(ma.jurika.common.security.TenantContext.get());
         return rag.ask(req.question());
     }
 
@@ -166,4 +167,16 @@ public class ChatbotController {
     }
 
     public record AskRequest(@NotBlank @Size(max = 1000) String question) {}
+    /** Lot L7 (E4), RG-ESS-04 : 20 questions au chatbot pendant l'essai gratuit. */
+    private ma.jurika.ai.rag.QuestionsEssaiChatbot questionsEssai;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setQuestionsEssai(ma.jurika.ai.rag.QuestionsEssaiChatbot questionsEssai) {
+        this.questionsEssai = questionsEssai;
+    }
+
+    private void compterQuestionEssai(java.util.UUID workspaceId) {
+        if (questionsEssai != null) questionsEssai.consommer(workspaceId);
+    }
+
 }
