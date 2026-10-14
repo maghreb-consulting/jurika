@@ -118,6 +118,44 @@ public class SubscriptionEntity {
     public void setPrixEcheanceHtCentimes(Long v) { this.prixEcheanceHtCentimes = v; }
     public String getArchiveMotif() { return archiveMotif; }
     public void setArchiveMotif(String v) { this.archiveMotif = v; }
+    // Lot L7 (E8, billing V15) : echeance impayee, rappel et suspension (article 4.4 du contrat).
+    @Column(name = "rappel_impaye_echeance")
+    private LocalDate rappelImpayeEcheance;
+
+    @Column(name = "rappel_impaye_envoye_le")
+    private Instant rappelImpayeEnvoyeLe;
+
+    @Column(name = "suspendu_le")
+    private Instant suspenduLe;
+
+    @Column(name = "resiliation_effet")
+    private LocalDate resiliationEffet;
+
+    public LocalDate getRappelImpayeEcheance() { return rappelImpayeEcheance; }
+    public Instant getRappelImpayeEnvoyeLe() { return rappelImpayeEnvoyeLe; }
+    public Instant getSuspenduLe() { return suspenduLe; }
+    public void setSuspenduLe(Instant v) { this.suspenduLe = v; }
+    public LocalDate getResiliationEffet() { return resiliationEffet; }
+    public void setResiliationEffet(LocalDate v) { this.resiliationEffet = v; }
+
+    /** Rappel envoye pour l'echeance {@code echeance}. */
+    public void rappelEnvoye(LocalDate echeance, Instant le) {
+        this.rappelImpayeEcheance = echeance;
+        this.rappelImpayeEnvoyeLe = le;
+    }
+
+    /** Le rappel de l'echeance en cours (fin de la periode payee) a-t-il ete envoye ? */
+    public boolean rappelEnvoyePourEcheanceEnCours() {
+        return rappelImpayeEnvoyeLe != null && periodeFin != null && periodeFin.equals(rappelImpayeEcheance);
+    }
+
+    /** Paiement de l'echeance constate : plus de rappel en cours ni de suspension. */
+    public void impayeRegle() {
+        this.rappelImpayeEcheance = null;
+        this.rappelImpayeEnvoyeLe = null;
+        this.suspenduLe = null;
+    }
+
     public Instant getCancelledAt() { return cancelledAt; }
     public void setCancelledAt(Instant v) { this.cancelledAt = v; }
     public Instant getCreatedAt() { return createdAt; }

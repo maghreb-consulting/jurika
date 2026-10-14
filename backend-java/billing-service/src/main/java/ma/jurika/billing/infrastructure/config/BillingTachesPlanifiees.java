@@ -16,7 +16,8 @@ import org.springframework.stereotype.Component;
  * <ul>
  *   <li>toutes les 5 minutes : activations non propagees a auth-service, factures en attente d'une
  *       mention ;</li>
- *   <li>chaque jour a 01:00 (Casablanca) : archivage des echeances depassees (RG-TAR-03).</li>
+ *   <li>chaque jour a 01:00 (Casablanca) : echeances depassees (lot L7, E8, article 4.4 du
+ *       contrat) : rappel, suspension a J+15 apres rappel, archivage a l'arret du forfait.</li>
  * </ul>
  * Coupees par {@code jurika.billing.taches.enabled=false} (tests).
  */
@@ -40,7 +41,7 @@ public class BillingTachesPlanifiees {
 
     @Scheduled(cron = "0 0 1 * * *", zone = "Africa/Casablanca")
     public void archivage() {
-        journal("Archivage des echeances depassees", admin.archiver());
+        journal("Echeances depassees (rappel, suspension, archivage)", admin.archiver());
     }
 
     private static void journal(String tache, BilanTacheVue b) {

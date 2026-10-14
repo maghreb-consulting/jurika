@@ -9,6 +9,12 @@ import ma.jurika.billing.api.dto.BillingDtos.PreparationPaiementVue;
 import ma.jurika.billing.api.dto.BillingDtos.ValidationPaiementRequest;
 import ma.jurika.billing.application.AdministrationFacturationService;
 import ma.jurika.billing.application.RefusNommeException;
+import ma.jurika.billing.application.abonnement.AbonnementService;
+import ma.jurika.billing.application.abonnement.FacturationHorloge;
+import ma.jurika.billing.application.abonnement.ResiliationAbonnementListener;
+import ma.jurika.billing.application.contrat.ContratEvenements;
+import ma.jurika.billing.application.email.BillingEmailService;
+import ma.jurika.common.notification.NotificationPublisher;
 import ma.jurika.billing.application.cabinet.CabinetsPort;
 import ma.jurika.billing.application.contrat.ContratService;
 import ma.jurika.billing.application.paiement.PaiementService;
@@ -34,6 +40,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -55,6 +62,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -71,8 +79,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>RG-PAY-03 : facture a chaque paiement, refusee (mention nommee) si l'editeur est incomplet,
  *       numerotation sans rupture sous concurrence.</li>
  *   <li>RG-TAR-04, RG-TAR-05 : hausse annuelle au prorata, baisse refusee si l'usage depasse.</li>
- *   <li>RG-TAR-03, RG-TAR-07, RG-TAR-08 : echeance impayee archivee, reprise par une nouvelle
- *       souscription.</li>
+ *   <li>RG-TAR-03 et article 4.4 du contrat (lot L7, E8) : echeance impayee, rappel a J0, acces a
+ *       J+14, suspension a J+15 apres rappel (jamais sans), retablissement au paiement constate ;
+ *       RG-TAR-07, RG-TAR-08 : archivage a l'arret du forfait (resiliation a sa date d'effet), reprise
+ *       par une nouvelle souscription.</li>
  * </ul>
  */
 @Testcontainers
@@ -119,6 +129,16 @@ class FacturationParcoursIT {
     @Autowired AdministrationFacturationService admin;
 
     @MockBean CabinetsPort cabinets;
+    // Lot L7 (E8) : courriel du rappel et notifications simules (aucun envoi reel).
+    @MockBean BillingEmailService courriel;
+    @MockBean NotificationPublisher notifications;
+    @Autowired FacturationHorloge horloge;
+    @Autowired AbonnementService abonnementService;
+    @Autowired ResiliationAbonnementListener resiliations;
+
+    static final ZoneId CASA = ZoneId.of("Africa/Casablanca");
+    static final UUID SUPERVISEUR = UUID.randomUUID();
+    static final UUID SUPER_ADMIN = UUID.randomUUID();
     // Lot L7 (integration) : ContratService implemente ContratAbonnementPort ; le simuler lui-meme
     // garde le port et les controleurs du contrat dans le contexte.
     @MockBean ContratService contrat;
@@ -129,7 +149,8 @@ class FacturationParcoursIT {
     @BeforeEach
     void setUp() {
         MVC.set(mvc);
-        reset(cabinets, contrat);
+        reset(cabinets, contrat, courriel, notifications);
+        horloge.regler(Clock.systemUTC());
         jdbc.update("DELETE FROM cmi_retours");
         jdbc.update("DELETE FROM factures");
         jdbc.update("DELETE FROM factures_sequence");
@@ -137,10 +158,21 @@ class FacturationParcoursIT {
         jdbc.update("DELETE FROM subscriptions");
         editeurComplet();
         ws = UUID.randomUUID();
+        stubCabinets();
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void horlogeReelle() {
+        horloge.regler(Clock.systemUTC());
+    }
+
+    private void stubCabinets() {
         when(cabinets.identite(any())).thenAnswer(inv -> new CabinetsPort.IdentiteCabinet(inv.getArgument(0),
                 "Cabinet Atlas", "001234567000089", "1234567", "RC 98765", "12 rue des Juristes", "Rabat",
                 "contact@atlas.invalid", "ACTIVE", "professionnel"));
         when(cabinets.usage(any())).thenReturn(usage(0, 0));
+        when(cabinets.superviseurs(any())).thenReturn(List.of(SUPERVISEUR));
+        when(cabinets.superAdmins()).thenReturn(List.of(new CabinetsPort.SuperAdmin(SUPER_ADMIN, UUID.randomUUID())));
     }
 
     private void editeurComplet() {
@@ -382,20 +414,173 @@ class FacturationParcoursIT {
         assertThat(factures()).isEqualTo(2);
     }
 
+    /**
+     * Lot L7 (E8), article 4.4 du contrat (caracterisation) : une echeance passee sans paiement
+     * n'archive plus aussitot le cabinet ; l'abonnement reste actif pendant le delai de 15 jours.
+     */
     @Test
-    void echeance_impayee_archivee_puis_reprise_par_une_nouvelle_souscription() {
+    void echeance_passee_le_cabinet_n_est_pas_archive_aussitot() {
         LocalDate debut = LocalDate.now(ZoneId.of("Africa/Casablanca")).minusMonths(1);
         paiements.enregistrer(new EnregistrementPaiementRequest(ws, "SOUSCRIPTION", "essentiel", "monthly", "CASH",
                 debut, "R-1", null, null), ADMIN);
 
-        assertThat(admin.archiver().reussis()).isEqualTo(1);
-        verify(cabinets).archiver(ws, "IMPAYE");
-        assertThat(jdbc.queryForObject("SELECT status FROM subscriptions WHERE workspace_id = ?", String.class, ws)).isEqualTo("unpaid");
+        admin.archiver();
 
+        verify(cabinets, never()).archiver(any(), any());
+        assertThat(jdbc.queryForObject("SELECT status FROM subscriptions WHERE workspace_id = ?", String.class, ws)).isEqualTo("active");
+    }
+
+    // ---------------------------------------------------------------- echeance impayee (lot L7, E8, article 4.4)
+
+    private void le(LocalDate jour) {
+        horloge.regler(Clock.fixed(jour.atTime(10, 0).atZone(CASA).toInstant(), CASA));
+    }
+
+    private int journal(String evenement) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM impaye_journal WHERE workspace_id = ? AND evenement = ?",
+                Integer.class, ws, evenement);
+    }
+
+    /** Souscription mensuelle du 1er septembre 2026 : echeance impayee le 1er octobre 2026. */
+    private void souscriptionMensuelleDuPremierSeptembre() {
+        le(LocalDate.of(2026, 9, 1));
+        paiements.enregistrer(new EnregistrementPaiementRequest(ws, "SOUSCRIPTION", "essentiel", "monthly", "CASH",
+                LocalDate.of(2026, 9, 1), "R-1", null, null), ADMIN);
+        reset(cabinets);
+        stubCabinets();
+    }
+
+    @Test
+    void sequence_rappel_a_j0_acces_a_j14_suspension_a_j15_puis_retablissement_au_paiement() {
+        souscriptionMensuelleDuPremierSeptembre();
+        LocalDate echeance = LocalDate.of(2026, 10, 1);
+
+        // J0 : rappel (courriel au cabinet, ecran des superviseurs, avis au super-admin), acces ouvert.
+        le(echeance);
+        admin.archiver();
+        verify(courriel).envoyerRappelImpaye(eq("contact@atlas.invalid"), any());
+        verify(notifications).notifyUser(eq(SUPERVISEUR), eq(ws), eq("ECHEANCE_IMPAYEE"), anyString(), anyString(),
+                eq("/app/billing"), any());
+        verify(notifications).notifyUser(eq(SUPER_ADMIN), any(), eq("ECHEANCE_IMPAYEE"), anyString(), anyString(),
+                eq("/admin/abonnements"), any());
+        assertThat(journal("RAPPEL_ENVOYE")).isEqualTo(1);
+        var etat = abonnementService.etat(ws);
+        assertThat(etat.statut()).isEqualTo("ACTIF");
+        assertThat(etat.impaye().echeance()).isEqualTo(echeance);
+        assertThat(etat.impaye().suspensionLe()).isEqualTo(LocalDate.of(2026, 10, 16));
+        assertThat(etat.impaye().rappelEnvoyeLe()).isNotNull();
+
+        // Idempotence : un second passage le meme jour ne renvoie pas le rappel.
+        admin.archiver();
+        verify(courriel, times(1)).envoyerRappelImpaye(anyString(), any());
+        assertThat(journal("RAPPEL_ENVOYE")).isEqualTo(1);
+
+        // J+14 : l'acces continue.
+        le(echeance.plusDays(14));
+        admin.archiver();
+        verify(cabinets, never()).suspendreImpaye(any());
+        verify(cabinets, never()).archiver(any(), any());
+        assertThat(abonnementService.etat(ws).statut()).isEqualTo("ACTIF");
+
+        // J+15 : suspension, rien n'est supprime ni archive ; idempotente.
+        le(echeance.plusDays(15));
+        admin.archiver();
+        admin.archiver();
+        verify(cabinets, times(1)).suspendreImpaye(ws);
+        verify(cabinets, never()).archiver(any(), any());
+        verify(courriel, times(1)).envoyerRappelImpaye(anyString(), any());
+        assertThat(journal("SUSPENSION")).isEqualTo(1);
+        etat = abonnementService.etat(ws);
+        assertThat(etat.statut()).isEqualTo("SUSPENDU");
+        assertThat(etat.impaye().suspendu()).isTrue();
+        assertThat(jdbc.queryForObject("SELECT status FROM subscriptions WHERE workspace_id = ?", String.class, ws)).isEqualTo("active");
+        assertThat(admin.abonnements()).singleElement().satisfies(a -> {
+            assertThat(a.statut()).isEqualTo("SUSPENDU");
+            assertThat(a.journalImpaye()).extracting(e -> e.evenement()).contains("RAPPEL_ENVOYE", "SUSPENSION");
+        });
+
+        // Paiement constate (enregistre par le super-admin) : acces retabli, etat exact.
+        PaiementVue p = paiements.enregistrer(new EnregistrementPaiementRequest(ws, "ECHEANCE", null, null, "CASH",
+                echeance.plusDays(15), "R-2", null, null), ADMIN);
+        assertThat(p.statut()).isEqualTo("COMPLETED");
+        assertThat(p.periodeDebut()).isEqualTo(echeance);
+        verify(cabinets).activer(eq(ws), eq("essentiel"), any(), eq("monthly"), eq(LocalDate.of(2026, 11, 1)));
+        assertThat(journal("RETABLISSEMENT")).isEqualTo(1);
+        etat = abonnementService.etat(ws);
+        assertThat(etat.statut()).isEqualTo("ACTIF");
+        assertThat(etat.impaye()).isNull();
+        assertThat(jdbc.queryForObject("SELECT suspendu_le IS NULL AND rappel_impaye_envoye_le IS NULL FROM subscriptions "
+                + "WHERE workspace_id = ?", Boolean.class, ws)).isTrue();
+    }
+
+    @Test
+    void pas_de_suspension_sans_rappel_envoye_le_super_admin_est_averti() {
+        souscriptionMensuelleDuPremierSeptembre();
+        when(courriel.envoyerRappelImpaye(anyString(), any())).thenReturn("Relais SMTP injoignable");
+        LocalDate echeance = LocalDate.of(2026, 10, 1);
+
+        le(echeance);
+        admin.archiver();
+        assertThat(journal("RAPPEL_ECHEC")).isEqualTo(1);
+        verify(notifications).notifyUser(eq(SUPER_ADMIN), any(), eq("RAPPEL_IMPAYE_ECHEC"), anyString(), anyString(),
+                eq("/admin/abonnements"), any());
+
+        le(echeance.plusDays(15));
+        admin.archiver();
+        le(echeance.plusDays(16));
+        admin.archiver();
+        verify(cabinets, never()).suspendreImpaye(any());
+        assertThat(journal("SUSPENSION_SANS_RAPPEL")).isEqualTo(1);
+        verify(notifications, times(1)).notifyUser(eq(SUPER_ADMIN), any(), eq("SUSPENSION_SANS_RAPPEL"), anyString(),
+                anyString(), any(), any());
+        assertThat(abonnementService.etat(ws).statut()).isEqualTo("ACTIF");
+        assertThat(journal("RAPPEL_ECHEC")).isEqualTo(3); // retente a chaque passage, chaque echec journalise
+    }
+
+    @Test
+    void suspension_puis_resiliation_pour_defaut_de_paiement_archive_a_la_date_d_effet_puis_reprise() {
+        souscriptionMensuelleDuPremierSeptembre();
+        LocalDate echeance = LocalDate.of(2026, 10, 1);
+        le(echeance);
+        admin.archiver();
+        le(echeance.plusDays(15));
+        admin.archiver();
+        verify(cabinets).suspendreImpaye(ws);
+
+        // Article 12.2 : resiliation enregistree par l'editeur, effet 30 jours apres la mise en demeure.
+        LocalDate effet = LocalDate.of(2026, 11, 20);
+        resiliations.surResiliation(new ContratEvenements.ResiliationEnregistree(ws, UUID.randomUUID(), effet,
+                "D\u00e9faut de paiement persistant", "SUPER_ADMIN"));
+        le(effet.minusDays(1));
+        admin.archiver();
+        verify(cabinets, never()).archiver(any(), any());
+        assertThat(abonnementService.etat(ws).statut()).isEqualTo("SUSPENDU");
+
+        le(effet);
+        admin.archiver();
+        verify(cabinets).archiver(ws, "RESILIATION");
+        var etat = abonnementService.etat(ws);
+        assertThat(etat.statut()).isEqualTo("ARCHIVE");
+        assertThat(etat.archiveMotif()).isEqualTo("RESILIATION");
+
+        // RG-TAR-08 : nouvelle souscription, reprise dans l'etat exact.
         paiements.enregistrer(new EnregistrementPaiementRequest(ws, "SOUSCRIPTION", "professionnel", "monthly", "CASH",
-                LocalDate.now(), "R-2", null, null), ADMIN);
+                effet, "R-3", null, null), ADMIN);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM subscriptions WHERE workspace_id = ?", Integer.class, ws)).isEqualTo(2);
         verify(cabinets).activer(eq(ws), eq("professionnel"), any(), eq("monthly"), any());
+    }
+
+    @Test
+    void resiliation_a_l_echeance_archive_sans_rappel_ni_suspension() {
+        souscriptionMensuelleDuPremierSeptembre();
+        LocalDate echeance = LocalDate.of(2026, 10, 1);
+        resiliations.surResiliation(new ContratEvenements.ResiliationEnregistree(ws, UUID.randomUUID(), echeance,
+                "Cessation d\u2019activit\u00e9", "SUPERVISEUR"));
+        le(echeance);
+        admin.archiver();
+        verify(cabinets).archiver(ws, "RESILIATION");
+        verify(courriel, never()).envoyerRappelImpaye(any(), any());
+        verify(cabinets, never()).suspendreImpaye(any());
     }
 
     @Test

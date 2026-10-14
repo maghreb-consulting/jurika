@@ -74,6 +74,40 @@ public class BillingEmailService {
         send(to, "Votre abonnement JURIKA est r\u00e9activ\u00e9", "email/reactivation", vars);
     }
 
+    /**
+     * Lot L7 (E8), article 4.4 du contrat : rappel d'une echeance impayee, envoye SANS
+     * {@code @Async} : le resultat est rendu a l'appelant, qui le journalise (envoye ou echec) et
+     * ne suspend jamais l'acces sans rappel envoye. Jamais avale.
+     *
+     * @return null si le courriel est parti, sinon le motif de l'echec
+     */
+    public String envoyerRappelImpaye(String to, Map<String, Object> vars) {
+        if (to == null || to.isBlank()) {
+            return "Adresse \u00e9lectronique du cabinet absente";
+        }
+        if (props.getFromEmail() == null || props.getFromEmail().isBlank()) {
+            return "Exp\u00e9diteur non configur\u00e9 (SMTP_FROM)";
+        }
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
+            helper.setFrom(props.getFromEmail());
+            helper.setTo(to);
+            helper.setSubject("Rappel : \u00e9ch\u00e9ance de votre abonnement JURIKA non r\u00e9gl\u00e9e");
+            Context ctx = new Context();
+            vars.forEach(ctx::setVariable);
+            helper.setText(templateEngine.process("email/rappel-impaye", ctx), true);
+            attachInlineAssets(helper);
+            mailSender.send(message);
+            log.info("Rappel d'echeance impayee envoye to={}", to);
+            return null;
+        } catch (Exception e) {
+            log.warn("Echec du rappel d'echeance impayee to={} : {}", to, e.getMessage());
+            String m = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            return m.length() > 500 ? m.substring(0, 500) : m;
+        }
+    }
+
     private void send(String to, String subject, String templatePath, Map<String, Object> vars) {
         try {
             MimeMessage message = mailSender.createMimeMessage();

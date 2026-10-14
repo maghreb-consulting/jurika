@@ -46,6 +46,21 @@ public class AuthCabinetsClient implements CabinetsPort {
     }
 
     @Override
+    public void suspendreImpaye(UUID workspaceId) {
+        String uri = UriComponentsBuilder.fromPath("/internal/workspaces/{id}/status")
+                .queryParam("transition", "SUSPENDED_IMPAYE")
+                .buildAndExpand(workspaceId).toUriString();
+        appeler("suspension pour impaye", () -> http.put().uri(uri).retrieve().toBodilessEntity());
+    }
+
+    @Override
+    public java.util.List<UUID> superviseurs(UUID workspaceId) {
+        UUID[] l = appeler("superviseurs du cabinet", () -> http.get()
+                .uri("/internal/workspaces/{id}/superviseurs", workspaceId).retrieve().body(UUID[].class));
+        return l == null ? java.util.List.of() : java.util.List.of(l);
+    }
+
+    @Override
     public void emettreIdentifiants(UUID workspaceId, String raison) {
         String uri = UriComponentsBuilder.fromPath("/internal/workspaces/{id}/issue-credentials")
                 .queryParam("reason", raison)

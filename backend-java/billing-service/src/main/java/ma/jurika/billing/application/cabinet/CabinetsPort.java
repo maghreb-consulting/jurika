@@ -19,6 +19,15 @@ public interface CabinetsPort {
     /** Workspace archive (RG-TAR-07) ; motifs : IMPAYE, FIN_ABONNEMENT, RESILIATION, DECISION. */
     void archiver(UUID workspaceId, String motif);
 
+    /**
+     * Lot L7 (E8), article 4.4 du contrat : acces suspendu pour impaye (rien n'est supprime ; seul le
+     * superviseur se connecte, pour payer). Leve par {@link #activer} au paiement constate.
+     */
+    void suspendreImpaye(UUID workspaceId);
+
+    /** Lot L7 (E8) : superviseurs actifs du cabinet (rappel d'echeance impayee a l'ecran). */
+    java.util.List<UUID> superviseurs(UUID workspaceId);
+
     /** Identifiants d'acces emis (inscription en ligne payee par virement, cheque ou especes). */
     void emettreIdentifiants(UUID workspaceId, String raison);
 

@@ -5,6 +5,7 @@ import ma.jurika.billing.api.dto.BillingDtos.ApercuChangementVue;
 import ma.jurika.billing.api.dto.BillingDtos.ChangementAVenirVue;
 import ma.jurika.billing.api.dto.BillingDtos.EcheanceVue;
 import ma.jurika.billing.api.dto.BillingDtos.FonctionVue;
+import ma.jurika.billing.api.dto.BillingDtos.ImpayeVue;
 import ma.jurika.billing.api.dto.BillingDtos.MontantsVue;
 import ma.jurika.billing.application.RefusNommeException;
 import ma.jurika.billing.application.cabinet.CabinetsPort;
@@ -33,8 +34,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -56,7 +55,9 @@ import java.util.UUID;
  *   <li>RG-TAR-05 : baisse a la prochaine echeance, sans remboursement, refusee si l'usage depasse le
  *       forfait vise (ce qui depasse est nomme).</li>
  *   <li>RG-TAR-06 : rythme change a la prochaine echeance.</li>
- *   <li>RG-TAR-03, RG-TAR-07, RG-PLN-07 : echeance impayee ou annee non renouvelee : archivage,
+ *   <li>RG-TAR-03 et article 4.4 du contrat (lot L7, E8) : echeance impayee : rappel, puis
+ *       SUSPENSION 15 jours apres l'echeance, levee au paiement constate ({@link ImpayeService}) ;
+ *       RG-TAR-07, RG-PLN-07 : l'ARCHIVAGE suit l'arret du forfait (resiliation a sa date d'effet),
  *       jamais de suppression ; RG-TAR-08 : nouvelle souscription = reactivation dans l'etat exact.</li>
  * </ul>
  * Chaque activation et chaque changement ouvre des conditions particulieres en attente
@@ -68,12 +69,6 @@ public class AbonnementService {
 
     private static final Logger log = LoggerFactory.getLogger(AbonnementService.class);
 
-    /**
-     * A_DECIDER (direction) : delai de grace apres une echeance impayee avant l'archivage. Le CDC
-     * n'en prevoit pas (RG-TAR-03) : 0 jour, rien n'est invente.
-     */
-    public static final int DELAI_GRACE_JOURS_A_DECIDER = 0;
-
     public static final String ACTIF = "active";
 
     private final SubscriptionJpaRepository abonnements;
@@ -82,18 +77,14 @@ public class AbonnementService {
     private final CabinetsPort cabinets;
     private final ObjectProvider<ContratAbonnementPort> contrat;
     private final CmiProperties cmi;
-    private final Clock horloge;
+    private final FacturationHorloge horloge;
+    private final ImpayeJournal journal;
 
     @Autowired
     public AbonnementService(SubscriptionJpaRepository abonnements, PaymentJpaRepository paiements,
                              EditeurParametresJpaRepository editeur, CabinetsPort cabinets,
-                             ObjectProvider<ContratAbonnementPort> contrat, CmiProperties cmi) {
-        this(abonnements, paiements, editeur, cabinets, contrat, cmi, Clock.systemUTC());
-    }
-
-    AbonnementService(SubscriptionJpaRepository abonnements, PaymentJpaRepository paiements,
-                      EditeurParametresJpaRepository editeur, CabinetsPort cabinets,
-                      ObjectProvider<ContratAbonnementPort> contrat, CmiProperties cmi, Clock horloge) {
+                             ObjectProvider<ContratAbonnementPort> contrat, CmiProperties cmi,
+                             FacturationHorloge horloge, ImpayeJournal journal) {
         this.abonnements = abonnements;
         this.paiements = paiements;
         this.editeur = editeur;
@@ -101,11 +92,12 @@ public class AbonnementService {
         this.contrat = contrat;
         this.cmi = cmi;
         this.horloge = horloge;
+        this.journal = journal;
     }
 
     /** Aujourd'hui a Casablanca. */
     public LocalDate aujourdhui() {
-        return LocalDate.ofInstant(horloge.instant(), PeriodeAbonnement.CASABLANCA);
+        return horloge.aujourdhui();
     }
 
     /** Taux de TVA des parametres de l'editeur (reglable par le super-admin). */
@@ -139,13 +131,28 @@ public class AbonnementService {
                     dernier.map(SubscriptionEntity::getPeriodeDebut).orElse(null),
                     dernier.map(SubscriptionEntity::getPeriodeFin).orElse(null),
                     null, null, dernier.map(SubscriptionEntity::getArchiveMotif).orElse(null),
-                    fonctions(plan), cmi.configure(), carteMotif, enAttente);
+                    fonctions(plan), cmi.configure(), carteMotif, enAttente, null);
         }
         SubscriptionEntity s = actif.get();
         Plan plan = PlanCatalog.exiger(s.getPlanCode());
-        return new AbonnementVue(workspaceId, "ACTIF", plan.internalCode(), plan.displayLabel(), s.getRythme(),
+        ImpayeVue impaye = impayeVue(s, aujourdhui());
+        return new AbonnementVue(workspaceId, statutActif(s), plan.internalCode(), plan.displayLabel(), s.getRythme(),
                 s.getEngagementDebut(), s.getEngagementFin(), s.getPeriodeDebut(), s.getPeriodeFin(),
-                echeanceVue(s), changementAVenir(s), null, fonctions(plan), cmi.configure(), carteMotif, enAttente);
+                echeanceVue(s), changementAVenir(s), null, fonctions(plan), cmi.configure(), carteMotif, enAttente, impaye);
+    }
+
+    /** Lot L7 (E8) : statut d'un abonnement actif : SUSPENDU (impaye, article 4.4) ou ACTIF. */
+    public static String statutActif(SubscriptionEntity s) {
+        return s.getSuspenduLe() != null ? "SUSPENDU" : "ACTIF";
+    }
+
+    /** Lot L7 (E8) : echeance impayee en cours (null si rien n'est du). */
+    public static ImpayeVue impayeVue(SubscriptionEntity s, LocalDate jour) {
+        if (s.getSuspenduLe() == null && !ImpayeService.echeanceImpayee(s, jour)) return null;
+        LocalDate echeance = s.getPeriodeFin();
+        return new ImpayeVue(echeance, ImpayeService.dateSuspension(echeance), s.getSuspenduLe() != null,
+                s.getSuspenduLe(), s.rappelEnvoyePourEcheanceEnCours() ? s.getRappelImpayeEnvoyeLe() : null,
+                ImpayeService.dateArret(s), ImpayeService.DELAI_SUSPENSION_JOURS);
     }
 
     static List<FonctionVue> fonctions(Plan plan) {
@@ -405,6 +412,15 @@ public class AbonnementService {
                 s.setPlanAVenir(null);
                 s.setRythmeAVenir(null);
                 if (plan.quoteOnly() && p.getMontantHtCentimes() != null) s.setPrixEcheanceHtCentimes(p.getMontantHtCentimes());
+                // Lot L7 (E8), article 4.4 : paiement constate, acces retabli dans l'etat exact (la
+                // propagation de l'activation leve la suspension cote auth-service).
+                if (s.getSuspenduLe() != null) {
+                    journal.porteeGlobale();
+                    journal.ecrire(s.getWorkspaceId(), s.getId(), debut, ImpayeJournal.RETABLISSEMENT, null,
+                            "Paiement constat\u00e9 (paiement " + p.getId() + ", " + p.getMethod() + ") : acc\u00e8s r\u00e9tabli.");
+                    log.info("Acces retabli (paiement {} constate) workspace={}", p.getId(), s.getWorkspaceId());
+                }
+                s.impayeRegle();
                 s.periode(debut, fin);
                 p.setPeriodeDebut(debut);
                 p.setPeriodeFin(fin);
@@ -461,44 +477,7 @@ public class AbonnementService {
                 });
     }
 
-    /** Resultat de l'archivage planifie. */
-    public record BilanArchivage(int examines, int archives, List<String> echecs) {}
-
-    /**
-     * RG-TAR-03, RG-TAR-07 : abonnements actifs dont la periode payee est terminee depuis plus du
-     * delai de grace : archives (impaye en cours d'annee, fin d'abonnement a l'echeance annuelle).
-     * Chaque cabinet dans sa transaction ; auth-service injoignable : l'archivage est annule et
-     * rejoue au passage suivant.
-     */
-    public BilanArchivage archiverEcheancesDepassees(org.springframework.transaction.support.TransactionTemplate tx) {
-        LocalDate limite = aujourdhui().minusDays(DELAI_GRACE_JOURS_A_DECIDER);
-        List<SubscriptionEntity> echues = abonnements.findAllByStatusAndPeriodeFinLessThanEqual(ACTIF, limite);
-        int archives = 0;
-        List<String> echecs = new ArrayList<>();
-        for (SubscriptionEntity e : echues) {
-            try {
-                tx.executeWithoutResult(st -> {
-                    SubscriptionEntity s = abonnements.verrouillerActif(e.getWorkspaceId()).orElse(null);
-                    if (s == null || s.getPeriodeFin().isAfter(limite)) return;
-                    boolean finAnnee = !s.getPeriodeFin().isBefore(s.getEngagementFin() == null ? s.getPeriodeFin() : s.getEngagementFin());
-                    // Lot L7 : resiliation (RG-CTR-08) a sa date d'effet ; sinon fin d'annee ou impaye.
-                    String motif = s.isCancelAtPeriodEnd() ? "RESILIATION" : (finAnnee ? "FIN_ABONNEMENT" : "IMPAYE");
-                    s.setStatus("IMPAYE".equals(motif) ? "unpaid" : "cancelled");
-                    s.setArchiveMotif(motif);
-                    s.setCancelledAt(Instant.now(horloge));
-                    abonnements.save(s);
-                    cabinets.archiver(s.getWorkspaceId(), motif);
-                });
-                archives++;
-            } catch (RuntimeException ex) {
-                echecs.add(e.getWorkspaceId() + " : " + ex.getMessage());
-                log.error("Archivage non fait workspace={} : {}", e.getWorkspaceId(), ex.getMessage());
-            }
-        }
-        return new BilanArchivage(echues.size(), archives, echecs);
-    }
-
-    static String format(LocalDate d) {
+    public static String format(LocalDate d) {
         return d == null ? "" : String.format(Locale.FRANCE, "%02d/%02d/%d", d.getDayOfMonth(), d.getMonthValue(), d.getYear());
     }
 }

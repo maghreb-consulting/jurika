@@ -4,6 +4,8 @@ import ma.jurika.billing.api.dto.BillingDtos.AbonnementAdminVue;
 import ma.jurika.billing.api.dto.BillingDtos.BilanTacheVue;
 import ma.jurika.billing.api.dto.BillingDtos.SurDevisVue;
 import ma.jurika.billing.application.abonnement.AbonnementService;
+import ma.jurika.billing.application.abonnement.ImpayeJournal;
+import ma.jurika.billing.application.abonnement.ImpayeService;
 import ma.jurika.billing.application.cabinet.CabinetsPort;
 import ma.jurika.billing.application.facture.FactureService;
 import ma.jurika.billing.application.paiement.PropagationActivation;
@@ -40,12 +42,17 @@ public class AdministrationFacturationService {
     private final FactureService factures;
     private final PropagationActivation propagation;
     private final CabinetsPort cabinets;
+    private final ImpayeService impayes;
+    private final ImpayeJournal journal;
     private final TransactionTemplate tx;
 
     public AdministrationFacturationService(SubscriptionJpaRepository abonnements, PaymentJpaRepository paiements,
                                             AbonnementService abonnement, FactureService factures,
                                             PropagationActivation propagation, CabinetsPort cabinets,
+                                            ImpayeService impayes, ImpayeJournal journal,
                                             PlatformTransactionManager tm) {
+        this.impayes = impayes;
+        this.journal = journal;
         this.abonnements = abonnements;
         this.paiements = paiements;
         this.abonnement = abonnement;
@@ -69,11 +76,13 @@ public class AdministrationFacturationService {
         for (SubscriptionEntity s : parCabinet.values()) {
             Plan plan = PlanCatalog.findByCode(s.getPlanCode()).orElse(null);
             boolean actif = AbonnementService.ACTIF.equals(s.getStatus());
-            out.add(new AbonnementAdminVue(s.getWorkspaceId(), s.getId(), actif ? "ACTIF" : "ARCHIVE", s.getPlanCode(),
-                    plan == null ? s.getPlanCode() : plan.displayLabel(), s.getRythme(), s.getEngagementDebut(),
+            out.add(new AbonnementAdminVue(s.getWorkspaceId(), s.getId(), actif ? AbonnementService.statutActif(s) : "ARCHIVE",
+                    s.getPlanCode(), plan == null ? s.getPlanCode() : plan.displayLabel(), s.getRythme(), s.getEngagementDebut(),
                     s.getEngagementFin(), s.getPeriodeDebut(), s.getPeriodeFin(),
                     actif ? echeance(s) : null, actif ? changement(s) : null, s.getArchiveMotif(),
-                    actif && plan != null && plan.quoteOnly() ? surDevis(s.getWorkspaceId()) : null));
+                    actif && plan != null && plan.quoteOnly() ? surDevis(s.getWorkspaceId()) : null,
+                    actif ? AbonnementService.impayeVue(s, abonnement.aujourdhui()) : null,
+                    journalImpaye(s.getWorkspaceId())));
         }
         return out;
     }
@@ -141,9 +150,22 @@ public class AdministrationFacturationService {
         return new BilanTacheVue(attente.size(), ok, attente.size() - ok, details);
     }
 
-    /** RG-TAR-03 : archivage des echeances depassees. */
+    /** Lot L7 (E8) : derniers faits du journal des impayes d'un cabinet (lecture transverse). */
+    private List<ma.jurika.billing.api.dto.BillingDtos.ImpayeEvenementVue> journalImpaye(UUID workspaceId) {
+        List<ImpayeJournal.Evenement> l = tx.execute(st -> {
+            journal.porteeGlobale();
+            return journal.duCabinet(workspaceId, 10);
+        });
+        return l == null ? List.of() : l.stream().map(e -> new ma.jurika.billing.api.dto.BillingDtos.ImpayeEvenementVue(
+                e.id(), e.echeance(), e.evenement(), e.destinataire(), e.detail(), e.creeLe())).toList();
+    }
+
+    /**
+     * RG-TAR-03 et article 4.4 du contrat (lot L7, E8) : echeances depassees : rappel, suspension a
+     * J+15 apres rappel, archivage a l'arret du forfait ({@link ImpayeService}).
+     */
     public BilanTacheVue archiver() {
-        AbonnementService.BilanArchivage b = abonnement.archiverEcheancesDepassees(tx);
-        return new BilanTacheVue(b.examines(), b.archives(), b.echecs().size(), b.echecs());
+        ImpayeService.Bilan b = impayes.traiterEcheances();
+        return new BilanTacheVue(b.examines(), b.reussis(), b.echecs().size(), b.echecs());
     }
 }

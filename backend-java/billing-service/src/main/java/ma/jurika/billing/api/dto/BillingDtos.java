@@ -30,8 +30,23 @@ public final class BillingDtos {
     public record ChangementAVenirVue(String forfait, String forfaitLibelle, String rythme, LocalDate effectifLe) {}
 
     /**
-     * Etat de l'abonnement du cabinet. {@code statut} : AUCUN (jamais souscrit), ACTIF, ARCHIVE (forfait
-     * arrete, RG-TAR-07 : rien n'est supprime).
+     * Lot L7 (E8), article 4.4 du contrat : echeance impayee en cours. {@code suspensionLe} : jour de
+     * la suspension (prevue, ou faite si {@code suspendu}) ; {@code rappelEnvoyeLe} : envoi du rappel
+     * (null : pas encore parti) ; {@code arretLe} : date d'arret du forfait si une resiliation est
+     * enregistree (archivage a cette date), sinon null.
+     */
+    public record ImpayeVue(LocalDate echeance, LocalDate suspensionLe, boolean suspendu, Instant suspenduLe,
+                            Instant rappelEnvoyeLe, LocalDate arretLe, int delaiJours) {}
+
+    /** Lot L7 (E8) : un fait du journal des impayes (billing V15). */
+    public record ImpayeEvenementVue(Long id, LocalDate echeance, String evenement, String destinataire, String detail,
+                                     Instant creeLe) {}
+
+    /**
+     * Etat de l'abonnement du cabinet. {@code statut} : AUCUN (jamais souscrit), ACTIF (une echeance
+     * impayee dans le delai de 15 jours est decrite par {@code impaye}), SUSPENDU (impaye : acces
+     * suspendu, retabli au paiement constate, article 4.4), ARCHIVE (forfait arrete, RG-TAR-07 : rien
+     * n'est supprime).
      */
     public record AbonnementVue(
             UUID workspaceId,
@@ -49,7 +64,8 @@ public final class BillingDtos {
             List<FonctionVue> fonctions,
             boolean carteDisponible,
             String carteIndisponibleMotif,
-            int paiementsEnAttente
+            int paiementsEnAttente,
+            ImpayeVue impaye
     ) {}
 
     public record ChangementForfaitRequest(String forfait, String rythme, String mode) {}
@@ -133,7 +149,7 @@ public final class BillingDtos {
             UUID workspaceId, Long abonnementId, String statut, String forfait, String forfaitLibelle, String rythme,
             LocalDate engagementDebut, LocalDate engagementFin, LocalDate periodeDebut, LocalDate periodeFin,
             EcheanceVue prochaineEcheance, ChangementAVenirVue changementAVenir, String archiveMotif,
-            SurDevisVue surDevis) {}
+            SurDevisVue surDevis, ImpayeVue impaye, List<ImpayeEvenementVue> journalImpaye) {}
 
     public record BilanTacheVue(int traites, int reussis, int echecs, List<String> details) {}
 }

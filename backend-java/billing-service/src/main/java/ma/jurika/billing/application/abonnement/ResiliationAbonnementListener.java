@@ -12,9 +12,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * Lot L7 (integration E5 / E6) : une resiliation du contrat (RG-CTR-08) arrete le forfait a sa
  * date d'effet. L'abonnement actif n'est plus renouvele et sa periode payee est bornee a cette
- * date ; l'archivage planifie (AbonnementService#archiverEcheancesDepassees) archive alors le
- * cabinet avec le motif RESILIATION (RG-TAR-07 : jamais de suppression). Sans abonnement actif,
- * rien a arreter : le fait est journalise.
+ * date ; la tache quotidienne ({@link ImpayeService#traiterEcheances}) archive alors le cabinet
+ * avec le motif RESILIATION (RG-TAR-07 : jamais de suppression), A LA DATE D'EFFET (lot L7, E8 :
+ * une date d'effet posterieure a la periode payee, cas de la resiliation pour defaut de paiement
+ * persistant de l'article 12.2, laisse courir l'impaye et sa suspension jusqu'a cette date). Sans
+ * abonnement actif, rien a arreter : le fait est journalise.
  */
 @Component
 public class ResiliationAbonnementListener {
@@ -33,6 +35,7 @@ public class ResiliationAbonnementListener {
     public void surResiliation(ContratEvenements.ResiliationEnregistree e) {
         boolean fait = Boolean.TRUE.equals(tx.execute(st -> abonnements.verrouillerActif(e.workspaceId()).map(s -> {
             s.setCancelAtPeriodEnd(true);
+            s.setResiliationEffet(e.dateEffet());
             if (s.getPeriodeFin() == null || e.dateEffet().isBefore(s.getPeriodeFin())) {
                 s.periode(s.getPeriodeDebut(), e.dateEffet());
             }
