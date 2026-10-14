@@ -98,6 +98,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 response.getWriter().write(AccesArchive.CORPS_REFUS);
                 return;
             }
+            // Lot L7 (E8), article 4.4 du contrat : workspace suspendu pour impaye, memes chemins.
+            if (Boolean.TRUE.equals(claims.get(JwtClaims.SUSPENDU, Boolean.class))
+                    && !AccesArchive.cheminPermis(request.getRequestURI())) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType("application/json");
+                response.setCharacterEncoding("UTF-8");
+                response.getWriter().write(AccesArchive.CORPS_REFUS_SUSPENDU);
+                return;
+            }
 
             AuthenticatedUser principal = new AuthenticatedUser(userId, workspaceId, email, role);
             TenantContext.set(workspaceId);

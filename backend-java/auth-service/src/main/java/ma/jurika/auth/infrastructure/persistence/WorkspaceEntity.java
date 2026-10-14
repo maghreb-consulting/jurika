@@ -98,6 +98,11 @@ public class WorkspaceEntity {
     private Instant archiveLe;
     @Column(name = "archive_motif", length = 20)
     private String archiveMotif;
+    /** Lot L7 (E8), auth V46 : suspension pour impaye (article 4.4 du contrat). */
+    @Column(name = "suspendu_le")
+    private Instant suspenduLe;
+    @Column(name = "suspension_motif", length = 20)
+    private String suspensionMotif;
     // Lot L7 (E4) V40 -- cycle de l'essai gratuit (RG-ESS-10, RG-ESS-11).
     @Column(name = "essai_expire_le")
     private Instant essaiExpireLe;
@@ -186,6 +191,10 @@ public class WorkspaceEntity {
     public void setArchiveLe(Instant v) { this.archiveLe = v; }
     public String getArchiveMotif() { return archiveMotif; }
     public void setArchiveMotif(String v) { this.archiveMotif = v; }
+    public Instant getSuspenduLe() { return suspenduLe; }
+    public void setSuspenduLe(Instant v) { this.suspenduLe = v; }
+    public String getSuspensionMotif() { return suspensionMotif; }
+    public void setSuspensionMotif(String v) { this.suspensionMotif = v; }
     public Instant getEssaiExpireLe() { return essaiExpireLe; }
     public void setEssaiExpireLe(Instant v) { this.essaiExpireLe = v; }
     public Instant getEssaiAvertissementLe() { return essaiAvertissementLe; }

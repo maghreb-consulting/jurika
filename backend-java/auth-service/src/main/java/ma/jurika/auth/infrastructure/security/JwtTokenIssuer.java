@@ -79,8 +79,13 @@ public class JwtTokenIssuer implements TokenIssuer {
                 .claim(JwtClaims.MUST_CHANGE_PASSWORD, user.mustChangePassword())
                 .claim(JwtClaims.REQUIRES_2FA_SETUP, user.requires2faSetup());
         // Lot L7 (E5), RG-TAR-07 : un workspace archive n'ouvre que les chemins de AccesArchive.
-        if (workspaceArchive(user)) {
+        // Lot L7 (E8), article 4.4 du contrat : un workspace suspendu pour impaye, memes chemins.
+        ma.jurika.auth.domain.model.Workspace ws = workspaceDe(user);
+        if (ws != null && ws.isArchived()) {
             builder.claim(JwtClaims.ARCHIVE, true);
+        }
+        if (ws != null && ws.isSuspenduImpaye()) {
+            builder.claim(JwtClaims.SUSPENDU, true);
         }
 
         String accessToken;
@@ -131,19 +136,18 @@ public class JwtTokenIssuer implements TokenIssuer {
     }
 
     /**
-     * Lot L7 (E5) : le workspace de l'utilisateur est-il archive ? Lu dans une transaction (celle de
+     * Lot L7 (E5, E8) : workspace de l'utilisateur (archive, suspendu pour impaye). Lu dans une transaction (celle de
      * l'appelant, ou une transaction de lecture ouverte ici) et dans le workspace de l'utilisateur,
      * pour la RLS.
      */
-    private boolean workspaceArchive(User user) {
-        if (workspaceRepository == null) return false;
+    private ma.jurika.auth.domain.model.Workspace workspaceDe(User user) {
+        if (workspaceRepository == null) return null;
         java.util.UUID avant = ma.jurika.common.security.TenantContext.get();
         try {
             if (avant == null) ma.jurika.common.security.TenantContext.set(user.workspaceId());
-            java.util.function.Supplier<Boolean> lire = () -> workspaceRepository.findById(user.workspaceId())
-                    .map(ma.jurika.auth.domain.model.Workspace::isArchived).orElse(false);
-            Boolean archive = lecture == null ? lire.get() : lecture.execute(st -> lire.get());
-            return Boolean.TRUE.equals(archive);
+            java.util.function.Supplier<ma.jurika.auth.domain.model.Workspace> lire =
+                    () -> workspaceRepository.findById(user.workspaceId()).orElse(null);
+            return lecture == null ? lire.get() : lecture.execute(st -> lire.get());
         } finally {
             if (avant == null) ma.jurika.common.security.TenantContext.clear();
         }

@@ -99,7 +99,7 @@ public class LoginUseCase {
                 .orElseThrow(() -> new NotFoundException("Code workspace inconnu : v\u00e9rifiez le code de votre cabinet."));
         // Lot L7 (E5), RG-TAR-07 et RG-TAR-09 : un workspace archive reste ouvert a son seul
         // superviseur (controle apres le mot de passe, pour ne rien reveler du compte).
-        if (!workspace.isActive() && !workspace.isArchived()) {
+        if (!workspace.ouvertALaConnexion()) {
             throw new UnauthorizedException("Ce workspace n\u2019est pas actif : adressez-vous au support JURIKA.");
         }
         TenantContext.set(workspace.id());
@@ -141,6 +141,13 @@ public class LoginUseCase {
             throw new UnauthorizedException("Identifiant ou mot de passe incorrect.");
         }
 
+        if (!workspace.accepteConnexion(user.role()) && workspace.isSuspenduImpaye()) {
+            // Lot L7 (E8), article 4.4 du contrat : suspension pour impaye, seul le superviseur.
+            throw new UnauthorizedException("WORKSPACE_SUSPENDU",
+                    "L\u2019acc\u00e8s \u00e0 ce cabinet est suspendu : une \u00e9ch\u00e9ance de l\u2019abonnement n\u2019est pas "
+                            + "r\u00e9gl\u00e9e. Seul le superviseur du cabinet peut se connecter pour la payer ; l\u2019acc\u00e8s est "
+                            + "r\u00e9tabli d\u00e8s le paiement constat\u00e9 et rien n\u2019a \u00e9t\u00e9 supprim\u00e9.");
+        }
         if (!workspace.accepteConnexion(user.role())) {
             throw new UnauthorizedException("WORKSPACE_ARCHIVE",
                     "Ce cabinet est archiv\u00e9 : son forfait est arr\u00eat\u00e9. Seul le superviseur du cabinet peut se connecter "

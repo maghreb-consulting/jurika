@@ -112,6 +112,12 @@ public class InternalWorkspaceStatusController {
      *       laisse (RG-TAR-08) : seul son statut change, aucune donnee n'est touchee.</li>
      *   <li>{@code ARCHIVED} : forfait arrete ({@code motif} IMPAYE, FIN_ABONNEMENT, RESILIATION,
      *       DECISION) : statut ARCHIVED, rien n'est supprime (RG-TAR-07, RG-PLN-07).</li>
+     *   <li>{@code SUSPENDED_IMPAYE} (lot L7, E8, article 4.4 du contrat) : echeance impayee 15 jours
+     *       apres l'echeance et apres un rappel : statut SUSPENDED, motif IMPAYE (auth V46), rien
+     *       n'est supprime ; seul le superviseur se connecte, pour payer. Sans effet sur un workspace
+     *       qui n'est pas ACTIVE (archive, suspendu par decision : journalise). {@code ACTIVATED}
+     *       (paiement constate) retablit l'acces dans l'etat exact ; une suspension decidee par le
+     *       super-admin n'est jamais levee par un paiement.</li>
      *   <li>{@code CANCELLED}, {@code PAST_DUE} : inchanges.</li>
      * </ul>
      * Idempotent. Une transition inconnue est REFUSEE (400) : avant, elle etait ignoree en silence.
@@ -156,6 +162,16 @@ public class InternalWorkspaceStatusController {
                 if ("ARCHIVED".equals(ws.getStatus())) {
                     ws.setStatus("ACTIVE");
                 }
+                // Lot L7 (E8), article 4.4 : acces retabli des le paiement constate.
+                if ("SUSPENDED".equals(ws.getStatus())
+                        && ma.jurika.auth.domain.model.Workspace.SUSPENSION_IMPAYE.equals(ws.getSuspensionMotif())) {
+                    ws.setStatus("ACTIVE");
+                    log.info("Suspension pour impaye levee (paiement constate) workspace={}", workspaceId);
+                }
+                if (!"SUSPENDED".equals(ws.getStatus())) {
+                    ws.setSuspenduLe(null);
+                    ws.setSuspensionMotif(null);
+                }
                 ws.setArchiveLe(null);
                 ws.setArchiveMotif(null);
                 // RG-BL05 : le trial se cloture en "CONVERTED" pour lever le bandeau cote UI.
@@ -172,8 +188,21 @@ public class InternalWorkspaceStatusController {
                     ws.setArchiveLe(now);
                     ws.setArchiveMotif(motif);
                 }
+                // Lot L7 (E8) : l'archivage (forfait arrete) succede a la suspension.
+                ws.setSuspenduLe(null);
+                ws.setSuspensionMotif(null);
                 ws.setSubscriptionStatus("IMPAYE".equals(motif) ? "unpaid" : "cancelled");
                 if (ws.getCancelledAt() == null) ws.setCancelledAt(now);
+            }
+            case "SUSPENDED_IMPAYE" -> {
+                if ("ACTIVE".equals(ws.getStatus())) {
+                    ws.setStatus("SUSPENDED");
+                    ws.setSuspenduLe(now);
+                    ws.setSuspensionMotif(ma.jurika.auth.domain.model.Workspace.SUSPENSION_IMPAYE);
+                } else if (!ma.jurika.auth.domain.model.Workspace.SUSPENSION_IMPAYE.equals(ws.getSuspensionMotif())) {
+                    log.warn("Suspension pour impaye sans effet : workspace={} au statut {}", workspaceId, ws.getStatus());
+                }
+                ws.setSubscriptionStatus("past_due");
             }
             case "CANCELLED" -> {
                 ws.setSubscriptionStatus("cancelled");
@@ -209,6 +238,17 @@ public class InternalWorkspaceStatusController {
     public java.util.List<SuperAdminDto> superAdmins() {
         return jdbc.query("SELECT id, workspace_id FROM auth_super_admins_actifs()",
                 (rs, n) -> new SuperAdminDto((UUID) rs.getObject("id"), (UUID) rs.getObject("workspace_id")));
+    }
+
+    /**
+     * Lot L7 (E8) : superviseurs actifs d'un cabinet (rappel d'une echeance impayee, notifie a
+     * l'ecran). Lu dans le workspace du chemin (RLS).
+     */
+    @GetMapping("/{workspaceId}/superviseurs")
+    @Transactional(readOnly = true)
+    public java.util.List<UUID> superviseurs(@PathVariable UUID workspaceId) {
+        return jdbc.query("SELECT id FROM users WHERE workspace_id = ? AND role = 'SUPERVISEUR' AND status = 'ACTIVE' "
+                + "ORDER BY created_at", (rs, n) -> (UUID) rs.getObject("id"), workspaceId);
     }
 
     /** Lot L7 (E5) : motifs d'archivage (auth V44). */

@@ -25,6 +25,12 @@ public final class JwtClaims {
      * donne alors acces qu'aux chemins de {@link AccesArchive} (P6 : controle cote serveur).
      */
     public static final String ARCHIVE = "arch";
+    /**
+     * Lot L7 (E8), article 4.4 du contrat : vrai si l'acces du workspace est SUSPENDU pour une
+     * echeance impayee (15 jours apres l'echeance et apres un rappel). Memes chemins que
+     * {@link AccesArchive} ; refus {@code WORKSPACE_SUSPENDU}. Rien n'est supprime.
+     */
+    public static final String SUSPENDU = "susp";
 
     public static final String REQUEST_ATTR_MUST_CHANGE_PASSWORD = "ma.jurika.mustChangePassword";
     public static final String REQUEST_ATTR_REQUIRES_2FA_SETUP = "ma.jurika.requires2faSetup";

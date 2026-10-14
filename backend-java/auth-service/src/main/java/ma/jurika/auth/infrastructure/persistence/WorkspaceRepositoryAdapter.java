@@ -69,6 +69,6 @@ public class WorkspaceRepositoryAdapter implements WorkspaceRepository {
         return new Workspace(
                 e.getId(), e.getCode(), e.getName(), e.getContactEmail(),
                 e.getSubscriptionId(), WorkspaceStatus.valueOf(e.getStatus()),
-                e.getCreatedAt(), e.getUpdatedAt());
+                e.getCreatedAt(), e.getUpdatedAt(), e.getSuspensionMotif());
     }
 }

@@ -158,12 +158,18 @@ public class AdminWorkspaceController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Statut non valide.");
         }
         // Lot L7 (E5) : l'archivage date et motive ; toute autre transition efface l'archivage.
-        int updated = "ARCHIVED".equals(newStatus)
-                ? jdbc.update("UPDATE workspaces SET status = ?, archive_le = COALESCE(archive_le, NOW()), "
-                        + "archive_motif = COALESCE(archive_motif, 'DECISION'), updated_at = NOW() WHERE id = ?",
-                        newStatus, workspaceId)
-                : jdbc.update("UPDATE workspaces SET status = ?, archive_le = NULL, archive_motif = NULL, "
-                        + "updated_at = NOW() WHERE id = ?", newStatus, workspaceId);
+        // Lot L7 (E8, auth V46) : une suspension par le super-admin est une DECISION (motif nul, ne
+        // s'ouvre a personne et n'est pas levee par un paiement) ; toute autre transition efface la
+        // suspension pour impaye.
+        int updated = switch (newStatus) {
+            case "ARCHIVED" -> jdbc.update("UPDATE workspaces SET status = ?, archive_le = COALESCE(archive_le, NOW()), "
+                    + "archive_motif = COALESCE(archive_motif, 'DECISION'), suspendu_le = NULL, suspension_motif = NULL, "
+                    + "updated_at = NOW() WHERE id = ?", newStatus, workspaceId);
+            case "SUSPENDED" -> jdbc.update("UPDATE workspaces SET status = ?, archive_le = NULL, archive_motif = NULL, "
+                    + "suspendu_le = NOW(), suspension_motif = NULL, updated_at = NOW() WHERE id = ?", newStatus, workspaceId);
+            default -> jdbc.update("UPDATE workspaces SET status = ?, archive_le = NULL, archive_motif = NULL, "
+                    + "suspendu_le = NULL, suspension_motif = NULL, updated_at = NOW() WHERE id = ?", newStatus, workspaceId);
+        };
         if (updated == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace introuvable.");
         }

@@ -116,7 +116,7 @@ public class VerifyRecoveryCodeUseCase {
         }
 
         Workspace workspace = workspaceRepository.findByCode(cmd.workspaceCode()).orElse(null);
-        if (workspace == null || (!workspace.isActive() && !workspace.isArchived())) {
+        if (workspace == null || (!workspace.ouvertALaConnexion())) {
             rateLimiter.recordFailure(rateKey);
             throw new UnauthorizedException(GENERIC_AUTH_ERROR);
         }
