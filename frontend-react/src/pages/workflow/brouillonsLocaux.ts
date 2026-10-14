@@ -93,6 +93,19 @@ function lireEntree(cleSt: string): BrouillonLocal | null {
   }
 }
 
+/**
+ * Decision de l'utilisateur du 2026-10-14 : un brouillon local est efface a l'envoi
+ * (accuse du serveur) et AU PLUS TARD 7 jours apres sa derniere ecriture. Un brouillon
+ * perime n'est jamais envoye ; il est efface quel que soit son auteur (poste partage).
+ */
+export const DUREE_MAX_BROUILLON_MS = 7 * 24 * 3600 * 1000;
+
+function perime(b: BrouillonLocal | null, maintenant: number): boolean {
+  if (!b) return false;
+  const ecrit = Date.parse(b.ecritA);
+  return Number.isNaN(ecrit) || maintenant - ecrit > DUREE_MAX_BROUILLON_MS;
+}
+
 function toutesLesCles(): string[] {
   try {
     const out: string[] = [];
@@ -100,10 +113,20 @@ function toutesLesCles(): string[] {
       const k = localStorage.key(i);
       if (k && k.startsWith(PREFIXE)) out.push(k);
     }
-    return out;
+    const maintenant = Date.now();
+    return out.filter((k) => {
+      if (!perime(lireEntree(k), maintenant)) return true;
+      localStorage.removeItem(k);
+      return false;
+    });
   } catch {
     return [];
   }
+}
+
+/** Efface les brouillons perimes de ce navigateur (au demarrage de l'application). */
+export function purgerBrouillonsPerimes(): void {
+  toutesLesCles();
 }
 
 /** Brouillons de CET utilisateur dans CE cabinet (ceux d'un autre ne sont jamais rendus). */

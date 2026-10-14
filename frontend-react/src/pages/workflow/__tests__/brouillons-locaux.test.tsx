@@ -130,7 +130,7 @@ describe('brouillon local des saisies (session expiree, hors ligne, fermeture)',
     await taper('ALPHA SARL');
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'Session expirée : votre saisie est gardée dans ce navigateur, reconnectez-vous.',
+      'Session expirée : votre saisie est gardée dans ce navigateur, reconnectez-vous dans les 7 jours.',
     );
     const gardes = lireBrouillons(A, 't-1');
     expect(gardes).toHaveLength(1);
@@ -284,6 +284,29 @@ describe('brouillon local des saisies (session expiree, hors ligne, fermeture)',
     expect(save).toHaveBeenCalledWith('t-1', 1, { step1: { nom: 'DELTA' } });
     expect(lireBrouillons(A)).toHaveLength(0);
     expect(lireBrouillons(B)).toHaveLength(1);
+  });
+
+  it('un brouillon de plus de 7 jours est efface sans etre envoye, meme celui d’un autre utilisateur', async () => {
+    const maintenant = new Date('2026-10-20T10:00:00Z');
+    vi.setSystemTime(new Date(maintenant.getTime() - 8 * 24 * 3600 * 1000));
+    ecrireBrouillon(A, 't-ancien', 'step1', 1, { nom: 'PERIME' }, canonique({ nom: 'ALPHA' }));
+    ecrireBrouillon(B, 't-1', 'step1', 1, { nom: 'PERIME DE B' }, canonique({ nom: 'ALPHA' }));
+    vi.setSystemTime(new Date(maintenant.getTime() - 6 * 24 * 3600 * 1000));
+    ecrireBrouillon(A, 't-1', 'step1', 1, { nom: 'RECENT' }, canonique({ nom: 'ALPHA' }));
+    vi.setSystemTime(maintenant);
+
+    expect(lireBrouillons(A).map((b) => b.ticketId)).toEqual(['t-1']);
+    expect(brouillonsBruts().some((k) => k.includes('PERIME'))).toBe(false);
+
+    function Application() {
+      useRenvoiBrouillons();
+      return <p>Tableau de bord</p>;
+    }
+    render(<Application />);
+    await laisserFiler(0);
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save).toHaveBeenCalledWith('t-1', 1, { step1: { nom: 'RECENT' } });
+    expect(brouillonsBruts()).toEqual([]);
   });
 });
 

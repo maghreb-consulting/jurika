@@ -26,7 +26,7 @@ export function IndicateurEnregistrement() {
       </p>
       <InfoBulle
         libelle="Comment votre saisie est-elle conservée ?"
-        texte="Chaque champ, chaque choix et chaque case de l’étape (y compris l’état des pièces de l’étape 8) est enregistré automatiquement en brouillon : peu après la frappe, quand vous changez d’étape, quittez le parcours ou fermez la page. Les fichiers déjà déposés dans la Data Room ne sont pas renvoyés. Tant que le serveur n’a pas confirmé, votre saisie est aussi gardée dans ce navigateur : si votre session expire ou si la connexion est coupée, reconnectez-vous ; elle sera envoyée automatiquement, avant tout réaffichage. L’étape n’est validée qu’avec le bouton de validation."
+        texte="Chaque champ, chaque choix et chaque case de l’étape (y compris l’état des pièces de l’étape 8) est enregistré automatiquement en brouillon : peu après la frappe, quand vous changez d’étape, quittez le parcours ou fermez la page. Les fichiers déjà déposés dans la Data Room ne sont pas renvoyés. Tant que le serveur n’a pas confirmé, votre saisie est aussi gardée dans ce navigateur : si votre session expire ou si la connexion est coupée, reconnectez-vous ; elle sera envoyée automatiquement, avant tout réaffichage. Cette copie est effacée dès l’envoi, et au plus tard 7 jours après votre dernière saisie. L’étape n’est validée qu’avec le bouton de validation."
       />
     </div>
   );
@@ -50,7 +50,7 @@ function messageEnregistrement(etat: EtatEnregistrement): string {
   if (etat.type === 'en-cours') return 'Enregistrement…';
   if (etat.type === 'enregistre') return `Enregistré à ${heure(etat.a)}`;
   if (etat.type === 'session-expiree') {
-    return 'Session expirée : votre saisie est gardée dans ce navigateur, reconnectez-vous. Elle sera envoyée automatiquement dès votre reconnexion.';
+    return 'Session expirée : votre saisie est gardée dans ce navigateur, reconnectez-vous dans les 7 jours. Elle sera envoyée automatiquement dès votre reconnexion.';
   }
   if (etat.type === 'hors-ligne') {
     return 'Hors ligne : votre saisie est gardée dans ce navigateur. Elle sera envoyée automatiquement dès le retour de la connexion.';
