@@ -276,6 +276,10 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 ### Lot L7 (offre et facturation, 2026-10-14) -- dette relevee
 
+- **Supprimer `superadmin.test@jurika.invalid` avant la mise en production** : compte
+  super-admin de test cree le 2026-10-14 sur le Z440 seulement (accord de l'utilisateur), dans
+  le workspace du super-admin (JUR-DEMO1) ; mot de passe aleatoire dans
+  `~/.jurika-test/superadmin-test.txt` (mode 600), jamais affiche.
 - **CMI** : branchement au vrai CMI A_DECIDER (contrat) ; points de la specification a confirmer
   (ordre du tri du hash, reponses texte, type de transaction) isoles dans `CmiSpecification` ;
   `frontend-react/e2e/billing-*.spec.ts` decrivent encore le parcours Stripe.
