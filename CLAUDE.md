@@ -300,11 +300,16 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   d'utilisateurs et de stockage du Sur Devis ; banque et RIB de l'editeur (`JURIKA_VIREMENT_*`).
 - **Suppression d'un essai (auth V45, liste explicite)** : toute nouvelle table de donnees d'un
   cabinet dans `jurika_db` doit etre ajoutee a `essai_supprimer_definitivement` par une nouvelle
-  migration d'auth (sinon `SuppressionEssaiCouvertureIT` casse le verify). Hors fonction : un essai
-  qui a commence un paiement peut laisser dans `jurika_billing` `payments`, `cmi_retours`,
-  `contrat_avis` et des pieces de contrat inalterables ; conservation A_DECIDER (CNDP).
-- **Brouillons locaux des saisies** (navigateur) : aucune expiration d'un brouillon non renvoye
-  sur un poste ou l'utilisateur ne se reconnecte pas ; duree A_DECIDER (CNDP).
+  migration d'auth (sinon `SuppressionEssaiCouvertureIT` casse le verify) ; toute nouvelle table
+  de `jurika_billing` portant un cabinet doit etre classee dans `ClassementFacturationEssai`
+  (sinon `SuppressionEssaiFacturationIT` casse). Paiements aboutis et factures d'un essai supprime
+  conserves 10 ans puis purges (billing V18) ; preuves du contrat, `contrat_avis` et
+  `impaye_journal` d'un essai conserves sans purge : duree A_DECIDER (RG-CTR-09 : au moins dix
+  ans) ; ligne du registre `conservation_comptable` gardee sans limite. `factures` et `payments`
+  sans declencheur anti-DELETE : protection applicative tant que billing est proprietaire (L9).
+  `/internal/essais/**` de billing sans authentification entre services (dette L0).
+- **Contrat** : dans l'exemplaire, l'heure d'acceptation de l'essai s'ecrit "10 h 32" et celle du
+  contrat "10:32:05" (formats a harmoniser).
 - **Export CSV d'activite** : aucun ecran ne l'appelle.
 - **Import, etape 7** : publicites relues sous `juridique`, qui ne les porte pas (perte probable
   au rechargement, a verifier).
