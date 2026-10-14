@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useStepAutosave, type RegisterDirty } from '../useStepAutosave';
 import {
   CheckCircle2,
   ChevronRight,
@@ -34,6 +35,8 @@ interface Props {
   denomination?: string | null;
   saving: boolean;
   onSubmit: (payload: Record<string, unknown>) => Promise<void>;
+  /** Lot L7 (E2) : enregistrement automatique de la saisie (voir useStepAutosave). */
+  registerDirty?: RegisterDirty;
 }
 
 type UiDocType =
@@ -167,7 +170,7 @@ function uuid(): string {
  * (visibles dans /app/dataroom/dossiers/<id>/juridique). L'OCR n'est plus
  * un goulot d'etranglement.
  */
-export function Step2ImportJuridique({ existing, dossierId, denomination, saving, onSubmit }: Props) {
+export function Step2ImportJuridique({ existing, dossierId, denomination, saving, onSubmit, registerDirty }: Props) {
   // Fix 2026-06-25 — Rehydration tolerante : les docs persistes utilisent la
   // cle `type` (cf payload onSubmit) ; on la remappe vers `uiType` et on
   // neutralise les flags transients. Plus aucun defaut 'STATUTS' force.
@@ -192,6 +195,43 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
   const [globalError, setGlobalError] = useState<string | null>(null);
   /** Refs vers les blobs originaux -- pas de re-render au stockage. */
   const blobsRef = useRef<Map<string, File>>(new Map());
+  // Lot L7 (E2) : documents deja deposes et publicites enregistres sans clic. Meme
+  // forme que la validation ; les publicites figurent aussi sous `juridique`, que la
+  // relecture de l'etape privilegie (unwrap).
+  useStepAutosave(
+    7,
+    () => {
+      const documents = docs
+        .filter((d) => d.uploaded)
+        .map((d) => ({
+          id: d.id,
+          filename: d.filename,
+          sizeBytes: d.sizeBytes,
+          type: d.uiType,
+          dataroomType: d.uiType ? DOC_TYPE_BINDING[d.uiType].dataroomType : 'AUTRE',
+          uploaded: d.uploaded,
+          documentId: d.documentId,
+        }));
+      return {
+        documents,
+        documentsJuridiques: documents,
+        publicites,
+        juridique: {
+          documents,
+          publicites,
+          piecesUploaded: documents.map((d) => ({
+            code: d.type,
+            filename: d.filename,
+            sizeBytes: d.sizeBytes,
+            type: d.type,
+            dataroomDocumentId: d.documentId,
+          })),
+          extractedFields: aggregateExtractedFields(),
+        },
+      };
+    },
+    registerDirty,
+  );
 
   /**
    * Fix 2026-06-25 — Ajout d'un fichier SANS upload. Le fichier entre en

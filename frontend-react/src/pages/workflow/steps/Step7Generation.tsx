@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useEffectEvent } from 'react';
+import { useStepAutosave, type RegisterDirty } from '../useStepAutosave';
 import {
   AlertCircle,
   AlertTriangle,
@@ -98,6 +99,8 @@ interface Props {
    * génération (y compris le fallback de ré-hydratation), aucun dépôt.
    */
   readOnly?: boolean;
+  /** Lot L7 (E2) : enregistrement automatique de la saisie (voir useStepAutosave). */
+  registerDirty?: RegisterDirty;
 }
 
 interface DocState {
@@ -428,6 +431,7 @@ export function Step7Generation({
   dossierId,
   ticketId,
   readOnly = false,
+  registerDirty,
 }: Props) {
   // 2026-06-10 — Fix persistance : le onSubmit envoie { documents: {...} }
   // directement, sans wrapper "generation". Le bug pre-existant lisait
@@ -1180,6 +1184,9 @@ export function Step7Generation({
       boucles,
     };
   }
+
+  // Lot L7 (E2) : selection, complements et boucles enregistres sans clic.
+  useStepAutosave(7, () => etatEtape(), readOnly ? undefined : registerDirty);
 
   return (
     <form

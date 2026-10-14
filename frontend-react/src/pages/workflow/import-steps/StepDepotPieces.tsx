@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useStepAutosave, type RegisterDirty } from '../useStepAutosave';
 import { FolderUp, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { dataroomService } from '../../../services/dataroom.service';
@@ -27,11 +28,19 @@ interface Props {
   existing?: Record<string, unknown>;
   saving: boolean;
   onSubmit: (payload: Record<string, unknown>) => void;
+  /** Lot L7 (E2) : enregistrement automatique de la saisie (voir useStepAutosave). */
+  registerDirty?: RegisterDirty;
 }
 
-export function StepDepotPieces({ dossierId, existing, saving, onSubmit }: Props) {
+export function StepDepotPieces({ dossierId, existing, saving, onSubmit, registerDirty }: Props) {
   const dejaDeposees = (existing?.pieces as PieceDeposee[] | undefined) ?? [];
   const [pieces, setPieces] = useState<PieceDeposee[]>(dejaDeposees);
+  // Lot L7 (E2) : la liste des pieces deposees est enregistree sans clic.
+  useStepAutosave(
+    8,
+    () => ({ pieces: pieces.filter((p) => p.etat === 'DEPOSE') }),
+    registerDirty,
+  );
   const [erreur, setErreur] = useState<string | null>(null);
 
   const deposer = useCallback(

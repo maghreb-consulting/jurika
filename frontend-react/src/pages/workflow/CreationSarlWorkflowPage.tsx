@@ -24,6 +24,7 @@ import { CancelTicketDialog } from '../tickets/CancelTicketDialog';
 import { useWorkflow } from './useWorkflow';
 import { WorkflowBoot } from './WorkflowBoot';
 import { AideEtape } from './AideEtape';
+import { IndicateurEnregistrement } from '../../components/workflow/IndicateurEnregistrement';
 import { ETAPES_CREATION } from './aidesParcours';
 
 /** Forme juridique restreinte aux 2 valeurs supportees par la creation SARL. */
@@ -618,7 +619,7 @@ function CreationSarlWorkflowPageBody() {
             </Badge>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {readOnly ? (
             // Consultation lecture seule : pas d'action mutante dans l'en-tête.
             <Button variant="secondary" onClick={() => navigate('/tickets')}>
@@ -626,6 +627,7 @@ function CreationSarlWorkflowPageBody() {
             </Button>
           ) : (
             <>
+              <IndicateurEnregistrement />
               <Button variant="secondary" onClick={() => navigate(-1)}>
                 <Save className="mr-1 h-4 w-4" /> Enregistrer et quitter
               </Button>
@@ -719,6 +721,7 @@ function CreationSarlWorkflowPageBody() {
             dossierId={ticket?.dossierId ?? null}
             ticketId={ticket?.id ?? null}
             readOnly={readOnly}
+            registerDirty={effectiveRegisterDirty}
           />
         ) : readOnly ? (
           <fieldset disabled className="m-0 min-w-0 border-0 p-0">

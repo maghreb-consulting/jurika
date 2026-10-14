@@ -25,6 +25,7 @@ import { CancelTicketDialog } from '../tickets/CancelTicketDialog';
 import { useWorkflow } from './useWorkflow';
 import { WorkflowBoot } from './WorkflowBoot';
 import { AideEtape } from './AideEtape';
+import { IndicateurEnregistrement } from '../../components/workflow/IndicateurEnregistrement';
 import { ETAPES_IMPORT, libellesEtapes } from './aidesParcours';
 
 /** Forme juridique restreinte aux 2 valeurs supportees par l'import SARL. */
@@ -324,7 +325,8 @@ function ImportWorkflowPageBody() {
             <Badge variant={formeJuridique === 'SARL_AU' ? 'info' : 'default'}>{formeLabel}</Badge>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <IndicateurEnregistrement />
           <Button variant="secondary" onClick={() => navigate(-1)}>
             <Save className="mr-1 h-4 w-4" /> Enregistrer et quitter
           </Button>
@@ -463,6 +465,7 @@ function ImportWorkflowPageBody() {
             denomination={denomination}
             saving={saving}
             onSubmit={(p) => submit(7, p)}
+            registerDirty={registerDirty}
           />
         )}
         {step === 8 && (
@@ -471,6 +474,7 @@ function ImportWorkflowPageBody() {
             dossierId={ticket.dossierId}
             saving={saving}
             onSubmit={(p) => submit(8, p)}
+            registerDirty={registerDirty}
           />
         )}
         {step === 9 && (
@@ -480,6 +484,7 @@ function ImportWorkflowPageBody() {
             dossierId={ticket.dossierId ?? null}
             saving={saving || finalizing}
             onSubmit={finalizeImport}
+            registerDirty={progress.statut === 'TERMINE' ? undefined : registerDirty}
           />
         )}
 

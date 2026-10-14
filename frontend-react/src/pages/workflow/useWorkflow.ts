@@ -6,6 +6,15 @@ import { ticketService } from '../../services/ticket.service';
 import { workflowService } from '../../services/workflow.service';
 import type { Ticket } from '../../types/ticket';
 import { TICKET_TO_WORKFLOW, type ExecuteStepResult, type WorkflowProgress } from '../../types/workflow';
+import {
+  ATTENTE_MAX_MS,
+  EnregistrementCtx,
+  ErreurEnvoiFiable,
+  LECTURE_SAISIE_MS,
+  envoyerBrouillonFiable,
+  type EtatEnregistrement,
+} from './enregistrementAuto';
+import type { RegisterDirty } from './useStepAutosave';
 
 /**
  * Fix 2026-06-11 — Cache module-scope (PAS un hook) qui partage la Promise du
@@ -72,7 +81,9 @@ export interface UseWorkflowState {
    * appels se succedent pour la meme etape, le dernier gagne (cas re-mount
    * StrictMode).
    */
-  registerDirty: (step: number, getter: DirtyGetter) => () => void;
+  registerDirty: RegisterDirty;
+  /** Lot L7 (E2) : etat de l'enregistrement automatique (indicateur a l'ecran). */
+  enregistrement: EtatEnregistrement;
   /**
    * Force un flush immediat (await-able) du draft de l'etape donnee
    * (defaut : viewStep courant). Utile avant un onBlur explicite.
@@ -103,6 +114,7 @@ function useWorkflowEngine(): UseWorkflowState {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewStep, setViewStep] = useState<number | null>(null);
+  const [enregistrement, setEnregistrement] = useState<EtatEnregistrement>({ type: 'repos' });
 
   // Refs : lectures stables pour les callbacks sans creer de churn de useCallback.
   const progressRef = useRef<WorkflowProgress | null>(null);
@@ -207,80 +219,128 @@ function useWorkflowEngine(): UseWorkflowState {
     [ticketId],
   );
 
-  // P1 2026-06-21 — Helpers dirty getters + flush.
-  // Le registre est un Map<step, getter> ; chaque etape s'y inscrit au mount
-  // et se desinscrit au unmount. flushDraft appelle saveDraft directement
-  // (pas la version useCallback) pour rester independant des hooks.
-  const registerDirty = useCallback((step: number, getter: DirtyGetter) => {
+  // ------------------------------------------------------------------
+  //  Lot L7 (E2) -- AUCUNE SAISIE PERDUE
+  // ------------------------------------------------------------------
+  // Chaque etape inscrit un getter de sa saisie (useStepAutosave). Le moteur :
+  //  - lit la saisie de l'etape affichee chaque seconde et l'enregistre des
+  //    qu'elle est stable (pause apres la frappe), au plus tard apres 5 s de
+  //    frappe continue ;
+  //  - l'enregistre avant toute navigation (goToStep/goPrev/goNext) ;
+  //  - l'enregistre quand l'etape se demonte (bouton "Quitter", changement de page) ;
+  //  - l'envoie de facon fiable (fetch keepalive) quand l'onglet se masque ou se
+  //    ferme (visibilitychange, pagehide).
+  // Une saisie identique a la derniere enregistree n'est pas renvoyee. Les envois
+  // ordinaires passent l'un apres l'autre (une ancienne saisie ne peut pas
+  // ecraser une plus recente). L'etat est publie pour l'indicateur a l'ecran ;
+  // un echec y est ecrit en clair et la saisie sera renvoyee.
+  //
+  // Le stockage reste `workflow_progress.data` (JSONB, cloisonne par workspace),
+  // deja la source de verite du parcours (decision du 2026-08-14).
+  const dernierEnregistreRef = useRef<Map<string, string>>(new Map());
+  const fileRef = useRef<Promise<void>>(Promise.resolve());
+  // Saisie dont l'envoi a echoue : la lecture periodique ne la renvoie pas en
+  // boucle ; elle repart a la prochaine modification, navigation ou sortie.
+  const echecRef = useRef<Map<string, string>>(new Map());
+
+  const enregistrerSiChange = useCallback(
+    (step: number, getter: DirtyGetter, fiable = false): Promise<void> => {
+      const tid = ticketIdRef.current;
+      if (!tid) return Promise.resolve();
+      let payload: Record<string, unknown> | null = null;
+      try {
+        payload = getter();
+      } catch {
+        payload = null;
+      }
+      if (!payload) return Promise.resolve();
+      // Convention stepN, SAUF si le getter designe explicitement sa cle via
+      // `__stepKey` (2026-08-14). Certaines pages regroupent plusieurs etapes sous
+      // une meme cle -- Modification range les etapes 3 et 4 dans `step3`.
+      const cle = typeof payload.__stepKey === 'string' ? payload.__stepKey : `step${step}`;
+      const contenu: Record<string, unknown> = { ...payload };
+      delete contenu.__stepKey;
+      const serialise = JSON.stringify(contenu);
+      if (dernierEnregistreRef.current.get(cle) === serialise) return Promise.resolve();
+      dernierEnregistreRef.current.set(cle, serialise);
+      const wrapped: Record<string, unknown> = { [cle]: contenu };
+
+      const envoi = async () => {
+        setEnregistrement({ type: 'en-cours' });
+        try {
+          const p = fiable
+            ? await envoyerBrouillonFiable(tid, step, wrapped)
+            : await workflowService.save(tid, step, wrapped);
+          if (p) setProgress(p);
+          echecRef.current.delete(cle);
+          setEnregistrement({ type: 'enregistre', a: new Date() });
+        } catch (err) {
+          // La saisie reste a l'ecran ; elle sera renvoyee a la prochaine lecture.
+          if (dernierEnregistreRef.current.get(cle) === serialise) {
+            dernierEnregistreRef.current.delete(cle);
+          }
+          echecRef.current.set(cle, serialise);
+          const message = err instanceof ErreurEnvoiFiable ? err.message : extractError(err).message;
+          setEnregistrement({ type: 'erreur', message });
+        }
+      };
+      // Page qui se ferme : envoi immediat, sans attendre la file.
+      if (fiable) return envoi();
+      const suite = fileRef.current.then(envoi);
+      fileRef.current = suite;
+      return suite;
+    },
+    [],
+  );
+
+  // P1 2026-06-21 -- registre des getters par etape ; chaque etape s'y inscrit au
+  // montage et se desinscrit au demontage (avec un dernier envoi, lot L7).
+  const registerDirty = useCallback<RegisterDirty>((step, getter) => {
     dirtyGettersRef.current.set(step, getter);
-    return () => {
+    // Point de depart : la saisie telle qu'affichee a l'ouverture de l'etape. Une
+    // etape ouverte puis quittee sans rien changer n'envoie rien.
+    try {
+      const initial = getter();
+      if (initial) {
+        const cle = typeof initial.__stepKey === 'string' ? initial.__stepKey : `step${step}`;
+        if (!dernierEnregistreRef.current.has(cle)) {
+          const contenu: Record<string, unknown> = { ...initial };
+          delete contenu.__stepKey;
+          dernierEnregistreRef.current.set(cle, JSON.stringify(contenu));
+        }
+      }
+    } catch {
+      // getter en erreur a l'ouverture : la premiere lecture reussie sera envoyee.
+    }
+    return (options) => {
+      if (options?.flush) void enregistrerSiChange(step, getter);
       // Cleanup : ne supprime que si c'est TOUJOURS notre getter (cas remount
       // StrictMode ou bascule d'etape rapide -- le dernier register gagne).
       if (dirtyGettersRef.current.get(step) === getter) {
         dirtyGettersRef.current.delete(step);
       }
     };
-  }, []);
+  }, [enregistrerSiChange]);
 
   const flushDraft = useCallback(async (step?: number) => {
-    const tid = ticketIdRef.current;
-    if (!tid) return;
     const target = step ?? viewStepRef.current ?? null;
     if (target == null) return;
     const getter = dirtyGettersRef.current.get(target);
     if (!getter) return;
-    let payload: Record<string, unknown> | null = null;
-    try {
-      payload = getter();
-    } catch {
-      payload = null;
-    }
-    if (!payload) return;
-    // Convention stepN, SAUF si le getter designe explicitement sa cle via
-    // `__stepKey` (2026-08-14). Certaines pages regroupent plusieurs etapes sous
-    // une meme cle — Modification range les etapes 3 et 4 dans `step3`. Sans ce
-    // signal, la sauvegarde automatique aurait ecrit `step4`, un bloc que la page
-    // ne relit jamais : la saisie aurait paru enregistree puis disparu au retour.
-    const cle = typeof payload.__stepKey === 'string' ? payload.__stepKey : `step${target}`;
-    const contenu: Record<string, unknown> = { ...payload };
-    delete contenu.__stepKey;
-    const wrapped: Record<string, unknown> = { [cle]: contenu };
-    try {
-      const p = await workflowService.save(tid, target, wrapped);
-      setProgress(p);
-    } catch (err) {
-      // On ne bloque PAS la navigation sur un echec de draft (best-effort) ;
-      // l'employe peut toujours valider l'etape pour persister.
-      setError(extractError(err).message);
-    }
-  }, []);
+    // On ne bloque PAS la navigation sur un echec (l'indicateur l'affiche).
+    await enregistrerSiChange(target, getter);
+  }, [enregistrerSiChange]);
 
-  // ------------------------------------------------------------------
-  //  Sauvegarde AUTOMATIQUE (2026-08-14)
-  // ------------------------------------------------------------------
-  // Jusqu'ici, une saisie n'etait persistee QUE sur navigation entre etapes
-  // (flushDraft) ou sur clic explicite « Sauvegarder brouillon ». Un simple F5,
-  // une deconnexion ou la fermeture de l'onglet perdait donc tout ce qui avait
-  // ete tape depuis. Verifie en conditions reelles : trois champs saisis puis
-  // rafraichissement -> les trois revenaient vides.
-  //
-  // Le stockage retenu est `workflow_progress.data` (JSONB Postgres), deja la
-  // source de verite du wizard : scope par workspace, survit a la deconnexion et
-  // au changement de poste, et relu tel quel au retour. Un `localStorage` aurait
-  // desynchronise les postes et contourne le cloisonnement multi-tenant.
-  //
-  // Cadence : toutes les 20 s, et seulement si le payload a CHANGE (comparaison
-  // du JSON serialise) — pas de requete inutile en lecture seule ou a l'arret.
-  const lastSavedRef = useRef<string | null>(null);
   useEffect(() => {
-    const AUTOSAVE_MS = 20_000;
-    let stopped = false;
+    // Lecture de la saisie de l'etape affichee : envoi apres une pause, ou apres
+    // ATTENTE_MAX_MS de frappe continue.
+    let derniereLecture: string | null = null;
+    let enAttenteDepuis: number | null = null;
 
-    const tick = async () => {
-      if (stopped) return;
+    const lire = () => {
       const target = viewStepRef.current;
       const getter = target == null ? null : dirtyGettersRef.current.get(target);
-      if (!getter) return;
+      if (target == null || !getter) return;
       let payload: Record<string, unknown> | null = null;
       try {
         payload = getter();
@@ -288,24 +348,44 @@ function useWorkflowEngine(): UseWorkflowState {
         return;
       }
       if (!payload) return;
-      const serialized = JSON.stringify(payload);
-      if (serialized === lastSavedRef.current) return; // rien de neuf
-      lastSavedRef.current = serialized;
-      await flushDraft(target ?? undefined);
+      const cle = typeof payload.__stepKey === 'string' ? payload.__stepKey : `step${target}`;
+      const contenu: Record<string, unknown> = { ...payload };
+      delete contenu.__stepKey;
+      const serialise = JSON.stringify(contenu);
+      if (dernierEnregistreRef.current.get(cle) === serialise || echecRef.current.get(cle) === serialise) {
+        derniereLecture = null;
+        enAttenteDepuis = null;
+        return;
+      }
+      const maintenant = Date.now();
+      const stable = serialise === derniereLecture;
+      derniereLecture = serialise;
+      if (enAttenteDepuis == null) enAttenteDepuis = maintenant;
+      if (!stable && maintenant - enAttenteDepuis < ATTENTE_MAX_MS) return;
+      derniereLecture = null;
+      enAttenteDepuis = null;
+      void enregistrerSiChange(target, getter);
     };
 
-    const id = window.setInterval(() => void tick(), AUTOSAVE_MS);
-    // Onglet masque ou ferme : dernier flush avant de perdre la main.
-    const onHide = () => {
-      if (document.visibilityState === 'hidden') void tick();
+    // Onglet masque ou ferme : envoi fiable de ce qui n'est pas encore parti.
+    const envoiFiable = () => {
+      const target = viewStepRef.current;
+      const getter = target == null ? null : dirtyGettersRef.current.get(target);
+      if (target != null && getter) void enregistrerSiChange(target, getter, true);
     };
-    document.addEventListener('visibilitychange', onHide);
+    const onVisibilite = () => {
+      if (document.visibilityState === 'hidden') envoiFiable();
+    };
+
+    const id = window.setInterval(lire, LECTURE_SAISIE_MS);
+    document.addEventListener('visibilitychange', onVisibilite);
+    window.addEventListener('pagehide', envoiFiable);
     return () => {
-      stopped = true;
       window.clearInterval(id);
-      document.removeEventListener('visibilitychange', onHide);
+      document.removeEventListener('visibilitychange', onVisibilite);
+      window.removeEventListener('pagehide', envoiFiable);
     };
-  }, [flushDraft]);
+  }, [enregistrerSiChange]);
 
   // goToStep / goPrev / goNext : DEPS STABLES (vide) -- lisent progressRef.current.
   // Garantit que la reference de la callback ne change pas entre renders.
@@ -367,6 +447,7 @@ function useWorkflowEngine(): UseWorkflowState {
     goNext,
     registerDirty,
     flushDraft,
+    enregistrement,
   };
 }
 
@@ -429,7 +510,11 @@ export function WorkflowDataProvider({
     const msg = state.error ?? 'Workflow introuvable';
     return createElement(Fragment, null, renderError ? renderError(msg) : null);
   }
-  return createElement(WorkflowCtx.Provider, { value: state }, children);
+  return createElement(
+    WorkflowCtx.Provider,
+    { value: state },
+    createElement(EnregistrementCtx.Provider, { value: state.enregistrement }, children),
+  );
 }
 
 /**
