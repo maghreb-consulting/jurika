@@ -162,6 +162,28 @@ public class EssaiJdbc {
                 """, workspaceId, userId, version, texte, empreinte, ts(accepteesLe), adresseIp, userAgent);
     }
 
+    /**
+     * Lot L7 (E13) : acceptations des conditions de l'essai du cabinet (version, date), pour la
+     * mention de l'exemplaire du contrat d'abonnement. Filtre explicite sur le workspace, en plus
+     * de la RLS.
+     */
+    public record AcceptationConditions(String version, Instant accepteesLe) {}
+
+    public List<AcceptationConditions> acceptationsConditions(UUID workspaceId) {
+        return jdbc.query("""
+                SELECT version, acceptees_le FROM essai_conditions_acceptations
+                WHERE workspace_id = ? ORDER BY acceptees_le, enregistre_le
+                """, (rs, i) -> new AcceptationConditions(rs.getString(1), instant(rs, "acceptees_le")),
+                workspaceId);
+    }
+
+    /** Lot L7 (E13) : le cabinet a-t-il ete ouvert par l'inscription a l'essai (registre) ? */
+    public boolean auRegistre(UUID workspaceId) {
+        Boolean b = jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM essais_registre WHERE workspace_id = ?)",
+                Boolean.class, workspaceId);
+        return Boolean.TRUE.equals(b);
+    }
+
     public int signalementExamine(UUID workspaceId, Instant le) {
         return jdbc.update("""
                 UPDATE essais_registre SET signalement_examine_le = ?
