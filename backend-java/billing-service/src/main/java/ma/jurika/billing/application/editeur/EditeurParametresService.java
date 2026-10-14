@@ -42,7 +42,7 @@ public class EditeurParametresService {
                     EditeurParametresEntity::getCapitalSocial),
             new Mention("siegeSocial", "Adresse du si\u00e8ge", List.of(Usage.FACTURES, Usage.CONTRAT),
                     EditeurParametresEntity::getSiegeSocial),
-            new Mention("ville", "Ville du si\u00e8ge", List.of(Usage.FACTURES),
+            new Mention("ville", "Ville du si\u00e8ge", List.of(Usage.FACTURES, Usage.CONTRAT),
                     EditeurParametresEntity::getVille),
             new Mention("rcNumero", "Num\u00e9ro du registre du commerce", List.of(Usage.FACTURES, Usage.CONTRAT),
                     EditeurParametresEntity::getRcNumero),

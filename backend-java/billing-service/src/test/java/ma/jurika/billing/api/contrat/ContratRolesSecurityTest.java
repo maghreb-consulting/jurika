@@ -71,6 +71,9 @@ class ContratRolesSecurityTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
         mvc.perform(post("/api/v1/billing/contrat/resilier").with(as(Role.EMPLOYE)).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"motif\":\"x\"}")).andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/billing/contrat/refuser-version").with(as(Role.EMPLOYE)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"versionCode\":\"1\",\"confirmation\":true}"))
+                .andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/billing/contrat/historique").with(as(Role.EMPLOYE))).andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/billing/contrat/acceptations/" + UUID.randomUUID() + "/exemplaire")
                 .with(as(Role.EMPLOYE))).andExpect(status().isForbidden());
@@ -90,6 +93,8 @@ class ContratRolesSecurityTest {
     @Test
     void superviseur_accede_a_l_ecran_du_contrat() throws Exception {
         mvc.perform(post("/api/v1/billing/contrat/accepter").with(as(Role.SUPERVISEUR)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(autorise());
+        mvc.perform(post("/api/v1/billing/contrat/refuser-version").with(as(Role.SUPERVISEUR)).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(autorise());
         mvc.perform(get("/api/v1/billing/contrat/historique").with(as(Role.SUPERVISEUR))).andExpect(autorise());
     }

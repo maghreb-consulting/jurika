@@ -56,6 +56,8 @@ public class ContratService implements ContratAbonnementPort {
 
     public static final String OBJET_CP = "CONDITIONS_PARTICULIERES";
     public static final String OBJET_VERSION = "NOUVELLE_VERSION";
+    public static final String REPONSE_ACCEPTEE = "ACCEPTEE";
+    public static final String REPONSE_REFUSEE = "REFUSEE";
     public static final int PREAVIS_JOURS = 30;
     private static final Set<String> RYTHMES = Set.of("MENSUEL", "ANNUEL");
     private static final Set<String> MODES = Set.of("CARTE", "VIREMENT", "CHEQUE", "ESPECES");
@@ -87,12 +89,25 @@ public class ContratService implements ContratAbonnementPort {
     }
 
     public record VersionVue(UUID id, String code, LocalDate entreeEnVigueur, String empreinteModele,
-                             String empreinteCg, String empreinteDpa, String origine, java.time.Instant publieeLe) {
+                             String empreinteCg, String empreinteDpa, String origine, java.time.Instant publieeLe,
+                             boolean retiree) {
         static VersionVue de(Version v) {
             return new VersionVue(v.id(), v.code(), v.entreeEnVigueur(), v.empreinteModele(), v.empreinteCg(),
-                    v.empreinteDpa(), v.origine(), v.publieeLe());
+                    v.empreinteDpa(), v.origine(), v.publieeLe(), v.retiree());
         }
     }
+
+    /** Reponse du cabinet a une nouvelle version des conditions generales (article 16). */
+    public record ReponseVue(UUID id, UUID conditionsId, String versionCode, String reponse, UUID acceptationId,
+                             String signataireCompte, String reponduLeCasablanca, String adresseIp) {
+        static ReponseVue de(ContratDepot.Reponse r) {
+            return new ReponseVue(r.id(), r.conditionsId(), r.versionCode(), r.reponse(), r.acceptationId(),
+                    r.signataireCompte(), r.reponduLeCasablanca(), r.adresseIp());
+        }
+    }
+
+    /** Refus d'une nouvelle version : version lue et confirmation exigees par le serveur. */
+    public record CommandeRefus(String versionCode, boolean confirmation) {}
 
     public record ResiliationVue(UUID conditionsId, String demandeurRole, LocalDate dateEffet, String motif,
                                  java.time.Instant enregistreeLe) {}
@@ -110,10 +125,15 @@ public class ContratService implements ContratAbonnementPort {
 
     public record Historique(List<ConditionsVue> conditions, List<AcceptationVue> acceptations,
                              List<ResiliationVue> resiliations, List<ContratDepot.Renouvellement> renouvellements,
-                             List<ContratDepot.Avis> avis) {}
+                             List<ContratDepot.Avis> avis, List<ReponseVue> reponses) {}
 
+    /**
+     * {@code versionSansReponse} : code de la nouvelle version en vigueur a laquelle le cabinet n'a
+     * pas encore repondu (null sinon) ; {@code derniereReponse} : sa derniere reponse.
+     */
     public record LigneAdmin(UUID workspaceId, String statut, ConditionsVue enAttente, ConditionsVue courant,
-                             AcceptationVue derniereAcceptation, ResiliationVue resiliation, Long joursAvantEcheance) {}
+                             AcceptationVue derniereAcceptation, ResiliationVue resiliation, Long joursAvantEcheance,
+                             String versionSansReponse, ReponseVue derniereReponse) {}
 
     public record Exemplaire(String nomFichier, byte[] pdf) {}
 
@@ -278,7 +298,7 @@ public class ContratService implements ContratAbonnementPort {
             throw new ContratException(HttpStatus.UNPROCESSABLE_ENTITY, "SIGNATAIRE_INCOMPLET",
                     "Compte du signataire incomplet : " + String.join(", ", signataireManquant) + ".", signataireManquant);
         }
-        Acceptation enregistree = tx.execute(s -> {
+        Acceptation enregistree = sansDoublon(() -> tx.execute(s -> {
             AAccepter a = aAccepter(workspaceId);
             ContratRedaction.Redaction red = ContratRedaction.rediger(a.version().texteModele(), a.version().code(),
                     a.conditions(), editeur.identite(), identite, signataire(c));
@@ -300,10 +320,18 @@ public class ContratService implements ContratAbonnementPort {
                 depot.conditionsParStatut(workspaceId, "ACCEPTE").ifPresent(ancienne ->
                         depot.changerStatut(workspaceId, ancienne.id(), "ACCEPTE", "REMPLACE", le));
                 depot.changerStatut(workspaceId, a.conditions().id(), "EN_ATTENTE", "ACCEPTE", le);
+            } else {
+                refuserSiDejaRepondu(workspaceId, a);
             }
             UUID id = depot.insererAcceptation(brouillon);
+            if (OBJET_VERSION.equals(a.objet())) {
+                // Article 16 : la reponse "Accepter" est enregistree avec la preuve de l'acceptation.
+                depot.insererReponse(new ContratDepot.Reponse(null, workspaceId, a.conditions().id(), a.version().id(),
+                        a.version().code(), REPONSE_ACCEPTEE, id, r.userId(), identite.signataireCompte(), r.role(), le,
+                        casablanca, r.adresseIp(), r.chaineIp()));
+            }
             return depot.acceptation(workspaceId, id).orElseThrow();
-        });
+        }));
         log.info("Contrat accepte workspace={} conditions={} objet={} version={}", workspaceId,
                 enregistree.conditionsId(), enregistree.objet(), enregistree.versionCode());
         envoyerCopie(workspaceId, enregistree);
@@ -311,6 +339,76 @@ public class ContratService implements ContratAbonnementPort {
         evenements.publishEvent(new ContratEvenements.ContratAccepte(workspaceId, cp.id(), enregistree.id(),
                 enregistree.objet(), cp.forfait(), cp.rythmePaiement(), cp.prixHt(), cp.dateDebut(), cp.dateFin()));
         return AcceptationVue.de(enregistree);
+    }
+
+    // -- Refus d'une nouvelle version (RG-CTR-07, article 16) ---------------------------
+
+    /**
+     * "Refuser" la nouvelle version en vigueur : la reponse est enregistree (inalterable) et vaut
+     * resiliation sans frais a l'echeance courante ; jusque-la, la version anterieure continue de
+     * s'appliquer. Une seule reponse par contrat et par version.
+     */
+    public ReponseVue refuserNouvelleVersion(UUID workspaceId, Requerant r, CommandeRefus c) {
+        if (!"SUPERVISEUR".equals(r.role())) {
+            throw new ContratException(HttpStatus.FORBIDDEN, "SUPERVISEUR_REQUIS",
+                    "Seul le superviseur du cabinet peut répondre aux nouvelles conditions générales.", List.of());
+        }
+        if (c == null || !c.confirmation()) {
+            throw ContratException.invalide("CONFIRMATION_ABSENTE", "Confirmez votre refus.");
+        }
+        if (blanc(r.adresseIp())) {
+            throw new IllegalStateException("Adresse IP du refus absente");
+        }
+        IdentiteCabinetSource.Identite identite = identites.lire(r.jeton());
+        if (blanc(identite.signataireCompte())) {
+            throw new ContratException(HttpStatus.UNPROCESSABLE_ENTITY, "SIGNATAIRE_INCOMPLET",
+                    "Compte du signataire incomplet : compte du signataire.", List.of("compte du signataire"));
+        }
+        record Refus(ReponseVue reponse, ResiliationVue resiliation) {}
+        Refus refus = sansDoublon(() -> tx.execute(s -> {
+            AAccepter a = aAccepter(workspaceId);
+            if (!OBJET_VERSION.equals(a.objet())) {
+                throw ContratException.conflit("RIEN_A_REFUSER",
+                        "Aucune nouvelle version des conditions générales n’attend votre réponse.");
+            }
+            if (c.versionCode() == null || !c.versionCode().equals(a.version().code())) {
+                throw ContratException.conflit("VERSION_CHANGEE",
+                        "La version à laquelle vous répondez n’est plus celle en vigueur : rechargez la page.");
+            }
+            refuserSiDejaRepondu(workspaceId, a);
+            java.time.Instant le = horloge.maintenant();
+            String casablanca = LocalDateTime.ofInstant(le, ContratHorloge.CASABLANCA).format(CASA);
+            UUID id = depot.insererReponse(new ContratDepot.Reponse(null, workspaceId, a.conditions().id(),
+                    a.version().id(), a.version().code(), REPONSE_REFUSEE, null, r.userId(),
+                    identite.signataireCompte(), r.role(), le, casablanca, r.adresseIp(), r.chaineIp()));
+            ResiliationVue res = enregistrerResiliation(workspaceId, a.conditions(), r.userId(), "SUPERVISEUR", null,
+                    "Refus des conditions générales version " + a.version().code(), le);
+            ContratDepot.Reponse rep = depot.reponsesDuCabinet(workspaceId).stream()
+                    .filter(x -> x.id().equals(id)).findFirst().orElseThrow();
+            return new Refus(ReponseVue.de(rep), res);
+        }));
+        publierResiliation(workspaceId, refus.resiliation());
+        log.info("Nouvelle version refusee workspace={} version={} resiliation effet={}", workspaceId,
+                refus.reponse().versionCode(), refus.resiliation().dateEffet());
+        return refus.reponse();
+    }
+
+    private void refuserSiDejaRepondu(UUID workspaceId, AAccepter a) {
+        if (depot.reponse(workspaceId, a.conditions().id(), a.version().id()).isPresent()) {
+            throw ContratException.conflit("REPONSE_DEJA_DONNEE",
+                    "Vous avez déjà répondu à la version " + a.version().code()
+                            + " des conditions générales.");
+        }
+    }
+
+    /** Deux reponses simultanees : la contrainte d'unicite tranche, la seconde est refusee (409). */
+    private static <T> T sansDoublon(java.util.function.Supplier<T> action) {
+        try {
+            return action.get();
+        } catch (org.springframework.dao.DuplicateKeyException ex) {
+            throw ContratException.conflit("REPONSE_DEJA_DONNEE",
+                    "Une réponse à ces conditions générales est déjà enregistrée.");
+        }
     }
 
     // -- Exemplaire (RG-CTR-04) ---------------------------------------------------------
@@ -371,7 +469,8 @@ public class ContratService implements ContratAbonnementPort {
                     depot.acceptationsDuCabinet(workspaceId).stream().map(AcceptationVue::de).toList(),
                     depot.resiliationsDuCabinet(workspaceId).stream().map(ContratService::vue).toList(),
                     depot.renouvellementsDuCabinet(workspaceId),
-                    depot.avisDuCabinet(workspaceId));
+                    depot.avisDuCabinet(workspaceId),
+                    depot.reponsesDuCabinet(workspaceId).stream().map(ReponseVue::de).toList());
         });
     }
 
@@ -404,31 +503,45 @@ public class ContratService implements ContratAbonnementPort {
             if (global) depot.porteeGlobale();
             Conditions cp = depot.conditionsParStatut(workspaceId, "ACCEPTE").orElseThrow(() ->
                     ContratException.conflit("AUCUN_CONTRAT_ACCEPTE", "Aucun contrat accept\u00e9 \u00e0 r\u00e9silier pour ce cabinet."));
-            LocalDate effet = dateEffetDemandee != null ? dateEffetDemandee : cp.echeanceCourante();
-            java.time.Instant le = horloge.maintenant();
-            depot.insererResiliation(workspaceId, cp.id(), par, role, effet, motif.trim());
-            depot.changerStatut(workspaceId, cp.id(), "ACCEPTE", "RESILIE", le);
-            depot.conditionsParStatut(workspaceId, "EN_ATTENTE").ifPresent(p ->
-                    depot.changerStatut(workspaceId, p.id(), "EN_ATTENTE", "ANNULE", le));
-            return new ResiliationVue(cp.id(), role, effet, motif.trim(), le);
+            return enregistrerResiliation(workspaceId, cp, par, role, dateEffetDemandee, motif, horloge.maintenant());
         });
-        // Arret du forfait a la date d'effet : l'acces est conserve jusque-la, puis le workspace est
-        // archive (RG-TAR-07), jamais supprime. L'abonnement le fait sur cet evenement
-        // (ResiliationAbonnementListener : periode payee bornee, archivage planifie).
-        evenements.publishEvent(new ContratEvenements.ResiliationEnregistree(workspaceId, vue.conditionsId(),
-                vue.dateEffet(), vue.motif(), role));
-        log.info("Resiliation enregistree workspace={} par={} effet={}", workspaceId, role, vue.dateEffet());
+        publierResiliation(workspaceId, vue);
         return vue;
+    }
+
+    /** Resiliation du contrat accepte {@code cp}, dans la transaction courante (effet : echeance par defaut). */
+    private ResiliationVue enregistrerResiliation(UUID workspaceId, Conditions cp, UUID par, String role,
+                                                  LocalDate dateEffetDemandee, String motif, java.time.Instant le) {
+        LocalDate effet = dateEffetDemandee != null ? dateEffetDemandee : cp.echeanceCourante();
+        depot.insererResiliation(workspaceId, cp.id(), par, role, effet, motif.trim());
+        depot.changerStatut(workspaceId, cp.id(), "ACCEPTE", "RESILIE", le);
+        depot.conditionsParStatut(workspaceId, "EN_ATTENTE").ifPresent(p ->
+                depot.changerStatut(workspaceId, p.id(), "EN_ATTENTE", "ANNULE", le));
+        return new ResiliationVue(cp.id(), role, effet, motif.trim(), le);
+    }
+
+    /**
+     * Arret du forfait a la date d'effet : l'acces est conserve jusque-la, puis le workspace est
+     * archive (RG-TAR-07), jamais supprime. L'abonnement le fait sur cet evenement
+     * (ResiliationAbonnementListener : periode payee bornee, archivage planifie).
+     */
+    private void publierResiliation(UUID workspaceId, ResiliationVue vue) {
+        evenements.publishEvent(new ContratEvenements.ResiliationEnregistree(workspaceId, vue.conditionsId(),
+                vue.dateEffet(), vue.motif(), vue.demandeurRole()));
+        log.info("Resiliation enregistree workspace={} par={} effet={}", workspaceId, vue.demandeurRole(), vue.dateEffet());
     }
 
     // -- Versions (RG-CTR-07) -----------------------------------------------------------
 
-    public List<VersionVue> versions() {
-        return tx.execute(s -> depot.versions().stream().map(VersionVue::de).toList());
+    /** Versions : toutes pour le super-admin ; sans les versions retirees pour un cabinet. */
+    public List<VersionVue> versions(boolean superAdmin) {
+        return tx.execute(s -> (superAdmin ? depot.versions() : depot.versionsPresentees()).stream()
+                .map(VersionVue::de).toList());
     }
 
-    public Version version(String code) {
-        return tx.execute(s -> depot.versionParCode(code).orElseThrow(() ->
+    /** Texte d'une version ; une version retiree n'est jamais servie a un cabinet. */
+    public Version version(String code, boolean superAdmin) {
+        return tx.execute(s -> depot.versionParCode(code).filter(v -> superAdmin || !v.retiree()).orElseThrow(() ->
                 ContratException.introuvable("VERSION_INCONNUE", "Version du contrat inconnue : " + code)));
     }
 
@@ -446,7 +559,8 @@ public class ContratService implements ContratAbonnementPort {
             throw ContratException.invalide("PREAVIS_INSUFFISANT", "Une nouvelle version entre en vigueur au moins "
                     + PREAVIS_JOURS + " jours apr\u00e8s sa publication (au plus t\u00f4t le " + ContratRedaction.date(auPlusTot) + ").");
         }
-        String normalise = ContratTexte.normaliser(texte == null ? "" : texte);
+        // Le document complet peut etre colle : ligne de publication et piece D (essai) retirees.
+        String normalise = ContratTexte.modeleDepuisSource(texte);
         ContratTexte.Sections sections = ContratTexte.sections(normalise);
         Version v = tx.execute(s -> {
             if (depot.versionParCode(code.trim()).isPresent()) {
@@ -459,13 +573,35 @@ public class ContratService implements ContratAbonnementPort {
         return VersionVue.de(v);
     }
 
-    /** Version initiale : le texte valide, charge du classpath si aucune version n'existe. */
-    public void initialiserSiVide(String code, String texte) {
+    /**
+     * Version initiale (version 1, texte valide) chargee du classpath si elle manque, en vigueur des
+     * son chargement. Sans preavis de 30 jours (RG-CTR-07) : c'est la premiere version presentee,
+     * aucun cabinet n'a accepte de version anterieure (le projet du 12 octobre 2026 est retire par
+     * billing V16). Si une acceptation existait deja, la charger sans preavis changerait le contrat
+     * d'un cabinet : le demarrage est refuse (jamais en silence), la version se publie alors par
+     * l'ecran du super-admin, 30 jours a l'avance.
+     */
+    public void initialiserVersionInitiale(String code, String source) {
+        String modele = ContratTexte.modeleDepuisSource(source);
+        ContratTexte.Sections sections = ContratTexte.sections(modele);
         tx.executeWithoutResult(s -> {
-            if (!depot.aucuneVersion()) return;
-            String normalise = ContratTexte.normaliser(texte);
-            depot.insererVersion(code, normalise, ContratTexte.sections(normalise), horloge.aujourdhui(), "INITIALE", null);
-            log.info("Version initiale du contrat d'abonnement chargee : {}", code);
+            depot.porteeGlobale();
+            Optional<Version> existante = depot.versionParCode(code);
+            if (existante.isPresent()) {
+                if (!existante.get().empreinteModele().equals(sections.empreinteModele())) {
+                    log.warn("Version {} du contrat deja chargee avec un autre texte (empreinte {}) : elle est conservee "
+                            + "telle quelle, le fichier du classpath (empreinte {}) est ignore", code,
+                            existante.get().empreinteModele(), sections.empreinteModele());
+                }
+                return;
+            }
+            int acceptations = depot.nombreAcceptations();
+            if (acceptations > 0) {
+                throw new IllegalStateException("Version initiale " + code + " du contrat absente alors que " + acceptations
+                        + " acceptation(s) existent : chargement sans preavis refuse (RG-CTR-07)");
+            }
+            depot.insererVersion(code, modele, sections, horloge.aujourdhui(), "INITIALE", null);
+            log.info("Version initiale du contrat d'abonnement chargee : {} (en vigueur le {})", code, horloge.aujourdhui());
         });
     }
 
@@ -547,6 +683,7 @@ public class ContratService implements ContratAbonnementPort {
         return tx.execute(s -> {
             depot.porteeGlobale();
             LocalDate jour = horloge.aujourdhui();
+            Optional<Version> vigueur = depot.versionEnVigueur(jour);
             Map<UUID, List<Conditions>> parCabinet = new LinkedHashMap<>();
             for (Conditions c : depot.toutesConditions()) {
                 parCabinet.computeIfAbsent(c.workspaceId(), k -> new ArrayList<>()).add(c);
@@ -560,10 +697,14 @@ public class ContratService implements ContratAbonnementPort {
                 String statut = attente.isPresent() ? "EN_ATTENTE" : courant.isPresent() ? "ACCEPTE"
                         : !res.isEmpty() ? "RESILIE" : "AUCUN";
                 Long jours = courant.map(c -> ChronoUnit.DAYS.between(jour, c.echeanceCourante())).orElse(null);
+                String sansReponse = OBJET_VERSION.equals(objetAAccepter(ws, attente, courant, vigueur).orElse(null))
+                        ? vigueur.get().code() : null;
+                List<ContratDepot.Reponse> reponses = depot.reponsesDuCabinet(ws);
                 lignes.add(new LigneAdmin(ws, statut, attente.map(ConditionsVue::de).orElse(null),
                         courant.map(ConditionsVue::de).orElse(null),
                         depot.derniereAcceptation(ws).map(AcceptationVue::de).orElse(null),
-                        res.isEmpty() ? null : vue(res.get(0)), jours));
+                        res.isEmpty() ? null : vue(res.get(0)), jours, sansReponse,
+                        reponses.isEmpty() ? null : ReponseVue.de(reponses.get(0))));
             }
             return lignes;
         });

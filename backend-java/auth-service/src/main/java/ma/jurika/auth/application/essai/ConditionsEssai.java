@@ -16,18 +16,23 @@ import java.util.HexFormat;
  * acceptees a l'inscription selon RG-CTR-01 (case jamais pre-cochee) et
  * RG-CTR-02 (version exacte, texte et empreinte, date, IP).
  *
- * <p>Texte : piece D du projet de contrat d'abonnement du 12 octobre 2026
- * ({@code ~/docs/CONTRAT_ABONNEMENT_JURIKA_PROJET.md}), reprise mot pour mot.
- * Ce projet n'est PAS encore valide par la direction (A_DECIDER : validation
- * du texte, point 11 "interdiction des vrais dossiers" a confirmer) : la
- * version porte la mention PROJET. Une nouvelle version = nouveau fichier et
- * nouvelle constante ; l'empreinte est calculee sur les octets du texte.
+ * <p>Texte : piece D de la version 1 du contrat d'abonnement, validee par la
+ * direction le 14 octobre 2026 ({@code ~/docs/CONTRAT_ABONNEMENT_JURIKA_V1.md}),
+ * reprise mot pour mot en texte simple (titre, puis les huit points, sans les
+ * marques de gras ni les retours a la ligne de mise en page). Une nouvelle
+ * version = nouveau fichier et nouvelle constante ; l'empreinte est calculee sur
+ * les octets du texte.
+ *
+ * <p>Versions anterieures : les acceptations deja enregistrees gardent leur
+ * version et leur empreinte ; leur texte reste au classpath, inchange
+ * ({@code essai/conditions-essai-D-PROJET-2026-10-12.txt}, version
+ * "D-PROJET-2026-10-12", meme texte que la piece D validee).
  */
 @Component
 public class ConditionsEssai {
 
-    public static final String VERSION = "D-PROJET-2026-10-12";
-    static final String RESSOURCE = "essai/conditions-essai.txt";
+    public static final String VERSION = "D-V1";
+    static final String RESSOURCE = "essai/conditions-essai-D-V1.txt";
 
     private final String texte;
     private final String empreinte;

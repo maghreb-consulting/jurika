@@ -26,9 +26,16 @@ import java.util.UUID;
 @Repository
 public class ContratDepot {
 
+    /** {@code retiree} : version marquee retiree (billing V16), jamais presentee a un cabinet. */
     public record Version(UUID id, String code, String texteModele, String empreinteModele,
                           String empreinteCg, String empreinteDpa, LocalDate entreeEnVigueur,
-                          String origine, UUID publieePar, Instant publieeLe) {}
+                          String origine, UUID publieePar, Instant publieeLe, boolean retiree) {}
+
+    /** Reponse a une nouvelle version des conditions generales (billing V16). */
+    public record Reponse(UUID id, UUID workspaceId, UUID conditionsId, UUID versionId, String versionCode,
+                          String reponse, UUID acceptationId, UUID signataireUserId, String signataireCompte,
+                          String signataireRole, Instant reponduLe, String reponduLeCasablanca, String adresseIp,
+                          String chaineIp) {}
 
     public record Conditions(UUID id, UUID workspaceId, String reference, String forfait,
                              String rythmePaiement, BigDecimal prixHt, LocalDate dateDebut,
@@ -72,44 +79,57 @@ public class ContratDepot {
 
     // -- Versions -------------------------------------------------------------------------
 
-    private static final String VERSION_COLS = "id, code, texte_modele, empreinte_modele, empreinte_cg, "
-            + "empreinte_dpa, entree_en_vigueur_le, origine, publiee_par, publiee_le";
+    private static final String VERSION_COLS = "v.id, v.code, v.texte_modele, v.empreinte_modele, v.empreinte_cg, "
+            + "v.empreinte_dpa, v.entree_en_vigueur_le, v.origine, v.publiee_par, v.publiee_le, "
+            + "EXISTS (SELECT 1 FROM contrat_versions_retraits r WHERE r.version_id = v.id) AS retiree";
+    private static final String NON_RETIREE =
+            " NOT EXISTS (SELECT 1 FROM contrat_versions_retraits r WHERE r.version_id = v.id) ";
 
     private static final RowMapper<Version> VERSION = (rs, i) -> new Version(
             rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4).trim(),
             rs.getString(5).trim(), rs.getString(6).trim(), rs.getObject(7, LocalDate.class), rs.getString(8),
-            rs.getObject(9, UUID.class), instant(rs, 10));
+            rs.getObject(9, UUID.class), instant(rs, 10), rs.getBoolean(11));
 
+    /** Toutes les versions, retirees comprises (super-admin, RG-CTR-07 : toutes conservees). */
     public List<Version> versions() {
-        return jdbc.query("SELECT " + VERSION_COLS + " FROM contrat_versions ORDER BY entree_en_vigueur_le DESC, publiee_le DESC",
-                VERSION);
+        return jdbc.query("SELECT " + VERSION_COLS + " FROM contrat_versions v "
+                + "ORDER BY v.entree_en_vigueur_le DESC, v.publiee_le DESC", VERSION);
+    }
+
+    /** Versions presentables a un cabinet (sans les versions retirees). */
+    public List<Version> versionsPresentees() {
+        return jdbc.query("SELECT " + VERSION_COLS + " FROM contrat_versions v WHERE" + NON_RETIREE
+                + "ORDER BY v.entree_en_vigueur_le DESC, v.publiee_le DESC", VERSION);
     }
 
     public Optional<Version> version(UUID id) {
-        return jdbc.query("SELECT " + VERSION_COLS + " FROM contrat_versions WHERE id = ?", VERSION, id)
+        return jdbc.query("SELECT " + VERSION_COLS + " FROM contrat_versions v WHERE v.id = ?", VERSION, id)
                 .stream().findFirst();
     }
 
     public Optional<Version> versionParCode(String code) {
-        return jdbc.query("SELECT " + VERSION_COLS + " FROM contrat_versions WHERE code = ?", VERSION, code)
+        return jdbc.query("SELECT " + VERSION_COLS + " FROM contrat_versions v WHERE v.code = ?", VERSION, code)
                 .stream().findFirst();
     }
 
-    /** Version en vigueur a la date donnee (la plus recente deja entree en vigueur). */
+    /** Version en vigueur a la date donnee (la plus recente deja entree en vigueur, hors retirees). */
     public Optional<Version> versionEnVigueur(LocalDate jour) {
-        return jdbc.query("SELECT " + VERSION_COLS + " FROM contrat_versions WHERE entree_en_vigueur_le <= ? "
-                + "ORDER BY entree_en_vigueur_le DESC, publiee_le DESC LIMIT 1", VERSION, jour).stream().findFirst();
+        return jdbc.query("SELECT " + VERSION_COLS + " FROM contrat_versions v WHERE v.entree_en_vigueur_le <= ? AND"
+                + NON_RETIREE + "ORDER BY v.entree_en_vigueur_le DESC, v.publiee_le DESC LIMIT 1", VERSION, jour)
+                .stream().findFirst();
     }
 
-    /** Version publiee dont l'entree en vigueur est posterieure a la date donnee. */
+    /** Version publiee dont l'entree en vigueur est posterieure a la date donnee (hors retirees). */
     public Optional<Version> versionAVenir(LocalDate jour) {
-        return jdbc.query("SELECT " + VERSION_COLS + " FROM contrat_versions WHERE entree_en_vigueur_le > ? "
-                + "ORDER BY entree_en_vigueur_le ASC LIMIT 1", VERSION, jour).stream().findFirst();
+        return jdbc.query("SELECT " + VERSION_COLS + " FROM contrat_versions v WHERE v.entree_en_vigueur_le > ? AND"
+                + NON_RETIREE + "ORDER BY v.entree_en_vigueur_le ASC, v.publiee_le DESC LIMIT 1", VERSION, jour)
+                .stream().findFirst();
     }
 
-    public boolean aucuneVersion() {
-        Integer n = jdbc.queryForObject("SELECT count(*) FROM contrat_versions", Integer.class);
-        return n == null || n == 0;
+    /** Nombre d'acceptations, tous cabinets (portee globale requise). */
+    public int nombreAcceptations() {
+        Integer n = jdbc.queryForObject("SELECT count(*) FROM contrat_acceptations", Integer.class);
+        return n == null ? 0 : n;
     }
 
     public UUID insererVersion(String code, String texte, ContratTexte.Sections s, LocalDate entree,
@@ -248,6 +268,38 @@ public class ContratDepot {
     public Optional<Acceptation> derniereAcceptationDes(UUID workspaceId, UUID conditionsId) {
         return jdbc.query("SELECT " + ACC_COLS + " FROM contrat_acceptations WHERE workspace_id = ? AND conditions_id = ? "
                 + "ORDER BY accepte_le DESC LIMIT 1", ACC, workspaceId, conditionsId).stream().findFirst();
+    }
+
+    // -- Reponses aux nouvelles versions (billing V16) ------------------------------------
+
+    private static final String REP_COLS = "id, workspace_id, conditions_id, version_id, version_code, reponse, "
+            + "acceptation_id, signataire_user_id, signataire_compte, signataire_role, repondu_le, "
+            + "repondu_le_casablanca, adresse_ip, chaine_ip";
+
+    private static final RowMapper<Reponse> REP = (rs, i) -> new Reponse(
+            rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getObject(3, UUID.class),
+            rs.getObject(4, UUID.class), rs.getString(5), rs.getString(6), rs.getObject(7, UUID.class),
+            rs.getObject(8, UUID.class), rs.getString(9), rs.getString(10), instant(rs, 11), rs.getString(12),
+            rs.getString(13), rs.getString(14));
+
+    public UUID insererReponse(Reponse r) {
+        return jdbc.queryForObject("INSERT INTO contrat_reponses_versions (workspace_id, conditions_id, version_id, "
+                        + "version_code, reponse, acceptation_id, signataire_user_id, signataire_compte, signataire_role, "
+                        + "repondu_le, repondu_le_casablanca, adresse_ip, chaine_ip) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+                UUID.class, r.workspaceId(), r.conditionsId(), r.versionId(), r.versionCode(), r.reponse(),
+                r.acceptationId(), r.signataireUserId(), r.signataireCompte(), r.signataireRole(),
+                Timestamp.from(r.reponduLe()), r.reponduLeCasablanca(), r.adresseIp(), r.chaineIp());
+    }
+
+    public Optional<Reponse> reponse(UUID workspaceId, UUID conditionsId, UUID versionId) {
+        return jdbc.query("SELECT " + REP_COLS + " FROM contrat_reponses_versions WHERE workspace_id = ? "
+                + "AND conditions_id = ? AND version_id = ?", REP, workspaceId, conditionsId, versionId).stream().findFirst();
+    }
+
+    public List<Reponse> reponsesDuCabinet(UUID workspaceId) {
+        return jdbc.query("SELECT " + REP_COLS + " FROM contrat_reponses_versions WHERE workspace_id = ? "
+                + "ORDER BY repondu_le DESC", REP, workspaceId);
     }
 
     // -- Resiliations, renouvellements, avis ----------------------------------------------

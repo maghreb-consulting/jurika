@@ -38,17 +38,26 @@ public final class ContratRedaction {
                                     Signataire signataire) {
         List<String> manquants = new ArrayList<>();
         Map<String, String> v = new HashMap<>();
-        // Editeur.
+        // Editeur : parametres de l'editeur (ecran /admin/editeur), colonne par colonne.
+        //  - RC_VILLE = rc_tribunal, libelle "Ville du registre du commerce" (et non "ville", qui est la
+        //    ville du siege) ;
+        //  - SIEGE = adresse du siege, puis ville du siege, comme sur les factures (FactureService) :
+        //    l'adresse saisie ne porte pas la ville.
+        // Les modeles en vigueur (version 1) impriment toutes ces mentions.
+        v.put("EDITEUR_DENOMINATION", ou(editeur.getRaisonSociale(), "raison sociale de l\u2019\u00c9diteur", manquants));
         v.put("EDITEUR_FORME", ou(editeur.getFormeJuridique(), "forme juridique de l\u2019\u00c9diteur", manquants));
         v.put("EDITEUR_CAPITAL", ou(editeur.getCapitalSocial(), "capital social de l\u2019\u00c9diteur", manquants));
-        v.put("EDITEUR_SIEGE", ou(editeur.getSiegeSocial(), "adresse du si\u00e8ge de l\u2019\u00c9diteur", manquants));
+        v.put("EDITEUR_SIEGE", ou(editeur.getSiegeSocial(), "adresse du si\u00e8ge de l\u2019\u00c9diteur", manquants)
+                + ", " + ou(editeur.getVille(), "ville du si\u00e8ge de l\u2019\u00c9diteur", manquants));
         v.put("EDITEUR_RC_VILLE", ou(editeur.getRcTribunal(), "ville du registre du commerce de l\u2019\u00c9diteur", manquants));
         v.put("EDITEUR_RC_NUMERO", ou(editeur.getRcNumero(), "num\u00e9ro du registre du commerce de l\u2019\u00c9diteur", manquants));
         v.put("EDITEUR_ICE", ou(editeur.getIce(), "ICE de l\u2019\u00c9diteur", manquants));
         v.put("EDITEUR_IF", ou(editeur.getIdentifiantFiscal(), "identifiant fiscal de l\u2019\u00c9diteur", manquants));
-        v.put("EDITEUR_REPRESENTANT",
-                ou(editeur.getRepresentantNom(), "nom du repr\u00e9sentant de l\u2019\u00c9diteur", manquants) + ", "
-                        + ou(editeur.getRepresentantQualite(), "qualit\u00e9 du repr\u00e9sentant de l\u2019\u00c9diteur", manquants));
+        String repNom = ou(editeur.getRepresentantNom(), "nom du repr\u00e9sentant de l\u2019\u00c9diteur", manquants);
+        String repQualite = ou(editeur.getRepresentantQualite(), "qualit\u00e9 du repr\u00e9sentant de l\u2019\u00c9diteur", manquants);
+        v.put("EDITEUR_REPRESENTANT_NOM", repNom);
+        v.put("EDITEUR_REPRESENTANT_QUALITE", repQualite);
+        v.put("EDITEUR_REPRESENTANT", repNom + ", " + repQualite);
         // Cabinet.
         v.put("CABINET_DENOMINATION", ou(cabinet.denomination(), "d\u00e9nomination du Cabinet", manquants));
         v.put("CABINET_FORME", ou(signataire.formeCabinet(), "forme juridique du Cabinet", manquants));

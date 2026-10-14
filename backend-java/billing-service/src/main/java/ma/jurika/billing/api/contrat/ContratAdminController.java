@@ -31,6 +31,9 @@ import java.util.UUID;
 @PreAuthorize("hasRole('SUPER_ADMIN')")
 public class ContratAdminController {
 
+    /** Le super-admin voit toutes les versions, retirees comprises (RG-CTR-07). */
+    private static final boolean SUPER_ADMIN_PORTEE = true;
+
     private final ContratService service;
 
     public ContratAdminController(ContratService service) {
@@ -76,13 +79,13 @@ public class ContratAdminController {
 
     @GetMapping("/versions")
     public List<ContratService.VersionVue> versions() {
-        return service.versions();
+        return service.versions(SUPER_ADMIN_PORTEE);
     }
 
     @GetMapping("/versions/{code}")
     public ResponseEntity<String> versionTexte(@PathVariable String code) {
         return ResponseEntity.ok().contentType(new MediaType(MediaType.TEXT_PLAIN, StandardCharsets.UTF_8))
-                .body(service.version(code).texteModele());
+                .body(service.version(code, SUPER_ADMIN_PORTEE).texteModele());
     }
 
     @PostMapping("/versions")

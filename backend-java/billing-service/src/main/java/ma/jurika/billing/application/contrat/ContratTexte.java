@@ -13,9 +13,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Lot L7 (E6) : texte du contrat d'abonnement. Le modele (presentation, pieces A, B et C) est
+ * Lot L7 (E6, E9) : texte du contrat d'abonnement. Le modele (presentation, pieces A, B et C) est
  * le texte valide par la direction, repris tel quel ; ses champs a remplir sont des variables
- * {@code $MAJUSCULES}. Le rendu est deterministe : a donnees identiques, texte identique, donc
+ * {@code $MAJUSCULES}. Le document source (version 1 : {@code contrat/CONTRAT_ABONNEMENT_JURIKA_V1.md},
+ * copie exacte du document valide) porte en plus une ligne de publication en tete et la piece D
+ * (conditions de l'essai, acceptees a l'inscription a l'essai, RG-CTR-10) : {@link #modeleDepuisSource}
+ * les retire, sans rien changer d'autre. Le rendu est deterministe : a donnees identiques, texte identique, donc
  * empreinte identique (RG-CTR-02).
  *
  * <p>Le paragraphe "Acceptation electronique" ne peut etre rempli qu'apres l'acceptation (il
@@ -27,6 +30,13 @@ public final class ContratTexte {
     public static final String A_COMPLETER = "[compl\u00e9t\u00e9 lors de l\u2019acceptation]";
     static final String DEBUT_ACCEPTATION = "**Acceptation \u00e9lectronique.**";
     private static final Pattern VARIABLE = Pattern.compile("\\$([A-Z][A-Z_]*)");
+    /**
+     * Ligne de publication du document source ("*Version 1 du ..., validee par la direction...
+     * Les mentions en $MAJUSCULES sont remplies automatiquement...*") : note d'edition, pas une
+     * clause ; "$MAJUSCULES" y designe la convention, ce n'est pas une variable.
+     */
+    private static final Pattern EN_TETE_PUBLICATION = Pattern.compile("\\A\\*Version [^\\n]*\\*\\n");
+    private static final Pattern CROCHETS = Pattern.compile("\\[[^\\]\\n]*\\]");
 
     /** Variables remplies apres l'acceptation (paragraphe "Acceptation electronique"). */
     public static final Set<String> VARIABLES_ACCEPTATION = Set.of(
@@ -34,6 +44,8 @@ public final class ContratTexte {
 
     /** Toutes les variables connues du modele. */
     public static final Set<String> VARIABLES = Set.of(
+            "EDITEUR_DENOMINATION", "EDITEUR_REPRESENTANT_NOM", "EDITEUR_REPRESENTANT_QUALITE",
+            // EDITEUR_REPRESENTANT (nom et qualite d'un seul tenant) : projet du 12 octobre 2026, retire.
             "EDITEUR_FORME", "EDITEUR_CAPITAL", "EDITEUR_SIEGE", "EDITEUR_RC_VILLE", "EDITEUR_RC_NUMERO",
             "EDITEUR_ICE", "EDITEUR_IF", "EDITEUR_REPRESENTANT",
             "CABINET_DENOMINATION", "CABINET_FORME", "CABINET_SIEGE", "CABINET_RC_VILLE", "CABINET_RC_NUMERO",
@@ -60,6 +72,19 @@ public final class ContratTexte {
     }
 
     /**
+     * Modele d'une version a partir de son document source : la ligne de publication en tete et la
+     * piece D (essai) sont retirees ; le reste est repris tel quel (fins de ligne normalisees).
+     */
+    public static String modeleDepuisSource(String source) {
+        String m = normaliser(source == null ? "" : source);
+        Matcher entete = EN_TETE_PUBLICATION.matcher(m);
+        if (entete.find()) m = m.substring(entete.end());
+        int d = debutTitre(m, "# D.");
+        if (d >= 0) m = m.substring(0, d);
+        return normaliser(m);
+    }
+
+    /**
      * Verifie la structure d'un modele (pieces A, B, C, paragraphe d'acceptation, variables
      * connues) et calcule ses empreintes. Un modele non conforme est refuse (donnees nommees).
      */
@@ -76,6 +101,12 @@ public final class ContratTexte {
         if (b < 0) defauts.add("titre \u00ab # B. Conditions g\u00e9n\u00e9rales d\u2019abonnement \u00bb");
         if (c < 0) defauts.add("titre \u00ab # C. Accord de traitement des donn\u00e9es personnelles \u00bb");
         if (a >= 0 && b >= 0 && c >= 0 && !(a < b && b < c)) defauts.add("ordre des pi\u00e8ces A, B, C");
+        if (debutTitre(m, "# D.") >= 0) defauts.add("pièce D (conditions de l’essai) hors du contrat d’abonnement");
+        // Mention entre crochets = passage encore a completer ou a arbitrer (projet) : jamais presentee.
+        Set<String> crochets = new LinkedHashSet<>();
+        Matcher cr = CROCHETS.matcher(m);
+        while (cr.find()) crochets.add(cr.group());
+        if (!crochets.isEmpty()) defauts.add("mentions entre crochets à compléter " + String.join(", ", crochets));
         if (paragrapheAcceptation(m) == null) defauts.add("paragraphe \u00ab " + DEBUT_ACCEPTATION + " \u00bb");
         Set<String> inconnues = new LinkedHashSet<>();
         Matcher v = VARIABLE.matcher(m);

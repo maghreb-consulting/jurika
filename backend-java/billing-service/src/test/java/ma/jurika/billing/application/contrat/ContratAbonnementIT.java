@@ -37,7 +37,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Lot L7 (E6) : contrat d'abonnement sur une vraie base (migrations billing V1 a V14) :
+ * Lot L7 (E6) : contrat d'abonnement sur une vraie base (migrations billing V1 a V16) :
  * parcours complet (ouverture en attente, acceptation, exemplaire, changement, resiliation,
  * renouvellement, nouvelle version), preuve inalterable (declencheurs et droits de jurika_app),
  * RLS par cabinet, trace des parametres de l'editeur.
@@ -93,7 +93,7 @@ class ContratAbonnementIT {
                 "Bennani", "Salma", "salma.bennani@jurika.ma");
         service = new ContratService(new ContratDepot(jdbc), editeurService, identites, courriel, horloge,
                 evenements::add, proprietes(), new DataSourceTransactionManager(proprietaire));
-        service.initialiserSiVide(ContratPlanification.VERSION_INITIALE, MODELE);
+        service.initialiserVersionInitiale(ContratPlanification.VERSION_INITIALE, ContratPlanification.sourceInitiale());
     }
 
     @BeforeEach
@@ -170,7 +170,7 @@ class ContratAbonnementIT {
         Map<String, Object> preuve = jdbc.queryForMap("SELECT * FROM contrat_acceptations WHERE id = ?", acc.id());
         assertThat(preuve.get("empreinte_contrat").toString().trim()).isEqualTo(apercu.empreinte());
         assertThat(preuve.get("texte_accepte")).isEqualTo(apercu.texte());
-        assertThat(preuve.get("version_code")).isEqualTo("2026-10-12");
+        assertThat(preuve.get("version_code")).isEqualTo("1");
         assertThat(preuve.get("signataire_compte")).isEqualTo("salma.bennani@jurika.ma");
         assertThat(preuve.get("signataire_qualite")).isEqualTo("g\u00e9rante");
         assertThat(preuve.get("signataire_role")).isEqualTo("SUPERVISEUR");
@@ -276,8 +276,174 @@ class ContratAbonnementIT {
         ContratService.AcceptationVue acc = accepter(ws, user);
         assertThat(acc.versionCode()).isEqualTo(code);
         assertThat(service.etat(ws).acceptationRequise()).isFalse();
+        // Article 16 : la reponse "Accepter" est enregistree, liee a la preuve de l'acceptation.
+        Map<String, Object> rep = jdbc.queryForMap("SELECT * FROM contrat_reponses_versions WHERE workspace_id = ?", ws);
+        assertThat(rep.get("reponse")).isEqualTo("ACCEPTEE");
+        assertThat(rep.get("version_code")).isEqualTo(code);
+        assertThat(rep.get("acceptation_id")).isEqualTo(acc.id());
+        assertThat(rep.get("signataire_compte")).isEqualTo("salma.bennani@jurika.ma");
+        assertThat(rep.get("repondu_le_casablanca")).isEqualTo("2026-11-21 09:00:00");
+        assertThat(rep.get("adresse_ip")).isEqualTo("196.200.1.2");
+        assertThat(service.historique(ws, false).reponses()).extracting(ContratService.ReponseVue::reponse)
+                .containsExactly("ACCEPTEE");
+        // Pas de double reponse : un refus apres l'acceptation est refuse, rien n'est resilie.
+        assertThatThrownBy(() -> service.refuserNouvelleVersion(ws, superviseur(user),
+                new ContratService.CommandeRefus(code, true)))
+                .isInstanceOf(ContratException.class)
+                .satisfies(e -> assertThat(((ContratException) e).statut()).isEqualTo(HttpStatus.CONFLICT));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM contrat_resiliations WHERE workspace_id = ?", Integer.class, ws))
+                .isZero();
         // Toutes les versions sont conservees.
-        assertThat(service.versions()).extracting(ContratService.VersionVue::code).contains("2026-10-12", code);
+        assertThat(service.versions(true)).extracting(ContratService.VersionVue::code).contains("1", code).doesNotContain("2026-10-12");
+    }
+
+    /** Publie une nouvelle version (en vigueur le 20 novembre 2026) et place l'horloge au lendemain. */
+    private String nouvelleVersionEnVigueur() {
+        String texte = MODELE.replace("## Article 17 — Notifications", "## Article 17 — Notifications et avis");
+        String code = "v-" + UUID.randomUUID().toString().substring(0, 8);
+        service.publierVersion(code, texte, LocalDate.of(2026, 11, 20), UUID.randomUUID());
+        horloge.regler(Clock.fixed(Instant.parse("2026-11-21T08:00:00Z"), ZoneOffset.UTC));
+        return code;
+    }
+
+    @Test
+    void refus_de_la_nouvelle_version_vaut_resiliation_a_l_echeance_et_reponse_unique() {
+        UUID ws = UUID.randomUUID();
+        UUID user = UUID.randomUUID();
+        ouvrir(ws, "ESSENTIEL", "ANNUEL", "3750");
+        accepter(ws, user);
+        String code = nouvelleVersionEnVigueur();
+        evenements.clear();
+        assertThat(service.etat(ws).objetAAccepter()).isEqualTo(ContratService.OBJET_VERSION);
+        // Pas de blocage (article 16) : la passerelle laisse passer le cabinet.
+        assertThat(service.acceptationEnAttente(ws)).isFalse();
+
+        // Confirmation exigee, version lue verifiee, superviseur seul.
+        assertThatThrownBy(() -> service.refuserNouvelleVersion(ws, superviseur(user), new ContratService.CommandeRefus(code, false)))
+                .isInstanceOf(ContratException.class).hasMessageContaining("Confirmez");
+        assertThatThrownBy(() -> service.refuserNouvelleVersion(ws, superviseur(user), new ContratService.CommandeRefus("1", true)))
+                .isInstanceOf(ContratException.class)
+                .satisfies(e -> assertThat(((ContratException) e).code()).isEqualTo("VERSION_CHANGEE"));
+        assertThatThrownBy(() -> service.refuserNouvelleVersion(ws, new ContratService.Requerant(user, "EMPLOYE", "Bearer x",
+                "1.2.3.4", null), new ContratService.CommandeRefus(code, true)))
+                .isInstanceOf(ContratException.class)
+                .satisfies(e -> assertThat(((ContratException) e).statut()).isEqualTo(HttpStatus.FORBIDDEN));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM contrat_reponses_versions WHERE workspace_id = ?", Integer.class, ws))
+                .isZero();
+
+        ContratService.ReponseVue rep = service.refuserNouvelleVersion(ws, superviseur(user),
+                new ContratService.CommandeRefus(code, true));
+        assertThat(rep.reponse()).isEqualTo("REFUSEE");
+        assertThat(rep.versionCode()).isEqualTo(code);
+        Map<String, Object> ligne = jdbc.queryForMap("SELECT * FROM contrat_reponses_versions WHERE id = ?", rep.id());
+        assertThat(ligne.get("signataire_compte")).isEqualTo("salma.bennani@jurika.ma");
+        assertThat(ligne.get("signataire_user_id")).isEqualTo(user);
+        assertThat(ligne.get("repondu_le_casablanca")).isEqualTo("2026-11-21 09:00:00");
+        assertThat(ligne.get("adresse_ip")).isEqualTo("196.200.1.2");
+        assertThat(ligne.get("acceptation_id")).isNull();
+
+        // Resiliation a l'echeance courante, par le circuit existant (evenement pour l'abonnement).
+        Map<String, Object> res = jdbc.queryForMap("SELECT * FROM contrat_resiliations WHERE workspace_id = ?", ws);
+        assertThat(res.get("motif")).isEqualTo("Refus des conditions générales version " + code);
+        assertThat(res.get("date_effet").toString()).isEqualTo("2027-11-01");
+        assertThat(res.get("demandeur_role")).isEqualTo("SUPERVISEUR");
+        assertThat(evenements).singleElement().isInstanceOfSatisfying(ContratEvenements.ResiliationEnregistree.class, ev -> {
+            assertThat(ev.dateEffet()).isEqualTo(LocalDate.of(2027, 11, 1));
+            assertThat(ev.motif()).isEqualTo("Refus des conditions générales version " + code);
+        });
+        ContratService.Etat etat = service.etat(ws);
+        assertThat(etat.statut()).isEqualTo("RESILIE");
+        assertThat(etat.acceptationRequise()).isFalse();
+        assertThat(etat.resiliation().dateEffet()).isEqualTo(LocalDate.of(2027, 11, 1));
+
+        // Pas de double reponse : ni second refus, ni acceptation apres le refus.
+        assertThatThrownBy(() -> service.refuserNouvelleVersion(ws, superviseur(user), new ContratService.CommandeRefus(code, true)))
+                .isInstanceOf(ContratException.class)
+                .satisfies(e -> assertThat(((ContratException) e).statut()).isEqualTo(HttpStatus.CONFLICT));
+        assertThatThrownBy(() -> accepter(ws, user)).isInstanceOf(ContratException.class)
+                .satisfies(e -> assertThat(((ContratException) e).statut()).isEqualTo(HttpStatus.CONFLICT));
+        UUID cp = (UUID) ligne.get("conditions_id");
+        UUID version = (UUID) ligne.get("version_id");
+        assertThatThrownBy(() -> jdbc.update("INSERT INTO contrat_reponses_versions (workspace_id, conditions_id, version_id, "
+                + "version_code, reponse, signataire_user_id, signataire_compte, signataire_role, repondu_le, "
+                + "repondu_le_casablanca, adresse_ip) VALUES (?, ?, ?, ?, 'REFUSEE', ?, 'x', 'SUPERVISEUR', now(), "
+                + "'2026-11-21 09:00:00', '1.1.1.1')", ws, cp, version, code, user))
+                .isInstanceOf(org.springframework.dao.DuplicateKeyException.class);
+
+        // Super-admin : la reponse est visible par cabinet.
+        ContratService.LigneAdmin admin = service.listeAdmin().stream().filter(l -> l.workspaceId().equals(ws))
+                .findFirst().orElseThrow();
+        assertThat(admin.derniereReponse().reponse()).isEqualTo("REFUSEE");
+        assertThat(admin.versionSansReponse()).isNull();
+        assertThat(service.historique(ws, true).reponses()).extracting(ContratService.ReponseVue::reponse)
+                .containsExactly("REFUSEE");
+
+        // Reponse inalterable, meme pour le proprietaire.
+        assertThatThrownBy(() -> jdbc.update("UPDATE contrat_reponses_versions SET reponse = 'ACCEPTEE' WHERE id = ?", rep.id()))
+                .rootCause().hasMessageContaining("inalterable");
+        assertThatThrownBy(() -> jdbc.update("DELETE FROM contrat_reponses_versions WHERE id = ?", rep.id()))
+                .rootCause().hasMessageContaining("inalterable");
+        assertThatThrownBy(() -> jdbc.execute("TRUNCATE contrat_reponses_versions"))
+                .rootCause().hasMessageContaining("inalterable");
+    }
+
+    @Test
+    void sans_reponse_le_super_admin_voit_la_version_en_attente_de_reponse() {
+        UUID ws = UUID.randomUUID();
+        ouvrir(ws, "ESSENTIEL", "MENSUEL", "375");
+        accepter(ws, UUID.randomUUID());
+        String code = nouvelleVersionEnVigueur();
+        ContratService.LigneAdmin admin = service.listeAdmin().stream().filter(l -> l.workspaceId().equals(ws))
+                .findFirst().orElseThrow();
+        assertThat(admin.versionSansReponse()).isNotNull();
+        assertThat(admin.derniereReponse()).isNull();
+        // Chaque lecture de l'etat (chaque connexion) redemande la reponse, sans blocage.
+        assertThat(service.etat(ws).objetAAccepter()).isEqualTo(ContratService.OBJET_VERSION);
+        assertThat(service.etat(ws).objetAAccepter()).isEqualTo(ContratService.OBJET_VERSION);
+        assertThat(service.acceptationEnAttente(ws)).isFalse();
+        assertThat(code).isNotBlank();
+    }
+
+    @Test
+    void une_modification_des_parametres_de_l_editeur_ne_change_pas_le_texte_accepte() {
+        UUID ws = UUID.randomUUID();
+        editeur.setRaisonSociale("Maghreb Consulting");
+        editeur.setFormeJuridique("SARL");
+        editeur.setIce("000000000000099");
+        try {
+            ouvrir(ws, "PROFESSIONNEL", "ANNUEL", "7500");
+            ContratService.AcceptationVue acc = accepter(ws, UUID.randomUUID());
+            String texte = jdbc.queryForObject("SELECT texte_accepte FROM contrat_acceptations WHERE id = ?", String.class, acc.id());
+            assertThat(texte).contains("**Maghreb Consulting**, SARL au capital de", "ICE 000000000000099");
+            byte[] avant = service.exemplaire(ws, acc.id(), false).pdf();
+
+            editeur.setRaisonSociale("Autre Dénomination");
+            editeur.setFormeJuridique("SA");
+            editeur.setIce("111111111111111");
+
+            assertThat(jdbc.queryForObject("SELECT texte_accepte FROM contrat_acceptations WHERE id = ?", String.class, acc.id()))
+                    .isEqualTo(texte);
+            assertThat(jdbc.queryForObject("SELECT empreinte_contrat FROM contrat_acceptations WHERE id = ?", String.class,
+                    acc.id()).trim()).isEqualTo(acc.empreinteContrat()).isEqualTo(ContratTexte.sha256(texte));
+            assertThat(service.exemplaire(ws, acc.id(), false).pdf()).as("exemplaire inchange").isEqualTo(avant);
+        } finally {
+            editeur.setRaisonSociale(null);
+            editeur.setFormeJuridique(null);
+            editeur.setIce(null);
+        }
+    }
+
+    @Test
+    void base_vierge_seule_la_version_1_est_chargee_et_en_vigueur() {
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM contrat_versions WHERE origine = 'INITIALE'", Integer.class))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT code FROM contrat_versions WHERE origine = 'INITIALE'", String.class))
+                .isEqualTo("1");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM contrat_versions_retraits", Integer.class)).isZero();
+        assertThat(service.etat(UUID.randomUUID()).versionEnVigueur().code()).isEqualTo("1");
+        // Second demarrage : rien n'est recharge.
+        service.initialiserVersionInitiale(ContratPlanification.VERSION_INITIALE, ContratPlanification.sourceInitiale());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM contrat_versions WHERE code = '1'", Integer.class)).isEqualTo(1);
     }
 
     @Test
@@ -319,6 +485,10 @@ class ContratAbonnementIT {
             assertThat(sqlState(app, "DELETE FROM conditions_particulieres")).isEqualTo("42501");
             assertThat(sqlState(app, "DELETE FROM contrat_resiliations")).isEqualTo("42501");
             assertThat(sqlState(app, "UPDATE contrat_versions SET code = code")).isEqualTo("42501");
+            assertThat(sqlState(app, "UPDATE contrat_reponses_versions SET reponse = reponse")).isEqualTo("42501");
+            assertThat(sqlState(app, "DELETE FROM contrat_reponses_versions")).isEqualTo("42501");
+            assertThat(sqlState(app, "INSERT INTO contrat_versions_retraits (version_id, motif) "
+                    + "SELECT id, 'x' FROM contrat_versions LIMIT 1")).isEqualTo("42501");
             app.rollback();
             // RLS : le cabinet B ne voit rien du cabinet A.
             try (Statement st = app.createStatement()) {

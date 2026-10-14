@@ -33,6 +33,9 @@ import java.util.UUID;
 @PreAuthorize("hasRole('SUPERVISEUR')")
 public class ContratCabinetController {
 
+    /** Un cabinet ne voit jamais une version retiree (projet du 12 octobre 2026, billing V16). */
+    private static final boolean SUPER_ADMIN_PORTEE = false;
+
     private final ContratService service;
 
     public ContratCabinetController(ContratService service) {
@@ -51,6 +54,8 @@ public class ContratCabinetController {
     }
 
     public record ResiliationRequest(String motif) {}
+
+    public record RefusRequest(String versionCode, boolean confirmation) {}
 
     @GetMapping("/etat")
     @PreAuthorize("hasAnyRole('SUPERVISEUR','EMPLOYE')")
@@ -72,6 +77,14 @@ public class ContratCabinetController {
     public ContratService.AcceptationVue accepter(@AuthenticationPrincipal AuthenticatedUser user,
                                                   @RequestBody AcceptationRequest body, HttpServletRequest req) {
         return service.accepter(user.workspaceId(), requerant(user, req), body.commande());
+    }
+
+    /** RG-CTR-07, article 16 : refus de la nouvelle version, qui vaut resiliation a l'echeance. */
+    @PostMapping("/refuser-version")
+    public ContratService.ReponseVue refuserVersion(@AuthenticationPrincipal AuthenticatedUser user,
+                                                    @RequestBody RefusRequest body, HttpServletRequest req) {
+        return service.refuserNouvelleVersion(user.workspaceId(), requerant(user, req),
+                new ContratService.CommandeRefus(body.versionCode(), body.confirmation()));
     }
 
     @GetMapping("/historique")
@@ -98,13 +111,13 @@ public class ContratCabinetController {
 
     @GetMapping("/versions")
     public List<ContratService.VersionVue> versions() {
-        return service.versions();
+        return service.versions(SUPER_ADMIN_PORTEE);
     }
 
     @GetMapping("/versions/{code}")
     public ResponseEntity<String> versionTexte(@PathVariable String code) {
         return ResponseEntity.ok().contentType(new MediaType(MediaType.TEXT_PLAIN, StandardCharsets.UTF_8))
-                .body(service.version(code).texteModele());
+                .body(service.version(code, SUPER_ADMIN_PORTEE).texteModele());
     }
 
     static ResponseEntity<byte[]> pdf(ContratService.Exemplaire ex) {

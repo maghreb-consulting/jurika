@@ -15,9 +15,14 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Lot L7 (E6) : version initiale du contrat (texte valide par la direction, du 12 octobre 2026)
- * chargee au demarrage si aucune version n'existe, et passage quotidien des echeances
- * (renouvellement, avis a 30 jours, RG-CTR-06) a 6 h, heure de Casablanca.
+ * Lot L7 (E6, E9) : version 1 du contrat (texte valide par la direction le 14 octobre 2026,
+ * {@code contrat/CONTRAT_ABONNEMENT_JURIKA_V1.md}, copie exacte du document) chargee au demarrage
+ * si elle manque, et passage quotidien des echeances (renouvellement, avis a 30 jours, RG-CTR-06)
+ * a 6 h, heure de Casablanca.
+ *
+ * <p>Le projet du 12 octobre 2026 (code "2026-10-12"), charge sur une base vivante avant la
+ * validation, y reste (versions inalterables) mais est retire (billing V16) : il n'est jamais
+ * presente a un cabinet.
  */
 @Configuration
 @EnableScheduling
@@ -26,8 +31,8 @@ public class ContratPlanification {
 
     private static final Logger log = LoggerFactory.getLogger(ContratPlanification.class);
 
-    public static final String VERSION_INITIALE = "2026-10-12";
-    public static final String MODELE_INITIAL = "contrat/modele-2026-10-12.md";
+    public static final String VERSION_INITIALE = "1";
+    public static final String SOURCE_INITIALE = "contrat/CONTRAT_ABONNEMENT_JURIKA_V1.md";
 
     private final ContratService service;
 
@@ -37,7 +42,7 @@ public class ContratPlanification {
 
     @EventListener(ApplicationReadyEvent.class)
     public void chargerVersionInitiale() {
-        service.initialiserSiVide(VERSION_INITIALE, modeleInitial());
+        service.initialiserVersionInitiale(VERSION_INITIALE, sourceInitiale());
     }
 
     @Scheduled(cron = "0 0 6 * * *", zone = "Africa/Casablanca")
@@ -46,11 +51,17 @@ public class ContratPlanification {
         log.info("Echeances du contrat : {} renouvellement(s), {} avis", b.renouvellements(), b.avis());
     }
 
-    public static String modeleInitial() {
-        try (InputStream in = new ClassPathResource(MODELE_INITIAL).getInputStream()) {
+    /** Document source de la version 1, octet pour octet. */
+    public static String sourceInitiale() {
+        try (InputStream in = new ClassPathResource(SOURCE_INITIALE).getInputStream()) {
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException ex) {
-            throw new IllegalStateException("Modele du contrat absent du classpath : " + MODELE_INITIAL, ex);
+            throw new IllegalStateException("Texte du contrat absent du classpath : " + SOURCE_INITIALE, ex);
         }
+    }
+
+    /** Modele de la version 1 (sans la ligne de publication ni la piece D). */
+    public static String modeleInitial() {
+        return ContratTexte.modeleDepuisSource(sourceInitiale());
     }
 }
