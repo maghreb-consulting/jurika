@@ -535,8 +535,9 @@ public class ContratService implements ContratAbonnementPort {
     private List<String> destinatairesEcheance(String cabinetEmail) {
         List<String> l = new ArrayList<>();
         if (!blanc(cabinetEmail)) l.add(cabinetEmail.trim());
-        // Super-admin : adresse commerciale configuree (jurika.billing.sales-email).
-        if (!blanc(props.getSalesEmail()) && !l.contains(props.getSalesEmail().trim())) l.add(props.getSalesEmail().trim());
+        // Super-admin : adresse commerciale (jurika.billing.sales-email), a defaut l'expediteur verifie.
+        String admin = props.adresseCommerciale();
+        if (admin != null && !l.contains(admin)) l.add(admin);
         return l;
     }
 

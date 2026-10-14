@@ -92,7 +92,7 @@ class ContratAbonnementIT {
                 "12 boulevard d\u2019Anfa, Casablanca", "123456", "001234567000089", "contact@atlas.ma",
                 "Bennani", "Salma", "salma.bennani@jurika.ma");
         service = new ContratService(new ContratDepot(jdbc), editeurService, identites, courriel, horloge,
-                evenements::add, new BillingProperties(), new DataSourceTransactionManager(proprietaire));
+                evenements::add, proprietes(), new DataSourceTransactionManager(proprietaire));
         service.initialiserSiVide(ContratPlanification.VERSION_INITIALE, MODELE);
     }
 
@@ -236,7 +236,7 @@ class ContratAbonnementIT {
         // 2027-10-05 : echeance du 2027-11-01 a 27 jours -> avis au cabinet et au super-admin, une seule fois.
         horloge.regler(Clock.fixed(Instant.parse("2027-10-05T06:00:00Z"), ZoneOffset.UTC));
         service.executerEcheances();
-        assertThat(courriels).extracting(c -> c[0]).contains("contact@atlas.ma", "contact@jurika.ai");
+        assertThat(courriels).extracting(c -> c[0]).contains("contact@atlas.ma", "ventes@editeur.test");
         assertThat(courriels).allMatch(c -> c[1].equals("email/contrat-echeance"));
         int avis = courriels.size();
         service.executerEcheances();
@@ -369,5 +369,11 @@ class ContratAbonnementIT {
                 return ex.getSQLState();
             }
         }
+    }
+
+    private static BillingProperties proprietes() {
+        BillingProperties p = new BillingProperties();
+        p.setSalesEmail("ventes@editeur.test");
+        return p;
     }
 }

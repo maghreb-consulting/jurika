@@ -32,10 +32,7 @@ public class ContactSalesUseCase {
 
     /** Lot L7 : BILLING_SALES_EMAIL, a defaut l'adresse d'expedition verifiee ; jamais un domaine non deploye. */
     private String destinataire() {
-        String s = billingProperties.getSalesEmail();
-        if (s != null && !s.isBlank()) return s.trim();
-        String f = billingProperties.getFromEmail();
-        return f == null || f.isBlank() ? null : f.trim();
+        return billingProperties.adresseCommerciale();
     }
 
     public BillingDtos.ContactSalesResponse send(UUID workspaceId, BillingDtos.ContactSalesRequest req) {

@@ -18,8 +18,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class BillingProperties {
 
-    @NotBlank
-    // Lot L7 : aucune adresse par defaut (contact@jurika.ai n'est pas un domaine de JURIKA) ;
+    // Lot L7 : facultative, aucune adresse par defaut (contact@jurika.ai n'est pas un domaine de JURIKA) ;
     // a defaut, l'adresse d'expedition verifiee (ContactSalesUseCase).
     private String salesEmail = "";
 
@@ -37,6 +36,12 @@ public class BillingProperties {
 
     public String getSalesEmail() { return salesEmail; }
     public void setSalesEmail(String s) { this.salesEmail = s; }
+
+    /** Lot L7 : adresse commerciale (BILLING_SALES_EMAIL), a defaut l'expediteur verifie ; null si aucune. */
+    public String adresseCommerciale() {
+        if (salesEmail != null && !salesEmail.isBlank()) return salesEmail.trim();
+        return fromEmail == null || fromEmail.isBlank() ? null : fromEmail.trim();
+    }
     public String getFromEmail() { return fromEmail; }
     public void setFromEmail(String s) { this.fromEmail = s; }
     public String getFrontUrl() { return frontUrl; }
