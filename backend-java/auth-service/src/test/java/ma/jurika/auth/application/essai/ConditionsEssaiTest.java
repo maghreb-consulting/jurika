@@ -30,9 +30,9 @@ class ConditionsEssaiTest {
         assertThat(c.version()).isEqualTo("D-V1").doesNotContain("PROJET");
         assertThat(c.empreinte()).isEqualTo(EMPREINTE_D);
         assertThat(c.texte()).startsWith("Conditions d'utilisation de l'essai gratuit JURIKA\n\n1. L'essai est gratuit")
-                .contains("4. L'essai ne doit pas être utilisé pour traiter de vrais dossiers de clients.",
-                        "8. Les articles 9, 13, 14, 15 et 18 des conditions générales et l'accord de traitement "
-                                + "des données s'appliquent à l'essai.")
+                .contains("4. L'essai ne doit pas \u00eatre utilis\u00e9 pour traiter de vrais dossiers de clients.",
+                        "8. Les articles 9, 13, 14, 15 et 18 des conditions g\u00e9n\u00e9rales et l'accord de traitement "
+                                + "des donn\u00e9es s'appliquent \u00e0 l'essai.")
                 .doesNotContain("**", "[");
     }
 

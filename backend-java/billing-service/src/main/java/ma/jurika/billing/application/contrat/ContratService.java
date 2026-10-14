@@ -351,7 +351,7 @@ public class ContratService implements ContratAbonnementPort {
     public ReponseVue refuserNouvelleVersion(UUID workspaceId, Requerant r, CommandeRefus c) {
         if (!"SUPERVISEUR".equals(r.role())) {
             throw new ContratException(HttpStatus.FORBIDDEN, "SUPERVISEUR_REQUIS",
-                    "Seul le superviseur du cabinet peut répondre aux nouvelles conditions générales.", List.of());
+                    "Seul le superviseur du cabinet peut r\u00e9pondre aux nouvelles conditions g\u00e9n\u00e9rales.", List.of());
         }
         if (c == null || !c.confirmation()) {
             throw ContratException.invalide("CONFIRMATION_ABSENTE", "Confirmez votre refus.");
@@ -369,11 +369,11 @@ public class ContratService implements ContratAbonnementPort {
             AAccepter a = aAccepter(workspaceId);
             if (!OBJET_VERSION.equals(a.objet())) {
                 throw ContratException.conflit("RIEN_A_REFUSER",
-                        "Aucune nouvelle version des conditions générales n’attend votre réponse.");
+                        "Aucune nouvelle version des conditions g\u00e9n\u00e9rales n\u2019attend votre r\u00e9ponse.");
             }
             if (c.versionCode() == null || !c.versionCode().equals(a.version().code())) {
                 throw ContratException.conflit("VERSION_CHANGEE",
-                        "La version à laquelle vous répondez n’est plus celle en vigueur : rechargez la page.");
+                        "La version \u00e0 laquelle vous r\u00e9pondez n\u2019est plus celle en vigueur : rechargez la page.");
             }
             refuserSiDejaRepondu(workspaceId, a);
             java.time.Instant le = horloge.maintenant();
@@ -382,7 +382,7 @@ public class ContratService implements ContratAbonnementPort {
                     a.version().id(), a.version().code(), REPONSE_REFUSEE, null, r.userId(),
                     identite.signataireCompte(), r.role(), le, casablanca, r.adresseIp(), r.chaineIp()));
             ResiliationVue res = enregistrerResiliation(workspaceId, a.conditions(), r.userId(), "SUPERVISEUR", null,
-                    "Refus des conditions générales version " + a.version().code(), le);
+                    "Refus des conditions g\u00e9n\u00e9rales version " + a.version().code(), le);
             ContratDepot.Reponse rep = depot.reponsesDuCabinet(workspaceId).stream()
                     .filter(x -> x.id().equals(id)).findFirst().orElseThrow();
             return new Refus(ReponseVue.de(rep), res);
@@ -396,8 +396,8 @@ public class ContratService implements ContratAbonnementPort {
     private void refuserSiDejaRepondu(UUID workspaceId, AAccepter a) {
         if (depot.reponse(workspaceId, a.conditions().id(), a.version().id()).isPresent()) {
             throw ContratException.conflit("REPONSE_DEJA_DONNEE",
-                    "Vous avez déjà répondu à la version " + a.version().code()
-                            + " des conditions générales.");
+                    "Vous avez d\u00e9j\u00e0 r\u00e9pondu \u00e0 la version " + a.version().code()
+                            + " des conditions g\u00e9n\u00e9rales.");
         }
     }
 
@@ -407,7 +407,7 @@ public class ContratService implements ContratAbonnementPort {
             return action.get();
         } catch (org.springframework.dao.DuplicateKeyException ex) {
             throw ContratException.conflit("REPONSE_DEJA_DONNEE",
-                    "Une réponse à ces conditions générales est déjà enregistrée.");
+                    "Une r\u00e9ponse \u00e0 ces conditions g\u00e9n\u00e9rales est d\u00e9j\u00e0 enregistr\u00e9e.");
         }
     }
 

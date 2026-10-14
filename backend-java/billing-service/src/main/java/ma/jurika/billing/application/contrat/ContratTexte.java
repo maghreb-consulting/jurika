@@ -101,12 +101,12 @@ public final class ContratTexte {
         if (b < 0) defauts.add("titre \u00ab # B. Conditions g\u00e9n\u00e9rales d\u2019abonnement \u00bb");
         if (c < 0) defauts.add("titre \u00ab # C. Accord de traitement des donn\u00e9es personnelles \u00bb");
         if (a >= 0 && b >= 0 && c >= 0 && !(a < b && b < c)) defauts.add("ordre des pi\u00e8ces A, B, C");
-        if (debutTitre(m, "# D.") >= 0) defauts.add("pièce D (conditions de l’essai) hors du contrat d’abonnement");
+        if (debutTitre(m, "# D.") >= 0) defauts.add("pi\u00e8ce D (conditions de l\u2019essai) hors du contrat d\u2019abonnement");
         // Mention entre crochets = passage encore a completer ou a arbitrer (projet) : jamais presentee.
         Set<String> crochets = new LinkedHashSet<>();
         Matcher cr = CROCHETS.matcher(m);
         while (cr.find()) crochets.add(cr.group());
-        if (!crochets.isEmpty()) defauts.add("mentions entre crochets à compléter " + String.join(", ", crochets));
+        if (!crochets.isEmpty()) defauts.add("mentions entre crochets \u00e0 compl\u00e9ter " + String.join(", ", crochets));
         if (paragrapheAcceptation(m) == null) defauts.add("paragraphe \u00ab " + DEBUT_ACCEPTATION + " \u00bb");
         Set<String> inconnues = new LinkedHashSet<>();
         Matcher v = VARIABLE.matcher(m);

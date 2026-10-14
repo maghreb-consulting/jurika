@@ -37,7 +37,7 @@ import static org.mockito.Mockito.when;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ContratVersionInitialeIT {
 
-    private static final String PROJET = "# Présentation des pièces du contrat\n\n# A. Conditions particulières\n\n"
+    private static final String PROJET = "# Pr\u00e9sentation des pi\u00e8ces du contrat\n\n# A. Conditions particuli\u00e8res\n\n"
             + "**Maghreb Consulting**, [forme sociale] au capital de [montant] dirhams\n";
 
     private final PostgreSQLContainer<?> pg = new PostgreSQLContainer<>("postgres:16-alpine")
@@ -90,7 +90,7 @@ class ContratVersionInitialeIT {
             }
         };
         IdentiteCabinetSource identites = jeton -> new IdentiteCabinetSource.Identite("Cabinet", null, null, null,
-                "c@cabinet.ma", "Nom", "Prénom", "compte@jurika.ma");
+                "c@cabinet.ma", "Nom", "Pr\u00e9nom", "compte@jurika.ma");
         return new ContratService(new ContratDepot(jdbc), editeur, identites, courriel, horloge, e -> { },
                 new BillingProperties(), new DataSourceTransactionManager(ds));
     }

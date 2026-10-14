@@ -299,7 +299,7 @@ class ContratAbonnementIT {
 
     /** Publie une nouvelle version (en vigueur le 20 novembre 2026) et place l'horloge au lendemain. */
     private String nouvelleVersionEnVigueur() {
-        String texte = MODELE.replace("## Article 17 — Notifications", "## Article 17 — Notifications et avis");
+        String texte = MODELE.replace("## Article 17 \u2014 Notifications", "## Article 17 \u2014 Notifications et avis");
         String code = "v-" + UUID.randomUUID().toString().substring(0, 8);
         service.publierVersion(code, texte, LocalDate.of(2026, 11, 20), UUID.randomUUID());
         horloge.regler(Clock.fixed(Instant.parse("2026-11-21T08:00:00Z"), ZoneOffset.UTC));
@@ -344,12 +344,12 @@ class ContratAbonnementIT {
 
         // Resiliation a l'echeance courante, par le circuit existant (evenement pour l'abonnement).
         Map<String, Object> res = jdbc.queryForMap("SELECT * FROM contrat_resiliations WHERE workspace_id = ?", ws);
-        assertThat(res.get("motif")).isEqualTo("Refus des conditions générales version " + code);
+        assertThat(res.get("motif")).isEqualTo("Refus des conditions g\u00e9n\u00e9rales version " + code);
         assertThat(res.get("date_effet").toString()).isEqualTo("2027-11-01");
         assertThat(res.get("demandeur_role")).isEqualTo("SUPERVISEUR");
         assertThat(evenements).singleElement().isInstanceOfSatisfying(ContratEvenements.ResiliationEnregistree.class, ev -> {
             assertThat(ev.dateEffet()).isEqualTo(LocalDate.of(2027, 11, 1));
-            assertThat(ev.motif()).isEqualTo("Refus des conditions générales version " + code);
+            assertThat(ev.motif()).isEqualTo("Refus des conditions g\u00e9n\u00e9rales version " + code);
         });
         ContratService.Etat etat = service.etat(ws);
         assertThat(etat.statut()).isEqualTo("RESILIE");
@@ -417,7 +417,7 @@ class ContratAbonnementIT {
             assertThat(texte).contains("**Maghreb Consulting**, SARL au capital de", "ICE 000000000000099");
             byte[] avant = service.exemplaire(ws, acc.id(), false).pdf();
 
-            editeur.setRaisonSociale("Autre Dénomination");
+            editeur.setRaisonSociale("Autre D\u00e9nomination");
             editeur.setFormeJuridique("SA");
             editeur.setIce("111111111111111");
 
