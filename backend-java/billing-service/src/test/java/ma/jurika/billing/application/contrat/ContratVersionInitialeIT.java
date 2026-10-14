@@ -91,7 +91,8 @@ class ContratVersionInitialeIT {
         };
         IdentiteCabinetSource identites = jeton -> new IdentiteCabinetSource.Identite("Cabinet", null, null, null,
                 "c@cabinet.ma", "Nom", "Pr\u00e9nom", "compte@jurika.ma");
-        return new ContratService(new ContratDepot(jdbc), editeur, identites, courriel, horloge, e -> { },
+        return new ContratService(new ContratDepot(jdbc), editeur, identites, jeton -> java.util.Optional.empty(),
+                courriel, horloge, e -> { },
                 new BillingProperties(), new DataSourceTransactionManager(ds));
     }
 

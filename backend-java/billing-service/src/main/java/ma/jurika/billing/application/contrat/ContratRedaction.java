@@ -32,10 +32,16 @@ public final class ContratRedaction {
 
     private ContratRedaction() {}
 
-    /** Texte soumis a l'acceptation (paragraphe d'acceptation "a completer"). */
+    /**
+     * Texte soumis a l'acceptation (paragraphe d'acceptation "a completer"). Lot L7 (E13) : si le
+     * cabinet a eu un essai, la mention de l'acceptation de ses conditions ({@link #mentionEssai})
+     * suit le paragraphe d'acceptation. Elle est connue avant l'acceptation et figee dans la preuve :
+     * elle fait partie du texte lu, hache et accepte (l'empreinte la couvre), et l'exemplaire,
+     * regenere depuis le texte accepte, la reproduit a l'octet pres.
+     */
     public static Redaction rediger(String modele, String versionCode, ContratDepot.Conditions cp,
                                     EditeurParametresEntity editeur, IdentiteCabinetSource.Identite cabinet,
-                                    Signataire signataire) {
+                                    Signataire signataire, java.util.Optional<EssaiCabinetSource.AcceptationEssai> essai) {
         List<String> manquants = new ArrayList<>();
         Map<String, String> v = new HashMap<>();
         // Editeur : parametres de l'editeur (ecran /admin/editeur), colonne par colonne.
@@ -92,7 +98,43 @@ public final class ContratRedaction {
             v.put(a, ContratTexte.A_COMPLETER);
         }
         String texte = ContratTexte.remplir(ContratTexte.normaliser(modele), v);
+        if (essai == null) {
+            throw new IllegalStateException("Essai du cabinet non lu (Optional attendu)");
+        }
+        if (essai.isPresent()) {
+            texte = avecMentionEssai(texte, essai.get());
+        }
         return new Redaction(texte, ContratTexte.sha256(texte), List.copyOf(manquants));
+    }
+
+    /** Debut de la mention de l'essai (L7 E13), absent du modele. */
+    static final String DEBUT_MENTION_ESSAI = "Conditions d'utilisation de l'essai gratuit (version ";
+    private static final DateTimeFormatter HEURE = DateTimeFormatter.ofPattern("H 'h' mm", Locale.FRENCH);
+
+    /**
+     * Lot L7 (E13) : mention de l'acceptation des conditions de l'essai gratuit (piece D,
+     * RG-CTR-10), en heure de Casablanca, comme les autres dates du contrat. Elle n'est pas dans le
+     * modele (copie exacte de la version validee) : le rendu l'ajoute en paragraphe propre, juste
+     * apres le paragraphe "Acceptation electronique" des conditions particulieres.
+     */
+    public static String mentionEssai(EssaiCabinetSource.AcceptationEssai essai) {
+        if (essai.version() == null || essai.version().isBlank() || essai.accepteesLe() == null) {
+            throw new IllegalStateException("Acceptation de l'essai incomplete : " + essai);
+        }
+        java.time.LocalDateTime casa = java.time.LocalDateTime.ofInstant(essai.accepteesLe(), ContratHorloge.CASABLANCA);
+        return DEBUT_MENTION_ESSAI + essai.version().trim() + ") accept\u00e9es le " + date(casa.toLocalDate())
+                + " \u00e0 " + casa.format(HEURE) + " (heure de Casablanca).";
+    }
+
+    private static String avecMentionEssai(String texte, EssaiCabinetSource.AcceptationEssai essai) {
+        String p = ContratTexte.paragrapheAcceptation(texte);
+        if (p == null || texte.indexOf(p) != texte.lastIndexOf(p)) {
+            throw new IllegalStateException("Paragraphe d'acceptation introuvable : mention de l'essai impossible");
+        }
+        if (texte.contains(DEBUT_MENTION_ESSAI)) {
+            throw new IllegalStateException("Le modele porte deja une mention de l'essai");
+        }
+        return texte.replace(p, p + "\n\n" + mentionEssai(essai));
     }
 
     /**
@@ -125,7 +167,34 @@ public final class ContratRedaction {
         if (i < 0 || a.texteAccepte().indexOf(p0, i + 1) >= 0) {
             throw new IllegalStateException("Paragraphe d'acceptation introuvable dans le texte accepte " + a.id());
         }
+        verifierMentionEssai(a);
         return a.texteAccepte().replace(p0, p1);
+    }
+
+    /**
+     * L7 E13 : la mention de l'essai du texte accepte concorde avec les donnees figees dans la
+     * preuve (presente une fois et identique, ou absente des deux) ; sinon l'exemplaire est refuse.
+     */
+    private static void verifierMentionEssai(ContratDepot.Acceptation a) {
+        String texte = a.texteAccepte();
+        boolean figee = a.essaiConditionsVersion() != null || a.essaiConditionsAccepteesLe() != null;
+        if (!figee) {
+            if (texte.contains(DEBUT_MENTION_ESSAI)) {
+                throw new IllegalStateException("Mention de l'essai dans le texte accepte sans essai fige dans la preuve "
+                        + a.id());
+            }
+            return;
+        }
+        if (a.essaiConditionsVersion() == null || a.essaiConditionsAccepteesLe() == null) {
+            throw new IllegalStateException("Acceptation de l'essai incomplete dans la preuve " + a.id());
+        }
+        String attendue = "\n\n" + mentionEssai(new EssaiCabinetSource.AcceptationEssai(a.essaiConditionsVersion(),
+                a.essaiConditionsAccepteesLe())) + "\n";
+        int i = texte.indexOf(attendue);
+        if (i < 0 || texte.indexOf(attendue, i + 1) >= 0 || texte.indexOf(DEBUT_MENTION_ESSAI) != i + 2
+                || texte.lastIndexOf(DEBUT_MENTION_ESSAI) != i + 2) {
+            throw new IllegalStateException("Mention de l'essai du texte accepte discordante avec la preuve " + a.id());
+        }
     }
 
     public static String date(LocalDate d) {

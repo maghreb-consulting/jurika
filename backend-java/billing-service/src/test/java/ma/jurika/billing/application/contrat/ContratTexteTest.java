@@ -37,6 +37,12 @@ class ContratTexteTest {
     private static final String SOURCE = ContratPlanification.sourceInitiale();
     private static final String MODELE = ContratPlanification.modeleInitial();
     private static final UUID WS = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    static final java.util.Optional<EssaiCabinetSource.AcceptationEssai> SANS_ESSAI = java.util.Optional.empty();
+    /** Conditions de l'essai acceptees le 12 octobre 2026 a 10 h 32 41 s, heure de Casablanca (UTC+1). */
+    static final EssaiCabinetSource.AcceptationEssai ESSAI =
+            new EssaiCabinetSource.AcceptationEssai("D-V1", Instant.parse("2026-10-12T09:32:41Z"));
+    static final String MENTION_ESSAI = "Conditions d'utilisation de l'essai gratuit (version D-V1) "
+            + "accept\u00e9es le 12 octobre 2026 \u00e0 10 h 32 (heure de Casablanca).";
 
     static ContratDepot.Conditions conditions(String rythme, String prix, String mode) {
         return new ContratDepot.Conditions(UUID.fromString("22222222-2222-2222-2222-222222222222"), WS, "CP-2026-000001",
@@ -122,7 +128,7 @@ class ContratTexteTest {
     @Test
     void les_variables_de_l_editeur_viennent_des_parametres_de_l_editeur_colonne_par_colonne() {
         ContratRedaction.Redaction r = ContratRedaction.rediger(MODELE, "1", conditions("ANNUEL", "7500", "CARTE"),
-                editeurComplet(), cabinet(), new ContratRedaction.Signataire("Mme", "g\u00e9rante", "SARL", "Casablanca"));
+                editeurComplet(), cabinet(), new ContratRedaction.Signataire("Mme", "g\u00e9rante", "SARL", "Casablanca"), SANS_ESSAI);
         assertThat(r.texte()).contains(
                 "**Maghreb Consulting**, SARL au capital de 100 000 dirhams, dont le si\u00e8ge est \u00e0\n"
                         + "Tour Essai, boulevard d\u2019Essai, Rabat, immatricul\u00e9e au registre du commerce de Casablanca "
@@ -141,7 +147,7 @@ class ContratTexteTest {
         e.setRcTribunal(null);
         e.setRepresentantQualite(" ");
         ContratRedaction.Redaction r = ContratRedaction.rediger(MODELE, "1", conditions("ANNUEL", "7500", "CARTE"),
-                e, cabinet(), new ContratRedaction.Signataire("Mme", "g\u00e9rante", "SARL", "Casablanca"));
+                e, cabinet(), new ContratRedaction.Signataire("Mme", "g\u00e9rante", "SARL", "Casablanca"), SANS_ESSAI);
         assertThat(r.manquants()).containsExactly("ville du registre du commerce de l\u2019\u00c9diteur",
                 "qualit\u00e9 du repr\u00e9sentant de l\u2019\u00c9diteur");
         assertThat(r.texte()).contains("registre du commerce de [non renseign\u00e9 : ville du registre du commerce de "
@@ -155,9 +161,9 @@ class ContratTexteTest {
         EditeurParametresEntity vide = new EditeurParametresEntity();
         ContratRedaction.Signataire sig = new ContratRedaction.Signataire("Mme", "g\u00e9rante", null, null);
         ContratRedaction.Redaction r1 = ContratRedaction.rediger(MODELE, "1", conditions("MENSUEL", "750", null),
-                vide, cabinet(), sig);
+                vide, cabinet(), sig, SANS_ESSAI);
         ContratRedaction.Redaction r2 = ContratRedaction.rediger(MODELE, "1", conditions("MENSUEL", "750", null),
-                vide, cabinet(), sig);
+                vide, cabinet(), sig, SANS_ESSAI);
         assertThat(r1.texte()).isEqualTo(r2.texte());
         assertThat(r1.empreinte()).isEqualTo(r2.empreinte()).isEqualTo(ContratTexte.sha256(r1.texte()));
         assertThat(r1.texte()).doesNotContain("$");
@@ -174,7 +180,7 @@ class ContratTexteTest {
         assertThat(ContratTexte.paragrapheAcceptation(r1.texte())).contains(ContratTexte.A_COMPLETER);
         // Une donnee qui change change l'empreinte.
         ContratRedaction.Redaction r3 = ContratRedaction.rediger(MODELE, "1", conditions("MENSUEL", "750", "VIREMENT"),
-                vide, cabinet(), sig);
+                vide, cabinet(), sig, SANS_ESSAI);
         assertThat(r3.empreinte()).isNotEqualTo(r1.empreinte());
         assertThat(r3.texte()).contains("| Mode de paiement choisi | virement bancaire |");
     }
@@ -182,12 +188,13 @@ class ContratTexteTest {
     @Test
     void exemplaire_pdf_a_la_charte_avec_mention_de_l_acceptation() throws Exception {
         ContratRedaction.Redaction r = ContratRedaction.rediger(MODELE, "1", conditions("ANNUEL", "7500", "CARTE"),
-                editeurComplet(), cabinet(), new ContratRedaction.Signataire("Mme", "g\u00e9rante", "SARL", "Casablanca"));
+                editeurComplet(), cabinet(), new ContratRedaction.Signataire("Mme", "g\u00e9rante", "SARL", "Casablanca"), SANS_ESSAI);
         ContratDepot.Acceptation a = new ContratDepot.Acceptation(UUID.randomUUID(), WS,
                 conditions("ANNUEL", "7500", "CARTE").id(), UUID.randomUUID(), "1", ContratService.OBJET_CP,
                 r.texte(), r.empreinte(), "c".repeat(64), "d".repeat(64), UUID.randomUUID(), "salma.bennani@jurika.ma",
                 "Mme", "Bennani", "Salma", "g\u00e9rante", "SUPERVISEUR", "Cabinet Atlas Conseil", "contact@atlas.ma",
-                "SARL", "Casablanca", Instant.parse("2026-10-14T09:32:05Z"), "2026-10-14 10:32:05", "196.200.1.2", null);
+                "SARL", "Casablanca", Instant.parse("2026-10-14T09:32:05Z"), "2026-10-14 10:32:05", "196.200.1.2", null,
+                null, null);
         String texte = ContratRedaction.exemplaire(MODELE, a);
         assertThat(texte).doesNotContain(ContratTexte.A_COMPLETER).doesNotContain("[").doesNotContain("$")
                 .contains("accept\u00e9 en ligne le 14 octobre 2026 \u00e0\n10:32:05 (heure de Casablanca)",
@@ -219,5 +226,88 @@ class ContratTexteTest {
                 ImageIO.write(img, "png", dossier.resolve("exemplaire-page-" + (p + 1) + ".png").toFile());
             }
         }
+    }
+
+    // -- Lot L7 (E13) : mention de l'acceptation des conditions de l'essai --------------------
+
+    private static ContratRedaction.Redaction redaction(java.util.Optional<EssaiCabinetSource.AcceptationEssai> essai) {
+        return ContratRedaction.rediger(MODELE, "1", conditions("ANNUEL", "7500", "CARTE"), editeurComplet(), cabinet(),
+                new ContratRedaction.Signataire("Mme", "g\u00e9rante", "SARL", "Casablanca"), essai);
+    }
+
+    private static ContratDepot.Acceptation acceptation(ContratRedaction.Redaction r, String essaiVersion,
+                                                        Instant essaiLe) {
+        return new ContratDepot.Acceptation(UUID.fromString("44444444-4444-4444-4444-444444444444"), WS,
+                conditions("ANNUEL", "7500", "CARTE").id(), UUID.randomUUID(), "1", ContratService.OBJET_CP,
+                r.texte(), r.empreinte(), "c".repeat(64), "d".repeat(64), UUID.randomUUID(), "salma.bennani@jurika.ma",
+                "Mme", "Bennani", "Salma", "g\u00e9rante", "SUPERVISEUR", "Cabinet Atlas Conseil", "contact@atlas.ma",
+                "SARL", "Casablanca", Instant.parse("2026-10-14T09:32:05Z"), "2026-10-14 10:32:05", "196.200.1.2", null,
+                essaiVersion, essaiLe);
+    }
+
+    @Test
+    void cabinet_avec_essai_mention_datee_apres_le_paragraphe_d_acceptation_et_hachee() {
+        ContratRedaction.Redaction sans = redaction(SANS_ESSAI);
+        ContratRedaction.Redaction avec = redaction(java.util.Optional.of(ESSAI));
+        // La mention suit le paragraphe d'acceptation des conditions particulieres, avant la piece B.
+        String p = ContratTexte.paragrapheAcceptation(avec.texte());
+        assertThat(avec.texte()).contains(p + "\n\n" + MENTION_ESSAI + "\n\n# B. Conditions g\u00e9n\u00e9rales");
+        // Elle entre dans le texte hache : l'empreinte differe de celle du texte sans essai.
+        assertThat(avec.empreinte()).isEqualTo(ContratTexte.sha256(avec.texte())).isNotEqualTo(sans.empreinte());
+        // Le reste du texte est inchange : seule la mention est ajoutee.
+        assertThat(avec.texte().replace("\n\n" + MENTION_ESSAI, "")).isEqualTo(sans.texte());
+        // Premier du mois : "1er", minuit et quart a Casablanca.
+        ContratRedaction.Redaction premier = redaction(java.util.Optional.of(
+                new EssaiCabinetSource.AcceptationEssai("D-V1", Instant.parse("2026-10-31T23:05:00Z"))));
+        assertThat(premier.texte()).contains("accept\u00e9es le 1er novembre 2026 \u00e0 0 h 05 (heure de Casablanca).");
+    }
+
+    @Test
+    void cabinet_sans_essai_aucune_mention() {
+        ContratRedaction.Redaction sans = redaction(SANS_ESSAI);
+        assertThat(sans.texte()).doesNotContain("essai gratuit (version").doesNotContain("Conditions d'utilisation de l'essai gratuit (");
+        String ex = ContratRedaction.exemplaire(MODELE, acceptation(sans, null, null));
+        assertThat(ex).doesNotContain("essai gratuit (version");
+    }
+
+    @Test
+    void exemplaire_avec_essai_regenere_a_l_identique_depuis_la_preuve() throws Exception {
+        ContratRedaction.Redaction r = redaction(java.util.Optional.of(ESSAI));
+        ContratDepot.Acceptation a = acceptation(r, "D-V1", ESSAI.accepteesLe());
+        String texte = ContratRedaction.exemplaire(MODELE, a);
+        assertThat(texte).contains("Empreinte du texte accept\u00e9 :\n" + r.empreinte() + ".\n\n" + MENTION_ESSAI + "\n\n# B.");
+        assertThat(ContratRedaction.exemplaire(MODELE, a)).isEqualTo(texte);
+        ContratPdf.Entete entete = new ContratPdf.Entete("Cabinet Atlas Conseil", "CP-2026-000001", "1",
+                LocalDate.of(2026, 10, 14), List.of());
+        byte[] pdf = ContratPdf.generer(texte, entete);
+        assertThat(ContratPdf.generer(ContratRedaction.exemplaire(MODELE, a), entete)).isEqualTo(pdf);
+        Path dossier = Path.of("target", "contrat");
+        Files.createDirectories(dossier);
+        Files.write(dossier.resolve("exemplaire-essai.pdf"), pdf);
+        try (PDDocument doc = Loader.loadPDF(pdf)) {
+            String extrait = new PDFTextStripper().getText(doc).replace('\u2019', '\'').replaceAll("\\s+", " ");
+            assertThat(extrait).contains(MENTION_ESSAI);
+            PDFRenderer rendu = new PDFRenderer(doc);
+            for (int p = 0; p < 2; p++) {
+                ImageIO.write(rendu.renderImageWithDPI(p, 80), "png",
+                        dossier.resolve("exemplaire-essai-page-" + (p + 1) + ".png").toFile());
+            }
+        }
+    }
+
+    @Test
+    void preuve_et_texte_accepte_discordants_exemplaire_refuse() {
+        ContratRedaction.Redaction avec = redaction(java.util.Optional.of(ESSAI));
+        ContratRedaction.Redaction sans = redaction(SANS_ESSAI);
+        // Essai fige dans la preuve, mention absente du texte accepte.
+        assertThatThrownBy(() -> ContratRedaction.exemplaire(MODELE, acceptation(sans, "D-V1", ESSAI.accepteesLe())))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("essai");
+        // Mention dans le texte accepte, aucun essai fige dans la preuve.
+        assertThatThrownBy(() -> ContratRedaction.exemplaire(MODELE, acceptation(avec, null, null)))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("essai");
+        // Date figee differente de celle du texte.
+        assertThatThrownBy(() -> ContratRedaction.exemplaire(MODELE,
+                acceptation(avec, "D-V1", Instant.parse("2026-10-13T09:32:41Z"))))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("essai");
     }
 }

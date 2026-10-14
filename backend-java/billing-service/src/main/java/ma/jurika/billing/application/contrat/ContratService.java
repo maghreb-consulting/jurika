@@ -148,6 +148,7 @@ public class ContratService implements ContratAbonnementPort {
     private final ContratDepot depot;
     private final EditeurParametresService editeur;
     private final IdentiteCabinetSource identites;
+    private final EssaiCabinetSource essais;
     private final ContratCourriel courriel;
     private final ContratHorloge horloge;
     private final ApplicationEventPublisher evenements;
@@ -155,12 +156,14 @@ public class ContratService implements ContratAbonnementPort {
     private final TransactionTemplate tx;
 
     public ContratService(ContratDepot depot, EditeurParametresService editeur, IdentiteCabinetSource identites,
+                          EssaiCabinetSource essais,
                           ContratCourriel courriel, ContratHorloge horloge, ApplicationEventPublisher evenements,
                           BillingProperties props,
                           PlatformTransactionManager transactionManager) {
         this.depot = depot;
         this.editeur = editeur;
         this.identites = identites;
+        this.essais = essais;
         this.courriel = courriel;
         this.horloge = horloge;
         this.evenements = evenements;
@@ -256,10 +259,12 @@ public class ContratService implements ContratAbonnementPort {
     /** Texte a lire avant l'acceptation, avec son empreinte et les mentions manquantes. */
     public Apercu apercu(UUID workspaceId, Requerant r, CommandeAcceptation c) {
         IdentiteCabinetSource.Identite identite = identites.lire(r.jeton());
+        // L7 E13 : conditions de l essai du cabinet (mention du contrat) ; auth injoignable = refus nomme.
+        Optional<EssaiCabinetSource.AcceptationEssai> essai = essais.lire(r.jeton());
         return tx.execute(s -> {
             AAccepter a = aAccepter(workspaceId);
             ContratRedaction.Redaction red = ContratRedaction.rediger(a.version().texteModele(), a.version().code(),
-                    a.conditions(), editeur.identite(), identite, signataire(c));
+                    a.conditions(), editeur.identite(), identite, signataire(c), essai);
             return new Apercu(a.objet(), ConditionsVue.de(a.conditions()), a.version().code(), red.texte(),
                     red.empreinte(), red.manquants());
         });
@@ -290,6 +295,8 @@ public class ContratService implements ContratAbonnementPort {
             throw new IllegalStateException("Adresse IP de l'acceptation absente");
         }
         IdentiteCabinetSource.Identite identite = identites.lire(r.jeton());
+        // L7 E13 : lue AVANT toute ecriture ; auth injoignable = refus nomme (jamais une mention omise).
+        Optional<EssaiCabinetSource.AcceptationEssai> essai = essais.lire(r.jeton());
         List<String> signataireManquant = new ArrayList<>();
         if (blanc(identite.signataireNom())) signataireManquant.add("nom du signataire");
         if (blanc(identite.signatairePrenom())) signataireManquant.add("pr\u00e9nom du signataire");
@@ -301,7 +308,7 @@ public class ContratService implements ContratAbonnementPort {
         Acceptation enregistree = sansDoublon(() -> tx.execute(s -> {
             AAccepter a = aAccepter(workspaceId);
             ContratRedaction.Redaction red = ContratRedaction.rediger(a.version().texteModele(), a.version().code(),
-                    a.conditions(), editeur.identite(), identite, signataire(c));
+                    a.conditions(), editeur.identite(), identite, signataire(c), essai);
             if (c.empreinteLue() == null || !c.empreinteLue().equals(red.empreinte())) {
                 throw ContratException.conflit("TEXTE_MODIFIE",
                         "Le texte du contrat a chang\u00e9 depuis votre lecture : relisez-le avant de l\u2019accepter.");
@@ -315,7 +322,10 @@ public class ContratService implements ContratAbonnementPort {
                     identite.denomination() != null ? identite.denomination()
                             : String.format(ContratRedaction.NON_RENSEIGNE, "d\u00e9nomination du Cabinet"),
                     identite.email(), propre(c.formeCabinet()), propre(c.rcVilleCabinet()), le, casablanca,
-                    r.adresseIp(), r.chaineIp());
+                    r.adresseIp(), r.chaineIp(),
+                    // L7 E13 : figees dans la preuve, comme la mention dans le texte accepte.
+                    essai.map(EssaiCabinetSource.AcceptationEssai::version).orElse(null),
+                    essai.map(EssaiCabinetSource.AcceptationEssai::accepteesLe).orElse(null));
             if (OBJET_CP.equals(a.objet())) {
                 depot.conditionsParStatut(workspaceId, "ACCEPTE").ifPresent(ancienne ->
                         depot.changerStatut(workspaceId, ancienne.id(), "ACCEPTE", "REMPLACE", le));

@@ -51,7 +51,10 @@ public class ContratDepot {
                               String signataireRole, String cabinetDenomination, String cabinetEmail,
                               String cabinetForme, String cabinetRcVille,
                               Instant accepteLe, String accepteLeCasablanca, String adresseIp,
-                              String chaineIp) {}
+                              String chaineIp,
+                              // L7 E13 (billing V17) : conditions de l'essai acceptees par le cabinet, figees a
+                              // l'acceptation ; nulles sans essai et pour les acceptations anterieures.
+                              String essaiConditionsVersion, Instant essaiConditionsAccepteesLe) {}
 
     public record Resiliation(UUID id, UUID workspaceId, UUID conditionsId, UUID demandeePar,
                               String demandeurRole, LocalDate dateEffet, String motif,
@@ -225,7 +228,8 @@ public class ContratDepot {
     private static final String ACC_COLS = "id, workspace_id, conditions_id, version_id, version_code, objet, texte_accepte, "
             + "empreinte_contrat, empreinte_cg, empreinte_dpa, signataire_user_id, signataire_compte, signataire_civilite, "
             + "signataire_nom, signataire_prenom, signataire_qualite, signataire_role, cabinet_denomination, cabinet_email, "
-            + "cabinet_forme, cabinet_rc_ville, accepte_le, accepte_le_casablanca, adresse_ip, chaine_ip";
+            + "cabinet_forme, cabinet_rc_ville, accepte_le, accepte_le_casablanca, adresse_ip, chaine_ip, "
+            + "essai_conditions_version, essai_conditions_acceptees_le";
 
     private static final RowMapper<Acceptation> ACC = (rs, i) -> new Acceptation(
             rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getObject(3, UUID.class),
@@ -233,21 +237,23 @@ public class ContratDepot {
             rs.getString(9).trim(), rs.getString(10).trim(), rs.getObject(11, UUID.class), rs.getString(12),
             rs.getString(13), rs.getString(14), rs.getString(15), rs.getString(16), rs.getString(17),
             rs.getString(18), rs.getString(19), rs.getString(20), rs.getString(21), instant(rs, 22), rs.getString(23),
-            rs.getString(24), rs.getString(25));
+            rs.getString(24), rs.getString(25), rs.getString(26), instant(rs, 27));
 
     public UUID insererAcceptation(Acceptation a) {
         return jdbc.queryForObject("INSERT INTO contrat_acceptations (workspace_id, conditions_id, version_id, version_code, "
                         + "objet, texte_accepte, empreinte_contrat, empreinte_cg, empreinte_dpa, signataire_user_id, "
                         + "signataire_compte, signataire_civilite, signataire_nom, signataire_prenom, signataire_qualite, "
                         + "signataire_role, cabinet_denomination, cabinet_email, cabinet_forme, cabinet_rc_ville, accepte_le, "
-                        + "accepte_le_casablanca, adresse_ip, chaine_ip) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                        + "accepte_le_casablanca, adresse_ip, chaine_ip, essai_conditions_version, essai_conditions_acceptees_le) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
                         + "RETURNING id",
                 UUID.class, a.workspaceId(), a.conditionsId(), a.versionId(), a.versionCode(), a.objet(),
                 a.texteAccepte(), a.empreinteContrat(), a.empreinteCg(), a.empreinteDpa(), a.signataireUserId(),
                 a.signataireCompte(), a.signataireCivilite(), a.signataireNom(), a.signatairePrenom(),
                 a.signataireQualite(), a.signataireRole(), a.cabinetDenomination(), a.cabinetEmail(),
-                a.cabinetForme(), a.cabinetRcVille(), Timestamp.from(a.accepteLe()), a.accepteLeCasablanca(), a.adresseIp(), a.chaineIp());
+                a.cabinetForme(), a.cabinetRcVille(), Timestamp.from(a.accepteLe()), a.accepteLeCasablanca(), a.adresseIp(), a.chaineIp(),
+                a.essaiConditionsVersion(),
+                a.essaiConditionsAccepteesLe() == null ? null : Timestamp.from(a.essaiConditionsAccepteesLe()));
     }
 
     public Optional<Acceptation> acceptation(UUID workspaceId, UUID id) {

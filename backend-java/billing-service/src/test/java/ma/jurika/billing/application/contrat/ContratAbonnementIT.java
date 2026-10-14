@@ -60,6 +60,9 @@ class ContratAbonnementIT {
     private final List<Object> evenements = new ArrayList<>();
     private final List<String[]> courriels = new ArrayList<>();
     private EditeurParametresEntity editeur;
+    /** Reponse d auth sur l essai du cabinet (L7 E13) : aucun essai par defaut. */
+    private final java.util.concurrent.atomic.AtomicReference<java.util.function.Supplier<java.util.Optional<EssaiCabinetSource.AcceptationEssai>>> essai =
+            new java.util.concurrent.atomic.AtomicReference<>(java.util.Optional::empty);
 
     @BeforeAll
     void demarrer() {
@@ -91,7 +94,8 @@ class ContratAbonnementIT {
         IdentiteCabinetSource identites = jeton -> new IdentiteCabinetSource.Identite("Cabinet Atlas Conseil",
                 "12 boulevard d\u2019Anfa, Casablanca", "123456", "001234567000089", "contact@atlas.ma",
                 "Bennani", "Salma", "salma.bennani@jurika.ma");
-        service = new ContratService(new ContratDepot(jdbc), editeurService, identites, courriel, horloge,
+        service = new ContratService(new ContratDepot(jdbc), editeurService, identites, jeton -> essai.get().get(),
+                courriel, horloge,
                 evenements::add, proprietes(), new DataSourceTransactionManager(proprietaire));
         service.initialiserVersionInitiale(ContratPlanification.VERSION_INITIALE, ContratPlanification.sourceInitiale());
     }
@@ -101,6 +105,7 @@ class ContratAbonnementIT {
         horloge.regler(Clock.fixed(Instant.parse("2026-10-14T09:30:00Z"), ZoneOffset.UTC));
         evenements.clear();
         courriels.clear();
+        essai.set(java.util.Optional::empty);
     }
 
     @AfterAll
@@ -539,6 +544,80 @@ class ContratAbonnementIT {
                 return ex.getSQLState();
             }
         }
+    }
+
+    // -- Lot L7 (E13) : mention de l'acceptation des conditions de l'essai --------------------
+
+    @Test
+    void cabinet_avec_essai_mention_figee_dans_la_preuve_et_exemplaire_regenere_a_l_identique() throws Exception {
+        UUID ws = UUID.randomUUID();
+        ouvrir(ws, "PROFESSIONNEL", "ANNUEL", "7500");
+        essai.set(() -> java.util.Optional.of(ContratTexteTest.ESSAI));
+        ContratService.Apercu apercu = service.apercu(ws, superviseur(UUID.randomUUID()), commande(null, false, false));
+        assertThat(apercu.texte()).contains(ContratTexteTest.MENTION_ESSAI);
+        ContratService.AcceptationVue acc = service.accepter(ws, superviseur(UUID.randomUUID()),
+                commande(apercu.empreinte(), true, true));
+        Map<String, Object> preuve = jdbc.queryForMap("SELECT * FROM contrat_acceptations WHERE id = ?", acc.id());
+        assertThat(preuve.get("essai_conditions_version")).isEqualTo("D-V1");
+        assertThat(((java.sql.Timestamp) preuve.get("essai_conditions_acceptees_le")).toInstant())
+                .isEqualTo(ContratTexteTest.ESSAI.accepteesLe());
+        assertThat(preuve.get("texte_accepte").toString()).contains(ContratTexteTest.MENTION_ESSAI);
+        assertThat(preuve.get("empreinte_contrat").toString().trim()).isEqualTo(apercu.empreinte());
+
+        // Regeneration depuis la preuve seule : auth n'est plus interroge (injoignable ici).
+        essai.set(() -> { throw new AssertionError("auth ne doit pas etre lu pour l'exemplaire"); });
+        ContratService.Exemplaire ex = service.exemplaire(ws, acc.id(), false);
+        assertThat(service.exemplaire(ws, acc.id(), false).pdf()).isEqualTo(ex.pdf());
+        try (org.apache.pdfbox.pdmodel.PDDocument doc = org.apache.pdfbox.Loader.loadPDF(ex.pdf())) {
+            String extrait = new org.apache.pdfbox.text.PDFTextStripper().getText(doc).replace('\u2019', '\'')
+                    .replaceAll("\\s+", " ");
+            assertThat(extrait).contains(ContratTexteTest.MENTION_ESSAI);
+        }
+        // La colonne nouvelle reste sous les declencheurs d'inalterabilite.
+        assertThatThrownBy(() -> jdbc.update(
+                "UPDATE contrat_acceptations SET essai_conditions_version = 'D-V2' WHERE id = ?", acc.id()))
+                .rootCause().hasMessageContaining("inalterable");
+    }
+
+    @Test
+    void cabinet_sans_essai_aucune_mention_et_colonnes_vides() {
+        UUID ws = UUID.randomUUID();
+        ouvrir(ws, "PROFESSIONNEL", "ANNUEL", "7500");
+        ContratService.AcceptationVue acc = accepter(ws, UUID.randomUUID());
+        Map<String, Object> preuve = jdbc.queryForMap("SELECT * FROM contrat_acceptations WHERE id = ?", acc.id());
+        assertThat(preuve.get("essai_conditions_version")).isNull();
+        assertThat(preuve.get("essai_conditions_acceptees_le")).isNull();
+        assertThat(preuve.get("texte_accepte").toString()).doesNotContain("essai gratuit (version");
+    }
+
+    @Test
+    void auth_injoignable_acceptation_refusee_rien_n_est_enregistre() {
+        UUID ws = UUID.randomUUID();
+        ouvrir(ws, "PROFESSIONNEL", "ANNUEL", "7500");
+        ContratService.Apercu apercu = service.apercu(ws, superviseur(UUID.randomUUID()), commande(null, false, false));
+        ContratException injoignable = EssaiCabinetAuth.indisponible();
+        essai.set(() -> { throw injoignable; });
+        assertThatThrownBy(() -> service.accepter(ws, superviseur(UUID.randomUUID()),
+                commande(apercu.empreinte(), true, true)))
+                .isInstanceOf(ContratException.class)
+                .satisfies(e -> assertThat(((ContratException) e).code()).isEqualTo("ESSAI_INDISPONIBLE"))
+                .satisfies(e -> assertThat(((ContratException) e).statut()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+        assertThatThrownBy(() -> service.apercu(ws, superviseur(UUID.randomUUID()), commande(null, false, false)))
+                .isInstanceOf(ContratException.class);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM contrat_acceptations WHERE workspace_id = ?", Integer.class, ws))
+                .isZero();
+        assertThat(service.acceptationEnAttente(ws)).isTrue();
+    }
+
+    @Test
+    void essai_annonce_apres_lecture_sans_essai_le_texte_change_et_doit_etre_relu() {
+        UUID ws = UUID.randomUUID();
+        ouvrir(ws, "PROFESSIONNEL", "ANNUEL", "7500");
+        ContratService.Apercu apercu = service.apercu(ws, superviseur(UUID.randomUUID()), commande(null, false, false));
+        essai.set(() -> java.util.Optional.of(ContratTexteTest.ESSAI));
+        assertThatThrownBy(() -> service.accepter(ws, superviseur(UUID.randomUUID()),
+                commande(apercu.empreinte(), true, true)))
+                .isInstanceOf(ContratException.class).hasMessageContaining("relisez");
     }
 
     private static BillingProperties proprietes() {
