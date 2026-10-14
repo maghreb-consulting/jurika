@@ -498,6 +498,10 @@ class FacturationParcoursIT {
             assertThat(a.statut()).isEqualTo("SUSPENDU");
             assertThat(a.journalImpaye()).extracting(e -> e.evenement()).contains("RAPPEL_ENVOYE", "SUSPENSION");
         });
+        // Pendant la suspension, le forfait ne se change pas (l'ecran le masque, le serveur le refuse).
+        assertThatThrownBy(() -> paiements.changer(ws, ADMIN, new ChangementForfaitRequest("professionnel", null, null)))
+                .isInstanceOfSatisfying(ma.jurika.common.exception.BusinessException.class,
+                        e -> assertThat(e.code()).isEqualTo("WORKSPACE_SUSPENDU"));
 
         // Paiement constate (enregistre par le super-admin) : acces retabli, etat exact.
         PaiementVue p = paiements.enregistrer(new EnregistrementPaiementRequest(ws, "ECHEANCE", null, null, "CASH",

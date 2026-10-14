@@ -214,6 +214,12 @@ public class AbonnementService {
     public Changement calculerChangement(UUID workspaceId, String forfaitVise, String rythmeVise) {
         SubscriptionEntity s = actif(workspaceId).orElseThrow(() -> new BusinessException("ABONNEMENT_ABSENT",
                 "Aucun abonnement actif : souscrivez d\u2019abord un forfait."));
+        // Lot L7 (E8) : suspendu pour impaye (art. 4.4), le forfait ne se change pas avant le paiement.
+        if (s.getSuspenduLe() != null) {
+            throw new BusinessException("WORKSPACE_SUSPENDU",
+                    "L\u2019acc\u00e8s est suspendu pour impay\u00e9 : r\u00e9glez d\u2019abord l\u2019\u00e9ch\u00e9ance ; "
+                            + "le forfait pourra ensuite \u00eatre chang\u00e9.");
+        }
         Plan depuis = PlanCatalog.exiger(s.getPlanCode());
         Plan vers = PlanCatalog.findByCode(forfaitVise)
                 .orElseThrow(() -> new IllegalArgumentException("Forfait inconnu : " + forfaitVise));
