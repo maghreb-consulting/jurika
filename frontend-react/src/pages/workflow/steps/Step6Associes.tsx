@@ -275,7 +275,8 @@ function newAssocie(): Associe {
     repAdresse: '',
     repDateNaissance: '',
     repLieuNaissance: '',
-    repNationalite: 'Marocaine',
+    // Lot L7 (E2) : proposee a l'ecran, confirmee par l'employe (plus de valeur d'office).
+    repNationalite: '',
     repPieceValidite: '',
     repQualite: 'Gérant',
     rcUploaded: false,
@@ -2302,17 +2303,25 @@ function MoraleAssocieForm({
               lecture seule dans la banniere "CIN captee" ci-dessus. */}
           {/* 2026-06-11 — Champs ajoutes : Nationalite, Date+Lieu naissance,
               CIN valable jusqu'au, Adresse (idem dirigeant MORALE). */}
-          <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Nationalité</label>
-            <input aria-label="Nationalité du représentant"
-              type="text"
-              value={a.repNationalite ?? ''}
-              disabled={ro}
-              onChange={(e) => onChange({ repNationalite: e.target.value })}
-              placeholder="Marocaine"
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
+          {ro ? (
+            <div>
+              <label className="mb-1 block text-xs text-fg-subtle">Nationalité</label>
+              <input aria-label="Nationalité du représentant"
+                type="text"
+                value={a.repNationalite ?? ''}
+                disabled
+                className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
+              />
+            </div>
+          ) : (
+            <ValeurProposee
+              id={`associe-rep-nationalite-${a.id}`}
+              label="Nationalité du représentant"
+              proposition="marocaine"
+              valeur={a.repNationalite || undefined}
+              onChange={(v) => onChange({ repNationalite: v })}
             />
-          </div>
+          )}
           <div>
             <label className="mb-1 block text-xs text-fg-subtle">Date de naissance</label>
             <input aria-label="Date de naissance du représentant"
