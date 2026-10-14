@@ -84,6 +84,10 @@ public class SubscriptionEntity {
     void onUpdate() { this.updatedAt = Instant.now(); }
 
     /** Pose la periode payee (dates et instants historiques). */
+    /** Lot L7 : resiliation enregistree (RG-CTR-08) : archivage a la fin de la periode, sans renouvellement. */
+    public boolean isCancelAtPeriodEnd() { return cancelAtPeriodEnd; }
+    public void setCancelAtPeriodEnd(boolean v) { this.cancelAtPeriodEnd = v; }
+
     public void periode(LocalDate debut, LocalDate fin) {
         this.periodeDebut = debut;
         this.periodeFin = fin;

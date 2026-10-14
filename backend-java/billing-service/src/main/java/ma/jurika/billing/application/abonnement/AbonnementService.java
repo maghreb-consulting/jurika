@@ -481,7 +481,8 @@ public class AbonnementService {
                     SubscriptionEntity s = abonnements.verrouillerActif(e.getWorkspaceId()).orElse(null);
                     if (s == null || s.getPeriodeFin().isAfter(limite)) return;
                     boolean finAnnee = !s.getPeriodeFin().isBefore(s.getEngagementFin() == null ? s.getPeriodeFin() : s.getEngagementFin());
-                    String motif = finAnnee ? "FIN_ABONNEMENT" : "IMPAYE";
+                    // Lot L7 : resiliation (RG-CTR-08) a sa date d'effet ; sinon fin d'annee ou impaye.
+                    String motif = s.isCancelAtPeriodEnd() ? "RESILIATION" : (finAnnee ? "FIN_ABONNEMENT" : "IMPAYE");
                     s.setStatus("IMPAYE".equals(motif) ? "unpaid" : "cancelled");
                     s.setArchiveMotif(motif);
                     s.setCancelledAt(Instant.now(horloge));

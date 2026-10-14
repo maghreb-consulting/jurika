@@ -2,9 +2,8 @@ package ma.jurika.billing.application.contrat;
 
 import com.zaxxer.hikari.HikariDataSource;
 import ma.jurika.billing.application.editeur.EditeurParametresService;
-import ma.jurika.billing.application.workspace.WorkspaceStatusUpdater;
 import ma.jurika.billing.infrastructure.persistence.EditeurParametresEntity;
-import ma.jurika.billing.infrastructure.stripe.BillingProperties;
+import ma.jurika.billing.infrastructure.config.BillingProperties;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -60,7 +59,6 @@ class ContratAbonnementIT {
     private ContratHorloge horloge;
     private final List<Object> evenements = new ArrayList<>();
     private final List<String[]> courriels = new ArrayList<>();
-    private WorkspaceStatusUpdater statut;
     private EditeurParametresEntity editeur;
 
     @BeforeAll
@@ -79,7 +77,6 @@ class ContratAbonnementIT {
         jdbc = new JdbcTemplate(proprietaire);
 
         horloge = new ContratHorloge();
-        statut = mock(WorkspaceStatusUpdater.class);
         editeur = new EditeurParametresEntity();
         EditeurParametresService editeurService = mock(EditeurParametresService.class);
         when(editeurService.identite()).thenAnswer(i -> editeur);
@@ -95,7 +92,7 @@ class ContratAbonnementIT {
                 "12 boulevard d\u2019Anfa, Casablanca", "123456", "001234567000089", "contact@atlas.ma",
                 "Bennani", "Salma", "salma.bennani@jurika.ma");
         service = new ContratService(new ContratDepot(jdbc), editeurService, identites, courriel, horloge,
-                evenements::add, statut, new BillingProperties(), new DataSourceTransactionManager(proprietaire));
+                evenements::add, new BillingProperties(), new DataSourceTransactionManager(proprietaire));
         service.initialiserSiVide(ContratPlanification.VERSION_INITIALE, MODELE);
     }
 
@@ -219,7 +216,9 @@ class ContratAbonnementIT {
                 .isInstanceOf(ContratException.class).hasMessageContaining("motif");
         ContratService.ResiliationVue res = service.resilierParCabinet(ws, user, "Cessation d\u2019activit\u00e9");
         assertThat(res.dateEffet()).isEqualTo(LocalDate.of(2027, 11, 1));
-        verify(statut).markCancelled(eq(ws), eq(Instant.parse("2027-10-31T23:00:00Z")));
+        // Arret du forfait : signale a l'abonnement par l'evenement (ResiliationAbonnementListener).
+        assertThat(evenements).last().isInstanceOfSatisfying(ContratEvenements.ResiliationEnregistree.class,
+                ev -> assertThat(ev.dateEffet()).isEqualTo(LocalDate.of(2027, 11, 1)));
         assertThat(evenements).last().isInstanceOf(ContratEvenements.ResiliationEnregistree.class);
         assertThat(service.etat(ws).statut()).isEqualTo("RESILIE");
         // Rien n'est supprime.

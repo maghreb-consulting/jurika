@@ -4,9 +4,8 @@ import ma.jurika.billing.application.contrat.ContratDepot.Acceptation;
 import ma.jurika.billing.application.contrat.ContratDepot.Conditions;
 import ma.jurika.billing.application.contrat.ContratDepot.Version;
 import ma.jurika.billing.application.editeur.EditeurParametresService;
-import ma.jurika.billing.application.workspace.WorkspaceStatusUpdater;
 import ma.jurika.billing.infrastructure.persistence.EditeurParametresEntity;
-import ma.jurika.billing.infrastructure.stripe.BillingProperties;
+import ma.jurika.billing.infrastructure.config.BillingProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -132,13 +131,12 @@ public class ContratService implements ContratAbonnementPort {
     private final ContratCourriel courriel;
     private final ContratHorloge horloge;
     private final ApplicationEventPublisher evenements;
-    private final WorkspaceStatusUpdater statutWorkspace;
     private final BillingProperties props;
     private final TransactionTemplate tx;
 
     public ContratService(ContratDepot depot, EditeurParametresService editeur, IdentiteCabinetSource identites,
                           ContratCourriel courriel, ContratHorloge horloge, ApplicationEventPublisher evenements,
-                          WorkspaceStatusUpdater statutWorkspace, BillingProperties props,
+                          BillingProperties props,
                           PlatformTransactionManager transactionManager) {
         this.depot = depot;
         this.editeur = editeur;
@@ -146,7 +144,6 @@ public class ContratService implements ContratAbonnementPort {
         this.courriel = courriel;
         this.horloge = horloge;
         this.evenements = evenements;
-        this.statutWorkspace = statutWorkspace;
         this.props = props;
         this.tx = new TransactionTemplate(transactionManager);
     }
@@ -416,8 +413,8 @@ public class ContratService implements ContratAbonnementPort {
             return new ResiliationVue(cp.id(), role, effet, motif.trim(), le);
         });
         // Arret du forfait a la date d'effet : l'acces est conserve jusque-la, puis le workspace est
-        // archive (RG-TAR-07), jamais supprime.
-        statutWorkspace.markCancelled(workspaceId, vue.dateEffet().atStartOfDay(ContratHorloge.CASABLANCA).toInstant());
+        // archive (RG-TAR-07), jamais supprime. L'abonnement le fait sur cet evenement
+        // (ResiliationAbonnementListener : periode payee bornee, archivage planifie).
         evenements.publishEvent(new ContratEvenements.ResiliationEnregistree(workspaceId, vue.conditionsId(),
                 vue.dateEffet(), vue.motif(), role));
         log.info("Resiliation enregistree workspace={} par={} effet={}", workspaceId, role, vue.dateEffet());

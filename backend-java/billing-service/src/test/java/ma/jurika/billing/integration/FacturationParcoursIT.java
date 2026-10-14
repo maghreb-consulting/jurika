@@ -10,7 +10,7 @@ import ma.jurika.billing.api.dto.BillingDtos.ValidationPaiementRequest;
 import ma.jurika.billing.application.AdministrationFacturationService;
 import ma.jurika.billing.application.RefusNommeException;
 import ma.jurika.billing.application.cabinet.CabinetsPort;
-import ma.jurika.billing.application.contrat.ContratAbonnementPort;
+import ma.jurika.billing.application.contrat.ContratService;
 import ma.jurika.billing.application.paiement.PaiementService;
 import ma.jurika.billing.infrastructure.cmi.CmiSimulateurController;
 import ma.jurika.billing.infrastructure.cmi.CmiSpecification;
@@ -119,7 +119,9 @@ class FacturationParcoursIT {
     @Autowired AdministrationFacturationService admin;
 
     @MockBean CabinetsPort cabinets;
-    @MockBean ContratAbonnementPort contrat;
+    // Lot L7 (integration) : ContratService implemente ContratAbonnementPort ; le simuler lui-meme
+    // garde le port et les controleurs du contrat dans le contexte.
+    @MockBean ContratService contrat;
 
     static final UUID ADMIN = UUID.randomUUID();
     UUID ws;
