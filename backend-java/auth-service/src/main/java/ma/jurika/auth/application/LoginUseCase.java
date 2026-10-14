@@ -97,7 +97,9 @@ public class LoginUseCase {
     public Result execute(Command cmd) {
         Workspace workspace = workspaceRepository.findByCode(cmd.workspaceCode())
                 .orElseThrow(() -> new NotFoundException("Code workspace inconnu : v\u00e9rifiez le code de votre cabinet."));
-        if (!workspace.isActive()) {
+        // Lot L7 (E5), RG-TAR-07 et RG-TAR-09 : un workspace archive reste ouvert a son seul
+        // superviseur (controle apres le mot de passe, pour ne rien reveler du compte).
+        if (!workspace.isActive() && !workspace.isArchived()) {
             throw new UnauthorizedException("Ce workspace n\u2019est pas actif : adressez-vous au support JURIKA.");
         }
         TenantContext.set(workspace.id());
@@ -137,6 +139,12 @@ public class LoginUseCase {
                     cmd.ipAddress(), cmd.userAgent(), Map.of("attempts", attempts));
             businessMetrics.loginFailed(lockUntil != null ? "locked" : "bad_password");
             throw new UnauthorizedException("Identifiant ou mot de passe incorrect.");
+        }
+
+        if (!workspace.accepteConnexion(user.role())) {
+            throw new UnauthorizedException("WORKSPACE_ARCHIVE",
+                    "Ce cabinet est archiv\u00e9 : son forfait est arr\u00eat\u00e9. Seul le superviseur du cabinet peut se connecter "
+                            + "pour souscrire de nouveau ou exporter les donn\u00e9es ; rien n\u2019a \u00e9t\u00e9 supprim\u00e9.");
         }
 
         userRepository.resetFailedLogin(user.id());

@@ -60,12 +60,40 @@ class AlertesQuotaServiceTest {
         lenient().when(registre.cabinetsActifs()).thenReturn(List.of(WS));
         lenient().when(registre.superviseursActifs(WS)).thenReturn(List.of(SUP));
         lenient().when(registre.retenirSiNouvelle(any(), anyString(), anyString())).thenReturn(true);
+        lenient().when(registre.superAdminsActifs()).thenReturn(List.of(new AlertesQuotaRegistre.SuperAdmin(SA, WS_SA)));
+        lenient().when(registre.denominationCabinet(WS)).thenReturn("Cabinet Alpha");
+    }
+
+    static final UUID SA = UUID.randomUUID();
+    static final UUID WS_SA = UUID.randomUUID();
+
+    /** Lot L7 (E5), RG-PLN-02 : a 80 %, le super-admin est alerte aussi, dans son workspace. */
+    @Test
+    void a_80_pourcent_le_super_admin_est_alerte_dans_son_workspace() {
+        when(limites.snapshot(WS)).thenReturn(usage(1, 6, 40, 50, 0, 20));
+
+        AlertesQuotaService.Bilan bilan = service.detecter();
+
+        assertThat(bilan.notifications()).isEqualTo(2);
+        verify(notifier).notifyUser(eq(SA), eq(WS_SA), eq("QUOTA_CABINET_APPROCHANT"),
+                contains("Cabinet Alpha"), contains("40 dossiers sur 50"), eq("/admin/workspaces/" + WS), anyMap());
+    }
+
+    /** Lot L7 (E5), RG-PLN-01 : la cle de l'alerte est le mois d'abonnement, pas le mois civil. */
+    @Test
+    void la_periode_est_le_mois_d_abonnement() {
+        when(limites.snapshot(WS)).thenReturn(new UsageSnapshot("professionnel", "Professionnel", 0, 2, false,
+                45, 50, false, 0, 10, false, true,
+                java.time.LocalDate.of(2026, 9, 15), java.time.LocalDate.of(2026, 10, 15), true));
+        service.detecter();
+        verify(registre).retenirSiNouvelle(WS, "DOSSIERS", "2026-09");
     }
 
     private static UsageSnapshot usage(int users, int maxUsers, int dossiers, int maxDossiers,
                                        long octets, int maxGo) {
-        return new UsageSnapshot("business", "Business", users, maxUsers, maxUsers < 0,
-                dossiers, maxDossiers, maxDossiers < 0, octets, maxGo, maxGo < 0);
+        return new UsageSnapshot("professionnel", "Professionnel", users, maxUsers, maxUsers < 0,
+                dossiers, maxDossiers, maxDossiers < 0, octets, maxGo, maxGo < 0,
+                true, java.time.LocalDate.of(2026, 10, 1), java.time.LocalDate.of(2026, 11, 1), true);
     }
 
     @Test
@@ -79,10 +107,10 @@ class AlertesQuotaServiceTest {
 
         AlertesQuotaService.Bilan bilan = service.detecter();
 
-        assertThat(bilan.notifications()).isEqualTo(1);
+        assertThat(bilan.notifications()).isEqualTo(2);
         verify(registre).retenirSiNouvelle(WS, "DOSSIERS", "2026-10");
         verify(notifier).notifyUser(eq(SUP), eq(WS), eq("QUOTA_APPROCHANT"), eq("Quota de dossiers presque atteint"),
-                contains("80 dossiers sur 100 (forfait Business), soit 80 %"), eq("/app/billing/change-plan"), anyMap());
+                contains("80 dossiers sur 100 (forfait Professionnel), soit 80 %"), eq("/app/billing/change-plan"), anyMap());
     }
 
     @Test

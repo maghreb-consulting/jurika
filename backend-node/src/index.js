@@ -179,6 +179,10 @@ const NOTIFICATION_TYPES = [
   // quota du forfait approchant.
   'DEMANDE_CLIENT',
   'QUOTA_APPROCHANT',
+  // Lot L7 (E5), RG-PLN-02 et RG-PAY-02 : canal du super-admin (quota d'un
+  // cabinet a 80 %, paiement hors ligne a enregistrer).
+  'QUOTA_CABINET_APPROCHANT',
+  'PAIEMENT_A_ENREGISTRER',
 ];
 
 async function isTypeEnabled(userId, type) {
@@ -201,7 +205,7 @@ async function createNotification({ workspaceId, userId, type, title, message, a
   // Lot L5 (E9, RG-COM-08) : seuls un employe ou le superviseur DU cabinet de
   // la notification la recoivent dans l'application. Client (averti par
   // courriel, RG-COM-09), inconnu ou membre d'un autre cabinet : refus.
-  const controle = await messagerie.controlerDestinataireNotification(pgPool, workspaceId, userId);
+  const controle = await messagerie.controlerDestinataireNotification(pgPool, workspaceId, userId, type);
   if (!controle.ok) {
     const err = new Error(`Destinataire refusé (${controle.code})`);
     err.code = controle.code;
@@ -401,8 +405,11 @@ app.get('/api/v1/chat/conversations', async (req, res) => {
   const user = userFromToken(req);
   if (!user) return res.status(401).json({ error: 'Non authentifié' });
   // Lot L5 (E9, RG-COM-06) : messagerie reservee au superviseur et aux employes.
-  if (!messagerie.peutUtiliserMessagerie(messagerie.identiteDuJeton(user))) {
-    return res.status(403).json({ error: messagerie.MESSAGES_REFUS.ROLE_REFUSE, code: 'ROLE_REFUSE' });
+  // Lot L7 (E5, CDC 4.5) : et au forfait qui l'inclut, hors workspace archive.
+  const acces = await messagerie.controlerAccesMessagerie(pgPool, messagerie.identiteDuJeton(user))
+    .catch(() => ({ ok: false, code: 'ERREUR', message: 'La messagerie est momentanément indisponible.' }));
+  if (!acces.ok) {
+    return res.status(acces.code === 'ERREUR' ? 503 : 403).json({ error: acces.message, code: acces.code });
   }
   const wsId = user.wsid || user.workspace_id;
   const userId = user.uid || user.sub;
@@ -442,8 +449,11 @@ app.get('/api/v1/chat/conversations/:id/messages', async (req, res) => {
   const user = userFromToken(req);
   if (!user) return res.status(401).json({ error: 'Non authentifié' });
   // Lot L5 (E9, RG-COM-06) : messagerie reservee au superviseur et aux employes.
-  if (!messagerie.peutUtiliserMessagerie(messagerie.identiteDuJeton(user))) {
-    return res.status(403).json({ error: messagerie.MESSAGES_REFUS.ROLE_REFUSE, code: 'ROLE_REFUSE' });
+  // Lot L7 (E5, CDC 4.5) : et au forfait qui l'inclut, hors workspace archive.
+  const acces = await messagerie.controlerAccesMessagerie(pgPool, messagerie.identiteDuJeton(user))
+    .catch(() => ({ ok: false, code: 'ERREUR', message: 'La messagerie est momentanément indisponible.' }));
+  if (!acces.ok) {
+    return res.status(acces.code === 'ERREUR' ? 503 : 403).json({ error: acces.message, code: acces.code });
   }
   const userId = user.uid || user.sub;
   try {

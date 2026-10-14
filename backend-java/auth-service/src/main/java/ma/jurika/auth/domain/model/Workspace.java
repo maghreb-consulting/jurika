@@ -39,4 +39,19 @@ public final class Workspace {
     public boolean isActive() {
         return status == WorkspaceStatus.ACTIVE;
     }
+
+    /** Lot L7 (E5), RG-TAR-07 : workspace archive (forfait arrete, rien n'est supprime). */
+    public boolean isArchived() {
+        return status == WorkspaceStatus.ARCHIVED;
+    }
+
+    /**
+     * Lot L7 (E5), RG-TAR-07 et RG-TAR-09 : le compte de ce role peut-il ouvrir une session ? Workspace
+     * actif : oui. Workspace archive : le seul superviseur (export, demande de suppression, nouvelle
+     * souscription). Autre statut : non.
+     */
+    public boolean accepteConnexion(ma.jurika.common.security.Role role) {
+        if (isActive()) return true;
+        return isArchived() && role == ma.jurika.common.security.Role.SUPERVISEUR;
+    }
 }

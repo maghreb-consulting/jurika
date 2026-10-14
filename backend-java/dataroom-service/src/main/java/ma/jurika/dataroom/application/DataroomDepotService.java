@@ -87,8 +87,9 @@ public class DataroomDepotService {
         assertCanAccessDossier(dossierId, uploaderId, role);
         // Dossier ferme/liquide -> pas de depot.
         ensureDossierIsActive(dossierId);
-        // Quota de stockage : best-effort (warn), ne bloque pas le depot client.
-        warnIfQuotaExceeded(file.getSize());
+        // Lot L7 (E5), RG-PLN-04 : quota de stockage du forfait, l'ajout est bloque a 100 %
+        // (avant : simple journal, calcule sur une table d'abonnement que rien n'alimente).
+        verifierStockage(file.getSize());
 
         UUID ws = TenantContext.get();
         String safeName = (file.getOriginalFilename() == null ? "doc" : file.getOriginalFilename())
@@ -201,37 +202,23 @@ public class DataroomDepotService {
         archiveGuard.assertWritable(dossierId);
     }
 
-    /**
-     * Best-effort (RG-DC20 reinterprete) : log un warning si le workspace depasse
-     * son quota de stockage. Ne bloque PAS le depot client (contrairement au
-     * Dossier Comptable) -- le depot libre reste toujours possible.
-     */
-    private void warnIfQuotaExceeded(long incomingFileSize) {
+    // Lot L7 (E5), RG-PLN-04 : a 100 % du stockage du forfait, l'ajout de documents est bloque
+    // (402, message qui propose un changement de forfait) ; la consultation et le telechargement
+    // ne passent jamais par ce controle. Injection par mutateur : les tests unitaires qui
+    // construisent le service a la main n'ont pas de controle de forfait (comme
+    // jurika.plan-limits.enabled=false).
+    private org.springframework.beans.factory.ObjectProvider<ma.jurika.common.billing.PlanLimitsService> planLimits;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setPlanLimits(org.springframework.beans.factory.ObjectProvider<ma.jurika.common.billing.PlanLimitsService> planLimits) {
+        this.planLimits = planLimits;
+    }
+
+    private void verifierStockage(long octetsAjoutes) {
+        ma.jurika.common.billing.PlanLimitsService limites = planLimits == null ? null : planLimits.getIfAvailable();
         UUID ws = TenantContext.get();
-        if (ws == null) return;
-        try {
-            Number quotaMb = (Number) em.createNativeQuery("""
-                    SELECT s.storage_quota_mb
-                    FROM workspaces w
-                    JOIN subscriptions s ON s.id = w.subscription_id
-                    WHERE w.id = ?1
-                    """).setParameter(1, ws).getSingleResult();
-            Number usedBytes = (Number) em.createNativeQuery("""
-                    SELECT COALESCE(
-                      (SELECT COALESCE(SUM(size_bytes),0) FROM dataroom_depots
-                       WHERE workspace_id = ?1 AND deleted_at IS NULL), 0
-                    ) + COALESCE(
-                      (SELECT COALESCE(SUM(size_bytes),0) FROM dataroom_documents
-                       WHERE workspace_id = ?1), 0)
-                    """).setParameter(1, ws).getSingleResult();
-            long quotaBytes = quotaMb == null ? Long.MAX_VALUE : quotaMb.longValue() * 1024L * 1024L;
-            long used = usedBytes == null ? 0L : usedBytes.longValue();
-            if (used + incomingFileSize > quotaBytes) {
-                log.warn("Depot : quota stockage depasse pour workspace {} (quota={} Mo, utilise={} Mo) -- depot autorise (best-effort)",
-                        ws, quotaBytes / 1024 / 1024, used / 1024 / 1024);
-            }
-        } catch (Exception ex) {
-            log.debug("Depot : calcul quota impossible pour workspace {} : {}", ws, ex.getMessage());
+        if (limites != null && ws != null) {
+            limites.enforceStorageLimit(ws, octetsAjoutes);
         }
     }
 

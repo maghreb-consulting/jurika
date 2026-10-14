@@ -43,4 +43,16 @@ public class AlertesQuotaJdbc implements AlertesQuotaRegistre {
                 ORDER BY created_at
                 """, UUID.class, workspaceId);
     }
+
+    @Override
+    public List<SuperAdmin> superAdminsActifs() {
+        return jdbc.query("SELECT id, workspace_id FROM auth_super_admins_actifs()",
+                (rs, n) -> new SuperAdmin((UUID) rs.getObject("id"), (UUID) rs.getObject("workspace_id")));
+    }
+
+    @Override
+    public String denominationCabinet(UUID workspaceId) {
+        List<String> noms = jdbc.queryForList("SELECT name FROM workspaces WHERE id = ?", String.class, workspaceId);
+        return noms.isEmpty() ? null : noms.get(0);
+    }
 }

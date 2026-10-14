@@ -20,4 +20,13 @@ public interface AlertesQuotaRegistre {
 
     /** Superviseurs actifs du cabinet. */
     List<UUID> superviseursActifs(UUID workspaceId);
+
+    /** Lot L7 (E5), RG-PLN-02 : un super-admin actif et son workspace (canal d'alerte du super-admin). */
+    record SuperAdmin(UUID id, UUID workspaceId) {}
+
+    /** Super-admins actifs (fonction auth V44, hors workspace). */
+    List<SuperAdmin> superAdminsActifs();
+
+    /** Denomination du cabinet (message d'alerte du super-admin). Le workspace courant doit etre {@code workspaceId}. */
+    String denominationCabinet(UUID workspaceId);
 }

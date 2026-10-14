@@ -126,9 +126,9 @@ spring:
           predicates:
             - Path=/api/v1/test/**
         # Sprint 12 -- billing-service (port 8090). Routing /api/v1/billing/**
-        # vers le module billing-service. Note : /api/v1/billing/webhook/stripe
-        # est expose au gateway car Stripe doit pouvoir l'appeler — la securite
-        # est la signature HMAC verifiee dans le controller (RG-BL18).
+        # vers le module billing-service. Lot L7 : /api/v1/billing/cmi/** est expose
+        # car le CMI doit joindre le retour serveur (callback) -- la securite est la
+        # signature verifiee dans billing-service (RG-PAY-05). Stripe est retire.
         - id: billing-service
           uri: lb://billing-service
           predicates:

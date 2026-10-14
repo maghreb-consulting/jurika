@@ -33,9 +33,19 @@ import java.util.UUID;
 public class DashboardController {
 
     private final DashboardQueryService service;
+    private final org.springframework.beans.factory.ObjectProvider<ma.jurika.common.billing.PlanLimitsService> forfaits;
 
-    public DashboardController(DashboardQueryService service) {
+    public DashboardController(DashboardQueryService service,
+                               org.springframework.beans.factory.ObjectProvider<ma.jurika.common.billing.PlanLimitsService> forfaits) {
         this.service = service;
+        this.forfaits = forfaits;
+    }
+
+    /** Lot L7 (E5), CDC 4.5 : la fonction est-elle dans le forfait du cabinet courant ? */
+    private boolean fonction(ma.jurika.common.billing.FonctionForfait f) {
+        ma.jurika.common.billing.PlanLimitsService limites = forfaits.getIfAvailable();
+        UUID ws = TenantContext.get();
+        return limites == null || ws == null || limites.fonctionIncluse(ws, f);
     }
 
     @GetMapping("/super-admin")
@@ -51,7 +61,10 @@ public class DashboardController {
     @PreAuthorize("hasAnyAuthority('ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
     @Operation(summary = "Vue SUPERVISEUR pour le workspace courant (RG-DASH-01)")
     public SuperviseurDashboardDto superviseur() {
-        return service.loadSuperviseur();
+        SuperviseurDashboardDto dto = service.loadSuperviseur();
+        // Lot L7 (E5), CDC 4.5 : tableaux de bord de productivite, forfaits Max et Sur Devis.
+        return fonction(ma.jurika.common.billing.FonctionForfait.TABLEAUX_DE_BORD_PRODUCTIVITE)
+                ? dto.avecProductivite() : dto.sansProductivite();
     }
 
     @GetMapping("/employe")
@@ -91,6 +104,11 @@ public class DashboardController {
     public ResponseEntity<String> exportCsv(@RequestParam(defaultValue = "evolution-tickets-30j") String metric) {
         StringBuilder sb = new StringBuilder("day,count\n");
         if ("evolution-tickets-30j".equals(metric)) {
+            // Lot L7 (E5), CDC 4.5 : rapport d'activite du cabinet, forfaits Max et Sur Devis (402 sinon).
+            ma.jurika.common.billing.PlanLimitsService limites = forfaits.getIfAvailable();
+            if (limites != null && TenantContext.get() != null) {
+                limites.exigerFonction(TenantContext.get(), ma.jurika.common.billing.FonctionForfait.RAPPORTS_ACTIVITE);
+            }
             var dto = service.loadSuperviseur();
             for (var d : dto.evolutionTickets30j()) {
                 sb.append(d.day()).append(',').append(d.count()).append('\n');

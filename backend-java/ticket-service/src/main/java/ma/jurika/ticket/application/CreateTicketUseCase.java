@@ -1,6 +1,8 @@
 package ma.jurika.ticket.application;
 
 import ma.jurika.common.audit.Auditable;
+import ma.jurika.common.billing.PlanLimitsService;
+import org.springframework.beans.factory.ObjectProvider;
 import ma.jurika.common.exception.ValidationException;
 import ma.jurika.common.observability.BusinessMetrics;
 import ma.jurika.common.security.TenantContext;
@@ -37,17 +39,20 @@ public class CreateTicketUseCase {
     private final DossierIdempotenceLookup dossierLookup;
     private final TicketEventPublisher eventPublisher;
     private final BusinessMetrics businessMetrics;
+    private final ObjectProvider<PlanLimitsService> planLimits;
 
     public CreateTicketUseCase(TicketRepository ticketRepository,
                                 DossierRepository dossierRepository,
                                 DossierIdempotenceLookup dossierLookup,
                                 TicketEventPublisher eventPublisher,
-                                BusinessMetrics businessMetrics) {
+                                BusinessMetrics businessMetrics,
+                                ObjectProvider<PlanLimitsService> planLimits) {
         this.ticketRepository = ticketRepository;
         this.dossierRepository = dossierRepository;
         this.dossierLookup = dossierLookup;
         this.eventPublisher = eventPublisher;
         this.businessMetrics = businessMetrics;
+        this.planLimits = planLimits;
     }
 
     public record Command(
@@ -70,6 +75,16 @@ public class CreateTicketUseCase {
     @Auditable(action = "TICKET_CREATED", resourceType = "ticket")
     public Ticket execute(Command cmd) {
         TenantContext.set(cmd.workspaceId());
+
+        // Lot L7 (E5), RG-PLN-01 et RG-PLN-03 : quota de dossiers du mois d'abonnement, verifie
+        // AVANT toute ecriture (dossier cree a la volee compris). Un dossier deja compte ce mois-ci
+        // passe toujours ; un dossier de plus est refuse a 100 % (402, message qui propose un
+        // changement de forfait). Les dossiers existants restent consultables (rien n'est controle
+        // a la lecture).
+        PlanLimitsService limites = planLimits.getIfAvailable();
+        if (limites != null) {
+            limites.enforceDossierLimit(cmd.workspaceId(), cmd.dossierId());
+        }
 
         UUID dossierId = cmd.dossierId();
         if (AUTO_CREATE_DOSSIER.contains(cmd.type()) && dossierId == null) {

@@ -2,7 +2,7 @@ package ma.jurika.billing.application.email;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
-import ma.jurika.billing.infrastructure.stripe.BillingProperties;
+import ma.jurika.billing.infrastructure.config.BillingProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
@@ -21,7 +21,6 @@ import java.util.Map;
  *
  * <p>5 templates :
  *  - facture-disponible      (invoice.payment_succeeded -> RG-BL05)
- *  - paiement-echec          (invoice.payment_failed   -> RG-BL06)
  *  - conversion-active       (checkout.session.completed -> apres conversion)
  *  - annulation              (customer.subscription.deleted -> RG-BL07)
  *  - reactivation            (resume depuis Customer Portal)
@@ -58,11 +57,6 @@ public class BillingEmailService {
     @Async
     public void sendInvoiceAvailable(String to, Map<String, Object> vars) {
         send(to, "Votre facture JURIKA est disponible", "email/facture-disponible", vars);
-    }
-
-    @Async
-    public void sendPaymentFailed(String to, Map<String, Object> vars) {
-        send(to, "[URGENT] \u00c9chec de paiement : mettez \u00e0 jour votre carte", "email/paiement-echec", vars);
     }
 
     @Async

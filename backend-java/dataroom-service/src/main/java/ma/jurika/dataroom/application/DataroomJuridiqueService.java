@@ -98,6 +98,26 @@ public class DataroomJuridiqueService {
         this.visibiliteEvenements = visibiliteEvenements;
     }
 
+    // Lot L7 (E5), RG-PLN-04 : a 100 % du stockage du forfait, l'ajout de documents est bloque
+    // (402, message qui propose un changement de forfait) ; la consultation et le telechargement
+    // ne passent jamais par ce controle. Injection par mutateur : les tests unitaires qui
+    // construisent le service a la main n'ont pas de controle de forfait (comme
+    // jurika.plan-limits.enabled=false).
+    private org.springframework.beans.factory.ObjectProvider<ma.jurika.common.billing.PlanLimitsService> planLimits;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setPlanLimits(org.springframework.beans.factory.ObjectProvider<ma.jurika.common.billing.PlanLimitsService> planLimits) {
+        this.planLimits = planLimits;
+    }
+
+    private void verifierStockage(long octetsAjoutes) {
+        ma.jurika.common.billing.PlanLimitsService limites = planLimits == null ? null : planLimits.getIfAvailable();
+        UUID ws = TenantContext.get();
+        if (limites != null && ws != null) {
+            limites.enforceStorageLimit(ws, octetsAjoutes);
+        }
+    }
+
     @Transactional(readOnly = true)
     public DossierJuridiqueView view(UUID dossierId) {
         return view(dossierId, null, null, null, false);
@@ -455,6 +475,7 @@ public class DataroomJuridiqueService {
         // §A — societe dissoute : plus aucun depot, SAUF les actes de cloture
         // portes par le ticket de LIQUIDATION (derogation verifiee cote serveur).
         archiveGuard.assertWritable(dossierId, ticketId);
+        verifierStockage(file == null ? 0L : file.getSize());
         UUID workspaceId = TenantContext.get();
         short nextVersion = 1;
         Instant now = Instant.now();
@@ -582,6 +603,7 @@ public class DataroomJuridiqueService {
         }
         // Un dossier archive n'accueille pas davantage de brouillons que d'actes.
         archiveGuard.assertWritable(dossierId, ticketId);
+        verifierStockage(file == null ? 0L : file.getSize());
         UUID workspaceId = TenantContext.get();
         Instant now = Instant.now();
 
@@ -785,6 +807,7 @@ public class DataroomJuridiqueService {
         // document appartient deja au ticket de LIQUIDATION en cours (regeneration
         // d'un acte de cloture) : la derogation est portee par le ticket du slot.
         archiveGuard.assertWritable(previous.getDossierId(), previous.getTicketId());
+        verifierStockage(file == null ? 0L : file.getSize());
         Instant now = Instant.now();
 
         // 1. Marquer l'ancienne en historique + persister le motif.

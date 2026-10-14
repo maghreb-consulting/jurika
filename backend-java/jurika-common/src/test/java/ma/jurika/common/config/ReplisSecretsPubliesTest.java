@@ -30,7 +30,9 @@ class ReplisSecretsPubliesTest {
     private static final Set<String> SECRETS = Set.of(
             "POSTGRES_PASSWORD", "JURIKA_APP_PASSWORD", "RABBITMQ_PASSWORD",
             "MINIO_ROOT_PASSWORD", "MINIO_SECRET_KEY", "JWT_SECRET",
-            "AES_SECRET_KEY", "REDIS_PASSWORD");
+            "AES_SECRET_KEY", "REDIS_PASSWORD",
+            // Lot L7 (E5) : cle du magasin chez le CMI (signature des paiements par carte).
+            "CMI_STORE_KEY");
 
     /** Repertoire backend-java (les tests de ce module tournent dans jurika-common). */
     private static final Path BACKEND = Path.of("..").toAbsolutePath().normalize();

@@ -90,6 +90,13 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(ex.code(), ex.getMessage()));
     }
 
+    /** Lot L7 (E5), CDC 4.5 : fonction hors forfait, 402 comme un quota atteint. */
+    @ExceptionHandler(FonctionHorsForfaitException.class)
+    public ResponseEntity<ErrorResponse> handleFonctionHorsForfait(FonctionHorsForfaitException ex) {
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                .body(new ErrorResponse(ex.code(), ex.getMessage()));
+    }
+
     @ExceptionHandler(TooManyRequestsException.class)
     public ResponseEntity<ErrorResponse> handleTooMany(TooManyRequestsException ex) {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)

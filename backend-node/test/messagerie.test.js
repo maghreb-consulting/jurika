@@ -8,6 +8,7 @@ const {
   controlerEnvoi,
   controlerCorrespondant,
   controlerDestinataireNotification,
+  controlerAccesMessagerie,
   identiteDuJeton,
   peutUtiliserMessagerie,
 } = require('../src/messagerie');
@@ -21,7 +22,29 @@ const INACTIF_A = 'aaaaaaaa-0000-0000-0000-000000000004';
 const EMPLOYE_B = 'bbbbbbbb-0000-0000-0000-000000000001';
 const INCONNU = 'cccccccc-0000-0000-0000-000000000001';
 
+// Lot L7 (E5, CDC 4.5) : forfait des cabinets (la messagerie suit le forfait).
+const CABINET_ESSENTIEL = '33333333-3333-3333-3333-333333333333';
+const CABINET_ESSAI = '44444444-4444-4444-4444-444444444444';
+const PLATEFORME = '55555555-5555-5555-5555-555555555555';
+const EMPLOYE_ESS = 'eeeeeeee-0000-0000-0000-000000000001';
+const SUP_ESS = 'eeeeeeee-0000-0000-0000-000000000002';
+const EMPLOYE_ESSAI = 'dddddddd-0000-0000-0000-000000000001';
+const SUP_ESSAI = 'dddddddd-0000-0000-0000-000000000002';
+const SUPER_ADMIN = 'ffffffff-0000-0000-0000-000000000001';
+const WORKSPACES = [
+  { id: CABINET_A, selected_plan: 'professionnel', trial_status: 'CONVERTED' },
+  { id: CABINET_B, selected_plan: 'max', trial_status: null },
+  { id: CABINET_ESSENTIEL, selected_plan: 'essentiel', trial_status: null },
+  { id: CABINET_ESSAI, selected_plan: 'essentiel', trial_status: 'TRIAL_ACTIVE' },
+  { id: PLATEFORME, selected_plan: null, trial_status: null },
+];
+
 const USERS = [
+  { id: EMPLOYE_ESS, workspace_id: CABINET_ESSENTIEL, role: 'EMPLOYE', status: 'ACTIVE' },
+  { id: SUP_ESS, workspace_id: CABINET_ESSENTIEL, role: 'SUPERVISEUR', status: 'ACTIVE' },
+  { id: EMPLOYE_ESSAI, workspace_id: CABINET_ESSAI, role: 'EMPLOYE', status: 'ACTIVE' },
+  { id: SUP_ESSAI, workspace_id: CABINET_ESSAI, role: 'SUPERVISEUR', status: 'ACTIVE' },
+  { id: SUPER_ADMIN, workspace_id: PLATEFORME, role: 'SUPER_ADMIN', status: 'ACTIVE' },
   { id: SUPERVISEUR_A, workspace_id: CABINET_A, role: 'SUPERVISEUR', status: 'ACTIVE' },
   { id: EMPLOYE_A, workspace_id: CABINET_A, role: 'EMPLOYE', status: 'ACTIVE' },
   { id: CLIENT_A, workspace_id: CABINET_A, role: 'CLIENT', status: 'ACTIVE' },
@@ -44,6 +67,10 @@ function fauxPool() {
           if (sql.includes('FROM users')) {
             const [id, ws] = params;
             return { rows: USERS.filter((u) => u.id === id && u.workspace_id === ws) };
+          }
+          if (sql.includes('FROM workspaces')) {
+            const [id] = params;
+            return { rows: WORKSPACES.filter((w) => w.id === id) };
           }
           return { rows: [] };
         },
@@ -143,7 +170,44 @@ test('notification : aucune notification vers un autre cabinet', async () => {
 });
 
 test('identite lue dans les claims du jeton', () => {
-  assert.deepEqual(identiteDuJeton({ uid: EMPLOYE_A, wsid: CABINET_A, role: 'EMPLOYE' }), employeA);
-  assert.deepEqual(identiteDuJeton({ sub: EMPLOYE_A, workspace_id: CABINET_A, role: 'EMPLOYE' }), employeA);
+  assert.deepEqual(identiteDuJeton({ uid: EMPLOYE_A, wsid: CABINET_A, role: 'EMPLOYE' }), { ...employeA, archive: false });
+  assert.deepEqual(identiteDuJeton({ sub: EMPLOYE_A, workspace_id: CABINET_A, role: 'EMPLOYE' }), { ...employeA, archive: false });
   assert.equal(identiteDuJeton(null), null);
+});
+
+// ---------------------------------------------------------------- Lot L7 (E5)
+
+test('forfait Essentiel : la messagerie interne est refusee par le serveur', async () => {
+  const employeEss = { userId: EMPLOYE_ESS, workspaceId: CABINET_ESSENTIEL, role: 'EMPLOYE' };
+  const r = await controlerEnvoi(fauxPool(), employeEss, SUP_ESS, 'Bonjour');
+  assert.equal(r.ok, false);
+  assert.equal(r.code, 'FORFAIT_SANS_MESSAGERIE');
+  assert.match(r.message, /Professionnel, Max et Sur Devis/);
+});
+
+test('essai en cours : fonctions du forfait Professionnel, messagerie permise', async () => {
+  const employeEssai = { userId: EMPLOYE_ESSAI, workspaceId: CABINET_ESSAI, role: 'EMPLOYE' };
+  assert.deepEqual(await controlerEnvoi(fauxPool(), employeEssai, SUP_ESSAI, 'Bonjour'), { ok: true });
+});
+
+test('workspace archive : messagerie fermee', async () => {
+  const r = await controlerEnvoi(fauxPool(), { ...employeA, archive: true }, SUPERVISEUR_A, 'Bonjour');
+  assert.equal(r.code, 'WORKSPACE_ARCHIVE');
+  assert.equal(identiteDuJeton({ uid: EMPLOYE_A, wsid: CABINET_A, role: 'EMPLOYE', arch: true }).archive, true);
+});
+
+test('acces a la messagerie : la lecture du forfait pose le cabinet pour la RLS et filtre sur lui', async () => {
+  const pool = fauxPool();
+  assert.deepEqual(await controlerAccesMessagerie(pool, employeA), { ok: true });
+  const lecture = pool.journal.find((q) => q.sql.includes('FROM workspaces'));
+  assert.deepEqual(lecture.params, [CABINET_A]);
+  assert.deepEqual(pool.journal.find((q) => q.sql.includes('set_config')).params, [CABINET_A]);
+});
+
+test('canal du super-admin : seuls ses types lui sont adresses', async () => {
+  assert.deepEqual(
+    await controlerDestinataireNotification(fauxPool(), PLATEFORME, SUPER_ADMIN, 'QUOTA_CABINET_APPROCHANT'),
+    { ok: true });
+  const r = await controlerDestinataireNotification(fauxPool(), PLATEFORME, SUPER_ADMIN, 'TICKET_ASSIGNED');
+  assert.equal(r.code, 'DESTINATAIRE_NON_AUTORISE');
 });

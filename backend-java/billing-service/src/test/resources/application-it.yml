@@ -1,0 +1,45 @@
+# Lot L7 (E5) -- profil "it" du billing-service (Testcontainers). HS256 de test, pas de Eureka,
+# taches planifiees coupees (les tests les declenchent), CMI de TEST avec le simulateur actif
+# (cle de magasin de test : aucun echange avec le vrai CMI).
+
+jurika:
+  env: test
+  jwt:
+    algorithm: HS256
+    hmac-secret: dev-only-jwt-secret-min-32-chars-not-for-prod-CHANGE-ME-12345
+    public-key-path: ""
+    issuer: jurika.ma
+  auth:
+    internal-url: http://auth-service.invalid
+  billing:
+    from-email: facturation@test.invalid
+    front-url: https://app.test.invalid
+    taches:
+      enabled: false
+  cmi:
+    client-id: "600000000"
+    store-key: cle-de-test-du-magasin
+    gateway-url: http://localhost/api/v1/billing/cmi-simulateur/passerelle
+    callback-url: http://localhost/api/v1/billing/cmi/callback
+    ok-url: http://localhost/api/v1/billing/cmi/retour/ok
+    fail-url: http://localhost/api/v1/billing/cmi/retour/echec
+    simulateur-actif: true
+
+spring:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  cloud:
+    discovery:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+logging:
+  level:
+    org.testcontainers: INFO
+    ma.jurika: INFO

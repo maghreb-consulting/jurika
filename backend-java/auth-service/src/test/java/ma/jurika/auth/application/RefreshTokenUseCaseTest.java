@@ -7,6 +7,10 @@ import ma.jurika.auth.domain.port.RefreshTokenRepository.StoredRefreshToken;
 import ma.jurika.auth.domain.port.TokenIssuer;
 import ma.jurika.auth.domain.port.TokenIssuer.ParsedRefreshToken;
 import ma.jurika.auth.domain.port.UserRepository;
+import ma.jurika.auth.domain.port.WorkspaceRepository;
+import ma.jurika.auth.domain.model.Workspace;
+import ma.jurika.auth.domain.model.WorkspaceStatus;
+import ma.jurika.common.security.Role;
 import ma.jurika.common.exception.UnauthorizedException;
 import ma.jurika.common.observability.BusinessMetrics;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,12 +43,13 @@ class RefreshTokenUseCaseTest {
     private final TokenIssuer tokenIssuer = mock(TokenIssuer.class);
     private final RefreshTokenRepository refreshTokenRepository = mock(RefreshTokenRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
+    private final WorkspaceRepository workspaceRepository = mock(WorkspaceRepository.class);
     private final SessionLimitEnforcer sessionLimitEnforcer = mock(SessionLimitEnforcer.class);
     private final BusinessMetrics businessMetrics = mock(BusinessMetrics.class);
 
     private final Duration inactivityWindow = Duration.ofMinutes(30);
     private final RefreshTokenUseCase useCase = new RefreshTokenUseCase(
-            tokenIssuer, refreshTokenRepository, userRepository, sessionLimitEnforcer,
+            tokenIssuer, refreshTokenRepository, userRepository, workspaceRepository, sessionLimitEnforcer,
             businessMetrics, inactivityWindow);
 
     private final UUID userId = UUID.randomUUID();
@@ -57,8 +62,47 @@ class RefreshTokenUseCaseTest {
         when(user.id()).thenReturn(userId);
         when(user.workspaceId()).thenReturn(workspaceId);
         when(user.active()).thenReturn(true);
+        when(user.role()).thenReturn(Role.EMPLOYE);
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace(WorkspaceStatus.ACTIVE)));
         when(tokenIssuer.parseRefreshToken("raw-old"))
                 .thenReturn(new ParsedRefreshToken("raw-old", "hash-old"));
+    }
+
+    private Workspace workspace(WorkspaceStatus status) {
+        return new Workspace(workspaceId, "JUR-AAAAA", "Cabinet", "c@x.ma", null, status, Instant.now(), Instant.now());
+    }
+
+    /** Lot L7 (E5), RG-TAR-07 : workspace archive, l'employe ne renouvelle plus sa session. */
+    @Test
+    void refusesRefreshForEmployeeOfArchivedWorkspace() {
+        Instant now = Instant.now();
+        when(refreshTokenRepository.findByHash("hash-old"))
+                .thenReturn(Optional.of(stored(now.minusSeconds(60), now.plusSeconds(86400), null)));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace(WorkspaceStatus.ARCHIVED)));
+
+        assertThatThrownBy(() -> useCase.execute("raw-old", "UA", "1.2.3.4"))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessageContaining("ferm");
+        verify(tokenIssuer, never()).issue(any());
+    }
+
+    /** Lot L7 (E5), RG-TAR-09 : workspace archive, le superviseur garde sa session. */
+    @Test
+    void keepsRefreshForSupervisorOfArchivedWorkspace() {
+        Instant now = Instant.now();
+        when(user.role()).thenReturn(Role.SUPERVISEUR);
+        when(refreshTokenRepository.findByHash("hash-old"))
+                .thenReturn(Optional.of(stored(now.minusSeconds(60), now.plusSeconds(86400), null)));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace(WorkspaceStatus.ARCHIVED)));
+        AuthTokens fresh = new AuthTokens("access-new", "raw-new",
+                now.plusSeconds(900), now.plusSeconds(604800), userId, workspaceId);
+        when(tokenIssuer.issue(user)).thenReturn(fresh);
+        when(tokenIssuer.parseRefreshToken("raw-new"))
+                .thenReturn(new ParsedRefreshToken("raw-new", "hash-new"));
+
+        assertThat(useCase.execute("raw-old", "UA", "1.2.3.4").accessToken()).isEqualTo("access-new");
     }
 
     private StoredRefreshToken stored(Instant issuedAt, Instant expiresAt, Instant revokedAt) {

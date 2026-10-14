@@ -89,6 +89,16 @@ public class WorkspaceEntity {
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
 
+    // Lot L7 (E5) V44 -- mois d'abonnement (RG-PLN-01), rythme, archivage (RG-TAR-07).
+    @Column(name = "abonnement_debut")
+    private java.time.LocalDate abonnementDebut;
+    @Column(name = "rythme_paiement", length = 10)
+    private String rythmePaiement;
+    @Column(name = "archive_le")
+    private Instant archiveLe;
+    @Column(name = "archive_motif", length = 20)
+    private String archiveMotif;
+
     @PrePersist
     void onPersist() {
         if (id == null) id = UUID.randomUUID();
@@ -157,4 +167,12 @@ public class WorkspaceEntity {
     public void setActiveSince(Instant v) { this.activeSince = v; }
     public Instant getCancelledAt() { return cancelledAt; }
     public void setCancelledAt(Instant v) { this.cancelledAt = v; }
+    public java.time.LocalDate getAbonnementDebut() { return abonnementDebut; }
+    public void setAbonnementDebut(java.time.LocalDate v) { this.abonnementDebut = v; }
+    public String getRythmePaiement() { return rythmePaiement; }
+    public void setRythmePaiement(String v) { this.rythmePaiement = v; }
+    public Instant getArchiveLe() { return archiveLe; }
+    public void setArchiveLe(Instant v) { this.archiveLe = v; }
+    public String getArchiveMotif() { return archiveMotif; }
+    public void setArchiveMotif(String v) { this.archiveMotif = v; }
 }

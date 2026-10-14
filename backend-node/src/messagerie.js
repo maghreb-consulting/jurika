@@ -15,6 +15,21 @@
  */
 
 const ROLES_INTERNES = Object.freeze(['EMPLOYE', 'SUPERVISEUR']);
+
+/**
+ * Lot L7 (E5), CDC 4.5 : la messagerie interne est une fonction des forfaits
+ * Professionnel, Max et Sur Devis (codes de workspaces.selected_plan, auth V44).
+ * Pendant l'essai (trial_status TRIAL_ACTIVE), les fonctions sont celles du
+ * forfait Professionnel (RG-ESS-07). Forfait absent ou Essentiel : refus.
+ */
+const FORFAITS_AVEC_MESSAGERIE = Object.freeze(['professionnel', 'max', 'sur_devis']);
+
+/**
+ * Lot L7 (E5), RG-PLN-02 : types de notification adresses au SUPER-ADMIN, dans
+ * son propre workspace (canal du super-admin). Seuls ces types peuvent lui etre
+ * adresses ; tous les autres restent reserves aux employes et au superviseur.
+ */
+const TYPES_SUPER_ADMIN = Object.freeze(['QUOTA_CABINET_APPROCHANT', 'PAIEMENT_A_ENREGISTRER']);
 const TAILLE_MAX_MESSAGE = 4000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -27,6 +42,8 @@ const MESSAGES_REFUS = Object.freeze({
   DESTINATAIRE_INCONNU: 'Ce destinataire n’appartient pas à votre cabinet.',
   DESTINATAIRE_NON_AUTORISE: 'Ce destinataire n’a pas accès à la messagerie interne.',
   DESTINATAIRE_INACTIF: 'Ce compte est désactivé : il ne peut plus recevoir de message.',
+  FORFAIT_SANS_MESSAGERIE: 'La messagerie interne est incluse dans les forfaits Professionnel, Max et Sur Devis : changez de forfait pour y accéder.',
+  WORKSPACE_ARCHIVE: 'Ce cabinet est archivé : la messagerie est fermée tant qu’un forfait n’est pas souscrit de nouveau.',
 });
 
 /** Identite lue dans un jeton verifie (claims d'auth-service). */
@@ -36,6 +53,8 @@ function identiteDuJeton(decoded) {
     userId: decoded.uid || decoded.sub || null,
     workspaceId: decoded.wsid || decoded.workspace_id || null,
     role: decoded.role || null,
+    // Lot L7 (E5), RG-TAR-07 : jeton d'un workspace archive (claim "arch").
+    archive: decoded.arch === true,
   };
 }
 
@@ -80,12 +99,51 @@ async function lireMembre(db, workspaceId, userId) {
 }
 
 /**
+ * Lot L7 (E5), CDC 4.5 : le forfait du cabinet donne-t-il la messagerie interne ?
+ * Lecture dans le cabinet (workspace pose pour la RLS ET filtre explicite).
+ */
+async function forfaitPermetMessagerie(db, workspaceId) {
+  if (!UUID_RE.test(String(workspaceId || ''))) return false;
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query("SELECT set_config('app.current_workspace_id', $1, true)", [workspaceId]);
+    const { rows } = await client.query(
+      'SELECT id, selected_plan, trial_status FROM workspaces WHERE id = $1',
+      [workspaceId]
+    );
+    await client.query('COMMIT');
+    if (!rows.length || String(rows[0].id) !== String(workspaceId)) return false;
+    if (rows[0].trial_status === 'TRIAL_ACTIVE') return true;
+    return FORFAITS_AVEC_MESSAGERIE.includes(rows[0].selected_plan);
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch { /* connexion deja perdue */ }
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Lot L7 (E5) : acces a la messagerie (lecture et envoi) : role interne,
+ * workspace non archive (RG-TAR-07), forfait qui inclut la messagerie (CDC 4.5).
+ */
+async function controlerAccesMessagerie(db, identite) {
+  if (!peutUtiliserMessagerie(identite)) return refus('ROLE_REFUSE');
+  if (identite.archive) return refus('WORKSPACE_ARCHIVE');
+  if (!(await forfaitPermetMessagerie(db, identite.workspaceId))) return refus('FORFAIT_SANS_MESSAGERIE');
+  return { ok: true };
+}
+
+/**
  * Controle d'un correspondant de la messagerie (envoi, indicateur de frappe).
  * Renvoie `{ ok: true }` ou `{ ok: false, code, message }`.
  */
 async function controlerCorrespondant(db, identite, destinataireId) {
   if (!peutUtiliserMessagerie(identite)) return refus('ROLE_REFUSE');
   if (!UUID_RE.test(String(destinataireId || ''))) return refus('DESTINATAIRE_INVALIDE');
+  const acces = await controlerAccesMessagerie(db, identite);
+  if (!acces.ok) return acces;
   if (String(destinataireId).toLowerCase() === String(identite.userId).toLowerCase()) {
     return refus('DESTINATAIRE_SOI_MEME');
   }
@@ -110,9 +168,12 @@ async function controlerEnvoi(db, identite, to, body) {
  * ou le superviseur DU cabinet de la notification. Un client (averti par
  * courriel, RG-COM-09), un inconnu ou un membre d'un autre cabinet : refus.
  */
-async function controlerDestinataireNotification(db, workspaceId, userId) {
+async function controlerDestinataireNotification(db, workspaceId, userId, type) {
   const membre = await lireMembre(db, workspaceId, userId);
   if (!membre) return refus('DESTINATAIRE_INCONNU');
+  // Lot L7 (E5), RG-PLN-02 : le super-admin recoit, dans son workspace, les seuls
+  // types du canal du super-admin.
+  if (membre.role === 'SUPER_ADMIN' && TYPES_SUPER_ADMIN.includes(type)) return { ok: true };
   if (!estRoleInterne(membre.role)) return refus('DESTINATAIRE_NON_AUTORISE');
   return { ok: true };
 }
@@ -178,6 +239,10 @@ function refus(code) {
 
 module.exports = {
   ROLES_INTERNES,
+  FORFAITS_AVEC_MESSAGERIE,
+  TYPES_SUPER_ADMIN,
+  forfaitPermetMessagerie,
+  controlerAccesMessagerie,
   TAILLE_MAX_MESSAGE,
   MESSAGES_REFUS,
   identiteDuJeton,

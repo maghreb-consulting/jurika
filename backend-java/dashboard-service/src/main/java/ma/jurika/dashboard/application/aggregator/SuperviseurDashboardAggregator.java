@@ -152,7 +152,7 @@ public class SuperviseurDashboardAggregator {
                 moyenneH == null ? 0d : moyenneH,
                 evolution, topWorkflows, charge, buckets, risques,
                 ticketsParStatut, evolutionMensuelle, demandesParStatut,
-                Instant.now());
+                Instant.now(), true);
     }
 
     /**

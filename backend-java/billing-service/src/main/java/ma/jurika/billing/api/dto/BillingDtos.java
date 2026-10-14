@@ -1,173 +1,139 @@
 package ma.jurika.billing.api.dto;
 
-import ma.jurika.billing.infrastructure.persistence.InvoiceEntity;
-import ma.jurika.billing.infrastructure.persistence.PaymentMethodEntity;
-import ma.jurika.billing.infrastructure.persistence.SubscriptionEntity;
-
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
- * Sprint 12 — DTOs Records immutables pour les reponses billing.
+ * Lot L7 (E5) : contrats d'echange de la facturation (abonnement, changement de forfait, paiement,
+ * factures, ecrans du super-admin). Montants en centimes de dirham ; prix HT du catalogue ; TVA au
+ * taux des parametres de l'editeur.
  */
 public final class BillingDtos {
 
     private BillingDtos() {}
 
-    public record SubscriptionDto(
-            String planCode,
-            String status,
-            Instant currentPeriodStart,
-            Instant currentPeriodEnd,
-            boolean cancelAtPeriodEnd,
-            Instant cancelledAt,
-            PaymentMethodDto paymentMethod
-    ) {
-        public static SubscriptionDto from(SubscriptionEntity sub, PaymentMethodEntity pm) {
-            return new SubscriptionDto(
-                    sub.getPlanCode(),
-                    sub.getStatus(),
-                    sub.getCurrentPeriodStart(),
-                    sub.getCurrentPeriodEnd(),
-                    sub.isCancelAtPeriodEnd(),
-                    sub.getCancelledAt(),
-                    pm == null ? null : PaymentMethodDto.from(pm)
-            );
-        }
-    }
+    /** Montants d'un paiement ou d'une echeance. */
+    public record MontantsVue(long htCentimes, BigDecimal tauxTva, long tvaCentimes, long ttcCentimes) {}
 
-    public record PaymentMethodDto(
-            String brand,
-            String last4,
-            Integer expMonth,
-            Integer expYear
-    ) {
-        public static PaymentMethodDto from(PaymentMethodEntity pm) {
-            return new PaymentMethodDto(pm.getBrand(), pm.getLast4(), pm.getExpMonth(), pm.getExpYear());
-        }
-    }
+    /** Fonction distinctive d'un forfait (CDC 4.5) et sa presence. */
+    public record FonctionVue(String code, String libelle, boolean incluse, String disponibleDes) {}
 
-    public record InvoiceDto(
+    /** Prochaine echeance (montant absent : {@code motif} dit pourquoi). */
+    public record EcheanceVue(LocalDate debut, LocalDate fin, String forfait, String forfaitLibelle, String rythme,
+                              MontantsVue montants, String motif) {}
+
+    /** Changement programme a la prochaine echeance (RG-TAR-05, RG-TAR-06). */
+    public record ChangementAVenirVue(String forfait, String forfaitLibelle, String rythme, LocalDate effectifLe) {}
+
+    /**
+     * Etat de l'abonnement du cabinet. {@code statut} : AUCUN (jamais souscrit), ACTIF, ARCHIVE (forfait
+     * arrete, RG-TAR-07 : rien n'est supprime).
+     */
+    public record AbonnementVue(
+            UUID workspaceId,
+            String statut,
+            String forfait,
+            String forfaitLibelle,
+            String rythme,
+            LocalDate engagementDebut,
+            LocalDate engagementFin,
+            LocalDate periodeDebut,
+            LocalDate periodeFin,
+            EcheanceVue prochaineEcheance,
+            ChangementAVenirVue changementAVenir,
+            String archiveMotif,
+            List<FonctionVue> fonctions,
+            boolean carteDisponible,
+            String carteIndisponibleMotif,
+            int paiementsEnAttente
+    ) {}
+
+    public record ChangementForfaitRequest(String forfait, String rythme, String mode) {}
+
+    /**
+     * Apercu d'un changement de forfait ou de rythme. {@code nature} : HAUSSE, BAISSE, RYTHME, IDENTIQUE.
+     * {@code effet} : APRES_PAIEMENT (hausse en annuel, au prorata), IMMEDIAT (hausse en mensuel),
+     * PROCHAINE_ECHEANCE (baisse, rythme). {@code depassements} : ce qui depasse le forfait vise
+     * (baisse refusee, RG-TAR-05).
+     */
+    public record ApercuChangementVue(
+            String depuis, String vers, String versLibelle, String rythmeActuel, String rythmeVise,
+            String nature, String effet, LocalDate effectifLe, Integer moisRestants, MontantsVue montants,
+            boolean accepte, List<String> depassements, String message) {}
+
+    /** Resultat d'une demande de changement : applique, programme, ou paiement a regler. */
+    public record ChangementForfaitVue(String resultat, String message, ApercuChangementVue apercu,
+                                       PreparationPaiementVue paiement) {}
+
+    public record PreparationPaiementRequest(String objet, String forfait, String rythme, String mode,
+                                             String contactEmail, Boolean inscription) {}
+
+    /** Formulaire POST auto-soumis vers la page de paiement hebergee du CMI (RG-PAY-04). */
+    public record CmiFormulaireVue(String url, Map<String, String> champs) {}
+
+    public record InstructionVue(String libelle, String valeur) {}
+
+    public record PreparationPaiementVue(PaiementVue paiement, CmiFormulaireVue cmi,
+                                         List<InstructionVue> instructions, String message) {}
+
+    public record PaiementVue(
             Long id,
-            String number,
-            long amountTtcCents,
-            long amountHtCents,
-            long amountTvaCents,
-            String currency,
-            String status,
-            Instant issuedAt,
-            Instant paidAt,
-            String invoicePdfUrl,
-            String hostedInvoiceUrl
-    ) {
-        public static InvoiceDto from(InvoiceEntity i) {
-            return new InvoiceDto(
-                    i.getId(),
-                    i.getNumber(),
-                    i.getAmountPaidCents(),
-                    i.getAmountHtCents(),
-                    i.getAmountTvaCents(),
-                    i.getCurrency(),
-                    i.getStatus(),
-                    i.getIssuedAt(),
-                    i.getPaidAt(),
-                    i.getInvoicePdfUrl(),
-                    i.getHostedInvoiceUrl()
-            );
-        }
-    }
-
-    public record InvoicesPageDto(
-            List<InvoiceDto> items,
-            long total,
-            int page,
-            int size
+            UUID workspaceId,
+            String objet,
+            String forfait,
+            String forfaitLibelle,
+            String rythme,
+            String mode,
+            String statut,
+            MontantsVue montants,
+            LocalDate periodeDebut,
+            LocalDate periodeFin,
+            String reference,
+            LocalDate recuLe,
+            Instant creeLe,
+            Instant acquisLe,
+            Long factureId,
+            String factureNumero,
+            String factureRefus,
+            boolean activationPropagee,
+            String notes
     ) {}
 
-    public record CustomerPortalDto(String url) {}
+    public record FactureVue(Long id, String numero, UUID workspaceId, String cabinet, LocalDate dateEmission,
+                             String designation, LocalDate periodeDebut, LocalDate periodeFin, String mode,
+                             MontantsVue montants) {}
 
-    public record ContactSalesRequest(
-            String workspaceName,
-            String contactEmail,
-            String contactName,
-            String phone,
-            String message
-    ) {}
+    public record ContactSalesRequest(String workspaceName, String contactEmail, String contactName,
+                                      String phone, String message) {}
 
     public record ContactSalesResponse(boolean accepted, String message) {}
 
-    // ─── BUG 8 (2026-06-07) — Change Plan ─────────────────────────────────
-    public record ChangePlanRequest(String targetPlanCode, String billingPeriod) {}
+    // ------------------------------------------------------------------ super-admin
 
-    public record ChangePlanResponse(
-            String previousPlanCode,
-            String newPlanCode,
-            String billingPeriod,
-            String stripeSubscriptionId,
-            java.time.Instant currentPeriodEnd
-    ) {}
+    /** Enregistrement d'un paiement recu (virement, cheque, especes) par le super-admin (RG-PAY-02). */
+    public record EnregistrementPaiementRequest(UUID workspaceId, String objet, String forfait, String rythme,
+                                                String mode, LocalDate recuLe, String reference,
+                                                Long montantHtCentimes, String notes) {}
 
-    public record ChangePlanPreviewResponse(
-            String fromPlan, String toPlan, String billingPeriod,
-            boolean isUpgrade, boolean isDowngrade,
-            boolean downgradeAllowed, String blockedReason,
-            Integer fromPriceMad, Integer toPriceMad
-    ) {}
+    /** Validation d'un paiement declare par le cabinet : reception constatee. */
+    public record ValidationPaiementRequest(LocalDate recuLe, String reference, String notes) {}
 
-    // ─── BUG 14 (2026-06-07) — Multi-method payments ──────────────────────
-    public record PreparePaymentRequest(
-            String planCode,
-            String billingPeriod,
-            String method,
-            String contactEmail,
-            String workspaceName,
-            // Optionnel : referent paiement (utile pour CHEQUE/BANK_TRANSFER en complement)
-            String reference
-    ) {}
+    public record RejetPaiementRequest(String motif) {}
 
-    public record PaymentInstructionsDto(
-            String key,
-            String value
-    ) {}
+    /** Estimation Sur Devis (RG-PLN-05). */
+    public record SurDevisVue(long dossiersDuMois, LocalDate moisDebut, LocalDate moisFin,
+                              BigDecimal prixParDossierHt, BigDecimal montantHt, String motif,
+                              BigDecimal repereMaxParDossierMensuel, BigDecimal repereMaxParDossierAnnuel) {}
 
-    public record PreparePaymentResponse(
-            Long paymentId,
-            String method,
-            String status,
-            String planCode,
-            String billingPeriod,
-            Long amountMadCents,
-            String currency,
-            // Pour CARD : checkoutUrl Stripe a suivre immediatement.
-            String checkoutUrl,
-            // Pour BANK_TRANSFER/CHEQUE/CASH : instructions textuelles a afficher.
-            java.util.List<PaymentInstructionsDto> instructions,
-            // Message UI a afficher (ex. "Paiement en attente de validation").
-            String userMessage
-    ) {}
+    public record AbonnementAdminVue(
+            UUID workspaceId, Long abonnementId, String statut, String forfait, String forfaitLibelle, String rythme,
+            LocalDate engagementDebut, LocalDate engagementFin, LocalDate periodeDebut, LocalDate periodeFin,
+            EcheanceVue prochaineEcheance, ChangementAVenirVue changementAVenir, String archiveMotif,
+            SurDevisVue surDevis) {}
 
-    public record PaymentDto(
-            Long id,
-            String planCode,
-            String billingPeriod,
-            Long amountMadCents,
-            String currency,
-            String method,
-            String status,
-            String stripePaymentId,
-            String bankReference,
-            String chequeNumber,
-            String chequeDate,
-            String proofUrl,
-            java.time.Instant createdAt,
-            java.time.Instant completedAt,
-            String validatedBy,
-            String notes
-    ) {}
-
-    public record PaymentsListDto(java.util.List<PaymentDto> items) {}
-
-    public record ValidatePaymentRequest(
-            String notes
-    ) {}
+    public record BilanTacheVue(int traites, int reussis, int echecs, List<String> details) {}
 }

@@ -20,6 +20,11 @@ public final class JwtClaims {
 
     public static final String TYPE_ACCESS = "access";
     public static final String TYPE_REFRESH = "refresh";
+    /**
+     * Lot L7 (E5), RG-TAR-07 : vrai si le workspace est archive a l'emission du jeton. Le jeton ne
+     * donne alors acces qu'aux chemins de {@link AccesArchive} (P6 : controle cote serveur).
+     */
+    public static final String ARCHIVE = "arch";
 
     public static final String REQUEST_ATTR_MUST_CHANGE_PASSWORD = "ma.jurika.mustChangePassword";
     public static final String REQUEST_ATTR_REQUIRES_2FA_SETUP = "ma.jurika.requires2faSetup";
