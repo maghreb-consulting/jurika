@@ -97,12 +97,10 @@ public class DepotController {
                                                        @PathVariable UUID id) {
         DepotEntity e = depots.getForStream(id, user.userId(), user.role());
         // Lot AB — Word/Excel converti en PDF a la volee (fallback original sinon).
+        // Decision du 2026-10-14 : pendant l'essai, cette route est refusee par le filtre de
+        // l'essai (RG-ESS-05) ; l'apercu passe par /depots/{id}/apercu (pages filigranees).
         OfficePreviewSupport.Rendered rd =
                 officePreview.render(e.getObjectKey(), e.getFilename(), e.getContentType());
-        // Lot L7 (E4) : pendant l'essai, filigrane RG-ESS-06 ; apercu jamais transforme en telechargement.
-        if (apercuEssai != null) {
-            rd = apercuEssai.adapter(rd, e.getWorkspaceId());
-        }
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "inline; filename=\"" + rd.filename() + "\"")
@@ -120,12 +118,26 @@ public class DepotController {
         return ResponseEntity.noContent().build();
     }
 
-    /** Lot L7 (E4) : apercu pendant l'essai gratuit (filigrane, aucun telechargement). */
-    private ma.jurika.dataroom.application.ApercuEssai apercuEssai;
+    /**
+     * Decision du 2026-10-14 (RG-ESS-05, RG-ESS-06) : apercu d'un depot en pages PNG produites
+     * par le serveur (JSON), mention de l'essai incrustee pendant l'essai ; aucun octet du
+     * fichier. Memes controles que l'apercu inline.
+     */
+    @GetMapping("/depots/{id}/apercu")
+    @PreAuthorize("hasAnyAuthority('ROLE_CLIENT','ROLE_EMPLOYE','ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
+    @Operation(summary = "Apercu d'un depot en pages PNG (JSON), filigrane incruste pendant l'essai")
+    public ma.jurika.common.trial.ApercuPages apercu(@AuthenticationPrincipal AuthenticatedUser user,
+                                                    @PathVariable UUID id) {
+        DepotEntity e = depots.getForStream(id, user.userId(), user.role());
+        return apercuPages.rendre(e.getObjectKey(), e.getFilename(), e.getContentType(), e.getWorkspaceId());
+    }
 
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    public void setApercuEssai(ma.jurika.dataroom.application.ApercuEssai apercuEssai) {
-        this.apercuEssai = apercuEssai;
+    /** Decision du 2026-10-14 : apercu en pages (affichage seulement). */
+    private ma.jurika.dataroom.application.ApercuPagesService apercuPages;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setApercuPages(ma.jurika.dataroom.application.ApercuPagesService apercuPages) {
+        this.apercuPages = apercuPages;
     }
 
 }

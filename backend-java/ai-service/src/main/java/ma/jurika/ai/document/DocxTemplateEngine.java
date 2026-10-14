@@ -210,6 +210,18 @@ public class DocxTemplateEngine {
 
     /** Lot L3 : nom en clair (libelle du dictionnaire) des donnees externes manquantes du document. */
     public static String enteteDonneesAObtenir(DocumentResult result, ma.jurika.ai.document.corpus.DictionnaireUnique dico) {
+        java.util.List<java.util.Map<String, String>> l = donneesAObtenir(result, dico);
+        try {
+            return java.net.URLEncoder.encode(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(l),
+                    java.nio.charset.StandardCharsets.UTF_8);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** Lot L3 : donnees externes manquantes (marquees "A OBTENIR"), avec leur libelle. */
+    public static java.util.List<java.util.Map<String, String>> donneesAObtenir(DocumentResult result,
+            ma.jurika.ai.document.corpus.DictionnaireUnique dico) {
         java.util.List<java.util.Map<String, String>> l = new ArrayList<>();
         for (MissingVariableMarker.Manquante m : result.manquantes()) {
             if (m.externe()) {
@@ -217,12 +229,7 @@ public class DocxTemplateEngine {
                 l.add(java.util.Map.of("variable", m.nom(), "libelle", lib == null ? m.nom() : lib));
             }
         }
-        try {
-            return java.net.URLEncoder.encode(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(l),
-                    java.nio.charset.StandardCharsets.UTF_8);
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            throw new IllegalStateException(e);
-        }
+        return l;
     }
 
     /** Lot L2 : codes rendus depuis le classpath alors qu'un corpus est charge. */

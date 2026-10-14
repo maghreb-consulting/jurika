@@ -709,12 +709,10 @@ public class JuridiqueController {
         assertVisiblePourClient(versionId, user);
         DocumentEntity doc = juridique.loadVersionForDownload(documentId, versionId);
         permissionGuard.assertCanDownload(doc.getDossierId(), user);
+        // Decision du 2026-10-14 : pendant l'essai, cette route est refusee par le filtre de
+        // l'essai (RG-ESS-05) ; l'apercu passe par .../apercu (pages filigranees).
         OfficePreviewSupport.Rendered rd =
                 officePreview.render(doc.getObjectKey(), doc.getFilename(), doc.getContentType());
-        // Lot L7 (E4) : pendant l'essai, filigrane RG-ESS-06 ; apercu jamais transforme en telechargement.
-        if (apercuEssai != null) {
-            rd = apercuEssai.adapter(rd, doc.getWorkspaceId());
-        }
         if (user != null) {
             accessLogger.log(doc.getDossierId(), versionId, "PREVIEW_VERSION", user);
         }
@@ -726,14 +724,49 @@ public class JuridiqueController {
                 .body(new InputStreamResource(rd.stream()));
     }
 
+    // ============================================================
+    // Decision du 2026-10-14 (RG-ESS-05, RG-ESS-06) : APERCU EN AFFICHAGE.
+    // Pages PNG produites par le serveur (JSON), mention de l'essai incrustee pendant
+    // l'essai ; aucun octet du fichier. Memes controles que l'apercu inline.
+    // ============================================================
+
+    @GetMapping("/documents/{documentId}/apercu")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN','ROLE_SUPERVISEUR','ROLE_EMPLOYE','ROLE_CLIENT')")
+    @Operation(summary = "Apercu en pages PNG (JSON), filigrane incruste pendant l'essai")
+    public ma.jurika.common.trial.ApercuPages apercuJuridique(@AuthenticationPrincipal AuthenticatedUser user,
+                                                             @PathVariable UUID documentId) {
+        employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
+        assertVisiblePourClient(documentId, user);
+        return previewDocument.pages(documentId, user);
+    }
+
+    @GetMapping("/documents/{documentId}/versions/{versionId}/apercu")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN','ROLE_SUPERVISEUR','ROLE_EMPLOYE','ROLE_CLIENT')")
+    @Operation(summary = "Apercu d'une version en pages PNG (JSON), filigrane incruste pendant l'essai")
+    public ma.jurika.common.trial.ApercuPages apercuVersion(@AuthenticationPrincipal AuthenticatedUser user,
+                                                           @PathVariable UUID documentId,
+                                                           @PathVariable UUID versionId) {
+        employeGuard.assertResponsableDuDocument(documentId, user); // Lot L1, RG-DOS-01
+        assertVisiblePourClient(documentId, user);
+        assertVisiblePourClient(versionId, user);
+        DocumentEntity doc = juridique.loadVersionForDownload(documentId, versionId);
+        permissionGuard.assertCanDownload(doc.getDossierId(), user);
+        ma.jurika.common.trial.ApercuPages a = apercuPages.rendre(doc.getObjectKey(), doc.getFilename(),
+                doc.getContentType(), doc.getWorkspaceId());
+        if (user != null) {
+            accessLogger.log(doc.getDossierId(), versionId, "PREVIEW_VERSION", user);
+        }
+        return a;
+    }
+
     public record RestoreVersionRequest(String motif) {}
 
-    /** Lot L7 (E4) : apercu pendant l'essai gratuit (filigrane, aucun telechargement). */
-    private ma.jurika.dataroom.application.ApercuEssai apercuEssai;
+    /** Decision du 2026-10-14 : apercu en pages (affichage seulement). */
+    private ma.jurika.dataroom.application.ApercuPagesService apercuPages;
 
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    public void setApercuEssai(ma.jurika.dataroom.application.ApercuEssai apercuEssai) {
-        this.apercuEssai = apercuEssai;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setApercuPages(ma.jurika.dataroom.application.ApercuPagesService apercuPages) {
+        this.apercuPages = apercuPages;
     }
 
 }

@@ -176,6 +176,68 @@ class EssaiDataroomIT {
                 .andExpect(status().isNotFound());
     }
 
+    /** Un PDF depose dans la Data Room du cabinet ; rend son identifiant. */
+    private UUID documentPdf(UUID ws, UUID dossier) throws Exception {
+        UUID id = UUID.randomUUID();
+        String cle = "ws/" + ws + "/acte-" + id + ".pdf";
+        jdbc.update("""
+                INSERT INTO dataroom_documents(id, workspace_id, dossier_id, document_type, title, object_key,
+                                               filename, content_type, size_bytes)
+                VALUES (?, ?, ?, 'AUTRE', 'Statuts', ?, 'statuts.pdf', 'application/pdf', 10)
+                """, id, ws, dossier, cle);
+        byte[] pdf;
+        try (org.apache.pdfbox.pdmodel.PDDocument d = new org.apache.pdfbox.pdmodel.PDDocument()) {
+            d.addPage(new org.apache.pdfbox.pdmodel.PDPage());
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            d.save(out);
+            pdf = out.toByteArray();
+        }
+        byte[] octets = pdf;
+        when(storage.download(cle)).thenAnswer(inv -> new ObjectStorage.DownloadResult(
+                new java.io.ByteArrayInputStream(octets), octets.length, "application/pdf"));
+        return id;
+    }
+
+    /**
+     * Decision du 2026-10-14 (remplace la decision 23) : pendant l'essai, aucun fichier ne sort,
+     * meme en apercu inline ; l'apercu est une reponse JSON de pages PNG avec la mention incrustee.
+     */
+    @Test
+    void essai_apercu_inline_et_lien_direct_refuses_apercu_en_pages_filigranees() throws Exception {
+        UUID doc = documentPdf(WS_ESSAI, dossierEssai);
+        String jeton = jeton(WS_ESSAI, "SUPERVISEUR");
+        for (String route : List.of("/preview", "/download")) {
+            byte[] corps = mvc.perform(get("/api/v1/dataroom/documents/" + doc + route).header("Authorization", jeton))
+                    .andExpect(status().isPaymentRequired())
+                    .andExpect(jsonPath("$.code").value("ESSAI_TELECHARGEMENT_INTERDIT"))
+                    .andReturn().getResponse().getContentAsByteArray();
+            assertThat(new String(corps, StandardCharsets.ISO_8859_1)).doesNotContain("%PDF");
+        }
+        mvc.perform(get("/api/v1/dataroom/documents/" + doc + "/apercu").header("Authorization", jeton))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filigrane").value(true))
+                .andExpect(jsonPath("$.mention").value(ma.jurika.common.trial.EssaiRegles.MENTION_FILIGRANE))
+                .andExpect(jsonPath("$.pages[0].image").value(org.hamcrest.Matchers.startsWith("data:image/png;base64,")));
+    }
+
+    @Test
+    void cabinet_abonne_apercu_inline_inchange_et_pages_sans_mention() throws Exception {
+        UUID dossier = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO entreprise_dossiers(id, workspace_id, raison_sociale, forme_juridique, responsable_id)
+                VALUES (?, ?, 'ABONNE SARL', 'SARL', '33333333-3333-3333-3333-333333333333')
+                """, dossier, WS_ABONNE);
+        UUID doc = documentPdf(WS_ABONNE, dossier);
+        String jeton = jeton(WS_ABONNE, "SUPERVISEUR");
+        byte[] pdf = mvc.perform(get("/api/v1/dataroom/documents/" + doc + "/preview").header("Authorization", jeton))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray();
+        assertThat(new String(pdf, StandardCharsets.ISO_8859_1)).startsWith("%PDF");
+        mvc.perform(get("/api/v1/dataroom/documents/" + doc + "/apercu").header("Authorization", jeton))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filigrane").value(false));
+    }
+
     @Test
     void lecture_seule_refuse_les_modifications_par_le_filtre_de_la_chaine() throws Exception {
         mvc.perform(post("/api/v1/dataroom/dossiers/" + UUID.randomUUID() + "/juridique/documents")

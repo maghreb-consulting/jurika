@@ -555,6 +555,14 @@ public class WopiService {
     @Transactional(readOnly = true)
     public ObjectStorage.DownloadResult getFile(UUID fileId, String token) {
         Contexte c = resoudre(fileId, token, false);
+        // Decision du 2026-10-14 (RG-ESS-05) : pendant l'essai, le fichier ne sort pas, meme vers
+        // l'editeur (qui l'afficherait dans le navigateur et pourrait l'exporter) : l'apercu de
+        // l'essai est l'affichage en pages filigranees. La seance d'edition est deja refusee
+        // pendant l'essai (fonction hors forfait Professionnel) ; ce refus ne depend pas d'elle,
+        // ni des drapeaux d'interface de Collabora.
+        if (enEssai(c.document().getWorkspaceId())) {
+            throw new WopiAccesRefuse("essai gratuit : le fichier ne sort pas pendant l'essai (RG-ESS-05)");
+        }
         return storage.download(c.document().getObjectKey());
     }
 

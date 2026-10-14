@@ -397,6 +397,46 @@ class WopiSecuriteTest {
         }
     }
 
+    // -- 4 bis. Essai gratuit (decision du 2026-10-14, RG-ESS-05) --
+
+    @Nested
+    @DisplayName("Pendant l'essai, GetFile ne rend aucun octet, quel que soit le jeton")
+    class Essai {
+
+        @SuppressWarnings("unchecked")
+        private void etat(String statut) {
+            ma.jurika.common.trial.TrialAccessChecker c = ws -> Optional.of(
+                    new ma.jurika.common.trial.TrialAccessChecker.TrialState(ws, statut, 3, Instant.now(), null));
+            org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.TrialAccessChecker> p =
+                    org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+            when(p.getIfAvailable()).thenReturn(c);
+            wopi.setEssais(p);
+        }
+
+        @Test
+        @DisplayName("Essai : GetFile refuse, aucun telechargement du stockage")
+        void essaiGetFileRefuse() {
+            etat("TRIAL_ACTIVE");
+            DocumentEntity d = document(DOC, WS_A, true);
+            depotRepond(d);
+            String jeton = seanceVivante(WS_A, DOC, false);
+            assertThatThrownBy(() -> wopi.getFile(DOC, jeton)).isInstanceOf(WopiService.WopiAccesRefuse.class);
+            verify(storage, never()).download(anyString());
+        }
+
+        @Test
+        @DisplayName("Cabinet abonne : GetFile inchange")
+        void abonneGetFileServi() {
+            etat("CONVERTED");
+            DocumentEntity d = document(DOC, WS_A, true);
+            depotRepond(d);
+            when(storage.download(anyString())).thenReturn(
+                    new ObjectStorage.DownloadResult(new ByteArrayInputStream(new byte[] {1}), 1, "x"));
+            String jeton = seanceVivante(WS_A, DOC, false);
+            assertThat(wopi.getFile(DOC, jeton)).isNotNull();
+        }
+    }
+
     // ── 5. Enregistrement tardif ─────────────────────────────────────
 
     @Nested

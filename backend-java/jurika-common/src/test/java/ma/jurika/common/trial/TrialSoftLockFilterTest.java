@@ -107,12 +107,167 @@ class TrialSoftLockFilterTest {
         assertThat(res.getContentAsString()).doesNotContain("PDF").contains(TrialSoftLockFilter.CODE_TELECHARGEMENT);
     }
 
+    /**
+     * Decision du 2026-10-14 (remplace la decision 23 du lot L7) : pendant l'essai, aucun fichier
+     * ne parvient au navigateur, meme "inline". L'ancien comportement (PDF en apercu inline
+     * servi tel quel) etait le defaut garde ici.
+     */
     @Test
-    void essai_apercu_inline_permis() throws Exception {
+    void essai_fichier_inline_refuse_sur_une_route_inconnue() throws Exception {
         statut = "TRIAL_ACTIVE";
-        MockHttpServletResponse res = executer("GET", "/api/v1/dataroom/documents/42/preview", fichier("inline"));
+        MockHttpServletResponse res = executer("GET", "/api/v1/quelconque/documents/42/contenu", fichier("inline"));
+        assertThat(controleurAppele).isTrue();
+        assertThat(res.getStatus()).isEqualTo(402);
+        assertThat(res.getHeader("Content-Disposition")).isNull();
+        assertThat(res.getContentType()).startsWith("application/json");
+        assertThat(res.getContentAsString()).doesNotContain("PDF").contains(TrialSoftLockFilter.CODE_TELECHARGEMENT);
+    }
+
+    @Test
+    void essai_ancienne_route_d_apercu_refusee_avant_le_controleur() throws Exception {
+        statut = "TRIAL_ACTIVE";
+        for (String chemin : new String[]{
+                "/api/v1/dataroom/documents/42/preview",
+                "/api/v1/dataroom/documents/42/versions/7/preview",
+                "/api/v1/dataroom/depots/9/preview",
+                "/api/v1/ai/workflows/DISSOLUTION/documents/PV_DISSOLUTION_LIQUIDATION_SARL",
+                "/api/v1/ai/documents/extract-template"}) {
+            controleurAppele.set(false);
+            String methode = chemin.startsWith("/api/v1/ai") ? "POST" : "GET";
+            assertThat(executer(methode, chemin, fichier("inline")).getStatus()).as(chemin).isEqualTo(402);
+            assertThat(controleurAppele).as(chemin).isFalse();
+        }
+        // Les routes d'apercu en affichage (pages filigranees, JSON) ne sont pas des telechargements.
+        controleurAppele.set(false);
+        executer("POST", "/api/v1/ai/workflows/DISSOLUTION/documents/PV_DISSOLUTION_LIQUIDATION_SARL/apercu",
+                (q, r) -> controleurAppele.set(true));
+        assertThat(controleurAppele).isTrue();
+    }
+
+    /** Controleur qui sert un corps du type donne, sans en-tete de disposition. */
+    private FilterChain corps(String type, int statutHttp, byte[] octets) {
+        return (req, res) -> {
+            controleurAppele.set(true);
+            var r = (jakarta.servlet.http.HttpServletResponse) res;
+            r.setStatus(statutHttp);
+            if (type != null) r.setContentType(type);
+            r.getOutputStream().write(octets);
+        };
+    }
+
+    @Test
+    void essai_regle_positive_seuls_les_types_d_affichage_passent() throws Exception {
+        statut = "TRIAL_ACTIVE";
+        byte[] octets = "PK\u0003\u0004 contenu".getBytes(StandardCharsets.UTF_8);
+        for (String type : new String[]{
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "application/pdf", "application/zip", "application/octet-stream",
+                "application/vnd.oasis.opendocument.text", "text/csv", "text/html", "text/plain",
+                "image/png", "image/jpeg", "application/xml"}) {
+            MockHttpServletResponse res = executer("GET", "/api/v1/x/y", corps(type, 200, octets));
+            assertThat(res.getStatus()).as(type).isEqualTo(402);
+            assertThat(res.getContentAsString()).as(type).doesNotContain("PK")
+                    .contains(TrialSoftLockFilter.CODE_TELECHARGEMENT);
+        }
+        // Corps sans type declare : un fichier aussi.
+        assertThat(executer("GET", "/api/v1/x/y", corps(null, 200, octets)).getStatus()).isEqualTo(402);
+    }
+
+    @Test
+    void essai_json_et_erreurs_texte_passent_sans_lire_l_etat() throws Exception {
+        // Etat illisible : une reponse d'affichage ne depend pas d'auth-service.
+        panne = new EtatEssaiIndisponibleException("auth-service injoignable", null);
+        byte[] json = "{\"ok\":true}".getBytes(StandardCharsets.UTF_8);
+        MockHttpServletResponse res = executer("GET", "/api/v1/tickets", corps("application/json", 200, json));
         assertThat(res.getStatus()).isEqualTo(200);
-        assertThat(res.getContentAsByteArray()).isEqualTo(PDF);
+        assertThat(res.getContentAsByteArray()).isEqualTo(json);
+        assertThat(executer("GET", "/api/v1/x", corps("application/problem+json", 404, json)).getStatus())
+                .isEqualTo(404);
+        assertThat(executer("GET", "/api/v1/x", corps("text/plain;charset=UTF-8", 500, json)).getStatus())
+                .isEqualTo(500);
+        assertThat(executer("GET", "/api/v1/x",
+                (q, r) -> ((jakarta.servlet.http.HttpServletResponse) r).setStatus(204)).getStatus()).isEqualTo(204);
+    }
+
+    @Test
+    void essai_etat_illisible_et_fichier_refuse_en_503() throws Exception {
+        panne = new EtatEssaiIndisponibleException("auth-service injoignable", null);
+        MockHttpServletResponse res = executer("GET", "/api/v1/x", corps("application/pdf", 200, PDF));
+        assertThat(res.getStatus()).isEqualTo(503);
+        assertThat(res.getContentAsString()).doesNotContain("PDF").contains(TrialSoftLockFilter.CODE_INDISPONIBLE);
+    }
+
+    @Test
+    void essai_image_d_affichage_declaree_par_le_serveur_passe() throws Exception {
+        statut = "TRIAL_ACTIVE";
+        byte[] png = new byte[]{(byte) 0x89, 'P', 'N', 'G'};
+        FilterChain declaree = (req, res) -> {
+            AffichageEssai.declarer((jakarta.servlet.http.HttpServletRequest) req);
+            var r = (jakarta.servlet.http.HttpServletResponse) res;
+            r.setContentType("image/png");
+            r.getOutputStream().write(png);
+        };
+        MockHttpServletResponse res = executer("GET", "/api/v1/workspace/profile/logo", declaree);
+        assertThat(res.getStatus()).isEqualTo(200);
+        assertThat(res.getContentAsByteArray()).isEqualTo(png);
+        // Une image declaree reste refusee si elle se declare piece jointe.
+        FilterChain declareePj = (req, res2) -> {
+            AffichageEssai.declarer((jakarta.servlet.http.HttpServletRequest) req);
+            var r = (jakarta.servlet.http.HttpServletResponse) res2;
+            r.setContentType("image/png");
+            r.setHeader("Content-Disposition", "attachment; filename=logo.png");
+            r.getOutputStream().write(png);
+        };
+        assertThat(executer("GET", "/api/v1/workspace/profile/logo", declareePj).getStatus()).isEqualTo(402);
+        // Seules les images sont declarables : un PDF declare reste un fichier.
+        FilterChain pdfDeclare = (req, res3) -> {
+            AffichageEssai.declarer((jakarta.servlet.http.HttpServletRequest) req);
+            var r = (jakarta.servlet.http.HttpServletResponse) res3;
+            r.setContentType("application/pdf");
+            r.getOutputStream().write(PDF);
+        };
+        assertThat(executer("GET", "/api/v1/x", pdfDeclare).getStatus()).isEqualTo(402);
+    }
+
+    @Test
+    void essai_type_change_apres_un_debut_d_ecriture_refuse() throws Exception {
+        statut = "TRIAL_ACTIVE";
+        FilterChain sournois = (req, res) -> {
+            var r = (jakarta.servlet.http.HttpServletResponse) res;
+            r.setContentType("application/json");
+            r.getOutputStream().write('{');
+            r.setContentType("application/pdf");
+            r.getOutputStream().write(PDF);
+        };
+        MockHttpServletResponse res = executer("GET", "/api/v1/x", sournois);
+        assertThat(res.getStatus()).isEqualTo(402);
+        assertThat(res.getContentAsString()).doesNotContain("PDF");
+    }
+
+    @Test
+    void essai_writer_d_un_type_fichier_refuse() throws Exception {
+        statut = "TRIAL_ACTIVE";
+        FilterChain csv = (req, res) -> {
+            var r = (jakarta.servlet.http.HttpServletResponse) res;
+            r.setContentType("text/csv");
+            r.getWriter().write("nom;prenom\nsecret;secret");
+        };
+        MockHttpServletResponse res = executer("GET", "/api/v1/x", csv);
+        assertThat(res.getStatus()).isEqualTo(402);
+        assertThat(res.getContentAsString()).doesNotContain("secret");
+    }
+
+    @Test
+    void cabinet_abonne_ou_sans_essai_apercu_et_fichiers_inchanges() throws Exception {
+        for (String s : new String[]{"CONVERTED", null}) {
+            statut = s;
+            MockHttpServletResponse res = executer("GET", "/api/v1/dataroom/documents/42/preview", fichier("inline"));
+            assertThat(res.getStatus()).as(String.valueOf(s)).isEqualTo(200);
+            assertThat(res.getContentAsByteArray()).isEqualTo(PDF);
+            MockHttpServletResponse zip = executer("GET", "/api/v1/x", corps("application/zip", 200, PDF));
+            assertThat(zip.getStatus()).isEqualTo(200);
+            assertThat(zip.getContentAsByteArray()).isEqualTo(PDF);
+        }
     }
 
     @Test
