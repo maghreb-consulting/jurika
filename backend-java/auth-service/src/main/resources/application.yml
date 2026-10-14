@@ -169,6 +169,10 @@ jurika:
       cron: ${JURIKA_ESSAI_CYCLE_CRON:0 15 * * * *}
   dataroom:
     internal-url: ${DATAROOM_INTERNAL_URL:http://dataroom-service:8084}
+  # Lot L7 (E14) : donnees de facturation d'un essai supprime (paiements non aboutis supprimes,
+  # pieces comptables conservees 10 ans), appel interne a billing-service avant toute suppression.
+  billing:
+    internal-url: ${BILLING_INTERNAL_URL:http://billing-service:8090}
   # Sprint 3 / TASK 1 — Provider SMS (logger en dev, twilio en prod, inwi possible plus tard).
   # Sprint 12 finition (2026-06-04) — httpgateway pour passerelles gratuites
   # (TextBee, SMSGateway-for-Android, etc. — voir HttpGatewaySmsSender).

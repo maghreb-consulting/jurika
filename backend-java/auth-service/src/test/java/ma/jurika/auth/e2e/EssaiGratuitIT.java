@@ -7,6 +7,7 @@ import ma.jurika.auth.application.essai.CycleEssaiService;
 import ma.jurika.auth.application.essai.EtatEssai;
 import ma.jurika.auth.domain.port.EmailSender;
 import ma.jurika.auth.domain.port.EventPublisher;
+import ma.jurika.auth.domain.port.PurgeFacturationEssai;
 import ma.jurika.auth.domain.port.PurgeObjetsEssai;
 import ma.jurika.auth.domain.port.SmsSender;
 import ma.jurika.auth.infrastructure.scheduling.CycleEssaiJob;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -49,6 +51,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -127,13 +130,16 @@ class EssaiGratuitIT {
     @MockBean private EventPublisher eventPublisher;
     @MockBean private DnsMxValidator dnsMxValidator;
     @MockBean private PurgeObjetsEssai purgeObjets;
+    @MockBean private PurgeFacturationEssai purgeFacturation;
 
     private static final AtomicInteger COMPTEUR = new AtomicInteger(10);
 
     @BeforeEach
     void preparer() {
-        reset(emailSender, smsSender, eventPublisher, dnsMxValidator, purgeObjets);
+        reset(emailSender, smsSender, eventPublisher, dnsMxValidator, purgeObjets, purgeFacturation);
         when(dnsMxValidator.validate(anyString())).thenReturn(new DnsMxValidator.Result(true, "OK"));
+        // Par defaut, billing rend un bilan (essais laisses par d'autres tests, supprimes a un passage suivant).
+        when(purgeFacturation.traiter(any())).thenAnswer(i -> bilanFacturation(i.getArgument(0)));
         TenantContext.clear();
     }
 
@@ -346,12 +352,15 @@ class EssaiGratuitIT {
         assertThat(etat.lectureSeule()).isTrue();
         assertThat(etat.suppressionLe()).isEqualTo(etat.lectureSeuleDepuis().plus(Duration.ofDays(30)));
 
-        // Au terme des 30 jours : objets puis lignes supprimes.
+        // Au terme des 30 jours : facturation (billing), puis objets, puis lignes supprimes.
         jdbc.update("UPDATE workspaces SET essai_expire_le = now() - interval '31 days' WHERE id = ?", ws);
+        when(purgeFacturation.traiter(ws)).thenReturn(bilanFacturation(ws));
         when(purgeObjets.purger(ws)).thenReturn(4);
         CycleEssaiJob.Bilan b2 = job.executerUnPassage();
         assertThat(b2.supprimes()).isGreaterThanOrEqualTo(1);
-        verify(purgeObjets).purger(ws);
+        InOrder ordre = inOrder(purgeFacturation, purgeObjets);
+        ordre.verify(purgeFacturation).traiter(ws);
+        ordre.verify(purgeObjets).purger(ws);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM workspaces WHERE id = ?", Long.class, ws)).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE workspace_id = ?", Long.class, ws)).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM essai_conditions_acceptations WHERE workspace_id = ?",
@@ -365,6 +374,40 @@ class EssaiGratuitIT {
                 SELECT COUNT(*) FROM audit_log WHERE action = 'ESSAI_SUPPRIME_DEFINITIVEMENT'
                    AND entity_id = ? AND metadata -> 'tablesAbsentes' @> '["tickets"]'::jsonb
                 """, Long.class, ws)).isOne();
+        // Trace : ce que billing a supprime et conserve (decision du 2026-10-14), avec l'echeance.
+        Map<String, Object> trace = jdbc.queryForMap("""
+                SELECT metadata -> 'facturationSupprimee' ->> 'payments' AS supprimes,
+                       metadata -> 'facturationConservee10Ans' ->> 'factures' AS factures,
+                       metadata ->> 'echeanceConservationComptable' AS echeance,
+                       metadata ->> 'dureePreuvesContrat' AS duree
+                  FROM audit_log WHERE action = 'ESSAI_SUPPRIME_DEFINITIVEMENT' AND entity_id = ?
+                """, ws);
+        assertThat(trace).containsEntry("supprimes", "2").containsEntry("factures", "1")
+                .containsEntry("echeance", "2036-10-14").containsEntry("duree", "A_DECIDER");
+    }
+
+    private static PurgeFacturationEssai.Bilan bilanFacturation(UUID ws) {
+        return new PurgeFacturationEssai.Bilan(ws, Map.of("payments", 2L, "cmi_retours", 1L),
+                Map.of("payments", 1L, "factures", 1L), Map.of("conditions_particulieres", 0L),
+                "2036-10-14", "A_DECIDER");
+    }
+
+    @Test
+    void suppression_impossible_si_billing_echoue_rien_n_est_supprime() throws Exception {
+        UUID ws = ouvrirEssai(nouvelleIdentite(), "10.5.5.6", null);
+        jdbc.update("""
+                UPDATE workspaces SET trial_status = 'TRIAL_EXPIRED', essai_expire_le = now() - interval '31 days',
+                       essai_avertissement_le = now() - interval '31 days' WHERE id = ?
+                """, ws);
+        when(purgeFacturation.traiter(ws)).thenThrow(new IllegalStateException("billing injoignable"));
+        CycleEssaiJob.Bilan b = job.executerUnPassage();
+        assertThat(b.erreurs()).isGreaterThanOrEqualTo(1);
+        verify(purgeObjets, never()).purger(ws);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM workspaces WHERE id = ?", Long.class, ws)).isOne();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE workspace_id = ?", Long.class, ws))
+                .isPositive();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM audit_log WHERE action = 'ESSAI_SUPPRIME_DEFINITIVEMENT' "
+                + "AND entity_id = ?", Long.class, ws)).isZero();
     }
 
     @Test
@@ -374,6 +417,7 @@ class EssaiGratuitIT {
                 UPDATE workspaces SET trial_status = 'TRIAL_EXPIRED', essai_expire_le = now() - interval '31 days',
                        essai_avertissement_le = now() - interval '31 days' WHERE id = ?
                 """, ws);
+        when(purgeFacturation.traiter(ws)).thenReturn(bilanFacturation(ws));
         when(purgeObjets.purger(ws)).thenThrow(new IllegalStateException("dataroom injoignable"));
         CycleEssaiJob.Bilan b = job.executerUnPassage();
         assertThat(b.erreurs()).isGreaterThanOrEqualTo(1);

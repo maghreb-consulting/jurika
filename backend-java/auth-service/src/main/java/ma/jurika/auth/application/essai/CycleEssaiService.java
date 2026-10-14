@@ -3,6 +3,7 @@ package ma.jurika.auth.application.essai;
 import ma.jurika.auth.domain.port.AlertesQuotaRegistre;
 import ma.jurika.auth.domain.port.AuditLogger;
 import ma.jurika.auth.domain.port.EmailSender;
+import ma.jurika.auth.domain.port.PurgeFacturationEssai;
 import ma.jurika.auth.domain.port.PurgeObjetsEssai;
 import ma.jurika.auth.infrastructure.essai.EssaiJdbc;
 import ma.jurika.auth.infrastructure.persistence.WorkspaceEntity;
@@ -62,13 +63,15 @@ public class CycleEssaiService {
     private final EmailSender emailSender;
     private final AuditLogger audit;
     private final PurgeObjetsEssai purgeObjets;
+    private final PurgeFacturationEssai purgeFacturation;
     private final JdbcTemplate jdbc;
     private final AlertesQuotaRegistre superviseurs;
     private final NotificationPublisher notifications;
     private final Clock horloge;
 
     public CycleEssaiService(WorkspaceJpaRepository workspaces, EssaiJdbc essais, EmailSender emailSender,
-                             AuditLogger audit, PurgeObjetsEssai purgeObjets, JdbcTemplate jdbc,
+                             AuditLogger audit, PurgeObjetsEssai purgeObjets,
+                             PurgeFacturationEssai purgeFacturation, JdbcTemplate jdbc,
                              AlertesQuotaRegistre superviseurs, NotificationPublisher notifications,
                              Clock horloge) {
         this.superviseurs = superviseurs;
@@ -78,6 +81,7 @@ public class CycleEssaiService {
         this.emailSender = emailSender;
         this.audit = audit;
         this.purgeObjets = purgeObjets;
+        this.purgeFacturation = purgeFacturation;
         this.jdbc = jdbc;
         this.horloge = horloge;
     }
@@ -125,9 +129,11 @@ public class CycleEssaiService {
     }
 
     /**
-     * RG-ESS-10 : suppression definitive. Objets MinIO d'abord (dataroom), puis
-     * toutes les lignes du cabinet (fonction essai_supprimer_definitivement,
-     * qui reverifie les garde-fous). Un echec MinIO arrete tout.
+     * RG-ESS-10 : suppression definitive. Facturation d'abord (billing, autre
+     * base : paiements non aboutis supprimes, pieces comptables conservees 10
+     * ans, lot L7 E14), puis objets MinIO (dataroom), puis toutes les lignes du
+     * cabinet (fonction essai_supprimer_definitivement, qui reverifie les
+     * garde-fous). Un refus ou un echec de billing ou de MinIO arrete tout.
      */
     @Transactional
     public Map<String, Long> supprimer(UUID workspaceId) {
@@ -141,6 +147,10 @@ public class CycleEssaiService {
                             + EssaiRegles.LECTURE_SEULE_JOURS + " jours peut \u00eatre supprim\u00e9.");
         }
         String code = ws.getCode();
+        PurgeFacturationEssai.Bilan facturation = purgeFacturation.traiter(workspaceId);
+        if (facturation == null) {
+            throw new IllegalStateException("Bilan de la facturation de l'essai absent : suppression arretee");
+        }
         int objets = purgeObjets.purger(workspaceId);
         // V45 : une ligne par table nommee ; lignes NULL = table absente de la base
         // (service non migre), rapportee telle quelle, jamais comptee 0.
@@ -160,6 +170,12 @@ public class CycleEssaiService {
         meta.put("workspaceCode", code);
         meta.put("objetsMinio", objets);
         meta.put("lignes", total);
+        // Facturation (jurika_billing) : ce qui est supprime et ce qui est conserve, avec l'echeance.
+        meta.put("facturationSupprimee", facturation.supprimees());
+        meta.put("facturationConservee10Ans", facturation.conservees10Ans());
+        meta.put("facturationConserveeDureeADecider", facturation.conserveesDureeADecider());
+        meta.put("echeanceConservationComptable", facturation.echeanceConservation());
+        meta.put("dureePreuvesContrat", facturation.dureePreuvesContrat());
         if (!absentes.isEmpty()) {
             meta.put("tablesAbsentes", absentes);
             log.warn("Essai {} : tables absentes de la base lors de la suppression : {}", code, absentes);
