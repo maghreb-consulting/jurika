@@ -480,4 +480,22 @@ class EssaiGratuitIT {
         TenantContext.clear();
     }
 
+
+    @Test
+    void statut_d_essai_herite_hors_registre_ignore_par_le_cycle() {
+        // Cabinet de demonstration qui porterait un ancien statut d'essai (Sprint 11, avant UX-3).
+        UUID demo = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        jdbc.update("UPDATE workspaces SET trial_status = 'TRIAL_ACTIVE', trial_ends_at = now() - interval '2 days' "
+                + "WHERE id = ?", demo);
+        try {
+            job.executerUnPassage();
+            assertThat(jdbc.queryForObject("SELECT trial_status FROM workspaces WHERE id = ?", String.class, demo))
+                    .isEqualTo("TRIAL_ACTIVE");
+            verify(emailSender, never()).sendTemplated(anyString(), anyString(),
+                    eq("essai-avertissement-suppression"), anyMap());
+        } finally {
+            jdbc.update("UPDATE workspaces SET trial_status = NULL, trial_ends_at = NULL WHERE id = ?", demo);
+        }
+    }
+
 }
