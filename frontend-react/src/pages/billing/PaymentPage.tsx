@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { demanderDevis } from '../../lib/demandeDevis';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { billingService } from '../../services/billing.service';
@@ -33,6 +34,7 @@ export function PaymentPage() {
   const planParam = params.get('plan') as CheckoutPlanCode | null;
   const [abonnement, setAbonnement] = useState<AbonnementVue | null>(null);
   const [chargement, setChargement] = useState(true);
+  const [noteDevis, setNoteDevis] = useState<string | null>(null);
   const [forfait, setForfait] = useState<CheckoutPlanCode | null>(
     planParam && CODES_SOUSCRIPTIBLES.includes(planParam) ? planParam : null);
   const [rythme, setRythme] = useState<BillingPeriod>(params.get('period') === 'monthly' ? 'monthly' : 'yearly');
@@ -104,12 +106,13 @@ export function PaymentPage() {
           {objet === 'SOUSCRIPTION' && (
             <section className="rounded-2xl bg-bg-raised p-5 shadow-sm">
               <h2 className="mb-4 text-base font-semibold text-fg">Forfait et rythme</h2>
+              {noteDevis && <p role="status" className="mb-3 rounded-lg border border-border bg-bg-overlay p-3 text-sm text-fg">{noteDevis}</p>}
               <PlanPicker period={rythme} onPeriodChange={setRythme} forfaitActuel={forfait}
                 testIdPrefix="payment-plan"
                 libelleAction={(t) => (t.quoteOnly ? 'Demander un devis' : forfait === t.code ? 'Forfait choisi' : `Choisir ${t.label}`)}
                 onChoisir={(t) => {
                   if (t.quoteOnly) {
-                    window.location.href = 'mailto:contact@jurika.ai?subject=Demande%20de%20devis%20(forfait%20Sur%20Devis)';
+                    setNoteDevis(demanderDevis());
                     return;
                   }
                   setForfait(t.code as CheckoutPlanCode);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PlanPicker } from '../billing/PlanPicker';
 import { TexteAide } from '../ui/Aide';
+import { demanderDevis } from '../../lib/demandeDevis';
 import type { BillingPeriod, PlanCode } from '../../types/billing';
 import { SIGNUP_PERIOD_STORAGE_KEY, lireRythmeInscription } from '../../lib/forfaits';
 
@@ -18,6 +19,7 @@ interface Props {
  */
 export function SignupStep0Plan({ onNext }: Props) {
   const [period, setPeriod] = useState<BillingPeriod>(() => lireRythmeInscription() ?? 'yearly');
+  const [noteDevis, setNoteDevis] = useState<string | null>(null);
 
   useEffect(() => {
     try { sessionStorage.setItem(SIGNUP_PERIOD_STORAGE_KEY, period); }
@@ -41,6 +43,7 @@ export function SignupStep0Plan({ onNext }: Props) {
           </p>
         </TexteAide>
       </div>
+      {noteDevis && <p role="status" className="rounded-lg border border-border bg-bg-overlay p-3 text-sm text-fg">{noteDevis}</p>}
       <PlanPicker
         period={period}
         onPeriodChange={setPeriod}
@@ -48,7 +51,7 @@ export function SignupStep0Plan({ onNext }: Props) {
         libelleAction={(t) => (t.quoteOnly ? 'Demander un devis' : `Choisir ${t.label}`)}
         onChoisir={(t) => {
           if (t.quoteOnly) {
-            window.location.href = 'mailto:contact@jurika.ai?subject=Demande%20de%20devis%20(forfait%20Sur%20Devis)';
+            setNoteDevis(demanderDevis());
             return;
           }
           onNext(t.code);

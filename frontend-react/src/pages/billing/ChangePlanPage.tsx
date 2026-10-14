@@ -8,6 +8,7 @@ import { SuitePaiement } from '../../components/billing/SuitePaiement';
 import { ErreurFacturationBloc } from '../../components/billing/ErreurFacturation';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { oublierForfait } from '../../lib/useForfait';
+import { messageEchecDevis } from '../../lib/demandeDevis';
 import {
   formatDateIso,
   formatMadCents,
@@ -70,7 +71,7 @@ export function ChangePlanPage() {
         });
         setDevis(rep.message);
       } catch (err) {
-        setErreur(lireErreurFacturation(err, 'La demande de devis n’a pas pu être envoyée. Écrivez à contact@jurika.ai.'));
+        setErreur(lireErreurFacturation(err, messageEchecDevis()));
       }
       return;
     }

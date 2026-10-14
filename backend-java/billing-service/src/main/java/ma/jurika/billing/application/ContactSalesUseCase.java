@@ -30,11 +30,25 @@ public class ContactSalesUseCase {
         this.billingProperties = billingProperties;
     }
 
+    /** Lot L7 : BILLING_SALES_EMAIL, a defaut l'adresse d'expedition verifiee ; jamais un domaine non deploye. */
+    private String destinataire() {
+        String s = billingProperties.getSalesEmail();
+        if (s != null && !s.isBlank()) return s.trim();
+        String f = billingProperties.getFromEmail();
+        return f == null || f.isBlank() ? null : f.trim();
+    }
+
     public BillingDtos.ContactSalesResponse send(UUID workspaceId, BillingDtos.ContactSalesRequest req) {
+        String a = destinataire();
+        if (a == null) {
+            log.error("Contact-sales non envoye workspace={} : aucune adresse (BILLING_SALES_EMAIL, SMTP_FROM)", workspaceId);
+            return new BillingDtos.ContactSalesResponse(false,
+                    "La demande n\u2019a pas pu \u00eatre envoy\u00e9e : l\u2019adresse de JURIKA n\u2019est pas encore configur\u00e9e. R\u00e9essayez plus tard.");
+        }
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(billingProperties.getFromEmail());
-            message.setTo(billingProperties.getSalesEmail());
+            message.setTo(a);
             message.setSubject("[JURIKA Sur Devis] Demande de devis : " + safe(req.workspaceName()));
             message.setText(buildBody(workspaceId, req));
             mailSender.send(message);
@@ -46,7 +60,7 @@ public class ContactSalesUseCase {
             // pour que l'UI puisse afficher un fallback mailto:.
             log.warn("Echec envoi contact-sales workspace={} : {}", workspaceId, e.getMessage());
             return new BillingDtos.ContactSalesResponse(false,
-                    "Erreur temporaire. \u00c9crivez-nous directement \u00e0 " + billingProperties.getSalesEmail());
+                    "Erreur temporaire : la demande n\u2019a pas pu \u00eatre envoy\u00e9e. \u00c9crivez-nous directement \u00e0 " + a + ".");
         }
     }
 

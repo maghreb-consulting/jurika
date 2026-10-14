@@ -83,7 +83,8 @@ jurika:
     auth-url: ${JURIKA_CONTRAT_AUTH_URL:http://auth-service:8081}
 
   billing:
-    sales-email: ${BILLING_SALES_EMAIL:contact@jurika.ai}
+    # Lot L7 : destinataire des demandes de devis ; vide = adresse d'expedition (SMTP_FROM).
+    sales-email: ${BILLING_SALES_EMAIL:}
     from-email: ${SMTP_FROM:}
     # Lot L7 (E5) : adresse publique du front (retour du navigateur apres la page du CMI).
     front-url: ${FRONTEND_URL:http://localhost:5173}

@@ -508,7 +508,8 @@ public class WorkflowUseCases {
         // l'upsell vers le plan superieur.
         verifierDossierEssai(workspaceId);
         if (planLimitsService != null) {
-            planLimitsService.enforceDossierLimit(workspaceId);
+            // Lot L7 (RG-PLN-01, RG-PLN-03) : dossier nouveau (null) ; quota du mois d'abonnement.
+            planLimitsService.enforceDossierLimit(workspaceId, null);
         }
 
         // Forme juridique : SARL par defaut, SARL_AU si specifie

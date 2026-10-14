@@ -19,7 +19,9 @@ import org.springframework.validation.annotation.Validated;
 public class BillingProperties {
 
     @NotBlank
-    private String salesEmail = "contact@jurika.ai";
+    // Lot L7 : aucune adresse par defaut (contact@jurika.ai n'est pas un domaine de JURIKA) ;
+    // a defaut, l'adresse d'expedition verifiee (ContactSalesUseCase).
+    private String salesEmail = "";
 
     @NotBlank
     // Lot L6 (E5) : aucun expediteur par defaut (jurika.ma non deploye) : SMTP_FROM obligatoire (@NotBlank).
