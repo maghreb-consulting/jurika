@@ -59,6 +59,9 @@ public class SecurityConfig {
                                 // Lot L7 (E6) : controle "contrat en attente" de la passerelle
                                 // (appel interne ; /internal/** est refuse a l'entree publique).
                                 new AntPathRequestMatcher("/internal/contrat/**"),
+                                // Lot L7 (E14) : suppression d'un essai, appelee par auth-service
+                                // (meme regime : /internal/** refuse a l'entree publique).
+                                new AntPathRequestMatcher("/internal/essais/**"),
                                 // Lot L7 (E5) : points d'entree du CMI (retour serveur signe,
                                 // retour du navigateur, etat de la liaison) et simulateur de test
                                 // (present seulement si CMI_SIMULATEUR_ACTIF=true).
