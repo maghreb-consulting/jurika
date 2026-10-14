@@ -107,7 +107,10 @@ export function ContratsAdminPage() {
           prix hors taxes, date de début). Elles sont alors « en attente d’acceptation » : à sa prochaine connexion,
           le superviseur du cabinet ne voit que l’écran du contrat, jusqu’à ce qu’il l’accepte en ligne. Ensuite, le
           contrat passe « accepté » et son exemplaire est téléchargeable ici. Les mentions de Maghreb Consulting
-          imprimées au contrat se saisissent dans « Paramètres de l’éditeur ».
+          imprimées au contrat se saisissent dans « Paramètres de l’éditeur » ; une mention vide s’imprime
+          « [non renseigné : …] ». Quand une nouvelle version des conditions générales entre en vigueur, chaque
+          superviseur l’accepte ou la refuse ; la colonne « Contrat » indique la réponse attendue ou donnée (un refus
+          vaut résiliation à l’échéance).
         </p>
       </TexteAide>
 
@@ -151,6 +154,19 @@ export function ContratsAdminPage() {
                     <td className="px-3 py-2">
                       {LIBELLE_STATUT[l?.statut ?? 'AUCUN']}
                       {l?.resiliation && <p className="text-xs text-fg-subtle">Effet le {dateLongue(l.resiliation.dateEffet)}</p>}
+                      {l?.versionSansReponse && (
+                        <p className="text-xs text-warning" data-testid={`sans-reponse-${c.id}`}>
+                          Réponse attendue à la version {l.versionSansReponse} des conditions générales
+                        </p>
+                      )}
+                      {l?.derniereReponse && (
+                        <p className="text-xs text-fg-subtle" data-testid={`reponse-${c.id}`}>
+                          Version {l.derniereReponse.versionCode}{' '}
+                          {l.derniereReponse.reponse === 'ACCEPTEE' ? 'acceptée' : 'refusée'} le{' '}
+                          {horodatageCasablanca(l.derniereReponse.reponduLeCasablanca)}
+                          {l.derniereReponse.reponse === 'REFUSEE' && ' — résiliation à l’échéance'}
+                        </p>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       {cp ? (
@@ -463,6 +479,12 @@ function HistoriqueCabinet({ cabinet, onFermer }: { cabinet: AdminWorkspaceRow; 
               </Button>
             </p>
           ))}
+          {h.reponses.map((r) => (
+            <p key={r.id} className="text-sm">
+              Nouvelle version {r.versionCode} {r.reponse === 'ACCEPTEE' ? 'acceptée' : 'refusée'} le{' '}
+              {horodatageCasablanca(r.reponduLeCasablanca)}, compte {r.signataireCompte}, IP {r.adresseIp}
+            </p>
+          ))}
           {h.resiliations.map((r) => (
             <p key={r.conditionsId} className="text-sm">
               Résiliation ({r.demandeurRole === 'SUPER_ADMIN' ? 'JURIKA' : 'superviseur'}), effet le {dateLongue(r.dateEffet)} — {r.motif}
@@ -516,17 +538,20 @@ function Versions({ versions, onPubliee }: { versions: VersionVue[]; onPubliee: 
         Versions du contrat{' '}
         <InfoBulle
           libelle="Versions"
-          texte="Une nouvelle version des conditions générales est notifiée aux cabinets au moins 30 jours avant son entrée en vigueur, puis acceptée par chaque superviseur à sa connexion suivante. Toutes les versions sont conservées."
+          texte="Une nouvelle version des conditions générales est notifiée aux cabinets au moins 30 jours avant son entrée en vigueur ; à sa connexion suivante, chaque superviseur l’accepte ou la refuse (un refus vaut résiliation sans frais à l’échéance). Toutes les versions sont conservées ; une version retirée n’est jamais présentée aux cabinets."
         />
       </h2>
       <ul className="flex flex-col gap-1 text-sm">
         {versions.map((v) => (
           <li key={v.id} className="flex flex-wrap items-center gap-2">
             <span>
-              Version {v.code} — en vigueur le {dateLongue(v.entreeEnVigueur)}
-              {v.origine === 'INITIALE' ? ' (texte validé, chargé au démarrage)' : ''}
+              Version {v.code}
+              {v.retiree
+                ? ' — retirée : jamais présentée aux cabinets (projet antérieur à la validation)'
+                : ` — en vigueur le ${dateLongue(v.entreeEnVigueur)}`}
+              {!v.retiree && v.origine === 'INITIALE' ? ' (texte validé, chargé au démarrage)' : ''}
             </span>
-            <Button size="sm" variant="ghost" onClick={() => partirDe(v)}>Partir de ce texte</Button>
+            {!v.retiree && <Button size="sm" variant="ghost" onClick={() => partirDe(v)}>Partir de ce texte</Button>}
           </li>
         ))}
       </ul>
@@ -543,13 +568,14 @@ function Versions({ versions, onPubliee }: { versions: VersionVue[]; onPubliee: 
         </label>
       </div>
       <label className="flex flex-col gap-1 text-sm">
-        <span>Texte complet du contrat (pièces A, B et C, avec leurs variables $MAJUSCULES) *</span>
+        <span>Texte complet du contrat (pièces A, B et C, avec leurs variables $MAJUSCULES ; une pièce D et la ligne de version en tête sont retirées) *</span>
         <textarea value={texte} onChange={(e) => setTexte(e.target.value)} rows={8}
           className="rounded-md border border-border bg-bg px-2 py-1.5 font-mono text-xs" />
       </label>
       <p className="text-xs text-fg-subtle">
         Le texte doit être validé par la direction avant sa publication. Il est contrôlé (pièces A, B, C, paragraphe
-        d’acceptation, variables connues) ; une publication ne se modifie plus.
+        d’acceptation, variables connues, aucune mention entre crochets restant à compléter) ; une publication ne se
+        modifie plus.
       </p>
       {erreur && <p role="alert" className="text-sm text-danger">{erreur}</p>}
       <div>

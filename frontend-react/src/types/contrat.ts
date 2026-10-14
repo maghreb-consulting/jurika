@@ -48,6 +48,20 @@ export interface VersionVue {
   empreinteDpa: string;
   origine: 'INITIALE' | 'SUPER_ADMIN';
   publieeLe: string;
+  /** Version retiree (jamais presentee a un cabinet ; visible du seul super-admin). */
+  retiree: boolean;
+}
+
+/** Reponse du cabinet a une nouvelle version des conditions generales (article 16). */
+export interface ReponseVersion {
+  id: string;
+  conditionsId: string;
+  versionCode: string;
+  reponse: 'ACCEPTEE' | 'REFUSEE';
+  acceptationId: string | null;
+  signataireCompte: string;
+  reponduLeCasablanca: string;
+  adresseIp: string;
 }
 
 export interface ResiliationVue {
@@ -127,6 +141,7 @@ export interface HistoriqueContrat {
   resiliations: ResiliationVue[];
   renouvellements: Renouvellement[];
   avis: AvisContrat[];
+  reponses: ReponseVersion[];
 }
 
 export interface LigneAdminContrat {
@@ -137,6 +152,9 @@ export interface LigneAdminContrat {
   derniereAcceptation: AcceptationVue | null;
   resiliation: ResiliationVue | null;
   joursAvantEcheance: number | null;
+  /** Nouvelle version en vigueur a laquelle le cabinet n'a pas encore repondu. */
+  versionSansReponse: string | null;
+  derniereReponse: ReponseVersion | null;
 }
 
 export interface ConditionsSaisie {

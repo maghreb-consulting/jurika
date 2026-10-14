@@ -51,12 +51,12 @@ interbancaire ; un paiement par virement, chèque ou espèces, à sa constatatio
 
 4.3. Chaque paiement donne lieu à une facture électronique, consultable sur la plateforme.
 
-4.4. **Retard de paiement** : en l'absence de paiement [15] jours après l'échéance et après un
+4.4. **Retard de paiement** : en l'absence de paiement 15 jours après l'échéance et après un
 rappel resté sans effet, l'accès au workspace est suspendu. Aucune donnée n'est supprimée ; l'accès
 est rétabli dès le paiement constaté.
 
 4.5. L'Éditeur peut réviser ses prix à chaque renouvellement, en informant le Cabinet au moins
-[60] jours avant l'échéance. Le Cabinet qui refuse le nouveau prix peut résilier à l'échéance
+60 jours avant l'échéance. Le Cabinet qui refuse le nouveau prix peut résilier à l'échéance
 sans frais.
 
 ## Article 5 — Durée et renouvellement
@@ -64,7 +64,7 @@ sans frais.
 5.1. L'abonnement est conclu pour **un an** à compter de la date de début.
 
 5.2. Il se renouvelle par périodes d'un an, aux conditions en vigueur, sauf résiliation par
-l'une des parties au moins [30] jours avant l'échéance. Le Cabinet est averti 30 jours avant
+l'une des parties au moins 30 jours avant l'échéance. Le Cabinet est averti 30 jours avant
 chaque échéance.
 
 ## Article 6 — Changement de forfait
@@ -144,8 +144,9 @@ jamais supprimé**.
 demander la **suppression définitive**, qui est alors exécutée et confirmée par écrit. Aucune
 suppression n'a lieu sans cette demande expresse.
 
-11.3. Les archives sont conservées pendant [durée déclarée à la CNDP]. [Un mois] avant la fin de
-cette durée, le Cabinet est averti.
+11.3. Les archives sont conservées pendant la durée déclarée à la Commission nationale de contrôle
+de la protection des données à caractère personnel (CNDP). Un mois avant la fin de cette durée,
+le Cabinet est averti.
 
 11.4. Si le Cabinet souscrit de nouveau un forfait, son workspace est réactivé dans l'état exact
 où il l'a laissé.
@@ -156,7 +157,7 @@ où il l'a laissé.
 
 12.2. L'Éditeur peut résilier de plein droit en cas de manquement grave du Cabinet, notamment un
 usage contraire à la loi, une atteinte à la sécurité de la plateforme ou un défaut de paiement
-persistant, [30] jours après une mise en demeure restée sans effet.
+persistant, 30 jours après une mise en demeure restée sans effet.
 
 12.3. La résiliation est demandée en ligne ou par écrit ; elle est enregistrée avec sa date
 d'effet. Ses conséquences sont celles de l'article 11.
@@ -169,7 +170,7 @@ d'effet. Ses conséquences sont celles de l'article 11.
 relecture par le Cabinet, ni des données inexactes saisies par le Cabinet.
 
 13.3. Sauf faute lourde ou intentionnelle, la responsabilité de l'Éditeur est limitée au montant
-payé par le Cabinet au titre des [douze] derniers mois.
+payé par le Cabinet au titre des douze derniers mois.
 
 13.4. Aucune partie n'est responsable d'un manquement dû à un cas de force majeure au sens du
 dahir formant code des obligations et des contrats.
@@ -177,7 +178,7 @@ dahir formant code des obligations et des contrats.
 ## Article 14 — Confidentialité
 
 Chaque partie garde confidentielles les informations de l'autre dont elle a connaissance pendant
-le contrat et [cinq] ans après sa fin. Les équipes de l'Éditeur n'accèdent pas aux dossiers du
+le contrat et cinq ans après sa fin. Les équipes de l'Éditeur n'accèdent pas aux dossiers du
 Cabinet, sauf demande expresse du Cabinet pour une assistance, et dans cette seule limite.
 
 ## Article 15 — Propriété intellectuelle
@@ -203,8 +204,8 @@ envoi.
 ## Article 18 — Droit applicable et litiges
 
 Le contrat est soumis au **droit marocain**. Les parties recherchent d'abord une solution
-amiable. À défaut d'accord dans un délai de [30] jours, le litige est porté devant le **tribunal
-de commerce de [Casablanca]**.
+amiable. À défaut d'accord dans un délai de 30 jours, le litige est porté devant le **tribunal
+de commerce de Casablanca**.
 
 # C. Accord de traitement des données personnelles
 
@@ -242,11 +243,11 @@ Les personnes que l'Éditeur autorise à traiter les données sont tenues à la 
 
 | Prestataire | Rôle | Localisation |
 |---|---|---|
-| [Amazon Web Services] | Hébergement de la plateforme et des documents | [Union européenne — Paris] |
-| [Brevo, puis Amazon SES] | Envoi des courriels de la plateforme | [à préciser] |
-| [Fournisseur du modèle de langage] | Assistant juridique, sans données personnelles, sans conservation ni réutilisation | [à préciser] |
+| Amazon Web Services | Hébergement de la plateforme et des documents | Union européenne (Paris) |
+| Brevo, puis Amazon Web Services (SES) | Envoi des courriels de la plateforme | Union européenne |
+| Fournisseur du modèle de langage désigné sur la plateforme | Assistant juridique, sans données personnelles, sans conservation ni réutilisation | Indiquée sur la plateforme |
 
-5.2. L'Éditeur informe le Cabinet de tout changement de sous-traitant ultérieur au moins [30]
+5.2. L'Éditeur informe le Cabinet de tout changement de sous-traitant ultérieur au moins 30
 jours à l'avance ; le Cabinet peut s'y opposer pour un motif légitime et, à défaut d'accord,
 résilier sans frais.
 
@@ -268,7 +269,7 @@ demande qu'il recevrait directement.
 ## Article 8 — Violation de données
 
 L'Éditeur informe le Cabinet de toute violation de données personnelles dans les meilleurs
-délais, et au plus tard [72 heures] après en avoir eu connaissance, en précisant sa nature, ses
+délais, et au plus tard 72 heures après en avoir eu connaissance, en précisant sa nature, ses
 conséquences probables et les mesures prises.
 
 ## Article 9 — Fin du traitement

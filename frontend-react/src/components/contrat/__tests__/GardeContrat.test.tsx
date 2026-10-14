@@ -88,4 +88,38 @@ describe('useGardeContrat', () => {
     afficher('/tickets');
     await waitFor(() => expect(screen.getByTestId('sonde')).toHaveTextContent('LIBRE /app/contrat'));
   });
+
+  it('sans réponse, la demande revient à chaque connexion, une fois par connexion', async () => {
+    auth.user = { userId: 'sup5', role: 'SUPERVISEUR' };
+    etat.mockResolvedValue({ ...BLOQUE, statut: 'ACCEPTE', objetAAccepter: 'NOUVELLE_VERSION' });
+    const premiere = render(
+      <MemoryRouter initialEntries={['/tickets']}>
+        <Routes>
+          <Route path="*" element={<Sonde />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId('sonde')).toHaveTextContent('LIBRE /app/contrat'));
+    // Meme connexion : l'ecran deja presente ne revient pas (pas de blocage).
+    premiere.rerender(
+      <MemoryRouter initialEntries={['/dossiers']}>
+        <Routes>
+          <Route path="*" element={<Sonde />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(useContratStore.getState().versionPresentee).toBe('sup5');
+    // Deconnexion (sortie de l'application), puis nouvelle connexion : la demande revient.
+    premiere.unmount();
+    expect(useContratStore.getState().versionPresentee).toBeNull();
+    afficher('/tickets');
+    await waitFor(() => expect(screen.getByTestId('sonde')).toHaveTextContent('LIBRE /app/contrat'));
+  });
+
+  it('réponse donnée (plus rien à accepter) : aucune redirection', async () => {
+    auth.user = { userId: 'sup6', role: 'SUPERVISEUR' };
+    etat.mockResolvedValue({ ...BLOQUE, statut: 'RESILIE', acceptationRequise: false, objetAAccepter: null });
+    afficher('/tickets');
+    await waitFor(() => expect(screen.getByTestId('sonde')).toHaveTextContent('LIBRE /tickets'));
+  });
 });

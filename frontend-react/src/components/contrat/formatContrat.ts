@@ -25,7 +25,9 @@ export function dateLongue(iso: string | null | undefined): string {
   if (!iso) return '—';
   const [a, m, j] = iso.slice(0, 10).split('-').map(Number);
   if (!a || !m || !j) return iso;
-  return new Date(a, m - 1, j).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const texte = new Date(a, m - 1, j).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  // Le premier du mois s'ecrit "1er" (comme dans le contrat et son exemplaire).
+  return j === 1 ? texte.replace(/^1 /, '1er ') : texte;
 }
 
 /** Horodatage "AAAA-MM-JJ HH:MM:SS" (heure de Casablanca, deja converti par le serveur). */

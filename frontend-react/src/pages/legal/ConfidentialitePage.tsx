@@ -10,7 +10,8 @@ import { InfoBulle } from '../../components/ui/Aide';
  * est affiche comme tel, jamais comme une valeur :
  *  - declaration des traitements et autorisation de transfert aupres de la CNDP : en cours ;
  *  - duree de conservation des archives : celle de la declaration CNDP, A_DECIDER (en cours) ;
- *  - sous-traitants, localisations et delai de notification : mentions entre crochets du contrat.
+ * Sous-traitants, localisations et delai de notification : ceux de la version 1 du contrat
+ * (pieces B et C, validee le 14 octobre 2026).
  * Aucun jargon technique ni engagement non etabli (delegue, cookies, tests d'intrusion...).
  */
 function AFixer({ children }: { children: string }) {
@@ -121,14 +122,14 @@ export function ConfidentialitePage() {
               <td className="border-b border-border px-2 py-1">Union européenne — Paris</td>
             </tr>
             <tr>
-              <td className="border-b border-border px-2 py-1">Brevo, puis Amazon SES</td>
+              <td className="border-b border-border px-2 py-1">Brevo, puis Amazon Web Services (SES)</td>
               <td className="border-b border-border px-2 py-1">Envoi des courriels de la plateforme</td>
-              <td className="border-b border-border px-2 py-1"><AFixer>[à préciser]</AFixer></td>
+              <td className="border-b border-border px-2 py-1">Union européenne</td>
             </tr>
             <tr>
-              <td className="border-b border-border px-2 py-1"><AFixer>[Fournisseur du modèle de langage]</AFixer></td>
+              <td className="border-b border-border px-2 py-1">Fournisseur du modèle de langage désigné sur la plateforme</td>
               <td className="border-b border-border px-2 py-1">Chatbot juridique, sans données personnelles, sans conservation ni réutilisation</td>
-              <td className="border-b border-border px-2 py-1"><AFixer>[à préciser]</AFixer></td>
+              <td className="border-b border-border px-2 py-1">Indiquée sur la plateforme</td>
             </tr>
           </tbody>
         </table>
@@ -154,7 +155,7 @@ export function ConfidentialitePage() {
           <AFixer>[durée déclarée à la CNDP — déclaration en cours]</AFixer>.{' '}
           <InfoBulle
             libelle="Pourquoi cette durée n’est-elle pas indiquée ?"
-            texte="La durée de conservation des archives est fixée par la déclaration des traitements auprès de la CNDP, qui est en cours. Les mentions surlignées sont encore à compléter."
+            texte="La durée de conservation des archives est fixée par la déclaration des traitements auprès de la CNDP, qui est en cours. La mention surlignée sera complétée dès que cette déclaration aura abouti."
           />
         </li>
         <li>
@@ -206,7 +207,7 @@ export function ConfidentialitePage() {
       <h2>9. Violation de données</h2>
       <p>
         Maghreb Consulting informe le cabinet de toute violation de données personnelles dans les
-        meilleurs délais, et au plus tard <AFixer>[72 heures]</AFixer> après en avoir eu
+        meilleurs délais, et au plus tard 72 heures après en avoir eu
         connaissance, en précisant sa nature, ses conséquences probables et les mesures prises.
       </p>
     </LegalPageLayout>

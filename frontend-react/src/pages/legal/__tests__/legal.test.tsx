@@ -15,9 +15,10 @@ import conditions from '../contrat-abonnement-conditions.md?raw';
  *  - adresse de contact configurable au build (VITE_CONTACT_EMAIL), sans valeur de repli.
  */
 
-// Empreinte des lignes 60 a 358 de ~/docs/CONTRAT_ABONNEMENT_JURIKA_PROJET.md (version du
-// 12 octobre 2026, fichier d'empreinte a36817c7...) : toute retouche du texte la change.
-const EMPREINTE_CONTRAT = '50d03efbc94a60141ddc4566b51a45f962c50fcc104af487fa88fb8e40880d7f';
+// Empreinte des lignes 57 a 356 (pieces B, C et D, jusqu'a la fin) de
+// ~/docs/CONTRAT_ABONNEMENT_JURIKA_V1.md (version 1 du 14 octobre 2026, validee par la direction,
+// fichier d'empreinte ea69585b...) : toute retouche du texte la change.
+const EMPREINTE_CONTRAT = 'ef6051777aa31d71aa7a89621cb14ff2e603f78d17944555e0abb16dd7d343e4';
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -62,13 +63,15 @@ describe('Conditions generales (CguPage)', () => {
     expect(screen.getAllByRole('heading', { level: 3, name: /^Article \d+ — / })).toHaveLength(18 + 10);
   });
 
-  it('signale chaque mention encore a completer, sans la remplacer', () => {
+  it('version 1 validee : plus aucune mention entre crochets ni mention de projet', () => {
     page(<CguPage />);
-    const attendues = conditions.match(/\[[^\]]+\]/g) ?? [];
-    expect(attendues.length).toBeGreaterThan(0);
-    const marquees = Array.from(document.querySelectorAll('mark[data-a-completer]')).map((m) => m.textContent);
-    expect(marquees).toEqual(attendues);
-    expect(marquees).toContain('[durée déclarée à la CNDP]');
+    expect(conditions).not.toMatch(/\[|\]/);
+    expect(document.querySelectorAll('mark').length).toBe(0);
+    const t = document.body.textContent ?? '';
+    expect(t).not.toMatch(/projet|à compléter|surlign/i);
+    expect(screen.getByTestId('cgu-version')).toHaveTextContent('Version 1 du contrat d’abonnement');
+    expect(t).toContain('la durée déclarée à la Commission nationale de contrôle');
+    expect(t).toContain('tribunal de commerce de Casablanca');
   });
 
   it("ne reprend plus l'ancien texte (Stripe, Business, 99,9 %)", () => {
@@ -93,8 +96,12 @@ describe('Politique de confidentialite', () => {
   it("laisse la duree de conservation des archives a decider, sans valeur inventee", () => {
     page(<ConfidentialitePage />);
     const marquees = Array.from(document.querySelectorAll('mark[data-a-completer]')).map((m) => m.textContent);
-    expect(marquees).toContain('[durée déclarée à la CNDP — déclaration en cours]');
-    expect(marquees).toContain('[72 heures]');
+    expect(marquees).toEqual(['[durée déclarée à la CNDP — déclaration en cours]']);
+    // Sous-traitants et delai de notification : ceux de la version 1 du contrat.
+    const t = document.body.textContent ?? '';
+    expect(t).toContain('au plus tard 72 heures après');
+    expect(t).toContain('Brevo, puis Amazon Web Services (SES)');
+    expect(t).toContain('Fournisseur du modèle de langage désigné sur la plateforme');
   });
 
   it('ne contient ni jargon technique ni affirmation non etablie', () => {

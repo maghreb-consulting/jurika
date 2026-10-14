@@ -1,48 +1,25 @@
-import type { ReactNode } from 'react';
 import { analyserContrat } from './analyseContrat';
 
 /**
- * Lot L7 (E3) : rendu du texte du contrat d'abonnement, repris TEL QUEL du document
- * valide (~/docs/CONTRAT_ABONNEMENT_JURIKA_PROJET.md, pieces B, C et D, copiees octet pour
- * octet dans contrat-abonnement-conditions.md). Le texte n'est jamais reecrit ici : ce module
- * ne fait que le mettre en page.
+ * Lot L7 (E3, E9) : rendu du texte du contrat d'abonnement, repris TEL QUEL de la version 1
+ * validee (~/docs/CONTRAT_ABONNEMENT_JURIKA_V1.md, pieces B, C et D, copiees octet pour octet
+ * dans contrat-abonnement-conditions.md). Le texte n'est jamais reecrit ici : ce module ne fait
+ * que le mettre en page.
  *
  * Syntaxe reconnue (celle du document source, rien de plus) :
  *  - "# " titre d'une piece, "## " titre d'un article ;
  *  - paragraphes separes par une ligne vide, lignes jointes par une espace ;
  *  - liste numerotee "1. " (lignes de suite indentees) ;
  *  - tableau "| a | b |" (premiere ligne : en-tete, deuxieme : separateur) ;
- *  - "**gras**" ; "[mention]" : mention encore a completer, affichee et signalee comme telle.
+ *  - "**gras**".
  */
-
-/** Mentions encore a completer : marquees, jamais remplacees par une valeur. */
-function avecMentions(texte: string, cle: string): ReactNode[] {
-  return texte.split(/(\[[^\]]+\])/).map((morceau, i) =>
-    /^\[[^\]]+\]$/.test(morceau) ? (
-      <mark
-        key={`${cle}-${i}`}
-        data-a-completer=""
-        title="Mention encore à compléter"
-        className="rounded bg-warning/15 px-0.5 text-fg"
-      >
-        {morceau}
-      </mark>
-    ) : (
-      morceau
-    ),
-  );
-}
 
 export function TexteEnLigne({ texte }: { texte: string }) {
   const morceaux = texte.split(/(\*\*[^*]+\*\*)/);
   return (
     <>
       {morceaux.map((m, i) =>
-        /^\*\*[^*]+\*\*$/.test(m) ? (
-          <strong key={i}>{avecMentions(m.slice(2, -2), `g${i}`)}</strong>
-        ) : (
-          <span key={i}>{avecMentions(m, `t${i}`)}</span>
-        ),
+        /^\*\*[^*]+\*\*$/.test(m) ? <strong key={i}>{m.slice(2, -2)}</strong> : <span key={i}>{m}</span>,
       )}
     </>
   );

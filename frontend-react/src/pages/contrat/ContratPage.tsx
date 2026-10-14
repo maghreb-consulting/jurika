@@ -92,7 +92,9 @@ export function ContratPage() {
           présentées ici : lisez le contrat complet, cochez la case d’acceptation, puis confirmez. Tant qu’elles ne
           sont pas acceptées, vous et vos employés n’accédez qu’à cet écran. Une fois le contrat accepté,
           l’exemplaire complet (PDF) reste téléchargeable à tout moment et une copie est envoyée à l’adresse
-          électronique du cabinet.
+          électronique du cabinet. Quand une nouvelle version des conditions générales entre en vigueur, elle vous
+          est présentée ici à chaque connexion jusqu’à votre réponse : « Accepter » ou « Refuser » (un refus vaut
+          résiliation sans frais à l’échéance).
         </p>
       </TexteAide>
 
@@ -110,7 +112,13 @@ export function ContratPage() {
       ) : etat ? (
         <>
           {etat.acceptationRequise && (
-            <BlocAcceptation etat={etat} onAccepte={() => apresChangement('Contrat accepté. Une copie est envoyée par courriel.')} />
+            <BlocAcceptation
+              etat={etat}
+              onAccepte={() => apresChangement('Contrat accepté. Une copie est envoyée par courriel.')}
+              onRefuse={() =>
+                apresChangement('Refus enregistré : votre contrat sera résilié sans frais à l’échéance.')
+              }
+            />
           )}
           {etat.statut === 'AUCUN' && !etat.acceptationRequise && (
             <Card className="p-4 text-sm text-fg-muted">
@@ -125,9 +133,9 @@ export function ContratPage() {
                 {dateLongue(etat.versionAVenir.entreeEnVigueur)}.
               </p>
               <p className="mt-1">
-                Elle vous sera présentée pour acceptation à votre première connexion après cette date. Jusque-là, la
-                version actuelle continue de s’appliquer ; si vous la refusez, vous pourrez résilier sans frais à
-                l’échéance (article 16). Son texte est consultable plus bas, dans « Versions du contrat ».
+                Elle vous sera présentée à votre première connexion après cette date : vous pourrez l’accepter ou la
+                refuser. Un refus vaut résiliation sans frais à l’échéance ; jusque-là, la version actuelle continue de
+                s’appliquer (article 16). Son texte est consultable plus bas, dans « Versions du contrat ».
               </p>
             </Card>
           )}
@@ -174,7 +182,15 @@ function ResumeConditions({ c }: { c: ConditionsVue }) {
 
 const SIGNATAIRE_VIDE: SignataireSaisie = { civilite: '', qualite: '', formeCabinet: '', rcVilleCabinet: '' };
 
-function BlocAcceptation({ etat, onAccepte }: { etat: EtatContrat; onAccepte: () => void }) {
+function BlocAcceptation({
+  etat,
+  onAccepte,
+  onRefuse,
+}: {
+  etat: EtatContrat;
+  onAccepte: () => void;
+  onRefuse: () => void;
+}) {
   const r = etat.reprise;
   const [signataire, setSignataire] = useState<SignataireSaisie>(
     r
@@ -189,10 +205,29 @@ function BlocAcceptation({ etat, onAccepte }: { etat: EtatContrat; onAccepte: ()
   const [apercu, setApercu] = useState<ApercuContrat | null>(null);
   const [caseCochee, setCaseCochee] = useState(false);
   const [confirmer, setConfirmer] = useState(false);
+  const [confirmerRefus, setConfirmerRefus] = useState(false);
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const nouvelleVersion = etat.objetAAccepter === 'NOUVELLE_VERSION';
   const conditions = etat.enAttente ?? etat.courant;
+  const versionNouvelle = etat.versionEnVigueur?.code ?? '';
+  const versionAnterieure = etat.derniereAcceptation?.versionCode ?? null;
+  const echeance = etat.courant ? dateLongue(etat.courant.echeanceCourante) : null;
+
+  async function refuser() {
+    setEnvoi(true);
+    setErreur(null);
+    try {
+      await contratService.refuserVersion(versionNouvelle);
+      setConfirmerRefus(false);
+      onRefuse();
+    } catch (e) {
+      setErreur(extractError(e).message);
+      setConfirmerRefus(false);
+    } finally {
+      setEnvoi(false);
+    }
+  }
 
   function changer(champ: keyof SignataireSaisie, valeur: string) {
     setSignataire((s) => ({ ...s, [champ]: valeur }));
@@ -241,14 +276,25 @@ function BlocAcceptation({ etat, onAccepte }: { etat: EtatContrat; onAccepte: ()
       <h2 id="titre-acceptation" className="flex items-center gap-2 text-lg font-semibold text-fg">
         <AlertTriangle className="h-5 w-5 text-accent" aria-hidden="true" />
         {nouvelleVersion
-          ? `Nouvelle version des conditions générales à accepter (version ${etat.versionEnVigueur?.code ?? ''})`
+          ? `Nouvelle version des conditions générales : votre réponse est attendue (version ${versionNouvelle})`
           : 'Contrat d’abonnement à accepter'}
       </h2>
       <p className="text-sm text-fg-muted">
         {nouvelleVersion
-          ? 'Cette version est en vigueur. Lisez-la et acceptez-la ; si vous la refusez, la version antérieure s’applique jusqu’à l’échéance, où vous pourrez résilier sans frais.'
+          ? `Cette version est en vigueur${etat.versionEnVigueur ? ` depuis le ${dateLongue(etat.versionEnVigueur.entreeEnVigueur)}` : ''}. Lisez-la, puis acceptez-la ou refusez-la. Vous pouvez continuer à utiliser la plateforme en attendant : cette demande vous sera présentée à chaque connexion tant que vous n’aurez pas répondu.`
           : 'JURIKA a saisi les conditions particulières de votre abonnement. Tant que vous ne les avez pas acceptées, l’accès à la plateforme est limité à cet écran, pour vous et pour vos employés.'}
       </p>
+      {nouvelleVersion && (
+        <TexteAide cle="contrat-nouvelle-version" titre="Accepter ou refuser la nouvelle version (article 16)">
+          <p>
+            <strong>Accepter</strong> : affichez le contrat, lisez-le, cochez la case puis confirmez ; la nouvelle
+            version s’applique dès votre acceptation. <strong>Refuser</strong> : votre contrat est résilié sans frais à
+            l’échéance{echeance ? `, le ${echeance}` : ''} ; jusque-là, la version antérieure
+            {versionAnterieure ? ` (version ${versionAnterieure})` : ''} continue de s’appliquer. Votre réponse est
+            définitive et enregistrée sans possibilité de modification.
+          </p>
+        </TexteAide>
+      )}
       {conditions && <ResumeConditions c={conditions} />}
 
       <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -313,8 +359,15 @@ function BlocAcceptation({ etat, onAccepte }: { etat: EtatContrat; onAccepte: ()
       )}
 
       {!apercu ? (
-        <div>
-          <Button onClick={afficher} loading={envoi} disabled={envoi}>Afficher le contrat à accepter</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={afficher} loading={envoi} disabled={envoi}>
+            {nouvelleVersion ? 'Afficher la nouvelle version pour l’accepter' : 'Afficher le contrat à accepter'}
+          </Button>
+          {nouvelleVersion && (
+            <Button variant="danger" onClick={() => setConfirmerRefus(true)} disabled={envoi || versionNouvelle === ''}>
+              Refuser
+            </Button>
+          )}
         </div>
       ) : (
         <>
@@ -347,12 +400,37 @@ function BlocAcceptation({ etat, onAccepte }: { etat: EtatContrat; onAccepte: ()
               onChange={(e) => setCaseCochee(e.target.checked)}
               className="mt-0.5"
             />
-            <span>J’ai lu et j’accepte le contrat d’abonnement JURIKA</span>
+            <span>
+              {nouvelleVersion
+                ? `J’ai lu et j’accepte le contrat d’abonnement JURIKA, conditions générales version ${versionNouvelle}`
+                : 'J’ai lu et j’accepte le contrat d’abonnement JURIKA'}
+            </span>
           </label>
-          <div>
-            <Button onClick={() => setConfirmer(true)} disabled={!caseCochee || envoi}>Accepter le contrat</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => setConfirmer(true)} disabled={!caseCochee || envoi}>
+              {nouvelleVersion ? 'Accepter' : 'Accepter le contrat'}
+            </Button>
+            {nouvelleVersion && (
+              <Button variant="danger" onClick={() => setConfirmerRefus(true)} disabled={envoi}>
+                Refuser
+              </Button>
+            )}
           </div>
         </>
+      )}
+
+      {nouvelleVersion && (
+        <ConfirmDialog
+          open={confirmerRefus}
+          onOpenChange={setConfirmerRefus}
+          title={`Refuser la version ${versionNouvelle} des conditions générales ?`}
+          description={`Votre refus vaut résiliation sans frais du contrat à l’échéance${echeance ? `, le ${echeance}` : ''} (article 16). Jusque-là, la version antérieure des conditions générales${versionAnterieure ? ` (version ${versionAnterieure})` : ''} continue de s’appliquer. À l’échéance, le forfait s’arrête et le travail du cabinet est archivé, jamais supprimé ; vous pourrez le reprendre en souscrivant de nouveau. Votre réponse est enregistrée sans possibilité de modification : version, votre compte, la date et l’heure (heure de Casablanca) et votre adresse IP.`}
+          confirmLabel="Je refuse cette version"
+          cancelLabel="Revenir au contrat"
+          variant="danger"
+          loading={envoi}
+          onConfirm={refuser}
+        />
       )}
 
       <ConfirmDialog
@@ -508,7 +586,7 @@ function BlocHistorique({ historique }: { historique: HistoriqueContrat }) {
         Historique du contrat{' '}
         <InfoBulle
           libelle="Conservation"
-          texte="Conditions particulières successives, acceptations, renouvellements et résiliation : rien n’est supprimé, l’historique est conservé au moins dix ans."
+          texte="Conditions particulières successives, acceptations, réponses aux nouvelles versions, renouvellements et résiliation : rien n’est supprimé, l’historique est conservé au moins dix ans."
         />
       </h2>
       {historique.conditions.length === 0 ? (
@@ -550,6 +628,17 @@ function BlocHistorique({ historique }: { historique: HistoriqueContrat }) {
               <Button size="sm" variant="ghost" onClick={() => telecharger(a)}>
                 <Download className="mr-1 h-4 w-4" aria-hidden="true" /> Exemplaire
               </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {historique.reponses.length > 0 && (
+        <ul className="flex flex-col gap-1 text-sm" aria-label="Réponses aux nouvelles versions">
+          {historique.reponses.map((r) => (
+            <li key={r.id}>
+              Conditions générales, version {r.versionCode}, {r.reponse === 'ACCEPTEE' ? 'acceptées' : 'refusées'} le{' '}
+              {horodatageCasablanca(r.reponduLeCasablanca)} depuis le compte {r.signataireCompte} (adresse IP{' '}
+              {r.adresseIp})
             </li>
           ))}
         </ul>

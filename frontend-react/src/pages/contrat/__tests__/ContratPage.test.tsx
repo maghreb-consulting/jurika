@@ -12,6 +12,7 @@ const historique = vi.fn();
 const versions = vi.fn();
 const apercu = vi.fn();
 const accepter = vi.fn();
+const refuserVersion = vi.fn();
 vi.mock('../../../services/contrat.service', async (orig) => {
   const vrai = await orig<typeof import('../../../services/contrat.service')>();
   return {
@@ -22,6 +23,7 @@ vi.mock('../../../services/contrat.service', async (orig) => {
       versions: () => versions(),
       apercu: (s: unknown) => apercu(s),
       accepter: (s: unknown, e: string, c: boolean) => accepter(s, e, c),
+      refuserVersion: (v: string) => refuserVersion(v),
     },
   };
 });
@@ -47,7 +49,7 @@ const EN_ATTENTE: EtatContrat = {
 };
 
 const APERCU: ApercuContrat = {
-  objet: 'CONDITIONS_PARTICULIERES', conditions: { ...CONDITIONS }, versionCode: '2026-10-12',
+  objet: 'CONDITIONS_PARTICULIERES', conditions: { ...CONDITIONS }, versionCode: '1',
   texte: '# A. Conditions particulières\n\n| Élément | Valeur |\n|---|---|\n| Forfait | Professionnel |\n',
   empreinte: 'a'.repeat(64), manquants: ['ICE de l’Éditeur'],
 };
@@ -64,9 +66,9 @@ function afficher() {
 
 describe('ContratPage', () => {
   beforeEach(() => {
-    [etat, historique, versions, apercu, accepter].forEach((f) => f.mockReset());
+    [etat, historique, versions, apercu, accepter, refuserVersion].forEach((f) => f.mockReset());
     etat.mockResolvedValue(EN_ATTENTE);
-    historique.mockResolvedValue({ conditions: [], acceptations: [], resiliations: [], renouvellements: [], avis: [] });
+    historique.mockResolvedValue({ conditions: [], acceptations: [], resiliations: [], renouvellements: [], avis: [], reponses: [] });
     versions.mockResolvedValue([]);
     apercu.mockResolvedValue(APERCU);
     accepter.mockResolvedValue({});
@@ -99,6 +101,84 @@ describe('ContratPage', () => {
     await waitFor(() => expect(accepter).toHaveBeenCalledTimes(1));
     expect(accepter).toHaveBeenCalledWith(
       expect.objectContaining({ civilite: 'Mme', qualite: 'gérante' }), 'a'.repeat(64), true);
+  });
+
+  describe('nouvelle version des conditions générales (article 16)', () => {
+    const VERSION = {
+      id: 'v2', code: '2', entreeEnVigueur: '2026-11-20', empreinteModele: 'x', empreinteCg: 'y', empreinteDpa: 'z',
+      origine: 'SUPER_ADMIN', publieeLe: '2026-10-20T09:00:00Z', retiree: false,
+    } as const;
+    const NOUVELLE: EtatContrat = {
+      ...EN_ATTENTE,
+      statut: 'ACCEPTE', objetAAccepter: 'NOUVELLE_VERSION', enAttente: null,
+      courant: { ...CONDITIONS, statut: 'ACCEPTE' },
+      derniereAcceptation: {
+        id: 'a1', conditionsId: 'cp1', objet: 'CONDITIONS_PARTICULIERES', versionCode: '1', empreinteContrat: 'e'.repeat(64),
+        signataire: 'Mme Bennani Salma', signataireQualite: 'gérante', signataireCompte: 'salma@jurika.ma',
+        accepteLeCasablanca: '2026-10-14 10:30:00', adresseIp: '196.200.1.2', cabinetEmail: 'contact@atlas.ma',
+      },
+      versionEnVigueur: { ...VERSION },
+    };
+
+    it('propose Accepter et Refuser ; la case d’acceptation n’est jamais pré-cochée', async () => {
+      etat.mockResolvedValue(NOUVELLE);
+      apercu.mockResolvedValue({ ...APERCU, objet: 'NOUVELLE_VERSION', versionCode: '2' });
+      afficher();
+      expect(await screen.findByText(/votre réponse est attendue \(version 2\)/)).toBeInTheDocument();
+      expect(screen.getByRole('note', { name: 'Accepter ou refuser la nouvelle version (article 16)' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Refuser' })).toBeEnabled();
+      fireEvent.change(screen.getByLabelText('Civilité *'), { target: { value: 'Mme' } });
+      fireEvent.change(screen.getByLabelText('Qualité au sein du cabinet *'), { target: { value: 'gérante' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Afficher la nouvelle version pour l’accepter' }));
+      const caseAcceptation = await screen.findByRole('checkbox', {
+        name: 'J’ai lu et j’accepte le contrat d’abonnement JURIKA, conditions générales version 2',
+      });
+      expect(caseAcceptation).not.toBeChecked();
+      expect(screen.getByRole('button', { name: 'Accepter' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Refuser' })).toBeEnabled();
+      fireEvent.click(caseAcceptation);
+      fireEvent.click(screen.getByRole('button', { name: 'Accepter' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Je confirme mon acceptation' }));
+      await waitFor(() => expect(accepter).toHaveBeenCalledWith(expect.anything(), 'a'.repeat(64), true));
+      expect(refuserVersion).not.toHaveBeenCalled();
+    });
+
+    it('le refus demande une confirmation qui dit la conséquence, puis est envoyé', async () => {
+      etat.mockResolvedValue(NOUVELLE);
+      refuserVersion.mockResolvedValue({});
+      afficher();
+      fireEvent.click(await screen.findByRole('button', { name: 'Refuser' }));
+      const dialogue = await screen.findByRole('dialog');
+      expect(dialogue).toHaveTextContent('Refuser la version 2 des conditions générales ?');
+      expect(dialogue).toHaveTextContent('résiliation sans frais du contrat à l’échéance, le 1er novembre 2027');
+      expect(dialogue).toHaveTextContent('la version antérieure des conditions générales (version 1) continue de s’appliquer');
+      expect(refuserVersion).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Je refuse cette version' }));
+      await waitFor(() => expect(refuserVersion).toHaveBeenCalledWith('2'));
+      expect(accepter).not.toHaveBeenCalled();
+    });
+
+    it('annuler la confirmation n’enregistre aucune réponse', async () => {
+      etat.mockResolvedValue(NOUVELLE);
+      afficher();
+      fireEvent.click(await screen.findByRole('button', { name: 'Refuser' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Revenir au contrat' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      expect(refuserVersion).not.toHaveBeenCalled();
+    });
+
+    it('l’historique montre les réponses enregistrées', async () => {
+      etat.mockResolvedValue({ ...NOUVELLE, objetAAccepter: null, acceptationRequise: false });
+      historique.mockResolvedValue({
+        conditions: [], acceptations: [], resiliations: [], renouvellements: [], avis: [],
+        reponses: [{ id: 'r1', conditionsId: 'cp1', versionCode: '2', reponse: 'REFUSEE', acceptationId: null,
+          signataireCompte: 'salma@jurika.ma', reponduLeCasablanca: '2026-11-21 09:00:00', adresseIp: '196.200.1.2' }],
+      });
+      afficher();
+      const liste = await screen.findByRole('list', { name: 'Réponses aux nouvelles versions' });
+      expect(liste).toHaveTextContent('Conditions générales, version 2, refusées le');
+      expect(liste).toHaveTextContent('salma@jurika.ma');
+    });
   });
 
   it('modifier une mention après lecture oblige à relire le contrat', async () => {

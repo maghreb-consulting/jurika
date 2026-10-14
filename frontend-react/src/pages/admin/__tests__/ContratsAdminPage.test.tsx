@@ -34,8 +34,10 @@ describe('ContratsAdminPage', () => {
     listWorkspaces.mockReset().mockResolvedValue([CABINET]);
     listeAdmin.mockReset().mockResolvedValue([]);
     versionsAdmin.mockReset().mockResolvedValue([
-      { id: 'v1', code: '2026-10-12', entreeEnVigueur: '2026-10-14', empreinteModele: 'x', empreinteCg: 'y',
-        empreinteDpa: 'z', origine: 'INITIALE', publieeLe: '2026-10-14T00:00:00Z' },
+      { id: 'v1', code: '1', entreeEnVigueur: '2026-10-14', empreinteModele: 'x', empreinteCg: 'y',
+        empreinteDpa: 'z', origine: 'INITIALE', publieeLe: '2026-10-14T00:00:00Z', retiree: false },
+      { id: 'v0', code: '2026-10-12', entreeEnVigueur: '2026-10-13', empreinteModele: 'x', empreinteCg: 'y',
+        empreinteDpa: 'z', origine: 'INITIALE', publieeLe: '2026-10-13T00:00:00Z', retiree: true },
     ]);
     ouvrirConditions.mockReset().mockResolvedValue({ conditionsId: 'cp1' });
   });
@@ -45,7 +47,26 @@ describe('ContratsAdminPage', () => {
     const ligne = (await screen.findByText('Cabinet Atlas')).closest('tr') as HTMLElement;
     expect(within(ligne).getByText('Aucun contrat')).toBeInTheDocument();
     expect(screen.getByRole('note', { name: 'Activer un abonnement et suivre les contrats' })).toBeInTheDocument();
-    expect(screen.getByText(/Version 2026-10-12/)).toBeInTheDocument();
+    expect(screen.getByText(/Version 1 — en vigueur le 14 octobre 2026/)).toBeInTheDocument();
+    // Le projet retire reste visible du seul super-admin, marque comme tel, sans "Partir de ce texte".
+    const retiree = screen.getByText(/Version 2026-10-12 — retirée : jamais présentée aux cabinets/).closest('li') as HTMLElement;
+    expect(within(retiree).queryByRole('button')).toBeNull();
+  });
+
+  it('montre, par cabinet, la réponse attendue ou donnée à une nouvelle version', async () => {
+    const SECOND = { ...CABINET, id: 'ws2', code: 'JUR-RIF', name: 'Cabinet Rif' };
+    listWorkspaces.mockResolvedValue([CABINET, SECOND]);
+    const base = { enAttente: null, courant: null, derniereAcceptation: null, resiliation: null, joursAvantEcheance: null };
+    listeAdmin.mockResolvedValue([
+      { ...base, workspaceId: 'ws1', statut: 'ACCEPTE', versionSansReponse: '2', derniereReponse: null },
+      { ...base, workspaceId: 'ws2', statut: 'RESILIE', versionSansReponse: null,
+        derniereReponse: { id: 'r1', conditionsId: 'cp2', versionCode: '2', reponse: 'REFUSEE', acceptationId: null,
+          signataireCompte: 'sup@rif.ma', reponduLeCasablanca: '2026-11-21 09:00:00', adresseIp: '1.2.3.4' } },
+    ]);
+    render(<ToastProvider><ContratsAdminPage /></ToastProvider>);
+    expect(await screen.findByTestId('sans-reponse-ws1')).toHaveTextContent('Réponse attendue à la version 2');
+    expect(screen.getByTestId('reponse-ws2')).toHaveTextContent(
+      'Version 2 refusée le 21 novembre 2026 à 09:00 (heure de Casablanca) — résiliation à l’échéance');
   });
 
   it('saisit les conditions particulières : en attente d’acceptation du superviseur', async () => {

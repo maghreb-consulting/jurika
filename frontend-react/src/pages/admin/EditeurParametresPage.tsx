@@ -10,18 +10,18 @@ import type { EditeurParametres, EditeurTrace, UsageEditeur } from '../../types/
 
 /** Mentions de l'editeur, dans l'ordre d'affichage (cles de l'API billing). */
 const MENTIONS: { champ: string; libelle: string; aide?: string }[] = [
-  { champ: 'raisonSociale', libelle: 'Raison sociale', aide: 'Par exemple « Maghreb Consulting ».' },
-  { champ: 'formeJuridique', libelle: 'Forme juridique', aide: 'SARL, SA… : imprimée « Maghreb Consulting, [forme] au capital de… ».' },
+  { champ: 'raisonSociale', libelle: 'Raison sociale', aide: 'Par exemple « Maghreb Consulting » : imprimée en tête des parties du contrat.' },
+  { champ: 'formeJuridique', libelle: 'Forme juridique', aide: 'SARL, SA… : imprimée « [raison sociale], [forme] au capital de… ».' },
   { champ: 'capitalSocial', libelle: 'Capital social (en dirhams)', aide: 'Montant seul : le contrat ajoute « dirhams ».' },
-  { champ: 'siegeSocial', libelle: 'Adresse du siège' },
-  { champ: 'ville', libelle: 'Ville du siège' },
+  { champ: 'siegeSocial', libelle: 'Adresse du siège', aide: 'Sans la ville : le contrat et les factures impriment « [adresse], [ville du siège] ».' },
+  { champ: 'ville', libelle: 'Ville du siège', aide: 'Imprimée après l’adresse du siège ; la ville du registre du commerce se saisit à part.' },
   { champ: 'rcNumero', libelle: 'Numéro du registre du commerce' },
   { champ: 'rcTribunal', libelle: 'Ville du registre du commerce', aide: 'Imprimée « immatriculée au registre du commerce de [ville] ».' },
   { champ: 'ice', libelle: 'ICE', aide: '15 chiffres.' },
   { champ: 'identifiantFiscal', libelle: 'Identifiant fiscal (IF)' },
   { champ: 'taxeProfessionnelle', libelle: 'Taxe professionnelle (TP)' },
   { champ: 'representantNom', libelle: 'Nom du représentant légal', aide: 'Avec la civilité, par exemple « M. Prénom Nom ».' },
-  { champ: 'representantQualite', libelle: 'Qualité du représentant légal', aide: 'Par exemple « gérant ».' },
+  { champ: 'representantQualite', libelle: 'Qualité du représentant légal', aide: 'Par exemple « gérant » : imprimée « en qualité de [qualité] ».' },
 ];
 
 const LIBELLE_USAGE: Record<UsageEditeur, string> = { FACTURES: 'factures', CONTRAT: 'contrat d’abonnement' };
@@ -94,9 +94,10 @@ export function EditeurParametresPage() {
         <p>
           Saisissez une fois l’identité de Maghreb Consulting, telle qu’elle figure au registre du commerce. Elle est
           imprimée sur chaque facture et dans le contrat d’abonnement (pièce A, conditions particulières). Une mention
-          laissée vide n’est jamais inventée : les documents la signalent « non renseignée ». Chaque modification est
-          tracée (auteur, date, ancienne et nouvelle valeur) ; elle vaut pour les documents produits ensuite, les
-          contrats déjà acceptés restent tels qu’ils ont été acceptés.
+          laissée vide n’est jamais inventée : les documents l’impriment « [non renseigné : …] » ; complétez donc
+          toutes les mentions du contrat avant d’activer un abonnement. Chaque modification est tracée (auteur, date,
+          ancienne et nouvelle valeur) ; elle vaut pour les documents produits ensuite : les contrats déjà acceptés
+          restent tels qu’ils ont été acceptés (texte et empreinte figés).
         </p>
       </TexteAide>
 

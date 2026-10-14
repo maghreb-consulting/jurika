@@ -13,14 +13,14 @@ import { EVENEMENT_CONTRAT_EN_ATTENTE } from '../../services/contrat.service';
  * (Parametres > Cabinet), a completer avant d'accepter.
  */
 export const PAGES_PERMISES_CONTRAT = ['/app/contrat', '/settings/cabinet'];
-const CLE_SESSION_VERSION = 'jurika.contrat.nouvelle-version-vue';
 
 export type DecisionGarde = 'CHARGEMENT' | 'LIBRE' | 'REDIRIGER' | 'RESTREINT' | 'ATTENTE_EMPLOYE';
 
 export function useGardeContrat(): DecisionGarde {
   const role = useAuthStore((s) => s.user?.role);
   const userId = useAuthStore((s) => s.user?.userId);
-  const { lu: luStore, utilisateur, bloque, objet, charger } = useContratStore();
+  const { lu: luStore, utilisateur, bloque, objet, charger, versionPresentee, marquerVersionPresentee } =
+    useContratStore();
   const lu = luStore && utilisateur === userId;
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -34,19 +34,18 @@ export function useGardeContrat(): DecisionGarde {
     return () => window.removeEventListener(EVENEMENT_CONTRAT_EN_ATTENTE, relire);
   }, [concerne, userId, charger]);
 
-  // RG-CTR-07 : nouvelle version a accepter "a la connexion suivante" : le superviseur est conduit
-  // une fois par session a l'ecran du contrat (sans blocage).
+  // RG-CTR-07, article 16 : tant qu'il n'a pas repondu (Accepter ou Refuser) a la nouvelle version,
+  // le superviseur est conduit a l'ecran du contrat a chaque connexion, une fois, sans blocage :
+  // il peut ensuite travailler librement. La reponse donnee, le serveur ne la redemande plus.
   useEffect(() => {
-    if (role !== 'SUPERVISEUR' || objet !== 'NOUVELLE_VERSION' || pathname === '/app/contrat') return;
-    let dejaVue = false;
-    try {
-      dejaVue = sessionStorage.getItem(CLE_SESSION_VERSION) === '1';
-      sessionStorage.setItem(CLE_SESSION_VERSION, '1');
-    } catch {
-      // stockage indisponible : la redirection a lieu, sans memoire de session
-    }
-    if (!dejaVue) navigate('/app/contrat');
-  }, [role, objet, pathname, navigate]);
+    if (role !== 'SUPERVISEUR' || objet !== 'NOUVELLE_VERSION' || !userId) return;
+    if (versionPresentee === userId) return;
+    marquerVersionPresentee(userId);
+    if (pathname !== '/app/contrat') navigate('/app/contrat');
+  }, [role, objet, userId, versionPresentee, marquerVersionPresentee, pathname, navigate]);
+
+  // Sortie de l'application (deconnexion) : la demande sera presentee a la connexion suivante.
+  useEffect(() => () => marquerVersionPresentee(null), [marquerVersionPresentee]);
 
   if (!concerne) return 'LIBRE';
   if (!lu) return 'CHARGEMENT';

@@ -9,6 +9,7 @@ import type {
   EtatContratEmploye,
   HistoriqueContrat,
   LigneAdminContrat,
+  ReponseVersion,
   ResiliationVue,
   SignataireSaisie,
   VersionVue,
@@ -39,6 +40,15 @@ export const contratService = {
       ...signataire,
       empreinteLue,
       caseCochee,
+      confirmation: true,
+    });
+    return data;
+  },
+
+  /** Article 16 : refus de la nouvelle version, qui vaut resiliation a l'echeance (confirmation exigee). */
+  async refuserVersion(versionCode: string): Promise<ReponseVersion> {
+    const { data } = await api.post<ReponseVersion>('/billing/contrat/refuser-version', {
+      versionCode,
       confirmation: true,
     });
     return data;
