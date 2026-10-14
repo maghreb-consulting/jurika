@@ -4,6 +4,8 @@ import { dataroomService } from '../../../services/dataroom.service';
 import { PdfPreviewModal } from '../../../components/ui/PdfPreviewModal';
 import { PromptDialog } from '../../../components/ui/PromptDialog';
 import type { DocumentSummary } from '../../../types/dataroom';
+import { useEnEssai } from '../../../store/essaiStore';
+import { InfoBulle } from '../../../components/ui/Aide';
 
 /**
  * Sprint 2026-06-23 — Disclosure des anciennes versions d'un Document logique.
@@ -31,6 +33,8 @@ export function DocumentVersionsDropdown({
   onChanged,
 }: DocumentVersionsDropdownProps) {
   const [open, setOpen] = useState(false);
+  // Decision du 2026-10-14 (RG-ESS-05) : aucun telechargement propose pendant l'essai.
+  const enEssai = useEnEssai();
   const [versions, setVersions] = useState<DocumentSummary[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -167,6 +171,9 @@ export function DocumentVersionsDropdown({
                     >
                       <Eye className="h-3.5 w-3.5" />
                     </button>
+                    {enEssai !== false ? (
+                      <InfoBulle libelle="Téléchargement indisponible" texte="Téléchargement indisponible pendant l’essai gratuit : le document se consulte en aperçu, avec la mention d’évaluation. Il sera téléchargeable après la souscription d’un forfait." />
+                    ) : (
                     <button
                       type="button"
                       onClick={() => download(v)}
@@ -176,6 +183,7 @@ export function DocumentVersionsDropdown({
                     >
                       <Download className="h-3.5 w-3.5" />
                     </button>
+                    )}
                     {canRestore && (
                       <button
                         type="button"
@@ -215,6 +223,7 @@ export function DocumentVersionsDropdown({
           if (previewTarget) void download(previewTarget);
         }}
         fetchPreview={(versionId) => dataroomService.previewVersion(documentId, versionId)}
+        fetchApercu={(versionId) => dataroomService.apercuVersion(documentId, versionId)}
       />
 
       {restoreTarget && (

@@ -18,6 +18,8 @@ import {
   X,
 } from 'lucide-react';
 import {
+  apercuDocument,
+  deposerDocument,
   generateDocument,
   GenerationRefuseeError,
   listTemplatesForWorkflow,
@@ -36,6 +38,9 @@ import { BlocageValidation } from '../../../components/workflow/BlocageValidatio
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 import { DocumentEditor } from '../../../components/document/DocumentEditor';
 import { CollaboraEditor } from '../../../components/document/CollaboraEditor';
+import { AideApercuEssai, ApercuPagesView } from '../../../components/document/ApercuPages';
+import { estEnEssai, useEnEssai } from '../../../store/essaiStore';
+import type { ApercuPages } from '../../../types/apercu';
 import { useForfait } from '../../../lib/useForfait';
 import { dataroomService } from '../../../services/dataroom.service';
 import {
@@ -109,6 +114,12 @@ interface DocState {
   generated: boolean;
   filename?: string;
   blob?: Blob;
+  /**
+   * Decision du 2026-10-14 (RG-ESS-05, RG-ESS-06) : pendant l'essai, aucun fichier n'est recu ;
+   * l'acte est enregistre en brouillon par le serveur et seules ses pages d'apercu (images
+   * filigranees produites par le serveur) sont affichees. Jamais persiste.
+   */
+  apercu?: ApercuPages;
   documentId?: string;
   validated: boolean;
   error: string | null;
@@ -567,6 +578,8 @@ export function Step7Generation({
   // ouvert dans le modal d'aperçu (null = fermé). L'aperçu s'affiche sur toute
   // la largeur disponible et défile sur toute la longueur du document.
   const [previewingTplCode, setPreviewingTplCode] = useState<string | null>(null);
+  // Decision du 2026-10-14 (RG-ESS-05) : pendant l'essai, ni telechargement ni edition du fichier.
+  const enEssai = useEnEssai();
   // Étape 7 (aperçu 2026-08) — mini-aperçu fidèle INLINE affiché par défaut sous
   // la carte dès qu'un blob est disponible ; repliable par carte (clé = code).
   // Le bouton « Plein écran » ouvre le même rendu en modal pleine largeur.
@@ -775,13 +788,13 @@ export function Step7Generation({
 
       const codesBrouillon = Object.entries(TEMPLATE_TO_DOCTYPE)
         .filter(([code, type]) =>
-          !docs[code]?.blob && brouillons.some((b) => b.documentType === type),
+          !docs[code]?.blob && !docs[code]?.apercu && brouillons.some((b) => b.documentType === type),
         )
         .map(([code]) => code);
 
       // Codes persistés comme générés/validés mais sans blob en mémoire.
       const codesToRestore = Object.entries(persistedDocs)
-        .filter(([code, st]) => (st.generated || st.validated) && !docs[code]?.blob)
+        .filter(([code, st]) => (st.generated || st.validated) && !docs[code]?.blob && !docs[code]?.apercu)
         .map(([code]) => code)
         .filter((code) => !codesBrouillon.includes(code));
 
@@ -794,16 +807,22 @@ export function Step7Generation({
         return next;
       });
 
+      // Decision du 2026-10-14 (RG-ESS-05) : pendant l'essai, aucun fichier n'est relu ; les
+      // documents se restaurent en pages d'apercu filigranees.
+      const essai = await estEnEssai();
+      if (estAnnule()) return;
       for (const code of codesBrouillon) {
         if (estAnnule()) return;
         try {
           const type = TEMPLATE_TO_DOCTYPE[code];
           const b = brouillons.find((x) => x.documentType === type);
           if (!b) continue;
-          const blob = await dataroomService.fetchDocumentBlob(b.id);
+          const contenu = essai
+            ? { apercu: await dataroomService.apercuDocument(b.id) }
+            : { blob: await dataroomService.fetchDocumentBlob(b.id) };
           if (estAnnule()) return;
           updateDoc(code, {
-            blob,
+            ...contenu,
             documentId: b.id,
             brouillon: true,
             generated: true,
@@ -845,10 +864,12 @@ export function Step7Generation({
             : undefined;
           if (match) {
             // PRIORITÉ Data Room — récupère le blob déposé (sans re-télécharger).
-            const blob = await dataroomService.fetchDocumentBlob(match.id);
+            const contenu = essai
+              ? { apercu: await dataroomService.apercuDocument(match.id) }
+              : { blob: await dataroomService.fetchDocumentBlob(match.id) };
             if (estAnnule()) return;
             updateDoc(code, {
-              blob,
+              ...contenu,
               documentId: match.id,
               editeManuellementAt: match.editeManuellementAt ?? null,
             });
@@ -857,6 +878,12 @@ export function Step7Generation({
             // JAMAIS en lecture seule (aucune génération sur ticket clôturé) :
             // on se contente alors du blob Data Room, sinon Aperçu/Télécharger
             // restent inactifs pour ce document.
+            if (essai) {
+              const r = await apercuDocument('CREATION_SARL', code, await chargeServeur(false));
+              if (estAnnule()) return;
+              updateDoc(code, { apercu: r.apercu, filename: r.nomFichier });
+              continue;
+            }
             const { blob, filename } = await generateDocument(
               'CREATION_SARL',
               code,
@@ -992,6 +1019,10 @@ export function Step7Generation({
       validated: false,
     });
     try {
+      if (await estEnEssai()) {
+        await genererEssai(tpl, nextVersion);
+        return;
+      }
       const { blob, filename, donneesAObtenir } = await generateDocument(
         'CREATION_SARL',
         tpl.code,
@@ -1019,6 +1050,53 @@ export function Step7Generation({
         error: err instanceof Error ? err.message : 'Génération impossible.',
         refus: err instanceof GenerationRefuseeError ? err.donneesManquantes : [],
       });
+    }
+  }
+
+  /**
+   * Decision du 2026-10-14 (RG-ESS-05, RG-ESS-06) : generation pendant l'essai. Le serveur genere
+   * l'acte et l'enregistre en BROUILLON dans la Data Room (aucun fichier recu) ; l'apercu est celui
+   * du brouillon enregistre, en pages filigranees. Sans dossier ni ticket : apercu seul.
+   */
+  async function genererEssai(tpl: TemplateInfo, nextVersion: number) {
+    const type = TEMPLATE_TO_DOCTYPE[tpl.code];
+    const charge = await chargeServeur(true);
+    if (!readOnly && dossierId && ticketId && type) {
+      const r = await deposerDocument('CREATION_SARL', tpl.code, charge, {
+        dossierId,
+        documentType: type,
+        title: docLabel(tpl),
+        filename: cleanDocFilename(tpl, denomination, forme, nextVersion),
+        ticketId,
+        mode: 'BROUILLON',
+      });
+      const apercu = await dataroomService.apercuDocument(r.document.id);
+      updateDoc(tpl.code, {
+        generating: false,
+        generated: true,
+        blob: undefined,
+        apercu,
+        filename: r.nomFichier,
+        documentId: r.document.id,
+        brouillon: true,
+        version: nextVersion,
+        aObtenir: r.donneesAObtenir,
+      });
+    } else {
+      const r = await apercuDocument('CREATION_SARL', tpl.code, charge);
+      updateDoc(tpl.code, {
+        generating: false,
+        generated: true,
+        blob: undefined,
+        apercu: r.apercu,
+        filename: r.nomFichier,
+        version: nextVersion,
+        aObtenir: r.donneesAObtenir,
+      });
+    }
+    if (ticketId) {
+      setAttendues(await workflowService.donneesAttendues(ticketId));
+      setMagasin(await workflowService.variables(ticketId));
     }
   }
 
@@ -1070,6 +1148,23 @@ export function Step7Generation({
     if (!st || !st.generated) return;
     let blob = st.blob;
     let filename = st.filename;
+    // Decision du 2026-10-14 : pendant l'essai, le document valide est le brouillon enregistre
+    // par le serveur (aucun fichier recu) ; sans brouillon, rien n'est depose.
+    if (!blob && st.apercu) {
+      if (st.documentId && st.brouillon) {
+        try {
+          await dataroomService.validerBrouillon(st.documentId);
+          updateDoc(tpl.code, { validated: true, brouillon: false });
+        } catch (err) {
+          updateDoc(tpl.code, {
+            error: 'Validation impossible : ' + (err instanceof Error ? err.message : 'échec du dépôt en Data Room'),
+          });
+        }
+        return;
+      }
+      updateDoc(tpl.code, { validated: true });
+      return;
+    }
     if (!blob || !filename) {
       try {
         updateDoc(tpl.code, { generating: true, error: null });
@@ -1685,7 +1780,13 @@ export function Step7Generation({
                         Restauration de l’aperçu…
                       </div>
                     )}
-                    {!st.blob && !restoring[tpl.code] && (
+                    {!st.blob && st.apercu && !restoring[tpl.code] && (
+                      <div className="max-h-[460px] space-y-3 overflow-auto rounded-lg border border-border bg-bg-overlay p-3">
+                        {st.apercu.filigrane && <AideApercuEssai />}
+                        <ApercuPagesView apercu={st.apercu} titre={docLabel(tpl)} />
+                      </div>
+                    )}
+                    {!st.blob && !st.apercu && !restoring[tpl.code] && (
                       <div className="rounded-lg border border-border bg-bg-overlay p-3 text-[11px] text-fg-subtle">
                         <Eye className="mr-1 inline h-3.5 w-3.5 align-text-bottom" />
                         {readOnly
@@ -1744,12 +1845,13 @@ export function Step7Generation({
                       <button
                         type="button"
                         onClick={() => setPreviewingTplCode(tpl.code)}
-                        disabled={!st.blob || restoring[tpl.code]}
+                        disabled={(!st.blob && !st.apercu) || restoring[tpl.code]}
                         title="Aperçu plein écran du document"
                         className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent disabled:opacity-60"
                       >
                         <Maximize2 className="h-3.5 w-3.5" /> Plein écran
                       </button>
+                      {enEssai === false ? (
                       <button
                         type="button"
                         onClick={() => void downloadDocx(tpl)}
@@ -1758,6 +1860,11 @@ export function Step7Generation({
                       >
                         <Download className="h-3.5 w-3.5" /> Télécharger (Word)
                       </button>
+                      ) : (
+                        <span className="flex h-9 items-center justify-center gap-1 rounded-lg border border-dashed border-border px-2 text-center text-[11px] text-fg-subtle">
+                          Aperçu seulement (essai gratuit)
+                        </span>
+                      )}
                       {!readOnly && (
                         <>
                           <button
@@ -1781,7 +1888,7 @@ export function Step7Generation({
                           <button
                             type="button"
                             onClick={() => setEditingTplCode(tpl.code)}
-                            disabled={st.generating || restoring[tpl.code] || !st.blob || !editionIncluse}
+                            disabled={st.generating || restoring[tpl.code] || !st.blob || !editionIncluse || enEssai !== false}
                             className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-accent/30 bg-accent/5 text-xs font-medium text-accent hover:bg-accent/10 disabled:opacity-60"
                             title={editionIncluse
                               ? 'Éditer le document (style Word)'
@@ -1888,7 +1995,7 @@ export function Step7Generation({
       {previewingTplCode && (() => {
         const tpl = templates.find((t) => t.code === previewingTplCode);
         const st = docs[previewingTplCode];
-        if (!tpl || !st?.blob) return null;
+        if (!tpl || (!st?.blob && !st?.apercu)) return null;
         return (
           <div
             role="dialog"
@@ -1916,12 +2023,16 @@ export function Step7Generation({
                 </button>
               </div>
               <div className="flex-1 overflow-auto p-4">
+                {st.blob ? (
                 <DocumentEditor
                   docxBlob={st.blob}
                   filename={fileFor(tpl)}
                   title={docLabel(tpl)}
                   readOnly
                 />
+                ) : st.apercu ? (
+                  <ApercuPagesView apercu={st.apercu} titre={docLabel(tpl)} />
+                ) : null}
               </div>
             </div>
           </div>

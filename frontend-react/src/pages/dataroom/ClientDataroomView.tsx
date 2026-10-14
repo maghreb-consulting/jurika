@@ -20,6 +20,8 @@ import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { TexteAide } from '../../components/ui/Aide';
 import { PdfPreviewModal } from '../../components/ui/PdfPreviewModal';
+import { useEnEssai } from '../../store/essaiStore';
+import { InfoBulle } from '../../components/ui/Aide';
 import { dataroomService } from '../../services/dataroom.service';
 import { extractError } from '../../lib/api';
 import { isDossierArchived } from '../../lib/dossierArchive';
@@ -142,8 +144,11 @@ export function ClientDataroomView() {
 
   useDataroomSocket(dossier?.id, handleDataroomEvent);
 
-  const canDownload = settings?.permDownload ?? false;
-  const canPrint = settings?.permPrint ?? false;
+  // Decision du 2026-10-14 (RG-ESS-05) : pendant l'essai gratuit du cabinet, ni telechargement
+  // ni impression, quelles que soient les permissions ; les documents se consultent en apercu.
+  const enEssai = useEnEssai();
+  const canDownload = (settings?.permDownload ?? false) && enEssai === false;
+  const canPrint = (settings?.permPrint ?? false) && enEssai === false;
   /**
    * Lot DIVERS §A (2026-08-13) — societe dissoute / liquidee / radiee : la Data
    * Room est une archive legale. Le client conserve consultation et
@@ -248,7 +253,7 @@ export function ClientDataroomView() {
               ) : (
                 <Lock className="w-3 h-3" />
               )}{' '}
-              Télécharger {canDownload ? '' : '(non autorisé)'}
+              Télécharger {canDownload ? '' : enEssai !== false ? '(indisponible pendant l’essai gratuit)' : '(non autorisé)'}
             </span>
             <span
               className={`flex items-center gap-1 ${
@@ -260,7 +265,7 @@ export function ClientDataroomView() {
               ) : (
                 <Lock className="w-3 h-3" />
               )}{' '}
-              Imprimer {canPrint ? '' : '(non autorisé)'}
+              Imprimer {canPrint ? '' : enEssai !== false ? '(indisponible pendant l’essai gratuit)' : '(non autorisé)'}
             </span>
             <span
               className={`flex items-center gap-1 ${
@@ -1051,6 +1056,8 @@ function ClientDepotRow({
 }) {
   const [downloading, setDownloading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  // Decision du 2026-10-14 (RG-ESS-05) : aucun telechargement propose pendant l'essai.
+  const enEssai = useEnEssai();
 
   async function download() {
     setDownloading(true);
@@ -1083,6 +1090,9 @@ function ClientDepotRow({
         >
           <Eye className="w-3.5 h-3.5" /> Voir
         </button>
+        {enEssai !== false ? (
+          <InfoBulle libelle="Téléchargement indisponible" texte="Téléchargement indisponible pendant l’essai gratuit : le document se consulte en aperçu, avec la mention d’évaluation. Il sera téléchargeable après la souscription d’un forfait." />
+        ) : (
         <button
           type="button"
           onClick={download}
@@ -1091,6 +1101,7 @@ function ClientDepotRow({
         >
           <Download className="w-3.5 h-3.5" /> {downloading ? '…' : 'Télécharger'}
         </button>
+        )}
         <button
           type="button"
           onClick={() => onDelete(depot.id)}
@@ -1109,6 +1120,7 @@ function ClientDepotRow({
         onClose={() => setPreviewOpen(false)}
         onDownload={download}
         fetchPreview={dataroomService.previewDepot}
+        fetchApercu={dataroomService.apercuDepot}
       />
     </div>
   );

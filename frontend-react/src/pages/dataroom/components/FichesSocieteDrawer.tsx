@@ -5,6 +5,7 @@ import { Button } from '../../../components/ui/Button';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 import { dataroomService } from '../../../services/dataroom.service';
 import { extractError } from '../../../lib/api';
+import { useEnEssai } from '../../../store/essaiStore';
 import type {
   FicheClientVue,
   FicheDossierVue,
@@ -83,6 +84,9 @@ export function FicheSocieteDrawer({
     };
   }, [open, type, dossierId, versionDonnees]);
 
+  // Decision du 2026-10-14 (RG-ESS-05) : pendant l'essai, la fiche se consulte a l'ecran ; aucun PDF.
+  const enEssai = useEnEssai();
+
   async function telecharger() {
     setGeneration(true);
     setMessage(null);
@@ -123,6 +127,7 @@ export function FicheSocieteDrawer({
               Modifier les identifiants
             </Button>
           )}
+          {enEssai === false ? (
           <Button
             size="sm"
             onClick={() => void telecharger()}
@@ -133,6 +138,11 @@ export function FicheSocieteDrawer({
             <FileDown className="mr-1 h-4 w-4" />
             {type === 'client' ? 'Télécharger la fiche client (PDF)' : 'Télécharger la fiche dossier (PDF)'}
           </Button>
+          ) : (
+            <span className="text-xs text-fg-subtle" data-testid="fiche-essai">
+              Fiche consultable à l’écran ; PDF indisponible pendant l’essai gratuit.
+            </span>
+          )}
           <InfoBulle
             libelle="Quel document est téléchargé ?"
             texte="Un PDF à la charte JURIKA (logo, couleurs marine et or), établi à partir des informations affichées ici. Il n’est pas modifiable : corrigez d’abord les identifiants, puis téléchargez-le de nouveau. Chaque téléchargement par l’employé responsable est conservé dans la Data Room, en versions successives."

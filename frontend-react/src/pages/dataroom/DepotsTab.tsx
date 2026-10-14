@@ -5,6 +5,8 @@ import { dataroomService } from '../../services/dataroom.service';
 import { extractError } from '../../lib/api';
 import type { DepotSummary } from '../../types/dataroom';
 import { DataroomReadOnlyHint } from './components/DataroomReadOnlyHint';
+import { useEnEssai } from '../../store/essaiStore';
+import { InfoBulle } from '../../components/ui/Aide';
 
 /**
  * Lot V -- onglet « Depots » cote EMPLOYE (lecture seule).
@@ -111,6 +113,8 @@ function formatBytes(n: number): string {
 function DepotRow({ depot }: { depot: DepotSummary }) {
   const [downloading, setDownloading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  // Decision du 2026-10-14 (RG-ESS-05) : aucun telechargement propose pendant l'essai.
+  const enEssai = useEnEssai();
 
   async function download() {
     setDownloading(true);
@@ -142,6 +146,9 @@ function DepotRow({ depot }: { depot: DepotSummary }) {
         >
           <Eye className="h-3.5 w-3.5" /> Voir
         </button>
+        {enEssai !== false ? (
+          <InfoBulle libelle="Téléchargement indisponible" texte="Téléchargement indisponible pendant l’essai gratuit : le document se consulte en aperçu, avec la mention d’évaluation. Il sera téléchargeable après la souscription d’un forfait." />
+        ) : (
         <button
           type="button"
           onClick={download}
@@ -150,6 +157,7 @@ function DepotRow({ depot }: { depot: DepotSummary }) {
         >
           <Download className="h-3.5 w-3.5" /> {downloading ? '…' : 'Télécharger'}
         </button>
+        )}
       </div>
       <PdfPreviewModal
         open={previewOpen}
@@ -160,6 +168,7 @@ function DepotRow({ depot }: { depot: DepotSummary }) {
         onClose={() => setPreviewOpen(false)}
         onDownload={download}
         fetchPreview={dataroomService.previewDepot}
+        fetchApercu={dataroomService.apercuDepot}
       />
     </div>
   );

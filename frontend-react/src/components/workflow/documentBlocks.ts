@@ -5,6 +5,8 @@
  */
 import { useCallback, useEffect } from 'react';
 import {
+  apercuDocument,
+  deposerDocument,
   generateDocument,
   GenerationRefuseeError,
   type DonneeManquante,
@@ -14,12 +16,20 @@ import {
 import { workflowService, type DonneeAttendue } from '../../services/workflow.service';
 import { dataroomService } from '../../services/dataroom.service';
 import type { DocumentType } from '../../types/dataroom';
+import type { ApercuPages } from '../../types/apercu';
+import { estEnEssai } from '../../store/essaiStore';
 
 export interface DocState {
   generating: boolean;
   generated: boolean;
   filename?: string;
   blob?: Blob;
+  /**
+   * Decision du 2026-10-14 (RG-ESS-05) : pendant l'essai, l'acte n'est jamais recu en fichier ;
+   * seules ses pages d'apercu (images filigranees produites par le serveur) sont affichees, et
+   * l'enregistrement dans la Data Room est fait par le serveur a la validation.
+   */
+  apercu?: ApercuPages;
   validated: boolean;
   error: string | null;
   previewOpen: boolean;
@@ -143,7 +153,8 @@ export function useDocumentBlocks(params: UseDocumentBlocksParams) {
 
   const depositGeneratedToDataroom = useCallback(
     async (tpl: TemplateInfo, st: DocState) => {
-      if (!dossierId || !st.blob || !st.filename) return;
+      if (!dossierId || !st.filename) return;
+      if (!st.blob && !st.apercu) return;
       if (st.depositedToDataroom) return;
       const targetType = mapType(tpl.code);
       // Fix L3 — titre distinctif quand l'appelant en fournit un (cf. titleFor).
@@ -168,6 +179,24 @@ export function useDocumentBlocks(params: UseDocumentBlocksParams) {
         }
         const nextVersion = existingDocumentId ? (matchedVersion ?? 1) + 1 : undefined;
         const filename = params.filenameFor?.(tpl, { version: nextVersion }) || st.filename;
+        if (!st.blob) {
+          // Essai : le serveur genere l'acte et l'enregistre lui-meme (aucun fichier recu).
+          const payload = buildPayload();
+          if (payload.dossierId == null) payload.dossierId = dossierId;
+          if (ticketId && payload.ticketId == null) payload.ticketId = ticketId;
+          await deposerDocument(workflowCode, tpl.code, payload, {
+            dossierId,
+            documentType: targetType,
+            title: targetTitle,
+            filename,
+            ticketId: ticketId ?? undefined,
+            mode: existingDocumentId ? 'NOUVELLE_VERSION' : 'NOUVEAU',
+            existingDocumentId,
+            motif: versioned ? motif : undefined,
+          });
+          updateDoc(tpl.code, { depositedToDataroom: true });
+          return;
+        }
         await dataroomService.depositGeneratedDoc(dossierId, st.blob, {
           documentType: targetType,
           title: targetTitle,
@@ -185,7 +214,7 @@ export function useDocumentBlocks(params: UseDocumentBlocksParams) {
         });
       }
     },
-    [dossierId, ticketId, mapType, updateDoc, versioned, motif, params],
+    [dossierId, ticketId, mapType, updateDoc, versioned, motif, params, buildPayload, workflowCode],
   );
 
   const generateOne = useCallback(
@@ -200,6 +229,22 @@ export function useDocumentBlocks(params: UseDocumentBlocksParams) {
         if (dossierId && payload.dossierId == null) payload.dossierId = dossierId;
         // Lot L3 : le ticket permet au serveur de reclamer les donnees a obtenir.
         if (ticketId && payload.ticketId == null) payload.ticketId = ticketId;
+        if (await estEnEssai()) {
+          // Decision du 2026-10-14 (RG-ESS-05, RG-ESS-06) : apercu en pages filigranees, aucun fichier.
+          const r = await apercuDocument(workflowCode, tpl.code, payload);
+          updateDoc(tpl.code, {
+            generating: false,
+            generated: true,
+            blob: undefined,
+            apercu: r.apercu,
+            filename: params.filenameFor?.(tpl) || r.nomFichier,
+            previewOpen: true,
+            depositedToDataroom: false,
+            aObtenir: r.donneesAObtenir,
+          });
+          await rafraichirAttendues();
+          return;
+        }
         const { blob, filename, donneesAObtenir } = await generateDocument(
           workflowCode,
           tpl.code,

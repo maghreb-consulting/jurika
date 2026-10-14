@@ -20,6 +20,7 @@ vi.mock('../../../services/ticket.service', () => ({
 }));
 let role = 'EMPLOYE';
 vi.mock('../../../store/authStore', () => ({ useCurrentUser: () => ({ role }) }));
+vi.mock('../../../store/essaiStore', () => ({ useEnEssai: () => false }));
 const { stub } = vi.hoisted(() => ({ stub: () => null }));
 vi.mock('../DemarchesPanel', () => ({ DemarchesPanel: stub }));
 vi.mock('../DecisionsTicketPanel', () => ({ DecisionsTicketPanel: stub }));

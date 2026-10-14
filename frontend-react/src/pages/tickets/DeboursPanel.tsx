@@ -8,6 +8,8 @@ import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { ticketService } from '../../services/ticket.service';
 import { dataroomService } from '../../services/dataroom.service';
 import { extractError } from '../../lib/api';
+import { useEnEssai } from '../../store/essaiStore';
+import { ApercuPagesModal } from '../../components/document/ApercuPages';
 import { CATEGORIE_LABELS } from '../../types/ticket';
 import type { Debours, DeboursCategorie, TicketStatut } from '../../types/ticket';
 
@@ -58,6 +60,10 @@ export function DeboursPanel({ ticketId, reference, dossierId, statut, canAct }:
   const [aSupprimer, setASupprimer] = useState<Debours | null>(null);
   const [suppression, setSuppression] = useState(false);
   const [telechargement, setTelechargement] = useState(false);
+  // Decision du 2026-10-14 (RG-ESS-05) : pendant l'essai, ni etat PDF ni piece telechargee ;
+  // les pieces se consultent en apercu (pages filigranees).
+  const enEssai = useEnEssai();
+  const [apercu, setApercu] = useState<{ id: string; nom: string } | null>(null);
 
   const charger = useCallback(async () => {
     try {
@@ -114,6 +120,7 @@ export function DeboursPanel({ ticketId, reference, dossierId, statut, canAct }:
           />
         </h2>
         <div className="flex items-center gap-2">
+          {enEssai === false ? (
           <Button
             size="sm"
             variant="secondary"
@@ -123,6 +130,12 @@ export function DeboursPanel({ ticketId, reference, dossierId, statut, canAct }:
           >
             <Download className="mr-1 h-3.5 w-3.5" /> État des débours (PDF)
           </Button>
+          ) : (
+            <InfoBulle
+              libelle="État des débours indisponible pendant l’essai"
+              texte="Pendant l’essai gratuit, aucun fichier n’est téléchargé : les débours se consultent dans le tableau ci-dessous. L’état des débours en PDF sera disponible après la souscription d’un forfait."
+            />
+          )}
           <InfoBulle
             libelle="Que contient l’état des débours ?"
             texte="Un document PDF à la charte JURIKA, régénéré à chaque téléchargement à partir des lignes ci-dessous : en-tête du cabinet, société et ticket, tableau des frais, total en chiffres et en lettres, liste des pièces justificatives. Il n’est pas modifiable : corrigez une ligne ci-dessous, puis téléchargez-le de nouveau. Le client peut le télécharger depuis son espace si ses permissions le prévoient."
@@ -209,10 +222,13 @@ export function DeboursPanel({ ticketId, reference, dossierId, statut, canAct }:
                       <button
                         type="button"
                         className="inline-flex items-center gap-1 text-accent underline"
+                        title={enEssai !== false ? 'Voir la pièce en aperçu (essai gratuit : aucun téléchargement)' : undefined}
                         onClick={() =>
-                          void dataroomService
-                            .downloadDocument(d.pieceDocumentId as string, d.pieceJointeFilename as string)
-                            .catch((e) => setErreur(extractError(e).message))
+                          enEssai !== false
+                            ? setApercu({ id: d.pieceDocumentId as string, nom: d.pieceJointeFilename as string })
+                            : void dataroomService
+                                .downloadDocument(d.pieceDocumentId as string, d.pieceJointeFilename as string)
+                                .catch((e) => setErreur(extractError(e).message))
                         }
                       >
                         <Paperclip className="h-3.5 w-3.5" /> {d.pieceJointeFilename}
@@ -284,6 +300,13 @@ export function DeboursPanel({ ticketId, reference, dossierId, statut, canAct }:
         variant="danger"
         loading={suppression}
         onConfirm={supprimer}
+      />
+      <ApercuPagesModal
+        open={apercu !== null}
+        cle={apercu?.id ?? null}
+        titre={apercu?.nom ?? 'Pièce justificative'}
+        charger={() => (apercu ? dataroomService.apercuDocument(apercu.id) : Promise.reject(new Error('Pièce absente')))}
+        onClose={() => setApercu(null)}
       />
     </section>
   );

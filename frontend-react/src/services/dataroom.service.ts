@@ -1,4 +1,5 @@
 import { api } from '../lib/api';
+import type { ApercuPages } from '../types/apercu';
 import type {
   AccessLogPage,
   ClientPermissions,
@@ -401,6 +402,26 @@ export const dataroomService = {
       `/dataroom/documents/${documentId}/valider-brouillon`,
       { motif: motif ?? null },
     );
+    return data;
+  },
+
+  /**
+   * Decision du 2026-10-14 (RG-ESS-05, RG-ESS-06) : apercu en AFFICHAGE (pages PNG produites par
+   * le serveur, mention de l'essai incrustee pendant l'essai). Aucun fichier n'est recu : seule
+   * forme d'apercu pendant l'essai.
+   */
+  async apercuDocument(documentId: string): Promise<ApercuPages> {
+    const { data } = await api.get<ApercuPages>(`/dataroom/documents/${documentId}/apercu`);
+    return data;
+  },
+
+  async apercuVersion(documentId: string, versionId: string): Promise<ApercuPages> {
+    const { data } = await api.get<ApercuPages>(`/dataroom/documents/${documentId}/versions/${versionId}/apercu`);
+    return data;
+  },
+
+  async apercuDepot(id: string): Promise<ApercuPages> {
+    const { data } = await api.get<ApercuPages>(`/dataroom/depots/${id}/apercu`);
     return data;
   },
 
