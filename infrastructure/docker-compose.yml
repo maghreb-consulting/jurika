@@ -139,6 +139,9 @@ volumes:
     driver: local
   minio_data:
     driver: local
+  # Lot L7 (E1) : cache des modeles docTR du service OCR (recreable : retelecharge si vide).
+  ocr_modeles:
+    driver: local
 
 networks:
   jurika-network:
