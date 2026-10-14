@@ -1,17 +1,13 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { adresseContact } from './contact';
 
 /**
- * Sprint Beta (pricing-deploy) — TASK 6.
+ * Mise en page commune aux pages legales publiques (conditions generales d'abonnement,
+ * politique de confidentialite), accessibles sans authentification.
  *
- * <p>Layout commun aux pages legales publiques (CGU, Politique de
- * confidentialite). Reprend la typographie editoriale Maghreb Consulting :
- *  - font-heading (Playfair) pour le titre
- *  - prose-style colonne lisible 720px max
- *  - lien retour vers la landing
- *
- * <p>Pages accessibles sans authentification — listees dans le footer du
- * marketing-site + de l'AppShell.
+ * Lot L7 (E3) : l'adresse de contact vient de VITE_CONTACT_EMAIL (fixee au build) ;
+ * sans valeur, aucune adresse n'est affichee.
  */
 export function LegalPageLayout({
   title,
@@ -24,6 +20,7 @@ export function LegalPageLayout({
   lastUpdated: string;
   children: ReactNode;
 }) {
+  const contact = adresseContact();
   return (
     <div className="min-h-screen bg-bg text-fg">
       <header className="border-b border-border bg-bg-raised">
@@ -32,7 +29,7 @@ export function LegalPageLayout({
             JURIKA
           </Link>
           <nav className="text-sm text-fg-muted">
-            <Link to="/cgu" className="mr-4 hover:text-fg">CGU</Link>
+            <Link to="/cgu" className="mr-4 hover:text-fg">Conditions générales</Link>
             <Link to="/confidentialite" className="mr-4 hover:text-fg">Confidentialité</Link>
             <Link to="/login" className="hover:text-fg">Connexion</Link>
           </nav>
@@ -40,7 +37,7 @@ export function LegalPageLayout({
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-12">
-        <p className="text-xs uppercase tracking-widest text-fg-muted">Mentions légales</p>
+        <p className="text-xs uppercase tracking-widest text-fg-muted">Informations juridiques</p>
         <h1 className="font-heading mt-2 text-4xl font-semibold text-fg">{title}</h1>
         {subtitle && <p className="mt-3 text-base text-fg-muted">{subtitle}</p>}
         <p className="mt-4 text-xs text-fg-muted">
@@ -54,8 +51,13 @@ export function LegalPageLayout({
         <footer className="mt-16 border-t border-border pt-6 text-xs text-fg-muted">
           <p>
             JURIKA est édité par <strong className="text-fg">Maghreb Consulting</strong>,
-            cabinet juridique sis à Casablanca (Maroc). Pour toute question relative à ces
-            mentions : <a href="mailto:legal@jurika.ma" className="underline">legal@jurika.ma</a>.
+            Casablanca (Maroc).
+            {contact && (
+              <>
+                {' '}Pour toute question relative à ces documents :{' '}
+                <a href={`mailto:${contact}`} className="underline" data-testid="legal-contact">{contact}</a>.
+              </>
+            )}
           </p>
         </footer>
       </main>
