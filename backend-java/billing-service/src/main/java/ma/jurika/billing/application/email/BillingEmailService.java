@@ -20,14 +20,14 @@ import java.util.Map;
  * Sprint 12 T10 — service envoi emails billing avec rendu Thymeleaf.
  *
  * <p>5 templates :
- *  - facture-disponible      (invoice.payment_succeeded -> RG-BL05)
- *  - conversion-active       (checkout.session.completed -> apres conversion)
- *  - annulation              (customer.subscription.deleted -> RG-BL07)
- *  - reactivation            (resume depuis Customer Portal)
+ *  - facture-disponible      (paiement confirme -> RG-BL05)
+ *  - conversion-active       (premiere souscription payee)
+ *  - annulation              (fin d'abonnement -> RG-BL07)
+ *  - reactivation            (reprise apres archivage)
  *
  * <p>RG-BL16 : tous les emails en FR.
- * Envoyes @Async pour ne pas bloquer le webhook handler. Si SMTP KO, log
- * + skip silencieux (l'event Stripe reste persiste cote DB, retry possible).
+ * Envoyes @Async pour ne pas bloquer l'appelant. Si SMTP KO, l'echec est
+ * journalise (le paiement reste persiste en base).
  */
 @Service
 public class BillingEmailService {

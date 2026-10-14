@@ -9,17 +9,14 @@ import org.springframework.scheduling.annotation.EnableAsync;
 /**
  * Sprint 12 — billing-service (port 8090).
  *
- * <p>Responsabilites :
- *  - Integration Stripe Checkout (hosted) + Customer Portal (RG-BL03/RG-BL09)
- *  - Webhooks Stripe avec signature HMAC (RG-BL04..07)
- *  - TVA Maroc 20% calculee backend (RG-BL12, risque archi #4)
- *  - Persistance des subscriptions/invoices/payment_methods sur base
- *    PostgreSQL dediee {@code jurika_billing} (decision archi #4)
- *  - Email transactionnels billing (RG-BL05, RG-BL06, RG-BL16)
- *
- * <p>SubscribeUseCase compose CreateStripeCustomerUseCase +
- * CreateCheckoutSessionUseCase + RecordSubscriptionUseCase
- * (RG-BL17 pattern SignupCabinetUseCase Sprint 11).
+ * <p>Responsabilites (lot L7, Stripe retire) :
+ *  - forfaits du CDC 4.3, quotas RG-PLN, changement de forfait RG-TAR ;
+ *  - paiement : carte par la page hebergee du CMI (retour serveur signe verifie),
+ *    virement, cheque et especes enregistres par le super-admin (RG-PAY) ;
+ *  - factures numerotees sans trou (RG-PAY-03), TVA au taux des parametres de l'editeur ;
+ *  - contrat d'abonnement (RG-CTR) et parametres de l'editeur ;
+ *  - persistance sur la base dediee {@code jurika_billing} (decision archi #4) ;
+ *  - courriels transactionnels billing.
  *
  * <p>Pas d'integration Spring AI ici (pas d'IA pour le billing).
  */

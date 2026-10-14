@@ -86,8 +86,8 @@ public class SignupCabinetRequest {
     /**
      * BUG 14 (2026-06-07) — si true, le signup ne genere PAS le MDP temporaire
      * cote welcome email immediatement : l'envoi est differe jusqu'a la
-     * validation du paiement (CARD via Stripe webhook OU validation manuelle
-     * BANK/CHEQUE/CASH OU TEST_BYPASS). Permet le flux signup -> plan -> recap
+     * validation du paiement (carte confirmee par le retour serveur du CMI, ou
+     * virement, cheque, especes enregistres par le super-admin ; lot L7). Permet le flux signup -> plan -> recap
      * -> paiement -> activation + identifiants.
      */
     private boolean deferCredentials = false;
