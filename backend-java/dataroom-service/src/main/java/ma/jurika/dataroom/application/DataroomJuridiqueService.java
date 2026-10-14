@@ -987,58 +987,111 @@ public class DataroomJuridiqueService {
                                         List<UUID> documentIds,
                                         boolean includeOldVersions,
                                         boolean pourClient) {
+        return exporterZip(dossierId, documentIds, includeOldVersions, pourClient).contenu();
+    }
+
+    /** Archive produite et documents effectivement inclus (journal d'acces du client). */
+    public record ExportZip(byte[] contenu, List<UUID> inclus) {}
+
+    /**
+     * Lot L7 (E2, RG-DR-07, RG-DOS-01) : l'export applique le MEME filtre que la
+     * consultation ({@link #view}) : seuls les documents que la vue montre a cet
+     * utilisateur peuvent entrer dans l'archive -- documents du dossier, hors
+     * brouillons de generation, et pour un client ceux marques visibles. La
+     * selection envoyee par l'interface n'est qu'un sous-ensemble demande : un
+     * identifiant hors de cet ensemble est ecarte, jamais servi.
+     *
+     * <p>Deux documents de meme nom recoivent des noms distincts dans l'archive
+     * ("statuts.pdf", "statuts (2).pdf") au lieu de faire echouer tout l'export.
+     * Une piece illisible n'entre pas vide : elle est nommee au MANIFEST.
+     */
+    @Transactional(readOnly = true)
+    public ExportZip exporterZip(UUID dossierId,
+                                 List<UUID> documentIds,
+                                 boolean includeOldVersions,
+                                 boolean pourClient) {
         if (documentIds == null || documentIds.isEmpty()) {
             throw new ma.jurika.common.exception.ValidationException(
-                    "Aucun document s\u00e9lectionn\u00e9");
+                    "Aucun document sélectionné");
         }
         org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DataroomJuridiqueService.class);
+        UUID ws = TenantContext.get();
+        // L'ensemble consultable : la requete de la vue (workspace + dossier, sans
+        // brouillon), puis le filtre de visibilite de la vue.
+        Map<UUID, DocumentEntity> consultables = new LinkedHashMap<>();
+        if (ws != null) {
+            for (DocumentEntity d : visiblesPour(
+                    documents.findAllByWorkspaceIdAndDossierIdOrderByCreatedAtDesc(ws, dossierId), pourClient)) {
+                consultables.put(d.getId(), d);
+            }
+        }
 
         java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-        int included = 0;
+        List<UUID> inclus = new ArrayList<>();
+        List<String> illisibles = new ArrayList<>();
+        int ecartes = 0;
+        java.util.Set<String> nomsPris = new java.util.HashSet<>();
         try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(baos)) {
-            UUID ws = TenantContext.get();
-            for (UUID id : documentIds) {
-                // Lot L0 (E20, P9) : document du workspace courant seulement.
-                DocumentEntity doc = ws == null ? null : documents.findByWorkspaceIdAndId(ws, id).orElse(null);
+            for (UUID id : new java.util.LinkedHashSet<>(documentIds)) {
+                DocumentEntity doc = consultables.get(id);
                 if (doc == null) {
-                    log.warn("exportSelectionAsZip : doc {} introuvable, skip", id);
-                    continue;
-                }
-                if (!dossierId.equals(doc.getDossierId())) {
-                    log.warn("exportSelectionAsZip : doc {} hors dossier {}, skip", id, dossierId);
+                    log.warn("exportSelectionAsZip : doc {} hors de la consultation du dossier {}, ecarte", id, dossierId);
+                    ecartes++;
                     continue;
                 }
                 if (!includeOldVersions && !doc.isCurrent()) {
                     log.debug("exportSelectionAsZip : doc {} non current, skip", id);
+                    ecartes++;
                     continue;
                 }
-                if (pourClient && !doc.isVisibleClient()) {
-                    log.debug("exportSelectionAsZip : doc {} non visible client, skip", id);
-                    continue;
-                }
-                String entryName = doc.getDocumentType() + "/" + doc.getFilename();
-                zos.putNextEntry(new java.util.zip.ZipEntry(entryName));
+                byte[] octets;
                 try (var in = storage.download(doc.getObjectKey()).stream()) {
-                    in.transferTo(zos);
-                    included++;
+                    octets = in.readAllBytes();
                 } catch (Exception ex) {
-                    log.warn("ZIP {} : echec lecture {} : {}", entryName, doc.getId(), ex.getMessage());
+                    log.warn("ZIP : echec lecture {} : {}", doc.getId(), ex.getMessage());
+                    illisibles.add(doc.getDocumentType() + "/" + doc.getFilename());
+                    continue;
                 }
+                String entryName = nomUnique(doc.getDocumentType() + "/" + doc.getFilename(), nomsPris);
+                zos.putNextEntry(new java.util.zip.ZipEntry(entryName));
+                zos.write(octets);
                 zos.closeEntry();
+                inclus.add(doc.getId());
             }
             zos.putNextEntry(new java.util.zip.ZipEntry("MANIFEST.txt"));
-            String manifest = "Export Dossier Juridique JURIKA\n"
-                    + "Dossier              : " + dossierId + "\n"
-                    + "Documents demandes   : " + documentIds.size() + "\n"
-                    + "Documents inclus     : " + included + "\n"
-                    + "Anciennes versions   : " + (includeOldVersions ? "incluses" : "exclues") + "\n"
-                    + "Exporte              : " + Instant.now() + "\n";
-            zos.write(manifest.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder manifest = new StringBuilder()
+                    .append("Export Dossier Juridique JURIKA\n")
+                    .append("Dossier              : ").append(dossierId).append('\n')
+                    .append("Documents demandes   : ").append(documentIds.size()).append('\n')
+                    .append("Documents inclus     : ").append(inclus.size()).append('\n')
+                    .append("Documents ecartes    : ").append(ecartes).append('\n')
+                    .append("Anciennes versions   : ").append(includeOldVersions ? "incluses" : "exclues").append('\n');
+            if (!illisibles.isEmpty()) {
+                manifest.append("Documents illisibles : ").append(illisibles.size())
+                        .append(" (non inclus, a signaler au cabinet)\n");
+                for (String n : illisibles) manifest.append("  - ").append(n).append('\n');
+            }
+            manifest.append("Exporte              : ").append(Instant.now()).append('\n');
+            zos.write(manifest.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
             zos.closeEntry();
         } catch (java.io.IOException ex) {
             throw new RuntimeException("Echec generation ZIP : " + ex.getMessage(), ex);
         }
-        return baos.toByteArray();
+        return new ExportZip(baos.toByteArray(), List.copyOf(inclus));
+    }
+
+    /** "a/b.pdf" deja pris -> "a/b (2).pdf", puis "(3)"... ; MANIFEST.txt reserve. */
+    static String nomUnique(String nom, java.util.Set<String> pris) {
+        pris.add("MANIFEST.txt");
+        if (pris.add(nom)) return nom;
+        int slash = nom.lastIndexOf('/');
+        int point = nom.lastIndexOf('.');
+        String base = point > slash + 1 ? nom.substring(0, point) : nom;
+        String ext = point > slash + 1 ? nom.substring(point) : "";
+        for (int i = 2; ; i++) {
+            String candidat = base + " (" + i + ")" + ext;
+            if (pris.add(candidat)) return candidat;
+        }
     }
 
     @Transactional

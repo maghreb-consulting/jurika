@@ -437,8 +437,15 @@ public class JuridiqueController {
             juridique.assertClientAccess(dossierId, user.userId());
         }
         permissionGuard.assertCanDownload(dossierId, user);
-        byte[] zip = juridique.exportSelectionAsZip(
+        // Lot L7 (E2) : le service filtre la selection par l'ensemble que la
+        // consultation montre a cet utilisateur (meme requete, meme visibilite).
+        DataroomJuridiqueService.ExportZip export = juridique.exporterZip(
                 dossierId, req.documentIds(), req.includeOldVersions(), pourClient);
+        if (pourClient) {
+            // Un export est un telechargement de chaque piece remise : tracee comme tel.
+            export.inclus().forEach(id -> accessLogger.log(dossierId, id, "DOWNLOAD_DOC", user));
+        }
+        byte[] zip = export.contenu();
         String filename = "juridique_" + dossierId + "_" + java.time.LocalDate.now() + ".zip";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
