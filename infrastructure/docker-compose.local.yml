@@ -25,7 +25,8 @@
 # Pre-requis :
 #   - .env.local.server (depuis .env.local.server.example) avec :
 #       * JURIKA_LAN_HOST       = ex 192.168.1.42 ou demo.jurika.local
-#       * STRIPE_SECRET_KEY     = sk_test_* (et 4 STRIPE_PRICE_*_*)
+#       * CMI_*                 = magasin chez le CMI (paiement par carte, lot L7) ;
+#                                 absents : la carte est refusee avec un message
 #       * BREVO_SMTP_USER       = compte Brevo (fallback MailHog si vide)
 #       * BREVO_SMTP_PASSWORD
 #       * JWT_PRIVATE_KEY_PATH  = chemin vers le PEM (genere par
@@ -62,18 +63,27 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD absent, .env doit le definir}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-RS256}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
-      # Stripe (les 4 price IDs sont injectes depuis .env.local par compose).
-      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
-      STRIPE_PRICE_STARTER_MONTHLY: ${STRIPE_PRICE_STARTER_MONTHLY}
-      STRIPE_PRICE_STARTER_YEARLY:  ${STRIPE_PRICE_STARTER_YEARLY}
-      STRIPE_PRICE_BUSINESS_MONTHLY: ${STRIPE_PRICE_BUSINESS_MONTHLY}
-      STRIPE_PRICE_BUSINESS_YEARLY:  ${STRIPE_PRICE_BUSINESS_YEARLY}
-      # URLs retour Stripe Checkout (publique LAN — d'ou le LAN_HOST)
-      BILLING_CHECKOUT_SUCCESS_URL: ${BILLING_CHECKOUT_SUCCESS_URL:-http://${JURIKA_LAN_HOST:-localhost}/billing/success?session_id={CHECKOUT_SESSION_ID}}
-      BILLING_CHECKOUT_CANCEL_URL: ${BILLING_CHECKOUT_CANCEL_URL:-http://${JURIKA_LAN_HOST:-localhost}/billing}
-      BILLING_PORTAL_RETURN_URL:   ${BILLING_PORTAL_RETURN_URL:-http://${JURIKA_LAN_HOST:-localhost}/billing}
+      # Lot L7 (E5), RG-PAY-04 : magasin chez le CMI, sans valeur par defaut (vide = carte
+      # refusee avec un message). CMI_STORE_KEY est un secret. Branchement au vrai CMI :
+      # A_DECIDER (contrat de commerce electronique). CMI_SIMULATEUR_ACTIF=true : simulateur
+      # de test, jamais en production (refuse si JURIKA_ENV=prod).
+      CMI_CLIENT_ID: ${CMI_CLIENT_ID:-}
+      CMI_STORE_KEY: ${CMI_STORE_KEY:-}
+      CMI_GATEWAY_URL: ${CMI_GATEWAY_URL:-}
+      CMI_CALLBACK_URL: ${CMI_CALLBACK_URL:-}
+      CMI_OK_URL: ${CMI_OK_URL:-}
+      CMI_FAIL_URL: ${CMI_FAIL_URL:-}
+      CMI_SIMULATEUR_ACTIF: ${CMI_SIMULATEUR_ACTIF:-false}
+      # Retour du navigateur apres la page du CMI, et routes internes d'auth-service.
+      FRONTEND_URL: ${FRONTEND_URL:-http://${JURIKA_LAN_HOST:-localhost}}
+      JURIKA_AUTH_INTERNAL_URL: ${JURIKA_AUTH_INTERNAL_URL:-http://auth-service:8081}
+      # Lot L7 (E5) : notifications du canal du super-admin (paiement a enregistrer). Sans cette
+      # adresse, le service vise localhost:3000, injoignable depuis le conteneur.
+      JURIKA_REALTIME_BASE_URL: ${JURIKA_REALTIME_BASE_URL:-http://realtime-service:3000}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-}
+      # A_DECIDER (direction) : coordonnees bancaires de l'editeur pour le virement.
+      JURIKA_VIREMENT_BANQUE: ${JURIKA_VIREMENT_BANQUE:-}
+      JURIKA_VIREMENT_RIB: ${JURIKA_VIREMENT_RIB:-}
       # SMTP : Brevo (prod) ou MailHog (fallback)
       SMTP_HOST: ${SMTP_HOST:-mailhog}
       SMTP_PORT: ${SMTP_PORT:-1025}
@@ -213,7 +223,6 @@ services:
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://${JURIKA_LAN_HOST:-localhost}:8080/api/v1}
       VITE_REALTIME_URL: ${VITE_REALTIME_URL:-}
-      VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY}
     depends_on:
       gateway-service: { condition: service_healthy }
       realtime-service: { condition: service_healthy }
