@@ -285,12 +285,17 @@ export function isPermissionDenied(body: unknown): boolean {
       || code === 'PAYMENT_REQUIRED'
       // Lot L7 (E5) : refus de forfait ou workspace archive : un refresh n'y change rien.
       || code === 'WORKSPACE_ARCHIVE'
+      // Lot L7 (E8) : workspace suspendu pour impaye (article 4.4) : un refresh n'y change rien.
+      || code === 'WORKSPACE_SUSPENDU'
       || code === 'FORFAIT_SANS_MESSAGERIE'
       || code === 'FONCTION_HORS_FORFAIT';
 }
 
 /** Page du cabinet archive (lot L7, RG-TAR-07 et RG-TAR-09). */
 export const PAGE_ARCHIVE = '/app/archive';
+
+/** Page Facturation du cabinet (lot L7, E8 : cabinet suspendu pour impayé, paiement de l'échéance). */
+export const PAGE_FACTURATION = '/app/billing';
 
 /**
  * Lot L7 (E5), RG-TAR-07 : le serveur refuse (403 WORKSPACE_ARCHIVE) tout chemin hors facturation
@@ -300,9 +305,13 @@ export const PAGE_ARCHIVE = '/app/archive';
 export function redirigerSiArchive(error: unknown): boolean {
   if (!axios.isAxiosError(error)) return false;
   const code = (error.response?.data as { code?: string } | undefined)?.code;
-  if (error.response?.status !== 403 || code !== 'WORKSPACE_ARCHIVE') return false;
-  if (typeof window === 'undefined' || window.location.pathname.startsWith(PAGE_ARCHIVE)) return false;
-  window.location.href = PAGE_ARCHIVE;
+  if (error.response?.status !== 403) return false;
+  // Lot L7 (E8), article 4.4 du contrat : workspace SUSPENDU pour impaye (403 WORKSPACE_SUSPENDU) :
+  // le superviseur est conduit a l'ecran Facturation pour payer l'echeance.
+  const cible = code === 'WORKSPACE_ARCHIVE' ? PAGE_ARCHIVE : code === 'WORKSPACE_SUSPENDU' ? PAGE_FACTURATION : null;
+  if (cible === null) return false;
+  if (typeof window === 'undefined' || window.location.pathname.startsWith(cible)) return false;
+  window.location.href = cible;
   return true;
 }
 

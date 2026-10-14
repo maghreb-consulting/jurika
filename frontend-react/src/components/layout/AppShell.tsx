@@ -4,6 +4,7 @@ import { AppTopNav } from './AppTopNav';
 import { ErrorBoundary } from './ErrorBoundary';
 import { IceReminderBanner } from './IceReminderBanner';
 import { BandeauEssai } from './BandeauEssai';
+import { BandeauImpaye } from './BandeauImpaye';
 import { AssistantJuridique } from '../chatbot/AssistantJuridique';
 import { VisiteGuidee } from '../ui/VisiteGuidee';
 import { useSessionKeepAlive } from '../../lib/useSessionKeepAlive';
@@ -65,6 +66,8 @@ export function AppShell() {
       <IceReminderBanner />
       {/* Lot L7 (E4) : essai gratuit (rappels J-3 et J-1, lecture seule, date de suppression). */}
       <BandeauEssai />
+      {/* Lot L7 (E8, article 4.4 du contrat) : échéance impayée, date de suspension, comment payer. */}
+      <BandeauImpaye />
       <main className="flex-1">
         <div className="mx-auto max-w-7xl px-6 py-8">
           <ErrorBoundary key={pathname}>

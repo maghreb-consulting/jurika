@@ -7,6 +7,7 @@ import { useCurrentUser } from '../../store/authStore';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { ErreurFacturationBloc } from '../../components/billing/ErreurFacturation';
 import { oublierForfait } from '../../lib/useForfait';
+import { jourEnLettres, messageImpaye } from '../../lib/impaye';
 import {
   formatDateIso,
   formatFinIncluse,
@@ -95,7 +96,9 @@ export function BillingPage() {
     );
   }
 
-  const actif = abonnement?.statut === 'ACTIF';
+  // Lot L7 (E8) : SUSPENDU = abonnement en cours, acces suspendu pour impaye (le forfait n'est pas arrete).
+  const actif = abonnement?.statut === 'ACTIF' || abonnement?.statut === 'SUSPENDU';
+  const impaye = messageImpaye(abonnement?.impaye, superviseur);
   const e = abonnement?.prochaineEcheance ?? null;
 
   return (
@@ -113,7 +116,9 @@ export function BillingPage() {
             ? 'Votre cabinet n’a pas encore souscrit de forfait : « Souscrire un forfait » vous fait choisir le forfait, le rythme de paiement puis le mode de paiement.'
             : abonnement.statut === 'ARCHIVE'
               ? 'Votre forfait est arrêté : le cabinet est archivé, rien n’a été supprimé. Souscrivez de nouveau pour retrouver votre travail dans l’état exact où vous l’avez laissé.'
-              : 'Réglez la prochaine échéance avant sa date : sans paiement, le cabinet est archivé (rien n’est supprimé). « Changer de forfait » montre l’effet et le montant avant toute confirmation. Les factures se téléchargent en PDF.'}
+              : abonnement.statut === 'SUSPENDU'
+                ? 'L’accès au cabinet est suspendu : une échéance n’est pas réglée. « Payer l’échéance » la règle ; l’accès est rétabli dès le paiement constaté, dans l’état exact, et rien n’a été supprimé.'
+                : 'Réglez la prochaine échéance avant sa date. Sans paiement, un rappel vous est envoyé ; 15 jours après l’échéance, l’accès au cabinet est suspendu jusqu’au paiement (rien n’est supprimé). « Changer de forfait » montre l’effet et le montant avant toute confirmation. Les factures se téléchargent en PDF.'}
           {!superviseur && ' Seul le superviseur du cabinet règle l’abonnement et consulte les factures.'}
         </p>
       </TexteAide>
@@ -124,8 +129,19 @@ export function BillingPage() {
         <section className="rounded-2xl bg-bg-raised p-6 shadow-sm" data-testid="billing-abonnement">
           <h2 className="mb-3 flex items-center gap-1 text-base font-semibold text-fg">
             Abonnement
-            <InfoBulle texte="Le forfait est souscrit pour un an. La période payée court jusqu’à la prochaine échéance ; au-delà, sans paiement, le cabinet est archivé." />
+            <InfoBulle texte="Le forfait est souscrit pour un an. La période payée court jusqu’à la prochaine échéance. Sans paiement, un rappel est envoyé et l’accès est suspendu 15 jours après l’échéance, jusqu’au paiement (article 4.4 du contrat). Le cabinet n’est archivé qu’à l’arrêt du forfait (résiliation)." />
           </h2>
+          {abonnement.impaye && impaye && (
+            <div role="alert" className="mb-4 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm" data-testid="billing-impaye">
+              <p className="font-medium text-fg">{impaye.titre}</p>
+              <p className="mt-1 text-fg-muted">{impaye.detail}</p>
+              <p className="mt-1 text-xs text-fg-subtle">
+                {abonnement.impaye.rappelEnvoyeLe
+                  ? `Rappel envoyé à l’adresse électronique du cabinet le ${jourEnLettres(abonnement.impaye.rappelEnvoyeLe)}.`
+                  : 'Le rappel n’a pas encore pu être envoyé : JURIKA en est averti.'}
+              </p>
+            </div>
+          )}
           {abonnement.statut === 'AUCUN' && (
             <p className="text-sm text-fg-muted" data-testid="billing-aucun">Aucun forfait souscrit pour l’instant.</p>
           )}

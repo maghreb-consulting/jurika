@@ -31,6 +31,14 @@ describe('redirigerSiArchive (lot L7, RG-TAR-07)', () => {
     mockLocation('/app/archive');
     expect(redirigerSiArchive(axiosLikeError(403, 'WORKSPACE_ARCHIVE'))).toBe(false);
   });
+
+  it('lot L7 (E8) : cabinet suspendu pour impayé, conduit à l’écran Facturation pour payer', () => {
+    mockLocation('/dashboard');
+    expect(redirigerSiArchive(axiosLikeError(403, 'WORKSPACE_SUSPENDU'))).toBe(true);
+    expect(window.location.href).toBe('/app/billing');
+    mockLocation('/app/billing/payment');
+    expect(redirigerSiArchive(axiosLikeError(403, 'WORKSPACE_SUSPENDU'))).toBe(false);
+  });
 });
 
 /** Fabrique un objet ressemblant a une AxiosError (isAxiosError=true). */

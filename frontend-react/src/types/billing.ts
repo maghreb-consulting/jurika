@@ -111,7 +111,36 @@ export interface ChangementAVenirVue {
   effectifLe: string;
 }
 
-export type StatutAbonnement = 'AUCUN' | 'ACTIF' | 'ARCHIVE';
+/**
+ * Lot L7 (E8) : AUCUN (jamais souscrit), ACTIF (une échéance impayée dans le délai de 15 jours est
+ * décrite par `impaye`), SUSPENDU (impayé : accès suspendu, rétabli au paiement constaté, article
+ * 4.4 du contrat), ARCHIVE (forfait arrêté : résiliation ; rien n'est supprimé).
+ */
+export type StatutAbonnement = 'AUCUN' | 'ACTIF' | 'SUSPENDU' | 'ARCHIVE';
+
+/** Lot L7 (E8), article 4.4 du contrat : échéance impayée en cours. */
+export interface ImpayeVue {
+  echeance: string;
+  /** Jour de la suspension : prévue, ou faite si `suspendu`. */
+  suspensionLe: string;
+  suspendu: boolean;
+  suspenduLe: string | null;
+  /** Envoi du rappel (null : pas encore parti). */
+  rappelEnvoyeLe: string | null;
+  /** Date d'arrêt du forfait si une résiliation est enregistrée (archivage à cette date). */
+  arretLe: string | null;
+  delaiJours: number;
+}
+
+/** Lot L7 (E8) : un fait du journal des impayés. */
+export interface ImpayeEvenementVue {
+  id: number;
+  echeance: string;
+  evenement: string;
+  destinataire: string | null;
+  detail: string | null;
+  creeLe: string;
+}
 
 export interface AbonnementVue {
   workspaceId: string;
@@ -130,6 +159,7 @@ export interface AbonnementVue {
   carteDisponible: boolean;
   carteIndisponibleMotif: string | null;
   paiementsEnAttente: number;
+  impaye: ImpayeVue | null;
 }
 
 export interface ChangementForfaitRequest {
@@ -276,7 +306,7 @@ export interface SurDevisVue {
 export interface AbonnementAdminVue {
   workspaceId: string;
   abonnementId: number;
-  statut: 'ACTIF' | 'ARCHIVE';
+  statut: 'ACTIF' | 'SUSPENDU' | 'ARCHIVE';
   forfait: string;
   forfaitLibelle: string;
   rythme: BillingPeriod | null;
@@ -288,6 +318,8 @@ export interface AbonnementAdminVue {
   changementAVenir: ChangementAVenirVue | null;
   archiveMotif: string | null;
   surDevis: SurDevisVue | null;
+  impaye: ImpayeVue | null;
+  journalImpaye: ImpayeEvenementVue[];
 }
 
 export interface BilanTacheVue {
@@ -322,6 +354,16 @@ export const LIBELLE_OBJET: Record<ObjetPaiement, string> = {
 export const LIBELLE_RYTHME: Record<BillingPeriod, string> = {
   monthly: 'Paiement mensuel',
   yearly: 'Paiement annuel',
+};
+
+/** Lot L7 (E8) : faits du journal des impayés. */
+export const LIBELLE_EVENEMENT_IMPAYE: Record<string, string> = {
+  RAPPEL_ENVOYE: 'Rappel envoyé',
+  RAPPEL_ECHEC: 'Rappel non envoyé',
+  SUSPENSION: 'Accès suspendu',
+  SUSPENSION_ECHEC: 'Suspension non faite (erreur)',
+  SUSPENSION_SANS_RAPPEL: 'Suspension non faite : aucun rappel envoyé',
+  RETABLISSEMENT: 'Accès rétabli (paiement constaté)',
 };
 
 export const LIBELLE_MOTIF_ARCHIVAGE: Record<string, string> = {

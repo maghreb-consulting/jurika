@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { adminService } from '../../services/admin.service';
 import { billingAdminService } from '../../services/billing.service';
@@ -10,12 +11,21 @@ import {
   formatFinIncluse,
   formatMadCents,
   lireErreurFacturation,
+  LIBELLE_EVENEMENT_IMPAYE,
   LIBELLE_MOTIF_ARCHIVAGE,
   LIBELLE_RYTHME,
   type AbonnementAdminVue,
   type ErreurFacturation,
   type SurDevisVue,
 } from '../../types/billing';
+import { jourEnLettres } from '../../lib/impaye';
+
+/** Lot L7 (E8) : statut lisible (actif, suspendu pour impayé, archivé avec son motif). */
+function libelleStatut(l: AbonnementAdminVue): string {
+  if (l.statut === 'ACTIF') return l.impaye ? 'Actif, échéance impayée' : 'Actif';
+  if (l.statut === 'SUSPENDU') return 'Suspendu (impayé)';
+  return `Archivé${l.archiveMotif ? ` (${LIBELLE_MOTIF_ARCHIVAGE[l.archiveMotif] ?? l.archiveMotif})` : ''}`;
+}
 
 function dh(v: number | null | undefined): string {
   return v === null || v === undefined ? '—' : `${v.toFixed(2).replace('.', ',')} DH`;
@@ -57,8 +67,12 @@ export function AbonnementsAdminPage() {
       </header>
       <TexteAide cle="admin-abonnements" titre="Lire cet écran">
         <p>
-          Une échéance non réglée à sa date archive le cabinet (rien n’est supprimé) ; un nouveau paiement le réactive dans
-          l’état exact. Pour un cabinet Sur Devis, le montant est calculé sur les dossiers ouverts dans le mois d’abonnement ;
+          Une échéance non réglée déclenche un rappel au cabinet le jour même ; 15 jours après l’échéance, sans paiement et
+          si le rappel est parti, l’accès est <strong>suspendu</strong> (article 4.4 du contrat) : rien n’est supprimé, seul le
+          superviseur se connecte, pour payer, et l’accès est rétabli dès le paiement constaté. Le cabinet n’est{' '}
+          <strong>archivé</strong> qu’à l’arrêt du forfait : résiliation à sa date d’effet, par le cabinet ou par l’éditeur
+          pour défaut de paiement persistant (article 12.2 : 30 jours après une mise en demeure restée sans effet, à
+          enregistrer depuis l’écran Contrats). Un nouveau paiement le réactive dans l’état exact. Pour un cabinet Sur Devis, le montant est calculé sur les dossiers ouverts dans le mois d’abonnement ;
           le prix par dossier reste à fixer par la direction. Pour enregistrer un paiement reçu, passez par l’écran Paiements.
         </p>
       </TexteAide>
@@ -72,8 +86,8 @@ export function AbonnementsAdminPage() {
             <article key={l.workspaceId} className="rounded-2xl bg-bg-raised p-5 text-sm shadow-sm" data-testid={`abonnement-${l.workspaceId}`}>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="font-semibold text-fg">{nom(l.workspaceId)}</h2>
-                <span className={l.statut === 'ACTIF' ? 'text-success' : 'text-warning'}>
-                  {l.statut === 'ACTIF' ? 'Actif' : `Archivé${l.archiveMotif ? ` (${LIBELLE_MOTIF_ARCHIVAGE[l.archiveMotif] ?? l.archiveMotif})` : ''}`}
+                <span className={l.statut === 'ACTIF' && !l.impaye ? 'text-success' : 'text-warning'} data-testid="abonnement-statut">
+                  {libelleStatut(l)}
                 </span>
               </div>
               <p className="mt-1 text-fg-muted">
@@ -92,6 +106,7 @@ export function AbonnementsAdminPage() {
                   {l.changementAVenir.rythme ? `, ${LIBELLE_RYTHME[l.changementAVenir.rythme].toLowerCase()}` : ''}.
                 </p>
               )}
+              {l.impaye && <Impaye l={l} />}
               {l.surDevis && <SurDevis s={l.surDevis} />}
             </article>
           ))}
@@ -105,6 +120,47 @@ export function AbonnementsAdminPage() {
             {sansAbonnement.map((c) => <li key={c.id}>{c.name} ({c.code}), forfait déclaré : {c.forfait ?? 'aucun'}</li>)}
           </ul>
         </section>
+      )}
+    </div>
+  );
+}
+
+/** Lot L7 (E8) : échéance impayée en cours et journal (rappel, suspension, rétablissement). */
+function Impaye({ l }: { l: AbonnementAdminVue }) {
+  const i = l.impaye;
+  if (!i) return null;
+  return (
+    <div className="mt-3 rounded-lg border border-warning/40 bg-warning/10 p-3" data-testid="abonnement-impaye">
+      <p className="flex items-center gap-1 font-medium text-fg">
+        Échéance du {jourEnLettres(i.echeance)} non réglée
+        <InfoBulle texte={`Rappel au cabinet dès l’échéance, puis suspension ${i.delaiJours} jours après, seulement si le rappel est parti. Un paiement enregistré (écran Paiements) ou une carte confirmée rétablit l’accès aussitôt.`} />
+      </p>
+      <p className="text-fg-muted">
+        {i.suspendu
+          ? `Accès suspendu depuis le ${jourEnLettres(i.suspenduLe)} : le superviseur peut se connecter pour payer.`
+          : `Suspension prévue le ${jourEnLettres(i.suspensionLe)} sans paiement.`}{' '}
+        {i.rappelEnvoyeLe
+          ? `Rappel envoyé le ${jourEnLettres(i.rappelEnvoyeLe)}.`
+          : 'Rappel non envoyé : vérifiez l’adresse électronique du cabinet et l’envoi des courriels ; sans rappel, l’accès n’est pas suspendu.'}
+      </p>
+      {i.arretLe ? (
+        <p className="text-fg-muted">Résiliation enregistrée : archivage le {jourEnLettres(i.arretLe)}.</p>
+      ) : i.suspendu && (
+        <p className="text-fg-muted">
+          Défaut de paiement persistant : après une mise en demeure restée sans effet 30 jours, la résiliation (article 12.2)
+          s’enregistre depuis l’écran <Link to="/admin/contrats" className="text-accent hover:underline">Contrats</Link> ; le
+          cabinet est alors archivé à sa date d’effet.
+        </p>
+      )}
+      {l.journalImpaye.length > 0 && (
+        <ul className="mt-2 space-y-0.5 text-xs text-fg-subtle" data-testid="abonnement-journal-impaye">
+          {l.journalImpaye.map((e) => (
+            <li key={e.id}>
+              {formatDateIso(e.creeLe)} · {LIBELLE_EVENEMENT_IMPAYE[e.evenement] ?? e.evenement}
+              {e.destinataire ? ` (${e.destinataire})` : ''}{e.detail ? ` : ${e.detail}` : ''}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
