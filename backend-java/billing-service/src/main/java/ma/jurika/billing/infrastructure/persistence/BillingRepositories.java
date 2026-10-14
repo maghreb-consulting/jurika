@@ -55,4 +55,11 @@ public class BillingRepositories {
     }
 
     private BillingRepositories() {}
+
+    /** Lot L7 (socle commun) : parametres de l'editeur, une seule ligne (id = 1). */
+    public interface EditeurParametresJpaRepository extends JpaRepository<EditeurParametresEntity, Short> {
+        default java.util.Optional<EditeurParametresEntity> unique() {
+            return findById(EditeurParametresEntity.ID_UNIQUE);
+        }
+    }
 }
