@@ -1144,6 +1144,22 @@ export const ROUTES: RouteSimulee[] = [
     texte: "Conditions de l'essai gratuit (texte simule pour la verification visuelle).\n\n1. L'essai dure quatorze jours.\n2. Les donnees saisies restent celles du cabinet.",
   })),
   r('POST', /^\/public\/events$/, () => reponse(204)),
+  // Mentions legales publiques de l'editeur (L6b E2) : donnees fictives de demonstration ;
+  // une partie a null pour montrer « non renseigne ».
+  r('GET', /^\/public\/editeur\/mentions-legales$/, () => ({
+    raisonSociale: 'Editeur de demonstration',
+    formeJuridique: 'SARL',
+    capitalSocial: '100 000',
+    siegeSocial: '1 rue de la Demonstration',
+    ville: 'Casablanca',
+    rcNumero: null,
+    rcTribunal: 'Casablanca',
+    ice: null,
+    identifiantFiscal: null,
+    taxeProfessionnelle: null,
+    representantNom: null,
+    representantQualite: null,
+  })),
 
   // ---- Tableaux de bord ----
   r('GET', /^\/dashboards\/super-admin$/, () => tableauSuperAdmin()),
