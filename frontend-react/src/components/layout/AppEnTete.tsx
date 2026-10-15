@@ -137,7 +137,7 @@ export function AppEnTete({ onOuvrirMenuMobile }: { onOuvrirMenuMobile?: () => v
               <>
                 <span
                   aria-hidden="true"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-marine text-xs font-bold text-nav-fg-hi"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-accent/30 bg-accent-soft text-xs font-bold text-accent"
                 >
                   {initiales}
                 </span>

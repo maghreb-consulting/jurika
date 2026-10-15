@@ -244,11 +244,14 @@
   --largeur-menu-replie: 4rem;
 }
 
-/* ---- Couleurs : theme sombre (memes noms) ---------------------------- */
-
+/* ---- Base (couche "base" : les classes utilitaires l'emportent toujours) ---- */
+@layer base {
 :root {
   font-family: var(--font-sans);
-  font-feature-settings: "cv11", "ss01";
+  /* Le fichier Inter embarque (celui des PDF) est hinte : aux petites tailles, l'arrondi
+   * des chasses laissait un blanc apres le "f" ("forf ait"). Positionnement exact des
+   * glyphes (constate a l'ecran, chromium, 14 px). */
+  text-rendering: geometricPrecision;
   line-height: var(--leading-normal);
   font-weight: 400;
   font-synthesis: none;
@@ -261,14 +264,40 @@
 }
 
 html, body {
-  background: var(--color-bg);
-  color: var(--color-fg);
+  background: var(--jeton-bg);
+  color: var(--jeton-fg);
 }
 
+/* Les champs de formulaire n heritent pas de text-rendering. */
+button, input, select, textarea {
+  text-rendering: geometricPrecision;
+}
+
+/* Couleur heritee de la zone [data-theme] la plus proche (jeton lu sur place). */
 h1, h2, h3, h4 {
-  color: var(--color-heading);
+  color: var(--jeton-heading);
 }
 
+::selection {
+  background: var(--jeton-accent-soft);
+  color: var(--jeton-fg);
+}
+
+/* Focus : visible au clavier sur tout element. */
+:focus-visible {
+  outline: 2px solid var(--jeton-focus);
+  outline-offset: 2px;
+}
+.zone-marine :focus-visible {
+  outline-color: var(--jeton-focus-inverse);
+}
+
+* {
+  scrollbar-color: var(--jeton-border-hi) transparent;
+}
+}
+
+@layer components {
 /* Titres : classe conservee pour les ecrans existants. */
 .font-heading {
   font-family: var(--font-heading);
@@ -288,22 +317,10 @@ h1, h2, h3, h4 {
   letter-spacing: 0.12em;
   font-size: var(--text-xs);
   font-weight: 600;
-  color: var(--color-fg-subtle);
+  color: var(--jeton-fg-subtle);
+}
 }
 
-::selection {
-  background: var(--color-accent-soft);
-  color: var(--color-fg);
-}
-
-/* ---- Focus : visible au clavier sur tout element ---------------------- */
-:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
-}
-.zone-marine :focus-visible {
-  outline-color: var(--color-focus-inverse);
-}
 
 /* ---- Mouvement reduit : aucune animation, aucune transition ----------- */
 @media (prefers-reduced-motion: reduce) {
@@ -331,7 +348,7 @@ h1, h2, h3, h4 {
 
 /* ---- Fenetres natives (<dialog>) -------------------------------------- */
 dialog.fenetre::backdrop {
-  background: color-mix(in srgb, var(--color-scrim) 55%, transparent);
+  background: color-mix(in srgb, var(--jeton-scrim) 55%, transparent);
 }
 dialog.fenetre[open] {
   animation: fenetre-entree var(--duree-normale) var(--ease-standard);
@@ -365,15 +382,11 @@ html:has(dialog.fenetre[open]) {
   50%      { opacity: 0.55; }
 }
 .squelette {
-  background: var(--color-bg-overlay);
+  background: var(--jeton-bg-overlay);
   border-radius: var(--radius-md);
   animation: squelette 1.6s ease-in-out infinite;
 }
 
-/* ---- Barres de defilement ---------------------------------------------- */
-* {
-  scrollbar-color: var(--color-border-hi) transparent;
-}
 
 /* ---- Champs mot de passe : oeil natif masque (TextField a le sien) ------ */
 input::-ms-reveal,
