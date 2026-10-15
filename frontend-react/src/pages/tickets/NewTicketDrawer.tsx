@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { TexteAide } from '../../components/ui/Aide';
 import { Drawer } from '../../components/ui/Drawer';
 import { Button } from '../../components/ui/Button';
-import { TextField } from '../../components/ui/TextField';
+import { TextField, ZoneTexte } from '../../components/ui/TextField';
+import { Message } from '../../components/ui/Message';
 import { Select } from '../../components/ui/Select';
 import { ticketService } from '../../services/ticket.service';
 import { extractError } from '../../lib/api';
@@ -90,6 +91,12 @@ export function NewTicketDrawer({ open, onClose, onCreated }: Props) {
   // Type effectif envoye au backend : le vrai sous-type si "Divers", sinon
   // la categorie elle-meme (qui est deja un TicketType direct).
   const type: TicketType = categorie === 'DIVERS' ? sousType : categorie;
+  // Lot L6b (E7) : a l'ouverture, le focus va au premier champ (le titre), pas au bouton
+  // de fermeture. L'effet du parent s'execute apres l'ouverture du <dialog> (enfant).
+  const titreRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (open) titreRef.current?.focus();
+  }, [open]);
   const needsCompanyInfo = TYPES_AUTO_DOSSIER.includes(type);
 
   function focusField(name: string) {
@@ -171,8 +178,19 @@ export function NewTicketDrawer({ open, onClose, onCreated }: Props) {
       title="Nouveau ticket"
       subtitle="Ouvrez le ticket d’une opération juridique : le parcours correspondant démarre aussitôt."
       width="md"
+      closeOnBackdrop={false}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button type="submit" form="formulaire-nouveau-ticket" loading={loading} disabled={loading}>
+            Créer et ouvrir le parcours
+          </Button>
+        </div>
+      }
     >
-      <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      <form id="formulaire-nouveau-ticket" onSubmit={handleSubmit} noValidate className="space-y-4">
         <TexteAide cle="nouveau-ticket" titre="Ouvrir un ticket">
           <p>
             Un ticket suit une opération du début à la fin : création du ticket, génération des
@@ -182,6 +200,7 @@ export function NewTicketDrawer({ open, onClose, onCreated }: Props) {
           </p>
         </TexteAide>
         <TextField
+          ref={titreRef}
           label="Titre"
           name="titre"
           value={titre}
@@ -205,8 +224,8 @@ export function NewTicketDrawer({ open, onClose, onCreated }: Props) {
         )}
 
         {needsCompanyInfo && (
-          <fieldset className="space-y-3 rounded-lg border border-accent/40 bg-accent/10/40 p-3">
-            <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-accent">
+          <fieldset className="space-y-3 rounded-lg border border-border bg-bg-overlay p-3">
+            <legend className="px-1 text-sm font-semibold text-heading">
               Société à {type === 'CREATION' ? 'créer' : 'importer'}
             </legend>
             <TextField
@@ -223,7 +242,7 @@ export function NewTicketDrawer({ open, onClose, onCreated }: Props) {
               onChange={(e) => setFormeJuridique(e.target.value as FormeJuridique)}
               options={FORME_OPTIONS}
             />
-            <p className="text-[11px] text-accent/80">
+            <p className="text-xs text-fg-muted">
               Le dossier de la société et sa Data Room seront créés automatiquement.
             </p>
           </fieldset>
@@ -241,31 +260,26 @@ export function NewTicketDrawer({ open, onClose, onCreated }: Props) {
           value={deadline}
           onChange={(e) => setDeadline(e.target.value)}
         />
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-fg-muted">Description</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-          />
-        </div>
+        <ZoneTexte
+          label="Description (facultatif)"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+        />
         {error && (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <Message
+            ton="erreur"
+            action={
+              quotaAtteint ? (
+                <Link to="/app/billing/change-plan" className="font-medium underline">
+                  Changer de forfait
+                </Link>
+              ) : undefined
+            }
+          >
             {error}
-            {quotaAtteint && (
-              <Link to="/app/billing/change-plan" className="ml-1 font-medium underline">Changer de forfait</Link>
-            )}
-          </div>
+          </Message>
         )}
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Annuler
-          </Button>
-          <Button type="submit" loading={loading} disabled={loading}>
-            Créer et ouvrir le parcours
-          </Button>
-        </div>
       </form>
     </Drawer>
   );

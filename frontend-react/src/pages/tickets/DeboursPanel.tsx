@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Download, Paperclip, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { Message } from '../../components/ui/Message';
 import { TextField } from '../../components/ui/TextField';
 import { Select } from '../../components/ui/Select';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -141,7 +142,7 @@ export function DeboursPanel({ ticketId, reference, dossierId, statut, canAct }:
             texte="Un document PDF à la charte JURIKA, régénéré à chaque téléchargement à partir des lignes ci-dessous : en-tête du cabinet, société et ticket, tableau des frais, total en chiffres et en lettres, liste des pièces justificatives. Il n’est pas modifiable : corrigez une ligne ci-dessous, puis téléchargez-le de nouveau. Le client peut le télécharger depuis son espace si ses permissions le prévoient."
           />
           {modifiable && edition === null && (
-            <Button size="sm" onClick={() => setEdition('nouveau')}>
+            <Button type="button" size="sm" variant="secondary" onClick={() => setEdition('nouveau')}>
               <Plus className="mr-1 h-3.5 w-3.5" /> Ajouter un frais
             </Button>
           )}
@@ -169,9 +170,9 @@ export function DeboursPanel({ ticketId, reference, dossierId, statut, canAct }:
       </TexteAide>
 
       {erreur && (
-        <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 p-2 text-sm text-danger">
+        <Message ton="erreur" onFermer={() => setErreur(null)}>
           {erreur}
-        </p>
+        </Message>
       )}
 
       {edition !== null && (
@@ -189,7 +190,7 @@ export function DeboursPanel({ ticketId, reference, dossierId, statut, canAct }:
       )}
 
       {charge && items.length === 0 ? (
-        <p className="text-sm text-fg-subtle">Aucun débours saisi pour ce ticket.</p>
+        <p className="text-sm text-fg-muted">Aucun débours saisi pour ce ticket.</p>
       ) : (
         <table className="w-full text-sm">
           <caption className="sr-only">Débours du ticket {reference}</caption>
@@ -221,7 +222,7 @@ export function DeboursPanel({ ticketId, reference, dossierId, statut, canAct }:
                     d.pieceDocumentId ? (
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1 text-accent underline"
+                        className="inline-flex items-center gap-1 rounded text-fg underline underline-offset-2 hover:text-heading"
                         title={enEssai !== false ? 'Voir la pièce en aperçu (essai gratuit : aucun téléchargement)' : undefined}
                         onClick={() =>
                           enEssai !== false
@@ -231,7 +232,7 @@ export function DeboursPanel({ ticketId, reference, dossierId, statut, canAct }:
                                 .catch((e) => setErreur(extractError(e).message))
                         }
                       >
-                        <Paperclip className="h-3.5 w-3.5" /> {d.pieceJointeFilename}
+                        <Paperclip className="h-3.5 w-3.5" aria-hidden="true" /> {d.pieceJointeFilename}
                       </button>
                     ) : (
                       <span className="text-fg-muted">{d.pieceJointeFilename}</span>
@@ -243,22 +244,28 @@ export function DeboursPanel({ ticketId, reference, dossierId, statut, canAct }:
                 <td className="py-1.5 pr-2 text-right font-mono text-fg">{mad(d.montantMad)}</td>
                 {modifiable && (
                   <td className="py-1.5 text-right whitespace-nowrap">
-                    <button
+                    <Button
                       type="button"
+                      size="sm"
+                      variant="ghost"
+                      iconOnly
                       aria-label={`Modifier « ${d.libelle} »`}
                       onClick={() => setEdition(d)}
-                      className="mr-2 text-fg-subtle hover:text-fg"
+                      className="mr-1"
                     >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
+                      <Pencil className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                    <Button
                       type="button"
+                      size="sm"
+                      variant="ghost"
+                      iconOnly
                       aria-label={`Supprimer « ${d.libelle} »`}
                       onClick={() => setASupprimer(d)}
-                      className="text-danger hover:opacity-80"
+                      className="text-danger"
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </Button>
                   </td>
                 )}
               </tr>
@@ -403,7 +410,8 @@ function DeboursForm({ ticketId, dossierId, reference, ligne, onAnnuler, onEnreg
         </div>
         {dossierId ? (
           <input id="piece-debours" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-            onChange={(e) => setFichier(e.target.files?.[0] ?? null)} className="block text-sm text-fg" />
+            onChange={(e) => setFichier(e.target.files?.[0] ?? null)}
+            className="block text-sm text-fg file:mr-3 file:h-8 file:cursor-pointer file:rounded-lg file:border file:border-border-input file:bg-bg-raised file:px-3 file:text-sm file:font-medium file:text-fg hover:file:bg-bg-overlay" />
         ) : (
           <p className="text-xs text-warning">
             Ce ticket n’est rattaché à aucun dossier : la pièce ne peut pas être déposée en Data Room.
@@ -411,7 +419,7 @@ function DeboursForm({ ticketId, dossierId, reference, ligne, onAnnuler, onEnreg
         )}
         {ligne?.pieceJointeFilename && !fichier && (
           <label className="flex items-center gap-2 text-xs text-fg-muted">
-            <input type="checkbox" checked={retirerPiece} onChange={(e) => setRetirerPiece(e.target.checked)} />
+            <input type="checkbox" className="h-4 w-4 accent-accent" checked={retirerPiece} onChange={(e) => setRetirerPiece(e.target.checked)} />
             Retirer la pièce actuelle ({ligne.pieceJointeFilename}) de cette ligne
           </label>
         )}

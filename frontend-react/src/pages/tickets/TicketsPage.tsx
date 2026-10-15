@@ -10,7 +10,15 @@ import type {
   TicketType,
 } from '../../types/ticket';
 import { STATUT_LABELS } from '../../types/ticket';
-import { TicketsHeader } from '../../components/tickets/TicketsHeader';
+import { ChoixVueTickets } from '../../components/tickets/TicketsHeader';
+import { resumeTickets, titreTickets } from '../../components/tickets/libellesTickets';
+import { Page } from '../../components/layout/Page';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { Card } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { CardSkeleton, Skeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
+import { Inbox, Plus } from 'lucide-react';
 import { TicketsFilters } from '../../components/tickets/TicketsFilters';
 import { KanbanView } from './KanbanView';
 import { TableView } from './TableView';
@@ -114,36 +122,45 @@ export function TicketsPage() {
   }
 
   const aucunChargement = totaux.total === 0 && !loading;
+  const estEmploye = user?.role === 'EMPLOYE';
+  const supervision = user?.role === 'SUPERVISEUR' || user?.role === 'SUPER_ADMIN';
+  const filtreActif = !!(query || filterType || filterPriorite || filterStatut);
 
   return (
-    <div className="space-y-5">
-      <TicketsHeader
-        view={view}
-        onViewChange={setView}
-        onNewTicket={() => setNewOpen(true)}
-        role={user?.role ?? null}
-        total={totaux.total}
-        enCours={totaux.enCours}
-        nouveaux={totaux.nouveaux}
-      />
-
-      <p className="-mt-3 text-sm text-fg-subtle">
-        {user?.role === 'EMPLOYE'
-          ? 'Les opérations juridiques des dossiers dont vous êtes responsable, rangées par statut.'
-          : 'Les opérations juridiques de tout le cabinet, rangées par statut, en consultation.'}
-      </p>
-
-      <TexteAide cle="liste-tickets" titre="Comment suivre les tickets ?">
-        <p>
-          Chaque ticket suit une opération en quatre statuts : création, génération des documents,
-          déroulement de la démarche, clôture. Cliquez sur un ticket pour voir ce qu’il faut faire et
-          ce qui manque ; « Ouvrir la page du ticket » réunit tout.
-          {user?.role === 'EMPLOYE'
-            ? ' Pour une nouvelle opération, cliquez sur « Nouveau ticket ».'
-            : ' Seul l’employé responsable du dossier fait avancer un ticket.'}
-        </p>
-      </TexteAide>
-
+    <Page
+      titre={titreTickets(user?.role ?? null)}
+      etat={supervision ? <Badge variant="info">Vue globale</Badge> : undefined}
+      description={
+        <>
+          {estEmploye
+            ? 'Les opérations juridiques des dossiers dont vous êtes responsable, rangées par statut.'
+            : 'Les opérations juridiques de tout le cabinet, rangées par statut, en consultation.'}
+          <span className="mt-0.5 block text-xs text-fg-subtle" data-testid="tickets-resume">
+            {loading && aucunChargement ? 'Comptage des tickets…' : resumeTickets(totaux.total, totaux.enCours, totaux.nouveaux)}
+          </span>
+        </>
+      }
+      actions={<ChoixVueTickets view={view} onViewChange={setView} />}
+      action={
+        estEmploye ? (
+          <Button type="button" icon={<Plus />} onClick={() => setNewOpen(true)}>
+            Nouveau ticket
+          </Button>
+        ) : undefined
+      }
+      aide={
+        <TexteAide cle="liste-tickets" titre="Comment suivre les tickets ?">
+          <p>
+            Chaque ticket suit une opération en quatre statuts : création, génération des documents,
+            déroulement de la démarche, clôture. Cliquez sur un ticket pour voir ce qu’il faut faire et
+            ce qui manque ; « Ouvrir la page du ticket » réunit tout.
+            {estEmploye
+              ? ' Pour une nouvelle opération, cliquez sur « Nouveau ticket ».'
+              : ' Seul l’employé responsable du dossier fait avancer un ticket.'}
+          </p>
+        </TexteAide>
+      }
+    >
       <TicketsFilters
         query={query}
         onQueryChange={setQuery}
@@ -155,42 +172,59 @@ export function TicketsPage() {
         onFilterStatutChange={setFilterStatut}
       />
 
-      {!loading && aucunChargement && !query && !filterType && !filterPriorite && !filterStatut && (
-        <p role="status" className="rounded-lg border border-border bg-bg-overlay px-3 py-2 text-sm text-fg-muted">
-          {user?.role === 'EMPLOYE'
-            ? 'Aucun ticket pour l’instant. Cliquez sur « Nouveau ticket » pour ouvrir une opération.'
-            : 'Aucun ticket pour l’instant : les tickets apparaissent ici dès qu’un employé ouvre une opération.'}
-        </p>
+      {!loading && aucunChargement && !filtreActif && (
+        <Card className="mb-5" padding={false}>
+          <EmptyState
+            compact
+            icon={<Inbox />}
+            title="Aucun ticket pour l’instant"
+            description={
+              <p role="status">
+                {estEmploye
+                  ? 'Aucun ticket pour l’instant. Cliquez sur « Nouveau ticket » pour ouvrir une opération.'
+                  : 'Aucun ticket pour l’instant : les tickets apparaissent ici dès qu’un employé ouvre une opération.'}
+              </p>
+            }
+          />
+        </Card>
       )}
 
       {loading && aucunChargement ? (
-        <div className="flex h-64 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-        </div>
+        <SqueletteZone libelle="Chargement des tickets…">
+          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(12rem, 1fr))' }}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-9 rounded-lg" />
+                <CardSkeleton />
+              </div>
+            ))}
+          </div>
+        </SqueletteZone>
       ) : view === 'kanban' ? (
         <KanbanView
           byStatus={colonnes}
           onSelect={setDetailOpen}
           onTransition={handleTransition}
           onLoadMore={loadMore}
-          canAct={user?.role === 'EMPLOYE'}
+          canAct={estEmploye}
         />
       ) : (
         <div className="space-y-3">
-          <TableView tickets={tableItems} onSelect={setDetailOpen} />
+          <TableView tickets={tableItems} onSelect={setDetailOpen} chargement={tableLoading && tableItems.length === 0} />
           {tableItems.length < tableTotal && (
-            <div className="flex items-center justify-center gap-3 text-xs text-fg-subtle">
+            <div className="flex items-center justify-center gap-3 text-sm text-fg-muted">
               <span>
                 {tableItems.length} sur {tableTotal}
               </span>
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => void loadTable(tableItems.length)}
-                disabled={tableLoading}
-                className="rounded-lg border border-border bg-bg-raised px-3 py-1.5 font-semibold text-fg-muted transition-colors hover:bg-bg-overlay disabled:opacity-60"
+                loading={tableLoading}
               >
                 {tableLoading ? 'Chargement…' : 'Afficher plus'}
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -212,7 +246,7 @@ export function TicketsPage() {
           onChanged={reloadAll}
         />
       )}
-    </div>
+    </Page>
   );
 }
 

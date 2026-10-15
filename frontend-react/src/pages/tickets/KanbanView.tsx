@@ -8,6 +8,11 @@ import { useToast } from '../../components/ui/useToast';
 import { CancelTicketDialog } from './CancelTicketDialog';
 import { RepriseTicketDialog } from './RepriseTicketDialog';
 import type { ColonneTickets } from './useTicketColumns';
+import { Button } from '../../components/ui/Button';
+import { CardSkeleton } from '../../components/ui/LoadingSkeleton';
+import { cn } from '../../lib/utils';
+import { COLUMNS, PISTES_KANBAN } from './kanbanColonnes';
+import { RangeeDefilante } from '../../components/tickets/RangeeDefilante';
 
 interface Props {
   byStatus: Record<TicketStatut, ColonneTickets>;
@@ -25,30 +30,6 @@ interface Props {
    */
   canAct?: boolean;
 }
-
-// Sprint 12.5 T8 -- Colonnes Kanban repeintes : bandeau couleur status sur fond
-// bg-overlay navy (au lieu de tints clairs hardcodes). Drag & drop preserve --
-// pas de modification des handlers onDragStart/onDragOver/onDrop.
-//
-// Lot 2 (2026-09-07) -- `sortie: true` marque ANNULE : ce n'est pas la cinquieme
-// etape d'une progression mais une SORTIE LATERALE, atteignable depuis n'importe
-// lequel des quatre autres. La colonne reste dans la rangee (decision du cabinet)
-// mais se lit differemment : elle est detachee par une gouttiere, grisee, et
-// porte la mention explicite.
-const COLUMNS: { statut: TicketStatut; accent: string; sortie?: boolean }[] = [
-  { statut: 'CREATION_TICKET', accent: 'border-accent' }, // or signature pour "à traiter"
-  { statut: 'GENERATION_DOCUMENTS', accent: 'border-warning' }, // ambre : production des actes
-  { statut: 'DEROULEMENT_DEMARCHE', accent: 'border-warning' }, // ambre : demarches administratives
-  { statut: 'CLOTURE_DOSSIER', accent: 'border-success' }, // emeraude pour validé
-  { statut: 'ANNULE', accent: 'border-danger', sortie: true }, // rouge : sortie latérale
-];
-
-/**
- * Largeur minimale d'une colonne. En dessous de 5 x 240 px + gouttieres
- * (~1 280 px de contenu), le conteneur defile horizontalement : les cinq
- * colonnes gardent la meme largeur et le meme statut, aucune n'est repliee.
- */
-const LARGEUR_MIN_COLONNE = 240;
 
 /**
  * Compteur de tete : le TOTAL EN BASE, et — quand tout n'est pas charge — le
@@ -91,12 +72,12 @@ export function KanbanView({
     e.dataTransfer.effectAllowed = 'move';
   }
 
-  function onDragOver(e: DragEvent<HTMLDivElement>) {
+  function onDragOver(e: DragEvent<HTMLElement>) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
   }
 
-  async function onDrop(e: DragEvent<HTMLDivElement>, target: TicketStatut) {
+  async function onDrop(e: DragEvent<HTMLElement>, target: TicketStatut) {
     e.preventDefault();
     if (!dragTicket || dragTicket.statut === target) {
       setDragTicket(null);
@@ -126,135 +107,130 @@ export function KanbanView({
 
   return (
     <>
-      {/* Lot 2 — la grille se DERIVE de COLUMNS.length : ajouter un statut ajoute
-          une colonne, sans toucher a la mise en page. Style inline et non classe
-          Tailwind, car Tailwind ne genere pas les classes construites a la volee.
-          Le conteneur defile horizontalement quand les cinq colonnes ne tiennent
-          plus : aucune n'est repliee ni renvoyee a la ligne. */}
-      <div className="-mx-1 overflow-x-auto px-1 pb-2">
-        <div
-          className="grid gap-4"
-          style={{
-            gridTemplateColumns: `repeat(${COLUMNS.length}, minmax(${LARGEUR_MIN_COLONNE}px, 1fr))`,
-          }}
-          data-testid="kanban-grid"
-        >
-          {COLUMNS.map((col) => (
-          <div
-            key={col.statut}
-            onDragOver={canAct ? onDragOver : undefined}
-            onDrop={canAct ? (e) => onDrop(e, col.statut) : undefined}
-            data-testid={`kanban-col-${col.statut}`}
-            className={`flex flex-col gap-3 ${
-              col.sortie ? 'ml-2 border-l border-border pl-4' : ''
-            }`}
-          >
-            <div
-              className={`flex items-center justify-between rounded-r-lg border-l-4 ${col.accent} px-3 py-2 ${
-                col.sortie ? 'bg-bg-overlay/40' : 'bg-bg-overlay'
-              }`}
-            >
-              <span
-                className={`font-heading text-sm font-semibold ${
-                  col.sortie ? 'text-fg-muted' : 'text-fg'
-                }`}
+      {/* Lot 2 : la grille se DERIVE de COLUMNS : ajouter un statut ajoute une colonne.
+          Style inline : Tailwind ne genere pas les classes construites a la volee.
+          L6b (E7) : les cinq colonnes tiennent a 1 366 px ; en dessous, la rangee defile
+          horizontalement et l'ecran le dit (RangeeDefilante). */}
+      <RangeeDefilante libelle="Colonnes des tickets par statut">
+        <div className="grid gap-3" style={{ gridTemplateColumns: PISTES_KANBAN }} data-testid="kanban-grid">
+          {COLUMNS.map((col) => {
+            const colonne = byStatus[col.statut];
+            return (
+              <section
+                key={col.statut}
+                aria-labelledby={`kanban-titre-${col.statut}`}
+                onDragOver={canAct ? onDragOver : undefined}
+                onDrop={canAct ? (e) => onDrop(e, col.statut) : undefined}
+                data-testid={`kanban-col-${col.statut}`}
+                className={cn('flex min-w-0 flex-col gap-2', col.sortie && 'ml-2 border-l border-border pl-4')}
               >
-                {STATUT_LABELS[col.statut]}
-              </span>
-              <span
-                className="rounded-full bg-bg-raised px-2 py-0.5 text-xs font-bold text-fg-muted"
-                title={compteurTitre(byStatus[col.statut])}
-                data-testid={`kanban-count-${col.statut}`}
-              >
-                {compteurTexte(byStatus[col.statut])}
-              </span>
-            </div>
-            {/* La sortie laterale se dit, elle ne se devine pas a la couleur du
-                liseré : la vue de detail affiche « Statut 2 sur 4 », le tableau
-                doit dire la meme chose. */}
-            {col.sortie && (
-              <p className="-mt-1 px-1 text-[11px] leading-snug text-fg-subtle">
-                Sortie du parcours, atteignable depuis les quatre autres statuts —
-                ce n’est pas une cinquième étape.
-              </p>
-            )}
-            {/* min-h preserve la zone de drop meme si la colonne est vide.
-                Border-dashed border-border-hi/40 = hint discret zone valide. */}
-            <div
-              className={`flex min-h-[120px] flex-col gap-2 rounded-lg border border-dashed p-2 transition-colors ${
-                col.sortie ? 'border-border/60 bg-bg-overlay/20' : 'border-border-hi/40'
-              }`}
-            >
-              {byStatus[col.statut].items.map((t) => (
-                <div key={t.id} className="flex flex-col gap-1.5">
-                  <TicketCard
-                    ticket={t}
-                    onClick={() => onSelect(t.id)}
-                    onDragStart={canAct ? (e) => onDragStart(e, t) : undefined}
-                  />
-                  {/* Prise en charge explicite (dissociee de la creation) :
-                      un ticket NOUVEAU reste NOUVEAU tant qu'il n'est pas pris
-                      en charge. Bouton clair en complement du drag & drop.
-                      Masque pour le superviseur (oversight only). */}
-                  {canAct && col.statut === 'CREATION_TICKET' && (
-                    <button
-                      type="button"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        try {
-                          await onTransition(t.id, 'GENERATION_DOCUMENTS');
-                        } catch (err) {
-                          console.error(err);
-                          toast.error((err as Error)?.message ?? 'Changement de statut impossible.');
-                        }
-                      }}
-                      className="inline-flex items-center justify-center gap-1 rounded-lg border border-accent/40 bg-accent/10 px-2 py-1 text-xs font-semibold text-accent transition-colors hover:bg-accent/20"
-                    >
-                      <Play className="h-3.5 w-3.5" /> Prendre en charge
-                    </button>
+                <div
+                  className={cn(
+                    'flex items-center justify-between gap-2 rounded-r-lg border-l-4 bg-bg-raised px-3 py-2 shadow-card',
+                    col.accent,
                   )}
-                  {/* Affordance "Reprendre" sur les cartes ANNULE : reprise au statut
-                      anterieur (dialogue commun, RG-TKT-05). */}
-                  {canAct && col.statut === 'ANNULE' && (
-                    <button
+                >
+                  <h2
+                    id={`kanban-titre-${col.statut}`}
+                    className={cn('truncate text-sm font-semibold', col.sortie ? 'text-fg-muted' : 'text-heading')}
+                    title={STATUT_LABELS[col.statut]}
+                  >
+                    {STATUT_LABELS[col.statut]}
+                  </h2>
+                  <span
+                    className="shrink-0 rounded-full bg-bg-overlay px-2 py-0.5 text-xs font-semibold tabular-nums text-fg-muted"
+                    title={compteurTitre(colonne)}
+                    data-testid={`kanban-count-${col.statut}`}
+                  >
+                    {compteurTexte(colonne)}
+                  </span>
+                </div>
+                {/* La sortie laterale se dit, elle ne se devine pas a la couleur du filet. */}
+                {col.sortie && (
+                  <p className="px-1 text-xs leading-snug text-fg-subtle">
+                    Sortie du parcours, atteignable depuis les quatre autres statuts —
+                    ce n’est pas une cinquième étape.
+                  </p>
+                )}
+                {/* min-h preserve la zone de depot meme si la colonne est vide. */}
+                <div
+                  className={cn(
+                    'flex min-h-[120px] flex-col gap-2 rounded-lg border border-dashed p-1.5',
+                    col.sortie ? 'border-border bg-bg-overlay/40' : 'border-border-hi',
+                  )}
+                >
+                  {colonne.loading && colonne.items.length === 0 && <CardSkeleton className="p-3" />}
+                  {colonne.items.map((t) => (
+                    <div key={t.id} className="flex flex-col gap-1.5">
+                      <TicketCard
+                        ticket={t}
+                        onClick={() => onSelect(t.id)}
+                        onDragStart={canAct ? (e) => onDragStart(e, t) : undefined}
+                      />
+                      {/* Prise en charge explicite (dissociee de la creation) : un ticket
+                          NOUVEAU le reste tant qu'il n'est pas pris en charge. Masque pour
+                          le superviseur (le serveur le refuse). */}
+                      {canAct && col.statut === 'CREATION_TICKET' && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          fullWidth
+                          icon={<Play />}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              await onTransition(t.id, 'GENERATION_DOCUMENTS');
+                            } catch (err) {
+                              console.error(err);
+                              toast.error((err as Error)?.message ?? 'Changement de statut impossible.');
+                            }
+                          }}
+                        >
+                          Prendre en charge
+                        </Button>
+                      )}
+                      {/* Reprise d'un ticket ANNULE au statut anterieur (dialogue commun, RG-TKT-05). */}
+                      {canAct && col.statut === 'ANNULE' && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          fullWidth
+                          icon={<Play />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRepriseTarget(t);
+                          }}
+                        >
+                          Reprendre
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  {colonne.items.length === 0 && !colonne.loading && (
+                    <p className="px-2 py-6 text-center text-xs text-fg-subtle">Aucun ticket</p>
+                  )}
+                  {/* "Afficher plus" par colonne : la difference entre ce qui est rendu et ce qui existe. */}
+                  {colonne.hasMore && (
+                    <Button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setRepriseTarget(t);
-                      }}
-                      className="inline-flex items-center justify-center gap-1 rounded-lg border border-accent/40 bg-accent/10 px-2 py-1 text-xs font-semibold text-accent transition-colors hover:bg-accent/20"
+                      size="sm"
+                      variant="ghost"
+                      fullWidth
+                      onClick={() => onLoadMore(col.statut)}
+                      disabled={colonne.loadingMore}
+                      data-testid={`kanban-more-${col.statut}`}
                     >
-                      <Play className="h-3.5 w-3.5" /> Reprendre
-                    </button>
+                      {colonne.loadingMore ? 'Chargement…' : `Afficher plus (${restant(colonne)} restants)`}
+                    </Button>
                   )}
                 </div>
-              ))}
-              {byStatus[col.statut].items.length === 0 &&
-                !byStatus[col.statut].loading && (
-                  <div className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-fg-subtle">
-                    Aucun ticket
-                  </div>
-                )}
-              {/* « Afficher plus » par colonne : c'est ici que se lit la
-                  difference entre ce qui est rendu et ce qui existe. */}
-              {byStatus[col.statut].hasMore && (
-                <button
-                  type="button"
-                  onClick={() => onLoadMore(col.statut)}
-                  disabled={byStatus[col.statut].loadingMore}
-                  data-testid={`kanban-more-${col.statut}`}
-                  className="rounded-lg border border-border bg-bg-raised px-2 py-1.5 text-xs font-semibold text-fg-muted transition-colors hover:bg-bg-overlay disabled:opacity-60"
-                >
-                  {byStatus[col.statut].loadingMore
-                    ? 'Chargement…'
-                    : `Afficher plus (${restant(byStatus[col.statut])} restants)`}
-                </button>
-              )}
-            </div>
-          </div>
-          ))}
+              </section>
+            );
+          })}
         </div>
-      </div>
+      </RangeeDefilante>
 
       {cancelTarget && (
         <CancelTicketDialog

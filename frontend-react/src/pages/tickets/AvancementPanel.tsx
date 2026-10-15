@@ -12,10 +12,18 @@ import type { AvancementTicket, PhaseDemarches, SeveriteEcheance } from '../../t
  * un délai manqué a des conséquences réelles.
  */
 
+// Lot L6b (E7) : memes couleurs que la frise des demarches. Rouge = depassee ; orange =
+// echeance proche (CRITIQUE J-3 et APPROCHE J-15 du serveur). Le libelle dit l'etat.
 const COULEUR_SEVERITE: Record<SeveriteEcheance, string> = {
-  DEPASSE: 'border-danger/40 bg-danger/10 text-danger',
-  CRITIQUE: 'border-danger/40 bg-danger/10 text-danger',
-  APPROCHE: 'border-warning/40 bg-warning/10 text-fg',
+  DEPASSE: 'border-danger/30 bg-danger-soft text-danger',
+  CRITIQUE: 'border-warning/30 bg-warning-soft text-warning',
+  APPROCHE: 'border-warning/30 bg-warning-soft text-warning',
+};
+
+const LIBELLE_SEVERITE: Record<SeveriteEcheance, string> = {
+  DEPASSE: 'Dépassée',
+  CRITIQUE: 'Échéance imminente',
+  APPROCHE: 'Échéance proche',
 };
 
 function libelleDelai(joursRestants: number): string {
@@ -45,7 +53,7 @@ export function AvancementPanel({
   return (
     <Card>
       <header className="border-b border-border px-5 py-3">
-        <h3 className="text-sm font-semibold text-fg">Avancement</h3>
+        <h3 className="text-base font-semibold text-heading">Avancement</h3>
       </header>
 
       <div className="space-y-5 px-5 py-4">
@@ -61,17 +69,17 @@ export function AvancementPanel({
                   <span
                     className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
                       courant
-                        ? 'bg-accent text-bg-raised'
+                        ? 'bg-accent text-accent-fg'
                         : atteint
-                          ? 'bg-success/15 text-success'
-                          : 'bg-bg-overlay text-fg-subtle'
+                          ? 'bg-success-soft text-success'
+                          : 'bg-bg-overlay text-fg-muted'
                     }`}
                     aria-current={courant ? 'step' : undefined}
                   >
                     {atteint && !courant ? (
-                      <CircleCheck className="h-3.5 w-3.5" />
+                      <CircleCheck className="h-3.5 w-3.5" aria-hidden="true" />
                     ) : (
-                      <CircleDot className="h-3.5 w-3.5" />
+                      <CircleDot className="h-3.5 w-3.5" aria-hidden="true" />
                     )}
                     {STATUT_LABELS_COURTS[s]}
                   </span>
@@ -99,7 +107,7 @@ export function AvancementPanel({
         {/* ── Démarches cochées, par phase ──────────────────────────── */}
         {phasesDuStatut.length > 0 && (
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
+            <p className="mb-2 text-xs font-semibold text-fg-muted">
               Démarches — {avancement.traitees} / {avancement.applicables}
             </p>
             <ul className="space-y-2">
@@ -142,8 +150,8 @@ export function AvancementPanel({
 
         {/* ── Prochaine démarche ────────────────────────────────────── */}
         {avancement.prochainOrdre != null && (
-          <p className="rounded-lg border border-border bg-bg-overlay/60 px-3 py-2 text-sm text-fg">
-            <span className="text-fg-subtle">Prochaine démarche : </span>
+          <p className="rounded-lg border border-border bg-bg-overlay px-3 py-2 text-sm text-fg">
+            <span className="text-fg-muted">Prochaine démarche : </span>
             <strong>
               {avancement.prochainOrdre}. {avancement.prochainLibelle}
             </strong>
@@ -152,12 +160,12 @@ export function AvancementPanel({
 
         {/* ── Points d'attention : délais légaux ────────────────────── */}
         <div>
-          <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
-            <CalendarClock className="h-3.5 w-3.5" />
+          <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-fg-muted">
+            <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
             Délais légaux
           </p>
           {avancement.pointsAttention.length === 0 ? (
-            <p className="text-xs text-fg-subtle">
+            <p className="text-xs text-fg-muted">
               Aucun délai légal en approche. Une échéance n&apos;apparaît qu&apos;une fois son
               point de départ posé — c&apos;est-à-dire l&apos;étape dont elle dépend cochée.
             </p>
@@ -170,12 +178,13 @@ export function AvancementPanel({
                     COULEUR_SEVERITE[p.severite]
                   }`}
                 >
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                   <span className="min-w-0">
-                    <strong className="font-semibold">
+                    <span className="block text-xs font-semibold">{LIBELLE_SEVERITE[p.severite]}</span>
+                    <strong className="font-semibold text-fg">
                       {p.ordre}. {p.libelle}
                     </strong>
-                    <span className="block text-xs opacity-90">
+                    <span className="block text-xs text-fg-muted">
                       Échéance au {formatDate(p.echeance)} — {libelleDelai(p.joursRestants)}
                       {p.delai ? ` · ${p.delai}` : ''}
                     </span>

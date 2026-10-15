@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { ArrowRight, CircleCheck, Database, FileText } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
+import { Card } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Lien } from '../../components/ui/Lien';
+import { Message } from '../../components/ui/Message';
+import { SquelettePage } from '../../components/ui/LoadingSkeleton';
+import { Page } from '../../components/layout/Page';
+import { StatutBadge } from './TableView';
+import { LIBELLES_DONNEES } from './libellesDonnees';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { ticketService } from '../../services/ticket.service';
 import { workflowService, type VariableDuMagasin } from '../../services/workflow.service';
@@ -97,145 +104,178 @@ export function TicketPage() {
     }
   }
 
-  if (erreur) return <p role="alert" className="p-6 text-sm text-danger">{erreur}</p>;
-  if (!ticket) return <p role="status" className="p-6 text-sm text-fg-subtle">Chargement du ticket…</p>;
+  if (erreur) {
+    return (
+      <Page titre="Ticket introuvable" fil={[{ libelle: 'Tickets', to: '/tickets' }, { libelle: 'Ticket' }]}>
+        <Message ton="erreur" titre="Le ticket ne peut pas être affiché" action={<Lien to="/tickets">Revenir à la liste des tickets</Lien>}>
+          {erreur}
+        </Message>
+      </Page>
+    );
+  }
+  if (!ticket) return <SquelettePage />;
 
   const docs: DocumentSummary[] = (documents?.dossier?.groupes ?? []).flatMap((g) => g.documents);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 p-4 md:p-6" data-testid="page-ticket">
-      <Link to="/tickets" className="inline-flex items-center gap-1 text-sm text-fg-subtle hover:text-fg">
-        <ArrowLeft className="h-4 w-4" /> Tous les tickets
-      </Link>
-
-      <header className="space-y-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-bold text-fg">{ticket.titre}</h1>
-          <Badge variant="neutral">{libelleStatut(ticket.statut)}</Badge>
-        </div>
-        <p className="text-sm text-fg-subtle">
-          {ticket.reference} — {TICKET_TYPE_LABELS[ticket.type]}
-        </p>
-        <p className="text-xs text-fg-subtle">
-          Où en est l’opération, ce qu’il reste à faire et tout ce que le ticket contient.
-        </p>
-        {acces && !canAct && (
-          <p className="text-xs text-fg-subtle" data-testid="acces-raison">
-            {acces.raison ?? 'Consultation seule — actions réservées à l’employé responsable du dossier.'}
-          </p>
-        )}
-      </header>
-
-      <AideStatutTicket statut={ticket.statut} profil={profilTicket(user?.role, acces?.enCharge === true)}
-        obstacles={passage ? passage.obstacles : null} renvoi />
-
-      <TexteAide cle="page-ticket" titre="Comment utiliser cette page ?">
-        <p>
-          Tout le ticket est ici, quel que soit le parcours. De haut en bas : ce qui empêche de passer au
-          statut suivant, les décisions qui choisissent les démarches, les données déjà saisies et leur
-          provenance, les documents produits ou déposés, les débours et leur état, les démarches à
-          cocher et la note interne.
-          La saisie et la génération des actes se font sur la page du parcours, ouverte par le bouton
-          « Ouvrir le parcours ».
-        </p>
-      </TexteAide>
-
-      {/* Passage de statut : obstacles nommés avant la demande, refus avec sa raison (RG-TKT-06). */}
-      <section className="space-y-2 rounded-xl border border-border bg-bg-raised p-4" data-testid="passage-statut">
-        <h2 className="flex items-center gap-1 text-sm font-semibold text-fg">
-          Passage de statut
-          <InfoBulle
-            libelle="Comment le ticket avance-t-il ?"
-            texte="Le ticket suit quatre statuts : création, génération des documents, déroulement de la démarche, clôture. Pour passer au suivant, les démarches obligatoires du statut en cours doivent être cochées et les données attendues saisies. Ce qui manque est listé ici avant toute demande. Seul l’employé responsable du dossier fait passer le ticket au statut suivant."
-          />
-        </h2>
-        {passage?.suivant ? (
-          <>
-            <p className="text-sm text-fg">
-              Statut suivant : <strong>{libelleStatut(passage.suivant)}</strong>
-            </p>
-            {passage.obstacles.length > 0 ? (
-              <div data-testid="obstacles">
-                <p className="text-sm text-warning">Le passage est impossible tant que ceci n’est pas réglé :</p>
-                <ul className="ml-5 list-disc text-sm text-fg">
-                  {passage.obstacles.map((o) => <li key={o}>{o}</li>)}
-                </ul>
-              </div>
-            ) : (
-              <p className="text-sm text-success" data-testid="passage-possible">Rien ne s’oppose au passage.</p>
-            )}
-            {canAct && (
-              <Button onClick={passer} disabled={enCours || passage.obstacles.length > 0}>
-                Passer à « {libelleStatut(passage.suivant)} » <ArrowRight className="ml-1 h-4 w-4" />
-              </Button>
-            )}
-          </>
-        ) : (
-          <p className="text-sm text-fg-subtle">
-            {ticket.statut === 'ANNULE'
-              ? 'Ticket annulé : il ne reprend qu’à son statut antérieur, depuis la liste des tickets.'
-              : 'Ticket clos : il n’y a plus de statut suivant.'}
-          </p>
-        )}
-        {refus && (
-          <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 p-2 text-sm text-danger" data-testid="refus-transition">
-            Passage refusé : {refus}
-          </p>
-        )}
-        {canAct && actif && (
-          <Link to={`/workflows/${ticket.id}`} className="inline-block text-sm text-accent underline">
+    <Page
+      titre={ticket.titre}
+      etat={<StatutBadge s={ticket.statut} />}
+      fil={[{ libelle: 'Tickets', to: '/tickets' }, { libelle: ticket.reference }]}
+      description={
+        <>
+          <span className="font-mono">{ticket.reference}</span> — {TICKET_TYPE_LABELS[ticket.type]}. Où en est
+          l’opération, ce qu’il reste à faire et tout ce que le ticket contient.
+        </>
+      }
+      actions={
+        canAct && actif ? (
+          <Lien to={`/workflows/${ticket.id}`} commeBouton={{ variant: 'secondary' }}>
             Ouvrir le parcours (saisie et génération des actes)
-          </Link>
+          </Lien>
+        ) : undefined
+      }
+      aide={
+        <TexteAide cle="page-ticket" titre="Comment utiliser cette page ?">
+          <p>
+            Tout le ticket est ici, quel que soit le parcours. De haut en bas : ce qui empêche de passer au
+            statut suivant, les décisions qui choisissent les démarches, les données déjà saisies et leur
+            provenance, les documents produits ou déposés, les débours et leur état, les démarches à
+            cocher et la note interne.
+            La saisie et la génération des actes se font sur la page du parcours, ouverte par le bouton
+            « Ouvrir le parcours ».
+          </p>
+        </TexteAide>
+      }
+    >
+      <div className="space-y-5" data-testid="page-ticket">
+        {acces && !canAct && (
+          <Message ton="info">
+            <span data-testid="acces-raison">
+              {acces.raison ?? 'Consultation seule — actions réservées à l’employé responsable du dossier.'}
+            </span>
+          </Message>
         )}
-      </section>
 
-      {ticket.type !== 'CREATION' && (
-        <DecisionsTicketPanel ticketId={ticketId} canAct={canAct && actif}
-          onChanged={() => { setVersionDemarches((v) => v + 1); void ticketService.passage(ticketId).then(setPassage); }} />
-      )}
+        <AideStatutTicket statut={ticket.statut} profil={profilTicket(user?.role, acces?.enCharge === true)}
+          obstacles={passage ? passage.obstacles : null} renvoi />
 
-      <section className="space-y-2" data-testid="saisies-ticket">
-        <h2 className="text-sm font-semibold text-fg">Données saisies</h2>
-        {variables.filter((v) => !v.boucle && v.valeur).length === 0 ? (
-          <p className="text-sm text-fg-subtle">Aucune donnée saisie pour ce ticket : elles apparaissent ici au fil du parcours.</p>
-        ) : (
-          <ProvenanceDonnees variables={variables} />
+        {/* Passage de statut : obstacles nommes avant la demande, refus avec sa raison (RG-TKT-06). */}
+        <Card
+          titleAs="h2"
+          title={
+            <span className="flex items-center gap-1">
+              Passage de statut
+              <InfoBulle
+                libelle="Comment le ticket avance-t-il ?"
+                texte="Le ticket suit quatre statuts : création, génération des documents, déroulement de la démarche, clôture. Pour passer au suivant, les démarches obligatoires du statut en cours doivent être cochées et les données attendues saisies. Ce qui manque est listé ici avant toute demande. Seul l’employé responsable du dossier fait passer le ticket au statut suivant."
+              />
+            </span>
+          }
+        >
+          <div className="space-y-3" data-testid="passage-statut">
+            {passage?.suivant ? (
+              <>
+                <p className="text-sm text-fg">
+                  Statut suivant : <strong>{libelleStatut(passage.suivant)}</strong>
+                </p>
+                {passage.obstacles.length > 0 ? (
+                  <div data-testid="obstacles">
+                    <Message ton="attention" titre="Le passage est impossible tant que ceci n’est pas réglé :">
+                      <ul className="ml-5 list-disc">
+                        {passage.obstacles.map((o) => <li key={o}>{o}</li>)}
+                      </ul>
+                    </Message>
+                  </div>
+                ) : (
+                  <p className="flex items-center gap-1.5 text-sm font-medium text-success" data-testid="passage-possible">
+                    <CircleCheck className="h-4 w-4" aria-hidden="true" /> Rien ne s’oppose au passage.
+                  </p>
+                )}
+                {canAct && (
+                  <Button type="button" onClick={passer} loading={enCours} disabled={enCours || passage.obstacles.length > 0}
+                    iconEnd={<ArrowRight />}>
+                    Passer à « {libelleStatut(passage.suivant)} »
+                  </Button>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-fg-muted">
+                {ticket.statut === 'ANNULE'
+                  ? 'Ticket annulé : il ne reprend qu’à son statut antérieur, depuis la liste des tickets.'
+                  : 'Ticket clos : il n’y a plus de statut suivant.'}
+              </p>
+            )}
+            {refus && (
+              <div data-testid="refus-transition">
+                <Message ton="erreur" onFermer={() => setRefus(null)}>
+                  Passage refusé : {refus}
+                </Message>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {ticket.type !== 'CREATION' && (
+          <DecisionsTicketPanel ticketId={ticketId} canAct={canAct && actif}
+            onChanged={() => { setVersionDemarches((v) => v + 1); void ticketService.passage(ticketId).then(setPassage); }} />
         )}
-      </section>
 
-      <section className="space-y-2 rounded-xl border border-border bg-bg-raised p-4" data-testid="documents-ticket">
-        <h2 className="flex items-center gap-1 text-sm font-semibold text-fg">
-          Documents du ticket
-          <InfoBulle
-            libelle="Quels documents figurent ici ?"
-            texte="Les actes générés et les pièces déposées pour ce ticket, rangés dans la Data Room du dossier. Chaque document se lit par son type, la société et sa version."
-          />
-        </h2>
-        {docs.length === 0 ? (
-          <p className="text-sm text-fg-subtle">Aucun document pour ce ticket pour l’instant.</p>
-        ) : (
-          <ul className="divide-y divide-border text-sm">
-            {docs.map((d) => (
-              <li key={d.id} className="py-1.5 text-fg">
-                {referenceDocument((DOCUMENT_TYPE_LABELS as Record<string, string>)[String(d.documentType)] ?? String(d.documentType),
-                  documents?.societe, d.version)}
-                <span className="text-fg-subtle"> — {d.title}</span>
-              </li>
-            ))}
-          </ul>
+        <section className="space-y-2" data-testid="saisies-ticket" aria-labelledby="titre-saisies">
+          <h2 id="titre-saisies" className="text-base font-semibold text-heading">Données saisies</h2>
+          {variables.filter((v) => !v.boucle && v.valeur).length === 0 ? (
+            <Card padding={false}>
+              <EmptyState compact icon={<Database />} title="Aucune donnée saisie pour ce ticket"
+                description="Elles apparaissent ici au fil du parcours, avec leur provenance." />
+            </Card>
+          ) : (
+            <ProvenanceDonnees variables={variables} libelles={LIBELLES_DONNEES} />
+          )}
+        </section>
+
+        <Card
+          titleAs="h2"
+          title={
+            <span className="flex items-center gap-1">
+              Documents du ticket
+              <InfoBulle
+                libelle="Quels documents figurent ici ?"
+                texte="Les actes générés et les pièces déposées pour ce ticket, rangés dans la Data Room du dossier. Chaque document se lit par son type, la société et sa version."
+              />
+            </span>
+          }
+        >
+          <div data-testid="documents-ticket">
+            {docs.length === 0 ? (
+              <p className="text-sm text-fg-muted">Aucun document pour ce ticket pour l’instant.</p>
+            ) : (
+              <ul className="divide-y divide-border text-sm">
+                {docs.map((d) => (
+                  <li key={d.id} className="flex items-start gap-2 py-2 text-fg">
+                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-fg-muted" aria-hidden="true" />
+                    <span className="min-w-0">
+                      {referenceDocument((DOCUMENT_TYPE_LABELS as Record<string, string>)[String(d.documentType)] ?? String(d.documentType),
+                        documents?.societe, d.version)}
+                      <span className="text-fg-muted"> — {d.title}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Card>
+
+        <DeboursPanel ticketId={ticketId} reference={ticket.reference} dossierId={ticket.dossierId ?? null}
+          statut={ticket.statut} canAct={canAct} />
+
+        <DemarchesPanel key={versionDemarches} ticketId={ticketId} dossierId={ticket.dossierId ?? null} canAct={canAct && actif} />
+
+        <NoteTicketPanel ticketId={ticketId} statut={ticket.statut} role={user?.role} />
+
+        {(ticket.statut === 'DEROULEMENT_DEMARCHE' || ticket.statut === 'CLOTURE_DOSSIER' || ticket.statut === 'ANNULE') && (
+          <RecapitulatifPanel ticketId={ticketId} />
         )}
-      </section>
-
-      <DeboursPanel ticketId={ticketId} reference={ticket.reference} dossierId={ticket.dossierId ?? null}
-        statut={ticket.statut} canAct={canAct} />
-
-      <DemarchesPanel key={versionDemarches} ticketId={ticketId} dossierId={ticket.dossierId ?? null} canAct={canAct && actif} />
-
-      <NoteTicketPanel ticketId={ticketId} statut={ticket.statut} role={user?.role} />
-
-      {(ticket.statut === 'DEROULEMENT_DEMARCHE' || ticket.statut === 'CLOTURE_DOSSIER' || ticket.statut === 'ANNULE') && (
-        <RecapitulatifPanel ticketId={ticketId} />
-      )}
-    </div>
+      </div>
+    </Page>
   );
 }

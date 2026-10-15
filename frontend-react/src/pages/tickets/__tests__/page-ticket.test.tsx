@@ -20,6 +20,7 @@ vi.mock('../../../services/ticket.service', () => ({ ticketService: tickets }));
 vi.mock('../../../services/workflow.service', () => ({
   workflowService: { variables: vi.fn(async () => [
     { variable: 'DENOMINATION', boucle: null, rang: null, valeur: 'PARACOSME', origine: 'SAISIE', saisiePar: null, saisieLe: null, occasion: null },
+    { variable: 'SIEGE_TITRE_OCCUPATION', boucle: null, rang: null, valeur: 'Bail commercial', origine: 'SAISIE', saisiePar: null, saisieLe: null, occasion: null },
   ]) },
 }));
 vi.mock('../../../services/dataroom.service', () => ({
@@ -30,7 +31,11 @@ vi.mock('../../../services/dataroom.service', () => ({
       groupes: [{ code: 'ACTES', libelle: 'Actes', documents: [{ id: 'd1', documentType: 'STATUTS', title: 'Statuts mis à jour', version: 2 }] }] }],
   })) },
 }));
-vi.mock('../../../store/authStore', () => ({ useCurrentUser: () => ({ role: role.value }) }));
+vi.mock('../../../store/authStore', () => ({
+  useCurrentUser: () => ({ role: role.value }),
+  // L6b : la structure commune <Page> lit le role pour le fil d'Ariane.
+  useAuthStore: (sel: (s: { user: { role: string } }) => unknown) => sel({ user: { role: role.value } }),
+}));
 const { stub } = vi.hoisted(() => ({ stub: () => null }));
 vi.mock('../DecisionsTicketPanel', () => ({ DecisionsTicketPanel: stub }));
 vi.mock('../DemarchesPanel', () => ({ DemarchesPanel: stub }));
@@ -72,6 +77,14 @@ describe('Page du ticket (tous parcours)', () => {
     // Données saisies avec leur provenance, documents lisibles.
     expect(await screen.findByText('PARACOSME', { selector: 'td' })).toBeInTheDocument();
     expect(await screen.findByTestId('documents-ticket')).toHaveTextContent('— PARACOSME — version 2');
+    // L6b (backlog L6) : une donnee connue du dictionnaire s'affiche sous son libelle, pas sous son nom technique ;
+    // une donnee absente du dictionnaire garde son nom technique (aucun libelle invente).
+    const ligneSiege = screen.getByText('Bail commercial', { selector: 'td' }).closest('tr') as HTMLElement;
+    expect(ligneSiege).toHaveTextContent('Siège titre occupation');
+    expect(ligneSiege).not.toHaveTextContent('SIEGE_TITRE_OCCUPATION');
+    expect(screen.getByText('PARACOSME', { selector: 'td' }).closest('tr')).toHaveTextContent('DENOMINATION');
+    // Structure commune : le titre du ticket est le titre de la page.
+    expect(screen.getByRole('heading', { level: 1, name: 'Transfert du siège' })).toBeInTheDocument();
   });
 
   it('affiche le refus du serveur avec sa raison', async () => {

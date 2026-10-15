@@ -3,6 +3,8 @@ import { Save } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
+import { Message } from '../../components/ui/Message';
+import { TextField } from '../../components/ui/TextField';
 import { extractError } from '../../lib/api';
 import {
   decisionsService,
@@ -101,9 +103,11 @@ export function DecisionsTicketPanel({
         </TexteAide>
 
         {etat.manques.length > 0 && (
-          <ul data-testid="decisions-manques" className="space-y-1 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-fg">
-            {etat.manques.map((m) => <li key={m}>{m}</li>)}
-          </ul>
+          <Message ton="attention">
+            <ul data-testid="decisions-manques" className="space-y-1">
+              {etat.manques.map((m) => <li key={m}>{m}</li>)}
+            </ul>
+          </Message>
         )}
         <p className="text-xs text-fg-subtle">
           Forme : <strong>{etat.forme === 'SARL_AU' ? 'SARL AU' : etat.forme ?? 'inconnue'}</strong>
@@ -111,22 +115,21 @@ export function DecisionsTicketPanel({
         </p>
 
         {etat.proposees.length > 0 && (
-          <input
+          <TextField
             type="search"
             aria-label="Rechercher une décision"
             placeholder="Rechercher une décision…"
             value={filtre}
             onChange={(e) => setFiltre(e.target.value)}
-            className="w-full rounded-lg border border-border bg-bg px-3 py-1.5 text-sm"
           />
         )}
 
         {[...parMatrice.entries()].map(([matrice, decisions]) => (
           <fieldset key={matrice} disabled={!canAct} className="space-y-1">
-            <legend className="text-xs font-semibold uppercase tracking-wide text-fg-subtle">
+            <legend className="text-xs font-semibold text-fg-muted">
               {LIBELLES_MATRICES[matrice] ?? matrice}
             </legend>
-            <ul className="max-h-64 space-y-1 overflow-y-auto">
+            <ul className="max-h-64 space-y-1 overflow-y-auto overscroll-auto">
               {decisions.map((p) => {
                 const cle = `${p.matrice}|${p.code}`;
                 return (
@@ -134,7 +137,7 @@ export function DecisionsTicketPanel({
                     <label className="flex cursor-pointer items-start gap-2 text-sm text-fg">
                       <input
                         type="checkbox"
-                        className="mt-1"
+                        className="mt-1 h-4 w-4 accent-accent"
                         checked={choix.has(cle)}
                         onChange={(e) => {
                           setChoix((prev) => {

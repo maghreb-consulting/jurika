@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play } from 'lucide-react';
+import { ArrowRight, Play } from 'lucide-react';
 import { Drawer } from '../../components/ui/Drawer';
 import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
+import { Message } from '../../components/ui/Message';
+import { CardSkeleton, Skeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
+import { StatutBadge } from './TableView';
 import { ticketService } from '../../services/ticket.service';
 import { useCurrentUser } from '../../store/authStore';
 import { extractError } from '../../lib/api';
-import { PRIORITE_LABELS, STATUT_LABELS, TICKET_TYPE_LABELS } from '../../types/ticket';
+import { PRIORITE_LABELS, TICKET_TYPE_LABELS } from '../../types/ticket';
 import type { Ticket } from '../../types/ticket';
 import { CancelTicketDialog } from './CancelTicketDialog';
 import { RepriseTicketDialog } from './RepriseTicketDialog';
@@ -80,10 +82,16 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
 
   if (!ticket) {
     return (
-      <Drawer open onClose={onClose} title="Chargement du ticket…" width="lg">
-        <div className="flex justify-center py-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-        </div>
+      <Drawer open onClose={onClose} title="Chargement du ticket…" width="xl">
+        {error ? (
+          <Message ton="erreur">{error}</Message>
+        ) : (
+          <SqueletteZone libelle="Chargement du ticket…" className="space-y-4">
+            <Skeleton className="h-20 rounded-lg" />
+            <CardSkeleton />
+            <CardSkeleton />
+          </SqueletteZone>
+        )}
       </Drawer>
     );
   }
@@ -103,8 +111,8 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
                   (page Data Room), pas depuis un ticket. Un ticket n'est pas
                   transferable en soi ; on retire donc le bouton ici. */}
               {ticket.statut === 'CREATION_TICKET' && (
-                <Button onClick={() => handleTransition('GENERATION_DOCUMENTS')}>
-                  <Play className="mr-1 h-4 w-4" /> Prendre en charge
+                <Button type="button" icon={<Play />} onClick={() => handleTransition('GENERATION_DOCUMENTS')}>
+                  Prendre en charge
                 </Button>
               )}
               {ticket.statut === 'GENERATION_DOCUMENTS' && (
@@ -147,8 +155,8 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
                   <Button variant="secondary" onClick={() => navigate(`/workflows/${ticket.id}`)}>
                     Consulter le parcours
                   </Button>
-                  <Button variant="primary" onClick={() => setShowReprise(true)}>
-                    <Play className="mr-1 h-4 w-4" /> Reprendre
+                  <Button type="button" variant="primary" icon={<Play />} onClick={() => setShowReprise(true)}>
+                    Reprendre
                   </Button>
                 </>
               )}
@@ -162,7 +170,7 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
             </div>
           ) : (
             <div className="flex justify-end">
-              <span className="text-xs text-fg-subtle" data-testid="acces-raison">
+              <span className="text-sm text-fg-muted" data-testid="acces-raison">
                 {acces?.raison ?? 'Consultation seule — actions réservées à l’employé responsable du dossier.'}
               </span>
             </div>
@@ -170,16 +178,16 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
         }
       >
         {error && (
-          <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <Message ton="erreur" className="mb-4" onFermer={() => setError(null)}>
             {error}
-          </div>
+          </Message>
         )}
 
         <section className="space-y-4">
           <AideStatutTicket statut={ticket.statut} profil={profilTicket(user?.role, acces?.enCharge === true)}
             obstacles={obstacles} />
 
-          <div className="grid grid-cols-2 gap-4 rounded-lg bg-bg-overlay p-4 text-sm md:grid-cols-4">
+          <dl className="grid grid-cols-2 gap-4 rounded-lg border border-border bg-bg-overlay p-4 text-sm sm:grid-cols-4">
             <Field label="Statut">
               <StatutBadge s={ticket.statut} />
             </Field>
@@ -190,7 +198,7 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
             <Field label="Créé le">
               {new Date(ticket.createdAt).toLocaleDateString('fr-FR')}
             </Field>
-          </div>
+          </dl>
 
           {ticket.description && (
             <div>
@@ -201,19 +209,17 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
 
           {/* Ticket actuellement ANNULE : motif d'annulation en rouge (pertinent). */}
           {ticket.statut === 'ANNULE' && ticket.annulationMotif && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm">
-              <p className="font-semibold text-rose-800">Motif d’annulation</p>
-              <p className="mt-1 text-rose-700">{ticket.annulationMotif}</p>
-            </div>
+            <Message ton="erreur" titre="Motif d’annulation">
+              {ticket.annulationMotif}
+            </Message>
           )}
 
           {/* Ticket repris (n'est plus ANNULE) : motif de reprise en ambre, PAS le
               rouge d'annulation (l'annulation est historique, visible dans l'activite). */}
           {ticket.statut !== 'ANNULE' && ticket.repriseMotif && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
-              <p className="font-semibold text-amber-800">Motif de reprise</p>
-              <p className="mt-1 text-amber-700">{ticket.repriseMotif}</p>
-            </div>
+            <Message ton="attention" titre="Motif de reprise">
+              {ticket.repriseMotif}
+            </Message>
           )}
 
           {/* Lot L5 (E6) : rubrique Debours commune a la page du ticket (saisie, pieces, etat PDF depuis L5b E3). */}
@@ -241,10 +247,10 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
             sur un ticket ni clos ni annule ; le ticket clos reste sans action.
           */}
           {/* Lot L4d (E9) : la page du ticket reunit tout, pour tous les parcours. */}
-          <button type="button" className="text-sm text-accent underline" data-testid="ouvrir-page-ticket"
+          <Button type="button" variant="secondary" data-testid="ouvrir-page-ticket" iconEnd={<ArrowRight />}
             onClick={() => navigate(`/tickets/${ticketId}`)}>
             Ouvrir la page du ticket (passage de statut, données, documents)
-          </button>
+          </Button>
 
           {/* Lot L1 (RG-TKT-07) : note interne du ticket, enregistree automatiquement. */}
           <NoteTicketPanel ticketId={ticketId} statut={ticket.statut} role={user?.role} />
@@ -319,20 +325,9 @@ export function TicketDetailDrawer({ ticketId, onClose, onChanged }: Props) {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <p className="text-xs uppercase tracking-wider text-fg-subtle">{label}</p>
-      <div className="mt-0.5 text-sm font-medium text-fg">{children}</div>
+    <div className="min-w-0">
+      <dt className="text-xs font-medium text-fg-muted">{label}</dt>
+      <dd className="mt-0.5 text-sm font-medium text-fg">{children}</dd>
     </div>
   );
-}
-
-function StatutBadge({ s }: { s: Ticket['statut'] }) {
-  const variant = {
-    CREATION_TICKET: 'info',
-    GENERATION_DOCUMENTS: 'warning',
-    DEROULEMENT_DEMARCHE: 'warning',
-    CLOTURE_DOSSIER: 'success',
-    ANNULE: 'danger',
-  }[s] as 'info' | 'warning' | 'success' | 'danger';
-  return <Badge variant={variant}>{STATUT_LABELS[s]}</Badge>;
 }

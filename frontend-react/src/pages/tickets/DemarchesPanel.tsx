@@ -5,7 +5,6 @@ import {
   ChevronDown,
   ChevronRight,
   History,
-  Loader2,
   Paperclip,
   Undo2,
   X,
@@ -20,6 +19,9 @@ import { dataroomService } from '../../services/dataroom.service';
 import { extractError } from '../../lib/api';
 import { formatDate } from '../../lib/date';
 import { AvancementPanel } from './AvancementPanel';
+import { FriseDemarches } from '../../components/tickets/FriseDemarches';
+import { Message } from '../../components/ui/Message';
+import { CardSkeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
 import type {
   DemarcheEvenement,
   JustificatifAttendu,
@@ -94,21 +96,18 @@ export function DemarchesPanel({
 
   if (chargement) {
     return (
-      <Card>
-        <div className="flex items-center gap-2 px-5 py-6 text-sm text-fg-subtle">
-          <Loader2 className="h-4 w-4 animate-spin" /> Chargement des démarches…
-        </div>
-      </Card>
+      <SqueletteZone libelle="Chargement des démarches…" className="space-y-4">
+        <CardSkeleton />
+        <CardSkeleton />
+      </SqueletteZone>
     );
   }
 
   if (erreur) {
     return (
-      <Card>
-        <p className="px-5 py-6 text-sm text-danger" role="alert">
-          {erreur}
-        </p>
-      </Card>
+      <Message ton="erreur" titre="Démarches indisponibles">
+        {erreur}
+      </Message>
     );
   }
 
@@ -120,10 +119,13 @@ export function DemarchesPanel({
     <div className="space-y-4">
       <AvancementPanel avancement={vue.avancement} phases={vue.phases} />
 
+      {/* Lot L6b (E7, point 8) : la frise des demarches, couleur du delai calculee par le serveur. */}
+      <FriseDemarches vue={vue} />
+
       <Card>
         <header className="border-b border-border px-5 py-3">
-          <h3 className="text-sm font-semibold text-fg">Démarches</h3>
-          <p className="mt-0.5 text-xs text-fg-subtle">
+          <h3 className="text-base font-semibold text-heading">Démarches</h3>
+          <p className="mt-0.5 text-sm text-fg-muted">
             Dans l&apos;ordre du guide. Seules les démarches du statut courant sont
             actionnables.
           </p>
@@ -204,15 +206,15 @@ function PhaseSection({
         type="button"
         onClick={() => setOuvert((v) => !v)}
         aria-expanded={ouvert}
-        className="flex w-full items-center gap-2 border-b border-border bg-bg-overlay/60 px-5 py-2 text-left transition hover:bg-bg-overlay"
+        className="flex w-full items-center gap-2 border-b border-border bg-bg-overlay px-5 py-2 text-left transition-colors duration-150 hover:bg-border"
       >
         {ouvert ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-fg-subtle" />
+          <ChevronDown className="h-4 w-4 shrink-0 text-fg-muted" aria-hidden="true" />
         ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-fg-subtle" />
+          <ChevronRight className="h-4 w-4 shrink-0 text-fg-muted" aria-hidden="true" />
         )}
         <span className="text-sm font-semibold text-fg">{libelle}</span>
-        <span className="ml-auto tabular-nums text-xs text-fg-subtle">
+        <span className="ml-auto tabular-nums text-xs text-fg-muted">
           {traitees} / {demarches.length}
         </span>
       </button>
@@ -310,15 +312,15 @@ function DemarcheRow({
 
 
   return (
-    <li className="px-5 py-3" data-testid={`demarche-${d.ordre}`}>
+    <li className="scroll-mt-20 px-5 py-3" id={`demarche-${d.ordre}`} data-testid={`demarche-${d.ordre}`}>
       <div className="flex items-start gap-3">
         <span
           className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
             d.etat === 'COCHEE'
               ? 'border-success bg-success text-bg-raised'
               : d.etat === 'NON_APPLICABLE'
-                ? 'border-border bg-bg-overlay text-fg-subtle'
-                : 'border-border'
+                ? 'border-border bg-bg-overlay text-fg-muted'
+                : 'border-border-input'
           }`}
           aria-hidden
         >
@@ -331,7 +333,7 @@ function DemarcheRow({
             <span className="font-semibold">{d.ordre}.</span> {d.libelle}
           </p>
 
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-subtle">
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-muted">
             <Badge variant={d.obligatoire ? 'info' : 'warning'}>
               {d.obligatoire ? 'Obligatoire' : d.applicabilite === 'A_APPRECIER' ? 'À apprécier' : 'Conditionnelle'}
             </Badge>
@@ -340,7 +342,7 @@ function DemarcheRow({
             {d.acteur && <span>· {d.acteur}</span>}
             {d.horsSequence && (
               <span className="flex items-center gap-1 text-warning">
-                <AlertTriangle className="h-3 w-3" />
+                <AlertTriangle className="h-3 w-3" aria-hidden="true" />
                 cochée avant une précédente de la même phase
               </span>
             )}
@@ -458,17 +460,17 @@ function DemarcheRow({
                     {alternatives.map((a) => (
                       <label
                         key={a.documentType}
-                        className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition ${
+                        className={`inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors duration-150 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus ${
                           fichiers.has(a.documentType)
-                            ? 'border-success bg-success/10 text-success'
-                            : 'border-border text-fg-subtle hover:border-accent'
+                            ? 'border-success/40 bg-success-soft text-success'
+                            : 'border-border-input bg-bg-raised text-fg hover:bg-bg-overlay'
                         }`}
                       >
-                        <Paperclip className="h-3 w-3" />
+                        <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
                         {a.documentType}
                         <input
                           type="file"
-                          className="hidden"
+                          className="sr-only"
                           onChange={(ev) => {
                             const f = ev.target.files?.[0];
                             if (!f) return;
@@ -485,10 +487,10 @@ function DemarcheRow({
                       </label>
                     ))}
                     {alternatives.length > 1 && !choisi && (
-                      <span className="text-[11px] text-fg-subtle">(l&apos;un des trois suffit)</span>
+                      <span className="text-xs text-fg-muted">(l&apos;un des trois suffit)</span>
                     )}
                     {choisi && (
-                      <span className="truncate text-[11px] text-success">
+                      <span className="truncate text-xs text-success">
                         {fichiers.get(choisi.documentType)?.name}
                       </span>
                     )}
@@ -510,13 +512,13 @@ function DemarcheRow({
           )}
 
           {!canAct && d.etat === 'A_FAIRE' && (
-            <p className="mt-2 text-xs text-fg-subtle">
+            <p className="mt-2 text-xs text-fg-muted">
               Consultation seule — le cochage est réservé à l&apos;employé en charge.
             </p>
           )}
 
           {canAct && !d.actionnableMaintenant && d.etat === 'A_FAIRE' && (
-            <p className="mt-2 text-xs text-fg-subtle">
+            <p className="mt-2 text-xs text-fg-muted">
               Cette démarche relève d&apos;un autre statut du parcours : elle ne peut pas être
               cochée maintenant.
             </p>
@@ -532,9 +534,10 @@ function DemarcheRow({
           {actionnable && (
             <div className="mt-2 flex flex-wrap gap-2">
               {d.etat === 'A_FAIRE' && !sansJustificatif && (
-                <label className="mr-2 flex items-center gap-2 self-center text-xs text-fg-subtle">
+                <label className="mr-2 flex items-center gap-2 self-center text-xs text-fg-muted">
                   <input
                     type="checkbox"
+                    className="h-4 w-4 accent-accent"
                     checked={visibleClient}
                     onChange={(e) => setVisibleClient(e.target.checked)}
                   />
@@ -544,20 +547,21 @@ function DemarcheRow({
               {d.etat === 'A_FAIRE' && (
                 <>
                   <Button
+                    type="button"
                     size="sm"
+                    loading={enCours}
                     disabled={enCours || groupesManquants.length > 0}
                     onClick={() => void cocher()}
                   >
-                    {enCours ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
                     Cocher
                   </Button>
                   {!d.obligatoire && (
-                    <Button size="sm" variant="secondary" onClick={() => onEcarter(d)}>
+                    <Button type="button" size="sm" variant="secondary" onClick={() => onEcarter(d)}>
                       Non applicable
                     </Button>
                   )}
                   {d.obligatoire && (
-                    <span className="self-center text-xs text-fg-subtle">
+                    <span className="self-center text-xs text-fg-muted">
                       Obligatoire dans tous les dossiers : elle ne peut pas être écartée.
                     </span>
                   )}
@@ -565,12 +569,13 @@ function DemarcheRow({
               )}
               {d.etat !== 'A_FAIRE' && (
                 <Button
+                  type="button"
                   size="sm"
                   variant="secondary"
                   disabled={enCours}
+                  icon={<Undo2 />}
                   onClick={() => onAnnuler(d)}
                 >
-                  <Undo2 className="mr-1 h-3.5 w-3.5" />
                   {d.etat === 'COCHEE' ? 'Annuler le cochage' : 'Remettre au périmètre'}
                 </Button>
               )}
@@ -637,7 +642,7 @@ function DelaiCorpus({
   }
 
   return (
-    <div className="mt-1 space-y-1 text-xs text-fg-subtle" data-testid={`delai-${d.ordre}`}>
+    <div className="mt-1 space-y-1 text-xs text-fg-muted" data-testid={`delai-${d.ordre}`}>
       <p>
         <span className="font-medium text-fg">Délai : </span>
         {d.delai}
@@ -658,14 +663,14 @@ function DelaiCorpus({
           </span>
           {canAct && (
             <>
-              <input
+              <TextField
                 type="date"
                 aria-label={attendu === 'DEPART' ? 'Point de départ du délai' : 'Date limite'}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="rounded border border-border bg-bg px-2 py-0.5 text-xs"
+                containerClassName="w-44"
               />
-              <Button variant="secondary" disabled={!date} onClick={() => void enregistrer()}>
+              <Button type="button" size="sm" variant="secondary" disabled={!date} onClick={() => void enregistrer()}>
                 Enregistrer la date
               </Button>
             </>
@@ -687,15 +692,15 @@ function JournalDemarche({ evenements }: { evenements: DemarcheEvenement[] }) {
         type="button"
         onClick={() => setOuvert((v) => !v)}
         aria-expanded={ouvert}
-        className="flex items-center gap-1 text-xs text-fg-subtle underline-offset-2 hover:underline"
+        className="flex items-center gap-1 rounded text-xs text-fg-muted underline underline-offset-2 hover:text-fg"
       >
-        <History className="h-3 w-3" />
+        <History className="h-3 w-3" aria-hidden="true" />
         {evenements.length === 1
           ? `${LIBELLE_EVENEMENT[dernier.type]} le ${new Date(dernier.survenuLe).toLocaleString('fr-FR')}`
           : `${evenements.length} événements — dernier : ${LIBELLE_EVENEMENT[dernier.type]}`}
       </button>
       {ouvert && (
-        <ol className="mt-1 space-y-1 border-l border-border pl-3 text-xs text-fg-subtle">
+        <ol className="mt-1 space-y-1 border-l border-border pl-3 text-xs text-fg-muted">
           {evenements.map((e) => (
             <li key={e.id}>
               <span className="font-medium text-fg">{LIBELLE_EVENEMENT[e.type]}</span>{' '}
@@ -758,11 +763,11 @@ function AnnulerDrawer({
       <div className="space-y-4">
         <p className="text-sm text-fg">{d.libelle}</p>
         {d.cocheAt && (
-          <p className="text-sm text-fg-subtle">
+          <p className="text-sm text-fg-muted">
             Cochée le {new Date(d.cocheAt).toLocaleString('fr-FR')}.
           </p>
         )}
-        <p className="rounded-lg border border-border bg-bg-overlay/60 px-3 py-2 text-sm text-fg-subtle">
+        <p className="rounded-lg border border-border bg-bg-overlay px-3 py-2 text-sm text-fg-muted">
           L&rsquo;horodatage du cochage est <strong className="text-fg">conservé</strong> : le
           journal de la démarche garde les deux dates, celle du cochage et celle de
           l&rsquo;annulation.
@@ -779,11 +784,10 @@ function AnnulerDrawer({
           error={erreur ?? undefined}
         />
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose} disabled={enCours}>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={enCours}>
             Fermer
           </Button>
-          <Button onClick={() => void valider()} disabled={enCours}>
-            {enCours ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+          <Button type="button" onClick={() => void valider()} loading={enCours}>
             {annulation ? 'Annuler le cochage' : 'Remettre au périmètre'}
           </Button>
         </div>
@@ -828,7 +832,7 @@ function EcarterDrawer({
       <div className="space-y-4">
         <p className="text-sm text-fg">{d.libelle}</p>
         {d.conditionApplication && (
-          <p className="rounded-lg border border-border bg-bg-overlay/60 px-3 py-2 text-sm text-fg-subtle">
+          <p className="rounded-lg border border-border bg-bg-overlay px-3 py-2 text-sm text-fg-muted">
             <span className="font-medium text-fg">Condition du guide : </span>
             {d.conditionApplication}
           </p>
@@ -841,11 +845,10 @@ function EcarterDrawer({
           error={erreur ?? undefined}
         />
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose} disabled={enCours}>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={enCours}>
             Annuler
           </Button>
-          <Button onClick={() => void valider()} disabled={enCours}>
-            {enCours ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+          <Button type="button" onClick={() => void valider()} loading={enCours}>
             Écarter
           </Button>
         </div>

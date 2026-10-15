@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { KanbanView } from '../KanbanView';
+import { PISTES_KANBAN, largeurMinimaleKanban } from '../kanbanColonnes';
 import { ToastProvider } from '../../../components/ui/Toast';
 import type { Ticket, TicketStatut } from '../../../types/ticket';
 import type { ColonneTickets } from '../useTicketColumns';
@@ -95,7 +96,16 @@ describe('KanbanView — les cinq statuts sur une seule rangee', () => {
     }
     const grille = screen.getByTestId('kanban-grid');
     // Cinq pistes, pas quatre : la 5e ne peut pas retomber a la ligne.
-    expect(grille.style.gridTemplateColumns).toBe('repeat(5, minmax(240px, 1fr))');
+    const pistes = grille.style.gridTemplateColumns.match(/minmax\(/g) ?? [];
+    expect(pistes).toHaveLength(5);
+    expect(grille.style.gridTemplateColumns).toBe(PISTES_KANBAN);
+  });
+
+  it('L6b : les cinq colonnes tiennent dans la zone de contenu a 1 366 px (aucune coupee)', () => {
+    // 1 366 px - menu deplie (15rem = 240 px) - marges du contenu (2 x 32 px) - barre de
+    // defilement verticale (15 px) = 1 047 px. A 5 x 240 px, la 5e colonne etait coupee.
+    const zoneContenu1366 = 1366 - 240 - 2 * 32 - 15;
+    expect(largeurMinimaleKanban()).toBeLessThanOrEqual(zoneContenu1366);
   });
 
   it('ne figure aucune classe Tailwind de nombre de colonnes', () => {
