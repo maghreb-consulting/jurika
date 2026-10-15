@@ -22,6 +22,8 @@ import {
 } from '../../../components/workflow/OcrSuggestionsPanel';
 import { PublicitesSociete } from '../../../components/workflow/PublicitesSociete';
 import { manquePublicite, type Publicite } from '../../../lib/publicites';
+import { Select } from '../../../components/ui/Select';
+import { Button } from '../../../components/ui/Button';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -518,7 +520,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
           }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
-          className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition ${
+          className={`has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition ${
             dragOver
               ? 'border-accent bg-accent-soft'
               : 'border-border bg-bg-overlay hover:border-border-hi'
@@ -537,7 +539,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
             multiple
             accept="application/pdf,image/*"
             onChange={(ev) => handleFiles(ev.target.files)}
-            className="hidden"
+            className="sr-only"
           />
         </label>
 
@@ -588,12 +590,11 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
                       </p>
                     )}
                   </div>
-                  <select
+                  <Select
                     value={d.uiType}
                     onChange={(ev) =>
                       updateType(d.id, ev.target.value as UiDocType | '')
                     }
-                    className="h-8 rounded border border-border bg-bg-raised px-2 text-xs"
                     // Le type se verrouille une fois le depot lance/termine
                     // (changer de type ne re-deposerait pas sous un nouveau nom).
                     disabled={d.busy || d.uploaded}
@@ -606,7 +607,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
                         {DOC_TYPE_LABELS[k]}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   {d.busy ? (
                     <Loader className="h-4 w-4 animate-spin text-fg-subtle" />
                   ) : d.uploaded ? (
@@ -623,14 +624,16 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
                       ⚠
                     </span>
                   )}
-                  <button
+                  <Button
                     type="button"
                     onClick={() => remove(d.id)}
-                    className="rounded p-1 text-danger hover:bg-danger/10"
                     aria-label="Retirer ce document"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                    variant="ghost"
+                    size="sm"
+                    icon={<Trash2 />}
+                    iconOnly
+                    className="text-danger"
+                  />
                 </div>
 
                 {/* Fix 2026-06-07 (BUG 5 finition) — Bouton "Extraire"
@@ -641,31 +644,22 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
                     aide pour pre-remplir Step1. */}
                 {d.uploaded && d.uiType && DOC_TYPE_BINDING[d.uiType].aiSchema && (
                   <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-border pt-3">
-                    <button
+                    <Button
                       type="button"
+                      variant="secondary"
+                      size="sm"
                       onClick={() => extractFor(d.id)}
                       disabled={d.extracting}
-                      className={`flex items-center gap-1.5 rounded-lg px-3 h-8 text-xs font-medium transition ${
-                        d.extracting
-                          ? 'cursor-wait bg-border text-fg-subtle'
-                          : 'bg-info-soft text-info hover:bg-bg-overlay'
-                      }`}
+                      loading={d.extracting}
+                      icon={<Sparkles />}
                       title="Lance une extraction automatique pour pré-remplir la fiche de la société (facultatif)"
                     >
-                      {d.extracting ? (
-                        <>
-                          <Loader className="h-3.5 w-3.5 animate-spin" /> Extraction…
-                        </>
-                      ) : d.fields && Object.keys(d.fields).length > 0 ? (
-                        <>
-                          <Sparkles className="h-3.5 w-3.5" /> Extraire de nouveau
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-3.5 w-3.5" /> Extraire (facultatif)
-                        </>
-                      )}
-                    </button>
+                      {d.extracting
+                        ? 'Extraction…'
+                        : d.fields && Object.keys(d.fields).length > 0
+                          ? 'Extraire de nouveau'
+                          : 'Extraire (facultatif)'}
+                    </Button>
                     <span className="text-[11px] text-fg-subtle">
                       L’extraction sert uniquement à pré-remplir la fiche de la société.
                       Vous pouvez valider et continuer sans extraire.
@@ -711,18 +705,14 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
         societe={denomination || 'Société'} />
 
       <div className="flex items-center justify-end pt-2">
-        <button
+        <Button
           type="submit"
           disabled={!canSubmit || saving || !dossierId}
-          className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
-            canSubmit && !saving && dossierId
-              ? 'bg-accent text-accent-fg hover:bg-accent-hover'
-              : 'cursor-not-allowed bg-border text-fg-subtle'
-          }`}
+          size="lg"
+          iconEnd={<ChevronRight />}
         >
           {saving ? 'Validation en cours…' : 'Valider et continuer'}
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </form>
   );

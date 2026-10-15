@@ -11,7 +11,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { TextField } from '../../components/ui/TextField';
+import { TextField, ZoneTexte } from '../../components/ui/TextField';
 import { Select } from '../../components/ui/Select';
 import { ValeurProposee } from '../../components/workflow/ValeurProposee';
 import { InfoBulle } from '../../components/ui/Aide';
@@ -1110,13 +1110,15 @@ function PvAgoWorkflowPageBody() {
                     texte="Répartissez le résultat net entre les postes (réserve légale, report à nouveau…). La ligne « Dividendes » est ajoutée automatiquement à partir du bloc « Dividendes » : ne la saisissez pas ici. Le total affecté doit être égal au résultat net."
                   />
                 </h3>
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
+                  icon={<Plus />}
                   onClick={() => setAffectations((p) => [...p, { libelle: '', montant: '' }])}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-bg-raised px-2.5 py-1 text-xs font-medium text-fg hover:border-border-hi"
                 >
-                  <Plus className="h-3.5 w-3.5" /> Ajouter un poste
-                </button>
+                  Ajouter un poste
+                </Button>
               </div>
               <div className="space-y-2">
                 {affectations.map((a, i) => (
@@ -1137,15 +1139,16 @@ function PvAgoWorkflowPageBody() {
                         setAffectations((p) => p.map((x, j) => (j === i ? { ...x, montant: e.target.value } : x)))
                       }
                     />
-                    <button
+                    <Button
                       type="button"
+                      variant="secondary"
+                      iconOnly
+                      icon={<Trash2 />}
                       onClick={() => setAffectations((p) => p.filter((_, j) => j !== i))}
                       disabled={affectations.length <= 1}
-                      className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-bg-raised text-fg-subtle transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
+                      className="shrink-0 text-fg-subtle hover:border-danger hover:text-danger"
                       aria-label="Supprimer ce poste"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    />
                   </div>
                 ))}
               </div>
@@ -1236,10 +1239,8 @@ function PvAgoWorkflowPageBody() {
                 />
                 {conventionsReglementees === 'oui' && (
                   <div className="md:col-span-2">
-                    <label className="mb-1 block text-sm font-medium text-fg-muted">
-                      Description des conventions *
-                    </label>
-                    <textarea
+                    <ZoneTexte
+                      label="Description des conventions *"
                       aria-label="Description des conventions réglementées"
                       rows={3}
                       value={conventionsDetail}
@@ -1247,11 +1248,8 @@ function PvAgoWorkflowPageBody() {
                       onChange={(e) => setConventionsDetail(e.target.value)}
                       onBlur={() => setRevealErrors(true)}
                       placeholder="Ex. : convention de compte courant d’associé conclue le …, bail consenti par le gérant…"
-                      className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30"
+                      error={showErr('conventionsDetail') || undefined}
                     />
-                    {showErr('conventionsDetail') && (
-                      <FieldError msg={showErr('conventionsDetail')!} />
-                    )}
                   </div>
                 )}
               </div>

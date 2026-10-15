@@ -26,7 +26,7 @@ import {
   Store,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { TextField } from '../../components/ui/TextField';
+import { TextField, ZoneTexte } from '../../components/ui/TextField';
 import { Select } from '../../components/ui/Select';
 import { WorkflowShell } from '../../components/workflow/WorkflowShell';
 import type { RoadmapStep } from '../../components/workflow/WorkflowRoadmap';
@@ -646,9 +646,11 @@ function FermetureSuccursaleWorkflowPageBody() {
                   </div>
                 )}
                 {!loadingSucc && succursales.length > 0 && !saisieManuelle && (
-                  <button
+                  <Button
                     type="button"
-                    className="text-xs text-accent underline underline-offset-2"
+                    variant="ghost"
+                    size="sm"
+                    className="self-start"
                     data-testid="fermeture-basculer-manuel"
                     onClick={() => {
                       setSaisieManuelle(true);
@@ -656,16 +658,12 @@ function FermetureSuccursaleWorkflowPageBody() {
                     }}
                   >
                     La succursale ne figure pas dans la liste : la saisir manuellement
-                  </button>
+                  </Button>
                 )}
                 {!loadingSucc && succursales.length > 0 && saisieManuelle && (
-                  <button
-                    type="button"
-                    className="text-xs text-accent underline underline-offset-2"
-                    onClick={() => setSaisieManuelle(false)}
-                  >
+                  <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => setSaisieManuelle(false)}>
                     Revenir à la sélection dans la liste
-                  </button>
+                  </Button>
                 )}
 
                 {saisieManuelle ? (
@@ -781,25 +779,20 @@ function FermetureSuccursaleWorkflowPageBody() {
             </div>
 
             <div>
-              <label htmlFor="fermeture-motif" className="mb-1 block text-sm font-medium text-fg-muted">
-                Motif de la fermeture *
-              </label>
-              <textarea
+              <ZoneTexte
                 id="fermeture-motif"
+                label="Motif de la fermeture *"
                 rows={3}
                 value={motif}
                 data-testid="fermeture-motif"
                 onChange={(e) => setMotif(e.target.value)}
                 onBlur={() => setRevealErrors(true)}
                 placeholder="Cessation de l’activité exercée dans la succursale, réorganisation, transfert de l’activité au siège…"
-                className={`w-full rounded-lg border bg-bg-raised px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-                  showErr1('motif')
-                    ? 'border-danger focus:border-danger focus:ring-danger/30'
-                    : 'border-border-hi focus:border-focus focus:ring-focus/30'
-                }`}
                 aria-invalid={!!showErr1('motif')}
+                aria-describedby="fermeture-motif-compte"
               />
               <p
+                id="fermeture-motif-compte"
                 className={`mt-1 text-xs ${
                   motif.trim().length < MOTIF_MIN_LENGTH ? 'text-danger' : 'text-success'
                 }`}

@@ -21,12 +21,17 @@ import { BlocageValidation } from '../../../components/workflow/BlocageValidatio
 import { ajouterExtraits, retirerExtraits } from '../provenance';
 import { AIDE_SIGNATAIRES } from '../../../lib/usagesCabinet';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
+import { classesBouton } from '../../../components/ui/boutonClasses';
 import {
   agregerGerance,
   dirigeantLabel,
   unSeulAssocie,
   type Dirigeant,
 } from './geranceDirigeants';
+import { TextField, ZoneTexte } from '../../../components/ui/TextField';
+import { Select } from '../../../components/ui/Select';
+import { Button } from '../../../components/ui/Button';
+import { Case, GroupeRadio, Interrupteur } from '../../../components/ui/Choix';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -619,7 +624,7 @@ export function Step5Dirigeants({
                 <span className="text-sm font-bold text-fg">
                   Dirigeant {i + 1}
                 </span>
-                <select
+                <Select
                   aria-label={`Fonction du dirigeant ${i + 1}`}
                   value={d.fonction}
                   onChange={(e) =>
@@ -627,11 +632,10 @@ export function Step5Dirigeants({
                       fonction: e.target.value as Dirigeant['fonction'],
                     })
                   }
-                  className="h-8 rounded-lg border border-border bg-bg-raised px-2 text-xs font-medium"
                 >
                   <option value="GERANT">Gérant</option>
                   <option value="CO_GERANT">Cogérant</option>
-                </select>
+                </Select>
                 {/* Badges d'etat : visibles d'un coup d'oeil */}
                 <div className="flex flex-wrap items-center gap-2">
                   {d.isStatutaire && (
@@ -647,137 +651,63 @@ export function Step5Dirigeants({
                 </div>
               </div>
               {dirigeants.length > 1 && (
-                <button
+                <Button
                   type="button"
                   onClick={() => removeDirigeant(d.id)}
-                  className="rounded-lg p-2 text-danger hover:bg-danger/10"
                   title="Retirer ce dirigeant"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                  variant="ghost"
+                  icon={<Trash2 />}
+                  iconOnly
+                  aria-label="Retirer ce dirigeant"
+                  className="text-danger"
+                />
               )}
             </div>
 
             {/* EX5 2026-06-09 — Toggle PHYSIQUE / MORALE en tete de carte (forme la suite). */}
             <div className="border-b border-border bg-bg-raised px-6 py-3">
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-fg-subtle">
-                Nature du dirigeant
-              </p>
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={d.typePersonne === 'PHYSIQUE'}
-                  onClick={() => update(d.id, { typePersonne: 'PHYSIQUE' })}
-                  className={`flex items-center gap-3 rounded-lg border-2 px-3 py-2.5 text-left transition ${
-                    d.typePersonne === 'PHYSIQUE'
-                      ? 'border-accent bg-accent-soft'
-                      : 'border-border bg-bg-overlay hover:border-border-hi'
-                  }`}
-                >
-                  <User className={`h-4 w-4 ${d.typePersonne === 'PHYSIQUE' ? 'text-fg' : 'text-fg-subtle'}`} />
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-fg">Personne physique</p>
-                    <p className="text-[11px] text-fg-subtle">Une personne, titulaire d’une pièce d’identité</p>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={d.typePersonne === 'MORALE'}
-                  onClick={() => update(d.id, { typePersonne: 'MORALE' })}
-                  className={`flex items-center gap-3 rounded-lg border-2 px-3 py-2.5 text-left transition ${
-                    d.typePersonne === 'MORALE'
-                      ? 'border-accent bg-accent-soft'
-                      : 'border-border bg-bg-overlay hover:border-border-hi'
-                  }`}
-                >
-                  <Building2 className={`h-4 w-4 ${d.typePersonne === 'MORALE' ? 'text-fg' : 'text-fg-subtle'}`} />
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-fg">Personne morale</p>
-                    <p className="text-[11px] text-fg-subtle">Une société (RC, ICE, IF et représentant légal)</p>
-                  </div>
-                </button>
-              </div>
+              <GroupeRadio
+                legende={<span className="text-[11px] font-bold uppercase tracking-wide text-fg-subtle">Nature du dirigeant</span>}
+                name={`dirigeant-nature-${d.id}`}
+                horizontal
+                value={d.typePersonne}
+                onChange={(v) => update(d.id, { typePersonne: v as Dirigeant['typePersonne'] })}
+                options={[
+                  { value: 'PHYSIQUE', label: 'Personne physique', description: 'Une personne, titulaire d’une pièce d’identité' },
+                  { value: 'MORALE', label: 'Personne morale', description: 'Une société (RC, ICE, IF et représentant légal)' },
+                ]}
+              />
             </div>
 
             {/* EX4 — Cartes de selection grandes + lisibles, libelles explicites + aide contextuelle. */}
             <div className="grid grid-cols-1 gap-3 border-b border-border bg-bg-raised px-6 py-4 md:grid-cols-2">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={d.isStatutaire}
-                onClick={() =>
-                  update(d.id, { isStatutaire: !d.isStatutaire })
-                }
-                className={`group flex w-full items-start gap-3 rounded-xl border-2 p-4 text-left transition ${
-                  d.isStatutaire
-                    ? 'border-success bg-success-soft shadow-sm'
-                    : 'border-border bg-bg-overlay hover:border-success/40 hover:bg-success/5'
-                }`}
-              >
-                <div
-                  className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${
-                    d.isStatutaire
-                      ? 'border-success bg-success'
-                      : 'border-border bg-bg-raised'
-                  }`}
-                >
-                  {d.isStatutaire && (
-                    <CheckCircle className="h-4 w-4 text-success-fg" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-fg">
-                    Gérant statutaire
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-fg-subtle">
-                    Nommé directement dans les statuts (pas d’acte séparé). Décochez
-                    si la nomination se fait par un acte distinct des statuts.
-                  </p>
-                </div>
-              </button>
+              <div className="rounded-xl border border-border bg-bg-overlay p-4">
+                <Interrupteur
+                  checked={d.isStatutaire}
+                  onChange={(v) => update(d.id, { isStatutaire: v })}
+                  label={<span className="font-semibold">Gérant statutaire</span>}
+                  description="Nommé directement dans les statuts (pas d’acte séparé). Désactivez si la nomination se fait par un acte distinct des statuts."
+                />
+              </div>
 
-              <button
-                type="button"
-                role="switch"
-                aria-checked={!!d.isAssociate}
-                onClick={() =>
-                  update(d.id, { isAssociate: !d.isAssociate })
-                }
-                className={`group flex w-full items-start gap-3 rounded-xl border-2 p-4 text-left transition ${
-                  d.isAssociate
-                    ? 'border-accent bg-accent-soft shadow-sm'
-                    : 'border-border bg-bg-overlay hover:border-border-hi hover:bg-bg-overlay'
-                }`}
-                title="Cochée, le dirigeant est aussi associé : son identité est reprise à l’étape des associés."
-              >
-                <div
-                  className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${
-                    d.isAssociate
-                      ? 'border-accent bg-accent'
-                      : 'border-border bg-bg-raised'
-                  }`}
-                >
-                  {d.isAssociate && (
-                    <CheckCircle className="h-4 w-4 text-accent-fg" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-fg">
-                    Également associé
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-fg-subtle">
-                    Le dirigeant détient des parts sociales. Son identité sera
-                    reprise automatiquement à l’étape des associés.
-                    {isSarlAu && (
-                      <span className="ml-1 font-medium text-heading">
-                        SARL AU : un seul dirigeant peut être coché.
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </button>
+              <div className="rounded-xl border border-border bg-bg-overlay p-4">
+                <Interrupteur
+                  checked={!!d.isAssociate}
+                  onChange={(v) => update(d.id, { isAssociate: v })}
+                  label={<span className="font-semibold">Également associé</span>}
+                  description={
+                    <>
+                      Le dirigeant détient des parts sociales. Son identité sera
+                      reprise automatiquement à l’étape des associés.
+                      {isSarlAu && (
+                        <span className="ml-1 font-medium text-heading">
+                          SARL AU : un seul dirigeant peut être coché.
+                        </span>
+                      )}
+                    </>
+                  }
+                />
+              </div>
             </div>
 
             <div className="p-6">
@@ -802,12 +732,12 @@ export function Step5Dirigeants({
                     "Remplacer" qui rouvre l'extracteur. */}
                 {/* L4a (E3) : passeport ou carte de sejour, simplement joints (pas de lecture automatique). */}
                 {pieceSansExtraction(d.pieceType) && (!d.cinUploaded || replacingCinIds.has(d.id)) && (
-                  <label className="mb-3 block text-xs font-medium text-fg">
+                  <label className="mb-3 block text-xs font-medium text-fg has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus">
                     Joindre la pièce d’identité ({d.pieceType}) *
                     <input
                       type="file"
                       accept="application/pdf,image/*"
-                      className="mt-1 block text-xs"
+                      className="mt-1 block w-full text-sm text-fg-muted file:mr-3 file:h-8 file:cursor-pointer file:rounded-lg file:border file:border-border-input file:bg-bg-raised file:px-3 file:text-sm file:font-medium file:text-fg hover:file:bg-bg-overlay"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
@@ -841,26 +771,28 @@ export function Step5Dirigeants({
                       {d.cinFileName}
                     </p>
                     {!replacingCinIds.has(d.id) && (
-                      <button
+                      <Button
                         type="button"
                         onClick={() => setReplacingCinIds((s) => new Set(s).add(d.id))}
-                        className="text-[11px] font-medium text-accent hover:underline"
+                        variant="ghost"
+                        size="sm"
                       >
                         Remplacer
-                      </button>
+                      </Button>
                     )}
                     {replacingCinIds.has(d.id) && (
-                      <button
+                      <Button
                         type="button"
                         onClick={() =>
                           setReplacingCinIds((s) => {
                             const next = new Set(s); next.delete(d.id); return next;
                           })
                         }
-                        className="text-[11px] text-fg-subtle hover:underline"
+                        variant="ghost"
+                        size="sm"
                       >
                         Annuler
-                      </button>
+                      </Button>
                     )}
                   </div>
                 )}
@@ -868,20 +800,17 @@ export function Step5Dirigeants({
 
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div>
-                  <label className="mb-1 block text-xs text-fg-subtle">
-                    Civilité
-                  </label>
-                  <select
+                  <Select
+                    label="Civilité"
                     aria-label="Civilité"
                     value={d.civilite}
                     onChange={(e) =>
                       update(d.id, { civilite: e.target.value as 'M' | 'Mme' })
                     }
-                    className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm"
                   >
                     <option value="M">Monsieur</option>
                     <option value="Mme">Madame</option>
-                  </select>
+                  </Select>
                 </div>
                 <Field
                   label="Nom"
@@ -901,14 +830,16 @@ export function Step5Dirigeants({
                   onChange={(v) => update(d.id, { pieceType: v })}
                 />
                 <div>
-                  <label className="mb-1 flex items-center gap-1 text-xs text-fg-subtle">
+                  <label htmlFor={`dirigeant-piece-numero-${d.id}`} className="mb-1 flex items-center gap-1 text-xs text-fg-subtle">
                     {libelleNumeroPiece(d.pieceType)} <span className="text-danger">*</span>
                     <InfoBulle
                       libelle="Format du numéro"
                       texte="CIN marocaine : une ou deux lettres puis 5 à 7 chiffres (ex. : X 123456). Le numéro est lu sur la pièce par « Extraire » ; corrigez-le si la lecture est inexacte."
                     />
                   </label>
-                  <input aria-label="N° CIN"
+                  <TextField
+                    id={`dirigeant-piece-numero-${d.id}`}
+                    aria-label="N° CIN"
                     type="text"
                     value={d.cinNumero}
                     onChange={(e) =>
@@ -917,15 +848,9 @@ export function Step5Dirigeants({
                     placeholder="X 123456"
                     title="CIN : une ou deux lettres puis 5 à 7 chiffres (ex. : X 123456)"
                     aria-invalid={!!cinError}
-                    className={`h-9 w-full rounded-lg border bg-bg-overlay px-3 text-sm uppercase ${
-                      cinError ? 'border-danger' : 'border-border'
-                    }`}
+                    error={cinError || undefined}
+                    className="uppercase"
                   />
-                  {cinError && (
-                    <p className="mt-0.5 text-[11px] font-medium text-danger">
-                      {cinError}
-                    </p>
-                  )}
                 </div>
                 <ValeurProposee
                   id={`dirigeant-nationalite-${d.id}`}
@@ -961,15 +886,13 @@ export function Step5Dirigeants({
                   }
                 />
                 <div className="md:col-span-3">
-                  <label className="mb-1 block text-xs text-fg-subtle">
-                    Adresse <span className="text-danger">*</span>
-                  </label>
-                  <input aria-label="Adresse"
+                  <TextField
+                    label="Adresse *"
+                    aria-label="Adresse"
                     type="text"
                     value={d.adresse}
                     onChange={(e) => update(d.id, { adresse: e.target.value })}
                     placeholder="Adresse complète"
-                    className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm"
                   />
                 </div>
               </div>
@@ -1012,13 +935,15 @@ export function Step5Dirigeants({
         );
       })}
 
-      <button
+      <Button
         type="button"
         onClick={() => setDirigeants([...dirigeants, newDirigeant()])}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-3 text-sm text-fg-muted transition hover:border-focus hover:bg-bg-overlay hover:text-fg"
+        variant="secondary"
+        fullWidth
+        icon={<UserPlus />}
       >
-        <UserPlus className="h-4 w-4" /> Ajouter un dirigeant
-      </button>
+        Ajouter un dirigeant
+      </Button>
 
       {/* Limitation des pouvoirs — clause STATUTAIRE sur la gérance comme organe.
           Elle ne vit pas dans les fiches dirigeants : elle borne ce que la gérance
@@ -1035,13 +960,13 @@ export function Step5Dirigeants({
           Clause des statuts, commune à toute la gérance : « les actes suivants
           requièrent l’accord préalable des associés ». Laissez vide s’il n’y en a pas.
         </p>
-        <textarea
+        <ZoneTexte
           id="limitation-pouvoirs-gerance"
           rows={2}
           value={limitationPouvoirs}
           onChange={(ev) => setLimitationPouvoirs(ev.target.value)}
           placeholder="Ex. : les actes de disposition supérieurs à 100 000 MAD."
-          className="mt-3 w-full resize-none rounded-lg border-2 border-border bg-bg-overlay px-3 py-2 text-sm focus:border-focus focus:outline-none"
+          className="resize-none"
         />
       </div>
 
@@ -1056,40 +981,33 @@ export function Step5Dirigeants({
         </p>
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Mode de signature
-            </label>
-            <select
+            <Select
+              label="Mode de signature"
               aria-label="Mode de signature"
               value={modeSignature}
               onChange={(ev) => setModeSignature(ev.target.value)}
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             >
               <option value="séparée">Séparée (sans limitation)</option>
               <option value="séparée avec plafond">Séparée avec plafond</option>
               <option value="conjointe">Conjointe (deux au moins)</option>
-            </select>
+            </Select>
           </div>
           {modeSignature === 'séparée avec plafond' && (
             <div>
-              <label className="mb-1 block text-xs font-medium text-fg">
-                Plafond par opération (MAD)
-              </label>
-              <input aria-label="Plafond par opération (MAD)"
+              <TextField
+                label="Plafond par opération (MAD)"
+                aria-label="Plafond par opération (MAD)"
                 type="number"
                 min={0}
                 value={signaturePlafond || ''}
                 onChange={(ev) => setSignaturePlafond(Number(ev.target.value))}
                 placeholder="Ex. : 50000"
-                className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
               />
             </div>
           )}
           <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Signature des actes administratifs
-            </label>
-            <select
+            <Select
+              label="Signature des actes administratifs"
               aria-label="Signature des actes administratifs"
               value={modeSignatureAdmin}
               onChange={(ev) =>
@@ -1097,11 +1015,10 @@ export function Step5Dirigeants({
                   ev.target.value as 'identique' | 'signature seule',
                 )
               }
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             >
               <option value="identique">Identique à la signature sociale</option>
               <option value="signature seule">Signature seule du gérant</option>
-            </select>
+            </Select>
           </div>
         </div>
 
@@ -1121,8 +1038,9 @@ export function Step5Dirigeants({
             {signataires.map((s, idx) => (
               <div key={s.id} className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_1fr_auto] md:items-end">
                 <div>
-                  <label className="mb-1 block text-[10px] text-fg-subtle">Nom</label>
-                  <input aria-label={`Nom du signataire ${idx + 1}`}
+                  <TextField
+                    label="Nom"
+                    aria-label={`Nom du signataire ${idx + 1}`}
                     type="text"
                     list={signataireListId}
                     value={s.nom}
@@ -1132,12 +1050,12 @@ export function Step5Dirigeants({
                       )
                     }
                     placeholder="Nom du signataire"
-                    className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-[10px] text-fg-subtle">Qualité</label>
-                  <input aria-label={`Qualité du signataire ${idx + 1}`}
+                  <TextField
+                    label="Qualité"
+                    aria-label={`Qualité du signataire ${idx + 1}`}
                     type="text"
                     value={s.qualite}
                     onChange={(ev) =>
@@ -1146,21 +1064,23 @@ export function Step5Dirigeants({
                       )
                     }
                     placeholder="Ex. : gérant"
-                    className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm"
                   />
                 </div>
-                <button
+                <Button
                   type="button"
                   onClick={() => setSignataires((arr) => arr.filter((_, i) => i !== idx))}
-                  className="h-9 rounded-lg border border-danger/30 px-2 text-danger hover:bg-danger/10"
                   title="Retirer ce signataire"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                  variant="ghost"
+                  size="sm"
+                  icon={<Trash2 />}
+                  iconOnly
+                  aria-label="Retirer ce signataire"
+                  className="text-danger"
+                />
               </div>
             ))}
           </div>
-          <button
+          <Button
             type="button"
             onClick={() =>
               setSignataires((arr) => [
@@ -1168,45 +1088,43 @@ export function Step5Dirigeants({
                 { id: crypto.randomUUID(), nom: '', qualite: 'Gérant' },
               ])
             }
-            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-2 text-xs text-fg-muted transition hover:border-focus hover:bg-bg-overlay hover:text-fg"
+            variant="secondary"
+            size="sm"
+            fullWidth
+            icon={<UserPlus />}
+            className="mt-2"
           >
-            <UserPlus className="h-3.5 w-3.5" /> Ajouter un signataire
-          </button>
+            Ajouter un signataire
+          </Button>
         </div>
 
         {/* Mandataire (delegation de signature) */}
         <div className="mt-4 rounded-lg border border-border bg-bg-overlay p-3">
-          <label className="flex items-center gap-2 text-xs font-bold text-fg">
-            <input
-              type="checkbox"
-              checked={signatureMandataire}
-              onChange={(ev) => setSignatureMandataire(ev.target.checked)}
-              className="h-4 w-4 accent-accent"
-            />
-            Signature déléguée à un mandataire
-          </label>
+          <Case
+            label="Signature déléguée à un mandataire"
+            checked={signatureMandataire}
+            onChange={(ev) => setSignatureMandataire(ev.target.checked)}
+          />
           {signatureMandataire && (
             <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs text-fg-subtle">Nom du mandataire</label>
-                <input aria-label="Nom du mandataire"
+                <TextField
+                  label="Nom du mandataire"
+                  aria-label="Nom du mandataire"
                   type="text"
                   value={mandataireNom}
                   onChange={(ev) => setMandataireNom(ev.target.value)}
                   placeholder="Nom du mandataire"
-                  className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-fg-subtle">
-                  Référence de l’acte de délégation
-                </label>
-                <input aria-label="Référence de l’acte de délégation"
+                <TextField
+                  label="Référence de l’acte de délégation"
+                  aria-label="Référence de l’acte de délégation"
                   type="text"
                   value={mandataireActeDelegation}
                   onChange={(ev) => setMandataireActeDelegation(ev.target.value)}
                   placeholder="Ex. : procuration du 01/01/2026"
-                  className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
                 />
               </div>
             </div>
@@ -1218,27 +1136,22 @@ export function Step5Dirigeants({
           Loi 5-96 Art. 80 : la designation d'un CAC est obligatoire en SARL si
           le CA > 50 MDH ; sinon facultative. On l'expose ici comme conditionnel. */}
       <div className="rounded-xl border border-border bg-bg-raised p-5 shadow-sm">
-        <label className="flex items-center gap-2 text-sm font-bold text-fg">
-          <input
-            type="checkbox"
-            checked={cacNomme}
-            onChange={(ev) => setCacNomme(ev.target.checked)}
-            className="h-4 w-4 accent-accent"
-          />
-          Commissaire aux comptes désigné
-        </label>
+        <Case
+          label="Commissaire aux comptes désigné"
+          checked={cacNomme}
+          onChange={(ev) => setCacNomme(ev.target.checked)}
+        />
         <p className="mt-1 text-xs text-fg-subtle">
           Facultatif ; obligatoire pour une SARL dont le chiffre d’affaires dépasse
           50 millions de dirhams (loi 5-96, article 80).
         </p>
         {cacNomme && (
-          <input
+          <TextField
             type="text"
             value={cacNom}
             onChange={(ev) => setCacNom(ev.target.value)}
             placeholder="Nom du commissaire aux comptes"
             aria-label="Nom du commissaire aux comptes"
-            className="mt-3 h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
           />
         )}
       </div>
@@ -1247,18 +1160,14 @@ export function Step5Dirigeants({
       <BlocageValidation raisons={raisonsBlocage} testId="step5-blocage" />
 
       <div className="flex items-center justify-end pt-2">
-        <button
+        <Button
           type="submit"
           disabled={!canSubmit || saving}
-          className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
-            canSubmit && !saving
-              ? 'bg-accent text-accent-fg hover:bg-accent-hover'
-              : 'cursor-not-allowed bg-border text-fg-subtle'
-          }`}
+          size="lg"
+          iconEnd={<ChevronRight />}
         >
           {saving ? 'Enregistrement…' : 'Valider et continuer'}
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -1270,18 +1179,12 @@ function Field({
   ...rest
 }: { label: string; required?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
-    <div>
-      <label className="mb-1 block text-xs text-fg-subtle">
-        {label} {required && <span className="text-danger">*</span>}
-      </label>
-      {/* `aria-label` derive du libelle : ce champ vit dans des listes (.map),
-          ou un `id` statique se dupliquerait et casserait l'association. */}
-      <input
-        aria-label={label}
-        {...rest}
-        className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm"
-      />
-    </div>
+    <TextField
+      label={required ? `${label} *` : label}
+      // `aria-label` : le nom accessible reste le libelle sans asterisque (requetes des tests).
+      aria-label={label}
+      {...rest}
+    />
   );
 }
 
@@ -1340,7 +1243,7 @@ function GeranceFields({
             Durée du mandat <span className="text-danger">*</span>
           </label>
           <div className="flex flex-wrap items-center gap-2">
-            <select
+            <Select
               value={d.dureeMandatType}
               aria-label={`Durée du mandat de ${qui}`}
               onChange={(e) =>
@@ -1348,21 +1251,20 @@ function GeranceFields({
                   dureeMandatType: e.target.value as 'illimitee' | 'determinee',
                 })
               }
-              className="h-9 rounded-lg border border-border bg-bg-overlay px-3 text-sm"
             >
               <option value="illimitee">Illimitée (jusqu’à révocation)</option>
               <option value="determinee">Durée déterminée</option>
-            </select>
+            </Select>
             {d.dureeMandatType === 'determinee' && (
               <div className="flex items-center gap-1">
-                <input
+                <TextField
                   type="number"
                   min={1}
                   value={d.dureeAnnees || ''}
                   aria-label={`Nombre d’années du mandat de ${qui}`}
                   onChange={(e) => onChange({ dureeAnnees: Number(e.target.value) })}
                   placeholder="Années"
-                  className="h-9 w-24 rounded-lg border border-border bg-bg-overlay px-3 text-sm"
+                  containerClassName="w-24"
                 />
                 <span className="text-xs text-fg-subtle">année(s)</span>
               </div>
@@ -1376,7 +1278,7 @@ function GeranceFields({
             Rémunération de la gérance <span className="text-danger">*</span>
           </label>
           <div className="flex flex-wrap items-center gap-2">
-            <select
+            <Select
               value={d.remunerationMode}
               aria-label={`Rémunération de ${qui}`}
               onChange={(e) =>
@@ -1384,7 +1286,6 @@ function GeranceFields({
                   remunerationMode: e.target.value as Dirigeant['remunerationMode'],
                 })
               }
-              className="h-9 rounded-lg border border-border bg-bg-overlay px-3 text-sm"
             >
               <option value="">— Choisir —</option>
               <option value="non_remunere">Fonctions non rémunérées</option>
@@ -1392,10 +1293,10 @@ function GeranceFields({
                 Fixée par décision collective des associés
               </option>
               <option value="montant_fixe">Montant fixe</option>
-            </select>
+            </Select>
             {d.remunerationMode === 'montant_fixe' && (
               <div className="flex items-center gap-1">
-                <input
+                <TextField
                   type="number"
                   min={1}
                   value={d.remunerationMontant || ''}
@@ -1404,7 +1305,7 @@ function GeranceFields({
                     onChange({ remunerationMontant: Number(e.target.value) })
                   }
                   placeholder="Montant"
-                  className="h-9 w-28 rounded-lg border border-border bg-bg-overlay px-3 text-sm"
+                  containerClassName="w-28"
                 />
                 <span className="text-xs text-fg-subtle">MAD</span>
               </div>
@@ -1468,25 +1369,20 @@ function MoraleForm({
         </p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Dénomination (raison sociale) <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Dénomination (raison sociale)"
+            <TextField
+              label="Dénomination (raison sociale) *"
+              aria-label="Dénomination (raison sociale)"
               type="text"
               value={d.denomination ?? ''}
               onChange={(e) => onChange({ denomination: e.target.value })}
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Forme juridique
-            </label>
-            <select
+            <Select
+              label="Forme juridique"
               aria-label="Forme juridique de la société gérante"
               value={d.formeJuridiqueEntite ?? 'SARL'}
               onChange={(e) => onChange({ formeJuridiqueEntite: e.target.value })}
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
             >
               <option value="SARL">SARL</option>
               <option value="SARL_AU">SARL AU</option>
@@ -1496,70 +1392,52 @@ function MoraleForm({
               <option value="GIE">GIE</option>
               <option value="ASSOC">Association</option>
               <option value="AUTRE">Autre</option>
-            </select>
+            </Select>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Numéro du registre du commerce (RC) <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Numéro du registre du commerce (RC)"
+            <TextField
+              label="Numéro du registre du commerce (RC) *"
+              aria-label="Numéro du registre du commerce (RC)"
               type="text"
               value={d.rc ?? ''}
               onChange={(e) => onChange({ rc: e.target.value })}
               aria-invalid={!!rcError}
-              className={`h-9 w-full rounded-lg border bg-bg-raised px-3 text-sm ${
-                rcError ? 'border-danger' : 'border-border'
-              }`}
+              error={rcError || undefined}
             />
-            {rcError && (
-              <p className="mt-0.5 text-[11px] font-medium text-danger">{rcError}</p>
-            )}
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">
-              ICE <span className="text-danger">*</span>
-            </label>
-            <input aria-label="ICE"
+            <TextField
+              label="ICE *"
+              aria-label="ICE"
               type="text"
               value={d.ice ?? ''}
               onChange={(e) => onChange({ ice: e.target.value.replace(/[^\d]/g, '') })}
               maxLength={15}
               aria-invalid={!!iceError}
-              className={`h-9 w-full rounded-lg border bg-bg-raised px-3 text-sm font-mono ${
-                iceError ? 'border-danger' : 'border-border'
-              }`}
+              error={iceError || undefined}
+              className="font-mono"
             />
-            {iceError && (
-              <p className="mt-0.5 text-[11px] font-medium text-danger">{iceError}</p>
-            )}
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Identifiant fiscal (IF) <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Identifiant fiscal (IF)"
+            <TextField
+              label="Identifiant fiscal (IF) *"
+              aria-label="Identifiant fiscal (IF)"
               type="text"
               value={d.ifFiscal ?? ''}
               onChange={(e) => onChange({ ifFiscal: e.target.value.replace(/[^\d]/g, '') })}
               maxLength={8}
               aria-invalid={!!ifError}
-              className={`h-9 w-full rounded-lg border bg-bg-raised px-3 text-sm font-mono ${
-                ifError ? 'border-danger' : 'border-border'
-              }`}
+              error={ifError || undefined}
+              className="font-mono"
             />
-            {ifError && (
-              <p className="mt-0.5 text-[11px] font-medium text-danger">{ifError}</p>
-            )}
           </div>
           <div className="md:col-span-2">
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Adresse du siège <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Adresse du siège"
+            <TextField
+              label="Adresse du siège *"
+              aria-label="Adresse du siège"
               type="text"
               value={d.siege ?? ''}
               onChange={(e) => onChange({ siege: e.target.value })}
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
             />
           </div>
         </div>
@@ -1646,39 +1524,34 @@ function MoraleForm({
         )}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Civilité</label>
-            <select
+            <Select
+              label="Civilité"
               aria-label="Civilité du représentant"
               value={d.repCivilite ?? 'M'}
               onChange={(e) =>
                 onChange({ repCivilite: e.target.value as 'M' | 'Mme' })
               }
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
             >
               <option value="M">Monsieur</option>
               <option value="Mme">Madame</option>
-            </select>
+            </Select>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Nom <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Nom du représentant"
+            <TextField
+              label="Nom *"
+              aria-label="Nom du représentant"
               type="text"
               value={d.repNom ?? ''}
               onChange={(e) => onChange({ repNom: e.target.value })}
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Prénom <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Prénom du représentant"
+            <TextField
+              label="Prénom *"
+              aria-label="Prénom du représentant"
               type="text"
               value={d.repPrenom ?? ''}
               onChange={(e) => onChange({ repPrenom: e.target.value })}
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
             />
           </div>
           {/* 2026-06-21 (Cowork) — Input CIN representant RETIRE :
@@ -1695,55 +1568,51 @@ function MoraleForm({
             onChange={(v) => onChange({ repNationalite: v })}
           />
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Date de naissance</label>
-            <input aria-label="Date de naissance du représentant"
+            <TextField
+              label="Date de naissance"
+              aria-label="Date de naissance du représentant"
               type="date"
               value={d.repDateNaissance ?? ''}
               onChange={(e) => onChange({ repDateNaissance: e.target.value })}
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Lieu de naissance</label>
-            <input aria-label="Lieu de naissance du représentant"
+            <TextField
+              label="Lieu de naissance"
+              aria-label="Lieu de naissance du représentant"
               type="text"
               value={d.repLieuNaissance ?? ''}
               onChange={(e) => onChange({ repLieuNaissance: e.target.value })}
               placeholder="Ville, pays"
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">CIN valable jusqu’au</label>
-            <input aria-label="CIN du représentant valable jusqu’au"
+            <TextField
+              label="CIN valable jusqu’au"
+              aria-label="CIN du représentant valable jusqu’au"
               type="date"
               value={d.repPieceValidite ?? ''}
               onChange={(e) => onChange({ repPieceValidite: e.target.value })}
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
             />
           </div>
           <div className="md:col-span-3">
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Adresse <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Adresse du représentant"
+            <TextField
+              label="Adresse *"
+              aria-label="Adresse du représentant"
               type="text"
               value={d.repAdresse ?? ''}
               onChange={(e) => onChange({ repAdresse: e.target.value })}
               placeholder="Adresse complète"
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
             />
           </div>
           <div className="md:col-span-3">
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Qualité <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Qualité du représentant"
+            <TextField
+              label="Qualité *"
+              aria-label="Qualité du représentant"
               type="text"
               value={d.repQualite ?? ''}
               onChange={(e) => onChange({ repQualite: e.target.value })}
               placeholder="Gérant, président, mandataire…"
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
             />
           </div>
         </div>
@@ -1770,20 +1639,20 @@ function UploadCard({
         <FileText className="h-4 w-4 text-success" />
         <span className="flex-1 truncate text-xs">{filename ?? label}</span>
         <CheckCircle className="h-4 w-4 text-success" />
-        <label className="cursor-pointer text-[11px] text-accent hover:underline">
+        <label className={classesBouton('secondary', 'sm', 'cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus')}>
           Remplacer
           <input
             type="file"
             accept="image/*,application/pdf"
             onChange={(ev) => ev.target.files?.[0] && onFile(ev.target.files[0])}
-            className="hidden"
+            className="sr-only"
           />
         </label>
       </div>
     );
   }
   return (
-    <label className="block cursor-pointer rounded-lg border-2 border-dashed border-danger/40 p-4 text-center transition hover:border-danger hover:bg-danger/5">
+    <label className="block cursor-pointer rounded-lg border-2 border-dashed border-danger/40 p-4 text-center transition hover:border-danger hover:bg-danger/5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus">
       <Upload className="mx-auto mb-1 h-5 w-5 text-danger" />
       <p className="text-xs font-semibold text-fg">
         {label} <span className="text-danger">*</span>
@@ -1792,7 +1661,7 @@ function UploadCard({
         type="file"
         accept="image/*,application/pdf"
         onChange={(ev) => ev.target.files?.[0] && onFile(ev.target.files[0])}
-        className="hidden"
+        className="sr-only"
       />
     </label>
   );

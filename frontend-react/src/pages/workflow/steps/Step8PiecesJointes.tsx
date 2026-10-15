@@ -11,7 +11,10 @@ import {
   X,
 } from 'lucide-react';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
+import { classesBouton } from '../../../components/ui/boutonClasses';
 import { useStepAutosave, type RegisterDirty } from '../useStepAutosave';
+import { TextField } from '../../../components/ui/TextField';
+import { Button } from '../../../components/ui/Button';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -418,35 +421,37 @@ export function Step8PiecesJointes({
                 <span className="flex-1 truncate text-xs text-fg">
                   {piece.fileName}
                 </span>
-                <label className="cursor-pointer text-[11px] text-accent hover:underline">
+                <label className={classesBouton('secondary', 'sm', 'cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus')}>
                   Remplacer
                   <input
                     type="file"
                     accept="application/pdf,image/*"
-                    className="hidden"
+                    className="sr-only"
                     onChange={(e) =>
                       e.target.files?.[0] &&
                       uploadFor(piece.code, e.target.files[0], piece.label)
                     }
                   />
                 </label>
-                <button
+                <Button
                   type="button"
                   onClick={() => removeFor(piece.code)}
-                  className="rounded p-1 text-danger hover:bg-danger/10"
                   aria-label={`Retirer : ${piece.label}`}
                   title="Retirer la pièce"
-                >
-                  <X className="h-3 w-3" />
-                </button>
+                  variant="ghost"
+                  size="sm"
+                  icon={<X />}
+                  iconOnly
+                  className="text-danger"
+                />
               </div>
             ) : (
-              <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border px-3 py-2 text-xs text-fg-muted transition hover:border-focus hover:bg-bg-overlay hover:text-fg">
+              <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border px-3 py-2 text-xs text-fg-muted transition hover:border-focus hover:bg-bg-overlay hover:text-fg has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus">
                 <Upload className="h-3.5 w-3.5" /> Importer le document
                 <input
                   type="file"
                   accept="application/pdf,image/*"
-                  className="hidden"
+                  className="sr-only"
                   onChange={(e) =>
                     e.target.files?.[0] &&
                     uploadFor(piece.code, e.target.files[0], piece.label)
@@ -496,12 +501,12 @@ export function Step8PiecesJointes({
               <span className="flex-1 truncate text-xs text-fg">
                 {p.fileName}
               </span>
-              <label className="cursor-pointer text-[11px] text-accent hover:underline">
+              <label className={classesBouton('secondary', 'sm', 'cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus')}>
                 Remplacer
                 <input
                   type="file"
                   accept="application/pdf,image/*"
-                  className="hidden"
+                  className="sr-only"
                   onChange={(e) =>
                     e.target.files?.[0] &&
                     onPieceUploaded?.(p.code, p.label, e.target.files[0])
@@ -510,12 +515,12 @@ export function Step8PiecesJointes({
               </label>
             </div>
           ) : (
-            <label className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-danger/40 px-3 py-2 text-xs text-danger transition hover:bg-danger/10">
+            <label className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-danger/40 px-3 py-2 text-xs text-danger transition hover:bg-danger/10 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus">
               <Upload className="h-3.5 w-3.5" /> CIN non encore importée : importer
               <input
                 type="file"
                 accept="application/pdf,image/*"
-                className="hidden"
+                className="sr-only"
                 onChange={(e) =>
                   e.target.files?.[0] &&
                   onPieceUploaded?.(p.code, p.label, e.target.files[0])
@@ -606,26 +611,17 @@ export function Step8PiecesJointes({
         <div className="space-y-3">{optionnelles.map(renderPiece)}</div>
 
         <div className="mt-4 flex items-center gap-2">
-          <input
+          <TextField
             type="text"
             aria-label="Libellé d’une pièce complémentaire"
             value={extraLabel}
             onChange={(e) => setExtraLabel(e.target.value)}
             placeholder="Libellé d’une pièce complémentaire"
-            className="h-10 flex-1 rounded-lg border border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
+            containerClassName="flex-1"
           />
-          <button
-            type="button"
-            onClick={addExtra}
-            disabled={!extraLabel.trim()}
-            className={`flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium transition ${
-              extraLabel.trim()
-                ? 'bg-accent text-accent-fg hover:bg-accent-hover'
-                : 'cursor-not-allowed bg-border text-fg-subtle'
-            }`}
-          >
-            <Plus className="h-4 w-4" /> Ajouter la pièce
-          </button>
+          <Button type="button" variant="secondary" icon={<Plus />} onClick={addExtra} disabled={!extraLabel.trim()}>
+            Ajouter la pièce
+          </Button>
           <InfoBulle
             libelle="Ajouter une pièce complémentaire"
             texte="Saisissez le libellé de la pièce (par exemple « Attestation bancaire »), cliquez sur « Ajouter la pièce », puis importez le fichier dans la ligne qui apparaît."
@@ -674,18 +670,14 @@ export function Step8PiecesJointes({
       )}
 
       <div className="flex items-center justify-end pt-2">
-        <button
+        <Button
           type="submit"
           disabled={!requiredOk || saving}
-          className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
-            requiredOk && !saving
-              ? 'bg-accent text-accent-fg hover:bg-accent-hover'
-              : 'cursor-not-allowed bg-border text-fg-subtle'
-          }`}
+          size="lg"
+          iconEnd={<ChevronRight />}
         >
           {saving ? 'Enregistrement…' : 'Valider et continuer'}
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </form>
   );

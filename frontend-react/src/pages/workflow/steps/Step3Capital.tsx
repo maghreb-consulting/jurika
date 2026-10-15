@@ -12,6 +12,10 @@ import type { DirtyGetter } from '../useWorkflow';
 import { ValeurProposee } from '../../../components/workflow/ValeurProposee';
 import { BlocageValidation } from '../../../components/workflow/BlocageValidation';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
+import { TextField } from '../../../components/ui/TextField';
+import { Select } from '../../../components/ui/Select';
+import { Button } from '../../../components/ui/Button';
+import { Case } from '../../../components/ui/Choix';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -276,33 +280,30 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
 
         {/* Numeraire — seul apport partiellement liberable */}
         <div className="mb-4 rounded-lg border border-border bg-bg-overlay p-4">
-          <label className="mb-3 flex cursor-pointer items-center gap-3">
-            <input
-              type="checkbox"
-              checked={hasNumeraire}
-              onChange={(ev) => setHasNumeraire(ev.target.checked)}
-              className="h-4 w-4 rounded"
-            />
-            <span className="text-sm font-medium text-fg">
-              Apport en numéraire
-            </span>
-            <span className="text-xs text-fg-subtle">(en MAD, libération partielle possible)</span>
-          </label>
+          <Case
+            label={<span className="font-medium">Apport en numéraire</span>}
+            description="En MAD, libération partielle possible."
+            checked={hasNumeraire}
+            onChange={(ev) => setHasNumeraire(ev.target.checked)}
+            containerClassName="mb-3"
+          />
           {hasNumeraire && (
             <div className="space-y-3">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-xs text-fg-subtle">
+                  <label htmlFor="creation-numeraire-montant" className="mb-1 block text-xs text-fg-subtle">
                     Montant total (MAD)
                   </label>
                   <div className="relative">
-                    <input aria-label="Montant total (MAD)"
+                    <TextField
+                      id="creation-numeraire-montant"
+                      className="pr-16"
+                      aria-label="Montant total (MAD)"
                       type="number"
                       min={0}
                       value={numeraireSaisi ?? ''}
                       placeholder="Montant à saisir"
                       onChange={(ev) => setNumeraire(nombreOuVide(ev.target.value))}
-                      className="h-10 w-full rounded-lg border-2 border-border bg-bg-raised px-3 pr-16 text-sm focus:border-focus focus:outline-none"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-fg-subtle">
                       MAD
@@ -311,7 +312,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
                 </div>
                 {!importMode && (
                 <div>
-                  <label className="mb-1 flex items-center gap-1 text-xs text-fg-subtle">
+                  <label htmlFor="creation-numeraire-libere" className="mb-1 flex items-center gap-1 text-xs text-fg-subtle">
                     Dont libéré (MAD)
                     <InfoBulle
                       libelle="Qu’est-ce que la part libérée ?"
@@ -319,7 +320,10 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
                     />
                   </label>
                   <div className="relative">
-                    <input aria-label="Dont libéré (MAD)"
+                    <TextField
+                      id="creation-numeraire-libere"
+                      className="pr-16"
+                      aria-label="Dont libéré (MAD)"
                       type="number"
                       min={0}
                       max={numeraire}
@@ -328,7 +332,6 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
                       onChange={(ev) =>
                         setNumeraireLibere(nombreOuVide(ev.target.value))
                       }
-                      className="h-10 w-full rounded-lg border-2 border-border bg-bg-raised px-3 pr-16 text-sm focus:border-focus focus:outline-none"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-fg-subtle">
                       {numeraireLiberePct}%
@@ -348,47 +351,44 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
 
         {/* Nature — VERROUILLE 100% libere (EX2) */}
         <div className="mb-4 rounded-lg border border-border bg-bg-overlay p-4">
-          <label className="mb-3 flex cursor-pointer items-center gap-3">
-            <input
-              type="checkbox"
-              checked={hasNature}
-              onChange={(ev) => setHasNature(ev.target.checked)}
-              className="h-4 w-4 rounded"
-            />
-            <span className="text-sm font-medium text-fg">
-              Apport en nature
-            </span>
-            <span className="text-xs text-fg-subtle">(facultatif)</span>
-            {hasNature && (
-              <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/40 bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">
-                <Lock className="h-3 w-3" /> Libéré à 100 %
-              </span>
-            )}
-          </label>
+          <Case
+            label={
+              <>
+                <span className="font-medium">Apport en nature</span>{' '}
+                <span className="text-xs text-fg-subtle">(facultatif)</span>
+              </>
+            }
+            description={
+              hasNature ? (
+                <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-success/40 bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">
+                  <Lock className="h-3 w-3" aria-hidden="true" /> Libéré à 100 %
+                </span>
+              ) : undefined
+            }
+            checked={hasNature}
+            onChange={(ev) => setHasNature(ev.target.checked)}
+            containerClassName="mb-3"
+          />
           {hasNature && (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_2fr]">
               <div>
-                <label className="mb-1 block text-xs text-fg-subtle">
-                  Montant (MAD)
-                </label>
-                <input aria-label="Montant de l’apport en nature (MAD)"
+                <TextField
+                  label="Montant (MAD)"
+                  aria-label="Montant de l’apport en nature (MAD)"
                   type="number"
                   min={0}
                   value={nature}
                   onChange={(ev) => setNature(Number(ev.target.value))}
-                  className="h-9 w-full rounded-lg border-2 border-border bg-bg-raised px-3 text-sm"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-fg-subtle">
-                  Description
-                </label>
-                <input aria-label="Description de l’apport en nature"
+                <TextField
+                  label="Description"
+                  aria-label="Description de l’apport en nature"
                   type="text"
                   value={natureDesc}
                   onChange={(ev) => setNatureDesc(ev.target.value)}
                   placeholder="Ex. : véhicule, matériel, mobilier…"
-                  className="h-9 w-full rounded-lg border-2 border-border bg-bg-raised px-3 text-sm"
                 />
               </div>
             </div>
@@ -397,47 +397,44 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
 
         {/* Industrie — VERROUILLE 100% libere (EX2) */}
         <div className="mb-5 rounded-lg border border-border bg-bg-overlay p-4">
-          <label className="mb-3 flex cursor-pointer items-center gap-3">
-            <input
-              type="checkbox"
-              checked={hasIndustrie}
-              onChange={(ev) => setHasIndustrie(ev.target.checked)}
-              className="h-4 w-4 rounded"
-            />
-            <span className="text-sm font-medium text-fg">
-              Apport en industrie
-            </span>
-            <span className="text-xs text-fg-subtle">(facultatif)</span>
-            {hasIndustrie && (
-              <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/40 bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">
-                <Lock className="h-3 w-3" /> Libéré à 100 %
-              </span>
-            )}
-          </label>
+          <Case
+            label={
+              <>
+                <span className="font-medium">Apport en industrie</span>{' '}
+                <span className="text-xs text-fg-subtle">(facultatif)</span>
+              </>
+            }
+            description={
+              hasIndustrie ? (
+                <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-success/40 bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">
+                  <Lock className="h-3 w-3" aria-hidden="true" /> Libéré à 100 %
+                </span>
+              ) : undefined
+            }
+            checked={hasIndustrie}
+            onChange={(ev) => setHasIndustrie(ev.target.checked)}
+            containerClassName="mb-3"
+          />
           {hasIndustrie && (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_2fr]">
               <div>
-                <label className="mb-1 block text-xs text-fg-subtle">
-                  Montant (MAD)
-                </label>
-                <input aria-label="Montant de l’apport en industrie (MAD)"
+                <TextField
+                  label="Montant (MAD)"
+                  aria-label="Montant de l’apport en industrie (MAD)"
                   type="number"
                   min={0}
                   value={industrie}
                   onChange={(ev) => setIndustrie(Number(ev.target.value))}
-                  className="h-9 w-full rounded-lg border-2 border-border bg-bg-raised px-3 text-sm"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-fg-subtle">
-                  Description
-                </label>
-                <input aria-label="Description de l’apport en industrie"
+                <TextField
+                  label="Description"
+                  aria-label="Description de l’apport en industrie"
                   type="text"
                   value={industrieDesc}
                   onChange={(ev) => setIndustrieDesc(ev.target.value)}
                   placeholder="Ex. : savoir-faire technique"
-                  className="h-9 w-full rounded-lg border-2 border-border bg-bg-raised px-3 text-sm"
                 />
               </div>
             </div>
@@ -514,16 +511,15 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
         )}
 
         <div className="mb-4">
-          <label className="mb-1 block text-xs font-medium text-fg">
-            Nombre total de parts sociales
-          </label>
-          <input aria-label="Nombre total de parts sociales"
+          <TextField
+            label="Nombre total de parts sociales"
+            aria-label="Nombre total de parts sociales"
             type="number"
             min={1}
             value={nbPartsSaisi ?? ''}
             placeholder="Nombre à saisir"
             onChange={(ev) => setNbParts(nombreOuVide(ev.target.value))}
-            className="h-10 w-full max-w-xs rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
+            containerClassName="max-w-xs"
           />
         </div>
 
@@ -636,25 +632,21 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
           {!importMode && (
           <>
           <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Date de commencement d’exploitation
-            </label>
-            <input aria-label="Date de commencement d’exploitation"
+            <TextField
+              label="Date de commencement d’exploitation"
+              aria-label="Date de commencement d’exploitation"
               type="date"
               value={dateCommencement}
               onChange={(ev) => setDateCommencement(ev.target.value)}
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Date de fin <span className="text-fg-subtle">(calculée)</span>
-            </label>
-            <input aria-label="Date de fin (calculée)"
+            <TextField
+              label="Date de fin (calculée)"
+              aria-label="Date de fin (calculée)"
               type="date"
               value={dateFin}
               readOnly
-              className="h-10 w-full rounded-lg border-2 border-border bg-border px-3 text-sm text-fg-subtle"
             />
           </div>
           </>
@@ -676,27 +668,23 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
         </p>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Banque de dépôt <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Banque de dépôt"
+            <TextField
+              label="Banque de dépôt *"
+              aria-label="Banque de dépôt"
               type="text"
               value={depotBanqueNom}
               onChange={(ev) => setDepotBanqueNom(ev.target.value)}
               placeholder="Ex. : Attijariwafa Bank, agence Anfa"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              N° du compte de dépôt <span className="text-danger">*</span>
-            </label>
-            <input aria-label="N° du compte de dépôt"
+            <TextField
+              label="N° du compte de dépôt *"
+              aria-label="N° du compte de dépôt"
               type="text"
               value={depotNumero}
               onChange={(ev) => setDepotNumero(ev.target.value)}
               placeholder="Ex. : 007 780 1234567890123 45"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             />
           </div>
         </div>
@@ -708,62 +696,54 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
         <h3 className="mb-4 text-base font-bold text-fg">Options de constitution</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Libération des apports en numéraire
-            </label>
-            <select
+            <Select
+              label="Libération des apports en numéraire"
               aria-label="Libération des apports en numéraire"
               value={modeLiberation}
               onChange={(ev) => setModeLiberation(ev.target.value)}
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             >
               <option value="intégrale">Intégrale</option>
               <option value="partielle">Partielle (un quart au moins, solde dans les cinq ans)</option>
-            </select>
+            </Select>
           </div>
           <div>
-            <label className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
+            <label htmlFor="creation-mode-signature" className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
               Mode de signature sociale (art. 15)
               <InfoBulle
                 libelle="Que signifie le mode de signature ?"
                 texte="Il fixe, dans les statuts, comment les gérants engagent la société : chacun seul (séparée), chacun seul jusqu’à un plafond par opération, ou à deux au moins (conjointe)."
               />
             </label>
-            <select
+            <Select
+              id="creation-mode-signature"
               aria-label="Mode de signature sociale (art. 15)"
               value={modeSignature}
               onChange={(ev) => setModeSignature(ev.target.value)}
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             >
               <option value="séparée">Séparée (sans limitation)</option>
               <option value="séparée avec plafond">Séparée avec plafond</option>
               <option value="conjointe">Conjointe (deux au moins)</option>
-            </select>
+            </Select>
           </div>
           {modeSignature === 'séparée avec plafond' && (
             <div>
-              <label className="mb-1 block text-xs font-medium text-fg">
-                Plafond par opération (DH)
-              </label>
-              <input aria-label="Plafond par opération (DH)"
+              <TextField
+                label="Plafond par opération (DH)"
+                aria-label="Plafond par opération (DH)"
                 type="number"
                 min={0}
                 value={signaturePlafond || ''}
                 onChange={(ev) => setSignaturePlafond(Number(ev.target.value))}
                 placeholder="Ex. : 50000"
-                className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
               />
             </div>
           )}
-          <label className="flex items-center gap-2 self-end pb-2 text-sm text-fg">
-            <input
-              type="checkbox"
-              checked={depotFondsBloque}
-              onChange={(ev) => setDepotFondsBloque(ev.target.checked)}
-              className="h-4 w-4 rounded border-border"
-            />
-            Fonds déposés en compte bloqué (obligatoire si &gt; 100 000 DH)
-          </label>
+          <Case
+            label="Fonds déposés en compte bloqué (obligatoire si &gt; 100 000 DH)"
+            checked={depotFondsBloque}
+            onChange={(ev) => setDepotFondsBloque(ev.target.checked)}
+            containerClassName="self-end"
+          />
         </div>
       </div>
 
@@ -777,13 +757,12 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
             Apport en nature supérieur à 100 000 MAD : la désignation d’un commissaire aux
             apports est requise (loi 5-96, article 53).
           </p>
-          <input
+          <TextField
             aria-label="Nom du commissaire aux apports"
             type="text"
             value={commissaireApportsNom}
             onChange={(ev) => setCommissaireApportsNom(ev.target.value)}
             placeholder="Nom du commissaire aux apports"
-            className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
           />
         </div>
       )}
@@ -791,18 +770,14 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
       <BlocageValidation raisons={raisonsBlocage} testId="step3-blocage" />
 
       <div className="flex items-center justify-end pt-2">
-        <button
+        <Button
           type="submit"
           disabled={!canSubmit || saving}
-          className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
-            canSubmit && !saving
-              ? 'bg-accent text-accent-fg hover:bg-accent-hover'
-              : 'cursor-not-allowed bg-border text-fg-subtle'
-          }`}
+          size="lg"
+          iconEnd={<ChevronRight />}
         >
           {saving ? 'Enregistrement…' : 'Valider et continuer'}
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </form>
   );

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { ZoneTexte } from '../../components/ui/TextField';
 import { WorkflowShell } from '../../components/workflow/WorkflowShell';
 import type { RoadmapStep } from '../../components/workflow/WorkflowRoadmap';
 import { ticketService } from '../../services/ticket.service';
@@ -149,12 +150,12 @@ function AutreWorkflowPageBody() {
                 texte="Saisissez un objet entre accolades, par exemple { &quot;motif&quot;: &quot;…&quot; }. Les données déjà enregistrées pour cette étape sont reprises ; chaque contenu JSON valide est enregistré automatiquement en brouillon, sans valider l’étape."
               />
             </label>
-            <textarea
+            <ZoneTexte
               id="parcours-autre-donnees"
               rows={12}
               value={rawJson}
               onChange={(e) => setRawJson(e.target.value)}
-              className="w-full rounded-lg border border-border-hi px-3 py-2 font-mono text-xs focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30"
+              className="font-mono text-xs"
             />
           </div>
           {isTerminated && (

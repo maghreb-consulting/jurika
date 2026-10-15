@@ -17,6 +17,7 @@ import { IdentityExtractor } from '../../../components/identity/IdentityExtracto
 import { toIsoDate } from '../../../types/identity';
 import { useStepAutosave } from '../useStepAutosave';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
+import { classesBouton } from '../../../components/ui/boutonClasses';
 import { TypePieceProposee, ValeurProposee } from '../../../components/workflow/ValeurProposee';
 import { libelleNumeroPiece, pieceInvalidMessage, pieceSansExtraction } from './pieceIdentite';
 import { ajouterExtraits, retirerExtraits } from '../provenance';
@@ -24,6 +25,10 @@ import {
   computeDistributedAmounts,
   distributeEvenly,
 } from './capital-distribution';
+import { TextField, ZoneTexte } from '../../../components/ui/TextField';
+import { Select } from '../../../components/ui/Select';
+import { Button } from '../../../components/ui/Button';
+import { Case, GroupeRadio } from '../../../components/ui/Choix';
 
 type TypePersonneAssocie = 'PHYSIQUE' | 'MORALE';
 
@@ -989,16 +994,18 @@ export function Step6Associes({
             en garantissant Σ exacte (reliquat au dernier associé). Affiché
             uniquement si Step3 a fixé la cible (capital + nbParts + valeur nominale). */}
         {canAutoDistribute && associes.length >= 2 && (
-          <button
+          <Button
             type="button"
             onClick={autoDistribute}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-border-input bg-bg-raised px-3 py-2 text-xs font-semibold text-fg hover:bg-bg-overlay"
             title="Partage les parts et les apports à égalité entre les associés ; le dernier reçoit le reliquat, pour que la somme égale exactement le capital."
+            variant="secondary"
+            size="sm"
+            fullWidth
           >
             Répartir équitablement ({associes.length} associés,{' '}
             {(totalPartsExpected ?? 0).toLocaleString('fr-MA')} parts /{' '}
             {(capitalSocialExpected ?? 0).toLocaleString('fr-MA')} MAD)
-          </button>
+          </Button>
         )}
 
         {associes.map((a, i) => {
@@ -1046,64 +1053,35 @@ export function Step6Associes({
                   )}
                 </div>
                 {!isUnique && !isPropagated && associes.length > 1 && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() =>
                       setAssocies((arr) => arr.filter((x) => x.id !== a.id))
                     }
-                    className="rounded p-1.5 text-danger hover:bg-danger/10"
                     aria-label={`Retirer l’associé ${i + 1}`}
                     title="Retirer cet associé"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                    variant="ghost"
+                    icon={<Trash2 />}
+                    iconOnly
+                    className="text-danger"
+                  />
                 )}
               </div>
 
               <div className="space-y-4 p-5">
                 {/* EX5 — Toggle PHYSIQUE / MORALE — desactive si propage (source = Step5). */}
                 <div>
-                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-fg-subtle">
-                    Nature de l’associé
-                  </p>
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={a.typePersonne === 'PHYSIQUE'}
-                      disabled={isPropagated}
-                      onClick={() => update(a.id, { typePersonne: 'PHYSIQUE' })}
-                      className={`flex items-center gap-3 rounded-lg border-2 px-3 py-2.5 text-left transition disabled:opacity-60 ${
-                        a.typePersonne === 'PHYSIQUE'
-                          ? 'border-accent bg-accent-soft'
-                          : 'border-border bg-bg-overlay hover:border-border-hi'
-                      }`}
-                    >
-                      <User className={`h-4 w-4 ${a.typePersonne === 'PHYSIQUE' ? 'text-fg' : 'text-fg-subtle'}`} />
-                      <div>
-                        <p className="text-sm font-bold text-fg">Personne physique</p>
-                        <p className="text-[11px] text-fg-subtle">Une personne, titulaire d’une pièce d’identité</p>
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={a.typePersonne === 'MORALE'}
-                      disabled={isPropagated}
-                      onClick={() => update(a.id, { typePersonne: 'MORALE' })}
-                      className={`flex items-center gap-3 rounded-lg border-2 px-3 py-2.5 text-left transition disabled:opacity-60 ${
-                        a.typePersonne === 'MORALE'
-                          ? 'border-accent bg-accent-soft'
-                          : 'border-border bg-bg-overlay hover:border-border-hi'
-                      }`}
-                    >
-                      <Building2 className={`h-4 w-4 ${a.typePersonne === 'MORALE' ? 'text-fg' : 'text-fg-subtle'}`} />
-                      <div>
-                        <p className="text-sm font-bold text-fg">Personne morale</p>
-                        <p className="text-[11px] text-fg-subtle">Une société (RC, ICE, IF et représentant légal)</p>
-                      </div>
-                    </button>
-                  </div>
+                  <GroupeRadio
+                    legende={<span className="text-[11px] font-bold uppercase tracking-wide text-fg-subtle">Nature de l’associé</span>}
+                    name={`associe-nature-${a.id}`}
+                    horizontal
+                    value={a.typePersonne}
+                    onChange={(v) => update(a.id, { typePersonne: v as Associe['typePersonne'] })}
+                    options={[
+                      { value: 'PHYSIQUE', label: 'Personne physique', description: 'Une personne, titulaire d’une pièce d’identité', disabled: isPropagated },
+                      { value: 'MORALE', label: 'Personne morale', description: 'Une société (RC, ICE, IF et représentant légal)', disabled: isPropagated },
+                    ]}
+                  />
                   {isPropagated && (
                     <p className="mt-1 text-[10px] text-fg-subtle">
                       Nature fixée par le dirigeant correspondant (revenez à l’étape 5 pour la modifier).
@@ -1114,14 +1092,15 @@ export function Step6Associes({
                 {/* 2026-08 (contrat CREATION) — genre grammatical + associe-gerant. */}
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
-                    <label className="mb-1 flex items-center gap-1 text-xs text-fg-subtle">
+                    <label htmlFor={`associe-genre-${a.id}`} className="mb-1 flex items-center gap-1 text-xs text-fg-subtle">
                       Genre (accord grammatical)
                       <InfoBulle
                         libelle="À quoi sert le genre ?"
                         texte="Il accorde les actes (« né » ou « née », « associé » ou « associée »). Il suit la civilité : Madame donne le féminin, et inversement."
                       />
                     </label>
-                    <select
+                    <Select
+                      id={`associe-genre-${a.id}`}
                       aria-label="Genre (accord grammatical)"
                       value={
                         a.genre ??
@@ -1154,30 +1133,28 @@ export function Step6Associes({
                           civilite: e.target.value === 'féminin' ? 'Mme' : 'M',
                         })
                       }
-                      className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm disabled:opacity-60"
                     >
                       <option value="masculin">Masculin</option>
                       <option value="féminin">Féminin</option>
-                    </select>
+                    </Select>
                     {isPropagated && (
                       <p className="mt-1 text-[10px] text-fg-subtle">
                         Découle de la civilité du dirigeant (étape 5).
                       </p>
                     )}
                   </div>
-                  <label className="flex items-center gap-2 self-end pb-2 text-sm text-fg">
-                    <input
-                      type="checkbox"
-                      checked={!!a.estGerant}
-                      disabled={isPropagated}
-                      onChange={(e) => update(a.id, { estGerant: e.target.checked })}
-                      className="h-4 w-4 rounded border-border accent-accent disabled:opacity-60"
-                    />
-                    Associé également gérant
-                    {isPropagated && (
-                      <span className="text-[10px] text-fg-subtle">(repris de l’étape 5)</span>
-                    )}
-                  </label>
+                  <Case
+                    label={
+                      <>
+                        Associé également gérant
+                        {isPropagated && <span className="text-xs text-fg-subtle"> (repris de l’étape 5)</span>}
+                      </>
+                    }
+                    checked={!!a.estGerant}
+                    disabled={isPropagated}
+                    onChange={(e) => update(a.id, { estGerant: e.target.checked })}
+                    containerClassName="self-end"
+                  />
                 </div>
 
                 {/* EX5 — Formulaire MORALE pour associe. */}
@@ -1213,12 +1190,12 @@ export function Step6Associes({
                 {/* L4a (E3) : passeport ou carte de sejour -- la lecture automatique ne sait lire
                     que la CIN ; la piece est simplement jointe (versee en Data Room). */}
                 {!isPropagated && pieceSansExtraction(a.pieceType) && (!a.cinUploaded || replacingCinIds.has(a.id)) && (
-                  <label className="mb-3 block text-xs font-medium text-fg">
+                  <label className="mb-3 block text-xs font-medium text-fg has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus">
                     Joindre la pièce d’identité ({a.pieceType}) *
                     <input
                       type="file"
                       accept="application/pdf,image/*"
-                      className="mt-1 block text-xs"
+                      className="mt-1 block w-full text-sm text-fg-muted file:mr-3 file:h-8 file:cursor-pointer file:rounded-lg file:border file:border-border-input file:bg-bg-raised file:px-3 file:text-sm file:font-medium file:text-fg hover:file:bg-bg-overlay"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
@@ -1277,36 +1254,36 @@ export function Step6Associes({
                       {isPropagated && ' (reprise de l’étape 5)'}
                     </p>
                     {!isPropagated && !replacingCinIds.has(a.id) && (
-                      <button
+                      <Button
                         type="button"
                         onClick={() => setReplacingCinIds((s) => new Set(s).add(a.id))}
-                        className="text-[11px] font-medium text-accent hover:underline"
+                        variant="ghost"
+                        size="sm"
                       >
                         Remplacer
-                      </button>
+                      </Button>
                     )}
                     {!isPropagated && replacingCinIds.has(a.id) && (
-                      <button
+                      <Button
                         type="button"
                         onClick={() =>
                           setReplacingCinIds((s) => {
                             const next = new Set(s); next.delete(a.id); return next;
                           })
                         }
-                        className="text-[11px] text-fg-subtle hover:underline"
+                        variant="ghost"
+                        size="sm"
                       >
                         Annuler
-                      </button>
+                      </Button>
                     )}
                   </div>
                 )}
 
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                   <div>
-                    <label className="mb-1 block text-xs text-fg-subtle">
-                      Civilité
-                    </label>
-                    <select
+                    <Select
+                      label="Civilité"
                       aria-label="Civilité"
                       value={a.civilite}
                       /* Fix B1 — la civilité pilote le genre : les deux ne peuvent
@@ -1318,11 +1295,10 @@ export function Step6Associes({
                         })
                       }
                       disabled={isPropagated}
-                      className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm disabled:opacity-60"
                     >
                       <option value="M">Monsieur</option>
                       <option value="Mme">Madame</option>
-                    </select>
+                    </Select>
                   </div>
                   <Field
                     label="Nom"
@@ -1353,10 +1329,12 @@ export function Step6Associes({
                     </div>
                   )}
                   <div>
-                    <label className="mb-1 block text-xs text-fg-subtle">
+                    <label htmlFor={`associe-piece-numero-${a.id}`} className="mb-1 block text-xs text-fg-subtle">
                       {libelleNumeroPiece(a.pieceType)} <span className="text-danger">*</span>
                     </label>
-                    <input aria-label="N° CIN"
+                    <TextField
+                      id={`associe-piece-numero-${a.id}`}
+                      aria-label="N° CIN"
                       type="text"
                       value={a.cin}
                       onChange={(e) =>
@@ -1365,21 +1343,14 @@ export function Step6Associes({
                       placeholder="X 123456"
                       disabled={isPropagated}
                       aria-invalid={!!cinError}
-                      className={`h-9 w-full rounded-lg border bg-bg-overlay px-3 text-sm uppercase disabled:opacity-60 ${
-                        cinError ? 'border-danger' : 'border-border'
-                      }`}
+                      error={cinError || undefined}
+                      className="uppercase"
                     />
-                    {cinError && (
-                      <p className="mt-0.5 text-[11px] font-medium text-danger">
-                        {cinError}
-                      </p>
-                    )}
                   </div>
                   <div className="md:col-span-4">
-                    <label className="mb-1 block text-xs text-fg-subtle">
-                      Adresse <span className="text-danger">*</span>
-                    </label>
-                    <input aria-label="Adresse"
+                    <TextField
+                      label="Adresse *"
+                      aria-label="Adresse"
                       type="text"
                       value={a.adresse}
                       onChange={(e) =>
@@ -1387,31 +1358,30 @@ export function Step6Associes({
                       }
                       placeholder="Adresse complète"
                       disabled={isPropagated}
-                      className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm disabled:opacity-60"
                     />
                   </div>
                 </div>
                 {/* 2026-06-11 — Champs etat civil pour les Statuts */}
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-xs text-fg-subtle">Date de naissance</label>
-                    <input aria-label="Date de naissance"
+                    <TextField
+                      label="Date de naissance"
+                      aria-label="Date de naissance"
                       type="date"
                       value={a.dateNaissance ?? ''}
                       onChange={(e) => update(a.id, { dateNaissance: e.target.value })}
                       disabled={isPropagated}
-                      className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm disabled:opacity-60"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-fg-subtle">Lieu de naissance</label>
-                    <input aria-label="Lieu de naissance"
+                    <TextField
+                      label="Lieu de naissance"
+                      aria-label="Lieu de naissance"
                       type="text"
                       value={a.lieuNaissance ?? ''}
                       onChange={(e) => update(a.id, { lieuNaissance: e.target.value })}
                       placeholder="Ex. : Rabat"
                       disabled={isPropagated}
-                      className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm disabled:opacity-60"
                     />
                   </div>
                   <div>
@@ -1433,13 +1403,13 @@ export function Step6Associes({
                     )}
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-fg-subtle">Pièce valable jusqu’au</label>
-                    <input aria-label="Pièce valable jusqu’au"
+                    <TextField
+                      label="Pièce valable jusqu’au"
+                      aria-label="Pièce valable jusqu’au"
                       type="date"
                       value={a.pieceValidite ?? ''}
                       onChange={(e) => update(a.id, { pieceValidite: e.target.value })}
                       disabled={isPropagated}
-                      className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm disabled:opacity-60"
                     />
                   </div>
                 </div>
@@ -1507,10 +1477,8 @@ export function Step6Associes({
                           className="grid grid-cols-1 gap-2 md:grid-cols-[160px_120px_1fr_auto] md:items-end"
                         >
                           <div>
-                            <label className="mb-1 block text-[10px] text-fg-subtle">
-                              Type
-                            </label>
-                            <select
+                            <Select
+                              label="Type"
                               aria-label={`Type de l’apport ${lineIdx + 1}`}
                               value={line.type}
                               onChange={(e) => {
@@ -1520,18 +1488,16 @@ export function Step6Associes({
                                 const derived = deriveFromApports(newApports, valeurNominaleExpected);
                                 update(a.id, { apports: newApports, ...derived });
                               }}
-                              className="h-9 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
                             >
                               <option value="NUMERAIRE">Numéraire</option>
                               <option value="NATURE">Nature</option>
                               <option value="INDUSTRIE">Industrie</option>
-                            </select>
+                            </Select>
                           </div>
                           <div>
-                            <label className="mb-1 block text-[10px] text-fg-subtle">
-                              Parts <span className="text-danger">*</span>
-                            </label>
-                            <input aria-label={`Parts de l’apport ${lineIdx + 1}`}
+                            <TextField
+                              label="Parts *"
+                              aria-label={`Parts de l’apport ${lineIdx + 1}`}
                               type="number"
                               min={0}
                               step={1}
@@ -1546,7 +1512,6 @@ export function Step6Associes({
                                 const derived = deriveFromApports(newApports, valeurNominaleExpected);
                                 update(a.id, { apports: newApports, ...derived });
                               }}
-                              className="h-9 w-full rounded-lg border-2 border-warning/30 bg-bg-raised px-3 text-sm font-bold focus:border-warning focus:outline-none"
                             />
                           </div>
                           <div>
@@ -1561,24 +1526,26 @@ export function Step6Associes({
                             </div>
                           </div>
                           {a.apports.length > 1 && (
-                            <button
+                            <Button
                               type="button"
                               onClick={() => {
                                 const newApports = a.apports.filter((_, i) => i !== lineIdx);
                                 const derived = deriveFromApports(newApports, valeurNominaleExpected);
                                 update(a.id, { apports: newApports, ...derived });
                               }}
-                              className="h-9 rounded-lg border border-danger/30 px-2 text-danger hover:bg-danger/10"
                               title="Supprimer cette ligne d’apport"
                               aria-label="Supprimer cette ligne d’apport"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                              variant="ghost"
+                              size="sm"
+                              icon={<Trash2 />}
+                              iconOnly
+                              className="text-danger"
+                            />
                           )}
                         </div>
                       );
                     })}
-                    <button
+                    <Button
                       type="button"
                       onClick={() => {
                         const newApports: Apport[] = [
@@ -1588,10 +1555,13 @@ export function Step6Associes({
                         const derived = deriveFromApports(newApports, valeurNominaleExpected);
                         update(a.id, { apports: newApports, ...derived });
                       }}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-2 text-xs text-fg-muted transition hover:border-focus hover:bg-bg-overlay hover:text-fg"
+                      variant="secondary"
+                      size="sm"
+                      fullWidth
+                      icon={<UserPlus />}
                     >
-                      <UserPlus className="h-3.5 w-3.5" /> Ajouter une ligne d’apport
-                    </button>
+                      Ajouter une ligne d’apport
+                    </Button>
 
                     {a.apports.some((l) => l.type === 'NATURE' && Number(l.parts) > 0) && (
                       <ApportNatureFields associe={a} onChange={(patch) => update(a.id, patch)} />
@@ -1599,8 +1569,7 @@ export function Step6Associes({
                     {a.apports.some((l) => l.type === 'INDUSTRIE' && Number(l.parts) > 0) && (
                       <label className="block text-xs font-medium text-fg">
                         Description de l’apport en industrie *
-                        <textarea
-                          className="mt-1 w-full rounded-lg border border-border bg-bg-raised p-2 text-sm"
+                        <ZoneTexte
                           rows={2}
                           value={a.apportIndustrieDescription ?? ''}
                           onChange={(e) => update(a.id, { apportIndustrieDescription: e.target.value })}
@@ -1662,40 +1631,32 @@ export function Step6Associes({
                     {{associe_pp_mandataire}} + {{associe_pp_procuration_date}}. */}
                 {!isMorale && (
                   <div className="rounded-lg border border-border bg-bg-overlay p-3">
-                    <label className="flex items-center gap-2 text-xs font-bold text-fg">
-                      <input
-                        type="checkbox"
-                        checked={!!a.representeParMandataire}
-                        onChange={(ev) =>
+                    <Case
+                      label="Représenté par un mandataire (procuration spéciale)"
+                      checked={!!a.representeParMandataire}
+                      onChange={(ev) =>
                           update(a.id, { representeParMandataire: ev.target.checked })
                         }
-                        className="h-4 w-4 accent-accent"
-                      />
-                      Représenté par un mandataire (procuration spéciale)
-                    </label>
+                    />
                     {a.representeParMandataire && (
                       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                         <div>
-                          <label className="mb-1 block text-xs text-fg-subtle">
-                            Nom du mandataire
-                          </label>
-                          <input aria-label="Nom du mandataire"
+                          <TextField
+                            label="Nom du mandataire"
+                            aria-label="Nom du mandataire"
                             type="text"
                             value={a.mandataire ?? ''}
                             onChange={(ev) => update(a.id, { mandataire: ev.target.value })}
                             placeholder="Ex. : Me Hassan TAZI, avocat au barreau de Casablanca"
-                            className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
                           />
                         </div>
                         <div>
-                          <label className="mb-1 block text-xs text-fg-subtle">
-                            Date de la procuration
-                          </label>
-                          <input aria-label="Date de la procuration"
+                          <TextField
+                            label="Date de la procuration"
+                            aria-label="Date de la procuration"
                             type="date"
                             value={a.procurationDate ?? ''}
                             onChange={(ev) => update(a.id, { procurationDate: ev.target.value })}
-                            className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
                           />
                         </div>
                       </div>
@@ -1708,13 +1669,15 @@ export function Step6Associes({
         })}
 
         {!isUnique && (
-          <button
+          <Button
             type="button"
             onClick={() => setAssocies([...associes, newAssocie()])}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-3 text-sm text-fg-muted transition hover:border-focus hover:bg-bg-overlay hover:text-fg"
+            variant="secondary"
+            fullWidth
+            icon={<UserPlus />}
           >
-            <UserPlus className="h-4 w-4" /> Ajouter un associé
-          </button>
+            Ajouter un associé
+          </Button>
         )}
 
         {!isUnique && associes.length < 2 && (
@@ -1776,18 +1739,14 @@ export function Step6Associes({
         <BlocageValidation raisons={raisonsBlocage} testId="step6-blocage" />
 
         <div className="flex items-center justify-end pt-2">
-          <button
+          <Button
             type="submit"
             disabled={!canSubmit || saving}
-            className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
-              canSubmit && !saving
-                ? 'bg-accent text-accent-fg hover:bg-accent-hover'
-                : 'cursor-not-allowed bg-border text-fg-subtle'
-            }`}
+            size="lg"
+            iconEnd={<ChevronRight />}
           >
             {saving ? 'Enregistrement…' : 'Valider et continuer'}
-            <ChevronRight className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -1987,18 +1946,12 @@ function Field({
   ...rest
 }: { label: string; required?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
-    <div>
-      <label className="mb-1 block text-xs text-fg-subtle">
-        {label} {required && <span className="text-danger">*</span>}
-      </label>
-      {/* `aria-label` derive du libelle : ce champ vit dans des listes (.map),
-          ou un `id` statique se dupliquerait et casserait l'association. */}
-      <input
-        aria-label={label}
-        {...rest}
-        className="h-9 w-full rounded-lg border border-border bg-bg-overlay px-3 text-sm disabled:opacity-60"
-      />
-    </div>
+    <TextField
+      label={required ? `${label} *` : label}
+      // `aria-label` : le nom accessible reste le libelle sans asterisque (requetes des tests).
+      aria-label={label}
+      {...rest}
+    />
   );
 }
 
@@ -2055,25 +2008,22 @@ function MoraleAssocieForm({
         </p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Dénomination <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Dénomination"
+            <TextField
+              label="Dénomination *"
+              aria-label="Dénomination"
               type="text"
               value={a.denomination ?? ''}
               disabled={ro}
               onChange={(e) => onChange({ denomination: e.target.value })}
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Forme juridique</label>
-            <select
+            <Select
+              label="Forme juridique"
               aria-label="Forme juridique de la société associée"
               value={a.formeJuridiqueEntite ?? 'SARL'}
               disabled={ro}
               onChange={(e) => onChange({ formeJuridiqueEntite: e.target.value })}
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
             >
               <option value="SARL">SARL</option>
               <option value="SARL_AU">SARL AU</option>
@@ -2083,91 +2033,79 @@ function MoraleAssocieForm({
               <option value="GIE">GIE</option>
               <option value="ASSOC">Association</option>
               <option value="AUTRE">Autre</option>
-            </select>
+            </Select>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Numéro du RC <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Numéro du RC"
+            <TextField
+              label="Numéro du RC *"
+              aria-label="Numéro du RC"
               type="text"
               value={a.rc ?? ''}
               disabled={ro}
               onChange={(e) => onChange({ rc: e.target.value })}
               aria-invalid={!!rcError}
-              className={`h-9 w-full rounded-lg border bg-bg-raised px-3 text-sm disabled:opacity-60 ${
-                rcError ? 'border-danger' : 'border-border'
-              }`}
+              error={rcError || undefined}
             />
-            {rcError && <p className="mt-0.5 text-[11px] text-danger">{rcError}</p>}
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">
-              ICE <span className="text-danger">*</span>
-            </label>
-            <input aria-label="ICE"
+            <TextField
+              label="ICE *"
+              aria-label="ICE"
               type="text"
               value={a.ice ?? ''}
               disabled={ro}
               maxLength={15}
               onChange={(e) => onChange({ ice: e.target.value.replace(/[^\d]/g, '') })}
               aria-invalid={!!iceError}
-              className={`h-9 w-full rounded-lg border bg-bg-raised px-3 text-sm font-mono disabled:opacity-60 ${
-                iceError ? 'border-danger' : 'border-border'
-              }`}
+              error={iceError || undefined}
+              className="font-mono"
             />
-            {iceError && <p className="mt-0.5 text-[11px] text-danger">{iceError}</p>}
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Identifiant fiscal (IF) <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Identifiant fiscal (IF)"
+            <TextField
+              label="Identifiant fiscal (IF) *"
+              aria-label="Identifiant fiscal (IF)"
               type="text"
               value={a.ifFiscal ?? ''}
               disabled={ro}
               maxLength={8}
               onChange={(e) => onChange({ ifFiscal: e.target.value.replace(/[^\d]/g, '') })}
               aria-invalid={!!ifError}
-              className={`h-9 w-full rounded-lg border bg-bg-raised px-3 text-sm font-mono disabled:opacity-60 ${
-                ifError ? 'border-danger' : 'border-border'
-              }`}
+              error={ifError || undefined}
+              className="font-mono"
             />
-            {ifError && <p className="mt-0.5 text-[11px] text-danger">{ifError}</p>}
           </div>
           <div className="md:col-span-2">
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Adresse du siège <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Adresse du siège"
+            <TextField
+              label="Adresse du siège *"
+              aria-label="Adresse du siège"
               type="text"
               value={a.siege ?? ''}
               disabled={ro}
               onChange={(e) => onChange({ siege: e.target.value })}
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
             />
           </div>
           {/* 2026-06-11 — capital & deliberation pour Statuts */}
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Capital de la société (MAD)</label>
-            <input aria-label="Capital de la société (MAD)"
+            <TextField
+              label="Capital de la société (MAD)"
+              aria-label="Capital de la société (MAD)"
               type="number"
               min={0}
               value={a.capitalEntite ?? 0}
               disabled={ro}
               onChange={(e) => onChange({ capitalEntite: Number(e.target.value || 0) })}
               placeholder="Ex. : 5000000"
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Date de la délibération</label>
-            <input aria-label="Date de la délibération"
+            <TextField
+              label="Date de la délibération"
+              aria-label="Date de la délibération"
               type="date"
               value={a.deliberationDate ?? ''}
               disabled={ro}
               onChange={(e) => onChange({ deliberationDate: e.target.value })}
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
             />
           </div>
         </div>
@@ -2260,42 +2198,37 @@ function MoraleAssocieForm({
         )}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Civilité</label>
-            <select
+            <Select
+              label="Civilité"
               aria-label="Civilité du représentant"
               value={a.repCivilite ?? 'M'}
               disabled={ro}
               onChange={(e) =>
                 onChange({ repCivilite: e.target.value as 'M' | 'Mme' })
               }
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
             >
               <option value="M">Monsieur</option>
               <option value="Mme">Madame</option>
-            </select>
+            </Select>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Nom <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Nom du représentant"
+            <TextField
+              label="Nom *"
+              aria-label="Nom du représentant"
               type="text"
               value={a.repNom ?? ''}
               disabled={ro}
               onChange={(e) => onChange({ repNom: e.target.value })}
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Prénom <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Prénom du représentant"
+            <TextField
+              label="Prénom *"
+              aria-label="Prénom du représentant"
               type="text"
               value={a.repPrenom ?? ''}
               disabled={ro}
               onChange={(e) => onChange({ repPrenom: e.target.value })}
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
             />
           </div>
           {/* 2026-06-21 (Cowork) — Input CIN representant RETIRE : capte par
@@ -2305,12 +2238,12 @@ function MoraleAssocieForm({
               CIN valable jusqu'au, Adresse (idem dirigeant MORALE). */}
           {ro ? (
             <div>
-              <label className="mb-1 block text-xs text-fg-subtle">Nationalité</label>
-              <input aria-label="Nationalité du représentant"
+              <TextField
+                label="Nationalité"
+                aria-label="Nationalité du représentant"
                 type="text"
                 value={a.repNationalite ?? ''}
                 disabled
-                className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
               />
             </div>
           ) : (
@@ -2323,60 +2256,56 @@ function MoraleAssocieForm({
             />
           )}
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Date de naissance</label>
-            <input aria-label="Date de naissance du représentant"
+            <TextField
+              label="Date de naissance"
+              aria-label="Date de naissance du représentant"
               type="date"
               value={a.repDateNaissance ?? ''}
               disabled={ro}
               onChange={(e) => onChange({ repDateNaissance: e.target.value })}
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Lieu de naissance</label>
-            <input aria-label="Lieu de naissance du représentant"
+            <TextField
+              label="Lieu de naissance"
+              aria-label="Lieu de naissance du représentant"
               type="text"
               value={a.repLieuNaissance ?? ''}
               disabled={ro}
               onChange={(e) => onChange({ repLieuNaissance: e.target.value })}
               placeholder="Ville, pays"
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-fg-subtle">CIN valable jusqu’au</label>
-            <input aria-label="CIN du représentant valable jusqu’au"
+            <TextField
+              label="CIN valable jusqu’au"
+              aria-label="CIN du représentant valable jusqu’au"
               type="date"
               value={a.repPieceValidite ?? ''}
               disabled={ro}
               onChange={(e) => onChange({ repPieceValidite: e.target.value })}
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
             />
           </div>
           <div className="md:col-span-3">
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Adresse <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Adresse du représentant"
+            <TextField
+              label="Adresse *"
+              aria-label="Adresse du représentant"
               type="text"
               value={a.repAdresse ?? ''}
               disabled={ro}
               onChange={(e) => onChange({ repAdresse: e.target.value })}
               placeholder="Adresse complète"
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
             />
           </div>
           <div className="md:col-span-3">
-            <label className="mb-1 block text-xs text-fg-subtle">
-              Qualité <span className="text-danger">*</span>
-            </label>
-            <input aria-label="Qualité du représentant"
+            <TextField
+              label="Qualité *"
+              aria-label="Qualité du représentant"
               type="text"
               value={a.repQualite ?? ''}
               disabled={ro}
               onChange={(e) => onChange({ repQualite: e.target.value })}
               placeholder="Gérant, président, mandataire…"
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm disabled:opacity-60"
             />
           </div>
         </div>
@@ -2405,13 +2334,13 @@ function AssocUploadCard({
         <span className="flex-1 truncate text-xs">{filename ?? label}</span>
         <CheckCircle className="h-4 w-4 text-success" />
         {!disabled && (
-          <label className="cursor-pointer text-[11px] text-accent hover:underline">
+          <label className={classesBouton('secondary', 'sm', 'cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus')}>
             Remplacer
             <input
               type="file"
               accept="image/*,application/pdf"
               onChange={(ev) => ev.target.files?.[0] && onFile(ev.target.files[0])}
-              className="hidden"
+              className="sr-only"
             />
           </label>
         )}
@@ -2419,7 +2348,7 @@ function AssocUploadCard({
     );
   }
   return (
-    <label className={`block rounded-lg border-2 border-dashed p-4 text-center transition ${
+    <label className={`has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus block rounded-lg border-2 border-dashed p-4 text-center transition ${
       disabled
         ? 'cursor-not-allowed border-border text-fg-subtle opacity-60'
         : 'cursor-pointer border-danger/40 hover:border-danger hover:bg-danger/5'
@@ -2433,7 +2362,7 @@ function AssocUploadCard({
         accept="image/*,application/pdf"
         disabled={disabled}
         onChange={(ev) => ev.target.files?.[0] && onFile(ev.target.files[0])}
-        className="hidden"
+        className="sr-only"
       />
     </label>
   );
@@ -2450,7 +2379,6 @@ function ApportNatureFields({
   associe: Associe;
   onChange: (patch: Partial<Associe>) => void;
 }) {
-  const champ = 'mt-1 w-full rounded-lg border border-border bg-bg-raised p-2 text-sm';
   return (
     <div className="space-y-2 rounded-lg border border-border bg-bg-overlay p-3" data-testid="apport-nature">
       <p className="flex items-center gap-1 text-xs font-semibold text-fg">
@@ -2460,28 +2388,16 @@ function ApportNatureFields({
           texte="Les statuts décrivent chaque apport en nature, et le commissaire aux apports en rend compte : bien apporté, méthode d’évaluation, origine de propriété et charges qui le grèvent. Sans elles, ces actes ne sont pas générés."
         />
       </p>
-      <label className="block text-xs font-medium text-fg">
-        Description du bien apporté *
-        <textarea className={champ} rows={2} value={associe.apportNatureDescription ?? ''}
-          onChange={(e) => onChange({ apportNatureDescription: e.target.value })} />
-      </label>
+      <ZoneTexte label="Description du bien apporté *" rows={2} value={associe.apportNatureDescription ?? ''}
+        onChange={(e) => onChange({ apportNatureDescription: e.target.value })} />
       <div className="grid gap-2 md:grid-cols-2">
-        <label className="block text-xs font-medium text-fg">
-          Méthode d’évaluation *
-          <input className={champ} value={associe.apportNatureMethode ?? ''}
-            onChange={(e) => onChange({ apportNatureMethode: e.target.value })} />
-        </label>
-        <label className="block text-xs font-medium text-fg">
-          Origine de propriété *
-          <input className={champ} value={associe.apportNatureOriginePropriete ?? ''}
-            onChange={(e) => onChange({ apportNatureOriginePropriete: e.target.value })} />
-        </label>
+        <TextField label="Méthode d’évaluation *" value={associe.apportNatureMethode ?? ''}
+          onChange={(e) => onChange({ apportNatureMethode: e.target.value })} />
+        <TextField label="Origine de propriété *" value={associe.apportNatureOriginePropriete ?? ''}
+          onChange={(e) => onChange({ apportNatureOriginePropriete: e.target.value })} />
       </div>
-      <label className="block text-xs font-medium text-fg">
-        Charges grevant le bien (indiquez « aucune » s’il n’y en a pas) *
-        <input className={champ} value={associe.apportNatureCharges ?? ''}
-          onChange={(e) => onChange({ apportNatureCharges: e.target.value })} />
-      </label>
+      <TextField label="Charges grevant le bien (indiquez « aucune » s’il n’y en a pas) *" value={associe.apportNatureCharges ?? ''}
+        onChange={(e) => onChange({ apportNatureCharges: e.target.value })} />
     </div>
   );
 }

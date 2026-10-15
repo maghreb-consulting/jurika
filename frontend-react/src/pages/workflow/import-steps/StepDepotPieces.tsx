@@ -94,6 +94,7 @@ export function StepDepotPieces({ dossierId, existing, saving, onSubmit, registe
       <label
         className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed
           border-border bg-bg-overlay px-6 py-8 text-center transition hover:border-border-hi
+          has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus
           ${!dossierId ? 'pointer-events-none opacity-50' : ''}`}
       >
         <FolderUp className="h-6 w-6 text-fg-subtle" />
@@ -102,7 +103,7 @@ export function StepDepotPieces({ dossierId, existing, saving, onSubmit, registe
         <input
           type="file"
           multiple
-          className="hidden"
+          className="sr-only"
           disabled={!dossierId}
           onChange={(e) => {
             void deposer(e.target.files);

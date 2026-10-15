@@ -18,7 +18,7 @@ import { AlertCircle, AlertTriangle, Megaphone, Paperclip, Sparkles } from 'luci
 import { InfoBulle } from '../../components/ui/Aide';
 import { ValeurProposee } from '../../components/workflow/ValeurProposee';
 import { Button } from '../../components/ui/Button';
-import { TextField } from '../../components/ui/TextField';
+import { TextField, ZoneTexte } from '../../components/ui/TextField';
 import { WorkflowShell } from '../../components/workflow/WorkflowShell';
 import type { RoadmapStep } from '../../components/workflow/WorkflowRoadmap';
 import { ticketService } from '../../services/ticket.service';
@@ -66,6 +66,7 @@ import type { AssocieInput, GerantInput } from '../../components/workflow/Seance
 import type { DossierBrief } from '../../types/dataroom';
 import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
 import { BandeauFinParcours } from '../../components/workflow/BandeauFinParcours';
+import { Select } from '../../components/ui/Select';
 
 const STEPS: RoadmapStep[] = etapesRoadmap(ETAPES_DISSOLUTION);
 
@@ -656,21 +657,18 @@ function DissolutionWorkflowPageBody() {
                   texte="Le procès-verbal ne rédige pas la même résolution selon la cause : décision anticipée des associés, capitaux propres devenus inférieurs au quart du capital (article 86 de la loi 5-96) ou arrivée du terme statutaire. Le motif détaillé ci-dessous complète ce choix."
                 />
               </label>
-              <select
+              <Select
                 id="dissolution-nature"
                 value={nature}
                 onChange={(e) => setNature(e.target.value)}
                 aria-invalid={!!showErr('nature')}
-                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
+                error={showErr('nature') || undefined}
               >
                 <option value="">Choisir…</option>
                 {NATURES_DISSOLUTION.map((n) => (
                   <option key={n.value} value={n.value}>{n.label}</option>
                 ))}
-              </select>
-              {showErr('nature') && (
-                <p className="mt-1 text-xs text-danger" role="alert">{showErr('nature')}</p>
-              )}
+              </Select>
             </div>
 
             {nature === 'terme_statutaire' && (
@@ -719,18 +717,13 @@ function DissolutionWorkflowPageBody() {
               >
                 Motif de la dissolution *
               </label>
-              <textarea
+              <ZoneTexte
                 id="dissolution-motif"
                 rows={4}
                 value={motif}
                 onChange={(e) => setMotif(e.target.value)}
                 onBlur={() => setRevealErrors(true)}
                 placeholder="Cessation d’activité, mésentente entre associés, perte d’agrément…"
-                className={`w-full rounded-lg border bg-bg-raised px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-                  showErr('motif')
-                    ? 'border-danger focus:border-danger focus:ring-danger/30'
-                    : 'border-border-hi focus:border-focus focus:ring-focus/30'
-                }`}
                 aria-invalid={!!showErr('motif')}
               />
               <p className={`mt-1 text-xs ${motif.trim().length < MOTIF_MIN_LENGTH ? 'text-danger' : 'text-success'}`}>
@@ -788,19 +781,16 @@ function DissolutionWorkflowPageBody() {
                   texte="C’est l’adresse où la correspondance est adressée et où les actes de la liquidation sont notifiés ; l’avis légal la publie. Elle peut être le siège social ou une autre adresse."
                 />
               </label>
-              <select
+              <Select
                 id="dissolution-siege-identique"
                 value={siegeIdentique}
                 onChange={(e) => setSiegeIdentique(e.target.value)}
-                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
+                error={showErr('siegeIdentique') || undefined}
               >
                 <option value="">Choisir…</option>
                 <option value="oui">Au siège social</option>
                 <option value="non">À une autre adresse</option>
-              </select>
-              {showErr('siegeIdentique') && (
-                <p className="mt-1 text-xs text-danger" role="alert">{showErr('siegeIdentique')}</p>
-              )}
+              </Select>
             </div>
             {siegeIdentique === 'non' && (
               <TextField

@@ -30,6 +30,7 @@ import {
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { Select } from '../../components/ui/Select';
+import { Case } from '../../components/ui/Choix';
 import { WorkflowShell } from '../../components/workflow/WorkflowShell';
 import type { RoadmapStep } from '../../components/workflow/WorkflowRoadmap';
 import { ticketService } from '../../services/ticket.service';
@@ -537,31 +538,25 @@ function SuccursaleEtrWorkflowPageBody() {
               </p>
             </header>
 
-            <div className="flex flex-wrap gap-2">
-              <button
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Société mère">
+              <Button
                 type="button"
+                variant={!reuseExisting ? 'primary' : 'secondary'}
+                aria-pressed={!reuseExisting}
                 onClick={() => setReuseExisting(false)}
                 data-testid="etr-mode-saisie"
-                className={`rounded-lg border px-3 py-2 text-sm ${
-                  !reuseExisting
-                    ? 'border-accent bg-accent-soft font-semibold text-accent'
-                    : 'border-border bg-bg-raised text-fg-muted'
-                }`}
               >
                 Nouvelle société mère
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant={reuseExisting ? 'primary' : 'secondary'}
+                aria-pressed={reuseExisting}
                 onClick={() => setReuseExisting(true)}
                 data-testid="etr-mode-selection"
-                className={`rounded-lg border px-3 py-2 text-sm ${
-                  reuseExisting
-                    ? 'border-accent bg-accent-soft font-semibold text-accent'
-                    : 'border-border bg-bg-raised text-fg-muted'
-                }`}
               >
                 Mère déjà enregistrée
-              </button>
+              </Button>
             </div>
 
             {reuseExisting ? (
@@ -793,16 +788,13 @@ function SuccursaleEtrWorkflowPageBody() {
               </p>
               <div className="grid gap-2 md:grid-cols-2">
                 {CONTROLES.map((c) => (
-                  <label key={c.key} className="flex items-start gap-2 text-sm text-fg-muted">
-                    <input
-                      type="checkbox"
-                      checked={controles[c.key]}
-                      data-testid={`etr-${c.key}`}
-                      onChange={(e) => setControles({ ...controles, [c.key]: e.target.checked })}
-                      className="mt-0.5 h-4 w-4 rounded border-border-hi"
-                    />
-                    {c.label}
-                  </label>
+                  <Case
+                    key={c.key}
+                    label={c.label}
+                    checked={controles[c.key]}
+                    data-testid={`etr-${c.key}`}
+                    onChange={(e) => setControles({ ...controles, [c.key]: e.target.checked })}
+                  />
                 ))}
               </div>
               {showErr1('conformite') && (

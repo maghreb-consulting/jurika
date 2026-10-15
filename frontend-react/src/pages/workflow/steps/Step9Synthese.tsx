@@ -10,6 +10,7 @@ import { DOCUMENTS_PARCOURS } from './documents-creation';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 import { Button } from '../../../components/ui/Button';
 import { BandeauFinParcours } from '../../../components/workflow/BandeauFinParcours';
+import { TextField, ZoneTexte } from '../../../components/ui/TextField';
 
 interface Props {
   data: Record<string, Record<string, unknown>>;
@@ -269,15 +270,13 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
         </div>
         <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Clôture du premier exercice (facultatif)
-            </label>
-            <input aria-label="Clôture du premier exercice (facultatif)"
+            <TextField
+              label="Clôture du premier exercice (facultatif)"
+              aria-label="Clôture du premier exercice (facultatif)"
               type="text"
               value={premierExerciceCloture}
               onChange={(e) => setPremierExerciceCloture(e.target.value)}
               placeholder="Ex. : 31 décembre 2026"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             />
           </div>
           <div className="md:col-span-2">
@@ -306,31 +305,31 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
             </p>
           </div>
           <div className="md:col-span-2">
-            <label className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
+            <label htmlFor="creation-article-designation" className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
               Article de désignation des statuts (facultatif)
               <InfoBulle
                 libelle="Qu’est-ce que l’article de désignation ?"
                 texte="L’article des statuts qui désigne les premiers gérants (par exemple « Article 14 ») ; il est cité dans l’acte. Laissez vide s’il n’y a pas lieu de le citer."
               />
             </label>
-            <input aria-label="Article de désignation des statuts (facultatif)"
+            <TextField
+              id="creation-article-designation"
+              aria-label="Article de désignation des statuts (facultatif)"
               type="text"
               value={articleDesignationStatuts}
               onChange={(e) => setArticleDesignationStatuts(e.target.value)}
               placeholder="Ex. : Article 14"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             />
           </div>
           <div className="md:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Engagements repris au titre du mandat (facultatif)
-            </label>
-            <textarea aria-label="Engagements repris au titre du mandat (facultatif)"
+            <ZoneTexte
+              label="Engagements repris au titre du mandat (facultatif)"
+              aria-label="Engagements repris au titre du mandat (facultatif)"
               rows={2}
               value={engagementsMandat}
               onChange={(e) => setEngagementsMandat(e.target.value)}
               placeholder="Actes accomplis pour le compte de la société en formation…"
-              className="w-full resize-none rounded-lg border-2 border-border bg-bg-overlay px-3 py-2 text-sm focus:border-focus focus:outline-none"
+              className="resize-none"
             />
           </div>
         </div>

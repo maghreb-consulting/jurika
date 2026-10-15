@@ -23,7 +23,8 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { PdfPreviewModal } from '../../components/ui/PdfPreviewModal';
-import { TextField } from '../../components/ui/TextField';
+import { TextField, ZoneTexte } from '../../components/ui/TextField';
+import { Case, Radio } from '../../components/ui/Choix';
 import { Select } from '../../components/ui/Select';
 import { TexteAide } from '../../components/ui/Aide';
 import { ValeurProposee } from '../../components/workflow/ValeurProposee';
@@ -1261,13 +1262,12 @@ function ModificationWorkflowPageBody() {
               <p className="mb-2 text-xs text-fg-subtle">
                 Les documents produits seront déposés (et versionnés) dans la Data Room de cette société.
               </p>
-              <select
+              <Select
                 id="step1-societe-select"
                 data-testid="step1-societe-select"
                 value={selectedDossierId}
                 onChange={(e) => setSelectedDossierId(e.target.value)}
                 disabled={dossiersLoading}
-                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30"
               >
                 <option value="">
                   {dossiersLoading ? 'Chargement…' : 'Sélectionnez une société…'}
@@ -1279,7 +1279,7 @@ function ModificationWorkflowPageBody() {
                     {d.ice ? ` (ICE ${d.ice})` : ''}
                   </option>
                 ))}
-              </select>
+              </Select>
               {!selectedDossierId && !dossiersLoading && (
                 <p className="mt-1 text-xs text-fg-subtle">
                   Choisissez la société pour pouvoir continuer.
@@ -1301,14 +1301,15 @@ function ModificationWorkflowPageBody() {
                     </p>
                   </div>
                   <div className="relative">
-                    <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-fg-subtle" />
-                    <input
+                    <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
+                    <TextField
                       type="text"
+                      className="pl-9"
+                      aria-label="Rechercher une modification"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="Rechercher une modification…"
                       data-testid="mod-search-input"
-                      className="w-full rounded-lg border border-border-hi bg-bg-raised py-1.5 pl-8 pr-3 text-xs focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30"
                     />
                   </div>
                 </div>
@@ -1319,37 +1320,30 @@ function ModificationWorkflowPageBody() {
                   {visibleDecisions.map((it) => {
                     const checked = selected.includes(it.id);
                     return (
-                      <button
+                      <Case
                         key={it.id}
-                        type="button"
-                        onClick={() => (checked ? remove(it.id) : add(it.id))}
+                        checked={checked}
+                        onChange={() => (checked ? remove(it.id) : add(it.id))}
                         data-testid={`mod-decision-${it.id}`}
-                        aria-pressed={checked}
-                        className={`group flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition ${
+                        containerClassName={`rounded-lg px-2 py-1.5 transition-colors duration-150 ${
                           checked ? 'bg-accent-soft' : 'hover:bg-bg-overlay'
                         }`}
-                      >
-                        <span
-                          className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border ${
-                            checked ? 'border-accent bg-accent text-accent-fg' : 'border-border-hi'
-                          }`}
-                        >
-                          {checked && <CheckCircle className="h-3 w-3" />}
-                        </span>
-                        <span className="flex-1 text-fg">
-                          {it.label}
-                          {it.newAssocie && (
-                            <span className="ml-1 rounded bg-success-soft px-1 py-0.5 text-[9px] font-semibold text-success">
-                              nouvel associé (lecture de la CIN)
-                            </span>
-                          )}
-                          {it.generic && (
-                            <span className="ml-1 rounded bg-warning-soft px-1 py-0.5 text-[9px] font-semibold text-warning">
-                              type générique
-                            </span>
-                          )}
-                        </span>
-                      </button>
+                        label={
+                          <span className="text-fg">
+                            {it.label}
+                            {it.newAssocie && (
+                              <span className="ml-1 rounded bg-success-soft px-1 py-0.5 text-[9px] font-semibold text-success">
+                                nouvel associé (lecture de la CIN)
+                              </span>
+                            )}
+                            {it.generic && (
+                              <span className="ml-1 rounded bg-warning-soft px-1 py-0.5 text-[9px] font-semibold text-warning">
+                                type générique
+                              </span>
+                            )}
+                          </span>
+                          }
+                      />
                     );
                   })}
                 </div>
@@ -1402,14 +1396,16 @@ function ModificationWorkflowPageBody() {
                               )}
                             </p>
                           </div>
-                          <button
+                          <Button
                             type="button"
                             onClick={() => remove(it.id)}
-                            className="rounded p-1 text-fg-subtle hover:bg-danger/10 hover:text-danger"
                             aria-label={`Retirer ${it.label}`}
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
+                            variant="ghost"
+                            size="sm"
+                            icon={<X />}
+                            iconOnly
+                            className="text-fg-subtle hover:text-danger"
+                          />
                         </li>
                       ))}
                     </ul>
@@ -1704,23 +1700,22 @@ function ModificationWorkflowPageBody() {
                         </p>
 
                         {/* Type de personne */}
-                        <div className="mb-3 flex gap-2">
-                          {(['PHYSIQUE', 'MORALE'] as const).map((tp) => (
-                            <button
-                              key={tp}
-                              type="button"
-                              onClick={() => setNa('typePersonne', tp)}
-                              data-testid={`mod-newassocie-type-${tp}-${r.id}`}
-                              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                                (na.typePersonne ?? 'PHYSIQUE') === tp
-                                  ? 'border-success bg-success-soft text-success'
-                                  : 'border-border-hi text-fg hover:border-success/40'
-                              }`}
-                            >
-                              {tp === 'PHYSIQUE' ? 'Personne physique' : 'Personne morale'}
-                            </button>
-                          ))}
-                        </div>
+                        <fieldset className="mb-3">
+                          <legend className="mb-2 text-xs font-medium text-fg">Nature de l’associé entrant</legend>
+                          <div className="flex flex-wrap gap-x-6 gap-y-2">
+                            {(['PHYSIQUE', 'MORALE'] as const).map((tp) => (
+                              <Radio
+                                key={tp}
+                                name={`mod-newassocie-type-${r.id}`}
+                                value={tp}
+                                checked={(na.typePersonne ?? 'PHYSIQUE') === tp}
+                                onChange={() => setNa('typePersonne', tp)}
+                                data-testid={`mod-newassocie-type-${tp}-${r.id}`}
+                                label={tp === 'PHYSIQUE' ? 'Personne physique' : 'Personne morale'}
+                              />
+                            ))}
+                          </div>
+                        </fieldset>
 
                         {!isMorale ? (
                           <>
@@ -1915,14 +1910,16 @@ function ModificationWorkflowPageBody() {
                             ))}
                           </ul>
                         </div>
-                        <button
+                        <Button
                           type="button"
                           onClick={() => navigateToStep(2)}
                           data-testid={`preflight-goto-step2-${b.typeId}`}
-                          className="flex-shrink-0 rounded-lg border border-border-input bg-bg-raised px-3 py-1.5 text-xs font-medium text-fg hover:bg-bg-overlay"
+                          variant="secondary"
+                          size="sm"
+                          className="flex-shrink-0"
                         >
                           Aller à l’étape 2
-                        </button>
+                        </Button>
                       </div>
                     </li>
                   ))}
@@ -1986,16 +1983,18 @@ function ModificationWorkflowPageBody() {
                   statuts d’origine pour les lire. La génération des statuts mis à jour reste
                   bloquée tant que ces champs ne sont pas saisis.
                 </p>
-                <button
+                <Button
                   type="button"
                   onClick={openOriginalStatutsScan}
                   disabled={scanLoading}
                   data-testid="refonte-open-scan"
-                  className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-warning/40 bg-bg-raised px-3 py-1.5 text-xs font-medium text-warning hover:bg-warning-soft disabled:opacity-60"
+                  variant="secondary"
+                  size="sm"
+                  icon={<Eye />}
+                  className="mb-3"
                 >
-                  <Eye className="h-3.5 w-3.5" />
                   {scanLoading ? 'Chargement…' : 'Afficher les statuts d’origine (document numérisé)'}
-                </button>
+                </Button>
                 {scanError && (
                   <p className="mb-2 text-xs text-danger" role="alert">{scanError}</p>
                 )}
@@ -2009,22 +2008,20 @@ function ModificationWorkflowPageBody() {
                         {fld.label} <span className="text-danger">*</span>
                       </label>
                       {fld.type === 'textarea' ? (
-                        <textarea
+                        <ZoneTexte
                           id={`refonte-${fld.key}`}
                           data-testid={`refonte-field-${fld.key}`}
                           rows={3}
                           value={ficheOverrides[fld.key] ?? ''}
                           onChange={(e) => setFicheOverride(fld.key, e.target.value)}
-                          className="w-full rounded-lg border border-warning/40 bg-bg-raised px-3 py-2 text-sm focus:border-warning focus:outline-none focus:ring-2 focus:ring-warning/40"
                         />
                       ) : (
-                        <input
+                        <TextField
                           id={`refonte-${fld.key}`}
                           data-testid={`refonte-field-${fld.key}`}
                           type={fld.type}
                           value={ficheOverrides[fld.key] ?? ''}
                           onChange={(e) => setFicheOverride(fld.key, e.target.value)}
-                          className="w-full rounded-lg border border-warning/40 bg-bg-raised px-3 py-2 text-sm focus:border-warning focus:outline-none focus:ring-2 focus:ring-warning/40"
                         />
                       )}
                     </div>
@@ -2399,14 +2396,16 @@ function ModificationWorkflowPageBody() {
                 <p className="flex items-center gap-2 text-sm font-semibold text-fg">
                   <FileText className="h-4 w-4 text-fg-muted" /> Documents produits
                 </p>
-                <button
+                <Button
                   type="button"
                   onClick={() => navigate('/data-rooms')}
-                  className="flex items-center gap-1.5 rounded-lg border border-border bg-bg-raised px-3 py-1.5 text-xs font-medium text-fg hover:border-border-hi"
                   data-testid="synthese-dataroom-link"
+                  variant="secondary"
+                  size="sm"
+                  icon={<ExternalLink />}
                 >
-                  <ExternalLink className="h-3.5 w-3.5" /> Ouvrir la Data Room
-                </button>
+                  Ouvrir la Data Room
+                </Button>
               </div>
               {synthesisDocs.length === 0 ? (
                 <p className="rounded-lg bg-bg-overlay p-3 text-xs text-fg-subtle">
@@ -2580,28 +2579,18 @@ function DocumentBlock({ tpl, state, canGenerate, onGenerate, onDownload, onRege
         )}
 
         {!state.generated ? (
-          <button
+          <Button
             type="button"
+            fullWidth
             onClick={onGenerate}
             disabled={state.generating || !canGenerate}
+            loading={state.generating}
+            icon={<Sparkles />}
             data-testid={`generate-btn-${tpl.code}`}
             title={!canGenerate ? 'Complétez d’abord les champs obligatoires signalés ci-dessus' : undefined}
-            className={`flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium transition ${
-              state.generating || !canGenerate
-                ? 'cursor-not-allowed bg-border text-fg-subtle'
-                : 'bg-accent text-accent-fg hover:bg-accent-hover'
-            }`}
           >
-            {state.generating ? (
-              <>
-                <Loader className="h-4 w-4 animate-spin" /> Génération…
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" /> Générer
-              </>
-            )}
-          </button>
+            {state.generating ? 'Génération…' : 'Générer'}
+          </Button>
         ) : (
           <>
             <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft p-2 text-xs">
@@ -2635,59 +2624,71 @@ function DocumentBlock({ tpl, state, canGenerate, onGenerate, onDownload, onRege
             {/* 2026-08-12 — Jeu de boutons aligné sur Step7 Création :
                 Aperçu / Régénérer / Éditer / .docx / Valider. */}
             <div className="grid grid-cols-2 gap-2">
-              <button
+              <Button
                 type="button"
                 onClick={onTogglePreview}
-                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-border-hi"
+                variant="secondary"
+                size="sm"
+                icon={<Eye />}
               >
-                <Eye className="h-3.5 w-3.5" />
                 {state.previewOpen ? 'Masquer l’aperçu' : 'Aperçu'}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={onRegenerate}
-                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-border-hi"
                 title="Régénérer le document après mise à jour des valeurs amont"
+                variant="secondary"
+                size="sm"
+                icon={<RefreshCcw />}
               >
-                <RefreshCcw className="h-3.5 w-3.5" /> Régénérer
-              </button>
+                Régénérer
+              </Button>
               {enEssai === false && (
               <>
-              <button
+              <Button
                 type="button"
                 onClick={() => setEditing(true)}
                 disabled={!state.blob}
-                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border-input bg-bg-raised text-xs font-medium text-fg hover:bg-bg-overlay disabled:opacity-60"
                 title="Éditer le document (style Word)"
+                variant="secondary"
+                size="sm"
+                icon={<Pencil />}
               >
-                <Pencil className="h-3.5 w-3.5" /> Éditer
-              </button>
-              <button
+                Éditer
+              </Button>
+              <Button
                 type="button"
                 onClick={onDownload}
-                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-border-hi"
+                variant="secondary"
+                size="sm"
+                icon={<Download />}
               >
-                <Download className="h-3.5 w-3.5" /> .docx
-              </button>
+                .docx
+              </Button>
               </>
               )}
               {!state.validated ? (
-                <button
+                <Button
                   type="button"
                   onClick={onValidate}
                   data-testid={`validate-btn-${tpl.code}`}
-                  className="col-span-2 flex h-9 items-center justify-center gap-1.5 rounded-lg bg-success text-xs font-semibold text-success-fg transition hover:bg-success/85"
+                  size="sm"
+                  icon={<CheckCircle />}
+                  className="col-span-2"
                 >
-                  <CheckCircle className="h-3.5 w-3.5" /> Valider
-                </button>
+                  Valider
+                </Button>
               ) : (
-                <button
+                <Button
                   type="button"
                   onClick={onRegenerate}
-                  className="col-span-2 flex h-9 items-center justify-center gap-1.5 rounded-lg border border-success bg-success-soft text-xs text-success"
+                  variant="secondary"
+                  size="sm"
+                  icon={<RefreshCcw />}
+                  className="col-span-2 border-success text-success"
                 >
-                  <RefreshCcw className="h-3.5 w-3.5" /> Régénérer
-                </button>
+                  Régénérer
+                </Button>
               )}
             </div>
 

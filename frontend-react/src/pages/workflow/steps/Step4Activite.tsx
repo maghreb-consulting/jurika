@@ -4,6 +4,10 @@ import { useStepAutosave } from '../useStepAutosave';
 import { normalizeActivites } from '../objetSocial';
 import { BlocageValidation } from '../../../components/workflow/BlocageValidation';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
+import { GroupeRadio } from '../../../components/ui/Choix';
+import { TextField, ZoneTexte } from '../../../components/ui/TextField';
+import { Select } from '../../../components/ui/Select';
+import { Button } from '../../../components/ui/Button';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -160,7 +164,7 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
           </label>
           {/* Champ unique (hors liste) : `htmlFor` + `id` sont possibles ici, et
               preferables — le clic sur le libelle donne aussi le focus. */}
-          <textarea
+          <ZoneTexte
             id="creation-activites"
             rows={5}
             value={description}
@@ -171,7 +175,7 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
               'La formation professionnelle\n' +
               'L’import-export de matériel'
             }
-            className="w-full resize-none rounded-lg border-2 border-border bg-bg-overlay px-4 py-3 text-sm leading-relaxed focus:border-focus focus:outline-none"
+            className="resize-none leading-relaxed"
           />
           <p className="mt-1 text-xs text-fg-subtle">
             {description.length} caractères (plus de 10 caractères attendus).
@@ -185,37 +189,25 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
 
         {/* Reglementee */}
         <div className="mb-6">
-          <label className="mb-3 flex items-center gap-1 text-sm font-medium text-fg">
-            Activité réglementée ?
-            <InfoBulle
-              libelle="Qu’est-ce qu’une activité réglementée ?"
-              texte="Une activité soumise à une autorisation, un agrément ou une licence préalable (transport, santé, enseignement, établissement financier, débit de boissons…). Répondez « Oui » en cas de doute : la pièce sera demandée à l’étape des pièces jointes."
-            />
-          </label>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setReglementee(false)}
-              className={`flex-1 rounded-lg border-2 py-3 text-sm font-medium transition ${
-                !reglementee
-                  ? 'border-success bg-success text-success-fg'
-                  : 'border-border bg-bg-raised text-fg-subtle hover:border-success'
-              }`}
-            >
-              Non
-            </button>
-            <button
-              type="button"
-              onClick={() => setReglementee(true)}
-              className={`flex-1 rounded-lg border-2 py-3 text-sm font-medium transition ${
-                reglementee
-                  ? 'border-warning bg-warning text-warning-fg'
-                  : 'border-border bg-bg-raised text-fg-subtle hover:border-warning'
-              }`}
-            >
-              Oui
-            </button>
-          </div>
+          <GroupeRadio
+            legende={
+              <span className="flex items-center gap-1">
+                Activité réglementée ?
+                <InfoBulle
+                  libelle="Qu’est-ce qu’une activité réglementée ?"
+                  texte="Une activité soumise à une autorisation, un agrément ou une licence préalable (transport, santé, enseignement, établissement financier, débit de boissons…). Répondez « Oui » en cas de doute : la pièce sera demandée à l’étape des pièces jointes."
+                />
+              </span>
+            }
+            name="creation-activite-reglementee"
+            horizontal
+            value={reglementee ? 'oui' : 'non'}
+            onChange={(v) => setReglementee(v === 'oui')}
+            options={[
+              { value: 'non', label: 'Non' },
+              { value: 'oui', label: 'Oui' },
+            ]}
+          />
         </div>
 
         {reglementee && (
@@ -236,15 +228,11 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
         {/* Categories ONA + Secteur (optionnels) */}
         <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Catégorie ONA{' '}
-              <span className="font-normal text-fg-subtle">(facultatif)</span>
-            </label>
-            <select
+            <Select
+              label="Catégorie ONA (facultatif)"
               aria-label="Catégorie ONA"
               value={categorieOna}
               onChange={(ev) => setCategorieOna(ev.target.value)}
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             >
               <option value="">— Sélectionnez —</option>
               {CATEGORIES_ONA.map((c) => (
@@ -252,18 +240,14 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
                   {LIBELLES_LISTES[c] ?? c}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Secteur économique{' '}
-              <span className="font-normal text-fg-subtle">(facultatif)</span>
-            </label>
-            <select
+            <Select
+              label="Secteur économique (facultatif)"
               aria-label="Secteur économique"
               value={secteur}
               onChange={(ev) => setSecteur(ev.target.value)}
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             >
               <option value="">— Sélectionnez —</option>
               {SECTEURS.map((s) => (
@@ -271,7 +255,7 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
                   {LIBELLES_LISTES[s] ?? s}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
 
@@ -288,16 +272,14 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
               Date de début du premier exercice repris{' '}
               <span className="text-danger">*</span>
             </label>
-            <input
+            <TextField
               id="import-date-debut-exercice"
               type="date"
               value={dateDebutExercice}
               onChange={(ev) => setDateDebutExercice(ev.target.value)}
-              className="h-10 w-full max-w-xs rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
+              hint="Sert au suivi des exercices comptables de la société (étape Suivi)."
+              containerClassName="max-w-xs"
             />
-            <p className="mt-1 text-xs text-fg-subtle">
-              Sert au suivi des exercices comptables de la société (étape Suivi).
-            </p>
           </div>
         )}
       </div>
@@ -320,18 +302,14 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
       />
 
       <div className="flex items-center justify-end pt-2">
-        <button
+        <Button
           type="submit"
           disabled={!canSubmit || saving}
-          className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
-            canSubmit && !saving
-              ? 'bg-accent text-accent-fg hover:bg-accent-hover'
-              : 'cursor-not-allowed bg-border text-fg-subtle'
-          }`}
+          size="lg"
+          iconEnd={<ChevronRight />}
         >
           {saving ? 'Enregistrement…' : 'Valider et continuer'}
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </form>
   );
