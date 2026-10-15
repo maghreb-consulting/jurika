@@ -9,6 +9,24 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#0c1d3f" />
+    <!-- Lot L6b (E1) : police auto-hebergee (aucun service tiers), prechargee pour eviter le
+         changement de police apres l'affichage. -->
+    <link rel="preload" href="/fonts/Inter-Regular.ttf" as="font" type="font/ttf" crossorigin />
+    <!-- Lot L6b (E3) : theme pose AVANT le premier rendu (pas d'eclair du mauvais theme).
+         Choix du compte mis en cache dans ce navigateur (jurika.theme : SYSTEME, CLAIR, SOMBRE),
+         sinon le reglage de l'ordinateur. Le magasin store/themeStore prend ensuite le relais. -->
+    <script>
+      (function () {
+        var choix = 'SYSTEME';
+        try {
+          var c = localStorage.getItem('jurika.theme');
+          if (c === 'CLAIR' || c === 'SOMBRE' || c === 'SYSTEME') choix = c;
+        } catch (e) {}
+        var sombre = choix === 'SOMBRE' ||
+          (choix === 'SYSTEME' && !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', sombre ? 'dark' : 'light');
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>JURIKA — Gestion juridique des entreprises</title>
   </head>

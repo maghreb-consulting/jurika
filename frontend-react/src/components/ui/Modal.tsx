@@ -1,89 +1,103 @@
-import * as Dialog from '@radix-ui/react-dialog';
+import { useId, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import type { ReactNode } from 'react';
-import { twMerge } from 'tailwind-merge';
+import { cn } from '../../lib/utils';
+import { useDialogueNatif } from './useDialogueNatif';
 
-interface ModalProps {
+/**
+ * Fenetre modale (lot L6b, E1) sur l'element natif <dialog> (showModal) : couche
+ * superieure, page inerte derriere, Echap et clic sur le voile ferment, focus rendu a la
+ * fermeture. Le contenu defile dans la fenetre ; la page derriere ne defile pas.
+ *
+ * API inchangee (ancienne version Radix) : `open`, `onOpenChange`, `title`, `description`,
+ * `size` ('sm' 24rem, 'md' 28rem, 'lg' 42rem, 'xl' 56rem), `hideCloseButton`, `className`.
+ * Ajout : `footer` (barre d'actions collee en bas, toujours visible).
+ *
+ *   <Modal open={open} onOpenChange={setOpen} title="Confirmation" footer={<Button>OK</Button>}>
+ *     <p>Contenu</p>
+ *   </Modal>
+ */
+export interface ModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: ReactNode;
   description?: ReactNode;
-  children: ReactNode;
-  /** Largeur max — 'sm' (24rem), 'md' (32rem, default), 'lg' (48rem), 'xl' (64rem). */
+  children?: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
-  /** Cacher la croix en haut à droite (rare ; ex : modal de confirmation forcée). */
   hideCloseButton?: boolean;
+  footer?: ReactNode;
   className?: string;
+  /** Faux : un clic sur le voile ne ferme pas (saisie longue). */
+  closeOnBackdrop?: boolean;
 }
 
-const SIZE_CLASSES: Record<NonNullable<ModalProps['size']>, string> = {
+const TAILLES: Record<NonNullable<ModalProps['size']>, string> = {
   sm: 'max-w-sm',
   md: 'max-w-md',
   lg: 'max-w-2xl',
   xl: 'max-w-4xl',
 };
 
-/**
- * Sprint 12.5 T5 — Modal primitive sur Radix Dialog + palette marketing.
- *
- * Accessibilité gérée par Radix : focus trap, role=dialog, aria-labelledby,
- * aria-describedby, Esc pour fermer, click overlay pour fermer.
- *
- * Style :
- * - overlay : navy 80% opacity + backdrop-blur subtle
- * - content : bg-overlay (navy le plus clair) + border-border-hi + shadow-card-lifted
- * - close button : ghost icon top-right, focus ring or
- * - title : font-heading (Playfair Display)
- *
- * Pattern d'usage :
- *   <Modal open={open} onOpenChange={setOpen} title="Confirmation">
- *     <p>Contenu…</p>
- *   </Modal>
- */
-export function Modal({
-  open,
+export function Modal(props: ModalProps) {
+  if (!props.open || typeof document === 'undefined') return null;
+  return createPortal(<FenetreOuverte {...props} />, document.body);
+}
+
+function FenetreOuverte({
   onOpenChange,
   title,
   description,
   children,
   size = 'md',
   hideCloseButton = false,
+  footer,
   className,
+  closeOnBackdrop = true,
 }: ModalProps) {
+  const idTitre = useId();
+  const idDesc = useId();
+  const { ref, ...handlers } = useDialogueNatif(() => onOpenChange(false), closeOnBackdrop);
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <Dialog.Content
-          className={twMerge(
-            'fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border-hi bg-bg-overlay p-6 shadow-card-lifted focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
-            SIZE_CLASSES[size],
-            className,
-          )}
-        >
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <Dialog.Title className="font-heading text-xl font-semibold text-fg">
-                {title}
-              </Dialog.Title>
-              {description && (
-                <Dialog.Description className="mt-1 text-sm text-fg-muted">
-                  {description}
-                </Dialog.Description>
-              )}
+    <dialog
+      ref={ref}
+      aria-labelledby={idTitre}
+      aria-describedby={description ? idDesc : undefined}
+      aria-modal="true"
+      className={cn(
+        'fenetre fixed inset-0 z-50 m-auto flex h-fit max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] flex-col overflow-hidden',
+        'rounded-xl border border-border bg-bg-raised p-0 text-fg shadow-card-lifted',
+        TAILLES[size],
+        className,
+      )}
+      {...handlers}
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-4">
+        <div className="min-w-0 flex-1">
+          <h2 id={idTitre} className="text-lg font-semibold text-heading">
+            {title}
+          </h2>
+          {description && (
+            <div id={idDesc} className="mt-1 text-sm text-fg-muted">
+              {description}
             </div>
-            {!hideCloseButton && (
-              <Dialog.Close
-                aria-label="Fermer"
-                className="flex h-8 w-8 items-center justify-center rounded-md text-fg-subtle transition hover:bg-bg-raised hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-              >
-                <X className="h-4 w-4" />
-              </Dialog.Close>
-            )}
-          </div>
-          {children}
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+          )}
+        </div>
+        {!hideCloseButton && (
+          <button
+            type="button"
+            aria-label="Fermer"
+            onClick={() => onOpenChange(false)}
+            className="-mr-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-fg-subtle hover:bg-bg-overlay hover:text-fg"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
+      </div>
+      {children ? <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5">{children}</div> : null}
+      {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-border bg-bg-overlay px-6 py-3">{footer}</div>}
+    </dialog>
   );
 }
+
+/** Nom francais du meme composant. */
+export const Fenetre = Modal;

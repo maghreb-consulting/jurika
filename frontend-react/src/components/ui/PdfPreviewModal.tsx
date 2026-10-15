@@ -259,7 +259,7 @@ function PdfPreviewModalFichier({
             </div>
           )}
           {!loading && !error && objectUrl && !isPdf && !isImage && (
-            <div className="max-w-md rounded-lg border border-amber-200 bg-warning/10 px-4 py-3 text-center text-sm text-warning">
+            <div className="max-w-md rounded-lg border border-warning/30 bg-warning-soft px-4 py-3 text-center text-sm text-warning">
               <p className="font-semibold">Aperçu non disponible pour ce type de fichier</p>
               <p className="mt-1 text-xs">
                 Format détecté : <strong>{contentType}</strong>. Téléchargez le

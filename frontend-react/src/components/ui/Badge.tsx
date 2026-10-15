@@ -1,35 +1,52 @@
 import type { ReactNode } from 'react';
-import { twMerge } from 'tailwind-merge';
+import { cn } from '../../lib/utils';
 
-type Variant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+/**
+ * Badge d'etat (lot L6b, E1) : texte d'etat sur sa teinte douce (contraste AA verifie).
+ * L'etat n'est jamais porte par la seule couleur : le libelle le dit ; `dot` ajoute une
+ * pastille (decorative).
+ *
+ * Variantes : `default` (or : actif, selectionne), `success`, `warning`, `danger`, `info`,
+ * `neutral` (gris : brouillon, inactif).
+ */
+export type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
-const variantClasses: Record<Variant, string> = {
-  default: 'bg-accent/10 text-accent ring-indigo-200',
-  success: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  warning: 'bg-warning/10 text-amber-700 ring-amber-200',
-  danger: 'bg-danger/10 text-danger ring-rose-200',
-  info: 'bg-sky-50 text-sky-700 ring-sky-200',
-  neutral: 'bg-bg-overlay text-fg-muted ring-slate-200',
+const VARIANTES: Record<BadgeVariant, string> = {
+  default: 'bg-accent-soft text-accent border-accent/30',
+  success: 'bg-success-soft text-success border-success/30',
+  warning: 'bg-warning-soft text-warning border-warning/30',
+  danger: 'bg-danger-soft text-danger border-danger/30',
+  info: 'bg-info-soft text-info border-info/30',
+  neutral: 'bg-bg-overlay text-fg-muted border-border',
 };
 
 export function Badge({
   variant = 'default',
   children,
   className,
+  dot = false,
+  title,
 }: {
-  variant?: Variant;
+  variant?: BadgeVariant;
   children: ReactNode;
   className?: string;
+  dot?: boolean;
+  title?: string;
 }) {
   return (
     <span
-      className={twMerge(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset',
-        variantClasses[variant],
+      title={title}
+      className={cn(
+        'inline-flex max-w-full items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium',
+        VARIANTES[variant],
         className,
       )}
     >
+      {dot && <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />}
       {children}
     </span>
   );
 }
+
+/** Nom francais du meme composant. */
+export const BadgeEtat = Badge;

@@ -1,104 +1,81 @@
-import { useRef, type ButtonHTMLAttributes, type ReactNode, type MouseEvent as ReactMouseEvent } from 'react';
-import { twMerge } from 'tailwind-merge';
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { cn } from '../../lib/utils';
+import { BASE_BOUTON, TAILLES_BOUTON, TAILLES_ICONE, VARIANTES_BOUTON, type ButtonSize, type ButtonVariant } from './boutonClasses';
 
-interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
+export type { ButtonSize, ButtonVariant } from './boutonClasses';
+
+/**
+ * Bouton de la bibliotheque (lot L6b, E1). Un bouton ressemble toujours a un bouton
+ * (forme, fond ou contour, hauteur fixe) ; un texte ne ressemble jamais a un bouton.
+ *
+ * Variantes : `primary` (principal, or : UNE action principale par ecran), `secondary`
+ * (contour), `ghost` (discret : fond teinte, sans contour), `danger` (action
+ * irreversible). Tailles `sm` (32 px), `md` (36 px), `lg` (44 px).
+ *
+ * `loading` : roue + aria-busy, le bouton est desactive et garde sa largeur.
+ * `icon` / `iconEnd` : icone avant / apres le libelle (decorative, aria-hidden).
+ * `iconOnly` : bouton carre sans libelle visible ; `aria-label` obligatoire.
+ */
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   loading?: boolean;
-  /**
-   * Sprint 12.5 T4 — Magnetic hover effect porté de marketing-site.
-   * Si actif, le bouton suit légèrement le curseur (translation -4px..+4px max).
-   * Désactivé automatiquement via prefers-reduced-motion CSS dans index.css T13.
-   * Recommandé uniquement sur CTA primaires (signup, billing upgrade, etc.).
-   */
+  icon?: ReactNode;
+  iconEnd?: ReactNode;
+  iconOnly?: boolean;
+  fullWidth?: boolean;
+  /** @deprecated L6b : effet "magnetique" retire (mouvement superflu) ; sans effet. */
   magnetic?: boolean;
-  children: ReactNode;
+  children?: ReactNode;
 }
 
-const baseClasses =
-  'inline-flex items-center justify-center rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-bg';
+export function Spinner({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn('inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent', className)}
+    />
+  );
+}
 
-// Sprint 12.5 T4 — variantes alignées sur palette marketing (navy / or / emeraude)
-const variantClasses: Record<NonNullable<Props['variant']>, string> = {
-  // CTA primaire : gradient or signature, texte navy foncé pour contraste AA
-  primary:
-    'bg-gradient-to-br from-accent to-accent-hover text-bg shadow-card hover:from-accent-hover hover:to-accent focus-visible:ring-accent',
-  // Outline navy : bordure or discrète, fond raised
-  secondary:
-    'bg-bg-raised text-fg border border-border-hi hover:border-accent hover:text-accent focus-visible:ring-accent',
-  // Ghost : transparent, hover overlay navy
-  ghost:
-    'bg-transparent text-fg-muted hover:bg-bg-overlay hover:text-fg focus-visible:ring-accent',
-  // Danger : rouge token, conservé pour irreversible actions
-  danger:
-    'bg-danger text-fg hover:bg-danger/85 focus-visible:ring-danger',
-};
-
-const sizeClasses: Record<NonNullable<Props['size']>, string> = {
-  sm: 'px-3 py-1.5 text-sm',
-  md: 'px-4 py-2 text-sm',
-  lg: 'px-5 py-3 text-base',
-};
-
-// Sprint 12.5 T4 — Magnetic hover (port marketing-site).
-// Translation max 6px à 60% du chemin curseur->centre. Reset en mouseleave.
-// PAS de spring (overhead JS minimal). Désactivé automatiquement via
-// prefers-reduced-motion sur l'ancetre (les classes Tailwind transition-transform
-// honorent la media query).
-const MAGNETIC_STRENGTH = 0.18;
-const MAGNETIC_MAX_PX = 6;
-
-export function Button({
-  variant = 'primary',
-  size = 'md',
-  loading,
-  magnetic = false,
-  className,
-  disabled,
-  children,
-  onMouseMove,
-  onMouseLeave,
-  ...rest
-}: Props) {
-  const ref = useRef<HTMLButtonElement | null>(null);
-
-  function handleMouseMove(e: ReactMouseEvent<HTMLButtonElement>) {
-    onMouseMove?.(e);
-    if (!magnetic || !ref.current) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const rect = ref.current.getBoundingClientRect();
-    const dx = e.clientX - (rect.left + rect.width / 2);
-    const dy = e.clientY - (rect.top + rect.height / 2);
-    const tx = Math.max(-MAGNETIC_MAX_PX, Math.min(MAGNETIC_MAX_PX, dx * MAGNETIC_STRENGTH));
-    const ty = Math.max(-MAGNETIC_MAX_PX, Math.min(MAGNETIC_MAX_PX, dy * MAGNETIC_STRENGTH));
-    ref.current.style.transform = `translate(${tx}px, ${ty}px)`;
-  }
-
-  function handleMouseLeave(e: ReactMouseEvent<HTMLButtonElement>) {
-    onMouseLeave?.(e);
-    if (!magnetic || !ref.current) return;
-    ref.current.style.transform = '';
-  }
-
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    variant = 'primary',
+    size = 'md',
+    loading = false,
+    icon,
+    iconEnd,
+    iconOnly = false,
+    fullWidth = false,
+    magnetic: _magnetic,
+    className,
+    disabled,
+    children,
+    ...rest
+  },
+  ref,
+) {
+  void _magnetic;
   return (
     <button
       ref={ref}
-      className={twMerge(
-        baseClasses,
-        magnetic && 'transition-transform duration-150 ease-out',
-        variantClasses[variant],
-        sizeClasses[size],
+      className={cn(
+        BASE_BOUTON,
+        VARIANTES_BOUTON[variant],
+        iconOnly ? TAILLES_ICONE[size] : TAILLES_BOUTON[size],
+        fullWidth && 'w-full',
         className,
       )}
       disabled={disabled || loading}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      aria-busy={loading || undefined}
       {...rest}
     >
-      {loading && (
-        <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current/40 border-t-current" />
-      )}
+      {loading ? <Spinner /> : icon && <span aria-hidden="true" className="inline-flex shrink-0 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>}
       {children}
+      {iconEnd && !loading && <span aria-hidden="true" className="inline-flex shrink-0 [&>svg]:h-4 [&>svg]:w-4">{iconEnd}</span>}
     </button>
   );
-}
+});
+
+/** Nom francais du meme composant. */
+export const Bouton = Button;

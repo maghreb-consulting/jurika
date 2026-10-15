@@ -38,6 +38,7 @@ interface ToastItem {
 }
 
 const DEFAULT_DURATION = 4000;
+const DUREE_ENREGISTRE = 2500;
 
 const VARIANT_META: Record<
   ToastVariant,
@@ -103,6 +104,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       success: (message, duration) => show(message, 'success', duration),
       error: (message, duration) => show(message, 'error', duration),
       info: (message, duration) => show(message, 'info', duration),
+      enregistre: (message = 'Enregistré') => show(message, 'success', DUREE_ENREGISTRE),
       dismiss,
     }),
     [show, dismiss],
@@ -126,7 +128,7 @@ function ToastViewport({
   if (typeof document === 'undefined') return null;
   return createPortal(
     <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[100] flex flex-col items-center gap-2 p-4 sm:inset-x-auto sm:right-0 sm:items-end"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[100] flex flex-col items-center gap-2 p-4"
       // aria-live sur le conteneur : chaque toast ajouté est annoncé.
       role="region"
       aria-label="Notifications"
@@ -147,7 +149,7 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: num
       role="status"
       aria-live={toast.variant === 'error' ? 'assertive' : 'polite'}
       className={twMerge(
-        'pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border border-border-hi border-l-4 bg-bg-overlay px-4 py-3 text-sm text-fg shadow-card-lifted',
+        'pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border border-border border-l-4 bg-bg-raised px-4 py-3 text-sm text-fg shadow-card-lifted',
         meta.accent,
       )}
     >
@@ -157,9 +159,9 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: num
         type="button"
         onClick={() => onDismiss(toast.id)}
         aria-label="Fermer la notification"
-        className="-mr-1 -mt-0.5 shrink-0 rounded p-1 text-fg-subtle transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="-mr-1 -mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-fg-subtle transition-colors hover:bg-bg-overlay hover:text-fg"
       >
-        <X className="h-4 w-4" />
+        <X className="h-4 w-4" aria-hidden="true" />
       </button>
     </div>
   );

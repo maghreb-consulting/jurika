@@ -18,10 +18,8 @@ interface ConfirmDialogProps {
 }
 
 /**
- * Dialog de confirmation generique (consentement explicite avant une action).
- * Bati sur la primitive {@link Modal} (Radix : focus trap, Esc, click overlay).
- * Fermer sans confirmer = annuler (aucun effet). Reutilisable partout ou une
- * action a besoin d'un garde-fou (suppression, upload, etc.).
+ * Confirmation explicite avant une action (suppression, envoi...). Batie sur {@link Modal}
+ * (<dialog> natif). Fermer sans confirmer = annuler (aucun effet).
  */
 export function ConfirmDialog({
   open,
@@ -36,16 +34,24 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   return (
-    <Modal open={open} onOpenChange={onOpenChange} title={title} description={description} size="sm">
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      description={description}
+      size="sm"
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
+            {cancelLabel}
+          </Button>
+          <Button type="button" variant={variant} onClick={onConfirm} loading={loading}>
+            {confirmLabel}
+          </Button>
+        </>
+      }
+    >
       {children}
-      <div className="mt-6 flex justify-end gap-2">
-        <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
-          {cancelLabel}
-        </Button>
-        <Button variant={variant} onClick={onConfirm} loading={loading}>
-          {confirmLabel}
-        </Button>
-      </div>
     </Modal>
   );
 }

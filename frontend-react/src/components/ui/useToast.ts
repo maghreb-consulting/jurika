@@ -13,6 +13,8 @@ export interface ToastApi {
   success: (message: string, duration?: number) => number;
   error: (message: string, duration?: number) => number;
   info: (message: string, duration?: number) => number;
+  /** Confirmation discrete d'un enregistrement (defaut : "Enregistré"), 2,5 s. */
+  enregistre: (message?: string) => number;
   dismiss: (id: number) => void;
 }
 

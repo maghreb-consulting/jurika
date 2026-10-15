@@ -1,27 +1,31 @@
-import { Globe, Moon, Sun } from 'lucide-react';
-import { useThemeStore } from '../../store/themeStore';
+import { Globe, Monitor, Moon, Sun } from 'lucide-react';
+import { LIBELLES_THEME, useThemeStore, type ChoixTheme } from '../../store/themeStore';
+import { usePreferencesStore } from '../../store/preferencesStore';
 import { Button } from '../../components/ui/Button';
 import { TexteAide } from '../../components/ui/Aide';
 
 /**
  * BUG 11 (2026-06-08) — Onglet Preferences dans /settings.
- *  - Theme : reutilise le themeStore (clair / sombre, persistance localStorage
- *    + sync DB via userService.setPreferredTheme dans la version branchee a
- *    AppTopNav.ThemeToggle).
- *  - Langue : FR uniquement en V1 (placeholder — la roadmap i18n est sprint 13).
- *
- * On evite de cloner ThemeToggle ici pour ne pas dupliquer la logique de sync :
- * on rend deux boutons explicites qui muent le store.
+ *  - Theme (lot L6b, E3) : selon l'ordinateur (defaut), clair ou sombre ; applique tout de
+ *    suite et memorise SUR LE COMPTE (store/preferencesStore, PUT /users/me/preferences).
+ *    Un echec d'enregistrement s'affiche dans la coquille (bandeau "Preferences d'affichage").
+ *  - Langue : FR uniquement en V1.
  */
+const CHOIX: { choix: ChoixTheme; icone: typeof Sun; testId: string }[] = [
+  { choix: 'SYSTEME', icone: Monitor, testId: 'pref-theme-systeme' },
+  { choix: 'CLAIR', icone: Sun, testId: 'pref-theme-light' },
+  { choix: 'SOMBRE', icone: Moon, testId: 'pref-theme-dark' },
+];
+
 export function PreferencesTab() {
-  const mode = useThemeStore((s) => s.mode);
-  const setMode = useThemeStore((s) => s.setMode);
+  const choix = useThemeStore((s) => s.choix);
+  const choisirTheme = usePreferencesStore((s) => s.choisirTheme);
 
   return (
     <div className="space-y-4">
       <div>
         <h2 className="flex items-center gap-2 text-lg font-semibold text-fg">
-          <Globe className="h-5 w-5 text-accent" /> Préférences
+          <Globe className="h-5 w-5 text-accent" aria-hidden="true" /> Préférences
         </h2>
         <p className="mt-1 text-sm text-fg-muted">
           Personnalisez l’apparence et la langue de votre espace JURIKA.
@@ -30,39 +34,38 @@ export function PreferencesTab() {
 
       <TexteAide cle="preferences" titre="Apparence et langue">
         <p>
-          Cliquez sur « Mode clair » ou « Mode sombre » : le changement est immédiat, rien d’autre à
-          enregistrer.
+          Choisissez « Selon l’ordinateur » pour suivre le réglage clair ou sombre de votre
+          ordinateur, ou imposez « Clair » ou « Sombre ». Le changement est immédiat et suit
+          votre compte sur tous vos appareils ; rien d’autre à enregistrer.
         </p>
       </TexteAide>
 
       {/* Theme */}
-      <section className="rounded-2xl border border-border bg-bg-raised p-5">
+      <section className="rounded-xl border border-border bg-bg-raised p-5">
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-fg-subtle">
           Apparence
         </h3>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant={mode === 'light' ? 'primary' : 'secondary'}
-            onClick={() => setMode('light')}
-            data-testid="pref-theme-light"
-          >
-            <Sun className="mr-1.5 h-4 w-4" /> Mode clair
-          </Button>
-          <Button
-            variant={mode === 'dark' ? 'primary' : 'secondary'}
-            onClick={() => setMode('dark')}
-            data-testid="pref-theme-dark"
-          >
-            <Moon className="mr-1.5 h-4 w-4" /> Mode sombre
-          </Button>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Thème">
+          {CHOIX.map(({ choix: c, icone: Icone, testId }) => (
+            <Button
+              key={c}
+              variant={choix === c ? 'primary' : 'secondary'}
+              aria-pressed={choix === c}
+              onClick={() => void choisirTheme(c)}
+              data-testid={testId}
+              icon={<Icone />}
+            >
+              {LIBELLES_THEME[c]}
+            </Button>
+          ))}
         </div>
         <p className="mt-3 text-xs text-fg-muted">
-          Le mode s’applique immédiatement et reste mémorisé dans ce navigateur.
+          Le thème s’applique immédiatement et reste mémorisé sur votre compte.
         </p>
       </section>
 
       {/* Langue */}
-      <section className="rounded-2xl border border-border bg-bg-raised p-5">
+      <section className="rounded-xl border border-border bg-bg-raised p-5">
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-fg-subtle">
           Langue
         </h3>

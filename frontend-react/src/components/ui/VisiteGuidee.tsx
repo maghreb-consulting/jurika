@@ -146,12 +146,12 @@ function Visite({ cle, etapes }: { cle: string; etapes: EtapeVisite[] }) {
   return (
     <div className="fixed inset-0 z-[60]" data-testid="visite-guidee">
       {/* Voile : bloque l'ecran pendant la visite ; un clic ne ferme pas (Echap ou "Fermer"). */}
-      <div className={`absolute inset-0 ${zone ? '' : 'bg-black/40'}`} aria-hidden="true" />
+      <div className={`absolute inset-0 ${zone ? '' : 'bg-scrim/45'}`} aria-hidden="true" />
       {zone && (
         <div
           aria-hidden="true"
           className="pointer-events-none absolute rounded-lg ring-2 ring-accent ring-offset-2 ring-offset-transparent"
-          style={{ top: zone.top - 4, left: zone.left - 4, width: zone.width + 8, height: zone.height + 8, boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)' }}
+          style={{ top: zone.top - 4, left: zone.left - 4, width: zone.width + 8, height: zone.height + 8, boxShadow: '0 0 0 9999px color-mix(in srgb, var(--jeton-scrim) 45%, transparent)' }}
         />
       )}
       <div
