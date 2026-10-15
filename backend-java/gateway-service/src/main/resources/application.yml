@@ -63,6 +63,22 @@ spring:
                 redis-rate-limiter.requestedTokens: 1
                 key-resolver: "#{@ipKeyResolver}"
                 deny-empty-key: false
+        # Lot L6b (E2) -- mentions legales publiques de l'editeur (pied de page de la
+        # vitrine), lecture seule, servies par billing-service (editeur_parametres).
+        # Declaree AVANT le joker auth-public /api/v1/public/** (sinon 404 chez auth).
+        # Chemin exact : rien d'autre de billing n'est ouvert sous /api/v1/public.
+        - id: billing-public-mentions-legales
+          uri: lb://billing-service
+          predicates:
+            - Path=/api/v1/public/editeur/mentions-legales
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: ${RATE_LIMIT_PUBLIC_PER_MIN:30}
+                redis-rate-limiter.burstCapacity: ${RATE_LIMIT_PUBLIC_BURST:60}
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@ipKeyResolver}"
+                deny-empty-key: false
         # Sprint 11 TASK 1 -- endpoints publics marketing (landing jurika.ai)
         # permitAll cote auth-service + rate-limit IP applicatif (RG-MK02).
         - id: auth-public
