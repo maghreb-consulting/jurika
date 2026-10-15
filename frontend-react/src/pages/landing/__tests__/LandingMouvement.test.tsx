@@ -194,9 +194,12 @@ describe('Vitrine (V3) : recit au defilement des fonctionnalites', () => {
     expect(clair).toHaveAttribute('aria-pressed', 'true');
     const visible = () => bascule.querySelector('[data-face][data-actif]')?.getAttribute('data-face');
     expect(visible()).toBe('clair');
+    // Le reflet de bascule ne passe qu'apres un choix (jamais fige sur la capture).
+    expect(bascule.querySelector('.v-balayage')).toBeNull();
     await userEvent.click(sombre);
     expect(sombre).toHaveAttribute('aria-pressed', 'true');
     expect(visible()).toBe('sombre');
+    expect(bascule.querySelector('.v-balayage')).not.toBeNull();
   });
 });
 

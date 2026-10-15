@@ -252,6 +252,7 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(105deg, transparent 35%, color-mix(in srgb, var(--jeton-nav-fg-hi) 38%, transparent) 50%, transparent 65%);
+  opacity: 0;
   animation: v-balayage 850ms var(--v-ease) both;
 }
 @keyframes v-balayage {
@@ -363,6 +364,8 @@
   justify-content: center;
 }
 .v-defile:not([data-defile]) .v-defile-liste {
+  flex: 1 1 auto;
+  min-width: 0;
   flex-wrap: wrap;
   justify-content: center;
   padding: 0 1rem;

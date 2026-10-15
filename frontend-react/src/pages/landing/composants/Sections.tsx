@@ -470,7 +470,7 @@ function CaptureBascule({ sizes }: { sizes: string }) {
             <CaptureEcran nom={f.nom} sizes={sizes} vivante={false} />
           </div>
         ))}
-        <span key={face} className="v-balayage" aria-hidden="true" />
+        {choix && <span key={face} className="v-balayage" aria-hidden="true" />}
       </div>
       <div className="mt-3 flex items-center justify-center gap-2" role="group" aria-label="Thème de la capture">
         {faces.map((f) => (
