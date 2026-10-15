@@ -80,6 +80,9 @@ class ContratAbonnementIT {
         jdbc = new JdbcTemplate(proprietaire);
 
         horloge = new ContratHorloge();
+        // La version 1 entre en vigueur le jour de son chargement : meme horloge figee que les tests
+        // (sinon, des le lendemain du 2026-10-14, elle serait "a venir" a la date des tests).
+        horloge.regler(Clock.fixed(Instant.parse("2026-10-14T09:30:00Z"), ZoneOffset.UTC));
         editeur = new EditeurParametresEntity();
         EditeurParametresService editeurService = mock(EditeurParametresService.class);
         when(editeurService.identite()).thenAnswer(i -> editeur);
