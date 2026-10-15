@@ -533,6 +533,9 @@ export function analyserDocument(options: OptionsAnalyse): ResultatAnalyse {
       if (!boitesTexte(el).length && !el.matches('input, textarea, select')) continue;
       if (el.closest('[disabled], [aria-disabled="true"], fieldset:disabled')) continue;
       if ((el as HTMLButtonElement).disabled) continue;
+      // Libelle d'un champ desactive (case, bouton radio) : composant inactif, exempte aussi.
+      const libelle = el.closest('label') as HTMLLabelElement | null;
+      if (libelle?.control && (libelle.control as HTMLInputElement).disabled) continue;
       const s = style(el);
       const coul = rgba(s.color);
       if (coul[3] === 0) continue;

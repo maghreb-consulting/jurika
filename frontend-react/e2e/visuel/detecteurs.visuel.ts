@@ -313,6 +313,8 @@ test.describe('contraste', () => {
     const r = await defautsDe(
       page,
       `<button disabled style="color:#ccc;background:#fff">Desactive</button>
+       <label style="color:#bbb"><input type="radio" disabled> Option indisponible</label>
+       <input id="c1" type="checkbox" disabled><label for="c1" style="color:#bbb">Autre option indisponible</label>
        <div style="background:linear-gradient(#000,#fff)"><span style="color:#888">Sur degrade</span></div>`,
       { detecteurs: ['contraste'] },
     );
