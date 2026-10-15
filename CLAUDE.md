@@ -299,6 +299,12 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   (tests seulement) ; reference du ticket affichee deux fois dans l'en-tete du parcours ; Inter
   seule (Playfair et JetBrains Mono abandonnes, aucun fichier libre hors ligne) ; rendu d'Inter
   verifie sous chromium Linux seulement.
+- **Type d'element en code brut** ("USER", "TICKET", "PIECE_IDENTITE") sur la fiche d'un cabinet
+  (super-admin) et dans les colonnes "Element" de la tracabilite ; panneau d'activite du tiroir du
+  ticket non couvert par le harnais.
+- **Demonstration JUR-DEMO2** : aucune demarche avec echeance ni acte genere ; un document "TEST"
+  ("Les 28 types de modifications statutaires") dont l'origine est a verifier ; second facteur TOTP de
+  `employe2` configure pour les captures (secret dans `~/.jurika-test/employe2-totp.txt`).
 - **Copilote du tableau de bord employe** : les suggestions viennent du serveur ; a relire avec des
   donnees reelles (textes non verifies hors harnais).
 
