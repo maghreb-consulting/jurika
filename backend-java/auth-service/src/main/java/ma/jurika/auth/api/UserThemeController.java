@@ -28,7 +28,16 @@ import org.springframework.web.bind.annotation.RestController;
  * utilisateur — coherent avec la position editoriale "un cabinet, un
  * theme" validee 2026-06-01. Si on veut un theme per-user a l'avenir,
  * il faudra une colonne dediee sur la table users.
+ *
+ * <p>Lot L6b (E2) : DEPRECIE. Le theme est desormais une preference du COMPTE
+ * ({@code GET/PUT /api/v1/users/me/preferences}, colonnes users.theme et
+ * users.juri_masque, auth V47). Ce point d'entree ecrit encore
+ * {@code workspaces.preferred_theme}, que l'interface n'a jamais relu (backlog L6,
+ * motif 9) ; il est garde tant que l'ancien front l'appelle, sans etre ouvert
+ * pendant la lecture seule de l'essai, la suspension ni l'archivage. A retirer
+ * (test d'abord) quand plus aucun ecran ne l'appelle.
  */
+@Deprecated(since = "L6b")
 @RestController
 @RequestMapping("/api/v1/users/me/theme")
 public class UserThemeController {

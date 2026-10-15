@@ -59,7 +59,8 @@ import java.util.UUID;
  *       controleur (aucun effet de bord : journal d'acces, conversion).</li>
  *   <li><b>RG-ESS-10</b> : en lecture seule, toute requete qui modifie
  *       (POST, PUT, PATCH, DELETE) est refusee, hors routes de connexion, de
- *       souscription et internes.</li>
+ *       souscription et internes, et hors preferences d'affichage du compte
+ *       ({@link #MODIFICATIONS_D_AFFICHAGE}, lot L6b).</li>
  * </ul>
  * Refus : HTTP 402, corps {@code {code, message}} lisible par l'ecran. Etat
  * de l'essai illisible : HTTP 503 (jamais de laisser-passer silencieux). Une
@@ -110,6 +111,14 @@ public class TrialSoftLockFilter extends OncePerRequestFilter {
             "/api/v1/ai/document-render/**"
     );
 
+    /**
+     * Lot L6b (E2) : modifications permises pendant la lecture seule (RG-ESS-10), chemins EXACTS.
+     * Les preferences d'affichage du COMPTE (theme, assistant masque) ne sont pas des donnees du
+     * cabinet. Elles restent soumises a la regle positive de l'affichage (RG-ESS-05) ; leur
+     * ecriture ne lit pas l'etat de l'essai.
+     */
+    static final Set<String> MODIFICATIONS_D_AFFICHAGE = Set.of("/api/v1/users/me/preferences");
+
     private static final Set<String> METHODES_SURES = Set.of("GET", "HEAD", "OPTIONS", "TRACE");
 
     private final TrialAccessChecker checker;
@@ -155,7 +164,8 @@ public class TrialSoftLockFilter extends OncePerRequestFilter {
             return;
         }
         String chemin = chemin(request);
-        boolean mutation = !METHODES_SURES.contains(request.getMethod().toUpperCase(Locale.ROOT));
+        boolean mutation = !METHODES_SURES.contains(request.getMethod().toUpperCase(Locale.ROOT))
+                && !MODIFICATIONS_D_AFFICHAGE.contains(chemin);
         if (correspond(ROUTES_TELECHARGEMENT, chemin) || mutation) {
             Optional<TrialAccessChecker.TrialState> etat;
             try {

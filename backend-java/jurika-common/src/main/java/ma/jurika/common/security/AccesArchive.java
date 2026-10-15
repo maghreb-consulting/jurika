@@ -23,11 +23,20 @@ public final class AccesArchive {
             "/api/v1/workspace/usage",
             "/actuator/");
 
+    /**
+     * Lot L6b (E2) : chemins EXACTS permis, en plus des prefixes. Les preferences d'affichage du
+     * COMPTE (theme, assistant masque) : le superviseur qui se connecte pour payer ou exporter
+     * garde son affichage ; aucune donnee du cabinet n'y est lue ni ecrite.
+     */
+    public static final List<String> CHEMINS_PERMIS = List.of(
+            "/api/v1/users/me/preferences");
+
     private AccesArchive() {}
 
     /** Le chemin est-il ouvert pendant l'archivage ? */
     public static boolean cheminPermis(String uri) {
         if (uri == null) return false;
+        if (CHEMINS_PERMIS.contains(uri)) return true;
         for (String p : PREFIXES_PERMIS) {
             if (uri.startsWith(p)) return true;
         }

@@ -301,6 +301,46 @@ class TrialSoftLockFilterTest {
     }
 
     @Test
+    void lecture_seule_les_preferences_d_affichage_du_compte_restent_modifiables() throws Exception {
+        // Lot L6b (E2) : le theme et l'assistant masque sont des preferences d'affichage du
+        // compte, pas des donnees du cabinet : la lecture seule de l'essai ne les fige pas.
+        statut = "TRIAL_EXPIRED";
+        FilterChain ok = (req, res) -> {
+            controleurAppele.set(true);
+            res.setContentType("application/json");
+            res.getWriter().write("{\"theme\":\"SOMBRE\",\"juriMasque\":false}");
+        };
+        MockHttpServletResponse res = executer("PUT", "/api/v1/users/me/preferences", ok);
+        assertThat(res.getStatus()).isEqualTo(200);
+        assertThat(controleurAppele).isTrue();
+        assertThat(res.getContentAsString()).contains("SOMBRE");
+        // Cette route seulement : le reste de /api/v1/users/me/** reste fige.
+        controleurAppele.set(false);
+        assertThat(executer("POST", "/api/v1/users/me/theme", ok).getStatus()).isEqualTo(402);
+        assertThat(executer("PUT", "/api/v1/users/me/preferences/x", ok).getStatus()).isEqualTo(402);
+        assertThat(controleurAppele).isFalse();
+    }
+
+    @Test
+    void preferences_ecrites_sans_lire_l_etat_de_l_essai_mais_gardees_par_la_regle_d_affichage() throws Exception {
+        // Ecrire une preference ne depend pas d'auth-service (etat illisible : la requete passe) ...
+        panne = new EtatEssaiIndisponibleException("auth-service injoignable", null);
+        FilterChain json = (req, res) -> {
+            controleurAppele.set(true);
+            res.setContentType("application/json");
+            res.getWriter().write("{}");
+        };
+        assertThat(executer("PUT", "/api/v1/users/me/preferences", json).getStatus()).isEqualTo(200);
+        assertThat(controleurAppele).isTrue();
+        // ... mais la regle positive de l'affichage s'applique toujours a cette route.
+        panne = null;
+        statut = "TRIAL_ACTIVE";
+        MockHttpServletResponse pj = executer("PUT", "/api/v1/users/me/preferences", fichier("attachment"));
+        assertThat(pj.getStatus()).isEqualTo(402);
+        assertThat(pj.getContentAsString()).doesNotContain("PDF");
+    }
+
+    @Test
     void essai_en_cours_peut_modifier() throws Exception {
         statut = "TRIAL_ACTIVE";
         FilterChain ok = (req, res) -> controleurAppele.set(true);
