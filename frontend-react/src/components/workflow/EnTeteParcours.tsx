@@ -8,10 +8,26 @@ import { TICKET_TYPE_LABELS } from '../../types/ticket';
  * Lot L6b (E5) : elements de l'en-tete commun des parcours (fil d'Ariane, etat, ligne
  * d'informations du ticket, message de consultation du superviseur).
  */
+/**
+ * Libelles affiches du type de parcours (francais accentue). TICKET_TYPE_LABELS (types
+ * partages) reste sans accents ("Creation", "Succursale etrangere") : repli seulement.
+ */
+const LIBELLES_PARCOURS: Partial<Record<Ticket['type'], string>> = {
+  CREATION: 'Création',
+  IMPORT: 'Reprise d’un dossier',
+  MODIFICATION: 'Modification',
+  DISSOLUTION: 'Dissolution',
+  LIQUIDATION: 'Liquidation',
+  SUCCURSALE_MA: 'Succursale marocaine',
+  SUCCURSALE_ETR: 'Succursale étrangère',
+  FERMETURE_SUCCURSALE: 'Fermeture de succursale',
+  PV_AGO: 'Approbation des comptes (AGO)',
+};
+
 export function EtatTicketParcours({ ticket, forme }: { ticket: Ticket; forme?: string }) {
   return (
     <>
-      <Badge variant="info">{TICKET_TYPE_LABELS[ticket.type] ?? ticket.type}</Badge>
+      <Badge variant="info">{LIBELLES_PARCOURS[ticket.type] ?? TICKET_TYPE_LABELS[ticket.type] ?? ticket.type}</Badge>
       {forme && <Badge variant="neutral">{forme}</Badge>}
     </>
   );

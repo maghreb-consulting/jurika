@@ -1340,7 +1340,7 @@ function ModificationWorkflowPageBody() {
                           {it.label}
                           {it.newAssocie && (
                             <span className="ml-1 rounded bg-success-soft px-1 py-0.5 text-[9px] font-semibold text-success">
-                              nouvel associé (OCR)
+                              nouvel associé (lecture de la CIN)
                             </span>
                           )}
                           {it.generic && (
@@ -1356,7 +1356,7 @@ function ModificationWorkflowPageBody() {
               </div>
 
               {/* DROITE : sélectionnées. */}
-              <div className="flex flex-col rounded-xl border-2 border-accent/40 bg-bg-raised">
+              <div className="flex flex-col rounded-xl border border-border bg-bg-raised">
                 <div className="border-b border-info/30 bg-info-soft p-3">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-fg-muted" />
@@ -1392,7 +1392,7 @@ function ModificationWorkflowPageBody() {
                               </span>
                               {it.newAssocie && (
                                 <span className="rounded bg-success-soft px-1 py-0.5 font-medium text-success">
-                                  nouvel associé (OCR)
+                                  nouvel associé (lecture de la CIN)
                                 </span>
                               )}
                               {it.generic && (
@@ -1633,7 +1633,7 @@ function ModificationWorkflowPageBody() {
                         )}
                         {decision?.newAssocie && (
                           <span className="rounded bg-success-soft px-1 py-0.5 font-medium text-success">
-                            nouvel associé (OCR)
+                            nouvel associé (lecture de la CIN)
                           </span>
                         )}
                         {decision?.generic && (

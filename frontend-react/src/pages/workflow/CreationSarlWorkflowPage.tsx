@@ -687,16 +687,14 @@ function CreationSarlWorkflowPageBody() {
       <section aria-label="Contenu de l’étape" className="rounded-xl border border-border bg-bg-raised p-6 shadow-card">
         {/* 2026-08-12 (consultation lecture seule) — bandeau unique, fusionne
             l'ancien bloc « Workflow terminé ». */}
-        {readOnly && (
+        {readOnly && !superviseur && (
           <Message ton="attention" className="mb-5">
             <p className="flex items-start gap-2">
               <Eye className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
               <span>
                 <span className="font-semibold">Consultation (lecture seule)</span>
                 {' — '}
-                {superviseur
-                  ? 'suivi du superviseur'
-                  : ticket.statut === 'ANNULE'
+                {ticket.statut === 'ANNULE'
                   ? 'ticket annulé'
                   : ticket.statut === 'CLOTURE_DOSSIER'
                     ? 'ticket clôturé'
