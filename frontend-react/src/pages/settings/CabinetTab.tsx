@@ -1,15 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  Building,
-  Hash,
-  Mail,
-  AlertTriangle,
-  CheckCircle2,
-  Upload,
-  Trash2,
-  Image as ImageIcon,
-} from 'lucide-react';
+import { Building, Mail, Upload, Trash2, Image as ImageIcon } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { CardSkeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
+import { Message } from '../../components/ui/Message';
+import { SectionOnglet } from './EcranOuOnglet';
 import { TextField } from '../../components/ui/TextField';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { workspaceService, type WorkspaceProfile } from '../../services/workspace.service';
@@ -25,6 +20,10 @@ import { PROFESSIONAL_TYPE_LABELS, isProfessionalType } from '../../types/profes
  * des documents de synthese en PDF (fiche client, fiche dossier, etat des debours ; lot
  * L5b E3, RG-FIC-08) : le logo JURIKA a gauche, le bloc du cabinet a droite.
  */
+// Couleurs du document IMPRIME (papier a en-tete des PDF) : identiques dans les deux themes,
+// l'apercu montre la feuille telle qu'elle sortira. Seule exception aux jetons de l'ecran.
+const PAPIER = { fond: '#ffffff', encre: '#050d1f', or: '#a8853d', gris: '#64748b' } as const; // couleurs-imprimees
+
 export function CabinetTab() {
   const [profile, setProfile] = useState<WorkspaceProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -159,14 +158,43 @@ export function CabinetTab() {
     }
   }
 
+  const enTete = {
+    titre: 'Cabinet',
+    description:
+      'Coordonnées et papier à en-tête de votre cabinet — utilisés en en-tête et pied de page des documents de synthèse en PDF (fiche client, fiche dossier, état des débours).',
+    aide: (
+      <TexteAide cle="parametres-cabinet" titre="Compléter la fiche du cabinet">
+        <p>
+          Renseignez les coordonnées du cabinet (la ville du siège est obligatoire), puis cliquez sur
+          « Enregistrer ». L’aperçu se met à jour pendant la saisie. Le logo s’enregistre dès qu’il est
+          choisi. La dénomination et l’adresse de contact s’affichent ici en lecture seule.
+        </p>
+      </TexteAide>
+    ),
+  };
+
   if (loading) {
-    return <p className="text-sm text-fg-muted" data-testid="cabinet-tab-loading">Chargement…</p>;
+    return (
+      <SectionOnglet {...enTete}>
+        <div data-testid="cabinet-tab-loading">
+          <SqueletteZone libelle="Chargement des informations du cabinet">
+            <div className="space-y-4">
+              <CardSkeleton className="h-56" />
+              <CardSkeleton className="h-32" />
+              <CardSkeleton className="h-72" />
+            </div>
+          </SqueletteZone>
+        </div>
+      </SectionOnglet>
+    );
   }
   if (loadError || !profile) {
     return (
-      <p className="text-sm text-danger" data-testid="cabinet-tab-error">
-        {loadError ?? 'Impossible de charger les informations du cabinet.'}
-      </p>
+      <SectionOnglet {...enTete}>
+        <div data-testid="cabinet-tab-error">
+          <Message ton="erreur">{loadError ?? 'Impossible de charger les informations du cabinet.'}</Message>
+        </div>
+      </SectionOnglet>
     );
   }
 
@@ -185,238 +213,218 @@ export function CabinetTab() {
   ].filter((s) => s.length > 0);
 
   return (
-    <div className="space-y-4" data-testid="cabinet-tab">
-      <div>
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-fg">
-          <Building className="h-5 w-5 text-accent" /> Cabinet
-        </h2>
-        <p className="mt-1 text-sm text-fg-muted">
-          Coordonnées et papier à en-tête de votre cabinet — utilisés en en-tête et pied de
-          page des documents de synthèse en PDF (fiche client, fiche dossier, état des débours).
-        </p>
-      </div>
+    <SectionOnglet {...enTete}>
+      <div className="space-y-4" data-testid="cabinet-tab">
+        {profile.iceMissing && (
+          <div data-testid="cabinet-ice-missing">
+            <Message ton="attention">
+              L’ICE du cabinet n’est pas encore renseigné. Complétez-le ci-dessous : il sera exigé pour
+              les documents et les dossiers de vos clients.
+            </Message>
+          </div>
+        )}
 
-      <TexteAide cle="parametres-cabinet" titre="Compléter la fiche du cabinet">
-        <p>
-          Renseignez les coordonnées du cabinet (la ville du siège est obligatoire), puis cliquez sur
-          « Enregistrer ». L’aperçu se met à jour pendant la saisie. Le logo s’enregistre dès qu’il est
-          choisi. La dénomination et l’adresse de contact s’affichent ici en lecture seule.
-        </p>
-      </TexteAide>
-
-      {profile.iceMissing && (
-        <div
-          className="flex items-start gap-2 rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-fg"
-          data-testid="cabinet-ice-missing"
+        {/* Apercu du papier a en-tete */}
+        <Card
+          title={
+            <span className="flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-fg-subtle" aria-hidden="true" /> Aperçu du papier à en-tête
+              <InfoBulle
+                libelle="Où apparaît ce papier à en-tête ?"
+                texte="Sur les documents de synthèse téléchargés en PDF : fiche client, fiche dossier et état des débours. Le logo JURIKA figure à gauche de l’en-tête, votre logo et vos coordonnées à droite ; l’ICE, le RC et l’IF du cabinet en pied de page. Les actes générés suivent, eux, les modèles du cabinet."
+              />
+            </span>
+          }
         >
-          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning" />
-          <span>
-            L’ICE du cabinet n’est pas encore renseigné. Complétez-le ci-dessous : il sera exigé pour
-            les documents et les dossiers de vos clients.
-          </span>
-        </div>
-      )}
-
-      {/* Apercu du papier a en-tete */}
-      <section className="rounded-2xl border border-border bg-bg-raised p-5">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-fg-subtle">
-          <ImageIcon className="h-4 w-4" /> Aperçu du papier à en-tête
-          <InfoBulle
-            libelle="Où apparaît ce papier à en-tête ?"
-            texte="Sur les documents de synthèse téléchargés en PDF : fiche client, fiche dossier et état des débours. Le logo JURIKA figure à gauche de l’en-tête, votre logo et vos coordonnées à droite ; l’ICE, le RC et l’IF du cabinet en pied de page. Les actes générés suivent, eux, les modèles du cabinet."
-          />
-        </h3>
-        <div className="rounded-xl border border-border-hi bg-white p-5 text-[#050d1f]">
-          <div className="flex items-start justify-end gap-4 border-b-2 border-[#a8853d] pb-3 text-right">
-            <div className="min-w-0">
-              <p className="font-heading text-lg font-semibold leading-tight">{effectiveName}</p>
-              {adresse.trim() && <p className="text-xs text-[#64748b]">{adresse.trim()}</p>}
-              {contactParts.length > 0 && (
-                <p className="text-xs text-[#64748b]">{contactParts.join('  ·  ')}</p>
+          {/* La feuille reproduit le document IMPRIME : memes couleurs dans les deux themes
+              (papier blanc, encre marine, filet or), d'ou les couleurs fixes de PAPIER. */}
+          <div
+            className="rounded-lg border border-border-hi p-5"
+            style={{ background: PAPIER.fond, color: PAPIER.encre }}
+          >
+            <div className="flex items-start justify-end gap-4 border-b-2 pb-3 text-right" style={{ borderColor: PAPIER.or }}>
+              <div className="min-w-0">
+                <p className="text-lg font-semibold leading-tight">{effectiveName}</p>
+                {adresse.trim() && <p className="text-xs" style={{ color: PAPIER.gris }}>{adresse.trim()}</p>}
+                {contactParts.length > 0 && (
+                  <p className="text-xs" style={{ color: PAPIER.gris }}>{contactParts.join('  ·  ')}</p>
+                )}
+              </div>
+              {logoUrl && (
+                <img
+                  src={logoUrl}
+                  alt="Logo du cabinet"
+                  className="h-12 w-auto max-w-[160px] object-contain"
+                  data-testid="cabinet-logo-preview"
+                />
               )}
             </div>
-            {logoUrl && (
-              <img
-                src={logoUrl}
-                alt="Logo du cabinet"
-                className="h-12 w-auto max-w-[160px] object-contain"
-                data-testid="cabinet-logo-preview"
-              />
-            )}
+            <p className="mt-6 text-center text-2xl font-semibold">Fiche client</p>
+            <div className="mt-6 border-t pt-2 text-center text-[11px]" style={{ borderColor: PAPIER.or, color: PAPIER.gris }}>
+              {legalParts.length > 0 && <p>{legalParts.join('   ·   ')}</p>}
+              <p>Édité par JURIKA le {new Date().toLocaleDateString('fr-FR')} · Page 1 / 1</p>
+            </div>
           </div>
-          <p className="mt-6 text-center text-2xl font-semibold font-heading">Fiche client</p>
-          <div className="mt-6 border-t border-[#a8853d] pt-2 text-center text-[11px] text-[#64748b]">
-            {legalParts.length > 0 && <p>{legalParts.join('   ·   ')}</p>}
-            <p>Édité par JURIKA le {new Date().toLocaleDateString('fr-FR')} · Page 1 / 1</p>
-          </div>
-        </div>
-      </section>
+        </Card>
 
-      {/* Logo */}
-      <section className="rounded-2xl border border-border bg-bg-raised p-5">
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-fg-subtle">Logo</h3>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex h-16 w-40 items-center justify-center rounded-lg border border-border bg-bg-overlay">
-            {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="max-h-14 max-w-[150px] object-contain" />
-            ) : (
-              <span className="text-xs text-fg-subtle">Aucun logo</span>
-            )}
-          </div>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/png,image/jpeg"
-            className="hidden"
-            onChange={onLogoSelected}
-            data-testid="cabinet-logo-input"
-          />
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            loading={logoBusy}
-            onClick={() => fileInput.current?.click()}
-          >
-            <Upload className="mr-1.5 h-4 w-4" /> {profile.hasLogo ? 'Remplacer' : 'Téléverser'}
-          </Button>
-          {profile.hasLogo && (
+        {/* Logo */}
+        <Card title="Logo" description="PNG ou JPG, 1 Mo maximum. Le logo s’enregistre dès qu’il est choisi.">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex h-16 w-40 items-center justify-center rounded-lg border border-border bg-bg-overlay">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="max-h-14 max-w-[150px] object-contain" />
+              ) : (
+                <span className="text-xs text-fg-muted">Aucun logo</span>
+              )}
+            </div>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/png,image/jpeg"
+              className="hidden"
+              onChange={onLogoSelected}
+              data-testid="cabinet-logo-input"
+            />
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               size="sm"
-              disabled={logoBusy}
-              onClick={removeLogo}
-              className="text-danger hover:bg-danger/10"
+              loading={logoBusy}
+              onClick={() => fileInput.current?.click()}
+              icon={<Upload />}
             >
-              <Trash2 className="mr-1.5 h-4 w-4" /> Supprimer
+              {profile.hasLogo ? 'Remplacer' : 'Téléverser'}
             </Button>
-          )}
-        </div>
-        <p className="mt-2 text-xs text-fg-subtle">PNG ou JPG, 1 Mo maximum.</p>
-        {logoError && (
-          <p className="mt-2 flex items-center gap-1.5 text-sm text-danger" data-testid="cabinet-logo-error">
-            <AlertTriangle className="h-4 w-4" /> {logoError}
-          </p>
-        )}
-      </section>
-
-      {/* Lecture seule */}
-      <section className="rounded-2xl border border-border bg-bg-raised p-5">
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-fg-subtle">Identité</h3>
-        <dl className="space-y-2 text-sm">
-          <ReadOnly icon={<Building className="h-3.5 w-3.5" />} label="Dénomination" value={profile.name} />
-          <ReadOnly label="Type de profil" value={typeLabel} />
-          <ReadOnly icon={<Mail className="h-3.5 w-3.5" />} label="Adresse électronique de contact" value={profile.contactEmail ?? '—'} />
-        </dl>
-      </section>
-
-      {/* Edition */}
-      <form onSubmit={handleSave} className="rounded-2xl border border-border bg-bg-raised p-5 space-y-4" noValidate>
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-fg-subtle">
-          Informations modifiables
-        </h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <TextField
-            label="Nom affiché sur les documents"
-            hint="En-tête des PDF. Laissé vide, la dénomination du cabinet s’affiche."
-            value={docName}
-            onChange={(e) => setDocName(e.target.value.slice(0, 150))}
-            placeholder={profile.name}
-            maxLength={150}
-            data-testid="cabinet-docname-input"
-          />
-          <TextField
-            label="ICE (15 chiffres)"
-            hint="Laissez vide si vous ne l’avez pas encore."
-            value={ice}
-            onChange={(e) => setIce(e.target.value.replace(/\D/g, '').slice(0, 15))}
-            placeholder="002345678000089"
-            inputMode="numeric"
-            mono
-            data-testid="cabinet-ice-input"
-          />
-          <TextField
-            label="RC (registre du commerce)"
-            value={rc}
-            onChange={(e) => setRc(e.target.value.slice(0, 20))}
-            placeholder="45219"
-            maxLength={20}
-            data-testid="cabinet-rc-input"
-          />
-          <TextField
-            label="Identifiant fiscal (IF)"
-            value={iff}
-            onChange={(e) => setIff(e.target.value.slice(0, 8))}
-            placeholder="12345678"
-            maxLength={8}
-            mono
-            data-testid="cabinet-if-input"
-          />
-          <TextField
-            label="Téléphone"
-            value={telephone}
-            onChange={(e) => setTelephone(e.target.value.slice(0, 30))}
-            placeholder="+212 5 22 00 00 00"
-            maxLength={30}
-            data-testid="cabinet-tel-input"
-          />
-          <TextField
-            label="Site web"
-            value={siteWeb}
-            onChange={(e) => setSiteWeb(e.target.value.slice(0, 200))}
-            placeholder="www.mon-cabinet.ma"
-            maxLength={200}
-            data-testid="cabinet-web-input"
-          />
-          <TextField
-            label="Ville du siège"
-            required
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            placeholder="Casablanca"
-            maxLength={80}
-            data-testid="cabinet-city-input"
-          />
-          <div className="sm:col-span-2">
-            <TextField
-              label="Adresse du siège"
-              value={adresse}
-              onChange={(e) => setAdresse(e.target.value.slice(0, 300))}
-              placeholder="12, rue des Consultants, Maarif, Casablanca"
-              maxLength={300}
-              data-testid="cabinet-adresse-input"
-            />
+            {profile.hasLogo && (
+              <Button type="button" variant="danger" size="sm" disabled={logoBusy} onClick={removeLogo} icon={<Trash2 />}>
+                Supprimer
+              </Button>
+            )}
           </div>
-        </div>
+          {logoError && (
+            <div className="mt-3" data-testid="cabinet-logo-error">
+              <Message ton="erreur">{logoError}</Message>
+            </div>
+          )}
+        </Card>
 
-        {formError && (
-          <p className="flex items-center gap-1.5 text-sm text-danger" data-testid="cabinet-form-error">
-            <AlertTriangle className="h-4 w-4" /> {formError}
-          </p>
-        )}
-        {saved && (
-          <p className="flex items-center gap-1.5 text-sm text-success" data-testid="cabinet-saved">
-            <CheckCircle2 className="h-4 w-4" /> Informations enregistrées.
-          </p>
-        )}
+        {/* Lecture seule */}
+        <Card title="Identité" description="Enregistrée à l’inscription du cabinet ; elle ne se modifie pas ici.">
+          <dl className="space-y-2 text-sm">
+            <ReadOnly icon={<Building className="h-3.5 w-3.5" />} label="Dénomination" value={profile.name} />
+            <ReadOnly label="Type de profil" value={typeLabel} />
+            <ReadOnly icon={<Mail className="h-3.5 w-3.5" />} label="Adresse électronique de contact" value={profile.contactEmail ?? '—'} />
+          </dl>
+        </Card>
 
-        <Button type="submit" loading={saving} data-testid="cabinet-save">
-          <Hash className="mr-1.5 h-4 w-4" /> Enregistrer
-        </Button>
-      </form>
-    </div>
+        {/* Edition */}
+        <Card title="Informations modifiables">
+          <form onSubmit={handleSave} className="space-y-4" noValidate>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <TextField
+                label="Nom affiché sur les documents"
+                hint="En-tête des PDF. Laissé vide, la dénomination du cabinet s’affiche."
+                value={docName}
+                onChange={(e) => setDocName(e.target.value.slice(0, 150))}
+                placeholder={profile.name}
+                maxLength={150}
+                data-testid="cabinet-docname-input"
+              />
+              <TextField
+                label="ICE (15 chiffres)"
+                hint="Laissez vide si vous ne l’avez pas encore."
+                value={ice}
+                onChange={(e) => setIce(e.target.value.replace(/\D/g, '').slice(0, 15))}
+                placeholder="002345678000089"
+                inputMode="numeric"
+                mono
+                data-testid="cabinet-ice-input"
+              />
+              <TextField
+                label="RC (registre du commerce)"
+                value={rc}
+                onChange={(e) => setRc(e.target.value.slice(0, 20))}
+                placeholder="45219"
+                maxLength={20}
+                data-testid="cabinet-rc-input"
+              />
+              <TextField
+                label="Identifiant fiscal (IF)"
+                value={iff}
+                onChange={(e) => setIff(e.target.value.slice(0, 8))}
+                placeholder="12345678"
+                maxLength={8}
+                mono
+                data-testid="cabinet-if-input"
+              />
+              <TextField
+                label="Téléphone"
+                value={telephone}
+                onChange={(e) => setTelephone(e.target.value.slice(0, 30))}
+                placeholder="+212 5 22 00 00 00"
+                maxLength={30}
+                data-testid="cabinet-tel-input"
+              />
+              <TextField
+                label="Site web"
+                value={siteWeb}
+                onChange={(e) => setSiteWeb(e.target.value.slice(0, 200))}
+                placeholder="www.mon-cabinet.ma"
+                maxLength={200}
+                data-testid="cabinet-web-input"
+              />
+              <TextField
+                label="Ville du siège"
+                required
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Casablanca"
+                maxLength={80}
+                data-testid="cabinet-city-input"
+              />
+              <div className="sm:col-span-2">
+                <TextField
+                  label="Adresse du siège"
+                  value={adresse}
+                  onChange={(e) => setAdresse(e.target.value.slice(0, 300))}
+                  placeholder="12, rue des Consultants, Maarif, Casablanca"
+                  maxLength={300}
+                  data-testid="cabinet-adresse-input"
+                />
+              </div>
+            </div>
+
+            {formError && (
+              <div data-testid="cabinet-form-error">
+                <Message ton="erreur">{formError}</Message>
+              </div>
+            )}
+            {saved && (
+              <div data-testid="cabinet-saved">
+                <Message ton="succes">Informations enregistrées.</Message>
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <Button type="submit" loading={saving} data-testid="cabinet-save">
+                Enregistrer
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </div>
+    </SectionOnglet>
   );
 }
 
 function ReadOnly({ icon, label, value }: { icon?: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <dt className="flex items-center gap-1.5 text-fg-subtle">
-        {icon && <span className="text-fg-subtle">{icon}</span>}
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
+      <dt className="flex items-center gap-1.5 text-fg-muted">
+        {icon && <span className="text-fg-subtle" aria-hidden="true">{icon}</span>}
         {label}
       </dt>
-      <dd className="text-right font-medium text-fg">{value}</dd>
+      <dd className="break-all text-right font-medium text-fg">{value}</dd>
     </div>
   );
 }

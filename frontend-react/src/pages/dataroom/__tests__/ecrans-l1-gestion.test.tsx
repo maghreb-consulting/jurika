@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
 /**
  * Ecrans du lot L1 (demande du 2026-10-10, suite) :
@@ -178,7 +179,8 @@ describe('3. Droit de suppression depuis la page Equipe', () => {
   it('affiche l etat de chaque employe ; le superviseur accorde et retire', async () => {
     auth.listDroitsSuppressionDataroom.mockResolvedValueOnce(['e2']).mockResolvedValue(['e1', 'e2']);
     auth.setDroitSuppressionDataroom.mockResolvedValue(undefined);
-    render(<TeamPage />);
+    // L6b (E8) : la page Equipe porte la structure <Page> (fil d'Ariane) : un routeur l'entoure.
+    render(<TeamPage />, { wrapper: MemoryRouter });
     const karim = (await screen.findByText(/Karim Bennani/)).closest('tr') as HTMLElement;
     const salma = screen.getByText(/Salma Idrissi/).closest('tr') as HTMLElement;
     const nadia = screen.getByText(/Nadia Superviseure/).closest('tr') as HTMLElement;

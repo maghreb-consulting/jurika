@@ -6,7 +6,6 @@ import {
   CreditCard,
   Globe,
   ServerCog,
-  Settings as SettingsIcon,
   Shield,
   User,
   Users,
@@ -22,6 +21,8 @@ import { PreferencesTab } from './PreferencesTab';
 import { PlatformSettingsTab } from './PlatformSettingsTab';
 import type { Role } from '../../types/auth';
 import { TexteAide } from '../../components/ui/Aide';
+import { Page } from '../../components/layout/Page';
+import { OngletsParametres } from './EcranOuOnglet';
 
 /**
  * BUG 11 (2026-06-08) — Page Parametres SaaS a onglets lateraux.
@@ -71,28 +72,22 @@ export function SettingsPage() {
   );
 
   return (
-    <div className="space-y-4" data-testid="settings-page">
-      <header>
-        <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold text-fg">
-          <SettingsIcon className="h-6 w-6 text-accent" /> Paramètres
-        </h1>
-        <p className="mt-1 text-sm text-fg-muted">
-          Votre compte, sa sécurité, vos notifications et vos préférences ; pour le responsable du
-          cabinet, la fiche du cabinet, l’équipe et la facturation.
-        </p>
-      </header>
-
-      <TexteAide cle="parametres" titre="Comment utiliser les paramètres">
-        <p>
-          Choisissez un onglet dans la colonne de gauche : chaque onglet s’enregistre séparément. Les
-          onglets affichés dépendent de votre rôle.
-        </p>
-      </TexteAide>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr]">
-        {/* Sidebar onglets */}
+    <Page
+      titre="Paramètres"
+      description="Votre compte, sa sécurité, vos notifications et vos préférences ; pour le responsable du cabinet, la fiche du cabinet, l’équipe et la facturation."
+      aide={
+        <TexteAide cle="parametres" titre="Comment utiliser les paramètres">
+          <p>
+            Choisissez un onglet dans la colonne de gauche : chaque onglet s’enregistre séparément. Les
+            onglets affichés dépendent de votre rôle.
+          </p>
+        </TexteAide>
+      }
+    >
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[13.75rem_1fr]" data-testid="settings-page">
+        {/* Onglets lateraux (defilement horizontal sur petit ecran) ; l'onglet actif porte l'or. */}
         <nav
-          className="flex flex-row gap-1 overflow-x-auto rounded-2xl border border-border bg-bg-raised p-2 md:flex-col md:overflow-visible"
+          className="flex flex-row gap-1 overflow-x-auto rounded-xl border border-border bg-bg-raised p-2 md:flex-col md:self-start md:overflow-visible"
           aria-label="Onglets des paramètres"
         >
           {visibleTabs.map((t) => {
@@ -103,40 +98,42 @@ export function SettingsPage() {
                 to={t.to}
                 data-testid={t.testid}
                 className={({ isActive }) =>
-                  `flex flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition ${
+                  `flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border-l-2 px-3 py-2 text-sm transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
                     isActive
-                      ? 'bg-accent/15 font-semibold text-accent'
-                      : 'text-fg-muted hover:bg-bg-overlay hover:text-fg'
+                      ? 'border-l-accent bg-accent-soft font-semibold text-fg'
+                      : 'border-l-transparent text-fg-muted hover:bg-bg-overlay hover:text-fg'
                   }`
                 }
               >
-                <Icon className="h-4 w-4 flex-shrink-0" />
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
                 {t.label}
               </NavLink>
             );
           })}
         </nav>
 
-        {/* Panneau actif */}
+        {/* Panneau actif : chaque ecran s'y affiche en section (h2), sans second en-tete de page. */}
         <div className="min-w-0">
-          {/* Redirect cibles ABSOLUES (cf. note sur TABS plus haut). */}
-          <Routes>
-            <Route index element={<Navigate to="/settings/profile" replace />} />
-            <Route path="profile" element={<ProfilePage />} />
-            <Route path="security" element={<ProfileSecurityPage />} />
-            {user?.role === 'SUPERVISEUR' && <Route path="cabinet" element={<CabinetTab />} />}
-            {user?.role === 'SUPERVISEUR' && <Route path="team" element={<TeamPage />} />}
-            {/* Deep-link /settings/billing interdit au CLIENT et au SUPER_ADMIN. */}
-            {user?.role !== 'CLIENT' && user?.role !== 'SUPER_ADMIN' && (
-              <Route path="billing" element={<BillingPage />} />
-            )}
-            <Route path="notifications" element={<NotificationPreferencesTab />} />
-            <Route path="preferences" element={<PreferencesTab />} />
-            {user?.role === 'SUPER_ADMIN' && <Route path="platform" element={<PlatformSettingsTab />} />}
-            <Route path="*" element={<Navigate to="/settings/profile" replace />} />
-          </Routes>
+          <OngletsParametres>
+            {/* Redirect cibles ABSOLUES (cf. note sur TABS plus haut). */}
+            <Routes>
+              <Route index element={<Navigate to="/settings/profile" replace />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route path="security" element={<ProfileSecurityPage />} />
+              {user?.role === 'SUPERVISEUR' && <Route path="cabinet" element={<CabinetTab />} />}
+              {user?.role === 'SUPERVISEUR' && <Route path="team" element={<TeamPage />} />}
+              {/* Deep-link /settings/billing interdit au CLIENT et au SUPER_ADMIN. */}
+              {user?.role !== 'CLIENT' && user?.role !== 'SUPER_ADMIN' && (
+                <Route path="billing" element={<BillingPage />} />
+              )}
+              <Route path="notifications" element={<NotificationPreferencesTab />} />
+              <Route path="preferences" element={<PreferencesTab />} />
+              {user?.role === 'SUPER_ADMIN' && <Route path="platform" element={<PlatformSettingsTab />} />}
+              <Route path="*" element={<Navigate to="/settings/profile" replace />} />
+            </Routes>
+          </OngletsParametres>
         </div>
       </div>
-    </div>
+    </Page>
   );
 }

@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import axios from 'axios';
-import { AlertCircle, CheckCircle, Clock, KeyRound, Loader2, Lock, Mail, User } from 'lucide-react';
+import { Clock, KeyRound, Lock, Mail } from 'lucide-react';
+import { EcranOuOnglet } from '../settings/EcranOuOnglet';
 import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { CardSkeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
+import { Message } from '../../components/ui/Message';
 import { TextField } from '../../components/ui/TextField';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { ReafficherAides } from '../../components/ui/ReafficherAides';
@@ -32,6 +36,9 @@ const LIBELLES_ROLE: Record<string, string> = {
   CLIENT: 'Client',
 };
 
+const DESCRIPTION =
+  'Vos informations personnelles, votre adresse électronique, votre identifiant de connexion et votre mot de passe.';
+
 /**
  * Lot L5 (E10) : ecran "Mon compte" (CDC 3.6, RG-CPT-01 et RG-CPT-02).
  *  - prenom et nom : modifies directement (traces) ;
@@ -41,6 +48,8 @@ const LIBELLES_ROLE: Record<string, string> = {
  *  - mot de passe : le mot de passe actuel est exige.
  * Le client consulte ses informations sans les modifier (decision a revoir du
  * lot L5 : RG-CPT-01 nomme l'employe et le superviseur).
+ *
+ * Lot L6b (E8) : structure unique <Page>, un bloc par carte, squelettes au chargement.
  */
 export function ProfilePage() {
   const [me, setMe] = useState<MeData | null>(null);
@@ -70,109 +79,119 @@ export function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-accent" />
-      </div>
+      <EcranOuOnglet titre="Mon compte" description={DESCRIPTION} largeur="etroite">
+        <SqueletteZone libelle="Chargement de votre compte">
+          <div className="space-y-6">
+            <CardSkeleton className="h-48" />
+            <CardSkeleton className="h-40" />
+            <CardSkeleton className="h-40" />
+          </div>
+        </SqueletteZone>
+      </EcranOuOnglet>
     );
   }
 
   if (error || !me) {
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
-        {error ?? 'Le chargement de votre compte a échoué.'}
-      </div>
+      <EcranOuOnglet titre="Mon compte" description={DESCRIPTION} largeur="etroite">
+        <Message ton="erreur" titre="Votre compte n’a pas pu être chargé">
+          {error ?? 'Le chargement de votre compte a échoué.'} Rechargez la page ; si le problème persiste,
+          contactez le support.
+        </Message>
+      </EcranOuOnglet>
     );
   }
 
   const modifiable = me.role !== 'CLIENT';
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold text-fg">
-          <User className="h-6 w-6 text-accent" /> Mon compte
-        </h1>
-        <p className="mt-1 text-sm text-fg-muted">
-          Vos informations personnelles, votre adresse électronique, votre identifiant de connexion
-          et votre mot de passe.
-        </p>
+    <EcranOuOnglet
+      titre="Mon compte"
+      description={DESCRIPTION}
+      largeur="etroite"
+      aide={
+        modifiable ? (
+          <TexteAide cle="mon-compte" titre="Comment modifier votre compte">
+            Le prénom et le nom changent dès l’enregistrement. Un changement d’adresse électronique ou
+            d’identifiant de connexion ne prend effet qu’après un clic sur le lien de confirmation reçu
+            par courriel : d’ici là, vos valeurs actuelles restent actives. Le mot de passe actuel est
+            demandé pour en choisir un nouveau.
+          </TexteAide>
+        ) : (
+          <TexteAide cle="mon-compte-client" titre="Vos informations">
+            Votre nom, votre adresse électronique et votre identifiant sont enregistrés par le cabinet
+            qui vous a invité : pour les faire modifier, adressez-lui une demande. Vous pouvez changer
+            vous-même votre mot de passe ci-dessous.
+          </TexteAide>
+        )
+      }
+    >
+      <div className="space-y-6">
+        <BlocIdentite me={me} modifiable={modifiable} onModifie={charger} />
+
+        <BlocChangement
+          titre="Adresse électronique"
+          icone={<Mail />}
+          aide="Adresse à laquelle JURIKA vous écrit : alertes de sécurité, liens de confirmation. Le lien de confirmation part à la NOUVELLE adresse ; l’adresse actuelle reçoit un avis de la demande."
+          valeur={me.contactEmail}
+          testId="profile-contact-email"
+          attente={demandes.adresse}
+          destinationLien="à la nouvelle adresse"
+          libelleChamp="Nouvelle adresse électronique"
+          placeholder="prenom.nom@exemple.ma"
+          motif="adresse"
+          modifiable={modifiable}
+          envoyer={(v) => authService.demanderChangementAdresse(v)}
+          onModifie={charger}
+        />
+
+        <BlocChangement
+          titre="Identifiant de connexion"
+          icone={<Lock />}
+          aide="Identifiant à saisir sur la page de connexion, avec le code du cabinet. Le lien de confirmation part à votre adresse électronique actuelle. Après confirmation, connectez-vous avec le nouvel identifiant."
+          valeur={me.loginEmail}
+          testId="profile-login-email"
+          attente={demandes.identifiant}
+          destinationLien={`à votre adresse ${me.contactEmail}`}
+          libelleChamp="Nouvel identifiant de connexion"
+          placeholder="prenom.nom@jurika.ma"
+          motif="identifiant"
+          modifiable={modifiable}
+          envoyer={(v) => authService.demanderChangementIdentifiant(v)}
+          onModifie={charger}
+        />
+
+        <BlocMotDePasse />
+
+        {/* Lot L6 (E6, CDC 15.4) : reafficher les aides masquees et la visite guidee. */}
+        <ReafficherAides />
       </div>
-
-      {modifiable ? (
-        <TexteAide cle="mon-compte" titre="Comment modifier votre compte">
-          Le prénom et le nom changent dès l’enregistrement. Un changement d’adresse électronique ou
-          d’identifiant de connexion ne prend effet qu’après un clic sur le lien de confirmation reçu
-          par courriel : d’ici là, vos valeurs actuelles restent actives. Le mot de passe actuel est
-          demandé pour en choisir un nouveau.
-        </TexteAide>
-      ) : (
-        <TexteAide cle="mon-compte-client" titre="Vos informations">
-          Votre nom, votre adresse électronique et votre identifiant sont enregistrés par le cabinet
-          qui vous a invité : pour les faire modifier, adressez-lui une demande. Vous pouvez changer
-          vous-même votre mot de passe ci-dessous.
-        </TexteAide>
-      )}
-
-      <BlocIdentite me={me} modifiable={modifiable} onModifie={charger} />
-
-      <BlocChangement
-        titre="Adresse électronique"
-        icone={<Mail className="h-3.5 w-3.5" />}
-        aide="Adresse à laquelle JURIKA vous écrit : alertes de sécurité, liens de confirmation. Le lien de confirmation part à la NOUVELLE adresse ; l’adresse actuelle reçoit un avis de la demande."
-        valeur={me.contactEmail}
-        testId="profile-contact-email"
-        attente={demandes.adresse}
-        destinationLien="à la nouvelle adresse"
-        libelleChamp="Nouvelle adresse électronique"
-        placeholder="prenom.nom@exemple.ma"
-        motif="adresse"
-        modifiable={modifiable}
-        envoyer={(v) => authService.demanderChangementAdresse(v)}
-        onModifie={charger}
-      />
-
-      <BlocChangement
-        titre="Identifiant de connexion"
-        icone={<Lock className="h-3.5 w-3.5" />}
-        aide="Identifiant à saisir sur la page de connexion, avec le code du cabinet. Le lien de confirmation part à votre adresse électronique actuelle. Après confirmation, connectez-vous avec le nouvel identifiant."
-        valeur={me.loginEmail}
-        testId="profile-login-email"
-        attente={demandes.identifiant}
-        destinationLien={`à votre adresse ${me.contactEmail}`}
-        libelleChamp="Nouvel identifiant de connexion"
-        placeholder="prenom.nom@jurika.ma"
-        motif="identifiant"
-        modifiable={modifiable}
-        envoyer={(v) => authService.demanderChangementIdentifiant(v)}
-        onModifie={charger}
-      />
-
-      <BlocMotDePasse />
-
-      {/* Lot L6 (E6, CDC 15.4) : reafficher les aides masquees et la visite guidee. */}
-      <ReafficherAides />
-    </div>
+    </EcranOuOnglet>
   );
 }
 
-function Message({ retour }: { retour: Retour }) {
+/** Retour d'une action (succes ou erreur), sous le bloc concerne. */
+function MessageRetour({ retour }: { retour: Retour }) {
   if (!retour) return null;
   return (
-    <div
-      role={retour.kind === 'error' ? 'alert' : 'status'}
-      className={`mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${
-        retour.kind === 'success'
-          ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-          : 'border-danger/40 bg-danger/10 text-danger'
-      }`}
-    >
-      {retour.kind === 'success' ? (
-        <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-      ) : (
-        <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+    <Message ton={retour.kind === 'success' ? 'succes' : 'erreur'} className="mt-3">
+      {retour.message}
+    </Message>
+  );
+}
+
+/** Titre d'un bloc du compte : icone (decorative), libelle, aide. */
+function TitreBloc({ icone, titre, aide }: { icone?: ReactNode; titre: string; aide?: string }) {
+  return (
+    <span className="flex items-center gap-2">
+      {icone && (
+        <span aria-hidden="true" className="inline-flex text-fg-subtle [&>svg]:h-4 [&>svg]:w-4">
+          {icone}
+        </span>
       )}
-      <span>{retour.message}</span>
-    </div>
+      {titre}
+      {aide && <InfoBulle libelle={`Aide : ${titre.toLowerCase()}`} texte={aide} />}
+    </span>
   );
 }
 
@@ -203,63 +222,67 @@ function BlocIdentite({ me, modifiable, onModifie }: { me: MeData; modifiable: b
   }
 
   return (
-    <form onSubmit={enregistrer} noValidate className="rounded-2xl border border-border bg-bg-raised p-5">
-      <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-fg-subtle">
-        Identité
-        {modifiable && (
-          <InfoBulle
-            libelle="Aide : identité"
-            texte="Votre prénom et votre nom apparaissent dans l’application et dans les traces de vos actions. La modification prend effet dès l’enregistrement."
-          />
+    <Card
+      title={
+        <TitreBloc
+          titre="Identité"
+          aide={
+            modifiable
+              ? 'Votre prénom et votre nom apparaissent dans l’application et dans les traces de vos actions. La modification prend effet dès l’enregistrement.'
+              : undefined
+          }
+        />
+      }
+    >
+      <form onSubmit={enregistrer} noValidate>
+        {modifiable ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <TextField label="Prénom" value={prenom} maxLength={100} onChange={(e) => setPrenom(e.target.value)} required />
+            <TextField label="Nom" value={nom} maxLength={100} onChange={(e) => setNom(e.target.value)} required />
+          </div>
+        ) : (
+          <dl className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <dt className="text-xs text-fg-muted">Prénom</dt>
+              <dd className="mt-1 text-fg">{me.firstName ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-fg-muted">Nom</dt>
+              <dd className="mt-1 text-fg">{me.lastName ?? '—'}</dd>
+            </div>
+          </dl>
         )}
-      </h2>
-      {modifiable ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <TextField label="Prénom" value={prenom} maxLength={100} onChange={(e) => setPrenom(e.target.value)} required />
-          <TextField label="Nom" value={nom} maxLength={100} onChange={(e) => setNom(e.target.value)} required />
-        </div>
-      ) : (
-        <dl className="grid grid-cols-2 gap-4 text-sm">
+        <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
           <div>
-            <dt className="text-xs text-fg-muted">Prénom</dt>
-            <dd className="mt-1 text-fg">{me.firstName ?? '—'}</dd>
+            <dt className="text-xs text-fg-muted">Téléphone</dt>
+            <dd className="mt-1 text-fg">{me.phone ?? '—'}</dd>
           </div>
           <div>
-            <dt className="text-xs text-fg-muted">Nom</dt>
-            <dd className="mt-1 text-fg">{me.lastName ?? '—'}</dd>
+            <dt className="text-xs text-fg-muted">Rôle</dt>
+            <dd className="mt-1 text-fg">{LIBELLES_ROLE[me.role] ?? me.role}</dd>
           </div>
         </dl>
-      )}
-      <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <dt className="text-xs text-fg-muted">Téléphone</dt>
-          <dd className="mt-1 text-fg">{me.phone ?? '—'}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-fg-muted">Rôle</dt>
-          <dd className="mt-1 text-fg">{LIBELLES_ROLE[me.role] ?? me.role}</dd>
-        </div>
-      </dl>
-      <Message retour={retour} />
-      {modifiable && (
-        <div className="mt-4 flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={!modifie || saving}
-            onClick={() => {
-              setPrenom(me.firstName ?? '');
-              setNom(me.lastName ?? '');
-            }}
-          >
-            Annuler
-          </Button>
-          <Button type="submit" disabled={!modifie} loading={saving}>
-            Enregistrer
-          </Button>
-        </div>
-      )}
-    </form>
+        <MessageRetour retour={retour} />
+        {modifiable && (
+          <div className="mt-4 flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!modifie || saving}
+              onClick={() => {
+                setPrenom(me.firstName ?? '');
+                setNom(me.lastName ?? '');
+              }}
+            >
+              Annuler
+            </Button>
+            <Button type="submit" disabled={!modifie} loading={saving}>
+              Enregistrer
+            </Button>
+          </div>
+        )}
+      </form>
+    </Card>
   );
 }
 
@@ -323,25 +346,22 @@ function BlocChangement(p: BlocChangementProps) {
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-bg-raised p-5">
-      <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-fg-subtle">
-        {p.icone} {p.titre}
-        <InfoBulle libelle={`Aide : ${p.titre.toLowerCase()}`} texte={p.aide} />
-      </h2>
+    <Card title={<TitreBloc icone={p.icone} titre={p.titre} aide={p.aide} />}>
       <p className="text-xs text-fg-muted">Valeur en vigueur</p>
-      <div className="mt-1 flex items-center gap-2 rounded-lg border border-border-hi bg-bg-overlay px-3 py-2 font-mono text-sm text-fg">
+      <div className="mt-1 flex items-center gap-2 break-all rounded-lg border border-border bg-bg-overlay px-3 py-2 font-mono text-sm text-fg">
         <span data-testid={p.testId}>{p.valeur}</span>
       </div>
 
       {p.attente && (
         <div
           data-testid={`attente-${p.motif}`}
-          className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          className="mt-3 rounded-lg border border-border border-l-4 border-l-warning bg-warning-soft px-3 py-2 text-sm text-fg"
         >
           <p className="flex items-center gap-2 font-medium">
-            <Clock className="h-4 w-4" /> En attente de confirmation : {p.attente.nouvelleValeur}
+            <Clock className="h-4 w-4 shrink-0 text-warning" aria-hidden="true" /> En attente de confirmation :{' '}
+            {p.attente.nouvelleValeur}
           </p>
-          <p className="mt-1 text-xs">
+          <p className="mt-1 text-xs text-fg-muted">
             Le lien a été envoyé {p.destinationLien} ; il est valable jusqu’au {dateHeure(p.attente.expireLe)}.
             Tant qu’il n’est pas ouvert, la valeur en vigueur reste active. Une nouvelle demande remplace
             celle-ci.
@@ -366,14 +386,14 @@ function BlocChangement(p: BlocChangementProps) {
             hint={`Un lien de confirmation sera envoyé ${p.destinationLien}.`}
           />
           <div className="mt-3 flex justify-end">
-            <Button type="submit" disabled={!saisie.trim()} loading={busy}>
+            <Button type="submit" variant="secondary" disabled={!saisie.trim()} loading={busy}>
               Recevoir le lien de confirmation
             </Button>
           </div>
         </form>
       )}
-      <Message retour={retour} />
-    </section>
+      <MessageRetour retour={retour} />
+    </Card>
   );
 }
 
@@ -418,43 +438,46 @@ function BlocMotDePasse() {
   }
 
   return (
-    <form onSubmit={changer} noValidate className="rounded-2xl border border-border bg-bg-raised p-5">
-      <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-fg-subtle">
-        <KeyRound className="h-3.5 w-3.5" /> Mot de passe
-        <InfoBulle
-          libelle="Aide : mot de passe"
-          texte="Le mot de passe actuel est exigé. Le nouveau compte au moins 12 caractères, avec une majuscule, une minuscule, un chiffre et un caractère spécial. Un avis de sécurité est envoyé à votre adresse électronique."
+    <Card
+      title={
+        <TitreBloc
+          icone={<KeyRound />}
+          titre="Mot de passe"
+          aide="Le mot de passe actuel est exigé. Le nouveau compte au moins 12 caractères, avec une majuscule, une minuscule, un chiffre et un caractère spécial. Un avis de sécurité est envoyé à votre adresse électronique."
         />
-      </h2>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <TextField
-          label="Mot de passe actuel"
-          type="password"
-          autoComplete="current-password"
-          value={actuel}
-          onChange={(e) => setActuel(e.target.value)}
-        />
-        <TextField
-          label="Nouveau mot de passe"
-          type="password"
-          autoComplete="new-password"
-          value={nouveau}
-          onChange={(e) => setNouveau(e.target.value)}
-        />
-        <TextField
-          label="Confirmation"
-          type="password"
-          autoComplete="new-password"
-          value={confirmation}
-          onChange={(e) => setConfirmation(e.target.value)}
-        />
-      </div>
-      <Message retour={retour} />
-      <div className="mt-4 flex justify-end">
-        <Button type="submit" loading={busy} disabled={!actuel || !nouveau || !confirmation}>
-          Changer le mot de passe
-        </Button>
-      </div>
-    </form>
+      }
+    >
+      <form onSubmit={changer} noValidate>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <TextField
+            label="Mot de passe actuel"
+            type="password"
+            autoComplete="current-password"
+            value={actuel}
+            onChange={(e) => setActuel(e.target.value)}
+          />
+          <TextField
+            label="Nouveau mot de passe"
+            type="password"
+            autoComplete="new-password"
+            value={nouveau}
+            onChange={(e) => setNouveau(e.target.value)}
+          />
+          <TextField
+            label="Confirmation"
+            type="password"
+            autoComplete="new-password"
+            value={confirmation}
+            onChange={(e) => setConfirmation(e.target.value)}
+          />
+        </div>
+        <MessageRetour retour={retour} />
+        <div className="mt-4 flex justify-end">
+          <Button type="submit" variant="secondary" loading={busy} disabled={!actuel || !nouveau || !confirmation}>
+            Changer le mot de passe
+          </Button>
+        </div>
+      </form>
+    </Card>
   );
 }

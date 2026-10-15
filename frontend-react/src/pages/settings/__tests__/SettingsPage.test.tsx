@@ -11,8 +11,10 @@ import type { Role } from '../../../types/auth';
 
 const userRef: { current: { role: Role; email: string } | null } = { current: null };
 
+// L6b (E8) : la page porte la structure <Page>, qui lit le role dans le magasin (fil d'Ariane).
 vi.mock('../../../store/authStore', () => ({
   useCurrentUser: () => userRef.current,
+  useAuthStore: (selecteur: (etat: { user: typeof userRef.current }) => unknown) => selecteur({ user: userRef.current }),
 }));
 
 // Stubs des pages/onglets enfants (appels reseau au mount) — hors-scope.

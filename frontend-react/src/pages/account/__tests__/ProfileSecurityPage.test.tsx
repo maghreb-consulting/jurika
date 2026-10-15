@@ -10,8 +10,11 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
  * (/account/change-password, dette L5).
  */
 
+// L6b (E8) : l'ecran porte la structure <Page>, qui lit le role dans le magasin (fil d'Ariane).
+const UTILISATEUR = { userId: 'u1', workspaceId: 'w1', email: 'k@jurika.ma', role: 'EMPLOYE' };
 vi.mock('../../../store/authStore', () => ({
-  useCurrentUser: () => ({ userId: 'u1', workspaceId: 'w1', email: 'k@jurika.ma', role: 'EMPLOYE' }),
+  useCurrentUser: () => UTILISATEUR,
+  useAuthStore: (selecteur: (etat: { user: typeof UTILISATEUR }) => unknown) => selecteur({ user: UTILISATEUR }),
 }));
 vi.mock('../../../services/auth.service', () => ({ authService: { generateRecoveryCodes: vi.fn() } }));
 
