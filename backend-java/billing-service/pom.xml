@@ -81,8 +81,9 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Lot L7 (E5), RG-PAY-03 : PDF des factures au theme JURIKA (JurikaPdfDocument de
-             jurika-common, ou PDFBox est optionnel : chaque service qui rend un PDF le declare). -->
+        <!-- Lot L7 (E5, E6) : PDF des factures (RG-PAY-03) et exemplaire du contrat d'abonnement
+             (RG-CTR-04) au theme JURIKA (JurikaPdfDocument de jurika-common, ou PDFBox est
+             optionnel : chaque service qui rend un PDF le declare). Une seule declaration. -->
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
@@ -109,14 +110,6 @@
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
             <scope>runtime</scope>
-        </dependency>
-
-        <!-- Lot L7 (E6) : exemplaire PDF du contrat d'abonnement (RG-CTR-04), rendu par le
-             theme partage ma.jurika.common.pdf (dependance optionnelle de jurika-common). -->
-        <dependency>
-            <groupId>org.apache.pdfbox</groupId>
-            <artifactId>pdfbox</artifactId>
-            <version>3.0.3</version>
         </dependency>
 
         <dependency>
