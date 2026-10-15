@@ -16,12 +16,12 @@ export function EmployeeChartsPanel({ tickets }: { tickets: Ticket[] }) {
   const parType = ticketsByType(tickets);
 
   return (
-    <section className="mb-6">
-      <h3 className="mb-4 text-lg font-semibold text-fg">Répartition de mes tickets</h3>
+    <section className="mb-8">
+      <h2 className="mb-3 text-lg font-semibold text-heading">Répartition de mes tickets</h2>
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard
           title="Par statut"
-          icon={<PieChart className="h-4 w-4" />}
+          icon={<PieChart />}
           empty={parStatut.length === 0}
         >
           <DonutChart data={parStatut} colorByKey={statutTicketColors} />
@@ -29,7 +29,7 @@ export function EmployeeChartsPanel({ tickets }: { tickets: Ticket[] }) {
 
         <ChartCard
           title="Par type de dossier"
-          icon={<BarChart3 className="h-4 w-4" />}
+          icon={<BarChart3 />}
           empty={parType.length === 0}
         >
           <DistributionChart data={parType} height={200} />

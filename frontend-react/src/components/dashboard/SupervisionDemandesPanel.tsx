@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Building2, Inbox, MessageSquare, Send, User } from 'lucide-react';
 import { dataroomService } from '../../services/dataroom.service';
 import {
@@ -10,36 +10,42 @@ import {
   type EtatSuivi,
 } from '../../types/dataroom';
 import { InfoBulle, TexteAide } from '../ui/Aide';
+import { Badge, type BadgeVariant } from '../ui/Badge';
+import { EmptyState } from '../ui/EmptyState';
+import { Tableau, type ColonneTableau } from '../ui/Tableau';
 
 /**
  * Vue SUPERVISEUR (workspace-wide) : toutes les demandes des clients ET requetes
  * aux clients du cabinet, chaque ligne montrant le nom du dataroom (raison
- * sociale) et l'employe responsable (noms resolus par jointure cote back —
+ * sociale) et l'employe responsable (noms resolus par jointure cote back --
  * jamais d'UUID). Lecture seule (RG-U02-04) : aucune action de mutation ici.
  *
- * Lot L5 (E9, RG-COM-07) : demandes et requêtes sont suivies par les trois mêmes
- * états (non traitée, en cours, traitée), calculés par le serveur ; le statut
- * détaillé d'une requête reste affiché en second.
+ * Lot L5 (E9, RG-COM-07) : demandes et requetes sont suivies par les trois memes
+ * etats (non traitee, en cours, traitee), calcules par le serveur ; le statut
+ * detaille d'une requete reste affiche en second.
+ *
+ * Lot L6b (E9) : composants de la bibliotheque ; une liste en echec est dite
+ * indisponible (et non "aucune demande", motif 9).
  */
 
-const ETAT_BADGE: Record<EtatSuivi, string> = {
-  NON_TRAITEE: 'bg-danger/10 text-danger',
-  EN_COURS: 'bg-accent/10 text-accent',
-  TRAITEE: 'bg-emerald-100 text-emerald-700',
+const ETAT_BADGE: Record<EtatSuivi, BadgeVariant> = {
+  NON_TRAITEE: 'danger',
+  EN_COURS: 'warning',
+  TRAITEE: 'success',
 };
 
 const SANS_ETAT = 'SANS_ETAT';
 
 export function SupervisionDemandesPanel() {
-  const [demandes, setDemandes] = useState<DemandeSupervisionRow[]>([]);
-  const [requetes, setRequetes] = useState<DemandeSupervisionRow[]>([]);
+  const [demandes, setDemandes] = useState<DemandeSupervisionRow[] | null>([]);
+  const [requetes, setRequetes] = useState<DemandeSupervisionRow[] | null>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     Promise.all([
-      dataroomService.listSupervisionDemandes('CLIENT_TO_EMPLOYE').catch(() => [] as DemandeSupervisionRow[]),
-      dataroomService.listSupervisionDemandes('EMPLOYE_TO_CLIENT').catch(() => [] as DemandeSupervisionRow[]),
+      dataroomService.listSupervisionDemandes('CLIENT_TO_EMPLOYE').catch(() => null),
+      dataroomService.listSupervisionDemandes('EMPLOYE_TO_CLIENT').catch(() => null),
     ]).then(([dem, req]) => {
       if (!mounted) return;
       setDemandes(dem);
@@ -52,7 +58,10 @@ export function SupervisionDemandesPanel() {
   }, []);
 
   return (
-    <div className="mt-6 space-y-3">
+    <section className="mt-6 space-y-3" aria-labelledby="titre-demandes-requetes">
+      <h2 id="titre-demandes-requetes" className="text-lg font-semibold text-heading">
+        Demandes et requêtes
+      </h2>
       <TexteAide cle="supervision-demandes-requetes" titre="Suivi des demandes et des requêtes">
         Chaque demande d’un client et chaque requête du cabinet est suivie par trois états :
         « Non traitée » (rien n’a encore été fait), « En cours » (prise en charge, ou réponse du
@@ -60,48 +69,50 @@ export function SupervisionDemandesPanel() {
         du dossier traite la demande ou valide la requête depuis la Data Room ; cliquez sur une
         ligne pour l’ouvrir.
       </TexteAide>
-    <div className="grid gap-6 lg:grid-cols-2">
-      <SupervisionBlock
-        title="Demandes des clients"
-        icon={MessageSquare}
-        iconColor="text-violet-600"
-        direction="CLIENT_TO_EMPLOYE"
-        rows={demandes}
-        loading={loading}
-        emptyLabel="Aucune demande client dans le cabinet."
-      />
-      <SupervisionBlock
-        title="Requêtes du cabinet aux clients"
-        icon={Send}
-        iconColor="text-accent"
-        direction="EMPLOYE_TO_CLIENT"
-        rows={requetes}
-        loading={loading}
-        emptyLabel="Aucune requête envoyée aux clients."
-      />
-    </div>
-    </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <SupervisionBlock
+          title="Demandes des clients"
+          icon={MessageSquare}
+          direction="CLIENT_TO_EMPLOYE"
+          rows={demandes}
+          loading={loading}
+          emptyLabel="Aucune demande client dans le cabinet."
+        />
+        <SupervisionBlock
+          title="Requêtes du cabinet aux clients"
+          icon={Send}
+          direction="EMPLOYE_TO_CLIENT"
+          rows={requetes}
+          loading={loading}
+          emptyLabel="Aucune requête envoyée aux clients."
+        />
+      </div>
+    </section>
   );
 }
 
 function SupervisionBlock({
   title,
   icon: Icon,
-  iconColor,
   direction,
-  rows,
+  rows: lignes,
   loading,
   emptyLabel,
 }: {
   title: string;
   icon: typeof MessageSquare;
-  iconColor: string;
   direction: 'CLIENT_TO_EMPLOYE' | 'EMPLOYE_TO_CLIENT';
-  rows: DemandeSupervisionRow[];
+  rows: DemandeSupervisionRow[] | null;
   loading: boolean;
   emptyLabel: string;
 }) {
   const navigate = useNavigate();
+  const indisponible = lignes === null;
+  const rows = useMemo(() => lignes ?? [], [lignes]);
+  // Lot L6 (E9) : une requete s'ouvre sur l'onglet « Requetes du cabinet »
+  // (l'onglet Demandes ne les porte plus depuis le lot 1).
+  const onglet = direction === 'EMPLOYE_TO_CLIENT' ? 'requetes' : 'demandes';
+  const lien = (r: DemandeSupervisionRow) => `/data-rooms?dossier=${r.dossierId}&tab=${onglet}`;
 
   // Compteurs par etat de suivi (RG-COM-07) + tri des lignes par etat.
   const counts = useMemo(() => {
@@ -119,17 +130,72 @@ function SupervisionBlock({
       return i === -1 ? ETAT_SUIVI_ORDRE.length : i;
     };
     return [...rows].sort(
-      (a, b) =>
-        rank(a.etatSuivi) - rank(b.etatSuivi) ||
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      (a, b) => rank(a.etatSuivi) - rank(b.etatSuivi) || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
   }, [rows]);
 
+  const colonnes: ColonneTableau<DemandeSupervisionRow>[] = [
+    {
+      cle: 'sujet',
+      titre: 'Sujet',
+      rendu: (r) => (
+        <span className="block max-w-[14rem]">
+          <Link
+            to={lien(r)}
+            onClick={(e) => e.stopPropagation()}
+            className="block truncate rounded-sm font-medium text-fg hover:underline"
+            title="Ouvrir dans la Data Room"
+          >
+            {r.sujet}
+          </Link>
+          <span className="text-xs text-fg-subtle">{new Date(r.createdAt).toLocaleDateString('fr-FR')}</span>
+        </span>
+      ),
+    },
+    {
+      cle: 'dataroom',
+      titre: 'Data Room',
+      rendu: (r) => (
+        <span className="flex items-center gap-1 text-fg" title={r.raisonSociale ?? undefined}>
+          <Building2 className="h-3.5 w-3.5 shrink-0 text-fg-subtle" aria-hidden="true" />
+          <span className="max-w-[9rem] truncate">{r.raisonSociale ?? r.dossierId.slice(0, 8).toUpperCase()}</span>
+        </span>
+      ),
+    },
+    {
+      cle: 'employe',
+      titre: 'Employé',
+      masquerSous: 'md',
+      rendu: (r) => (
+        <span className="flex items-center gap-1 text-fg-muted">
+          <User className="h-3.5 w-3.5 shrink-0 text-fg-subtle" aria-hidden="true" />
+          <span className="max-w-[9rem] truncate">{r.responsableNom ?? '--'}</span>
+        </span>
+      ),
+    },
+    {
+      cle: 'etat',
+      titre: 'État',
+      rendu: (r) => (
+        <span>
+          <Badge variant={r.etatSuivi ? ETAT_BADGE[r.etatSuivi] : 'neutral'}>
+            {r.etatSuivi ? ETAT_SUIVI_LABELS[r.etatSuivi] : 'État inconnu'}
+          </Badge>
+          {direction === 'EMPLOYE_TO_CLIENT' && (
+            <span className="mt-0.5 block text-xs text-fg-subtle">
+              {REQUETE_STATUT_LABELS[r.statut as keyof typeof REQUETE_STATUT_LABELS] ?? r.statut}
+            </span>
+          )}
+        </span>
+      ),
+    },
+  ];
+
   return (
-    <div className="rounded-xl border border-border bg-bg-raised shadow-sm">
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <h3 className="flex items-center gap-2 text-base font-semibold text-fg">
-          <Icon className={`h-5 w-5 ${iconColor}`} /> {title}
+    <section className="min-w-0 rounded-xl border border-border bg-bg-raised shadow-card">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-5 py-3">
+        <h3 className="flex items-center gap-2 text-base font-semibold text-heading">
+          <Icon className="h-5 w-5 text-fg-subtle" aria-hidden="true" /> {title}
           <InfoBulle
             libelle={`Aide : ${title}`}
             texte={
@@ -139,97 +205,40 @@ function SupervisionBlock({
             }
           />
         </h3>
-        <span className="text-xs text-fg-subtle">{rows.length} au total</span>
+        <span className="text-xs text-fg-subtle">{indisponible ? '--' : `${rows.length} au total`}</span>
       </div>
 
-      {/* Repartition par statut (chips de comptage). */}
       {rows.length > 0 && (
-        <div className="flex flex-wrap gap-2 border-b border-border px-6 py-2.5">
-          {ETAT_SUIVI_ORDRE
-            .filter((s) => counts[s])
-            .map((s) => (
-              <span
-                key={s}
-                data-testid={`compteur-etat-${s}`}
-                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${ETAT_BADGE[s]}`}
-              >
+        <div className="flex flex-wrap gap-2 border-b border-border px-5 py-2.5">
+          {ETAT_SUIVI_ORDRE.filter((s) => counts[s]).map((s) => (
+            <Badge key={s} variant={ETAT_BADGE[s]}>
+              <span data-testid={`compteur-etat-${s}`}>
                 {ETAT_SUIVI_LABELS[s]} · {counts[s]}
               </span>
-            ))}
-          {counts[SANS_ETAT] ? (
-            <span className="rounded-full bg-bg-overlay px-2.5 py-0.5 text-[11px] font-semibold text-fg-muted">
-              État inconnu · {counts[SANS_ETAT]}
-            </span>
-          ) : null}
+            </Badge>
+          ))}
+          {counts[SANS_ETAT] ? <Badge variant="neutral">État inconnu · {counts[SANS_ETAT]}</Badge> : null}
         </div>
       )}
 
-      {loading ? (
-        <p className="px-6 py-10 text-center text-sm text-fg-subtle">Chargement…</p>
-      ) : rows.length === 0 ? (
-        <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
-          <Inbox className="mb-2 h-8 w-8 text-fg-subtle" />
-          <p className="text-sm text-fg-subtle">{emptyLabel}</p>
-        </div>
-      ) : (
-        <div className="max-h-96 overflow-y-auto">
-          <table className="w-full">
-            <thead className="sticky top-0 bg-bg-overlay">
-              <tr>
-                <th className="px-6 py-2.5 text-left text-xs font-semibold uppercase text-fg-subtle">Sujet</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-fg-subtle">Data Room</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-fg-subtle">Employé</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase text-fg-subtle">État</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {sorted.map((r) => (
-                <tr
-                  key={r.id}
-                  // Lot L6 (E9) : une requete s'ouvre sur l'onglet « Requetes du cabinet »
-                  // (l'onglet Demandes ne les porte plus depuis le lot 1).
-                  onClick={() => navigate(`/data-rooms?dossier=${r.dossierId}&tab=${direction === 'EMPLOYE_TO_CLIENT' ? 'requetes' : 'demandes'}`)}
-                  className="cursor-pointer hover:bg-bg-overlay"
-                  title="Ouvrir dans la Data Room"
-                >
-                  <td className="max-w-[14rem] px-6 py-3">
-                    <p className="truncate text-sm font-medium text-fg">{r.sujet}</p>
-                    <p className="text-[10px] text-fg-subtle">
-                      {new Date(r.createdAt).toLocaleDateString('fr-FR')}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="flex items-center gap-1 text-xs text-fg" title={r.raisonSociale ?? undefined}>
-                      <Building2 className="h-3.5 w-3.5 shrink-0 text-fg-subtle" />
-                      <span className="max-w-[9rem] truncate">
-                        {r.raisonSociale ?? r.dossierId.slice(0, 8).toUpperCase()}
-                      </span>
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="flex items-center gap-1 text-xs text-fg-muted">
-                      <User className="h-3.5 w-3.5 shrink-0 text-fg-subtle" />
-                      <span className="max-w-[9rem] truncate">{r.responsableNom ?? '—'}</span>
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${r.etatSuivi ? ETAT_BADGE[r.etatSuivi] : 'bg-bg-overlay text-fg-muted'}`}
-                    >
-                      {r.etatSuivi ? ETAT_SUIVI_LABELS[r.etatSuivi] : 'État inconnu'}
-                    </span>
-                    {direction === 'EMPLOYE_TO_CLIENT' && (
-                      <p className="mt-0.5 text-[10px] text-fg-subtle">
-                        {REQUETE_STATUT_LABELS[r.statut as keyof typeof REQUETE_STATUT_LABELS] ?? r.statut}
-                      </p>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+      <Tableau
+        legende={`Liste : ${title.toLowerCase()}`}
+        colonnes={colonnes}
+        lignes={sorted}
+        cleLigne={(r) => r.id}
+        chargement={loading}
+        lignesChargement={3}
+        onLigne={(r) => navigate(lien(r))}
+        hauteurMax="24rem"
+        className="rounded-none rounded-b-xl border-0"
+        vide={
+          indisponible ? (
+            <EmptyState compact title="Liste indisponible" description="Elle n’a pas pu être chargée. Rechargez la page dans quelques instants." />
+          ) : (
+            <EmptyState compact icon={<Inbox />} title={emptyLabel} />
+          )
+        }
+      />
+    </section>
   );
 }

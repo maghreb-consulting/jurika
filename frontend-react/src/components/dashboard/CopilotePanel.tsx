@@ -1,25 +1,26 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  AlertTriangle,
-  Calendar,
-  Loader2,
-  RefreshCw,
-  Sparkles,
-} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, Calendar, RefreshCw, Sparkles } from 'lucide-react';
 import { agentService } from '../../services/agent.service';
 import type { AgentBriefing, EcheanceSignal, PlanItem } from '../../types/agent';
+import { Card } from '../ui/Card';
+import { Button } from '../ui/Button';
+import { Badge, type BadgeVariant } from '../ui/Badge';
+import { Message } from '../ui/Message';
+import { SqueletteTexte, SqueletteZone } from '../ui/LoadingSkeleton';
 
 /**
- * Lot IA-1 — Panneau « Copilote » du dashboard employe.
+ * Lot IA-1 -- Panneau « Copilote » du dashboard employe.
  *
  * <p>Affiche le briefing du jour de l'agent (observe -> raisonne -> PROPOSE) :
  * (1) plan du jour priorise deep-linke, (2) echeances imminentes/depassees.
- * AUCUNE action irreversible n'est declenchee par l'agent — l'employe valide
+ * AUCUNE action irreversible n'est declenchee par l'agent -- l'employe valide
  * chaque suggestion. (Perimetre : echeances + priorisation + briefing matinal.)
+ *
+ * Lot L6b (E9) : composants de la bibliotheque ; chaque suggestion est un lien (clavier) ;
+ * un echec du premier chargement est dit au lieu de faire disparaitre le panneau.
  */
 export function CopilotePanel() {
-  const navigate = useNavigate();
   const [data, setData] = useState<AgentBriefing | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -28,7 +29,7 @@ export function CopilotePanel() {
   useEffect(() => {
     let mounted = true;
 
-    // `initial` = 1er chargement (spinner + null si echec) ; les refetch silencieux
+    // `initial` = 1er chargement (squelette + null si echec) ; les refetch silencieux
     // (retour sur l'onglet) conservent les donnees precedentes en cas d'echec.
     const load = (initial: boolean) => {
       agentService
@@ -75,177 +76,151 @@ export function CopilotePanel() {
       .finally(() => setRefreshing(false));
   };
 
+  const titre = (
+    <span className="inline-flex items-center gap-2">
+      <Sparkles className="h-4 w-4 text-fg-subtle" aria-hidden="true" />
+      Copilote
+    </span>
+  );
+
   if (loading) {
     return (
-      <div className="mt-6 flex h-24 items-center justify-center rounded-xl border border-border bg-bg-raised">
-        <Loader2 className="h-5 w-5 animate-spin text-fg-subtle" />
-      </div>
+      <Card title={titre} description="Suggestions de l’assistant, à valider" className="mt-6">
+        <SqueletteZone libelle="Chargement des suggestions…">
+          <SqueletteTexte lignes={4} />
+        </SqueletteZone>
+      </Card>
     );
   }
-  // Degradation gracieuse : dashboard-service KO -> pas de panneau.
-  if (!data) return null;
+  if (!data) {
+    return (
+      <Message ton="info" titre="Copilote indisponible" className="mt-6">
+        Les suggestions du jour n’ont pas pu être chargées. Elles reviendront au prochain chargement de la page.
+      </Message>
+    );
+  }
 
-  const c = data.signaux.counts;
-  const rienASignaler = c.echeances === 0 && c.tickets === 0 && c.demandes === 0;
+  // Lot L6b (E9) : un briefing partiel (sans signaux ni plan) ne plante plus l'ecran.
+  const echeances = data.signaux?.echeances ?? [];
+  const plan = data.planDuJour ?? [];
+  const c = data.signaux?.counts;
+  const rienASignaler = c
+    ? (c.echeances ?? 0) === 0 && (c.tickets ?? 0) === 0 && (c.demandes ?? 0) === 0
+    : plan.length === 0 && echeances.length === 0;
 
   return (
-    <div className="mt-6 rounded-xl border border-border bg-bg-raised p-5">
-      {/* En-tete */}
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
-            <Sparkles className="h-5 w-5" />
-          </span>
-          <div>
-            <h3 className="text-lg font-semibold text-fg">Copilote</h3>
-            <p className="text-xs text-fg-subtle">
-              Suggestions de l’assistant — à valider
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg-raised px-3 py-1.5 text-xs font-medium text-fg-subtle transition hover:bg-bg-overlay disabled:opacity-60"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+    <Card
+      title={titre}
+      description="Suggestions de l’assistant, à valider"
+      className="mt-6"
+      actions={
+        <Button type="button" variant="secondary" size="sm" onClick={handleRefresh} loading={refreshing} icon={<RefreshCw />}>
           Rafraîchir
-        </button>
-      </div>
-
+        </Button>
+      }
+    >
       {/* Erreur d'actualisation (discrete, les donnees precedentes restent affichees) */}
       {error && (
-        <div
-          role="alert"
-          className="mb-4 rounded-lg bg-danger/10 px-3 py-2 text-xs font-medium text-danger"
-        >
+        <Message ton="erreur" className="mb-4">
           {error}
-        </div>
+        </Message>
       )}
 
       {/* Narration LLM (optionnelle) */}
-      {data.texteLlm && (
-        <div className="mb-4 whitespace-pre-line rounded-lg bg-violet-50 p-3 text-sm text-violet-900">
-          {data.texteLlm}
-        </div>
-      )}
+      {data.texteLlm && <div className="mb-4 whitespace-pre-line rounded-lg bg-info-soft p-3 text-sm text-fg">{data.texteLlm}</div>}
 
       {rienASignaler ? (
-        <p className="py-6 text-center text-sm text-fg-subtle">
-          Rien à signaler aujourd’hui — vos dossiers sont à jour.
-        </p>
+        <p className="py-6 text-center text-sm text-fg-muted">Rien à signaler aujourd’hui : vos dossiers sont à jour.</p>
       ) : (
         <div className="space-y-5">
-          {/* 1. À faire en priorité (plan du jour) */}
+          {/* 1. A faire en priorite (plan du jour) */}
           <section>
-            <h4 className="mb-2 text-sm font-semibold text-fg">À faire en priorité</h4>
-            {data.planDuJour.length === 0 ? (
-              <p className="py-3 text-center text-xs text-fg-subtle">Aucune action prioritaire</p>
+            <h3 className="mb-2 text-sm font-semibold text-heading">À faire en priorité</h3>
+            {plan.length === 0 ? (
+              <p className="py-3 text-center text-sm text-fg-muted">Aucune action prioritaire</p>
             ) : (
               <ol className="space-y-2">
-                {data.planDuJour.map((item) => (
-                  <PlanRow key={`${item.ordre}-${item.targetId}`} item={item} onOpen={() => navigate(item.lien)} />
+                {plan.map((item) => (
+                  <PlanRow key={`${item.ordre}-${item.targetId}`} item={item} />
                 ))}
               </ol>
             )}
           </section>
 
-          {/* 2. Échéances */}
-          {data.signaux.echeances.length > 0 && (
+          {/* 2. Echeances */}
+          {echeances.length > 0 && (
             <section>
-              <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-fg">
-                <Calendar className="h-4 w-4 text-fg-subtle" /> Échéances à ne pas manquer
-              </h4>
+              <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-heading">
+                <Calendar className="h-4 w-4 text-fg-subtle" aria-hidden="true" /> Échéances à ne pas manquer
+              </h3>
               <ul className="divide-y divide-border">
-                {data.signaux.echeances.slice(0, 8).map((e) => (
-                  <EcheanceRow key={`${e.source}-${e.refId}`} e={e} onOpen={() => navigate(e.lien)} />
+                {echeances.slice(0, 8).map((e) => (
+                  <EcheanceRow key={`${e.source}-${e.refId}`} e={e} />
                 ))}
               </ul>
             </section>
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
-const URGENCE_BADGE: Record<string, string> = {
-  CRITIQUE: 'bg-danger/20 text-danger',
-  HAUTE: 'bg-amber-100 text-amber-700',
-  MOYENNE: 'bg-accent/10 text-accent',
-  BASSE: 'bg-bg-overlay text-fg-muted',
+const URGENCE_BADGE: Record<string, BadgeVariant> = {
+  CRITIQUE: 'danger',
+  HAUTE: 'warning',
+  MOYENNE: 'info',
+  BASSE: 'neutral',
+};
+const URGENCE_LIBELLE: Record<string, string> = {
+  CRITIQUE: 'Critique',
+  HAUTE: 'Haute',
+  MOYENNE: 'Moyenne',
+  BASSE: 'Basse',
 };
 
-function PlanRow({ item, onOpen }: { item: PlanItem; onOpen: () => void }) {
+function PlanRow({ item }: { item: PlanItem }) {
   return (
-    <li
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(ev) => {
-        if (ev.key === 'Enter' || ev.key === ' ') {
-          ev.preventDefault();
-          onOpen();
-        }
-      }}
-      className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-bg-raised p-3 transition hover:border-violet-300 hover:shadow-sm"
-    >
-      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-bg-overlay text-xs font-bold text-fg-subtle">
+    <li className="relative flex items-start gap-3 rounded-lg border border-border bg-bg-raised p-3 transition-shadow duration-150 hover:border-border-hi hover:shadow-card">
+      <span
+        aria-hidden="true"
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-bg-overlay text-xs font-semibold text-fg-muted"
+      >
         {item.ordre}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-fg">{item.action}</p>
-        <p className="text-xs text-fg-subtle">{item.justification}</p>
+        <Link to={item.lien} className="rounded-sm text-sm font-medium text-fg after:absolute after:inset-0 after:rounded-lg hover:underline">
+          {item.action}
+        </Link>
+        <p className="text-xs text-fg-muted">{item.justification}</p>
       </div>
-      <span
-        className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-          URGENCE_BADGE[item.urgence] ?? 'bg-bg-overlay text-fg-muted'
-        }`}
-      >
-        {item.urgence}
-      </span>
+      <Badge variant={URGENCE_BADGE[item.urgence] ?? 'neutral'} className="shrink-0">
+        {URGENCE_LIBELLE[item.urgence] ?? item.urgence}
+      </Badge>
     </li>
   );
 }
 
-function EcheanceRow({ e, onOpen }: { e: EcheanceSignal; onOpen: () => void }) {
-  const badge = e.depassee
-    ? 'bg-danger/20 text-danger'
-    : e.joursRestants <= 3
-      ? 'bg-danger/20 text-danger'
-      : e.joursRestants <= 7
-        ? 'bg-amber-100 text-amber-700'
-        : 'bg-bg-overlay text-fg-muted';
-  const label = e.depassee
-    ? `Dépassée · ${Math.abs(e.joursRestants)} j`
-    : `J-${e.joursRestants}`;
+function EcheanceRow({ e }: { e: EcheanceSignal }) {
+  const variante: BadgeVariant = e.depassee || e.joursRestants <= 3 ? 'danger' : e.joursRestants <= 7 ? 'warning' : 'neutral';
+  const label = e.depassee ? `Dépassée · ${Math.abs(e.joursRestants)} j` : `J-${e.joursRestants}`;
   return (
-    <li
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(ev) => {
-        if (ev.key === 'Enter' || ev.key === ' ') {
-          ev.preventDefault();
-          onOpen();
-        }
-      }}
-      className="flex cursor-pointer items-center justify-between gap-3 py-2.5 text-sm hover:opacity-80"
-    >
+    <li className="relative flex items-center justify-between gap-3 py-2.5 text-sm">
       <div className="min-w-0">
         <p className="flex items-center gap-1.5 truncate font-medium text-fg">
-          {e.depassee && <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-danger" />}
-          {e.intitule}
+          {e.depassee && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-danger" aria-hidden="true" />}
+          <Link to={e.lien} className="truncate rounded-sm after:absolute after:inset-0 hover:underline">
+            {e.intitule}
+          </Link>
         </p>
-        <p className="text-xs text-fg-subtle">
+        <p className="text-xs text-fg-muted">
           {e.dossierNom}
           {e.date ? ` · ${new Date(e.date).toLocaleDateString('fr-FR')}` : ''}
         </p>
       </div>
-      <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${badge}`}>
+      <Badge variant={variante} className="shrink-0">
         {label}
-      </span>
+      </Badge>
     </li>
   );
 }

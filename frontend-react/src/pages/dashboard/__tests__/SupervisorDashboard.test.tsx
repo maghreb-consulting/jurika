@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { SupervisorDashboard } from '../SupervisorDashboard';
 
@@ -24,6 +25,17 @@ vi.mock('../../../services/supervision.service', () => ({
 vi.mock('../../../components/dashboard/SupervisionDemandesPanel', () => ({
   SupervisionDemandesPanel: () => null,
 }));
+// Indicateurs de dashboard-service : couverts par Sprint10SupervisorPanel.test.tsx.
+vi.mock('../../../components/dashboard/Sprint10SupervisorPanel', () => ({
+  Sprint10SupervisorPanel: () => null,
+}));
+// Recharts mesure le conteneur (ResizeObserver absent de jsdom) : graphique neutralise.
+vi.mock('recharts', async (orig) => {
+  const reel = await orig<typeof import('recharts')>();
+  return { ...reel, ResponsiveContainer: () => null };
+});
+
+const rendre = () => render(<SupervisorDashboard />, { wrapper: MemoryRouter });
 
 describe('SupervisorDashboard', () => {
   beforeEach(() => {
@@ -43,12 +55,14 @@ describe('SupervisorDashboard', () => {
     ticketsPerEmploye.mockResolvedValue([]);
     ticketsLast30Days.mockResolvedValue([]);
 
-    render(<SupervisorDashboard />);
+    rendre();
 
-    await waitFor(() => expect(screen.getByText(/Tableau de bord — Superviseur/i)).toBeInTheDocument());
+    expect(await screen.findByText('42')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Tableau de bord' })).toBeInTheDocument();
     expect(screen.getByText('Total dossiers')).toBeInTheDocument();
     expect(screen.getByText('Employés')).toBeInTheDocument();
-    expect(screen.getByText('42')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('10')).toBeInTheDocument();
   });
 
   it('affiche "Pas de donnees" quand l\'evolution 14 derniers jours est vide', async () => {
@@ -57,7 +71,7 @@ describe('SupervisorDashboard', () => {
     ticketsPerEmploye.mockResolvedValue([]);
     ticketsLast30Days.mockResolvedValue([]);
 
-    render(<SupervisorDashboard />);
+    rendre();
 
     await waitFor(() => expect(screen.getByText(/Activité \(14 derniers jours\)/i)).toBeInTheDocument());
     // Plusieurs sections renvoient "Pas de donnees" (evolution + per-type),
@@ -75,11 +89,25 @@ describe('SupervisorDashboard', () => {
     ]);
     ticketsLast30Days.mockResolvedValue([]);
 
-    render(<SupervisorDashboard />);
+    rendre();
 
     // Attendre la DONNEE (le compte), pas le libelle statique "Employes" present des le
     // premier rendu : lire le compte juste apres le libelle echouait sous charge.
     expect(await screen.findByText('3')).toBeInTheDocument();
     expect(screen.getByText('Employés')).toBeInTheDocument();
+  });
+
+  it('une source en echec s affiche "--", jamais un zero invente (L6b E9)', async () => {
+    kpis.mockRejectedValue(new Error('503'));
+    ticketsPerType.mockResolvedValue([]);
+    ticketsPerEmploye.mockRejectedValue(new Error('503'));
+    ticketsLast30Days.mockResolvedValue([]);
+
+    rendre();
+
+    expect(await screen.findByText('Données indisponibles')).toBeInTheDocument();
+    // Total dossiers, employes, tickets en cours, clotures : les quatre indicateurs absents.
+    expect(screen.getAllByText('--')).toHaveLength(4);
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
   });
 });

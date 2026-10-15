@@ -1,48 +1,64 @@
 import type { ReactNode } from 'react';
+import { cn } from '../../lib/utils';
+import { Skeleton } from '../ui/LoadingSkeleton';
+
+import { ABSENT, valeurOuAbsent } from './valeurs';
 
 interface Props {
   label: string;
-  value: string | number;
-  hint?: string;
+  /** null / undefined => "--" (donnee absente). */
+  value: string | number | null | undefined;
+  hint?: ReactNode;
   icon?: ReactNode;
   variant?: 'default' | 'success' | 'warning' | 'danger';
+  /** Chargement : squelette aux dimensions de la valeur (aucun decalage). */
+  loading?: boolean;
 }
 
 /**
- * Sprint 12.5 T7 — KpiCard repeinte sur palette marketing.
- *
- * AVANT : bg-bg-raised + slate borders (light theme). APRÈS : bg-bg-raised navy
- * avec hairline or pour 'default', tints status pour success/warning/danger.
- * Le label garde son traitement eyebrow (uppercase mono) signature edito.
- * La valeur est en font-heading (Playfair) pour signature numerique.
+ * Lot L6b (E9) : indicateur chiffre d'un tableau de bord, aux jetons du systeme de design.
+ * Le ton (succes, attention, danger) colore la seule valeur et un filet a gauche ; l'or n'est
+ * pas utilise ici (reserve a l'action principale et a l'etat actif).
  */
-const VARIANTS: Record<NonNullable<Props['variant']>, string> = {
-  default: 'bg-bg-raised border-border border-t-2 border-t-accent',
-  success: 'bg-success/10 border-success/30',
-  warning: 'bg-warning/10 border-warning/30',
-  danger: 'bg-danger/10 border-danger/30',
+const FILET: Record<NonNullable<Props['variant']>, string> = {
+  default: 'border-l-border-hi',
+  success: 'border-l-success',
+  warning: 'border-l-warning',
+  danger: 'border-l-danger',
 };
 
-const VALUE_COLORS: Record<NonNullable<Props['variant']>, string> = {
-  default: 'text-fg',
+const VALEUR: Record<NonNullable<Props['variant']>, string> = {
+  default: 'text-heading',
   success: 'text-success',
   warning: 'text-warning',
   danger: 'text-danger',
 };
 
-export function KpiCard({ label, value, hint, icon, variant = 'default' }: Props) {
+export function KpiCard({ label, value, hint, icon, variant = 'default', loading = false }: Props) {
+  const affiche = valeurOuAbsent(value);
   return (
-    <div className={`rounded-xl border px-4 py-3 shadow-card ${VARIANTS[variant]}`}>
-      <div className="flex items-start justify-between">
-        <div className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-fg-subtle">
-          {label}
-        </div>
-        {icon && <div className="text-fg-subtle">{icon}</div>}
+    <div className={cn('rounded-xl border border-border border-l-4 bg-bg-raised px-4 py-3 shadow-card', FILET[variant])}>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-fg-muted">{label}</p>
+        {icon && (
+          <span className="text-fg-subtle [&>svg]:h-4 [&>svg]:w-4" aria-hidden="true">
+            {icon}
+          </span>
+        )}
       </div>
-      <div className={`mt-1 font-heading text-2xl font-semibold ${VALUE_COLORS[variant]}`}>
-        {value}
+      <div className="mt-1 flex h-8 items-center">
+        {loading ? (
+          <Skeleton className="h-6 w-16" />
+        ) : (
+          <p
+            className={cn('text-2xl font-semibold tabular-nums', affiche === ABSENT ? 'text-fg-subtle' : VALEUR[variant])}
+            title={affiche === ABSENT ? 'Donnée non disponible' : undefined}
+          >
+            {affiche}
+          </p>
+        )}
       </div>
-      {hint && <div className="mt-1 text-xs text-fg-subtle">{hint}</div>}
+      {hint && <div className="mt-1 text-xs text-fg-muted">{hint}</div>}
     </div>
   );
 }

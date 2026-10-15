@@ -103,4 +103,11 @@ describe('CopilotePanel', () => {
     expect(screen.queryByText('Action A')).not.toBeInTheDocument();
     expect(screen.queryByText(/Actualisation impossible/i)).not.toBeInTheDocument();
   });
+
+  it('un briefing partiel (sans signaux ni plan) ne plante pas le tableau de bord (L6b E9)', async () => {
+    // Vu a l'ecran (captures L6b) : "Cannot read properties of undefined (reading 'counts')".
+    getMyBriefing.mockResolvedValue({ id: 'b2', seenAt: '2026-10-15T08:00:00Z' });
+    renderPanel();
+    expect(await screen.findByText(/Rien à signaler aujourd’hui/)).toBeInTheDocument();
+  });
 });

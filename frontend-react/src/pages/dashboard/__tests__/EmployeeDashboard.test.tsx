@@ -40,13 +40,15 @@ vi.mock('../../../components/dashboard/CopilotePanel', () => ({
 vi.mock('../../../components/transfer/PendingTransfersPanel', () => ({
   PendingTransfersPanel: () => null,
 }));
+const getEmploye = vi.fn();
+vi.mock('../../../services/dashboard.service', () => ({
+  dashboardService: { getEmploye: (...a: unknown[]) => getEmploye(...a) },
+}));
+const utilisateur = { userId: 'u1', workspaceId: 'w1', email: 'karim@jurika.ma', role: 'EMPLOYE' };
 vi.mock('../../../store/authStore', () => ({
-  useCurrentUser: () => ({
-    userId: 'u1',
-    workspaceId: 'w1',
-    email: 'karim@jurika.ma',
-    role: 'EMPLOYE',
-  }),
+  useCurrentUser: () => utilisateur,
+  // Page (fil d'Ariane par defaut) lit le role dans le magasin.
+  useAuthStore: (sel: (s: { user: typeof utilisateur }) => unknown) => sel({ user: utilisateur }),
 }));
 
 describe('EmployeeDashboard', () => {
@@ -56,6 +58,8 @@ describe('EmployeeDashboard', () => {
     listDemandes.mockReset();
     listMesRequetes.mockReset();
     listMesRequetes.mockResolvedValue([]);
+    getEmploye.mockReset();
+    getEmploye.mockResolvedValue({ mesEcheancesAssignees: [] });
   });
 
   it('rend le header de bienvenue avec le slug de l\'email', async () => {
@@ -195,5 +199,37 @@ describe('EmployeeDashboard', () => {
     );
     fireEvent.click(await screen.findByText('Fournir bail'));
     expect(await screen.findByTestId('lieu')).toHaveTextContent('/data-rooms?dossier=d1&tab=requetes');
+  });
+
+  it('carte « Prochaine action » : mes tickets et les echeances des demarches, un seul appel aux indicateurs (L6b E9)', async () => {
+    list.mockResolvedValue({
+      items: [
+        { id: 't1', workspaceId: 'w1', reference: 'TK-9', dossierId: 'd1', assigneId: 'u1', statut: 'DEROULEMENT_DEMARCHE', type: 'CREATION', titre: 'Création ATLAS', createdAt: '2026-07-01', deadline: null },
+      ],
+    });
+    listDossiers.mockResolvedValue([]);
+    listDemandes.mockResolvedValue([]);
+    getEmploye.mockResolvedValue({
+      mesEcheancesAssignees: [{ id: 'e1', dossierId: 'd1', libelle: 'Dépôt au greffe', dateEcheance: '2099-01-10', severite: 'APPROCHE' }],
+    });
+
+    renderDash();
+
+    // Deux sources (tickets puis indicateurs) : attente plus longue que le defaut sous charge.
+    const lien = await screen.findByRole('link', { name: 'TK-9 · Création ATLAS' }, { timeout: 4000 });
+    expect(lien).toHaveAttribute('href', '/tickets/t1');
+    expect(screen.getByText('Démarche : Dépôt au greffe')).toBeInTheDocument();
+    expect(getEmploye).toHaveBeenCalledTimes(1);
+  });
+
+  it('tickets indisponibles : la carte le dit et les compteurs de tickets affichent "--"', async () => {
+    list.mockRejectedValue(new Error('503'));
+    listDossiers.mockResolvedValue([]);
+    listDemandes.mockResolvedValue([]);
+
+    renderDash();
+
+    expect(await screen.findByText('Vos tickets n’ont pas pu être chargés')).toBeInTheDocument();
+    expect(screen.getByText('Tickets en cours').closest('div')?.parentElement).toHaveTextContent('--');
   });
 });

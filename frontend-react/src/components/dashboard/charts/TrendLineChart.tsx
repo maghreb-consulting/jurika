@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { chartTheme, chartTooltipStyle } from '../../../lib/chartTheme';
+import { AXES, INFOBULLE_GRAPHIQUE, LIBELLE_INFOBULLE, TEXTE_LEGENDE } from './apparence';
 
 export interface TrendSeries {
   key: string;
@@ -33,20 +33,20 @@ export function TrendLineChart({ data, xKey, series, height = 220 }: Props) {
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 5, right: 12, bottom: 0, left: -12 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.border} />
-        <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: chartTheme.fgSubtle }} />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: chartTheme.fgSubtle }} />
+        <CartesianGrid strokeDasharray="3 3" stroke={AXES.grille} />
+        <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: AXES.texte }} />
+        <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: AXES.texte }} />
         <Tooltip
-          contentStyle={chartTooltipStyle}
-          labelStyle={{ fontWeight: 600, color: chartTheme.fg }}
-          cursor={{ stroke: chartTheme.border }}
+          contentStyle={INFOBULLE_GRAPHIQUE}
+          labelStyle={LIBELLE_INFOBULLE}
+          cursor={{ stroke: AXES.curseur }}
         />
         {series.length > 1 && (
           <Legend
             verticalAlign="top"
             height={24}
             iconType="plainline"
-            formatter={(value) => <span style={{ fontSize: 11, color: chartTheme.fgMuted }}>{value}</span>}
+            formatter={(value) => <span style={TEXTE_LEGENDE}>{value}</span>}
           />
         )}
         {series.map((s) => (

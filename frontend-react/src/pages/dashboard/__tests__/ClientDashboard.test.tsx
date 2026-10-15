@@ -27,9 +27,14 @@ vi.mock('../../../services/dataroom.service', () => ({
 vi.mock('../../../services/dashboard.service', () => ({
   dashboardService: { getClient: (...a: unknown[]) => getClient(...a) },
 }));
-vi.mock('../../../store/authStore', () => ({
-  useCurrentUser: () => ({ userId: 'c1', workspaceId: 'w1', email: 'client@acme.ma', role: 'CLIENT' }),
-}));
+vi.mock('../../../store/authStore', () => {
+  const user = { userId: 'c1', workspaceId: 'w1', email: 'client@acme.ma', role: 'CLIENT' };
+  return {
+    useCurrentUser: () => user,
+    // Page (fil d'Ariane par defaut) lit le role dans le magasin.
+    useAuthStore: (sel: (s: { user: typeof user }) => unknown) => sel({ user }),
+  };
+});
 
 // Recharts SVG non mesurable en jsdom : on neutralise le donut pour tester la
 // serie derivee (nombre de tranches) sans bare-render du SVG.
@@ -159,7 +164,8 @@ describe('ClientDashboard', () => {
     expect(screen.getAllByText(/Aucune donnée/i)).toHaveLength(2);
 
     // Le KPI « Requetes a traiter » est bien present a 0.
-    const kpi = screen.getByText('Requêtes à traiter').closest('div');
+    // L6b : le libelle et la valeur sont dans la meme carte (parent de la ligne du libelle).
+    const kpi = screen.getByText('Requêtes à traiter').closest('div')?.parentElement;
     expect(kpi && within(kpi).getByText('0')).toBeTruthy();
   });
 });

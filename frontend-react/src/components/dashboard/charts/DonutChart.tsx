@@ -1,5 +1,6 @@
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-import { chartCategoricalPalette, chartTooltipStyle } from '../../../lib/chartTheme';
+import { chartCategoricalPalette } from '../../../lib/chartTheme';
+import { INFOBULLE_GRAPHIQUE, TEXTE_LEGENDE } from './apparence';
 
 export interface DonutSlice {
   /** Cle brute (pour resolution couleur semantique optionnelle). */
@@ -45,13 +46,13 @@ export function DonutChart({ data, height = 200, colorByKey }: Props) {
             />
           ))}
         </Pie>
-        <Tooltip contentStyle={chartTooltipStyle} />
+        <Tooltip contentStyle={INFOBULLE_GRAPHIQUE} itemStyle={{ color: 'var(--color-fg)' }} />
         <Legend
           verticalAlign="bottom"
           height={28}
           iconType="circle"
           iconSize={9}
-          formatter={(value) => <span style={{ fontSize: 11, color: '#1c3461' }}>{value}</span>}
+          formatter={(value) => <span style={TEXTE_LEGENDE}>{value}</span>}
         />
       </PieChart>
     </ResponsiveContainer>
