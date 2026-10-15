@@ -38,6 +38,7 @@ const {
   ForceChangePasswordPage,
   LandingPage,
   LoginPage,
+  MentionsLegalesPage,
   MesRequetes,
   PaiementRetourPage,
   PaiementsAdminPage,
@@ -115,6 +116,8 @@ function App() {
         <Route path="/conditions-generales" element={<CguPage.Composant />} />
         <Route path="/confidentialite" element={<ConfidentialitePage.Composant />} />
         <Route path="/privacy" element={<ConfidentialitePage.Composant />} />
+        {/* Lot L6b (E10) : mentions legales de l'editeur, lues dans ses Parametres (route publique). */}
+        <Route path="/mentions-legales" element={<MentionsLegalesPage.Composant />} />
 
         {/* Tous roles authentifies : compte + dashboard */}
         <Route element={<ProtectedRoute />}>
