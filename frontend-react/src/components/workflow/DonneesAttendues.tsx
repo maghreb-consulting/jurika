@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { InfoBulle } from '../ui/Aide';
+import { Button } from '../ui/Button';
+import { TextField } from '../ui/TextField';
 import { extractError } from '../../lib/api';
 import { workflowService, type DonneeAttendue } from '../../services/workflow.service';
 
@@ -78,21 +80,23 @@ export function DonneesAttendues({
             <span>{a.libelle}</span>
             {!a.recue && ticketId && !DE_LA_FICHE.has(a.variable) && (
               <span className="flex items-center gap-1">
-                <input
+                <TextField
                   aria-label={a.libelle}
                   type={a.variable.startsWith('DATE_') ? 'date' : 'text'}
-                  className="rounded border border-border bg-bg-raised px-2 py-1 text-xs"
+                  containerClassName="w-48"
+                  className="h-8"
                   value={valeurs[a.variable] ?? ''}
                   onChange={(e) => setValeurs((v) => ({ ...v, [a.variable]: e.target.value }))}
                 />
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   disabled={envoi === a.variable || !(valeurs[a.variable] ?? '').trim()}
                   onClick={() => void enregistrer(a)}
-                  className="rounded-md border border-border-input px-2 py-1 text-fg hover:bg-bg-overlay disabled:opacity-50 bg-bg-raised"
                 >
                   Enregistrer
-                </button>
+                </Button>
               </span>
             )}
             {!a.recue && DE_LA_FICHE.has(a.variable) && (

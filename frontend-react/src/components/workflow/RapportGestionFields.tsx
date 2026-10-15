@@ -1,7 +1,8 @@
 import { useId } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { TextField } from '../ui/TextField';
+import { TextField, ZoneTexte as ZoneTexteUi } from '../ui/TextField';
 import { Select } from '../ui/Select';
+import { Button } from '../ui/Button';
 import { InfoBulle, TexteAide } from '../ui/Aide';
 import { ValeurProposee } from './ValeurProposee';
 import {
@@ -27,9 +28,6 @@ const OUI_NON = [
   { value: 'oui', label: 'Oui' },
 ];
 
-const champTexte =
-  'w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30';
-
 function ZoneTexte({
   label,
   aide,
@@ -50,34 +48,31 @@ function ZoneTexte({
         {label}
         <InfoBulle libelle={`Aide : ${label}`} texte={aide} />
       </label>
-      <textarea id={id} rows={3} value={value} data-testid={testId} onChange={(e) => onChange(e.target.value)} className={champTexte} />
+      <ZoneTexteUi id={id} rows={3} value={value} data-testid={testId} onChange={(e) => onChange(e.target.value)} />
     </div>
   );
 }
 
 function BoutonAjouter({ libelle, onClick }: { libelle: string; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center gap-1 rounded-lg border border-border bg-bg-raised px-2.5 py-1 text-xs font-medium text-fg hover:border-border-hi"
-    >
-      <Plus className="h-3.5 w-3.5" /> {libelle}
-    </button>
+    <Button type="button" variant="secondary" size="sm" icon={<Plus />} onClick={onClick}>
+      {libelle}
+    </Button>
   );
 }
 
 function BoutonRetirer({ libelle, onClick, disabled }: { libelle: string; onClick: () => void; disabled: boolean }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="secondary"
+      iconOnly
+      icon={<Trash2 />}
       onClick={onClick}
       disabled={disabled}
       aria-label={libelle}
-      className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-bg-raised text-fg-subtle transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
-    >
-      <Trash2 className="h-3.5 w-3.5" />
-    </button>
+      className="shrink-0 text-fg-subtle hover:border-danger hover:text-danger"
+    />
   );
 }
 

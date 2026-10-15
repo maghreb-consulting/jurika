@@ -10,6 +10,10 @@
 import { useState } from 'react';
 import { CheckCircle, FileUp, Loader, Paperclip, Plus, X } from 'lucide-react';
 import { dataroomService } from '../../services/dataroom.service';
+import { Button } from '../ui/Button';
+import { classesBouton } from '../ui/boutonClasses';
+import { EnTeteDepliant } from '../ui/Depliant';
+import { TextField } from '../ui/TextField';
 import { buildDocFilename, extensionOf } from './workflowFilename';
 
 /** Une pièce jointe déposée (persistée pour la synthèse). */
@@ -120,18 +124,12 @@ export function PiecesJointesPanel({
 
   return (
     <section className="rounded-xl border border-border bg-bg-raised" data-testid="mod-pieces-jointes">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 px-4 py-3 text-left"
-        aria-expanded={open}
-      >
-        <Paperclip className="h-4 w-4 text-fg-muted" />
+      <EnTeteDepliant ouvert={open} icone={<Paperclip />} onClick={() => setOpen((v) => !v)}>
         <span className="text-sm font-semibold text-fg">Pièces jointes (facultatives)</span>
-        <span className="ml-auto text-xs text-fg-subtle">
-          {Object.keys(done).length > 0 ? `${Object.keys(done).length} déposée(s)` : 'Aucune obligatoire'}
+        <span className="text-xs text-fg-subtle">
+          · {Object.keys(done).length > 0 ? `${Object.keys(done).length} déposée(s)` : 'Aucune obligatoire'}
         </span>
-      </button>
+      </EnTeteDepliant>
 
       {open && (
         <div className="space-y-3 border-t border-border p-4">
@@ -156,7 +154,7 @@ export function PiecesJointesPanel({
                     </span>
                   ) : (
                     <>
-                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-bg-raised px-3 py-1.5 text-xs font-medium text-fg hover:border-border-hi">
+                      <label className={classesBouton('secondary', 'sm', 'cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus')}>
                         {uploading[slot.id] ? (
                           <Loader className="h-3.5 w-3.5 animate-spin" />
                         ) : (
@@ -165,7 +163,7 @@ export function PiecesJointesPanel({
                         {uploading[slot.id] ? 'Dépôt…' : 'Choisir un fichier'}
                         <input
                           type="file"
-                          className="hidden"
+                          className="sr-only"
                           data-testid={`piece-input-${slot.id}`}
                           disabled={uploading[slot.id]}
                           onChange={(e) => {
@@ -176,14 +174,16 @@ export function PiecesJointesPanel({
                         />
                       </label>
                       {slot.custom && (
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="sm"
+                          iconOnly
+                          icon={<X />}
                           onClick={() => removeSlot(slot.id)}
-                          className="rounded p-1 text-fg-subtle hover:bg-danger/10 hover:text-danger"
+                          className="text-fg-subtle hover:text-danger"
                           aria-label="Retirer"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
+                        />
                       )}
                     </>
                   )}
@@ -196,20 +196,16 @@ export function PiecesJointesPanel({
           </ul>
 
           <div className="flex items-center gap-2">
-            <input
+            <TextField
               type="text"
+              containerClassName="flex-1"
               value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
               placeholder="Ajouter une pièce (libellé)…"
-              className="flex-1 rounded-lg border border-border-hi bg-bg-raised px-3 py-1.5 text-xs focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30"
             />
-            <button
-              type="button"
-              onClick={addSlot}
-              className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-fg hover:bg-bg-overlay"
-            >
-              <Plus className="h-3.5 w-3.5" /> Ajouter
-            </button>
+            <Button type="button" variant="secondary" icon={<Plus />} onClick={addSlot}>
+              Ajouter
+            </Button>
           </div>
         </div>
       )}

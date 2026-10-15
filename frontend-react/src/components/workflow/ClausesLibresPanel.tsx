@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { InfoBulle, TexteAide } from '../ui/Aide';
 import { Button } from '../ui/Button';
+import { Select } from '../ui/Select';
+import { TextField, ZoneTexte } from '../ui/TextField';
 import { extractError } from '../../lib/api';
 import {
   emplacementClausesLibres,
@@ -91,7 +93,6 @@ export function ClausesLibresPanel({
     }
   }
 
-  const champ = 'mt-1 block w-full rounded-md border border-border bg-bg-raised p-2 text-sm text-fg';
   return (
     <section aria-label="Clauses libres" className="space-y-2 rounded-lg border border-border bg-bg-overlay p-3">
       <p className="flex items-center gap-1 text-xs font-semibold text-fg">
@@ -119,36 +120,19 @@ export function ClausesLibresPanel({
           </p>
           <ChoixEmplacement emplacement={emplacement} valeur={c.emplacement ?? null} index={i}
             onChange={(v) => maj(i, { emplacement: v })} />
-          <label className="block text-xs text-fg-muted">
-            Titre de la clause
-            <input className={champ} value={c.titre ?? ''} spellCheck lang="fr" onChange={(e) => maj(i, { titre: e.target.value })} />
-          </label>
-          <label className="block text-xs text-fg-muted">
-            Texte de la clause
-            <textarea className={champ} rows={4} value={c.texte ?? ''} spellCheck lang="fr" onChange={(e) => maj(i, { texte: e.target.value })} />
-          </label>
+          <TextField label="Titre de la clause" value={c.titre ?? ''} spellCheck lang="fr" onChange={(e) => maj(i, { titre: e.target.value })} />
+          <ZoneTexte label="Texte de la clause" rows={4} value={c.texte ?? ''} spellCheck lang="fr" onChange={(e) => maj(i, { texte: e.target.value })} />
           {!statuts && (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <label className="block text-xs text-fg-muted">
-              Résultat du vote
-              <select className={champ} value={c.resultat ?? ''} onChange={(e) => maj(i, { resultat: e.target.value })}>
-                <option value="">Choisir…</option>
-                <option value="adoptée">Adoptée</option>
-                <option value="rejetée">Rejetée</option>
-              </select>
-            </label>
-            <label className="block text-xs text-fg-muted">
-              Voix pour
-              <input className={champ} value={c.voixPour ?? ''} onChange={(e) => maj(i, { voixPour: e.target.value })} />
-            </label>
-            <label className="block text-xs text-fg-muted">
-              Voix contre
-              <input className={champ} value={c.voixContre ?? ''} onChange={(e) => maj(i, { voixContre: e.target.value })} />
-            </label>
-            <label className="block text-xs text-fg-muted">
-              Abstentions
-              <input className={champ} value={c.abstentions ?? ''} onChange={(e) => maj(i, { abstentions: e.target.value })} />
-            </label>
+            <Select label="Résultat du vote" value={c.resultat ?? ''} onChange={(e) => maj(i, { resultat: e.target.value })}
+              options={[
+                { value: '', label: 'Choisir…' },
+                { value: 'adoptée', label: 'Adoptée' },
+                { value: 'rejetée', label: 'Rejetée' },
+              ]} />
+            <TextField label="Voix pour" value={c.voixPour ?? ''} onChange={(e) => maj(i, { voixPour: e.target.value })} />
+            <TextField label="Voix contre" value={c.voixContre ?? ''} onChange={(e) => maj(i, { voixContre: e.target.value })} />
+            <TextField label="Abstentions" value={c.abstentions ?? ''} onChange={(e) => maj(i, { abstentions: e.target.value })} />
           </div>
           )}
           <Button size="sm" variant="ghost" onClick={() => setBrouillon((b) => b.filter((_, j) => j !== i))}>
@@ -183,39 +167,32 @@ function ChoixEmplacement({ emplacement, valeur, index, onChange }: {
   index: number;
   onChange: (v: string) => void;
 }) {
-  const champ = 'mt-1 block w-full rounded-md border border-border bg-bg-raised p-2 text-sm text-fg';
   if (emplacement.nature === 'ARTICLE') {
     return (
-      <label className="block text-xs text-fg-muted">
-        Emplacement
-        <select aria-label={`Emplacement de la clause ${index + 1}`} className={champ} value={valeur ?? ''}
-          onChange={(e) => onChange(e.target.value)}>
-          <option value="">Choisir l’article après lequel placer la clause…</option>
-          {(emplacement.articles ?? []).map((a) => (
-            <option key={a.numero} value={`APRES_ARTICLE:${a.numero}`}>Après l’article {a.numero} — {a.titre}</option>
-          ))}
-        </select>
-      </label>
+      <Select label="Emplacement" aria-label={`Emplacement de la clause ${index + 1}`} value={valeur ?? ''}
+        onChange={(e) => onChange(e.target.value)}
+        options={[
+          { value: '', label: 'Choisir l’article après lequel placer la clause…' },
+          ...(emplacement.articles ?? []).map((a) => ({
+            value: `APRES_ARTICLE:${a.numero}`,
+            label: `Après l’article ${a.numero} — ${a.titre}`,
+          })),
+        ]} />
     );
   }
   const avant = valeur?.startsWith('AVANT_RESOLUTION:') ? valeur.slice('AVANT_RESOLUTION:'.length) : null;
   return (
     <div className="grid gap-2 sm:grid-cols-2">
-      <label className="block text-xs text-fg-muted">
-        Emplacement
-        <select aria-label={`Emplacement de la clause ${index + 1}`} className={champ}
-          value={avant === null ? 'SUITE' : 'AVANT'}
-          onChange={(e) => onChange(e.target.value === 'SUITE' ? 'A_LA_SUITE_DES_RESOLUTIONS' : 'AVANT_RESOLUTION:1')}>
-          <option value="SUITE">À la suite des résolutions</option>
-          <option value="AVANT">Avant une résolution du modèle</option>
-        </select>
-      </label>
+      <Select label="Emplacement" aria-label={`Emplacement de la clause ${index + 1}`}
+        value={avant === null ? 'SUITE' : 'AVANT'}
+        onChange={(e) => onChange(e.target.value === 'SUITE' ? 'A_LA_SUITE_DES_RESOLUTIONS' : 'AVANT_RESOLUTION:1')}
+        options={[
+          { value: 'SUITE', label: 'À la suite des résolutions' },
+          { value: 'AVANT', label: 'Avant une résolution du modèle' },
+        ]} />
       {avant !== null && (
-        <label className="block text-xs text-fg-muted">
-          Avant la résolution n°
-          <input aria-label={`Rang de la résolution ${index + 1}`} inputMode="numeric" className={champ} value={avant}
-            onChange={(e) => onChange(`AVANT_RESOLUTION:${e.target.value.replace(/\D/g, '')}`)} />
-        </label>
+        <TextField label="Avant la résolution n°" aria-label={`Rang de la résolution ${index + 1}`} inputMode="numeric" value={avant}
+          onChange={(e) => onChange(`AVANT_RESOLUTION:${e.target.value.replace(/\D/g, '')}`)} />
       )}
     </div>
   );

@@ -13,7 +13,7 @@
  * la page hôte. Dépôt auto dataroom (best-effort) quand un dossier est rattaché.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarClock, ChevronDown, ChevronRight, ClipboardList, Sparkles } from 'lucide-react';
+import { CalendarClock, ClipboardList, Sparkles } from 'lucide-react';
 import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
 import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
 import {
@@ -33,6 +33,7 @@ import {
 } from './seanceFormEtat';
 import type { DocumentType } from '../../types/dataroom';
 import { TexteAide } from '../ui/Aide';
+import { EnTeteDepliant } from '../ui/Depliant';
 
 const WORKFLOW_CODE = 'SEANCE_AG';
 
@@ -222,23 +223,14 @@ function SeanceDocPanel({
   return (
     <section className={embedded ? '' : 'rounded-xl border border-info/30 bg-info-soft'}>
       {!embedded && (
-        <button
-          type="button"
+        <EnTeteDepliant
+          ouvert={open}
+          icone={icon}
           onClick={() => setOpen((v) => !v)}
-          className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
-          aria-expanded={open}
           data-testid={`seance-doc-toggle-${templateCode}`}
         >
-          <span className="flex items-center gap-2">
-            <span className="flex-shrink-0 text-fg-muted">{icon}</span>
-            <span className="text-sm font-semibold text-fg">{title} (facultatif)</span>
-          </span>
-          {open ? (
-            <ChevronDown className="h-4 w-4 flex-shrink-0 text-fg-subtle" />
-          ) : (
-            <ChevronRight className="h-4 w-4 flex-shrink-0 text-fg-subtle" />
-          )}
-        </button>
+          <span className="text-sm font-semibold text-fg">{title} (facultatif)</span>
+        </EnTeteDepliant>
       )}
 
       {isOpen && (

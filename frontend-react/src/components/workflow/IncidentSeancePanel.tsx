@@ -13,7 +13,7 @@
  * documentaire commun (dépôt auto dataroom sur DocumentType PV_AGE).
  */
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
+import { AlertTriangle, Sparkles } from 'lucide-react';
 import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
 import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
 import {
@@ -22,6 +22,7 @@ import {
 } from '../../services/workflowDocumentService';
 import { SeanceFormFields } from './SeanceForm';
 import { TexteAide } from '../ui/Aide';
+import { EnTeteDepliant } from '../ui/Depliant';
 import { incidentPvFilename } from './incidentSeance';
 import {
   useSeanceForm,
@@ -189,26 +190,17 @@ export function IncidentSeancePanel({
 
   return (
     <section className="rounded-xl border border-warning/40 bg-warning-soft">
-      <button
-        type="button"
+      <EnTeteDepliant
+        ouvert={open}
+        icone={<AlertTriangle className="text-warning" />}
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
-        aria-expanded={open}
         data-testid="incident-seance-toggle"
       >
-        <span className="flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 flex-shrink-0 text-warning" />
-          <span className="text-sm font-semibold text-fg">Incident de séance (facultatif)</span>
-          <span className="hidden text-xs text-fg-subtle sm:inline">
-            — Constat de défaut de quorum / Irrégularité de convocation
-          </span>
+        <span className="text-sm font-semibold text-fg">Incident de séance (facultatif)</span>
+        <span className="hidden text-xs text-fg-subtle sm:inline">
+          — Constat de défaut de quorum / Irrégularité de convocation
         </span>
-        {open ? (
-          <ChevronDown className="h-4 w-4 flex-shrink-0 text-fg-subtle" />
-        ) : (
-          <ChevronRight className="h-4 w-4 flex-shrink-0 text-fg-subtle" />
-        )}
-      </button>
+      </EnTeteDepliant>
 
       {open && (
         <div className="space-y-5 border-t border-warning/40 p-4">

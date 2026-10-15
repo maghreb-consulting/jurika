@@ -9,8 +9,9 @@
  * Aligné 1:1 sur {@code ModificationDirecteurMapper.fillTypeVars} (33 types).
  */
 import { Plus, Trash2 } from 'lucide-react';
-import { TextField } from '../ui/TextField';
+import { TextField, ZoneTexte } from '../ui/TextField';
 import { Select } from '../ui/Select';
+import { Button } from '../ui/Button';
 import { ValeurProposee } from './ValeurProposee';
 import { InfoBulle, TexteAide } from '../ui/Aide';
 import {
@@ -132,15 +133,14 @@ function ChampDynamique({
   }
   if (spec.kind === 'textarea') {
     return (
-      <label className="flex flex-col gap-1 text-sm md:col-span-2">
-        <span className="font-medium text-fg">{spec.label}</span>
-        <textarea
-          className="min-h-[80px] rounded-lg border border-border bg-bg-raised px-3 py-2 text-sm text-fg"
-          value={value}
-          placeholder={spec.placeholder}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      </label>
+      <ZoneTexte
+        containerClassName="md:col-span-2"
+        label={spec.label}
+        rows={3}
+        value={value}
+        placeholder={spec.placeholder}
+        onChange={(e) => onChange(e.target.value)}
+      />
     );
   }
   return (
@@ -175,13 +175,9 @@ export function SubListEditor({
           {spec.label}
           {spec.aide && <InfoBulle libelle={`Aide : ${spec.label}`} texte={spec.aide} />}
         </span>
-        <button
-          type="button"
-          onClick={addRow}
-          className="inline-flex items-center gap-1 text-sm text-info hover:underline"
-        >
-          <Plus className="h-4 w-4" /> Ajouter
-        </button>
+        <Button type="button" variant="secondary" size="sm" icon={<Plus />} onClick={addRow}>
+          Ajouter
+        </Button>
       </div>
       {rows.length === 0 && <p className="text-xs text-fg-subtle">Aucune ligne : cliquez sur « Ajouter » pour en saisir une.</p>}
       {rows.map((row, i) => (
@@ -196,13 +192,16 @@ export function SubListEditor({
             />
           ))}
           <div className="md:col-span-2">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
+              icon={<Trash2 />}
               onClick={() => removeRow(i)}
-              className="inline-flex items-center gap-1 text-xs text-danger hover:underline"
+              className="text-danger"
             >
-              <Trash2 className="h-3.5 w-3.5" /> Retirer la ligne
-            </button>
+              Retirer la ligne
+            </Button>
           </div>
         </div>
       ))}

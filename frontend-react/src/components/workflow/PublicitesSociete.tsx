@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { Plus, Trash2, Upload, CheckCircle2 } from 'lucide-react';
 import { TexteAide } from '../ui/Aide';
+import { Button } from '../ui/Button';
+import { classesBouton } from '../ui/boutonClasses';
+import { Select } from '../ui/Select';
+import { TextField } from '../ui/TextField';
 import { dataroomService } from '../../services/dataroom.service';
 import { extractError } from '../../lib/api';
 import { manquePublicite, publiciteVide, type Publicite } from '../../lib/publicites';
@@ -54,7 +58,6 @@ export function PublicitesSociete({ value, onChange, dossierId, societe }: Props
     }
   }
 
-  const champ = 'w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm';
   return (
     <section className="space-y-3 rounded-xl border border-border bg-bg-raised p-4" data-testid="publicites-societe">
       <h3 className="text-sm font-semibold text-fg">Publicités de la société</h3>
@@ -71,48 +74,33 @@ export function PublicitesSociete({ value, onChange, dossierId, societe }: Props
       {value.map((p, i) => (
         <div key={i} className="space-y-2 rounded-lg border border-border p-3" data-testid={`publicite-${i}`}>
           <div className="grid gap-2 md:grid-cols-3">
-            <label className="text-xs text-fg">
-              Nature
-              <select aria-label={`Nature de la publicité ${i + 1}`} className={champ} value={p.nature}
-                onChange={(e) => maj(i, { nature: e.target.value as Publicite['nature'] })}>
-                <option value="">Choisir…</option>
-                <option value="CONSTITUTION">Constitution</option>
-                <option value="MODIFICATION">Modification</option>
-              </select>
-            </label>
+            <Select label="Nature" aria-label={`Nature de la publicité ${i + 1}`} value={p.nature}
+              onChange={(e) => maj(i, { nature: e.target.value as Publicite['nature'] })}
+              options={[
+                { value: '', label: 'Choisir…' },
+                { value: 'CONSTITUTION', label: 'Constitution' },
+                { value: 'MODIFICATION', label: 'Modification' },
+              ]} />
             {p.nature === 'MODIFICATION' && (
-              <label className="text-xs text-fg md:col-span-2">
-                Objet de la modification
-                <input aria-label={`Objet de la modification ${i + 1}`} className={champ} value={p.objet ?? ''}
-                  placeholder="Ex. : transfert du siège social" onChange={(e) => maj(i, { objet: e.target.value })} />
-              </label>
+              <TextField label="Objet de la modification" containerClassName="md:col-span-2"
+                aria-label={`Objet de la modification ${i + 1}`} value={p.objet ?? ''}
+                placeholder="Ex. : transfert du siège social" onChange={(e) => maj(i, { objet: e.target.value })} />
             )}
-            <label className="text-xs text-fg">
-              Support
-              <select aria-label={`Support de la publicité ${i + 1}`} className={champ} value={p.support}
-                onChange={(e) => maj(i, { support: e.target.value as Publicite['support'] })}>
-                <option value="">Choisir…</option>
-                <option value="JAL">Journal d’annonces légales</option>
-                <option value="BO">Bulletin officiel</option>
-              </select>
-            </label>
+            <Select label="Support" aria-label={`Support de la publicité ${i + 1}`} value={p.support}
+              onChange={(e) => maj(i, { support: e.target.value as Publicite['support'] })}
+              options={[
+                { value: '', label: 'Choisir…' },
+                { value: 'JAL', label: 'Journal d’annonces légales' },
+                { value: 'BO', label: 'Bulletin officiel' },
+              ]} />
             {p.support === 'JAL' && (
-              <label className="text-xs text-fg">
-                Journal
-                <input aria-label={`Journal ${i + 1}`} className={champ} value={p.journal ?? ''}
-                  onChange={(e) => maj(i, { journal: e.target.value })} />
-              </label>
+              <TextField label="Journal" aria-label={`Journal ${i + 1}`} value={p.journal ?? ''}
+                onChange={(e) => maj(i, { journal: e.target.value })} />
             )}
-            <label className="text-xs text-fg">
-              Date de parution
-              <input type="date" aria-label={`Date de parution ${i + 1}`} className={champ} value={p.dateParution}
-                onChange={(e) => maj(i, { dateParution: e.target.value })} />
-            </label>
-            <label className="text-xs text-fg">
-              Numéro de parution
-              <input aria-label={`Numéro de parution ${i + 1}`} className={champ} value={p.numeroParution}
-                onChange={(e) => maj(i, { numeroParution: e.target.value })} />
-            </label>
+            <TextField label="Date de parution" type="date" aria-label={`Date de parution ${i + 1}`} value={p.dateParution}
+              onChange={(e) => maj(i, { dateParution: e.target.value })} />
+            <TextField label="Numéro de parution" aria-label={`Numéro de parution ${i + 1}`} value={p.numeroParution}
+              onChange={(e) => maj(i, { numeroParution: e.target.value })} />
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs">
             {p.documentId ? (
@@ -120,26 +108,26 @@ export function PublicitesSociete({ value, onChange, dossierId, societe }: Props
                 <CheckCircle2 className="h-3.5 w-3.5" /> Pièce versée en Data Room{p.fichier ? ` : ${p.fichier}` : ''}
               </span>
             ) : (
-              <label className={`inline-flex cursor-pointer items-center gap-1 text-accent ${!dossierId ? 'pointer-events-none opacity-50' : ''}`}>
-                <Upload className="h-3.5 w-3.5" />
+              <label className={classesBouton('secondary', 'sm', `cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus ${!dossierId ? 'pointer-events-none opacity-55' : ''}`)}>
+                <Upload className="h-4 w-4" aria-hidden="true" />
                 {envoi === i ? 'Envoi…' : 'Verser la pièce (exemplaire du journal ou du Bulletin officiel)'}
-                <input type="file" className="hidden" aria-label={`Pièce de la publicité ${i + 1}`}
+                <input type="file" className="sr-only" aria-label={`Pièce de la publicité ${i + 1}`}
                   onChange={(e) => { void deposer(i, e.target.files?.[0]); e.target.value = ''; }} />
               </label>
             )}
-            <button type="button" className="inline-flex items-center gap-1 text-fg-subtle hover:text-danger"
+            <Button type="button" variant="ghost" size="sm" icon={<Trash2 />} className="text-fg-muted hover:text-danger"
               onClick={() => onChange(value.filter((_, k) => k !== i))}>
-              <Trash2 className="h-3.5 w-3.5" /> Retirer
-            </button>
+              Retirer
+            </Button>
           </div>
           {erreurs[i] && <p role="alert" className="text-xs text-danger">{erreurs[i]}</p>}
         </div>
       ))}
 
-      <button type="button" className="inline-flex items-center gap-1 text-sm text-accent"
+      <Button type="button" variant="secondary" size="sm" icon={<Plus />}
         onClick={() => onChange([...value, publiciteVide()])}>
-        <Plus className="h-4 w-4" /> Ajouter une publicité
-      </button>
+        Ajouter une publicité
+      </Button>
     </section>
   );
 }

@@ -18,6 +18,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Megaphone } from 'lucide-react';
 import { TextField } from '../ui/TextField';
+import { Select } from '../ui/Select';
 import { InfoBulle, TexteAide } from '../ui/Aide';
 import { ValeurProposee } from './ValeurProposee';
 import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
@@ -233,14 +234,16 @@ export function LiquidationAnnoncePanel({
                 texte="En principe la décision des associés (ou de l’associé unique) qui approuve le compte définitif. À défaut de délibération, ou si les comptes ne sont pas approuvés, le tribunal statue : l’avis le dit alors."
               />
             </label>
-            <select id="avis-acte-nature" className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
-              value={avis?.acteNature ?? ''} onChange={(e) => onAvisChange({ ...avis, acteNature: e.target.value })}>
-              <option value="">Choisir…</option>
-              <option value={isAU ? "Décision de l'associé unique" : 'Décision des associés'}>
-                {isAU ? 'Décision de l’associé unique' : 'Décision des associés'}
-              </option>
-              <option value="Décision de justice">Décision de justice</option>
-            </select>
+            <Select id="avis-acte-nature"
+              value={avis?.acteNature ?? ''} onChange={(e) => onAvisChange({ ...avis, acteNature: e.target.value })}
+              options={[
+                { value: '', label: 'Choisir…' },
+                {
+                  value: isAU ? "Décision de l'associé unique" : 'Décision des associés',
+                  label: isAU ? 'Décision de l’associé unique' : 'Décision des associés',
+                },
+                { value: 'Décision de justice', label: 'Décision de justice' },
+              ]} />
           </div>
           <ValeurProposee
             id="avis-dissolution-date-effet"
@@ -252,16 +255,14 @@ export function LiquidationAnnoncePanel({
           />
           <TextField label="Compte définitif arrêté au *" type="date" value={avis?.compteDefinitifDate ?? ''}
             onChange={(e) => onAvisChange({ ...avis, compteDefinitifDate: e.target.value })} />
-          <div>
-            <label htmlFor="avis-quitus" className="mb-1 block text-xs font-medium text-fg">Quitus au liquidateur *</label>
-            <select id="avis-quitus" className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
-              value={avis?.quitus ?? ''} onChange={(e) => onAvisChange({ ...avis, quitus: e.target.value })}>
-              <option value="">Choisir…</option>
-              <option value="accorde">Quitus accordé</option>
-              <option value="sous_reserve">Quitus accordé sous réserves</option>
-              <option value="sans_quitus">Décharge du mandat, sans quitus</option>
-            </select>
-          </div>
+          <Select id="avis-quitus" label="Quitus au liquidateur *"
+            value={avis?.quitus ?? ''} onChange={(e) => onAvisChange({ ...avis, quitus: e.target.value })}
+            options={[
+              { value: '', label: 'Choisir…' },
+              { value: 'accorde', label: 'Quitus accordé' },
+              { value: 'sous_reserve', label: 'Quitus accordé sous réserves' },
+              { value: 'sans_quitus', label: 'Décharge du mandat, sans quitus' },
+            ]} />
           <div className="md:col-span-2">
             <TextField label="Siège de la liquidation *" value={avis?.siegeLiquidation ?? ''}
               onChange={(e) => onAvisChange({ ...avis, siegeLiquidation: e.target.value })}

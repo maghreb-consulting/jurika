@@ -7,7 +7,7 @@
  */
 import type { ReactNode } from 'react';
 import { Select } from '../ui/Select';
-import { TextField } from '../ui/TextField';
+import { TextField, ZoneTexte } from '../ui/TextField';
 import { InfoBulle, TexteAide } from '../ui/Aide';
 import { ValeurProposee } from './ValeurProposee';
 import type { MentionsPv } from '../../lib/liquidationPv';
@@ -36,16 +36,7 @@ function Zone({ id, label, value, onChange, hint }: {
 }) {
   return (
     <div className="md:col-span-2">
-      <label htmlFor={id} className="mb-1 block text-sm font-medium text-fg-muted">{label}</label>
-      <textarea
-        id={id}
-        data-testid={id}
-        rows={3}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
-      />
-      {hint && <p className="mt-1 text-[11px] text-fg-subtle">{hint}</p>}
+      <ZoneTexte id={id} label={label} hint={hint} data-testid={id} rows={3} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
   );
 }

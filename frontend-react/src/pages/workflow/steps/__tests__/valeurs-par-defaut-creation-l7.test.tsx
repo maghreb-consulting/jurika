@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { Step3Capital } from '../Step3Capital';
 import { Step5Dirigeants } from '../Step5Dirigeants';
 import { Step6Associes } from '../Step6Associes';
@@ -93,8 +93,9 @@ describe('Étape 5 de la création (L7) — nationalité du représentant propos
         registerDirty={registerDirty}
       />,
     );
-    const champ = document.getElementById('dirigeant-rep-nationalite-d1') as HTMLInputElement;
-    fireEvent.click(champ.parentElement?.querySelector('button') as HTMLButtonElement);
+    // Le bouton "Confirmer" de la valeur proposee (meme bloc que le libelle du champ).
+    const bloc = document.querySelector('label[for="dirigeant-rep-nationalite-d1"]')?.parentElement as HTMLElement;
+    fireEvent.click(within(bloc).getByRole('button', { name: 'Confirmer' }));
     let dirigeants = (ref.getter?.()?.dirigeants ?? []) as Array<Record<string, unknown>>;
     expect(dirigeants[0].repNationalite).toBe('marocaine');
     vue.unmount();

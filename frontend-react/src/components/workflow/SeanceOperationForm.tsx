@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { TexteAide } from '../ui/Aide';
 import { TextField } from '../ui/TextField';
+import { Select } from '../ui/Select';
 import { TypePieceProposee, ValeurProposee } from './ValeurProposee';
 import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
 import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
@@ -406,21 +407,19 @@ export function SeanceOperationForm({
             <h4 className="text-sm font-semibold text-fg">Liquidateur et siège de la liquidation</h4>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-fg-muted">Civilité</label>
-              <select
-                value={liqCivilite}
-                onChange={(e) => {
-                  setLiqCivilite(e.target.value);
-                  setLiqGenre(e.target.value === 'Mme' || e.target.value === 'Mlle' ? 'féminin' : 'masculin');
-                }}
-                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
-              >
-                <option value="M.">M.</option>
-                <option value="Mme">Mme</option>
-                <option value="Mlle">Mlle</option>
-              </select>
-            </div>
+            <Select
+              label="Civilité"
+              value={liqCivilite}
+              onChange={(e) => {
+                setLiqCivilite(e.target.value);
+                setLiqGenre(e.target.value === 'Mme' || e.target.value === 'Mlle' ? 'féminin' : 'masculin');
+              }}
+              options={[
+                { value: 'M.', label: 'M.' },
+                { value: 'Mme', label: 'Mme' },
+                { value: 'Mlle', label: 'Mlle' },
+              ]}
+            />
             <TextField label="Prénom" value={liqPrenom} onChange={(e) => setLiqPrenom(e.target.value)} />
             <TextField label="Nom" value={liqNom} onChange={(e) => setLiqNom(e.target.value)} />
             <TextField label="Adresse" value={liqAdresse} onChange={(e) => setLiqAdresse(e.target.value)} />

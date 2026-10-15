@@ -19,13 +19,13 @@ import {
   Download,
   Eye,
   FileText,
-  Loader,
   Pencil,
   RefreshCcw,
   Sparkles,
 } from 'lucide-react';
 import type { TemplateInfo } from '../../services/workflowDocumentService';
 import { RetourGeneration } from './RetourGeneration';
+import { Button } from '../ui/Button';
 import { DonneesAttendues } from './DonneesAttendues';
 import { ClausesLibresPanel } from './ClausesLibresPanel';
 import { GeneratedDocPreview } from '../document/GeneratedDocPreview';
@@ -131,27 +131,17 @@ export function WorkflowDocumentBlock({
         )}
 
         {!state.generated ? (
-          <button
+          <Button
             type="button"
+            fullWidth
             onClick={onGenerate}
             disabled={state.generating}
+            loading={state.generating}
+            icon={<Sparkles />}
             data-testid={`generate-btn-${tpl.code}`}
-            className={`flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium transition ${
-              state.generating
-                ? 'cursor-wait bg-border text-fg-subtle'
-                : 'bg-accent text-accent-fg hover:bg-accent-hover'
-            }`}
           >
-            {state.generating ? (
-              <>
-                <Loader className="h-4 w-4 animate-spin" /> Génération…
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" /> Générer
-              </>
-            )}
-          </button>
+            {state.generating ? 'Génération…' : 'Générer'}
+          </Button>
         ) : (
           <>
             <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft p-2 text-xs">
@@ -189,63 +179,59 @@ export function WorkflowDocumentBlock({
                 que si `onEdited` est fourni (rétro-compatible pour les workflows
                 qui ne l'ont pas encore câblé). */}
             <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={onTogglePreview}
-                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-border-hi"
-              >
-                <Eye className="h-3.5 w-3.5" />
+              <Button type="button" variant="secondary" size="sm" icon={<Eye />} onClick={onTogglePreview}>
                 {state.previewOpen ? 'Masquer l’aperçu' : 'Aperçu'}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
+                icon={<RefreshCcw />}
                 onClick={onRegenerate}
-                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-border-hi"
                 title="Régénérer le document après avoir corrigé les données saisies"
               >
-                <RefreshCcw className="h-3.5 w-3.5" /> Régénérer
-              </button>
+                Régénérer
+              </Button>
               {onEdited && enEssai === false && (
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
+                  icon={<Pencil />}
                   onClick={() => setEditing(true)}
                   disabled={!state.blob}
-                  className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border-input bg-bg-raised text-xs font-medium text-fg hover:bg-bg-overlay disabled:opacity-60"
                   title="Éditer le document (style Word)"
                 >
-                  <Pencil className="h-3.5 w-3.5" /> Éditer
-                </button>
+                  Éditer
+                </Button>
               )}
               {enEssai === false && (
-              <button
-                type="button"
-                onClick={onDownload}
-                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-border-hi"
-              >
-                <Download className="h-3.5 w-3.5" /> Télécharger (Word)
-              </button>
+                <Button type="button" variant="secondary" size="sm" icon={<Download />} onClick={onDownload}>
+                  Télécharger (Word)
+                </Button>
               )}
               {!state.validated ? (
-                <button
+                <Button
                   type="button"
+                  size="sm"
+                  icon={<CheckCircle />}
                   onClick={onValidate}
                   data-testid={`validate-btn-${tpl.code}`}
-                  className={`flex h-9 items-center justify-center gap-1.5 rounded-lg bg-success text-xs font-semibold text-success-fg transition hover:bg-success/85 ${
-                    onEdited || enEssai !== false ? 'col-span-2' : ''
-                  }`}
+                  className={onEdited || enEssai !== false ? 'col-span-2' : undefined}
                 >
-                  <CheckCircle className="h-3.5 w-3.5" /> Valider
-                </button>
+                  Valider
+                </Button>
               ) : (
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
+                  icon={<RefreshCcw />}
                   onClick={onRegenerate}
-                  className={`flex h-9 items-center justify-center gap-1.5 rounded-lg border border-success bg-success-soft text-xs text-success ${
-                    onEdited || enEssai !== false ? 'col-span-2' : ''
-                  }`}
+                  className={`border-success text-success ${onEdited || enEssai !== false ? 'col-span-2' : ''}`}
                 >
-                  <RefreshCcw className="h-3.5 w-3.5" /> Régénérer
-                </button>
+                  Régénérer
+                </Button>
               )}
             </div>
 

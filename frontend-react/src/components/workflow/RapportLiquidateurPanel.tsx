@@ -9,6 +9,7 @@
 import type { ReactNode } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Select } from '../ui/Select';
+import { Button } from '../ui/Button';
 import { TextField } from '../ui/TextField';
 import { InfoBulle, TexteAide } from '../ui/Aide';
 import {
@@ -61,11 +62,9 @@ function Tableau({ t, titre, lignes, onChange }: {
         <div key={i} className="rounded-md border border-border-hi p-2" data-testid={`rapport-${t}-ligne-${i}`}>
           <div className="mb-1 flex items-center justify-between">
             <span className="text-xs font-medium text-fg-muted">{titre} — ligne {i + 1}</span>
-            <button type="button" aria-label={`Retirer la ligne ${i + 1}`}
+            <Button type="button" variant="ghost" size="sm" iconOnly icon={<Trash2 />} aria-label={`Retirer la ligne ${i + 1}`}
               onClick={() => onChange(lignes.filter((_, j) => j !== i))}
-              className="rounded p-1 text-fg-subtle hover:text-danger">
-              <Trash2 className="h-4 w-4" aria-hidden="true" />
-            </button>
+              className="text-fg-subtle hover:text-danger" />
           </div>
           <div className="grid gap-2 md:grid-cols-3">
             {colonnes.map((c) => (
@@ -79,11 +78,10 @@ function Tableau({ t, titre, lignes, onChange }: {
           </div>
         </div>
       ))}
-      <button type="button" onClick={() => onChange([...lignes, ligneVide(t)])}
-        data-testid={`rapport-${t}-ajouter`}
-        className="inline-flex items-center gap-1 rounded-md border border-border-input px-2 py-1 text-xs font-medium text-fg hover:bg-bg-overlay bg-bg-raised">
-        <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Ajouter une ligne
-      </button>
+      <Button type="button" variant="secondary" size="sm" icon={<Plus />} onClick={() => onChange([...lignes, ligneVide(t)])}
+        data-testid={`rapport-${t}-ajouter`}>
+        Ajouter une ligne
+      </Button>
     </div>
   );
 }

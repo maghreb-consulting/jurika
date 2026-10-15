@@ -1,4 +1,7 @@
 import { InfoBulle } from '../ui/Aide';
+import { Button } from '../ui/Button';
+import { Select } from '../ui/Select';
+import { TextField } from '../ui/TextField';
 
 /**
  * Lot L3 (D6, 2026-10-10) : aucune valeur par defaut silencieuse.
@@ -31,7 +34,6 @@ export function ValeurProposee({
 }) {
   const confirmee = valeur !== undefined && valeur !== '';
   const affichee = confirmee ? valeur : proposition;
-  const champ = 'w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm text-fg';
   return (
     <div>
       <label htmlFor={id} className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
@@ -43,24 +45,20 @@ export function ValeurProposee({
       </label>
       <div className="flex items-center gap-2">
         {options ? (
-          <select id={id} className={champ} value={affichee} onChange={(e) => onChange(e.target.value)}>
-            {options.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <Select
+            id={id}
+            containerClassName="flex-1"
+            value={affichee}
+            onChange={(e) => onChange(e.target.value)}
+            options={options}
+          />
         ) : (
-          <input id={id} type={type} className={champ} value={affichee} onChange={(e) => onChange(e.target.value)} />
+          <TextField id={id} type={type} containerClassName="flex-1" value={affichee} onChange={(e) => onChange(e.target.value)} />
         )}
         {!confirmee && (
-          <button
-            type="button"
-            onClick={() => onChange(proposition)}
-            className="whitespace-nowrap rounded-md border border-border-input px-2 py-1 text-xs font-medium text-fg hover:bg-bg-overlay bg-bg-raised"
-          >
+          <Button type="button" variant="secondary" size="sm" onClick={() => onChange(proposition)}>
             Confirmer
-          </button>
+          </Button>
         )}
       </div>
       <p className={`mt-1 text-[11px] ${confirmee ? 'text-success' : 'text-warning'}`} role="status">
