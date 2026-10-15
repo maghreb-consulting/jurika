@@ -22,7 +22,7 @@ export const FORMES_JURIDIQUES_SUPPORTED: FormeJuridique[] = ['SARL', 'SARL_AU']
 
 export const FORME_JURIDIQUE_LABELS: Record<FormeJuridique, string> = {
   SARL: 'SARL',
-  SARL_AU: 'SARL associe unique (SARL AU)',
+  SARL_AU: 'SARL à associé unique (SARL AU)',
   SA: 'SA',
   SAS: 'SAS',
   SCS: 'SCS',
@@ -173,14 +173,14 @@ export interface DeboursPayload {
 }
 
 export const TICKET_TYPE_LABELS: Record<TicketType, string> = {
-  CREATION: 'Creation',
-  IMPORT: 'Import dossier',
+  CREATION: 'Création',
+  IMPORT: 'Import de dossier',
   MODIFICATION: 'Modification',
   DISSOLUTION: 'Dissolution',
   LIQUIDATION: 'Liquidation',
   SUCCURSALE_MA: 'Succursale marocaine',
-  SUCCURSALE_ETR: 'Succursale etrangere',
-  FERMETURE_SUCCURSALE: 'Fermeture succursale',
+  SUCCURSALE_ETR: 'Succursale étrangère',
+  FERMETURE_SUCCURSALE: 'Fermeture de succursale',
   PV_AGO: 'PV AGO',
 };
 

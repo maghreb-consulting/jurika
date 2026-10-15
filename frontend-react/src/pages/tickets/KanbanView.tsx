@@ -132,7 +132,7 @@ export function KanbanView({
                 >
                   <h2
                     id={`kanban-titre-${col.statut}`}
-                    className={cn('truncate text-sm font-semibold', col.sortie ? 'text-fg-muted' : 'text-heading')}
+                    className={cn('text-sm font-semibold leading-tight', col.sortie ? 'text-fg-muted' : 'text-heading')}
                     title={STATUT_LABELS[col.statut]}
                   >
                     {STATUT_LABELS[col.statut]}

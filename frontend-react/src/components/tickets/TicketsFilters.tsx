@@ -69,7 +69,7 @@ export function TicketsFilters({
             type="search"
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="Rechercher par référence, titre ou description…"
+            placeholder="Référence, titre, description…"
             aria-label="Rechercher un ticket"
             className="pl-9"
           />

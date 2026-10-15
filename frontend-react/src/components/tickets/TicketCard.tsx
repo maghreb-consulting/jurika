@@ -102,7 +102,7 @@ export function TicketCard({ ticket, onClick, onDragStart }: Props) {
       </div>
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-border pt-2 text-xs">
-        <span className={cn('flex items-center gap-1', overdue ? 'font-medium text-danger' : 'text-fg-muted')}>
+        <span className={cn('flex flex-wrap items-center gap-x-1', overdue ? 'font-medium text-danger' : 'text-fg-muted')}>
           {overdue ? <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> : <Calendar className="h-3.5 w-3.5" aria-hidden="true" />}
           {ticket.deadline ? new Date(ticket.deadline).toLocaleDateString('fr-FR') : 'Sans échéance'}
           {overdue && <span>(en retard)</span>}

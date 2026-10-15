@@ -549,6 +549,8 @@ function DemarcheRow({
                   <Button
                     type="button"
                     size="sm"
+                    variant="secondary"
+                    icon={<Check />}
                     loading={enCours}
                     disabled={enCours || groupesManquants.length > 0}
                     onClick={() => void cocher()}
