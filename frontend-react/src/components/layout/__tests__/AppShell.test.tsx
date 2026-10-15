@@ -28,6 +28,7 @@ import { AppShell } from '../AppShell';
 import { useAuthStore } from '../../../store/authStore';
 import { usePreferencesStore } from '../../../store/preferencesStore';
 import { useAidesStore } from '../../../store/aidesStore';
+import { useCommandesStore } from '../../../store/commandesStore';
 
 function connecter(role: Role) {
   useAuthStore.setState({
@@ -69,6 +70,7 @@ beforeEach(() => {
 
 afterEach(() => {
   useAuthStore.setState({ user: null, isAuthenticated: false } as never);
+  useCommandesStore.setState({ ouverte: null });
 });
 
 describe('Coquille', () => {
@@ -140,5 +142,60 @@ describe('Coquille', () => {
     expect(screen.getByRole('link', { name: 'Aller au contenu' })).toHaveAttribute('href', '#contenu');
     expect(screen.getByRole('main')).toHaveAttribute('id', 'contenu');
     await act(async () => undefined);
+  });
+
+  // Lot L6b (E11) : JURI a sa bande reservee ; masque, la bande disparait ; le menu du compte
+  // le masque et le reaffiche (choix enregistre sur le compte) ; l'en-tete ouvre la palette.
+  it('JURI : bande reservee a droite du contenu, JURI dedans', async () => {
+    connecter('EMPLOYE');
+    rendre();
+    expect(await screen.findByTestId('juri')).toBeInTheDocument();
+    const colonne = screen.getByRole('main').parentElement as HTMLElement;
+    expect(colonne).toHaveAttribute('data-reserve-juri');
+    expect(colonne).toHaveClass('pr-16');
+    expect(screen.queryByTestId('assistant-bulle')).not.toBeInTheDocument();
+  });
+
+  it('JURI masque sur le compte : ni JURI ni bande ; le menu du compte le reaffiche', async () => {
+    api.get.mockImplementation((url: string) =>
+      url === '/users/me/preferences' ? Promise.resolve({ data: { theme: 'CLAIR', juriMasque: true } }) : Promise.resolve({ data: { cles: [] } }),
+    );
+    api.put.mockResolvedValue({ data: {} });
+    connecter('SUPERVISEUR');
+    rendre();
+    await act(async () => undefined);
+    expect(screen.queryByTestId('juri')).not.toBeInTheDocument();
+    const colonne = screen.getByRole('main').parentElement as HTMLElement;
+    expect(colonne).not.toHaveAttribute('data-reserve-juri');
+    expect(colonne).not.toHaveClass('pr-16');
+    fireEvent.click(screen.getByRole('button', { name: /Menu du compte/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Afficher JURI' }));
+    expect(api.put).toHaveBeenCalledWith('/users/me/preferences', { juriMasque: false });
+    expect(await screen.findByTestId('juri')).toBeInTheDocument();
+    expect(colonne).toHaveAttribute('data-reserve-juri');
+  });
+
+  it('menu du compte : Masquer JURI', async () => {
+    api.put.mockResolvedValue({ data: {} });
+    connecter('EMPLOYE');
+    rendre();
+    expect(await screen.findByTestId('juri')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Menu du compte/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Masquer JURI' }));
+    expect(api.put).toHaveBeenCalledWith('/users/me/preferences', { juriMasque: true });
+    await act(async () => undefined);
+    expect(screen.queryByTestId('juri')).not.toBeInTheDocument();
+  });
+
+  it('en-tete : le champ de recherche ouvre la palette de commandes', async () => {
+    connecter('EMPLOYE');
+    rendre();
+    const emplacement = document.querySelector('[data-emplacement="recherche"]') as HTMLElement;
+    const champ = within(emplacement).getByRole('button', { name: /ouvrir la palette de commandes/ });
+    expect(champ).toHaveAttribute('aria-keyshortcuts', 'Control+K Meta+K');
+    fireEvent.click(champ);
+    expect(await screen.findByRole('dialog', { name: 'Palette de commandes' })).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByTestId('palette-champ'), { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Palette de commandes' })).not.toBeInTheDocument();
   });
 });

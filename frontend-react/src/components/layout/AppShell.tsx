@@ -8,6 +8,9 @@ import { IceReminderBanner } from './IceReminderBanner';
 import { BandeauEssai } from './BandeauEssai';
 import { BandeauImpaye } from './BandeauImpaye';
 import { AssistantJuridique } from '../chatbot/AssistantJuridique';
+import { Juri } from '../assistant/Juri';
+import { useEtatJuri } from '../assistant/useJuri';
+import { CommandesGlobales } from '../palette/CommandesGlobales';
 import { VisiteGuidee } from '../ui/VisiteGuidee';
 import { SquelettePage } from '../ui/LoadingSkeleton';
 import { useSessionKeepAlive } from '../../lib/useSessionKeepAlive';
@@ -48,7 +51,12 @@ function lireMenuReplie(): boolean {
  *
  * Reprises : session renouvelee (keep-alive), aides masquees lues une fois par session,
  * ErrorBoundary reinitialisee a chaque navigation (key=pathname), garde du contrat
- * (lot L7 E6, RG-CTR-03), bandeaux d'essai et d'impaye, bulle du chatbot, visite guidee.
+ * (lot L7 E6, RG-CTR-03), bandeaux d'essai et d'impaye, chatbot, visite guidee.
+ *
+ * Lot L6b (E11) : JURI (assistant, a la place de la bulle du chatbot) a sa bande reservee a
+ * droite de la zone de contenu (`pr-16`, `data-reserve-juri`) : il ne recouvre ni bouton ni
+ * contenu ; la bande disparait si l'utilisateur a masque JURI. Raccourcis clavier, palette
+ * de commandes et nouveau ticket global : CommandesGlobales.
  */
 export function AppShell() {
   useSessionKeepAlive();
@@ -77,6 +85,7 @@ export function AppShell() {
     });
   }
 
+  const { place: placeJuri } = useEtatJuri();
   const garde = useGardeContrat();
   if (garde === 'CHARGEMENT') {
     return (
@@ -124,7 +133,10 @@ export function AppShell() {
             <MenuLateral role={role} replie={replie} onBasculer={basculerMenu} />
           </aside>
         )}
-        <div className="@container/page min-w-0 flex-1">
+        <div
+          className={placeJuri ? '@container/page min-w-0 flex-1 pr-16' : '@container/page min-w-0 flex-1'}
+          data-reserve-juri={placeJuri ? '' : undefined}
+        >
           <IceReminderBanner />
           <BandeauEssai />
           <BandeauImpaye />
@@ -159,10 +171,11 @@ export function AppShell() {
           />
         </div>
       )}
-      {/* Lot L5 E8 (RG-COM-01) : bulle du chatbot ; lot L6 (E6) : cible "chatbot" de la visite. */}
-      <div data-visite="chatbot">
-        <AssistantJuridique />
-      </div>
+      {/* Lot L5 E8 (RG-COM-01) : panneau du chatbot ; lot L6b (E11) : ouvert par JURI, qui
+          porte la cible "chatbot" de la visite guidee. */}
+      <AssistantJuridique />
+      <Juri />
+      <CommandesGlobales />
       {/* Lot L6 (E6, CDC 15.4) : premiere visite guidee du role. */}
       <VisiteGuidee />
     </div>

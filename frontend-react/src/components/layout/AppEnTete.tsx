@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, Compass, FileSignature, Info, LogOut, Menu as IconeMenu, Settings, Shield, User, Zap } from 'lucide-react';
+import { Bot, ChevronDown, Compass, FileSignature, Info, LogOut, Menu as IconeMenu, Settings, Shield, User, Zap } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useAidesStore } from '../../store/aidesStore';
 import { usePreferencesStore } from '../../store/preferencesStore';
@@ -13,6 +13,8 @@ import { DeadlineCountWidget } from './DeadlineCountWidget';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
 import { useDeconnexion } from './useDeconnexion';
+import { ChampPalette } from '../palette/ChampPalette';
+import { useEtatJuri, useToastSiDisponible } from '../assistant/useJuri';
 import { NOM_PLATEFORME, libelleRole } from './identite';
 
 /** Roles qui ont acces au calendrier des echeances (/calendar). */
@@ -36,6 +38,9 @@ export function AppEnTete({ onOuvrirMenuMobile }: { onOuvrirMenuMobile?: () => v
   const reafficherTout = useAidesStore((s) => s.reafficherTout);
   const viderAides = useAidesStore((s) => s.vider);
   const viderPreferences = usePreferencesStore((s) => s.vider);
+  const definirJuriMasque = usePreferencesStore((s) => s.definirJuriMasque);
+  const { masque: juriMasque } = useEtatJuri();
+  const toast = useToastSiDisponible();
   const [annonce, setAnnonce] = useState('');
   // Lot L7 (E12) : les saisies gardees dans ce navigateur partent avant la deconnexion.
   const { deconnecter, dialogue: dialogueDeconnexion } = useDeconnexion(() => {
@@ -64,6 +69,14 @@ export function AppEnTete({ onOuvrirMenuMobile }: { onOuvrirMenuMobile?: () => v
     );
   }
 
+  // Lot L6b (E11) : JURI masque ou reaffiche depuis le menu du compte (choix du compte).
+  function basculerJuri() {
+    const masquer = !juriMasque;
+    void definirJuriMasque(masquer).then((ok) => {
+      if (ok) toast?.enregistre(masquer ? 'JURI est masqué' : 'JURI est de retour');
+    });
+  }
+
   return (
     <header className="sticky top-0 z-40 flex h-[var(--hauteur-entete)] items-center gap-3 border-b border-border bg-bg-raised px-3 md:px-4">
       {onOuvrirMenuMobile && (
@@ -89,7 +102,10 @@ export function AppEnTete({ onOuvrirMenuMobile }: { onOuvrirMenuMobile?: () => v
         </span>
       </Link>
 
-      <div data-emplacement="recherche" className="flex min-w-0 flex-1 justify-center" />
+      <div data-emplacement="recherche" className="flex min-w-0 flex-1 justify-center">
+        {/* Lot L6b (E11) : champ qui ouvre la palette de commandes (Ctrl+K). */}
+        <ChampPalette />
+      </div>
 
       <div className="flex shrink-0 items-center gap-1">
         {superviseur && (
@@ -186,6 +202,9 @@ export function AppEnTete({ onOuvrirMenuMobile }: { onOuvrirMenuMobile?: () => v
             </MenuElement>
             <MenuElement onSelect={reafficherAides} icone={<Info />}>
               Réafficher les aides
+            </MenuElement>
+            <MenuElement onSelect={basculerJuri} icone={<Bot />}>
+              {juriMasque ? 'Afficher JURI' : 'Masquer JURI'}
             </MenuElement>
             <MenuSeparateur />
             <MenuElement onSelect={() => void deconnecter()} icone={<LogOut />} danger>

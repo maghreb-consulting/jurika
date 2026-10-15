@@ -12,13 +12,16 @@ import { useAideMasquee, useAidesStore } from '../../store/aidesStore';
  *   memorise cote serveur, par utilisateur (lot L6, `store/aidesStore`). Le rendu
  *   lit le magasin, hydrate une fois a la connexion : aucun appel reseau ; sans
  *   serveur, l'aide s'affiche.
+ *
+ * Lot L6b (E11) : attributs `data-aide` (ajout, API inchangee) lus par JURI pour lister les
+ * aides de l'ecran en cours (components/assistant/aidesEcran.ts).
  */
 
 export function InfoBulle({ texte, libelle = 'Aide' }: { texte: string; libelle?: string }) {
   const id = useId();
   const [ouverte, setOuverte] = useState(false);
   return (
-    <span className="relative inline-flex align-middle">
+    <span className="relative inline-flex align-middle" data-aide="infobulle" data-aide-libelle={libelle} data-aide-texte={texte}>
       <button
         type="button"
         aria-label={libelle}
@@ -55,6 +58,9 @@ export function TexteAide({ cle, titre, children }: { cle: string; titre: string
     return (
       <button
         type="button"
+        data-aide="texte-masque"
+        data-aide-cle={cle}
+        data-aide-titre={titre}
         onClick={() => reafficher(cle)}
         className="inline-flex items-center gap-1 rounded-sm text-xs text-fg-subtle underline underline-offset-2 hover:text-fg"
       >
@@ -68,6 +74,9 @@ export function TexteAide({ cle, titre, children }: { cle: string; titre: string
     <div
       role="note"
       aria-label={titre}
+      data-aide="texte"
+      data-aide-cle={cle}
+      data-aide-titre={titre}
       className="relative rounded-lg border border-border border-l-4 border-l-info bg-info-soft py-3 pl-4 pr-10 text-sm leading-relaxed text-fg"
     >
       <p className="mb-1 flex items-center gap-1.5 font-semibold text-fg">
