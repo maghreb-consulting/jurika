@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { AlertTriangle, X } from 'lucide-react';
+import { Lien } from '../ui/Lien';
+import { Message } from '../ui/Message';
 import { useCurrentUser } from '../../store/authStore';
 import { workspaceService } from '../../services/workspace.service';
 
@@ -40,29 +40,11 @@ export function IceReminderBanner() {
   }
 
   return (
-    <div
-      className="border-b border-warning/40 bg-warning/10"
-      data-testid="ice-reminder-banner"
-      role="status"
-    >
-      <div className="mx-auto flex max-w-7xl items-center gap-3 px-6 py-2 text-sm text-fg">
-        <AlertTriangle className="h-4 w-4 flex-shrink-0 text-warning" />
-        <span className="flex-1">
-          Votre ICE n'est pas encore renseigne.{' '}
-          <Link to="/settings/cabinet" className="font-semibold text-accent hover:underline">
-            Completer maintenant
-          </Link>{' '}
-          — il sera requis pour vos dossiers.
-        </span>
-        <button
-          type="button"
-          onClick={dismiss}
-          aria-label="Masquer ce rappel"
-          className="rounded p-1 text-fg-subtle transition-colors hover:text-fg"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
+    <div className="mx-auto max-w-7xl px-6 pt-3" data-testid="ice-reminder-banner">
+      <Message ton="attention" onFermer={dismiss}>
+        Votre ICE n’est pas encore renseigné.{' '}
+        <Lien to="/settings/cabinet">Compléter maintenant</Lien> : il sera requis pour vos dossiers.
+      </Message>
     </div>
   );
 }
