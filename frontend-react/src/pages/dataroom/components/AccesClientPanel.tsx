@@ -1,8 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
+import { ToastContext } from '../../../components/ui/useToast';
 import { dataroomService } from '../../../services/dataroom.service';
 import { extractError } from '../../../lib/api';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
+import { Copy } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
+import { Badge } from '../../../components/ui/Badge';
+import { Case } from '../../../components/ui/Choix';
+import { Message } from '../../../components/ui/Message';
+import { Skeleton } from '../../../components/ui/LoadingSkeleton';
 import type { DataroomSettings, HistoriqueAccesClient, PermissionsClientPatch } from '../../../types/dataroom';
 import { dateFr } from './responsables';
 
@@ -57,6 +63,8 @@ export function AccesClientPanel({
   peutRegler: boolean;
   onSettings: (s: DataroomSettings) => void;
 }) {
+  // Confirmation discrete (toast "Enregistre") quand la coquille fournit les toasts.
+  const toast = useContext(ToastContext);
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [historique, setHistorique] = useState<HistoriqueAccesClient[] | null>(null);
@@ -83,6 +91,7 @@ export function AccesClientPanel({
     try {
       onSettings(await action());
       setVersion((v) => v + 1);
+      toast?.enregistre();
     } catch (err) {
       setErreur(extractError(err).message);
     } finally {
@@ -100,9 +109,12 @@ export function AccesClientPanel({
   }
 
   return (
-    <section aria-labelledby="acces-client-titre" className="space-y-3 rounded-xl border border-border bg-bg-overlay p-3 md:p-4">
+    <section
+      aria-labelledby="acces-client-titre"
+      className="@container space-y-4 rounded-xl border border-border bg-bg-raised p-5 shadow-card"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="acces-client-titre" className="flex items-center gap-1 text-sm font-semibold text-fg">
+        <h2 id="acces-client-titre" className="flex items-center gap-1 text-base font-semibold text-heading">
           Accès du client
           <InfoBulle
             libelle="Que règle l’accès du client ?"
@@ -110,15 +122,14 @@ export function AccesClientPanel({
           />
         </h2>
         <div className="flex items-center gap-2">
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${suspendu ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success'}`}
-          >
+          <Badge variant={suspendu ? 'danger' : 'success'} dot>
             {suspendu ? 'Accès suspendu' : 'Accès actif'}
-          </span>
+          </Badge>
           {peutRegler && (
             <Button
+              type="button"
               size="sm"
-              variant="secondary"
+              variant={suspendu ? 'secondary' : 'danger'}
               loading={enCours}
               onClick={() => void appliquer(() => dataroomService.toggleSuspension(dossierId, !suspendu))}
             >
@@ -138,29 +149,29 @@ export function AccesClientPanel({
           </p>
         </TexteAide>
       ) : (
-        <p className="text-xs text-fg-subtle">
+        <p className="text-sm text-fg-muted">
           Seuls l’employé responsable du dossier et le superviseur modifient l’accès du client.
         </p>
       )}
 
-      <fieldset disabled={!peutRegler || enCours} className="flex flex-wrap gap-x-5 gap-y-2">
+      <fieldset disabled={!peutRegler || enCours} className="grid gap-x-5 gap-y-2 @md:grid-cols-2">
         <legend className="sr-only">Permissions du client</legend>
         {PERMISSIONS.map((p) => (
-          <label key={p.cle} className="flex items-center gap-2 text-sm text-fg" title={p.aide}>
-            <input
-              type="checkbox"
-              checked={settings[p.cle]}
-              onChange={(e) =>
-                void appliquer(() => dataroomService.updatePermissions(dossierId, { [p.cle]: e.target.checked }))
-              }
-            />
-            {p.libelle}
-          </label>
+          <Case
+            key={p.cle}
+            label={p.libelle}
+            title={p.aide}
+            checked={settings[p.cle]}
+            disabled={!peutRegler || enCours}
+            onChange={(e) =>
+              void appliquer(() => dataroomService.updatePermissions(dossierId, { [p.cle]: e.target.checked }))
+            }
+          />
         ))}
       </fieldset>
 
-      <div className="space-y-1">
-        <p className="flex items-center gap-1 text-xs font-medium text-fg">
+      <div className="space-y-1.5">
+        <p className="flex items-center gap-1 text-sm font-medium text-fg">
           Lien d’accès du client
           <InfoBulle
             libelle="À quoi sert le lien d’accès ?"
@@ -168,29 +179,41 @@ export function AccesClientPanel({
           />
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <code className="rounded bg-bg-raised px-2 py-1 text-xs text-fg">{lien}</code>
-          <Button size="sm" variant="ghost" onClick={() => void copier()}>
+          <code className="max-w-full break-all rounded-md border border-border bg-bg-overlay px-2 py-1 font-mono text-xs text-fg">
+            {lien}
+          </code>
+          <Button type="button" size="sm" variant="secondary" icon={<Copy />} onClick={() => void copier()}>
             Copier le lien
           </Button>
-          {copie && <span role="status" className="text-xs text-fg-subtle">{copie}</span>}
+          {copie && (
+            <span role="status" className="text-xs text-fg-muted">
+              {copie}
+            </span>
+          )}
         </div>
       </div>
 
-      {erreur && <p role="alert" className="text-sm text-danger">{erreur}</p>}
+      {erreur && <Message ton="erreur">{erreur}</Message>}
 
       {peutRegler && (
-        <div className="space-y-1">
-          <h3 className="text-xs font-semibold text-fg">Historique des modifications</h3>
+        <div className="space-y-1.5">
+          <h3 className="text-sm font-semibold text-heading">Historique des modifications</h3>
+          {historique === null && !erreur && (
+            <div className="space-y-1.5" aria-busy="true" aria-label="Chargement de l’historique">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          )}
           {historique && historique.length === 0 && (
-            <p className="text-xs text-fg-subtle">Aucune modification depuis l’ouverture de la Data Room.</p>
+            <p className="text-sm text-fg-muted">Aucune modification depuis l’ouverture de la Data Room.</p>
           )}
           {historique && historique.length > 0 && (
-            <ol className="divide-y divide-border rounded-md border border-border bg-bg-raised">
+            <ol className="divide-y divide-border rounded-lg border border-border">
               {historique.map((l) => (
-                <li key={l.id} className="px-3 py-1.5 text-xs">
+                <li key={l.id} className="px-3 py-2 text-sm">
                   <p className="text-fg">{decrireChangement(l)}</p>
-                  <p className="text-fg-subtle">
-                    {dateFr(l.createdAt)} · par {l.acteurNom ?? 'compte inconnu'}
+                  <p className="text-xs text-fg-muted">
+                    {dateFr(l.createdAt)} · par {l.acteurNom ?? 'Compte inconnu'}
                   </p>
                 </li>
               ))}

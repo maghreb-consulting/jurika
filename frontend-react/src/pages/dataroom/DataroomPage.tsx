@@ -1,26 +1,30 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import {
   Activity,
   ArrowLeft,
-  Building2,
+  ChevronRight,
   FileText,
   FolderOpen,
-  Loader2,
-  Lock,
   MessageSquare,
   PauseCircle,
   PlayCircle,
   Search,
-  Upload,
   Send,
+  Upload,
   UserCheck,
   UserMinus,
   UserPlus,
 } from 'lucide-react';
+import { Page } from '../../components/layout/Page';
 import { Card } from '../../components/ui/Card';
 import { TextField } from '../../components/ui/TextField';
 import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { Message } from '../../components/ui/Message';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Onglets } from '../../components/ui/Onglets';
+import { Skeleton } from '../../components/ui/LoadingSkeleton';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { HistoriqueResponsablesPanel } from './components/HistoriqueResponsablesPanel';
 import { AccesClientPanel } from './components/AccesClientPanel';
@@ -53,20 +57,19 @@ import { EntityActivityPanel } from '../../components/tracabilite/EntityActivity
  *
  * Les dossiers comptable et fiscal sont sortis du perimetre produit. Les pieces
  * de cette nature se deposent desormais dans « Depot client », sans traitement.
+ *
+ * Lot L6b (E6) : ecran migre sur la coquille commune (Page : titre, fil d'Ariane,
+ * action principale au meme endroit) et sur la bibliotheque (onglets, badges, etats
+ * vides, squelettes, messages). Logique et appels au serveur inchanges.
  */
 type Tab = 'juridique' | 'depots' | 'requetes' | 'demandes';
 
-const TABS: {
-  value: Tab;
-  label: string;
-  icon: typeof FileText;
-  activeBg: string;
-}[] = [
+const TABS: { value: Tab; label: string; icon: typeof FileText }[] = [
   // Lot L6 (E9) : libelles et ordre de RG-DR-01.
-  { value: 'juridique', label: 'Dossier juridique',   icon: FileText, activeBg: 'bg-accent' },
-  { value: 'depots',    label: 'Dépôts du client',    icon: Upload, activeBg: 'bg-warning' },
-  { value: 'demandes',  label: 'Demandes du client',  icon: MessageSquare, activeBg: 'bg-accent' },
-  { value: 'requetes',  label: 'Requêtes du cabinet', icon: Send, activeBg: 'bg-success' },
+  { value: 'juridique', label: 'Dossier juridique', icon: FileText },
+  { value: 'depots', label: 'Dépôts du client', icon: Upload },
+  { value: 'demandes', label: 'Demandes du client', icon: MessageSquare },
+  { value: 'requetes', label: 'Requêtes du cabinet', icon: Send },
 ];
 
 /** Lot L6 (E9, CDC 15.4) : ce que contient chaque section et ce qu'on y fait. */
@@ -80,6 +83,16 @@ const AIDE_ONGLETS: Record<Tab, string> = {
   requetes:
     'Ce que le cabinet attend du client : une pièce à fournir ou une réponse. Créez une requête ; le client la voit dans son espace et y répond.',
 };
+
+/** Forme juridique, ICE (ou pays) et ville, separes par un point median. */
+function identiteCourte(d: DossierBrief): string {
+  const parts = [
+    displayFormeJuridique(d) ?? '—',
+    d.origine === 'ETRANGERE' ? d.pays : d.ice ? `ICE ${d.ice}` : null,
+    d.ville,
+  ].filter(Boolean);
+  return parts.join(' · ');
+}
 
 /**
  * Page d'entree Data Room.
@@ -104,12 +117,21 @@ function DataroomManagementView() {
   const user = useCurrentUser();
   const isEmploye = user?.role === 'EMPLOYE';
   const isReadOnly = user?.role === 'SUPERVISEUR' || user?.role === 'SUPER_ADMIN';
+  const titreListe = isReadOnly ? 'Toutes les Data Rooms' : 'Mes Data Rooms';
 
   const [dossiers, setDossiers] = useState<DossierBrief[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<DossierBrief | null>(null);
+  // Le dossier ouvert est rattache a l'entree d'historique courante : un retour par le
+  // fil d'Ariane (lien vers /data-rooms) cree une nouvelle entree et ramene a la liste.
+  const location = useLocation();
+  const [selection, setSelection] = useState<{ dossier: DossierBrief; cle: string } | null>(null);
+  const selected = selection && selection.cle === location.key ? selection.dossier : null;
+  const setSelected = useCallback(
+    (d: DossierBrief | null) => setSelection(d ? { dossier: d, cle: location.key } : null),
+    [location.key],
+  );
   // Fix 2026-06-08 — onglet de classement Actif / Suspendu (le SUSPENDED
   // est cote dataroom_settings.access_status, vs. statut metier du dossier).
   const [statusTab, setStatusTab] = useState<'ACTIVE' | 'SUSPENDED'>('ACTIVE');
@@ -174,6 +196,7 @@ function DataroomManagementView() {
     return (
       <DataroomDetail
         dossier={selected}
+        titreListe={titreListe}
         initialTab={deepLinkTab}
         onBack={() => {
           setSelected(null);
@@ -185,142 +208,140 @@ function DataroomManagementView() {
     );
   }
 
+  const recherche = query.trim() !== '';
+
   return (
-    <div className="space-y-5">
-      <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-xs text-fg-subtle">
-            Tableau de bord / {isReadOnly ? 'Toutes les Data Rooms' : 'Mes Data Rooms'}
+    <Page
+      titre={titreListe}
+      etat={isReadOnly ? <Badge variant="neutral">Consultation</Badge> : undefined}
+      description={
+        isReadOnly
+          ? 'Les Data Rooms de toutes les sociétés du cabinet, en consultation.'
+          : 'Les Data Rooms des sociétés dont vous êtes responsable : documents, dépôts, demandes et requêtes du client.'
+      }
+      aide={
+        <TexteAide cle="data-rooms-liste" titre="Vos Data Rooms">
+          <p>
+            Une Data Room réunit tout ce qui concerne une société : ses documents juridiques, les
+            pièces déposées par le client, ses demandes et vos requêtes. Elle est créée
+            automatiquement à l’ouverture d’un ticket de création ou d’import de société. Ouvrez-en
+            une pour travailler ; l’onglet « Suspendus » rassemble celles dont l’accès du client est
+            coupé.
           </p>
-          <div className="mt-1 flex items-center gap-3">
-            <h1 className="text-2xl md:text-3xl font-bold text-fg">
-              {isReadOnly ? 'Toutes les Data Rooms' : 'Mes Data Rooms'}
-            </h1>
-            {isReadOnly && (
-              <span className="px-2 py-1 bg-accent/10 text-accent rounded text-xs font-bold">
-                Consultation
-              </span>
-            )}
-            <span className="rounded-full bg-bg-overlay px-2 py-0.5 text-xs font-medium text-fg-subtle">
-              {filtered.length}
-            </span>
-          </div>
-          <p className="mt-1 text-sm text-fg-subtle">
-            {isReadOnly
-              ? 'Les Data Rooms de toutes les sociétés du cabinet, en consultation.'
-              : 'Les Data Rooms des sociétés dont vous êtes responsable : documents, dépôts, demandes et requêtes du client.'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-fg-subtle" />
+        </TexteAide>
+      }
+    >
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 @2xl/page:flex-row @2xl/page:items-end @2xl/page:justify-between">
+          <Onglets
+            libelle="Classement des Data Rooms"
+            actif={statusTab}
+            onChange={(id) => setStatusTab(id as 'ACTIVE' | 'SUSPENDED')}
+            className="min-w-0"
+            onglets={[
+              {
+                id: 'ACTIVE',
+                libelle: 'Actifs',
+                badge: <Badge variant="neutral">{loading ? '…' : activeCount}</Badge>,
+              },
+              {
+                id: 'SUSPENDED',
+                libelle: 'Suspendus',
+                badge: <Badge variant={suspendedCount > 0 ? 'danger' : 'neutral'}>{loading ? '…' : suspendedCount}</Badge>,
+              },
+            ]}
+          />
+          <div className="relative w-full @2xl/page:w-80">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+            />
             <TextField
+              type="search"
               placeholder="Rechercher une société, une référence, un ICE…"
               aria-label="Rechercher une Data Room"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-56 pl-9"
+              className="pl-9"
             />
           </div>
         </div>
-      </header>
 
-      {error && (
-        <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-          {error}
-        </div>
-      )}
+        {error && (
+          <Message
+            ton="erreur"
+            titre="La liste des Data Rooms n’a pas pu être chargée."
+            action={
+              <Button type="button" size="sm" variant="secondary" onClick={() => void loadDossiers()}>
+                Réessayer
+              </Button>
+            }
+          >
+            {error}
+          </Message>
+        )}
 
-      {/* Fix 2026-06-08 — Onglets ACTIF / SUSPENDU pour classer les datarooms */}
-      <div className="flex items-center gap-1 border-b border-border">
-        <button
-          type="button"
-          onClick={() => setStatusTab('ACTIVE')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${
-            statusTab === 'ACTIVE'
-              ? 'border-accent text-accent'
-              : 'border-transparent text-fg-subtle hover:text-fg'
-          }`}
-        >
-          <span className="h-2 w-2 rounded-full bg-success" />
-          Actifs
-          <span className="rounded-full bg-bg-overlay px-2 py-0.5 text-[10px] font-bold text-fg-subtle">
-            {activeCount}
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setStatusTab('SUSPENDED')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${
-            statusTab === 'SUSPENDED'
-              ? 'border-danger text-danger'
-              : 'border-transparent text-fg-subtle hover:text-fg'
-          }`}
-        >
-          <span className="h-2 w-2 rounded-full bg-danger" />
-          Suspendus
-          <span className="rounded-full bg-bg-overlay px-2 py-0.5 text-[10px] font-bold text-fg-subtle">
-            {suspendedCount}
-          </span>
-        </button>
+        {loading && dossiers.length === 0 ? (
+          <div className="space-y-3" aria-busy="true" aria-label="Chargement des Data Rooms">
+            {[0, 1, 2].map((i) => (
+              <Card key={i} padding={false} className="flex items-center gap-4 p-4">
+                <Skeleton className="h-11 w-11 rounded-lg" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : error && dossiers.length === 0 ? null : filtered.length === 0 ? (
+          <Card>
+            <EmptyState
+              icon={<FolderOpen />}
+              title={
+                recherche
+                  ? 'Aucune Data Room ne correspond à la recherche'
+                  : statusTab === 'SUSPENDED'
+                    ? 'Aucune Data Room suspendue'
+                    : 'Aucune Data Room active'
+              }
+              description={
+                recherche
+                  ? 'Essayez le nom de la société, sa référence ou son ICE, ou effacez la recherche.'
+                  : statusTab === 'SUSPENDED'
+                    ? 'Toutes les Data Rooms sont ouvertes à leur client. Une suspension se règle dans la Data Room, rubrique « Accès du client ».'
+                    : 'Une Data Room est créée automatiquement à l’ouverture d’un ticket de création ou d’import de société.'
+              }
+              cta={
+                recherche ? (
+                  <Button type="button" variant="secondary" onClick={() => setQuery('')}>
+                    Effacer la recherche
+                  </Button>
+                ) : undefined
+              }
+            />
+          </Card>
+        ) : (
+          /**
+           * VUE SUPERVISEUR : la maquette groupe les Data Rooms par employe assignee.
+           * NOTE BACKEND : le DTO DossierBrief n'expose pas (encore) l'identite
+           * de l'employe assignee a chaque dossier. Vue plate, badge "Consultation".
+           */
+          <ul className="space-y-3" aria-label={titreListe}>
+            {filtered.map((d) => (
+              <li key={d.id}>
+                <DossierCard dossier={d} onOpen={() => setSelected(d)} />
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-
-      {loading && dossiers.length === 0 ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-accent" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center gap-2 p-12 text-center">
-          <FolderOpen className="h-10 w-10 text-fg-subtle" />
-          <p className="text-sm text-fg-subtle">
-            {statusTab === 'SUSPENDED'
-              ? (query.trim() ? 'Aucune Data Room suspendue ne correspond à la recherche.' : 'Aucune Data Room suspendue.')
-              : query.trim()
-                ? 'Aucune Data Room ne correspond à la recherche.'
-                : 'Aucune Data Room active. Une Data Room est créée automatiquement à l’ouverture d’un ticket de création ou d’import de société.'}
-          </p>
-        </Card>
-      ) : isReadOnly ? (
-        /**
-         * VUE SUPERVISEUR : la maquette groupe les Data Rooms par employe assignee.
-         * NOTE BACKEND : le DTO DossierBrief n'expose pas (encore) l'identite
-         * de l'employe assignee a chaque dossier. On affiche donc une vue plate
-         * avec badge "Consultation" comme indique dans le brief. TODO Phase 7 :
-         * exposer assigneeId/assigneeName sur DossierBrief pour groupement.
-         */
-        <DossierFlatList
-          dossiers={filtered}
-          onOpen={(d) => setSelected(d)}
-        />
-      ) : (
-        <DossierFlatList
-          dossiers={filtered}
-          onOpen={(d) => setSelected(d)}
-        />
-      )}
-    </div>
+    </Page>
   );
 }
 
 // ============================================================
-// Liste plate des dossiers (vue maquette)
+// Carte d'une Data Room dans la liste
 // ============================================================
-
-function DossierFlatList({
-  dossiers,
-  onOpen,
-}: {
-  dossiers: DossierBrief[];
-  onOpen: (d: DossierBrief) => void;
-}) {
-  return (
-    <div className="space-y-3">
-      {dossiers.map((d) => (
-        <DossierCard key={d.id} dossier={d} onOpen={() => onOpen(d)} />
-      ))}
-    </div>
-  );
-}
 
 function DossierCard({
   dossier,
@@ -330,6 +351,8 @@ function DossierCard({
   onOpen: () => void;
 }) {
   const user = useCurrentUser();
+  // Suspendre / reactiver : PATCH .../settings/suspension (EMPLOYE, SUPERVISEUR cote serveur) ;
+  // la liste le reserve a l'employe, comme avant (le superviseur le fait depuis la Data Room).
   const canEdit = user?.role === 'EMPLOYE';
   const [settings, setSettings] = useState<DataroomSettings | null>(null);
   const [busy, setBusy] = useState(false);
@@ -343,8 +366,7 @@ function DossierCard({
 
   const suspended = settings?.accessStatus === 'SUSPENDED';
 
-  async function handleToggleSuspend(e: React.MouseEvent) {
-    e.stopPropagation();
+  async function handleToggleSuspend() {
     if (!settings) return;
     setBusy(true);
     try {
@@ -357,111 +379,77 @@ function DossierCard({
   }
 
   return (
-    <div
+    <Card
+      interactive
+      padding={false}
       onClick={onOpen}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') onOpen();
-      }}
-      className={`group bg-bg-raised rounded-xl p-4 md:p-5 shadow-sm border-2 transition cursor-pointer ${
-        suspended
-          ? 'border-danger/20 opacity-80'
-          : 'border-border hover:border-accent/30 hover:shadow-md'
-      }`}
+      className="group relative flex cursor-pointer items-center gap-4 p-4"
     >
-      <div className="flex items-center gap-4">
-        <div
-          className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-            suspended ? 'bg-danger/10' : 'bg-accent/10'
-          }`}
-        >
-          <FolderOpen
-            className={`w-6 h-6 ${
-              suspended ? 'text-danger' : 'text-accent'
-            }`}
-          />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-base font-bold text-fg truncate">
-              {dossier.raisonSociale}
-            </h3>
-            {dossier.reference && (
-              <span className="text-xs text-fg-subtle" data-testid="reference-dossier">
-                {dossier.reference}
-              </span>
-            )}
-            <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                suspended
-                  ? 'bg-danger/10 text-danger'
-                  : 'bg-success/10 text-success'
-              }`}
-            >
-              {suspended ? 'Suspendu' : 'Actif'}
-            </span>
-            <span className="text-[10px] font-mono text-fg-subtle">
-              {dossier.id.slice(0, 8)}
-            </span>
-          </div>
-          <p className="mt-0.5 text-sm text-fg-subtle">
-            {displayFormeJuridique(dossier) ?? '—'}
-            {dossier.origine === 'ETRANGERE'
-              ? dossier.pays
-                ? ` • ${dossier.pays}`
-                : ''
-              : dossier.ice
-                ? ` • ICE ${dossier.ice}`
-                : ''}
-            {dossier.ville ? ` • ${dossier.ville}` : ''}
-          </p>
-        </div>
-
-        <div className="hidden md:block text-center px-2">
-          <p className="text-[10px] uppercase tracking-wide text-fg-subtle">
-            Accès client
-          </p>
-          <p className="text-base font-bold text-fg">
-            {settings?.accessCount ?? 0}
-          </p>
-        </div>
-
-        <div
-          className="flex items-center gap-1 flex-shrink-0"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {canEdit &&
-            (suspended ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={handleToggleSuspend}
-                className="p-2 hover:bg-success/10 rounded-lg transition text-success disabled:opacity-50"
-                title="Réactiver l’accès du client"
-                aria-label="Réactiver l’accès du client"
-              >
-                <PlayCircle className="w-4 h-4" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={handleToggleSuspend}
-                className="p-2 hover:bg-danger/10 rounded-lg transition text-danger disabled:opacity-50"
-                title="Suspendre l’accès du client"
-                aria-label="Suspendre l’accès du client"
-              >
-                <PauseCircle className="w-4 h-4" />
-              </button>
-            ))}
-          <span className="text-fg-subtle group-hover:text-accent pl-1">
-            →
-          </span>
-        </div>
+      <div
+        aria-hidden="true"
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${
+          suspended ? 'bg-danger-soft text-danger' : 'bg-bg-overlay text-fg-muted'
+        }`}
+      >
+        <FolderOpen className="h-5 w-5" />
       </div>
-    </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="min-w-0 truncate text-base font-semibold text-heading">
+            {/* Le nom est le bouton d'ouverture (clavier) ; la carte entiere reagit au clic. */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpen();
+              }}
+              className="rounded-sm text-left hover:underline"
+              aria-label={`Ouvrir la Data Room de ${dossier.raisonSociale}`}
+            >
+              {dossier.raisonSociale}
+            </button>
+          </h2>
+          {dossier.reference && (
+            <span className="text-xs text-fg-muted" data-testid="reference-dossier">
+              {dossier.reference}
+            </span>
+          )}
+          {settings && (
+            <Badge variant={suspended ? 'danger' : 'success'} dot>
+              {suspended ? 'Suspendu' : 'Actif'}
+            </Badge>
+          )}
+        </div>
+        <p className="mt-0.5 truncate text-sm text-fg-muted">{identiteCourte(dossier)}</p>
+      </div>
+
+      <div className="hidden shrink-0 px-2 text-center @md:block">
+        <p className="text-xs text-fg-muted">Accès du client</p>
+        <p className="text-base font-semibold tabular-nums text-fg">{settings ? settings.accessCount : '—'}</p>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        {canEdit && settings && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            iconOnly
+            disabled={busy}
+            onClick={() => void handleToggleSuspend()}
+            title={suspended ? 'Réactiver l’accès du client' : 'Suspendre l’accès du client'}
+            aria-label={
+              suspended
+                ? `Réactiver l’accès du client de ${dossier.raisonSociale}`
+                : `Suspendre l’accès du client de ${dossier.raisonSociale}`
+            }
+            icon={suspended ? <PlayCircle /> : <PauseCircle />}
+          />
+        )}
+        <ChevronRight aria-hidden="true" className="h-4 w-4 text-fg-subtle transition-colors duration-150 group-hover:text-fg" />
+      </div>
+    </Card>
   );
 }
 
@@ -471,11 +459,13 @@ function DossierCard({
 
 function DataroomDetail({
   dossier,
+  titreListe,
   onBack,
   canEdit,
   initialTab,
 }: {
   dossier: DossierBrief;
+  titreListe: string;
   onBack: () => void;
   canEdit: boolean;
   initialTab?: string | null;
@@ -551,7 +541,6 @@ function DataroomDetail({
    * Le compte user du client n'est pas supprime (autres dossiers,
    * historique). Mais il perd l'acces a CE dossier jusqu'a re-invitation.
    */
-
   async function confirmRemoveClientAccess() {
     setRemovingClient(true);
     try {
@@ -576,84 +565,65 @@ function DataroomDetail({
    * et s'applique a tout le monde ; le backend la re-verifie a chaque ecriture.
    */
   const archived = isDossierArchived(dossier.statut);
+  // L'invitation est l'action principale de l'ecran tant qu'aucun client n'est rattache.
+  const inviter = canEdit && !loadingClient && !client;
 
   return (
-    <div className="space-y-5">
-      <button
-        type="button"
-        onClick={onBack}
-        className="flex items-center gap-2 text-sm font-medium text-accent hover:underline"
-      >
-        <ArrowLeft className="h-4 w-4" /> Retour aux Data Rooms
-      </button>
-
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-accent/10 p-3 text-accent">
-            <Building2 className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-fg">
-              {dossier.raisonSociale}
-            </h1>
-            {dossier.reference && (
-              <p className="text-xs text-fg-subtle" data-testid="reference-dossier-entete">
-                Dossier {dossier.reference}{' '}
-                <InfoBulle
-                  libelle="Que signifie la référence du dossier ?"
-                  texte="La référence désigne le dossier dans le cabinet : année de création, numéro d’ordre dans l’année, puis la société. Elle figure sur les actes qui citent le dossier et ne change plus."
-                />
-              </p>
-            )}
-            <p className="text-sm text-fg-subtle">
-              {displayFormeJuridique(dossier) ?? '—'}
-              {dossier.origine === 'ETRANGERE'
-                ? dossier.pays
-                  ? ` • ${dossier.pays}`
-                  : ''
-                : dossier.ice
-                  ? ` • ICE ${dossier.ice}`
-                  : ''}
-              {dossier.ville ? ` • ${dossier.ville}` : ''}
+    <Page
+      titre={dossier.raisonSociale}
+      fil={[
+        { libelle: 'Accueil', to: '/dashboard' },
+        { libelle: titreListe, to: '/data-rooms' },
+        { libelle: dossier.raisonSociale },
+      ]}
+      etat={
+        settings ? (
+          <Badge variant={suspended ? 'danger' : 'success'} dot>
+            {suspended ? 'Accès du client suspendu' : 'Accès du client actif'}
+          </Badge>
+        ) : undefined
+      }
+      description={
+        <div className="space-y-0.5">
+          <p>{identiteCourte(dossier)}</p>
+          {dossier.reference && (
+            <p className="flex items-center gap-1 text-xs" data-testid="reference-dossier-entete">
+              Dossier {dossier.reference}
+              <InfoBulle
+                libelle="Que signifie la référence du dossier ?"
+                texte="La référence désigne le dossier dans le cabinet : année de création, numéro d’ordre dans l’année, puis la société. Elle figure sur les actes qui citent le dossier et ne change plus."
+              />
             </p>
-          </div>
+          )}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={`px-2 py-1 rounded-full text-xs font-medium ${
-              suspended
-                ? 'bg-danger/10 text-danger'
-                : 'bg-success/10 text-success'
-            }`}
-          >
-            {suspended ? 'Suspendu' : 'Actif'}
-          </span>
+      }
+      actions={
+        <>
+          <Button type="button" variant="ghost" icon={<ArrowLeft />} onClick={onBack}>
+            Retour aux Data Rooms
+          </Button>
           <Button
+            type="button"
             variant="secondary"
+            icon={<Activity />}
             onClick={() => setAccessLogOpen(true)}
-            className="border border-accent/30 text-accent hover:bg-accent/10 bg-bg-raised"
             title="Voir l’activité du client (consultations, téléchargements)"
           >
-            <Activity className="mr-2 h-4 w-4" />
             Activité du client
           </Button>
-          {/* V9 — Transfert du dossier a un collegue (EMPLOYE: demande / SUPERVISEUR: direct) */}
-          <TransferDossierButton
-            dossierId={dossier.id}
-            raisonSociale={dossier.raisonSociale}
-            className="border border-accent/30 text-accent hover:bg-accent/10 bg-bg-raised"
-          />
-        </div>
-      </div>
-
-      {error && (
-        <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-          {error}
-        </div>
-      )}
-
-      {/* Lot L1 : aide de l'ecran modifie (regle de l'aide integree, CDC 15.4). */}
-      {user?.role !== 'CLIENT' && (
+          {/* V9 — Transfert du dossier a un collegue (EMPLOYE seulement, le bouton se masque sinon). */}
+          <TransferDossierButton dossierId={dossier.id} raisonSociale={dossier.raisonSociale} />
+        </>
+      }
+      action={
+        inviter ? (
+          <Button type="button" icon={<UserPlus />} onClick={() => setInviteOpen(true)}>
+            Inviter un client
+          </Button>
+        ) : undefined
+      }
+      aide={
+        /* Lot L1 : aide de l'ecran modifie (regle de l'aide integree, CDC 15.4). */
         <TexteAide cle="dataroom-conservation" titre="Ajouter, supprimer, conserver">
           <p>
             Les documents de la société sont conservés : une Data Room ne se supprime pas.
@@ -662,168 +632,169 @@ function DataroomDetail({
             supprimé reste en archive.
           </p>
         </TexteAide>
-      )}
+      }
+    >
+      <div className="space-y-6">
+        {error && <Message ton="erreur">{error}</Message>}
 
-      {/* §A — bandeau explicite : archive legale, lecture seule pour tous. */}
-      {archived && (
-        <div
-          className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3"
-          data-testid="dataroom-readonly-banner"
-        >
-          <Lock className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
-          <div className="text-sm">
-            <p className="font-semibold text-fg">
-              {dataroomReadOnlyMessage(dossier.statut)}
-            </p>
-            <p className="text-fg-subtle">
-              Consultation et téléchargement restent possibles (archives
-              juridiques). Ajout, remplacement, suppression, dépôt de pièces et
-              nouvelles demandes sont désactivés. Les échéances et alertes
-              fiscales sont suspendues. Seul le parcours de liquidation peut
+        {/* §A — bandeau explicite : archive legale, lecture seule pour tous. */}
+        {archived && (
+          <div data-testid="dataroom-readonly-banner">
+            <Message ton="attention" titre={dataroomReadOnlyMessage(dossier.statut)}>
+              Consultation et téléchargement restent possibles (archives juridiques). Ajout,
+              remplacement, suppression, dépôt de pièces et nouvelles demandes sont désactivés. Les
+              échéances et alertes fiscales sont suspendues. Seul le parcours de liquidation peut
               encore déposer ses actes de clôture.
-            </p>
+            </Message>
+          </div>
+        )}
+
+        <div className="grid gap-4 @4xl/page:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
+          {/* Lot L1 (RG-CLI-01) : acces du client, regle par le responsable ou le superviseur. */}
+          {settings ? (
+            <AccesClientPanel
+              dossierId={dossier.id}
+              settings={settings}
+              peutRegler={droits?.peutReglerAccesClient === true}
+              onSettings={setSettings}
+            />
+          ) : (
+            <Card aria-busy="true" aria-label="Chargement de l’accès du client">
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
+            </Card>
+          )}
+
+          {/* 2026-07-01 — Client rattache au dossier (ou aucun). */}
+          <Card title="Client rattaché" titleAs="h2">
+            {loadingClient ? (
+              <div className="space-y-2" aria-busy="true" aria-label="Chargement du client">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            ) : client ? (
+              <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <UserCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                  <div className="min-w-0">
+                    <p className="font-medium text-fg">
+                      {client.firstName} {client.lastName}
+                    </p>
+                    <p className="truncate text-sm text-fg-muted">{client.email}</p>
+                  </div>
+                  {client.status && client.status !== 'ACTIVE' && (
+                    <Badge variant="warning" className="ml-auto">
+                      {client.status === 'PENDING' ? 'Invitation en attente' : client.status === 'INACTIVE' ? 'Compte désactivé' : client.status}
+                    </Badge>
+                  )}
+                </div>
+                {settings && (
+                  <p className="text-xs text-fg-muted">
+                    Client avec accès : <strong className="text-fg">{settings.accessCount}</strong>
+                    {settings.lastAccessedAt &&
+                      ` · dernière consultation le ${new Date(settings.lastAccessedAt).toLocaleDateString('fr-FR')}`}
+                  </p>
+                )}
+                {canEdit && (
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="sm"
+                    icon={<UserMinus />}
+                    onClick={() => setRemoveClientOpen(true)}
+                    title="Retirer définitivement l’accès de ce client (la suspension, elle, est réversible)"
+                  >
+                    Retirer l’accès
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-fg-muted">
+                Aucun client invité sur ce dossier.
+                {canEdit
+                  ? ' Invitez-le avec « Inviter un client » : il recevra ses identifiants par courriel.'
+                  : ' L’employé responsable du dossier peut l’inviter.'}
+              </p>
+            )}
+          </Card>
+        </div>
+
+        <div>
+          <Onglets
+            libelle="Sections de la Data Room"
+            actif={tab}
+            onChange={(id) => setTab(id as Tab)}
+            onglets={TABS.map((t) => {
+              const Icon = t.icon;
+              return {
+                id: t.value,
+                libelle: (
+                  <>
+                    <Icon aria-hidden="true" className="h-4 w-4" />
+                    {t.label}
+                  </>
+                ),
+              };
+            })}
+          />
+          <p className="mt-3 text-sm text-fg-muted" data-testid="aide-onglet-dataroom">
+            {AIDE_ONGLETS[tab]}
+          </p>
+          <div role="tabpanel" aria-label={TABS.find((t) => t.value === tab)?.label} className="mt-4">
+            {tab === 'juridique' && (
+              <DossierJuridiqueTab
+                dossierId={dossier.id}
+                role={user?.role ?? null}
+                readOnly={archived}
+                readOnlyStatut={dossier.statut}
+              />
+            )}
+            {tab === 'requetes' && (
+              <RequetesAuClientSection
+                dossierId={dossier.id}
+                role={user?.role ?? null}
+                readOnly={archived}
+                readOnlyStatut={dossier.statut}
+              />
+            )}
+            {tab === 'depots' && (
+              <DepotsTab
+                dossierId={dossier.id}
+                role={user?.role ?? null}
+                readOnly={archived}
+                readOnlyStatut={dossier.statut}
+              />
+            )}
+            {tab === 'demandes' && (
+              <DemandesTab
+                dossierId={dossier.id}
+                role={user?.role ?? null}
+                readOnly={archived}
+                readOnlyStatut={dossier.statut}
+              />
+            )}
           </div>
         </div>
-      )}
 
-      {/* Lot L1 (RG-CLI-01) : acces du client, regle par le responsable ou le superviseur. */}
-      {settings && (
-        <AccesClientPanel
-          dossierId={dossier.id}
-          settings={settings}
-          peutRegler={droits?.peutReglerAccesClient === true}
-          onSettings={setSettings}
-        />
-      )}
-      {settings && (
-        <p className="text-xs text-fg-subtle">
-          Client avec accès : <strong className="text-fg">{settings.accessCount}</strong>
-          {settings.lastAccessedAt &&
-            ` · dernière consultation le ${new Date(settings.lastAccessedAt).toLocaleDateString('fr-FR')}`}
-        </p>
-      )}
+        <div className="grid gap-4 @4xl/page:grid-cols-2">
+          {/* E2 — Activite (tracabilite) de ce dossier */}
+          <Card>
+            <EntityActivityPanel entityType="dossier" entityId={dossier.id} title="Activité du dossier" />
+          </Card>
 
-      {/* 2026-07-01 — Acces client : identite du CLIENT lie (ou aucun) */}
-      <div className="bg-bg-overlay border border-border rounded-xl p-3 md:p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-xs font-bold text-fg">Accès du client :</span>
-          {loadingClient ? (
-            <span className="text-xs text-fg-subtle">Chargement…</span>
-          ) : client ? (
-            <>
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-medium text-accent"
-                title="Client rattaché à ce dossier"
-              >
-                <UserCheck className="h-3.5 w-3.5" />
-                {client.firstName} {client.lastName}
-                <span className="text-fg-subtle">({client.email})</span>
-              </span>
-              {client.status && client.status !== 'ACTIVE' && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-                  {client.status}
-                </span>
-              )}
-              {canEdit && (
-                <Button
-                  variant="secondary"
-                  onClick={() => setRemoveClientOpen(true)}
-                  className="ml-auto border border-danger/30 text-danger hover:bg-danger/10 bg-bg-raised"
-                  title="Retirer définitivement l’accès de ce client (la suspension, elle, est réversible)"
-                >
-                  <UserMinus className="mr-2 h-4 w-4" /> Retirer l’accès
-                </Button>
-              )}
-            </>
-          ) : (
-            <>
-              <span className="text-xs text-fg-subtle">Aucun client invité sur ce dossier.</span>
-              {canEdit && (
-                <Button
-                  variant="primary"
-                  onClick={() => setInviteOpen(true)}
-                  className="ml-auto bg-accent text-bg-raised hover:bg-accent-hover"
-                >
-                  <UserPlus className="mr-2 h-4 w-4" /> Inviter un client
-                </Button>
-              )}
-            </>
-          )}
+          {/* Lot L1 : historique des responsables du dossier (employe responsable, superviseur). */}
+          <Card>
+            <HistoriqueResponsablesPanel
+              dossierId={dossier.id}
+              raisonSociale={dossier.raisonSociale}
+              peutReaffecter={user?.role === 'SUPERVISEUR'}
+            />
+          </Card>
         </div>
       </div>
-
-      <div className="inline-flex w-fit gap-1 rounded-xl border border-border bg-bg-overlay p-1">
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          const active = tab === t.value;
-          return (
-            <button
-              key={t.value}
-              type="button"
-              onClick={() => setTab(t.value)}
-              className={`flex items-center gap-2 rounded-lg px-3 md:px-4 py-2 text-sm font-medium transition ${
-                active
-                  ? `${t.activeBg} text-bg-raised shadow-sm`
-                  : 'text-fg-subtle hover:text-fg'
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <p className="-mt-2 text-sm text-fg-subtle" data-testid="aide-onglet-dataroom">{AIDE_ONGLETS[tab]}</p>
-
-      {tab === 'juridique' && (
-        <DossierJuridiqueTab
-          dossierId={dossier.id}
-          role={user?.role ?? null}
-          readOnly={archived}
-          readOnlyStatut={dossier.statut}
-        />
-      )}
-      {tab === 'requetes' && (
-        <RequetesAuClientSection
-          dossierId={dossier.id}
-          role={user?.role ?? null}
-          readOnly={archived}
-          readOnlyStatut={dossier.statut}
-        />
-      )}
-      {tab === 'depots' && (
-        <DepotsTab
-          dossierId={dossier.id}
-          role={user?.role ?? null}
-          readOnly={archived}
-          readOnlyStatut={dossier.statut}
-        />
-      )}
-      {tab === 'demandes' && (
-        <DemandesTab
-          dossierId={dossier.id}
-          role={user?.role ?? null}
-          readOnly={archived}
-          readOnlyStatut={dossier.statut}
-        />
-      )}
-
-      {/* E2 — Activite (tracabilite) de ce dossier */}
-      <div className="rounded-xl border border-border bg-bg-raised p-4">
-        <EntityActivityPanel entityType="dossier" entityId={dossier.id} title="Activité du dossier" />
-      </div>
-
-      {/* Lot L1 : historique des responsables du dossier (employe responsable, superviseur). */}
-      {user?.role !== 'CLIENT' && (
-        <div className="rounded-xl border border-border bg-bg-raised p-4">
-          <HistoriqueResponsablesPanel
-            dossierId={dossier.id}
-            raisonSociale={dossier.raisonSociale}
-            peutReaffecter={user?.role === 'SUPERVISEUR'}
-          />
-        </div>
-      )}
 
       <InviteClientDrawer
         open={inviteOpen}
@@ -832,15 +803,16 @@ function DataroomDetail({
         onClose={() => {
           setInviteOpen(false);
           // Un client vient peut-etre d'etre invite -> rafraichir la section.
-          loadClient();
+          void loadClient();
         }}
       />
 
-      {/* Sprint 7 / TASK 5 -- drawer "Activite client" (admin only) */}
+      {/* Sprint 7 / TASK 5 -- drawer "Activite client" (cabinet seulement) */}
       <ClientAccessLogDrawer
         open={accessLogOpen}
         dossierId={dossier.id}
         raisonSociale={dossier.raisonSociale}
+        client={loadingClient ? undefined : client}
         onClose={() => setAccessLogOpen(false)}
       />
 
@@ -852,14 +824,14 @@ function DataroomDetail({
         description={
           client
             ? `Retirer l’accès de ${client.email} ? ${client.firstName} ${client.lastName} ne pourra plus consulter ce dossier sans une nouvelle invitation. Le compte reste actif (autres dossiers, historique).`
-            : "Retirer l’accès du client à ce dossier ?"
+            : 'Retirer l’accès du client à ce dossier ?'
         }
         variant="danger"
         confirmLabel="Retirer l’accès"
         loading={removingClient}
         onConfirm={confirmRemoveClientAccess}
       />
-    </div>
+    </Page>
   );
 }
 
