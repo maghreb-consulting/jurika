@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Page } from '../../components/layout/Page';
+import { Badge } from '../../components/ui/Badge';
+import { Lien } from '../../components/ui/Lien';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { CardSkeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
 import { adminService } from '../../services/admin.service';
 import { billingAdminService } from '../../services/billing.service';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
@@ -28,7 +31,7 @@ function libelleStatut(l: AbonnementAdminVue): string {
 }
 
 function dh(v: number | null | undefined): string {
-  return v === null || v === undefined ? '—' : `${v.toFixed(2).replace('.', ',')} DH`;
+  return typeof v !== 'number' || !Number.isFinite(v) ? '--' : `${v.toFixed(2).replace('.', ',')} DH`;
 }
 
 /**
@@ -55,16 +58,7 @@ export function AbonnementsAdminPage() {
   };
   const sansAbonnement = cabinets.filter((c) => !lignes.some((l) => l.workspaceId === c.id));
 
-  if (chargement) {
-    return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-accent" aria-label="Chargement" /></div>;
-  }
-
-  return (
-    <div className="space-y-6" data-testid="abonnements-admin">
-      <header>
-        <h1 className="font-heading text-2xl font-semibold text-fg">Abonnements des cabinets</h1>
-        <p className="mt-1 text-sm text-fg-muted">Forfait, rythme, période payée et prochaine échéance de chaque cabinet.</p>
-      </header>
+  const aide = (
       <TexteAide cle="admin-abonnements" titre="Lire cet écran">
         <p>
           Une échéance non réglée déclenche un rappel au cabinet le jour même ; 15 jours après l’échéance, sans paiement et
@@ -76,19 +70,50 @@ export function AbonnementsAdminPage() {
           le prix par dossier reste à fixer par la direction. Pour enregistrer un paiement reçu, passez par l’écran Paiements.
         </p>
       </TexteAide>
+  );
+  const enTete = {
+    titre: 'Abonnements des cabinets',
+    description: 'Forfait, rythme, période payée et prochaine échéance de chaque cabinet.',
+    actions: (
+      <Lien to="/admin/paiements" commeBouton={{ variant: 'secondary' }}>
+        Paiements
+      </Lien>
+    ),
+  };
+
+  if (chargement) {
+    return (
+      <Page {...enTete} aide={aide}>
+        <SqueletteZone libelle="Chargement des abonnements…" className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <CardSkeleton key={i} className="h-32" />
+          ))}
+        </SqueletteZone>
+      </Page>
+    );
+  }
+
+  return (
+    <Page {...enTete} aide={aide}>
+    <div className="space-y-6" data-testid="abonnements-admin">
       <ErreurFacturationBloc erreur={erreur} />
 
       {lignes.length === 0 ? (
-        <p className="text-sm text-fg-muted">Aucun abonnement enregistré.</p>
+        erreur ? null : (
+          <EmptyState
+            title="Aucun abonnement enregistré"
+            description="Un abonnement est créé quand un cabinet choisit son forfait et règle sa première échéance. Les cabinets sans abonnement sont listés ci-dessous."
+          />
+        )
       ) : (
         <div className="space-y-3">
           {lignes.map((l) => (
-            <article key={l.workspaceId} className="rounded-2xl bg-bg-raised p-5 text-sm shadow-sm" data-testid={`abonnement-${l.workspaceId}`}>
+            <article key={l.workspaceId} className="rounded-xl border border-border bg-bg-raised p-5 text-sm shadow-card" data-testid={`abonnement-${l.workspaceId}`}>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="font-semibold text-fg">{nom(l.workspaceId)}</h2>
-                <span className={l.statut === 'ACTIF' && !l.impaye ? 'text-success' : 'text-warning'} data-testid="abonnement-statut">
-                  {libelleStatut(l)}
-                </span>
+                <h2 className="font-semibold text-heading">{nom(l.workspaceId)}</h2>
+                <Badge variant={l.statut === 'ACTIF' && !l.impaye ? 'success' : l.statut === 'ARCHIVE' ? 'neutral' : 'warning'}>
+                  <span data-testid="abonnement-statut">{libelleStatut(l)}</span>
+                </Badge>
               </div>
               <p className="mt-1 text-fg-muted">
                 {l.forfaitLibelle}{l.rythme ? `, ${LIBELLE_RYTHME[l.rythme].toLowerCase()}` : ', rythme inconnu'} · année du{' '}
@@ -114,14 +139,15 @@ export function AbonnementsAdminPage() {
       )}
 
       {sansAbonnement.length > 0 && (
-        <section className="rounded-2xl bg-bg-raised p-5 text-sm shadow-sm">
-          <h2 className="mb-2 font-semibold text-fg">Cabinets sans abonnement enregistré</h2>
+        <section className="rounded-xl border border-border bg-bg-raised p-5 text-sm shadow-card">
+          <h2 className="mb-2 font-semibold text-heading">Cabinets sans abonnement enregistré</h2>
           <ul className="list-disc pl-6 text-fg-muted">
             {sansAbonnement.map((c) => <li key={c.id}>{c.name} ({c.code}), forfait déclaré : {c.forfait ?? 'aucun'}</li>)}
           </ul>
         </section>
       )}
     </div>
+    </Page>
   );
 }
 
@@ -130,7 +156,7 @@ function Impaye({ l }: { l: AbonnementAdminVue }) {
   const i = l.impaye;
   if (!i) return null;
   return (
-    <div className="mt-3 rounded-lg border border-warning/40 bg-warning/10 p-3" data-testid="abonnement-impaye">
+    <div className="mt-3 rounded-lg border border-warning/40 border-l-4 border-l-warning bg-warning-soft p-3" data-testid="abonnement-impaye">
       <p className="flex items-center gap-1 font-medium text-fg">
         Échéance du {jourEnLettres(i.echeance)} non réglée
         <InfoBulle texte={`Rappel au cabinet dès l’échéance, puis suspension ${i.delaiJours} jours après, seulement si le rappel est parti. Un paiement enregistré (écran Paiements) ou une carte confirmée rétablit l’accès aussitôt.`} />
@@ -148,7 +174,7 @@ function Impaye({ l }: { l: AbonnementAdminVue }) {
       ) : i.suspendu && (
         <p className="text-fg-muted">
           Défaut de paiement persistant : après une mise en demeure restée sans effet 30 jours, la résiliation (article 12.2)
-          s’enregistre depuis l’écran <Link to="/admin/contrats" className="text-accent hover:underline">Contrats</Link> ; le
+          s’enregistre depuis l’écran <Lien to="/admin/contrats">Contrats</Lien> ; le
           cabinet est alors archivé à sa date d’effet.
         </p>
       )}

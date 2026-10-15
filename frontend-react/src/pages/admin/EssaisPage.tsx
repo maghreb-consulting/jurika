@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Hourglass, RefreshCw } from 'lucide-react';
-import { Card } from '../../components/ui/Card';
+import { Page } from '../../components/layout/Page';
+import { Message } from '../../components/ui/Message';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Case } from '../../components/ui/Choix';
+import { Tableau, type ColonneTableau } from '../../components/ui/Tableau';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { PromptDialog } from '../../components/ui/PromptDialog';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { InfoBulle, TexteAide } from '../../components/ui/Aide';
+import { TexteAide } from '../../components/ui/Aide';
 import { useToast } from '../../components/ui/useToast';
 import { extractError } from '../../lib/api';
 import { formaterDate } from '../../lib/essai';
@@ -23,7 +27,7 @@ function statutEssai(e: EssaiAdmin): { libelle: string; variant: 'success' | 'wa
   if (e.statutEssai === 'CONVERTED') return { libelle: 'Abonné', variant: 'success' };
   if (e.statutEssai === 'TRIAL_EXPIRED') return { libelle: 'Lecture seule', variant: 'warning' };
   if (e.statutEssai === 'TRIAL_ACTIVE') return { libelle: 'En cours', variant: 'info' };
-  return { libelle: e.statutEssai ?? '—', variant: 'neutral' };
+  return { libelle: e.statutEssai ?? '--', variant: 'neutral' };
 }
 
 /**
@@ -72,123 +76,151 @@ export function EssaisPage() {
     await executer(() => essaiService.signalementExamine(e.workspaceId), `Signalement de ${e.code} marqué comme examiné.`);
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2 text-2xl font-semibold text-fg">
-          <Hourglass className="h-6 w-6" aria-hidden="true" />
-          Essais gratuits
-          <InfoBulle
-            libelle="Aide sur les essais gratuits"
-            texte="Chaque cabinet n’a droit qu’à un essai de 7 jours. Une inscription venue du même réseau ou du même appareil qu’un autre essai est signalée ici ; elle n’est jamais bloquée automatiquement, un réseau partagé n’étant pas une preuve de fraude."
-          />
-        </h1>
-        <Button variant="secondary" onClick={() => { void recuperer(); }}>
-          <RefreshCw className="mr-1 h-4 w-4" aria-hidden="true" /> Actualiser
-        </Button>
-      </div>
+  const colonnes: ColonneTableau<EssaiAdmin>[] = [
+    {
+      cle: 'cabinet',
+      titre: 'Cabinet',
+      rendu: (e) => (
+        <>
+          <p className="font-medium text-fg">{e.nom ?? 'Cabinet supprimé'}</p>
+          <p className="font-mono text-xs text-fg-subtle">{e.code}</p>
+          {e.contactEmail && <p className="text-xs text-fg-muted">{e.contactEmail}</p>}
+          <p className="text-xs text-fg-subtle">Inscrit le {formaterDate(e.creeLe)}</p>
+        </>
+      ),
+    },
+    {
+      cle: 'statut',
+      titre: 'Statut',
+      rendu: (e) => {
+        const s = statutEssai(e);
+        return (
+          <>
+            <Badge variant={s.variant}>{s.libelle}</Badge>
+            {e.prolongeLe && <p className="mt-1 text-xs text-fg-muted">Prolongé de {e.prolongationJours} jour(s)</p>}
+            {e.finMotif && <p className="mt-1 text-xs text-fg-muted">Fin décidée : {e.finMotif}</p>}
+          </>
+        );
+      },
+    },
+    {
+      cle: 'fin',
+      titre: 'Fin de l’essai',
+      rendu: (e) => (
+        <span className="text-xs text-fg-muted">
+          {e.supprimeLe
+            ? `Données supprimées le ${formaterDate(e.supprimeLe)}`
+            : e.statutEssai === 'TRIAL_EXPIRED' && e.expireLe
+              ? `Lecture seule depuis le ${formaterDate(e.expireLe)}`
+              : formaterDate(e.fin)}
+        </span>
+      ),
+    },
+    {
+      cle: 'signalement',
+      titre: 'Signalement',
+      rendu: (e) =>
+        e.signalement ? (
+          <div className="text-xs">
+            <p className="flex items-start gap-1 text-warning">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {e.signalement}
+            </p>
+            {e.adresseIp && <p className="font-mono text-fg-subtle">IP {e.adresseIp}</p>}
+            {e.signalementExamineLe ? (
+              <p className="text-fg-subtle">Examiné le {formaterDate(e.signalementExamineLe)}</p>
+            ) : (
+              !e.supprimeLe && (
+                <Button type="button" size="sm" variant="secondary" className="mt-1" onClick={() => { void examiner(e); }}>
+                  Marquer examiné
+                </Button>
+              )
+            )}
+          </div>
+        ) : (
+          <span className="text-xs text-fg-subtle">Aucun</span>
+        ),
+    },
+    {
+      cle: 'actions',
+      titre: 'Actions',
+      rendu: (e) => {
+        const ouvert = !e.supprimeLe && (e.statutEssai === 'TRIAL_ACTIVE' || e.statutEssai === 'TRIAL_EXPIRED');
+        return ouvert ? (
+          <div className="flex flex-wrap gap-1">
+            {!e.prolongeLe && (
+              <Button type="button" size="sm" variant="secondary" onClick={() => setAction({ type: 'prolonger', essai: e })}>Prolonger</Button>
+            )}
+            {e.statutEssai === 'TRIAL_ACTIVE' && (
+              <Button type="button" size="sm" variant="secondary" onClick={() => setAction({ type: 'fin', essai: e })}>Mettre fin</Button>
+            )}
+            {e.statut === 'SUSPENDED' ? (
+              <Button type="button" size="sm" variant="secondary" onClick={() => setAction({ type: 'lever', essai: e })}>Lever la suspension</Button>
+            ) : (
+              <Button type="button" size="sm" variant="danger" onClick={() => setAction({ type: 'suspendre', essai: e })}>Suspendre</Button>
+            )}
+          </div>
+        ) : (
+          <span className="text-xs text-fg-subtle">--</span>
+        );
+      },
+    },
+  ];
 
+  return (
+    <Page
+      titre="Essais gratuits"
+      description="Les essais de 7 jours des cabinets, leurs signalements et leur suite."
+      infoBulle="Chaque cabinet n’a droit qu’à un essai de 7 jours. Une inscription venue du même réseau ou du même appareil qu’un autre essai est signalée ici ; elle n’est jamais bloquée automatiquement, un réseau partagé n’étant pas une preuve de fraude."
+      actions={
+        <Button type="button" variant="secondary" onClick={() => { void recuperer(); }} icon={<RefreshCw />}>
+          Actualiser
+        </Button>
+      }
+      aide={
       <TexteAide cle="admin.essais" titre="Ce que vous pouvez faire">
         Examinez les inscriptions signalées, puis marquez-les comme examinées ou suspendez l’essai en cas d’abus
         (la suspension se lève ensuite). Vous pouvez prolonger un essai une seule fois, ou y mettre fin : le cabinet
         passe alors en lecture seule pendant 30 jours, puis ses données sont supprimées après avertissement, sauf s’il
         souscrit un forfait.
       </TexteAide>
-
+      }
+    >
+    <div className="space-y-6">
       {aExaminer > 0 && (
-        <p className="flex items-center gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-fg" role="status">
-          <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />
+        <Message ton="attention">
           {aExaminer === 1 ? '1 inscription signalée reste à examiner.' : `${aExaminer} inscriptions signalées restent à examiner.`}
-        </p>
+        </Message>
       )}
 
-      <label className="flex items-center gap-2 text-sm text-fg">
-        <input type="checkbox" checked={seulementSignales} onChange={(e) => setSeulementSignales(e.target.checked)} />
-        Afficher seulement les signalements à examiner
-      </label>
+      <Case
+        label="Afficher seulement les signalements à examiner"
+        checked={seulementSignales}
+        onChange={(e) => setSeulementSignales(e.target.checked)}
+      />
 
-      <Card>
-        {erreur && <p className="p-4 text-sm text-danger" role="alert">La liste des essais n’a pas pu être chargée : {erreur}</p>}
-        {!erreur && essais === null && <p className="p-4 text-sm text-fg-muted">Chargement des essais…</p>}
-        {!erreur && essais !== null && affiches.length === 0 && (
-          <p className="p-4 text-sm text-fg-muted">
-            {seulementSignales ? 'Aucun signalement à examiner.' : 'Aucun essai gratuit pour l’instant : les inscriptions à l’essai apparaîtront ici.'}
-          </p>
-        )}
-        {affiches.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="text-left text-xs uppercase text-fg-subtle">
-                <tr>
-                  <th className="px-3 py-2">Cabinet</th>
-                  <th className="px-3 py-2">Statut</th>
-                  <th className="px-3 py-2">Fin de l’essai</th>
-                  <th className="px-3 py-2">Signalement</th>
-                  <th className="px-3 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {affiches.map((e) => {
-                  const s = statutEssai(e);
-                  const ouvert = !e.supprimeLe && (e.statutEssai === 'TRIAL_ACTIVE' || e.statutEssai === 'TRIAL_EXPIRED');
-                  return (
-                    <tr key={e.workspaceId} className="border-t border-border align-top">
-                      <td className="px-3 py-2">
-                        <p className="font-medium text-fg">{e.nom ?? 'Cabinet supprimé'}</p>
-                        <p className="font-mono text-xs text-fg-subtle">{e.code}</p>
-                        {e.contactEmail && <p className="text-xs text-fg-muted">{e.contactEmail}</p>}
-                        <p className="text-xs text-fg-subtle">Inscrit le {formaterDate(e.creeLe)}</p>
-                      </td>
-                      <td className="px-3 py-2">
-                        <Badge variant={s.variant}>{s.libelle}</Badge>
-                        {e.prolongeLe && <p className="mt-1 text-xs text-fg-muted">Prolongé de {e.prolongationJours} jour(s)</p>}
-                        {e.finMotif && <p className="mt-1 text-xs text-fg-muted">Fin décidée : {e.finMotif}</p>}
-                      </td>
-                      <td className="px-3 py-2 text-xs text-fg-muted">
-                        {e.supprimeLe
-                          ? `Données supprimées le ${formaterDate(e.supprimeLe)}`
-                          : e.statutEssai === 'TRIAL_EXPIRED' && e.expireLe
-                            ? `Lecture seule depuis le ${formaterDate(e.expireLe)}`
-                            : formaterDate(e.fin)}
-                      </td>
-                      <td className="px-3 py-2 text-xs">
-                        {e.signalement ? (
-                          <>
-                            <p className="text-warning">{e.signalement}</p>
-                            {e.adresseIp && <p className="font-mono text-fg-subtle">IP {e.adresseIp}</p>}
-                            {e.signalementExamineLe
-                              ? <p className="text-fg-subtle">Examiné le {formaterDate(e.signalementExamineLe)}</p>
-                              : !e.supprimeLe && (
-                                <Button size="sm" variant="ghost" onClick={() => { void examiner(e); }}>Marquer examiné</Button>
-                              )}
-                          </>
-                        ) : <span className="text-fg-subtle">Aucun</span>}
-                      </td>
-                      <td className="px-3 py-2">
-                        {ouvert ? (
-                          <div className="flex flex-wrap gap-1">
-                            {!e.prolongeLe && (
-                              <Button size="sm" variant="secondary" onClick={() => setAction({ type: 'prolonger', essai: e })}>Prolonger</Button>
-                            )}
-                            {e.statutEssai === 'TRIAL_ACTIVE' && (
-                              <Button size="sm" variant="secondary" onClick={() => setAction({ type: 'fin', essai: e })}>Mettre fin</Button>
-                            )}
-                            {e.statut === 'SUSPENDED' ? (
-                              <Button size="sm" variant="secondary" onClick={() => setAction({ type: 'lever', essai: e })}>Lever la suspension</Button>
-                            ) : (
-                              <Button size="sm" variant="danger" onClick={() => setAction({ type: 'suspendre', essai: e })}>Suspendre</Button>
-                            )}
-                          </div>
-                        ) : <span className="text-xs text-fg-subtle">—</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+      {erreur ? (
+        <Message ton="erreur" titre="La liste des essais n’a pas pu être chargée">
+          La liste des essais n’a pas pu être chargée : {erreur}
+        </Message>
+      ) : (
+        <Tableau
+          legende="Essais gratuits des cabinets"
+          colonnes={colonnes}
+          lignes={affiches}
+          cleLigne={(e) => e.workspaceId}
+          chargement={essais === null}
+          enTeteCollant={false}
+          vide={
+            <EmptyState
+              compact
+              icon={<Hourglass />}
+              title={seulementSignales ? 'Aucun signalement à examiner.' : 'Aucun essai gratuit pour l’instant'}
+              description={seulementSignales ? 'Décochez le filtre pour revoir tous les essais.' : 'Les inscriptions à l’essai apparaîtront ici, avec leurs éventuels signalements.'}
+            />
+          }
+        />
+      )}
 
       <PromptDialog
         open={action?.type === 'prolonger'}
@@ -246,5 +278,6 @@ export function EssaisPage() {
         }}
       />
     </div>
+    </Page>
   );
 }

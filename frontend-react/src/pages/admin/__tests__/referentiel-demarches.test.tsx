@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
 /**
  * Lot L4b (E2, RG-DEM-01) : le super-administrateur importe le referentiel des demarches
@@ -32,7 +33,7 @@ describe('Référentiel des démarches', () => {
     get.mockResolvedValueOnce({ data: { versionActive: null, imports: [] } });
     post.mockResolvedValueOnce({ data: { id: 'x', version: 'CORPUS_2026-10-03', statut: 'APPLIQUE', lignes: 7006, decisions: 301, renvois: 24, motif: null } });
     get.mockResolvedValueOnce({ data: { versionActive: 'CORPUS_2026-10-03', imports: [imp('APPLIQUE')] } });
-    render(<ReferentielDemarchesPage />);
+    render(<ReferentielDemarchesPage />, { wrapper: MemoryRouter });
     expect(await screen.findByText(/n’ont pas encore de démarches du corpus/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Importer le référentiel/ }));
     expect(await screen.findByTestId('resultat-import')).toHaveTextContent('7006 démarches, 301 décisions, 24 renvois');
@@ -42,7 +43,7 @@ describe('Référentiel des démarches', () => {
 
   it('montre le motif d’un refus et le rapport d’un import', async () => {
     get.mockResolvedValueOnce({ data: { versionActive: 'CORPUS_2026-10-03', imports: [imp('REFUSE', 'La version est déjà appliquée.')] } });
-    render(<ReferentielDemarchesPage />);
+    render(<ReferentielDemarchesPage />, { wrapper: MemoryRouter });
     expect(await screen.findByText('La version est déjà appliquée.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Voir le rapport' }));
     expect(screen.getByText(/1 conditions rédigées en/)).toBeInTheDocument();
@@ -54,7 +55,7 @@ describe('Référentiel des démarches', () => {
     const applique = imp('APPLIQUE');
     applique.rapport = JSON.stringify({ total: 7006, erreurs: [], etatsReportes: 12, etatsNonReportes: 1 });
     get.mockResolvedValueOnce({ data: { versionActive: 'CORPUS_2026-10-11', imports: [applique] } });
-    render(<ReferentielDemarchesPage />);
+    render(<ReferentielDemarchesPage />, { wrapper: MemoryRouter });
     fireEvent.click(await screen.findByRole('button', { name: 'Voir le rapport' }));
     expect(screen.getByTestId('etats-reportes')).toHaveTextContent('12 état(s) reporté(s)');
     expect(screen.getByTestId('etats-reportes')).toHaveTextContent('1 sans ligne correspondante');

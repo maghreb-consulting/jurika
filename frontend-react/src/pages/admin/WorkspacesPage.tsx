@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Building2, ChevronRight, RefreshCw, Search } from 'lucide-react';
-import { Card } from '../../components/ui/Card';
+import { Page } from '../../components/layout/Page';
+import { TextField } from '../../components/ui/TextField';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { Tableau, type ColonneTableau } from '../../components/ui/Tableau';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -85,161 +89,130 @@ export function WorkspacesPage() {
     }
   }
 
-  return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold text-fg">
-            <Building2 className="h-6 w-6 text-accent" /> Cabinets
-          </h1>
-          <p className="mt-1 text-sm text-fg-subtle">
-            Tous les cabinets clients de la plateforme. Activez, suspendez ou désactivez un cabinet.
-          </p>
-        </div>
-        <Button variant="secondary" size="sm" onClick={load}>
-          <RefreshCw className="mr-2 h-4 w-4" /> Actualiser
-        </Button>
-      </header>
-
-      <TexteAide cle="admin-cabinets" titre="Que faire sur cet écran ?">
-        <p>
-          Cliquez sur une ligne pour ouvrir la fiche du cabinet (abonnement, équipe, utilisateurs). Les
-          boutons de la colonne « Actions » changent son statut : « Suspendre » et « Désactiver » coupent
-          l’accès au cabinet sans effacer aucune de ses données ; « Activer » le rétablit. Une
-          confirmation vous est toujours demandée.
-        </p>
-      </TexteAide>
-
-      <div className="relative max-w-sm">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Rechercher par code, nom ou contact…"
-          aria-label="Rechercher un cabinet"
-          className="w-full rounded-lg border border-border bg-bg-raised py-2 pl-9 pr-3 text-sm text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none"
-        />
-      </div>
-
-      {error && (
-        <Card className="p-8 text-center">
-          <p className="font-medium text-fg">Chargement impossible</p>
-          <p className="mt-1 text-sm text-fg-subtle">La liste des cabinets n’a pas pu être récupérée.</p>
-          <Button variant="secondary" size="sm" className="mt-4" onClick={load}>
-            Réessayer
-          </Button>
-        </Card>
-      )}
-
-      {!error && rows === null && (
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-14 animate-pulse rounded-lg border border-border bg-bg-raised" />
+  const colonnes: ColonneTableau<AdminWorkspaceRow>[] = [
+    {
+      cle: 'cabinet',
+      titre: 'Cabinet',
+      rendu: (w) => (
+        <>
+          <Link
+            to={`/admin/workspaces/${w.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="rounded-sm font-medium text-fg underline decoration-border-hi underline-offset-2 hover:decoration-2"
+          >
+            {w.name}
+          </Link>
+          <div className="font-mono text-xs text-fg-subtle">{w.code}</div>
+          {w.contactEmail && <div className="text-xs text-fg-muted">{w.contactEmail}</div>}
+        </>
+      ),
+    },
+    { cle: 'forfait', titre: 'Forfait', rendu: (w) => <span className="text-fg-muted">{w.forfait ? labelOf(FORFAIT_LABELS, w.forfait) : '--'}</span> },
+    { cle: 'statut', titre: 'Statut', rendu: (w) => <StatusBadge statut={w.statut} /> },
+    { cle: 'equipe', titre: 'Équipe', alignement: 'droite', masquerSous: 'md', rendu: (w) => <span className="tabular-nums text-fg-muted">{w.employes}</span> },
+    { cle: 'clients', titre: 'Clients', alignement: 'droite', masquerSous: 'md', rendu: (w) => <span className="tabular-nums text-fg-muted">{w.clients}</span> },
+    { cle: 'stockage', titre: 'Stockage', alignement: 'droite', masquerSous: 'lg', rendu: (w) => <span className="text-fg-muted">{formatStorage(w)}</span> },
+    { cle: 'cree', titre: 'Créé le', masquerSous: 'lg', rendu: (w) => <span className="tabular-nums text-fg-muted">{new Date(w.createdAt).toLocaleDateString('fr-FR')}</span> },
+    {
+      cle: 'actions',
+      titre: 'Actions',
+      alignement: 'droite',
+      rendu: (w) => (
+        <div className="flex justify-end gap-1">
+          {availableActions(w.statut).map((action) => (
+            <Button
+              key={action}
+              type="button"
+              size="sm"
+              variant={ACTION_META[action].variant === 'danger' ? 'danger' : 'secondary'}
+              onClick={(e) => {
+                e.stopPropagation();
+                setPending({ ws: w, action });
+              }}
+            >
+              {ACTION_META[action].label}
+            </Button>
           ))}
         </div>
-      )}
+      ),
+    },
+    { cle: 'details', titre: <span className="sr-only">Détails</span>, largeur: 'w-8', rendu: () => <ChevronRight className="h-4 w-4 text-fg-subtle" aria-hidden="true" /> },
+  ];
 
-      {!error && rows !== null && filtered.length === 0 && (
-        <Card className="p-10 text-center">
-          <p className="text-sm text-fg-subtle">
-            {rows.length === 0
-              ? 'Aucun cabinet inscrit pour le moment : les cabinets apparaissent ici après leur inscription.'
-              : 'Aucun cabinet ne correspond à la recherche. Vérifiez le code ou le nom saisi.'}
+  return (
+    <Page
+      titre="Cabinets"
+      description="Tous les cabinets clients de la plateforme. Activez, suspendez ou désactivez un cabinet."
+      actions={
+        <Button type="button" variant="secondary" icon={<RefreshCw />} onClick={load}>
+          Actualiser
+        </Button>
+      }
+      aide={
+        <TexteAide cle="admin-cabinets" titre="Que faire sur cet écran ?">
+          <p>
+            Cliquez sur une ligne pour ouvrir la fiche du cabinet (abonnement, équipe, utilisateurs). Les
+            boutons de la colonne « Actions » changent son statut : « Suspendre » et « Désactiver » coupent
+            l’accès au cabinet sans effacer aucune de ses données ; « Activer » le rétablit. Une
+            confirmation vous est toujours demandée.
           </p>
-        </Card>
-      )}
+        </TexteAide>
+      }
+    >
+      <div className="space-y-5">
+        <div className="relative max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-2.5 z-10 h-4 w-4 text-fg-subtle" aria-hidden="true" />
+          <TextField
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Rechercher par code, nom ou contact…"
+            aria-label="Rechercher un cabinet"
+            className="pl-9"
+          />
+        </div>
 
-      {!error && filtered.length > 0 && (
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-subtle">
-                  <th className="px-4 py-3 font-medium">Cabinet</th>
-                  <th className="px-4 py-3 font-medium">Forfait</th>
-                  <th className="px-4 py-3 font-medium">Statut</th>
-                  <th className="px-4 py-3 text-right font-medium">Équipe</th>
-                  <th className="px-4 py-3 text-right font-medium">Clients</th>
-                  <th className="px-4 py-3 text-right font-medium">Stockage</th>
-                  <th className="px-4 py-3 font-medium">Créé le</th>
-                  <th className="px-4 py-3 text-right font-medium">Actions</th>
-                  <th className="w-8 px-2 py-3" aria-label="Détails" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filtered.map((w) => (
-                  <tr
-                    key={w.id}
-                    onClick={() => navigate(`/admin/workspaces/${w.id}`)}
-                    className="cursor-pointer hover:bg-bg-overlay/50"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-fg">{w.name}</div>
-                      <div className="font-mono text-[11px] text-fg-subtle">{w.code}</div>
-                      {w.contactEmail && (
-                        <div className="text-[11px] text-fg-subtle">{w.contactEmail}</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-fg-muted">
-                      {w.forfait ? labelOf(FORFAIT_LABELS, w.forfait) : '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge statut={w.statut} />
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-fg-muted">{w.employes}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-fg-muted">{w.clients}</td>
-                    <td className="px-4 py-3 text-right text-fg-muted">{formatStorage(w)}</td>
-                    <td className="px-4 py-3 text-fg-subtle">
-                      {new Date(w.createdAt).toLocaleDateString('fr-FR')}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1">
-                        {availableActions(w.statut).map((action) => (
-                          <button
-                            key={action}
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPending({ ws: w, action });
-                            }}
-                            className={`rounded-md px-2 py-1 text-xs font-medium transition ${
-                              ACTION_META[action].variant === 'danger'
-                                ? 'text-danger hover:bg-danger/10'
-                                : 'text-success hover:bg-success/10'
-                            }`}
-                          >
-                            {ACTION_META[action].label}
-                          </button>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-2 py-3 text-fg-subtle">
-                      <ChevronRight className="h-4 w-4" />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
+        {error ? (
+          <ErrorState title="Chargement impossible" message="La liste des cabinets n’a pas pu être récupérée." onRetry={load} />
+        ) : (
+          <Tableau
+            legende="Cabinets de la plateforme"
+            colonnes={colonnes}
+            lignes={filtered}
+            cleLigne={(w) => w.id}
+            chargement={rows === null}
+            onLigne={(w) => navigate(`/admin/workspaces/${w.id}`)}
+            enTeteCollant={false}
+            vide={
+              <EmptyState
+                compact
+                icon={<Building2 />}
+                title={rows && rows.length === 0 ? 'Aucun cabinet inscrit' : 'Aucun cabinet trouvé'}
+                description={
+                  rows && rows.length === 0
+                    ? 'Aucun cabinet inscrit pour le moment : les cabinets apparaissent ici après leur inscription.'
+                    : 'Aucun cabinet ne correspond à la recherche. Vérifiez le code ou le nom saisi.'
+                }
+              />
+            }
+          />
+        )}
 
-      <ConfirmDialog
-        open={pending !== null}
-        onOpenChange={(o) => !o && setPending(null)}
-        title={pending ? `${ACTION_META[pending.action].label} le cabinet` : ''}
-        description={
-          pending
-            ? `Voulez-vous vraiment ${ACTION_META[pending.action].verb} le cabinet « ${pending.ws.name} » (${pending.ws.code}) ?`
-            : undefined
-        }
-        confirmLabel={pending ? ACTION_META[pending.action].label : 'Confirmer'}
-        variant={pending?.action === 'activate' ? 'primary' : 'danger'}
-        loading={acting}
-        onConfirm={() => void confirmAction()}
-      />
-    </div>
+        <ConfirmDialog
+          open={pending !== null}
+          onOpenChange={(o) => !o && setPending(null)}
+          title={pending ? `${ACTION_META[pending.action].label} le cabinet` : ''}
+          description={
+            pending
+              ? `Voulez-vous vraiment ${ACTION_META[pending.action].verb} le cabinet « ${pending.ws.name} » (${pending.ws.code}) ?`
+              : undefined
+          }
+          confirmLabel={pending ? ACTION_META[pending.action].label : 'Confirmer'}
+          variant={pending?.action === 'activate' ? 'primary' : 'danger'}
+          loading={acting}
+          onConfirm={() => void confirmAction()}
+        />
+      </div>
+    </Page>
   );
 }
 
@@ -275,7 +248,7 @@ function StatusBadge({ statut }: { statut: string }) {
 }
 
 function formatStorage(w: AdminWorkspaceRow): string {
-  if (w.storageBytes === null || w.storageBytes === undefined) return '—';
+  if (typeof w.storageBytes !== 'number' || !Number.isFinite(w.storageBytes)) return '--';
   const gb = w.storageBytes / (1024 * 1024 * 1024);
   const size = gb >= 0.01 ? `${gb.toFixed(2)} Go` : `${Math.round(w.storageBytes / (1024 * 1024))} Mo`;
   const n = w.storageFiles ?? 0;

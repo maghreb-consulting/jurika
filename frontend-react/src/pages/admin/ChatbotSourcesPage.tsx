@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertCircle, FileText, Library, Loader2, Trash2, Upload } from 'lucide-react';
+import { FileText, Library, Trash2, Upload } from 'lucide-react';
+import { Page } from '../../components/layout/Page';
+import { Message } from '../../components/ui/Message';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Skeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { InfoBulle, TexteAide } from '../../components/ui/Aide';
+import { TexteAide } from '../../components/ui/Aide';
 import { useToast } from '../../components/ui/useToast';
 import { chatbotService } from '../../services/chatbot.service';
 import { extractError } from '../../lib/api';
@@ -71,7 +75,7 @@ export function ChatbotSourcesPage() {
         await chatbotService.addSource(f);
       }
       await charger();
-      toast.success(n > 1 ? `${n} sources déposées.` : 'Source déposée.');
+      toast.enregistre(n > 1 ? `${n} sources déposées` : 'Source déposée');
     } catch (e) {
       setErreur(extractError(e).message);
     } finally {
@@ -88,7 +92,7 @@ export function ChatbotSourcesPage() {
     try {
       await chatbotService.deleteSource(cible.doc_id);
       setSources((prev) => prev.filter((s) => s.doc_id !== cible.doc_id));
-      toast.success('Source retirée.');
+      toast.enregistre('Source retirée');
     } catch (e) {
       setErreur(extractError(e).message);
     } finally {
@@ -98,19 +102,34 @@ export function ChatbotSourcesPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-4">
-      <header className="flex flex-wrap items-center gap-3">
-        <Library className="h-6 w-6 text-accent" aria-hidden="true" />
-        <div className="flex-1">
-          <h1 className="font-heading text-2xl font-semibold text-fg">
-            Sources du chatbot{' '}
-            <InfoBulle
-              libelle="À propos des sources"
-              texte="Les sources déposées ici sont communes : le chatbot de tous les cabinets y puise ses réponses, et seulement là. Aucun cabinet ne peut en déposer ni en voir la liste."
-            />
-          </h1>
-          <p className="text-sm text-fg-subtle">Sources fiables communes à tous les cabinets.</p>
-        </div>
+    <Page
+      titre="Sources du chatbot"
+      largeur="etroite"
+      infoBulle="Les sources déposées ici sont communes : le chatbot de tous les cabinets y puise ses réponses, et seulement là. Aucun cabinet ne peut en déposer ni en voir la liste."
+      description="Sources fiables communes à tous les cabinets."
+      actions={
+        <Button type="button" variant="secondary" onClick={ouvrirAssistant}>
+          Vérifier dans le chatbot
+        </Button>
+      }
+      action={
+        <Button type="button" onClick={() => champFichier.current?.click()} loading={depot} disabled={depot} icon={<Upload />}>
+          Déposer une source
+        </Button>
+      }
+      aide={
+      <TexteAide cle="admin-sources-chatbot" titre="Déposer et retirer les sources du chatbot">
+        <p>
+          Déposez des textes fiables (PDF, DOCX ou TXT) : lois, décrets, circulaires, notes de doctrine. Chaque
+          document est découpé en passages ; le chatbot ne répond qu’à partir de ces passages et les cite. Ne déposez
+          aucun document contenant des données de clients. Un dépôt ou un retrait est inscrit au journal d’audit.
+          Ensuite, ouvrez le chatbot (bouton « Vérifier dans le chatbot » en haut de cet écran, JURI sur le bord droit de l’écran, ou Ctrl+K puis « Chatbot ») et posez une question pour vérifier que la source est
+          bien retrouvée.
+        </p>
+      </TexteAide>
+      }
+    >
+      <div className="flex flex-col gap-4">
         <input
           ref={champFichier}
           type="file"
@@ -120,38 +139,23 @@ export function ChatbotSourcesPage() {
           data-testid="sources-champ-fichier"
           onChange={(e) => choisir(e.target.files)}
         />
-        <Button onClick={() => champFichier.current?.click()} loading={depot} disabled={depot}>
-          <Upload className="mr-1 h-4 w-4" aria-hidden="true" /> Déposer une source
-        </Button>
-      </header>
 
-      <TexteAide cle="admin-sources-chatbot" titre="Déposer et retirer les sources du chatbot">
-        <p>
-          Déposez des textes fiables (PDF, DOCX ou TXT) : lois, décrets, circulaires, notes de doctrine. Chaque
-          document est découpé en passages ; le chatbot ne répond qu’à partir de ces passages et les cite. Ne déposez
-          aucun document contenant des données de clients. Un dépôt ou un retrait est inscrit au journal d’audit.
-          Ensuite, ouvrez le chatbot (bulle en bas à droite) et posez une question pour vérifier que la source est
-          bien retrouvée.
-        </p>
-      </TexteAide>
-
-      {erreur && (
-        <p role="alert" className="flex items-start gap-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{erreur}</span>
-        </p>
-      )}
+      {erreur && <Message ton="erreur">{erreur}</Message>}
 
       <Card className="p-4">
         {chargement ? (
-          <p className="flex items-center justify-center gap-2 py-6 text-sm text-fg-subtle">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Chargement des sources…
-          </p>
+          <SqueletteZone libelle="Chargement des sources…" className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </SqueletteZone>
         ) : sources.length === 0 ? (
-          <p className="py-6 text-center text-sm text-fg-subtle">
-            Aucune source déposée : le chatbot répond à chaque question qu’il n’a pas de source. Déposez un premier
-            document avec le bouton « Déposer une source ».
-          </p>
+          <EmptyState
+            compact
+            icon={<Library />}
+            title="Aucune source déposée"
+            description="Le chatbot répond à chaque question qu’il n’a pas de source. Déposez un premier document avec le bouton « Déposer une source », en haut à droite."
+          />
         ) : (
           <ul className="space-y-1.5" aria-label="Sources communes">
             {sources.map((s) => (
@@ -159,33 +163,28 @@ export function ChatbotSourcesPage() {
                 key={s.doc_id}
                 className="flex items-center gap-2 rounded-lg border border-border bg-bg-raised px-3 py-2 text-sm"
               >
-                <FileText className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+                <FileText className="h-4 w-4 shrink-0 text-fg-subtle" aria-hidden="true" />
                 <span className="flex-1 truncate text-fg" title={s.source}>
                   {s.source}
                 </span>
                 <span className="text-xs text-fg-subtle">{dateCourte(s.created_at)}</span>
-                <Badge variant="default">
+                <Badge variant="neutral">
                   {s.chunks} passage{s.chunks > 1 ? 's' : ''}
                 </Badge>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
                   onClick={() => setARetirer(s)}
-                  className="rounded-lg p-1 text-fg-subtle transition-colors hover:bg-danger/10 hover:text-danger"
                   aria-label={`Retirer ${s.source}`}
-                >
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
-                </button>
+                  icon={<Trash2 />}
+                />
               </li>
             ))}
           </ul>
         )}
       </Card>
-
-      <div>
-        <Button variant="secondary" size="sm" onClick={ouvrirAssistant}>
-          Vérifier dans le chatbot
-        </Button>
-      </div>
 
       <ConfirmDialog
         open={fichiers !== null}
@@ -203,7 +202,7 @@ export function ChatbotSourcesPage() {
           <ul className="max-h-40 space-y-1.5 overflow-y-auto rounded-lg border border-border bg-bg-raised px-3 py-2">
             {fichiers.map((f, i) => (
               <li key={`${f.name}-${i}`} className="flex items-center gap-2 text-sm text-fg">
-                <FileText className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+                <FileText className="h-4 w-4 shrink-0 text-fg-subtle" aria-hidden="true" />
                 <span className="truncate" title={f.name}>
                   {f.name}
                 </span>
@@ -229,6 +228,7 @@ export function ChatbotSourcesPage() {
         loading={retrait}
         onConfirm={() => void retirer()}
       />
-    </div>
+      </div>
+    </Page>
   );
 }

@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../../../components/ui/Toast';
 
 /** Lot L7 (E6) : parametres de l'editeur : ce qui manque, ou c'est utilise, rien d'invente. */
@@ -37,7 +38,7 @@ describe('EditeurParametresPage', () => {
   });
 
   it('liste les mentions manquantes et où elles sont imprimées, champs vides', async () => {
-    render(<ToastProvider><EditeurParametresPage /></ToastProvider>);
+    render(<MemoryRouter><ToastProvider><EditeurParametresPage /></ToastProvider></MemoryRouter>);
     expect(await screen.findByText(/ICE — utilisée sur : factures et contrat d’abonnement/)).toBeInTheDocument();
     expect(screen.getByText(/Taxe professionnelle \(TP\) — utilisée sur : factures/)).toBeInTheDocument();
     expect(screen.getByLabelText('Raison sociale')).toHaveValue('');
@@ -46,7 +47,7 @@ describe('EditeurParametresPage', () => {
   });
 
   it('enregistre les champs saisis et envoie null pour un champ vide', async () => {
-    render(<ToastProvider><EditeurParametresPage /></ToastProvider>);
+    render(<MemoryRouter><ToastProvider><EditeurParametresPage /></ToastProvider></MemoryRouter>);
     await screen.findByLabelText('Raison sociale');
     fireEvent.change(screen.getByLabelText('Raison sociale'), { target: { value: ' Maghreb Consulting ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));

@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Download } from 'lucide-react';
+import { Page } from '../../components/layout/Page';
 import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { Message } from '../../components/ui/Message';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { CardSkeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { extractError } from '../../lib/api';
 import {
@@ -48,20 +53,20 @@ export function ReferentielDemarchesPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <header className="space-y-1">
-        <h1 className="flex items-center gap-1 text-xl font-semibold text-fg">
-          Référentiel des démarches
-          <InfoBulle
-            libelle="D’où vient ce référentiel ?"
-            texte="Des onglets « Démarches » des matrices du corpus livré par le cabinet : une ligne par démarche, avec son statut, son organisme, sa condition, son délai, son justificatif et son modèle. Il pilote le déroulement des tickets hors création."
-          />
-        </h1>
-        <p className="text-sm text-fg-muted">
-          Version appliquée : <strong data-testid="version-active">{etat ? (etat.versionActive ?? 'aucune') : '…'}</strong>
-        </p>
-      </header>
-
+    <Page
+      titre="Référentiel des démarches"
+      infoBulle="Des onglets « Démarches » des matrices du corpus livré par le cabinet : une ligne par démarche, avec son statut, son organisme, sa condition, son délai, son justificatif et son modèle. Il pilote le déroulement des tickets hors création."
+      description={
+        <>
+          Version appliquée : <strong className="font-mono text-fg" data-testid="version-active">{etat ? (etat.versionActive ?? 'aucune') : '…'}</strong>
+        </>
+      }
+      action={
+        <Button type="button" variant="primary" loading={enCours} disabled={enCours} onClick={() => void importer()} icon={<Download />}>
+          {enCours ? 'Import en cours…' : 'Importer le référentiel du corpus'}
+        </Button>
+      }
+      aide={
       <TexteAide cle="referentiel-import" titre="Quand importer le référentiel ?">
         Après chaque livraison du corpus par le cabinet. L’import lit les onglets « Démarches » et « Renvois » et
         les décisions de chaque matrice. Il est refusé si l'analyse relève une erreur (statut inconnu, onglet
@@ -72,49 +77,55 @@ export function ReferentielDemarchesPage() {
         exprime en texte et les conditions rédigées en phrase sont listés au rapport : l’employé les appréciera
         sur la ligne.
       </TexteAide>
-
-      <div className="flex items-center gap-3">
-        <Button variant="primary" disabled={enCours} onClick={() => void importer()}>
-          <Download className="mr-1 h-4 w-4" /> {enCours ? 'Import en cours…' : 'Importer le référentiel du corpus'}
-        </Button>
-      </div>
-
-      {erreur && <p role="alert" className="text-sm text-danger">{erreur}</p>}
+      }
+    >
+    <div className="space-y-6">
+      {erreur && <Message ton="erreur">{erreur}</Message>}
       {resultat && (
-        <p data-testid="resultat-import"
-          className={`rounded-lg border p-3 text-sm ${resultat.statut === 'APPLIQUE' ? 'border-success/40 bg-success/10' : 'border-danger/40 bg-danger/10'}`}>
-          {resultat.statut === 'APPLIQUE'
-            ? `Version ${resultat.version} appliquée : ${resultat.lignes} démarches, ${resultat.decisions} décisions, ${resultat.renvois} renvois.`
-            : `Version ${resultat.version} refusée : ${resultat.motif ?? ''}`}
-        </p>
+        <div data-testid="resultat-import">
+          <Message ton={resultat.statut === 'APPLIQUE' ? 'succes' : 'erreur'}>
+            {resultat.statut === 'APPLIQUE'
+              ? `Version ${resultat.version} appliquée : ${resultat.lignes} démarches, ${resultat.decisions} décisions, ${resultat.renvois} renvois.`
+              : `Version ${resultat.version} refusée : ${resultat.motif ?? ''}`}
+          </Message>
+        </div>
       )}
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-fg">Journal des imports</h2>
+      <section className="space-y-3" aria-labelledby="titre-journal-imports">
+        <h2 id="titre-journal-imports" className="text-lg font-semibold text-heading">Journal des imports</h2>
+        {etat === null && !erreur && (
+          <SqueletteZone libelle="Chargement du journal des imports…" className="space-y-2">
+            <CardSkeleton className="h-16" />
+            <CardSkeleton className="h-16" />
+          </SqueletteZone>
+        )}
         {etat && etat.imports.length === 0 && (
-          <p className="text-sm text-fg-subtle">Aucun import : les tickets hors création n’ont pas encore de démarches du corpus. Cliquez sur « Importer le référentiel du corpus ».</p>
+          <EmptyState
+            title="Aucun import"
+            description="Les tickets hors création n’ont pas encore de démarches du corpus. Cliquez sur « Importer le référentiel du corpus », en haut à droite."
+          />
         )}
         <ul className="space-y-2">
           {etat?.imports.map((i) => {
             const rapport = lireRapport(i.rapport);
             return (
-              <li key={i.id} data-testid={`import-${i.id}`} className="rounded-lg border border-border p-3 text-sm">
+              <li key={i.id} data-testid={`import-${i.id}`} className="rounded-xl border border-border bg-bg-raised p-4 text-sm shadow-card">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className={i.statut === 'APPLIQUE' ? 'font-medium text-success' : 'font-medium text-danger'}>
+                  <Badge variant={i.statut === 'APPLIQUE' ? 'success' : 'danger'}>
                     {i.statut === 'APPLIQUE' ? 'Appliquée' : 'Refusée'}
-                  </span>
-                  <span className="font-mono">{i.corpus_version}</span>
-                  <span className="text-fg-muted">{new Date(i.importe_le).toLocaleString('fr-FR')}</span>
+                  </Badge>
+                  <span className="font-mono text-fg">{i.corpus_version}</span>
+                  <span className="tabular-nums text-fg-muted">{new Date(i.importe_le).toLocaleString('fr-FR')}</span>
                   {i.statut === 'APPLIQUE' && (
                     <span className="text-fg-muted">{i.lignes} démarches · {i.decisions} décisions · {i.renvois} renvois</span>
                   )}
-                  <Button variant="secondary" onClick={() => setOuvert(ouvert === i.id ? null : i.id)}>
+                  <Button type="button" variant="secondary" size="sm" className="ml-auto" aria-expanded={ouvert === i.id} onClick={() => setOuvert(ouvert === i.id ? null : i.id)}>
                     {ouvert === i.id ? 'Masquer le rapport' : 'Voir le rapport'}
                   </Button>
                 </div>
                 {i.motif && <p className="mt-1 text-danger">{i.motif}</p>}
                 {ouvert === i.id && (
-                  <div className="mt-2 space-y-2 text-xs text-fg-muted">
+                  <div className="mt-3 space-y-2 border-t border-border pt-3 text-sm text-fg-muted [&_summary]:cursor-pointer [&_summary]:rounded-sm [&_summary]:font-medium [&_summary]:text-fg">
                     <p>
                       {rapport.total ?? 0} lignes lues ; {rapport.conditionsPhrases?.length ?? 0} conditions rédigées en
                       phrase (à apprécier par l’employé) ; {rapport.delaisTextuels?.length ?? 0} délais en texte seul
@@ -170,5 +181,6 @@ export function ReferentielDemarchesPage() {
         </ul>
       </section>
     </div>
+    </Page>
   );
 }
