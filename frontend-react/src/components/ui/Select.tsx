@@ -23,15 +23,19 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   error?: string;
   /** Aide sous le champ (masquee quand une erreur est affichee). */
   hint?: string;
-  /** Options "a plat" (rendues avant les groupes, ex. un choix vide). */
-  options: OptionItem[];
+  /**
+   * Options "a plat" (rendues avant les groupes, ex. un choix vide). Ajout L6b E5 (W2) :
+   * facultatif ; des <option> passees en enfants sont rendues apres `options` et `groups`
+   * (listes construites par le JSX de l'appelant : conditions, regroupements).
+   */
+  options?: OptionItem[];
   /** Groupes rendus en <optgroup> apres `options`. */
   groups?: OptionGroup[];
   containerClassName?: string;
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
-  { label, error, hint, options, groups, className, containerClassName, id, 'aria-describedby': decritPar, ...rest },
+  { label, error, hint, options = [], groups, className, containerClassName, id, 'aria-describedby': decritPar, children, ...rest },
   ref,
 ) {
   const autoId = useId();
@@ -64,6 +68,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
               ))}
             </optgroup>
           ))}
+          {children}
         </select>
         <ChevronDown
           className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
