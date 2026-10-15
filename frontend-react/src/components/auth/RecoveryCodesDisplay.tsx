@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Download, Copy, Check, ShieldAlert } from 'lucide-react';
+import { Download, Copy, Check } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { Case } from '../ui/Choix';
+import { Message } from '../ui/Message';
 import { useCurrentUser } from '../../store/authStore';
 
 interface Props {
@@ -87,20 +89,12 @@ export function RecoveryCodesDisplay({ codes, onContinue, continueLabel = 'Conti
 
   return (
     <div className="space-y-5" data-testid="recovery-codes-display">
-      <header className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4">
-        <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
-        <div>
-          <h3 className="text-sm font-semibold text-fg">
-            Ces codes ne seront plus affichés
-          </h3>
-          <p className="mt-1 text-xs text-fg-muted">
-            Téléchargez-les ou recopiez-les maintenant. Chaque code ne sert qu’une fois, et
-            seulement si vous perdez l’accès à votre méthode habituelle de double authentification.
-          </p>
-        </div>
-      </header>
+      <Message ton="attention" titre="Ces codes ne seront plus affichés">
+        Téléchargez-les ou recopiez-les maintenant. Chaque code ne sert qu’une fois, et seulement si vous perdez
+        l’accès à votre méthode habituelle de double authentification.
+      </Message>
 
-      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-bg-overlay p-3">
+      <div className="grid gap-2 rounded-lg border border-border bg-bg-overlay p-3 sm:grid-cols-2">
         {codes.map((c, i) => (
           <code
             key={i}
@@ -115,40 +109,38 @@ export function RecoveryCodesDisplay({ codes, onContinue, continueLabel = 'Conti
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="secondary" size="sm" onClick={downloadTxt}>
-          <Download className="mr-1 h-4 w-4" />
+        <Button type="button" variant="secondary" size="sm" onClick={downloadTxt} icon={<Download />}>
           Télécharger (.txt)
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={copyAll}>
-          {copied ? (
-            <>
-              <Check className="mr-1 h-4 w-4 text-success" /> Codes copiés
-            </>
-          ) : (
-            <>
-              <Copy className="mr-1 h-4 w-4" /> Copier les 10 codes
-            </>
-          )}
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={copyAll}
+          icon={copied ? <Check className="text-success" /> : <Copy />}
+        >
+          {copied ? 'Codes copiés' : 'Copier les 10 codes'}
         </Button>
       </div>
 
-      <label className="flex items-start gap-2 rounded-lg border border-border bg-bg-raised p-3 text-sm text-fg-muted">
-        <input
-          type="checkbox"
+      <div className="rounded-lg border border-border bg-bg-raised p-3">
+        <Case
           checked={checked}
           onChange={(e) => setChecked(e.target.checked)}
-          className="mt-0.5 h-4 w-4 rounded border-border-hi text-accent focus:ring-accent"
           data-testid="recovery-codes-checkbox"
+          label={
+            <>
+              J’ai <strong>mis mes codes de récupération en lieu sûr</strong>. Je comprends qu’ils ne seront{' '}
+              <strong>plus jamais affichés</strong>.
+            </>
+          }
         />
-        <span>
-          J’ai <strong>mis mes codes de récupération en lieu sûr</strong>. Je comprends qu’ils ne
-          seront <strong>plus jamais affichés</strong>.
-        </span>
-      </label>
+      </div>
 
       <Button
         type="button"
-        className="w-full"
+        size="lg"
+        fullWidth
         onClick={onContinue}
         disabled={!checked}
         data-testid="recovery-codes-continue"

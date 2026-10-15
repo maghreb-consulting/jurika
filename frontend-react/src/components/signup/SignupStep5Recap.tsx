@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import type { SignupProfileData } from './SignupStep1Cabinet';
 import type { TwoFactorPreference } from './SignupStep4TwoFactor';
 import { PROFESSIONAL_TYPE_LABELS, type ProfessionalType } from '../../types/professional';
+import { classesBouton } from '../ui/boutonClasses';
+import { Lien } from '../ui/Lien';
+import { Message } from '../ui/Message';
 
 // Lot L7 (E5) : grille du CDC 4.3, prix hors taxes.
 const PLAN_LABELS: Record<string, string> = {
@@ -44,9 +47,9 @@ export function SignupStep5Recap({ profile, twoFactor, selectedPlan, professiona
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8" data-testid="signup-step-recap">
-      <div className="rounded-2xl bg-bg-raised p-6 shadow-md sm:p-8">
-        <h2 className="mb-2 font-heading text-2xl font-semibold text-fg">Récapitulatif</h2>
+    <div className="mx-auto max-w-2xl py-4" data-testid="signup-step-recap">
+      <div className="rounded-xl border border-border border-t-2 border-t-accent bg-bg-raised p-6 shadow-card sm:p-8">
+        <h2 className="mb-2 text-2xl font-semibold tracking-tight text-heading">Récapitulatif</h2>
         <p className="mb-6 text-sm text-fg-subtle">
           Vérifiez les informations avant de créer votre cabinet. Pour corriger une donnée, revenez
           en arrière avec « Retour ».
@@ -82,19 +85,18 @@ export function SignupStep5Recap({ profile, twoFactor, selectedPlan, professiona
               type="checkbox"
               checked={cguAccepted}
               onChange={(e) => setCguAccepted(e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-[#2563EB]"
+              className="mt-0.5 h-4 w-4 accent-[var(--color-accent)]"
               data-testid="signup-cgu-checkbox"
             />
             <span className="text-sm text-fg-muted">
-              J’accepte les <a href="/cgu" target="_blank" className="text-accent underline">CGU</a>{' '}
-              et la <a href="/privacy" target="_blank" className="text-accent underline">politique de confidentialité (CNDP)</a>.
+              J’accepte les <Lien href="/cgu" target="_blank" rel="noopener">CGU</Lien>{' '}
+              et la <Lien href="/privacy" target="_blank" rel="noopener">politique de confidentialité (CNDP)</Lien>.
             </span>
           </label>
 
           {error && (
-            <div role="alert" className="flex items-start gap-2 rounded-lg bg-danger/10 p-3 text-sm text-danger" data-testid="signup-step5-error">
-              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-              <span>{error}</span>
+            <div data-testid="signup-step5-error">
+              <Message ton="erreur">{error}</Message>
             </div>
           )}
 
@@ -132,5 +134,5 @@ function Line({ label, value, cle }: { label: string; value: string; cle?: strin
   );
 }
 
-const btnPrimary = 'flex-1 rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-bg hover:bg-accent-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed';
-const btnSecondary = 'rounded-lg border border-border-hi bg-bg-raised px-4 py-3 text-sm font-semibold text-fg hover:bg-bg-overlay transition-colors disabled:opacity-60 disabled:cursor-not-allowed';
+const btnPrimary = classesBouton('primary', 'lg', 'h-auto min-h-11 flex-1 whitespace-normal py-2 text-center');
+const btnSecondary = classesBouton('secondary', 'lg', 'h-auto min-h-11 py-2');

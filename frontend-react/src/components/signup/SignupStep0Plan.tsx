@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PlanPicker } from '../billing/PlanPicker';
+import { Message } from '../ui/Message';
 import { TexteAide } from '../ui/Aide';
 import { demanderDevis } from '../../lib/demandeDevis';
 import type { BillingPeriod, PlanCode } from '../../types/billing';
@@ -27,10 +28,10 @@ export function SignupStep0Plan({ onNext }: Props) {
   }, [period]);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8" data-testid="signup-step-plan">
+    <div className="mx-auto max-w-6xl py-4" data-testid="signup-step-plan">
       <div className="mb-6 text-center">
-        <h2 className="font-heading text-3xl font-semibold text-fg">Choisissez votre forfait</h2>
-        <p className="mt-2 text-sm text-fg-subtle">
+        <h2 className="text-2xl font-semibold tracking-tight text-heading">Choisissez votre forfait</h2>
+        <p className="mt-2 text-sm text-fg-muted">
           Prix hors taxes. Le forfait est souscrit pour un an, réglé en une fois ou chaque mois.
         </p>
       </div>
@@ -43,7 +44,7 @@ export function SignupStep0Plan({ onNext }: Props) {
           </p>
         </TexteAide>
       </div>
-      {noteDevis && <p role="status" className="rounded-lg border border-border bg-bg-overlay p-3 text-sm text-fg">{noteDevis}</p>}
+      {noteDevis && <Message ton="info" className="mx-auto mb-6 max-w-3xl">{noteDevis}</Message>}
       <PlanPicker
         period={period}
         onPeriodChange={setPeriod}

@@ -16,7 +16,7 @@ export function Stepper({ currentStep }: StepperProps) {
   ] as const;
 
   return (
-    <ol aria-label="Étapes de la connexion" className="mb-10 flex items-center justify-center gap-2">
+    <ol aria-label="Étapes de la connexion" className="mb-8 flex items-center justify-center gap-1">
       {steps.map((step, index) => {
         const completed = step.number < currentStep;
         const active = step.number === currentStep;
@@ -25,18 +25,18 @@ export function Stepper({ currentStep }: StepperProps) {
             <div className="flex items-center gap-2">
               <div
                 className={[
-                  'flex h-8 w-8 items-center justify-center rounded-full transition-all',
+                  'flex h-7 w-7 items-center justify-center rounded-full transition-colors duration-150',
                   completed ? 'bg-success' : '',
                   active ? 'bg-accent' : '',
-                  !completed && !active ? 'bg-border' : '',
+                  !completed && !active ? 'border border-border-input bg-bg-overlay' : '',
                 ].join(' ')}
               >
                 {completed ? (
-                  <Check className="h-5 w-5 text-bg-raised" aria-label="faite" />
+                  <Check className="h-4 w-4 text-success-fg" aria-label="faite" />
                 ) : (
                   <span
                     className={`text-sm font-semibold ${
-                      active ? 'text-bg-raised' : 'text-fg-subtle'
+                      active ? 'text-accent-fg' : 'text-fg-muted'
                     }`}
                   >
                     {step.number}
@@ -44,16 +44,16 @@ export function Stepper({ currentStep }: StepperProps) {
                 )}
               </div>
               <span
-                className={`hidden text-sm sm:inline ${
-                  active ? 'font-semibold text-accent' : 'text-fg-subtle'
-                }`}
+                // Libelle visible pour l'etape en cours seulement (la carte est etroite) ;
+                // les autres restent lus par les lecteurs d'ecran.
+                className={active ? 'text-xs font-semibold text-heading' : 'sr-only'}
               >
                 {step.label}
               </span>
             </div>
 
             {index < steps.length - 1 && (
-              <div className="mx-3 text-fg-subtle" aria-hidden="true">→</div>
+              <div className="mx-2 h-px w-6 bg-border-input" aria-hidden="true" />
             )}
           </li>
         );

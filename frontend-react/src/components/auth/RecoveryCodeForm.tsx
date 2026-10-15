@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react';
 import { KeyRound } from 'lucide-react';
+import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
+import { Lien } from '../ui/Lien';
+import { Message } from '../ui/Message';
+import { CLASSES_CHAMP } from '../ui/TextField';
+import { TitreAccueil } from './PageAccueil';
 
 interface Props {
   workspaceCode: string;
@@ -46,26 +51,20 @@ export function RecoveryCodeForm({ workspaceCode, email, loading, error, onSubmi
 
   return (
     <form onSubmit={handleSubmit} data-testid="recovery-code-form" noValidate>
-      <div className="mb-6 flex justify-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
-          <KeyRound className="h-8 w-8 text-accent" />
-        </div>
+      {/* L6b (E8) : titre de l'etape = titre de l'ecran (h1, la page n'en a pas d'autre a cette etape). */}
+      <TitreAccueil icone={<KeyRound />} titre="Code de récupération">
+        Saisissez l’un des 10 codes de récupération reçus à l’activation de la double authentification. Chaque
+        code ne sert qu’<strong className="text-fg">une seule fois</strong>.
+      </TitreAccueil>
+
+      <div className="mb-4 flex justify-center">
+        <Badge variant="success" dot className="whitespace-normal">
+          {workspaceCode} · {email}
+        </Badge>
       </div>
 
-      <div className="mb-6 text-center">
-        <h2 className="mb-2 text-2xl font-bold text-fg">Code de récupération</h2>
-        <p className="text-sm text-fg-subtle">
-          Saisissez l’un des 10 codes de récupération reçus à l’activation de la double
-          authentification. Chaque code ne sert qu’<strong>une seule fois</strong>.
-        </p>
-      </div>
-
-      <div className="mb-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-success bg-success/10 px-4 py-2 text-sm text-success">
-        ✓ {workspaceCode} · {email}
-      </div>
-
-      <div className="mb-4">
-        <label htmlFor="recovery-code-input" className="mb-2 block text-sm font-medium text-fg">
+      <div className="mb-4 flex flex-col gap-1.5">
+        <label htmlFor="recovery-code-input" className="text-sm font-medium text-fg">
           Code de récupération
         </label>
         <input
@@ -79,37 +78,28 @@ export function RecoveryCodeForm({ workspaceCode, email, loading, error, onSubmi
           placeholder="XXXX-XXXX-XXXX-XXXX"
           required
           aria-invalid={!!error}
+          aria-describedby="recovery-code-aide"
           maxLength={19}
-          className={`h-14 w-full rounded-lg bg-bg-overlay px-6 text-center font-mono text-xl font-bold tracking-wider outline-none transition-all ${
-            error
-              ? 'border-2 border-danger'
-              : 'border-2 border-border focus:border-accent'
-          }`}
+          className={`${CLASSES_CHAMP} h-14 text-center font-mono text-xl font-bold tracking-wider`}
         />
-        <p className="mt-2 text-center text-xs text-fg-subtle">
+        <p id="recovery-code-aide" className="text-center text-xs text-fg-subtle">
           16 caractères en 4 groupes de 4 ({normalized.length}/16)
         </p>
       </div>
 
       {error && (
-        <div
-          role="alert"
-          className="mb-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger"
-        >
+        <Message ton="erreur" className="mb-4">
           {error}
-        </div>
+        </Message>
       )}
 
-      <Button type="submit" className="h-12 w-full" loading={loading} disabled={!isComplete}>
+      <Button type="submit" size="lg" fullWidth loading={loading} disabled={!isComplete}>
         Vérifier et accéder
       </Button>
 
-      <p className="mt-6 text-center text-xs text-fg-subtle">
+      <p className="mt-6 text-center text-xs text-fg-muted">
         Vous n’avez plus aucun code de récupération ? Écrivez au support :{' '}
-        <a className="font-medium text-accent hover:underline" href="mailto:support@jurika.ma">
-          support@jurika.ma
-        </a>
-        .
+        <Lien href="mailto:support@jurika.ma">support@jurika.ma</Lien>.
       </p>
     </form>
   );

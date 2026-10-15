@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { CheckCircle2, RefreshCw, ShieldAlert } from 'lucide-react';
-import { BrandLogo } from '../../components/ui/BrandLogo';
-import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
+import { PageAccueil, TitreAccueil } from '../../components/auth/PageAccueil';
 import { TexteAide } from '../../components/ui/Aide';
+import { Lien } from '../../components/ui/Lien';
+import { SqueletteZone } from '../../components/ui/LoadingSkeleton';
+import { Message } from '../../components/ui/Message';
 import { authService } from '../../services/auth.service';
 import { messageCompte } from '../account/messagesCompte';
 
@@ -44,66 +45,56 @@ export function ConfirmerChangementComptePage() {
   }, [token]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-bg via-bg-raised to-accent/10 px-4">
-      <div className="w-full max-w-md">
-        <Link to="/" className="mb-8 flex items-center justify-center" aria-label="JURIKA, retour à l’accueil">
-          <BrandLogo variant="full" size={48} />
-        </Link>
+    <PageAccueil
+      titre="Confirmation du changement"
+      largeur="etroite"
+      enTete={<Lien to="/login">Se connecter</Lien>}
+    >
+      {etat === 'confirmation' && (
+        <SqueletteZone libelle="Confirmation du changement en cours">
+          <TitreAccueil icone={<RefreshCw className="motion-safe:animate-spin" />} titre="Confirmation en cours…" />
+        </SqueletteZone>
+      )}
 
-        <Card className="p-8">
-          {etat === 'confirmation' && (
-            <div className="space-y-4 text-center">
-              <RefreshCw className="mx-auto h-10 w-10 animate-spin text-accent" />
-              <h1 className="font-heading text-xl font-semibold text-fg">Confirmation en cours…</h1>
-            </div>
-          )}
+      {etat === 'confirme' && (
+        <div className="space-y-5">
+          <TitreAccueil
+            icone={<CheckCircle2 />}
+            ton="succes"
+            titre={motif === 'identifiant' ? 'Identifiant de connexion modifié' : 'Adresse électronique modifiée'}
+          >
+            {motif === 'identifiant' ? (
+              <>
+                Votre identifiant de connexion est désormais <strong className="text-fg">{valeur}</strong>.
+                Utilisez-le, avec le code de votre cabinet, à votre prochaine connexion.
+              </>
+            ) : (
+              <>
+                Votre adresse électronique est désormais <strong className="text-fg">{valeur}</strong>. Les
+                courriels de JURIKA vous y seront envoyés.
+              </>
+            )}
+          </TitreAccueil>
+          <Lien to="/login" commeBouton={{ variant: 'primary', size: 'lg' }} className="w-full">
+            Aller à la connexion
+          </Lien>
+        </div>
+      )}
 
-          {etat === 'confirme' && (
-            <div className="space-y-5 text-center">
-              <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
-              <h1 className="font-heading text-xl font-semibold text-fg">
-                {motif === 'identifiant' ? 'Identifiant de connexion modifié' : 'Adresse électronique modifiée'}
-              </h1>
-              <p className="text-sm text-fg-muted">
-                {motif === 'identifiant' ? (
-                  <>
-                    Votre identifiant de connexion est désormais <strong>{valeur}</strong>. Utilisez-le,
-                    avec le code de votre cabinet, à votre prochaine connexion.
-                  </>
-                ) : (
-                  <>
-                    Votre adresse électronique est désormais <strong>{valeur}</strong>. Les courriels de
-                    JURIKA vous y seront envoyés.
-                  </>
-                )}
-              </p>
-              <Link to="/login">
-                <Button className="w-full">Aller à la connexion</Button>
-              </Link>
-            </div>
-          )}
-
-          {etat === 'erreur' && (
-            <div className="space-y-5 text-center">
-              <ShieldAlert className="mx-auto h-12 w-12 text-danger" />
-              <h1 className="font-heading text-xl font-semibold text-fg">Confirmation impossible</h1>
-              <p className="text-sm text-fg-muted" role="alert">
-                {erreur}
-              </p>
-              <TexteAide cle="confirmer-changement-compte" titre="Et maintenant ?">
-                Aucune modification n’a été faite : vos valeurs actuelles restent actives. Connectez-vous,
-                puis refaites la demande depuis l’écran « Mon compte » (menu de votre compte, en haut à droite) ; seul le
-                dernier lien reçu est valable.
-              </TexteAide>
-              <Link to="/login">
-                <Button variant="secondary" className="w-full">
-                  Aller à la connexion
-                </Button>
-              </Link>
-            </div>
-          )}
-        </Card>
-      </div>
-    </div>
+      {etat === 'erreur' && (
+        <div className="space-y-5">
+          <TitreAccueil icone={<ShieldAlert />} ton="erreur" titre="Confirmation impossible" />
+          <Message ton="erreur">{erreur}</Message>
+          <TexteAide cle="confirmer-changement-compte" titre="Et maintenant ?">
+            Aucune modification n’a été faite : vos valeurs actuelles restent actives. Connectez-vous, puis refaites
+            la demande depuis l’écran « Mon compte » (menu de votre compte, en haut à droite) ; seul le dernier lien
+            reçu est valable.
+          </TexteAide>
+          <Lien to="/login" commeBouton={{ variant: 'secondary', size: 'lg' }} className="w-full">
+            Aller à la connexion
+          </Lien>
+        </div>
+      )}
+    </PageAccueil>
   );
 }

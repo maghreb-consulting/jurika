@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
-import { BrandLogo } from '../../components/ui/BrandLogo';
-import { InfoBulle } from '../../components/ui/Aide';
+import { PageAccueil, TitreAccueil } from '../../components/auth/PageAccueil';
 import { Button } from '../../components/ui/Button';
+import { Skeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
+import { Message } from '../../components/ui/Message';
 import { TextField } from '../../components/ui/TextField';
-import { Card } from '../../components/ui/Card';
 import { RecoveryCodesDisplay } from '../../components/auth/RecoveryCodesDisplay';
 import { authService } from '../../services/auth.service';
 import { extractError, tokenStorage } from '../../lib/api';
@@ -76,93 +76,85 @@ export function Setup2FAPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-bg to-accent/10 px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-8 flex items-center justify-center">
-          <BrandLogo variant="full" size={48} />
-        </div>
+    <PageAccueil titre="Double authentification" retourAccueil={false} largeur={step === 'SHOW_RECOVERY' ? 'normale' : 'etroite'}>
+      {step !== 'SHOW_RECOVERY' && (
+        <div className="space-y-5">
+          <TitreAccueil
+            icone={<ShieldCheck />}
+            ton="succes"
+            titre="Activez la double authentification"
+            libelleInfoBulle="Aide sur la double authentification"
+            infoBulle="1. Ouvrez une application d’authentification (Google Authenticator, Microsoft Authenticator…) sur votre téléphone. 2. Scannez le QR code, ou saisissez le code affiché dessous. 3. Saisissez le code à 6 chiffres que l’application affiche. Vous recevrez ensuite 10 codes de récupération à conserver."
+          >
+            Scannez le QR code avec votre application d’authentification, puis saisissez le code à 6 chiffres
+            qu’elle affiche.
+          </TitreAccueil>
 
-        {step !== 'SHOW_RECOVERY' && (
-          <Card className="space-y-5 p-8">
-            <div className="text-center">
-              <ShieldCheck className="mx-auto h-10 w-10 text-success" />
-              <h1 className="mt-3 flex items-center justify-center gap-1 font-heading text-xl font-semibold text-fg">
-                Activez la double authentification
-                <InfoBulle
-                  libelle="Aide sur la double authentification"
-                  texte="1. Ouvrez une application d’authentification (Google Authenticator, Microsoft Authenticator…) sur votre téléphone. 2. Scannez le QR code, ou saisissez le code affiché dessous. 3. Saisissez le code à 6 chiffres que l’application affiche. Vous recevrez ensuite 10 codes de récupération à conserver."
-                />
-              </h1>
-              <p className="mt-1 text-sm text-fg-muted">
-                Scannez le QR code avec votre application d’authentification, puis saisissez le code
-                à 6 chiffres qu’elle affiche.
-              </p>
-            </div>
-
-            {qrPng && (
-              <div className="flex justify-center">
-                <img
-                  src={`data:image/png;base64,${qrPng}`}
-                  alt="QR code à scanner avec votre application d’authentification"
-                  className="h-56 w-56 rounded-lg border border-border bg-bg-raised p-2"
-                />
-              </div>
-            )}
-
-            {secret && (
-              <div className="rounded-lg bg-bg-overlay p-3 text-center text-xs">
-                <p className="text-fg-subtle">Impossible de scanner ? Saisissez ce code dans l’application :</p>
-                <code className="mt-1 inline-block break-all font-mono text-sm text-fg">{secret}</code>
-              </div>
-            )}
-
-            <form onSubmit={handleConfirm} className="space-y-3" noValidate>
-              <TextField
-                label="Code à 6 chiffres"
-                name="code"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                autoComplete="one-time-code"
-                className="text-center text-lg tracking-[0.5em]"
-                required
+          {/* Emplacement du QR code a ses dimensions : aucun decalage quand il arrive. */}
+          <div className="flex justify-center">
+            {qrPng ? (
+              <img
+                src={`data:image/png;base64,${qrPng}`}
+                alt="QR code à scanner avec votre application d’authentification"
+                width={224}
+                height={224}
+                className="h-56 w-56 rounded-lg border border-border bg-bg-raised p-2"
               />
-              {error && (
-                <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-                  {error}
-                </div>
-              )}
-              <Button type="submit" className="w-full" loading={loading} disabled={code.length !== 6}>
-                Confirmer et activer
-              </Button>
-            </form>
-          </Card>
-        )}
+            ) : loading ? (
+              <SqueletteZone libelle="Préparation du QR code">
+                <Skeleton className="h-56 w-56 rounded-lg" />
+              </SqueletteZone>
+            ) : null}
+          </div>
 
-        {step === 'SHOW_RECOVERY' && recoveryCodes && (
-          <Card className="space-y-5 p-8">
-            <div className="text-center">
-              <ShieldCheck className="mx-auto h-10 w-10 text-success" />
-              <h1 className="mt-3 font-heading text-xl font-semibold text-fg">
-                Double authentification activée : vos codes de récupération
-              </h1>
-              <p className="mt-1 text-sm text-fg-muted">
-                Ces 10 codes vous permettent de vous reconnecter si vous perdez votre téléphone.
-                Conservez-les en lieu sûr : ils ne seront plus affichés.
-              </p>
+          {secret && (
+            <div className="rounded-lg border border-border bg-bg-overlay p-3 text-center text-xs">
+              <p className="text-fg-muted">Impossible de scanner ? Saisissez ce code dans l’application :</p>
+              <code className="mt-1 inline-block break-all font-mono text-sm text-fg">{secret}</code>
             </div>
+          )}
 
-            <RecoveryCodesDisplay
-              codes={recoveryCodes}
-              context="INITIAL_SETUP"
-              continueLabel="J’ai mis mes codes en lieu sûr, continuer"
-              onContinue={() => navigate('/dashboard', { replace: true })}
+          <form onSubmit={handleConfirm} className="space-y-4" noValidate>
+            <TextField
+              label="Code à 6 chiffres"
+              name="code"
+              inputMode="numeric"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              autoComplete="one-time-code"
+              className="h-11 text-center text-lg tracking-[0.5em]"
+              mono
+              required
             />
-          </Card>
-        )}
-      </div>
-    </div>
+            {error && <Message ton="erreur">{error}</Message>}
+            <Button type="submit" size="lg" fullWidth loading={loading} disabled={code.length !== 6}>
+              Confirmer et activer
+            </Button>
+          </form>
+        </div>
+      )}
+
+      {step === 'SHOW_RECOVERY' && recoveryCodes && (
+        <div className="space-y-5">
+          <TitreAccueil
+            icone={<ShieldCheck />}
+            ton="succes"
+            titre="Double authentification activée : vos codes de récupération"
+          >
+            Ces 10 codes vous permettent de vous reconnecter si vous perdez votre téléphone. Conservez-les en lieu
+            sûr : ils ne seront plus affichés.
+          </TitreAccueil>
+
+          <RecoveryCodesDisplay
+            codes={recoveryCodes}
+            context="INITIAL_SETUP"
+            continueLabel="J’ai mis mes codes en lieu sûr, continuer"
+            onContinue={() => navigate('/dashboard', { replace: true })}
+          />
+        </div>
+      )}
+    </PageAccueil>
   );
 }

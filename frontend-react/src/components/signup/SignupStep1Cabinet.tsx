@@ -10,6 +10,9 @@ import {
   entityNameRequired,
   type ProfessionalType,
 } from '../../types/professional';
+import { classesBouton } from '../ui/boutonClasses';
+import { Message } from '../ui/Message';
+import { CLASSES_CHAMP } from '../ui/TextField';
 
 /**
  * Simplification inscription (2026-07-13) — Formulaire UNIQUE.
@@ -149,9 +152,9 @@ export function SignupStep1Cabinet({
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8" data-testid="signup-step-cabinet">
-      <div className="rounded-2xl bg-bg-raised p-6 shadow-md sm:p-8">
-        <h2 className="mb-2 font-heading text-2xl font-semibold text-fg">Votre profil</h2>
+    <div className="mx-auto max-w-2xl py-4" data-testid="signup-step-cabinet">
+      <div className="rounded-xl border border-border border-t-2 border-t-accent bg-bg-raised p-6 shadow-card sm:p-8">
+        <h2 className="mb-2 text-2xl font-semibold tracking-tight text-heading">Votre profil</h2>
         <p className="mb-6 text-sm text-fg-subtle">
           Quelques informations pour créer votre espace. Vous pourrez compléter le reste plus tard.
         </p>
@@ -173,10 +176,10 @@ export function SignupStep1Cabinet({
                   onClick={() => onProfessionalTypeChange?.(code)}
                   data-testid={`signup-profile-type-${code}`}
                   className={[
-                    'flex items-center justify-between gap-1 rounded-lg border px-3 py-2 text-left text-xs font-medium transition-colors',
+                    'flex items-center justify-between gap-1 rounded-lg border px-3 py-2 text-left text-xs font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
                     selected
-                      ? 'border-accent bg-accent/10 text-fg'
-                      : 'border-border-hi bg-bg-raised text-fg-muted hover:border-accent/50 hover:bg-bg-overlay',
+                      ? 'border-accent bg-accent-soft text-fg'
+                      : 'border-border-input bg-bg-raised text-fg-muted hover:border-fg-subtle hover:bg-bg-overlay',
                   ].join(' ')}
                 >
                   <span>{label}</span>
@@ -300,8 +303,8 @@ export function SignupStep1Cabinet({
           </div>
 
           {error && (
-            <div role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger" data-testid="signup-step1-error">
-              {error}
+            <div data-testid="signup-step1-error">
+              <Message ton="erreur">{error}</Message>
             </div>
           )}
           <div className="mt-2 flex gap-3">
@@ -329,9 +332,9 @@ export function SignupStep1Cabinet({
   );
 }
 
-const inputCls = 'w-full rounded-lg border border-border-hi px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30';
-const btnPrimary = 'flex-1 rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-bg transition-colors hover:bg-accent-hover';
-const btnSecondary = 'rounded-lg border border-border-hi bg-bg-raised px-4 py-3 text-sm font-semibold text-fg hover:bg-bg-overlay transition-colors';
+const inputCls = `${CLASSES_CHAMP} h-9`;
+const btnPrimary = classesBouton('primary', 'lg', 'h-auto min-h-11 flex-1 whitespace-normal py-2 text-center');
+const btnSecondary = classesBouton('secondary', 'lg', 'h-auto min-h-11 py-2');
 
 interface FieldProps {
   icon: React.ReactNode;

@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import { CheckCircle2, Mail, Smartphone } from 'lucide-react';
+import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
+import { Lien } from '../ui/Lien';
+import { Message } from '../ui/Message';
 import { TextField } from '../ui/TextField';
 import { InfoBulle } from '../ui/Aide';
 import { extractError } from '../../lib/api';
@@ -70,8 +72,10 @@ export function VerificationEssai({ etat, onEtat, telephoneMasque, email }: Prop
   if (etat.essaiCree) {
     return (
       <div className="space-y-4 text-center" data-testid="essai-ouvert">
-        <CheckCircle2 className="mx-auto h-10 w-10 text-success" aria-hidden="true" />
-        <h2 className="text-xl font-semibold text-fg">Votre essai gratuit est ouvert</h2>
+        <div aria-hidden="true" className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-success">
+          <CheckCircle2 className="h-6 w-6" />
+        </div>
+        <h2 className="text-xl font-semibold text-heading">Votre essai gratuit est ouvert</h2>
         {etat.workspaceCode ? (
           <p className="text-sm text-fg-muted">
             Code de votre cabinet : <strong className="font-mono text-fg">{etat.workspaceCode}</strong>
@@ -89,20 +93,23 @@ export function VerificationEssai({ etat, onEtat, telephoneMasque, email }: Prop
           L’essai dure 7 jours : 3 dossiers, 1 superviseur et 1 employé, 500 Mo de stockage, 20 questions au chatbot,
           aucun téléchargement.
         </p>
-        <Link to="/login" className="inline-block font-medium text-accent hover:underline">
+        <Lien to="/login" commeBouton={{ variant: 'primary', size: 'lg' }} className="w-full">
           Se connecter
-        </Link>
+        </Lien>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start gap-3 rounded-md border border-border p-4">
-        <Smartphone className="mt-0.5 h-5 w-5 text-fg-muted" aria-hidden="true" />
-        <div className="flex-1">
-          <p className="flex items-center gap-1 font-medium text-fg">
-            Téléphone {etat.telephoneVerifie ? 'vérifié' : 'à vérifier'}
+      <div className="flex items-start gap-3 rounded-lg border border-border bg-bg-raised p-4">
+        <Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-fg-muted" aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-1.5 font-medium text-fg">
+            Téléphone
+            <Badge variant={etat.telephoneVerifie ? 'success' : 'warning'} dot>
+              {etat.telephoneVerifie ? 'vérifié' : 'à vérifier'}
+            </Badge>
             <InfoBulle
               libelle="Aide sur le code SMS"
               texte="Un code de six chiffres vous a été envoyé par SMS. Il est valable quelques minutes ; vous pouvez en demander un nouveau au bout d’une minute."
@@ -122,8 +129,8 @@ export function VerificationEssai({ etat, onEtat, telephoneMasque, email }: Prop
                 error={erreur ?? undefined}
                 mono
               />
-              {info && <p className="text-sm text-fg-muted" role="status">{info}</p>}
-              <div className="flex gap-2">
+              {info && <Message ton="info">{info}</Message>}
+              <div className="flex flex-wrap gap-2">
                 <Button type="submit" loading={envoi}>Vérifier le code</Button>
                 <Button type="button" variant="ghost" onClick={() => { void renvoyer(); }}>
                   Recevoir un nouveau code
@@ -134,10 +141,15 @@ export function VerificationEssai({ etat, onEtat, telephoneMasque, email }: Prop
         </div>
       </div>
 
-      <div className="flex items-start gap-3 rounded-md border border-border p-4">
-        <Mail className="mt-0.5 h-5 w-5 text-fg-muted" aria-hidden="true" />
-        <div>
-          <p className="font-medium text-fg">Adresse électronique {etat.emailVerifie ? 'confirmée' : 'à confirmer'}</p>
+      <div className="flex items-start gap-3 rounded-lg border border-border bg-bg-raised p-4">
+        <Mail className="mt-0.5 h-5 w-5 shrink-0 text-fg-muted" aria-hidden="true" />
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-1.5 font-medium text-fg">
+            Adresse électronique
+            <Badge variant={etat.emailVerifie ? 'success' : 'warning'} dot>
+              {etat.emailVerifie ? 'confirmée' : 'à confirmer'}
+            </Badge>
+          </p>
           <p className="text-sm text-fg-muted">
             {etat.emailVerifie
               ? 'Votre adresse est confirmée.'
