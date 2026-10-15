@@ -33,10 +33,10 @@ import { extractError } from '../../lib/api';
 import {
   STATUT_ABONNEMENT_LABELS,
   STATUT_ESSAI_LABELS,
-  libelleActionAudit,
   libelleCode,
 } from '../../lib/adminLabels';
 import { TexteAide } from '../../components/ui/Aide';
+import { libelleAction } from '../../lib/libelleAction';
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Super-administrateur',
@@ -147,7 +147,8 @@ export function WorkspaceDetailPage() {
   }));
   const activite = ws.activity30d ?? [];
   const evenements = ws.recentEvents ?? [];
-  const eventsByAction = (ws.eventsByAction ?? []).map((c) => ({ label: libelleActionAudit(c.label), count: c.count }));
+  // Lot L6b (E9) : le serveur rend deja le libelle de l'action comme categorie.
+  const eventsByAction = (ws.eventsByAction ?? []).map((c) => ({ label: c.label, count: c.count }));
 
   const availableActions: WorkspaceStatusAction[] =
     ws.statut === 'DEACTIVATED' || ws.statut === 'ARCHIVED'
@@ -261,7 +262,7 @@ export function WorkspaceDetailPage() {
         <ul className="divide-y divide-border">
           {evenements.map((e) => (
             <li key={e.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
-              <Badge variant="neutral">{libelleActionAudit(e.action)}</Badge>
+              <Badge variant="neutral">{libelleAction(e.actionLabel, e.action)}</Badge>
               {e.entityType && <span className="text-fg-muted">{e.entityType}</span>}
               <span className="ml-auto text-xs tabular-nums text-fg-subtle">
                 {new Date(e.createdAt).toLocaleString('fr-FR', {

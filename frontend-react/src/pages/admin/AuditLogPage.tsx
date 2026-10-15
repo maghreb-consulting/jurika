@@ -9,7 +9,7 @@ import {
 import { adminService } from '../../services/admin.service';
 import type { AdminUserRow, AdminWorkspaceRow } from '../../types/admin';
 import { extractError } from '../../lib/api';
-import { libelleActionAudit } from '../../lib/adminLabels';
+import { libelleAction } from '../../lib/libelleAction';
 import { Download, RotateCcw, ScrollText } from 'lucide-react';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { Page } from '../../components/layout/Page';
@@ -21,7 +21,8 @@ import { TextField } from '../../components/ui/TextField';
 import { Select } from '../../components/ui/Select';
 import { Tableau, type ColonneTableau } from '../../components/ui/Tableau';
 
-const humanizeAction = libelleActionAudit;
+// Lot L6b (E9) : le libelle d'une action vient du serveur (actionLabel, facettes) ; plus de
+// table de libelles propre a l'ecran (elle ignorait la plupart des codes et montrait le code brut).
 
 export default function AuditLogPage() {
   const [page, setPage] = useState<AuditPage | null>(null);
@@ -115,7 +116,7 @@ export default function AuditLogPage() {
   const colonnes: ColonneTableau<AuditEntry>[] = [
     { cle: 'date', titre: 'Date', rendu: (e) => <span className="whitespace-nowrap tabular-nums text-fg-muted">{new Date(e.createdAt).toLocaleString('fr-FR')}</span> },
     { cle: 'service', titre: 'Service', masquerSous: 'lg', rendu: (e) => <span className="text-fg-muted">{e.sourceService ?? '--'}</span> },
-    { cle: 'action', titre: 'Action', rendu: (e) => <span className="font-medium text-fg">{humanizeAction(e.action)}</span> },
+    { cle: 'action', titre: 'Action', rendu: (e) => <span className="font-medium text-fg">{libelleAction(e.actionLabel, e.action)}</span> },
     { cle: 'cabinet', titre: 'Cabinet', rendu: (e) => <span className="font-mono text-xs text-fg-muted">{workspaceLabel(e.workspaceId, workspaces)}</span> },
     { cle: 'auteur', titre: 'Auteur', rendu: (e) => <span className="text-fg-muted">{userLabel(e.userId, users)}</span> },
     {
@@ -192,7 +193,7 @@ export default function AuditLogPage() {
               label="Action"
               value={filters.action ?? ''}
               onChange={(e) => update('action', e.target.value || undefined)}
-              options={[{ value: '', label: 'Toutes les actions' }, ...(facets.actions ?? []).map((a) => ({ value: a, label: humanizeAction(a) }))]}
+              options={[{ value: '', label: 'Toutes les actions' }, ...(facets.actions ?? []).map((a) => ({ value: a, label: libelleAction(facets.actionLabels?.[a], a) }))]}
             />
             <Select
               label="Service d’origine"

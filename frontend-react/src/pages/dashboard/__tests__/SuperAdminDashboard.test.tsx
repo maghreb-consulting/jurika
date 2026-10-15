@@ -50,6 +50,18 @@ describe('SuperAdminDashboard', () => {
     expect(screen.getByText('Hors ligne')).toBeInTheDocument();
   });
 
+  it('evenements critiques : libelle du serveur, jamais le code (L6b E9)', async () => {
+    getSuperAdmin.mockResolvedValue({
+      criticalAuditEvents24h: [
+        { id: 'e1', action: 'LOGIN_FAILED', actionLabel: 'Connexion échouée', userId: null,
+          workspaceId: null, entityType: 'user', createdAt: '2026-10-15T08:00:00Z' },
+      ],
+    });
+    rendre();
+    expect(await screen.findByText('Connexion échouée')).toBeInTheDocument();
+    expect(screen.queryByText('LOGIN_FAILED')).not.toBeInTheDocument();
+  });
+
   it('service indisponible : le dit, et garde les acces de gestion', async () => {
     getSuperAdmin.mockRejectedValue(new Error('503'));
     rendre();

@@ -5,6 +5,7 @@ import { Skeleton, SqueletteZone } from '../ui/LoadingSkeleton';
 import { tracabiliteService } from '../../services/tracabilite.service';
 import { extractError } from '../../lib/api';
 import { useUserNames } from './useUserNames';
+import { libelleAction } from '../../lib/libelleAction';
 import type { TracabiliteEntry } from '../../types/tracabilite';
 
 interface Props {
@@ -73,7 +74,7 @@ export function EntityActivityPanel({ entityType, entityId, title = 'Activité' 
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-fg">
                   <span className="font-medium">{nameOf(e.userId)}</span>{' '}
-                  <span className="text-fg-muted">— {e.actionLabel}</span>
+                  <span className="text-fg-muted">— {libelleAction(e.actionLabel, e.action)}</span>
                 </p>
                 <p className="text-xs tabular-nums text-fg-subtle">
                   {new Date(e.createdAt).toLocaleString('fr-FR')}

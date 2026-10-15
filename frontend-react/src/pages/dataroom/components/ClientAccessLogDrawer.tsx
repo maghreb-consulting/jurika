@@ -13,12 +13,8 @@ import { extractError } from '../../../lib/api';
 import { formatDateTime } from '../../../lib/date';
 import { useCurrentUser } from '../../../store/authStore';
 import type { DossierClient } from '../../../types/auth';
-import {
-  ACCESS_LOG_ACTION_LABELS,
-  type AccessLogAction,
-  type AccessLogEntry,
-  type DocumentSummary,
-} from '../../../types/dataroom';
+import { libelleAction } from '../../../lib/libelleAction';
+import type { AccessLogEntry, DocumentSummary } from '../../../types/dataroom';
 
 /**
  * Sprint 7 / TASK 5.3 -- Drawer "Activite client" pour le cabinet.
@@ -51,6 +47,7 @@ const PAGE_SIZE = 50;
 const ACTION_VARIANTE: Record<string, BadgeVariant> = {
   VIEW_DOSSIER: 'neutral',
   PREVIEW_DOC: 'info',
+  PREVIEW_VERSION: 'info',
   DOWNLOAD_DOC: 'success',
   DOWNLOAD_VERSION: 'success',
   PRINT_DOC: 'warning',
@@ -169,7 +166,7 @@ export function ClientAccessLogDrawer({ open, dossierId, raisonSociale, client, 
       titre: 'Action',
       rendu: (r) => (
         <Badge variant={ACTION_VARIANTE[r.action] ?? 'neutral'}>
-          {ACCESS_LOG_ACTION_LABELS[r.action as AccessLogAction] ?? r.action}
+          {libelleAction(r.actionLabel, r.action)}
         </Badge>
       ),
     },

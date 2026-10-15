@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { MAINTENANT } from '../constantes';
 import { PROFILS, WS_DEMO, WS_ESSAI, type Profil } from './session';
 import { reponse, type Contexte, type RouteSimulee } from './routeur';
@@ -9,6 +10,37 @@ import { reponse, type Contexte, type RouteSimulee } from './routeur';
  * sont ceux du cahier des charges (4.3). Les formes suivent les types du front
  * (src/types, src/services) ; un champ ajoute par le serveur et absent ici reste absent.
  */
+
+// ---------------------------------------------------------------- libelles du journal
+
+/**
+ * Lot L6b (E9) : libelle d'une action tracee, lu dans la source UNIQUE du serveur
+ * (jurika-common, libelles-actions-audit.properties, accents en \\uXXXX) : la simulation
+ * ne fabrique jamais un libelle a partir du code (defaut vu a l'ecran : "login success").
+ * Code sans libelle : meme forme que le serveur.
+ */
+const LIBELLES_AUDIT: Record<string, string> = (() => {
+  const fichier = new URL(
+    '../../../../backend-java/jurika-common/src/main/resources/ma/jurika/common/audit/libelles-actions-audit.properties',
+    import.meta.url,
+  );
+  const m: Record<string, string> = {};
+  for (const ligne of fs.readFileSync(fichier, 'latin1').split(/\r?\n/)) {
+    const l = ligne.trim();
+    if (!l || l.startsWith('#') || l.startsWith('!')) continue;
+    const i = l.indexOf('=');
+    if (i < 0) continue;
+    m[l.slice(0, i).trim()] = l
+      .slice(i + 1)
+      .trim()
+      .replace(/\\u([0-9a-fA-F]{4})/g, (_s, h: string) => String.fromCharCode(parseInt(h, 16)));
+  }
+  return m;
+})();
+
+function libelleAudit(code: string): string {
+  return LIBELLES_AUDIT[code] ?? `Action enregistrée (code ${code})`;
+}
 
 // ---------------------------------------------------------------- dates
 
@@ -584,15 +616,16 @@ function detailCabinet(id: string) {
       { label: 'CLOTURE_DOSSIER', count: 1 },
       { label: 'ANNULE', count: 1 },
     ],
+    // Le serveur rend le libelle de l'action comme categorie (L6b E9).
     eventsByAction: [
-      { label: 'DOCUMENT_GENERATED', count: 41 },
-      { label: 'TICKET_CREATED', count: 8 },
-      { label: 'LOGIN_SUCCESS', count: 96 },
+      { label: libelleAudit('AI_DOCUMENT_GENERATED'), count: 41 },
+      { label: libelleAudit('TICKET_CREATED'), count: 8 },
+      { label: libelleAudit('LOGIN_SUCCESS'), count: 96 },
     ],
     activity30d: Array.from({ length: 30 }, (_, i) => ({ day: jour(i - 29), count: (i * 7) % 13 + 2 })),
     recentEvents: [
-      { id: 9001, action: 'DOCUMENT_GENERATED', userId: P.employe.userId, entityType: 'TICKET', createdAt: instant(-0.1) },
-      { id: 9002, action: 'TICKET_CREATED', userId: P.superviseur.userId, entityType: 'TICKET', createdAt: instant(-1) },
+      { id: 9001, action: 'AI_DOCUMENT_GENERATED', actionLabel: libelleAudit('AI_DOCUMENT_GENERATED'), userId: P.employe.userId, entityType: 'TICKET', createdAt: instant(-0.1) },
+      { id: 9002, action: 'TICKET_CREATED', actionLabel: libelleAudit('TICKET_CREATED'), userId: P.superviseur.userId, entityType: 'TICKET', createdAt: instant(-1) },
     ],
     generatedAt: instant(0),
   };
@@ -631,13 +664,15 @@ const UTILISATEURS_ADMIN = [
   },
 ];
 
+// Lot L6b (E9) : codes REELLEMENT emis par les services (inventaire :
+// AuditActionLabelsInventaireTest) ; les anciens codes de la simulation n'existaient pas.
 const JOURNAL = [
   ['LOGIN_SUCCESS', 'auth-service', 'USER', -0.05],
-  ['DOCUMENT_GENERATED', 'ai-service', 'TICKET', -0.1],
-  ['TICKET_STATUS_CHANGED', 'ticket-service', 'TICKET', -0.3],
-  ['PAYMENT_VALIDATED', 'billing-service', 'PAYMENT', -1],
+  ['AI_DOCUMENT_GENERATED', 'ai-service', 'TICKET', -0.1],
+  ['TICKET_TRANSITIONED', 'ticket-service', 'TICKET', -0.3],
+  ['BILLING_PAIEMENT_VALIDE', 'billing-service', 'PAYMENT', -1],
   ['WORKSPACE_SUSPENDED', 'auth-service', 'WORKSPACE', -2],
-  ['DATAROOM_DOCUMENT_UPLOADED', 'dataroom-service', 'DOCUMENT', -2.5],
+  ['DOCUMENT_UPLOADED', 'dataroom-service', 'DOCUMENT', -2.5],
   ['LOGIN_FAILED', 'auth-service', 'USER', -3],
 ] as const;
 
@@ -647,6 +682,7 @@ function journalAudit() {
     workspaceId: i === 4 ? CABINETS[2].id : WS_DEMO,
     userId: i === 4 ? P['super-admin'].userId : P.employe.userId,
     action,
+    actionLabel: libelleAudit(action),
     entityType: entite,
     entityId: 'ab000000-0000-4000-8000-00000000000' + i,
     sourceService: service,
@@ -777,7 +813,7 @@ function tableauSuperAdmin() {
     topWorkspacesByUsage: CABINETS.map((c, i) => ({ workspaceId: c.id, name: c.name, eventsLast7d: 120 - i * 25 })),
     criticalAuditEvents24h: journalAudit()
       .slice(0, 2)
-      .map((e) => ({ id: String(e.id), action: e.action, userId: e.userId, workspaceId: e.workspaceId, entityType: e.entityType, createdAt: e.createdAt })),
+      .map((e) => ({ id: String(e.id), action: e.action, actionLabel: e.actionLabel, userId: e.userId, workspaceId: e.workspaceId, entityType: e.entityType, createdAt: e.createdAt })),
     servicesHealth: { auth: 'UP', ticket: 'UP', dataroom: 'UP', ai: 'UP', billing: 'UP', workflow: 'UP' },
     storage: { totalBytes: 13_094_617_088, fileCount: 1608 },
     workspacesParForfait: [
@@ -1295,7 +1331,7 @@ export const ROUTES: RouteSimulee[] = [
     page(
       journalAudit()
         .slice(0, 4)
-        .map((e) => ({ id: e.id, action: e.action, actionLabel: e.action.replace(/_/g, ' ').toLowerCase(), userId: e.userId, entityType: 'DOSSIER', entityId: q.query.get('entityId'), metadata: null, sourceService: e.sourceService, createdAt: e.createdAt })),
+        .map((e) => ({ id: e.id, action: e.action, actionLabel: e.actionLabel, userId: e.userId, entityType: 'DOSSIER', entityId: q.query.get('entityId'), metadata: null, sourceService: e.sourceService, createdAt: e.createdAt })),
       q.query,
     ),
   ),
@@ -1329,9 +1365,15 @@ export const ROUTES: RouteSimulee[] = [
     { matrice: 'MODIFICATIONS_SARL', decisionCode: 'cession_parts', decisionLibelle: 'Cession de parts sociales', delaiTexte: null, delaiValeur: null, delaiUnite: null, article: null, statut: 'A_CONFIRMER', ajustement: null },
     { matrice: 'AGO_SARL', decisionCode: 'approbation_comptes', decisionLibelle: 'Approbation des comptes', delaiTexte: 'trente jours', delaiValeur: 30, delaiUnite: 'JOURS', article: null, statut: 'CITE_PAR_LE_CORPUS', ajustement: { delaiValeur: 30, delaiUnite: 'JOURS', article: 'Loi 5-96', note: 'Valeur confirmee par le cabinet', modifiePar: P.superviseur.email, modifieLe: instant(-20) } },
   ]),
+  // L6b (E9) : actions presentes dans le journal, avec leur libelle, triees par libelle.
+  r('GET', /^\/tracabilite\/actions$/, () =>
+    [...new Set(journalAudit().map((e) => e.action as string))]
+      .map((code) => ({ code, label: libelleAudit(code) }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'fr')),
+  ),
   r('GET', /^\/tracabilite$/, (q) =>
     page(
-      journalAudit().map((e) => ({ id: e.id, action: e.action, actionLabel: e.action.replace(/_/g, ' ').toLowerCase(), userId: e.userId, entityType: e.entityType, entityId: e.entityId, metadata: null, sourceService: e.sourceService, createdAt: e.createdAt })),
+      journalAudit().map((e) => ({ id: e.id, action: e.action, actionLabel: e.actionLabel, userId: e.userId, entityType: e.entityType, entityId: e.entityId, metadata: null, sourceService: e.sourceService, createdAt: e.createdAt })),
       q.query,
     ),
   ),

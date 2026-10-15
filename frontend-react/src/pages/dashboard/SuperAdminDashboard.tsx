@@ -30,6 +30,7 @@ import { dashboardService } from '../../services/dashboard.service';
 import type { SuperAdminDashboardDto } from '../../types/dashboard';
 import { chartTheme } from '../../lib/chartTheme';
 import { FORFAIT_LABELS, STATUT_WORKSPACE_LABELS, labelOf, formatMonth } from '../../lib/dashboardLabels';
+import { libelleAction } from '../../lib/libelleAction';
 
 /**
  * Console SUPER_ADMIN -- etat de la plateforme en un coup d'oeil, sur donnees
@@ -207,9 +208,7 @@ function DashboardContent({ data }: { data: Partial<SuperAdminDashboardDto> }) {
         <ul className="divide-y divide-border">
           {evenements.slice(0, 12).map((e) => (
             <li key={e.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
-              <Badge variant="danger" className="font-mono">
-                {e.action}
-              </Badge>
+              <Badge variant="danger">{libelleAction(e.actionLabel, e.action)}</Badge>
               {e.entityType && <span className="text-fg-muted">{e.entityType}</span>}
               <span className="ml-auto text-xs tabular-nums text-fg-subtle">
                 {new Date(e.createdAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}

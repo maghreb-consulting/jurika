@@ -13,26 +13,18 @@ import { tracabiliteService } from '../../services/tracabilite.service';
 import { extractError } from '../../lib/api';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { formatDateTime } from '../../lib/date';
+import { libelleAction } from '../../lib/libelleAction';
 import { useWorkspaceDirectory } from '../../components/tracabilite/useWorkspaceDirectory';
 import { useEntityNames } from '../../components/tracabilite/useEntityNames';
-import type { TracabiliteEntry, TracabiliteFilters } from '../../types/tracabilite';
+import type { ActionTracee, TracabiliteEntry, TracabiliteFilters } from '../../types/tracabilite';
 
 const PAGE_SIZE = 50;
 
-// Actions metier les plus utiles en filtre rapide (le backend accepte tout code).
-const ACTION_OPTIONS = [
-  { value: '', label: 'Toutes les actions' },
-  { value: 'TICKET_CREATED', label: 'Ticket créé' },
-  { value: 'TICKET_TRANSITIONED', label: 'Statut du ticket modifié' },
-  { value: 'TICKET_ASSIGNED', label: 'Ticket réattribué' },
-  { value: 'DOSSIER_TRANSFERE', label: 'Dossier transféré' },
-  { value: 'DOCUMENT_UPLOADED', label: 'Document juridique déposé' },
-  { value: 'COMPTABLE_UPLOADED', label: 'Document comptable déposé' },
-  { value: 'FISCAL_UPLOADED', label: 'Document fiscal déposé' },
-  { value: 'EXERCICE_OPENED', label: 'Exercice ouvert' },
-  { value: 'DATAROOM_DELETED', label: 'Data Room supprimée' },
-  { value: 'PERMISSIONS_CHANGED', label: 'Droits d’accès modifiés' },
-];
+// Lot L6b (E9) : la liste du filtre "Action" vient du serveur (actions reellement
+// presentes dans le journal du cabinet, avec leur libelle). L'ancienne liste fixe de
+// l'ecran citait des codes que plus rien n'ecrit (filtre qui ne trouvait rien) et
+// des libelles qui divergeaient de ceux du tableau.
+const TOUTES_LES_ACTIONS = { value: '', label: 'Toutes les actions' };
 
 const ENTITY_OPTIONS = [
   { value: '', label: 'Tous les éléments' },
@@ -62,6 +54,9 @@ export function TracabilitePage() {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<TracabiliteFilters>({});
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  // null : liste non chargee (chargement ou echec) ; [] : journal sans action.
+  const [actions, setActions] = useState<ActionTracee[] | null>(null);
+  const [actionsEnEchec, setActionsEnEchec] = useState(false);
   const { nameOf, isRetired, users: directory } = useWorkspaceDirectory();
   const { dossiers, tickets, entityLabelOf } = useEntityNames();
 
@@ -134,6 +129,26 @@ export function TracabilitePage() {
     void recuperer(0, {});
   }, [recuperer]);
 
+  useEffect(() => {
+    let actif = true;
+    tracabiliteService
+      .actions()
+      .then((a) => {
+        if (actif) setActions(a);
+      })
+      .catch(() => {
+        if (actif) setActionsEnEchec(true);
+      });
+    return () => {
+      actif = false;
+    };
+  }, []);
+
+  const actionOptions = useMemo(
+    () => [TOUTES_LES_ACTIONS, ...(actions ?? []).map((a) => ({ value: a.code, label: a.label }))],
+    [actions],
+  );
+
   const load = useCallback(
     (off: number, f: TracabiliteFilters) => {
       setLoading(true);
@@ -168,7 +183,7 @@ export function TracabilitePage() {
         </span>
       ),
     },
-    { cle: 'action', titre: 'Action', rendu: (e) => <span className="text-fg">{e.actionLabel}</span> },
+    { cle: 'action', titre: 'Action', rendu: (e) => <span className="text-fg">{libelleAction(e.actionLabel, e.action)}</span> },
     {
       cle: 'element',
       titre: 'Élément',
@@ -214,7 +229,14 @@ export function TracabilitePage() {
             label="Action"
             value={filters.action ?? ''}
             onChange={(e) => setFilters((f) => ({ ...f, action: e.target.value || undefined }))}
-            options={ACTION_OPTIONS}
+            options={actionOptions}
+            hint={
+              actionsEnEchec
+                ? 'La liste des actions n’a pas pu être chargée : seules « Toutes les actions » sont proposées.'
+                : actions !== null && actions.length === 0
+                  ? 'Aucune action n’est encore enregistrée dans le journal du cabinet.'
+                  : 'Seules les actions déjà enregistrées dans le journal du cabinet sont proposées.'
+            }
           />
           <Select
             name="filter-entity-type"

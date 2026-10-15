@@ -31,7 +31,8 @@ const doc = (id: string, title: string) => ({
 });
 
 const entree = (p: Record<string, unknown>) => ({
-  id: '1', dossierId: 'd1', createdAt: '2026-05-22T10:30:00Z', action: 'PREVIEW_DOC', userId: 'u1',
+  id: '1', dossierId: 'd1', createdAt: '2026-05-22T10:30:00Z', action: 'PREVIEW_DOC',
+  actionLabel: 'Aperçu d’un document', userId: 'u1',
   documentId: 'doc-1', ipAddress: '196.1.2.3', userAgent: null, ...p,
 });
 
@@ -59,7 +60,7 @@ describe('ClientAccessLogDrawer', () => {
 
   it('rend le tableau avec les actions client recentes', async () => {
     getAccessLog.mockResolvedValue({
-      items: [entree({ id: '1' }), entree({ id: '2', action: 'DOWNLOAD_DOC', documentId: 'doc-2' })],
+      items: [entree({ id: '1' }), entree({ id: '2', action: 'DOWNLOAD_DOC', actionLabel: 'Téléchargement d’un document', documentId: 'doc-2' })],
       total: 2,
     });
 
@@ -69,8 +70,10 @@ describe('ClientAccessLogDrawer', () => {
       expect(screen.getAllByText('196.1.2.3').length).toBe(2);
     });
     expect(screen.getByText(/SARL Demo/i)).toBeInTheDocument();
-    expect(screen.getByText('Visualisation')).toBeInTheDocument();
-    expect(screen.getByText('Téléchargement')).toBeInTheDocument();
+    // Lot L6b (E9) : le libelle vient du serveur ; le code n'est jamais affiche.
+    expect(screen.getByText('Aperçu d’un document')).toBeInTheDocument();
+    expect(screen.getByText('Téléchargement d’un document')).toBeInTheDocument();
+    expect(screen.getByRole('table')).not.toHaveTextContent(/PREVIEW_DOC|DOWNLOAD_DOC/);
   });
 
   it('nomme le client et le document ; jamais un identifiant tronque', async () => {
@@ -78,7 +81,7 @@ describe('ClientAccessLogDrawer', () => {
       items: [
         entree({ id: '1', userId: 'c1-aaaa-bbbb', documentId: 'doc-1111-2222' }),
         entree({ id: '2', userId: 'ancien-9999-0000', documentId: 'depot-3333-4444' }),
-        entree({ id: '3', userId: 'c1-aaaa-bbbb', documentId: 'disparu-5555-6666', action: 'VIEW_DOSSIER' }),
+        entree({ id: '3', userId: 'c1-aaaa-bbbb', documentId: 'disparu-5555-6666', action: 'VIEW_DOSSIER', actionLabel: 'Consultation de la Data Room' }),
       ],
       total: 3,
     });

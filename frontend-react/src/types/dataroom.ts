@@ -561,21 +561,12 @@ export const VERSION_SCOPE_LABELS: Record<VersionScope, string> = {
 export type AccessLogAction =
   | 'VIEW_DOSSIER'
   | 'PREVIEW_DOC'
+  | 'PREVIEW_VERSION'
   | 'DOWNLOAD_DOC'
   | 'DOWNLOAD_VERSION'
   | 'PRINT_DOC'
   | 'DEPOT_DOC'
   | 'DEMANDE';
-
-export const ACCESS_LOG_ACTION_LABELS: Record<AccessLogAction, string> = {
-  VIEW_DOSSIER: 'Consultation',
-  PREVIEW_DOC: 'Visualisation',
-  DOWNLOAD_DOC: 'Téléchargement',
-  DOWNLOAD_VERSION: 'Téléchargement (version)',
-  PRINT_DOC: 'Impression',
-  DEPOT_DOC: 'Import (dépôt)',
-  DEMANDE: 'Demande',
-};
 
 export interface AccessLogEntry {
   id: string;
@@ -583,6 +574,8 @@ export interface AccessLogEntry {
   userId: string | null;
   documentId: string | null;
   action: AccessLogAction | string;
+  /** Lot L6b (E9) : libelle francais de l'action, calcule par le serveur ; affiche tel quel. */
+  actionLabel: string;
   ipAddress: string | null;
   userAgent: string | null;
   createdAt: string;

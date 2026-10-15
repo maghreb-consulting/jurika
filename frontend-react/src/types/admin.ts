@@ -57,6 +57,8 @@ export interface DayCount {
 export interface AuditEventLite {
   id: number;
   action: string;
+  /** Lot L6b (E9) : libelle francais du code, calcule par le serveur ; affiche tel quel. */
+  actionLabel: string;
   userId: string | null;
   entityType: string | null;
   createdAt: string;
