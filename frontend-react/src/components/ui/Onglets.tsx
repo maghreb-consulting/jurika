@@ -51,7 +51,7 @@ export function Onglets({
 
   return (
     <div className={className}>
-      <div role="tablist" aria-label={libelle} onKeyDown={aller} className="flex gap-1 overflow-x-auto border-b border-border">
+      <div role="tablist" aria-label={libelle} onKeyDown={aller} className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-border">
         {onglets.map((o) => {
           const choisi = o.id === actif;
           return (
