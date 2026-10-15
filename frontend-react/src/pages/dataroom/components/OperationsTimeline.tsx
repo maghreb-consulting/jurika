@@ -1,6 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight, FileText, History } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
+import { Button } from '../../../components/ui/Button';
+import { EmptyState } from '../../../components/ui/EmptyState';
 import { TICKET_TYPE_LABELS } from '../../../types/ticket';
 import type { DocumentSummary, TicketHistoryEntry } from '../../../types/dataroom';
 
@@ -108,11 +110,7 @@ export function OperationsTimeline({
 
   if (entries.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-2 px-5 py-10 text-center">
-        <History className="h-8 w-8 text-fg-subtle" />
-        <p className="text-sm font-medium text-fg-muted">{emptyTitle}</p>
-        <p className="max-w-sm text-xs text-fg-subtle">{emptyHint}</p>
-      </div>
+      <EmptyState compact icon={<History />} title={emptyTitle} description={emptyHint} />
     );
   }
 
@@ -120,11 +118,9 @@ export function OperationsTimeline({
     <div className="px-5 py-4">
       {grouped.map((group) => (
         <section key={group.monthKey} className="mb-6 last:mb-0">
-          <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-fg-subtle">
+          <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold text-fg-muted">
             {group.label}
-            <span className="ml-2 rounded-full bg-bg-overlay px-2 py-0.5 text-[10px] font-bold text-fg-muted">
-              {group.items.length}
-            </span>
+            <Badge variant="neutral">{group.items.length}</Badge>
           </h4>
           <ol className="relative ml-2 space-y-3 border-l-2 border-border pl-5">
             {group.items.map((entry) => (
@@ -140,15 +136,17 @@ export function OperationsTimeline({
       {/* Fix DR6 — le reste de l'historique reste toujours atteignable. */}
       {restants > 0 && (
         <div className="pt-1">
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
+            fullWidth
             data-testid="timeline-voir-plus"
             onClick={() => setVisibles((n) => n + stepCount)}
-            className="w-full rounded-lg border border-border bg-bg-raised px-3 py-2 text-xs font-medium text-fg-muted transition hover:border-accent hover:text-fg"
           >
-            Voir plus (+{Math.min(restants, stepCount)}) — {restants} operation
+            Voir plus (+{Math.min(restants, stepCount)}) — {restants} opération
             {restants > 1 ? 's' : ''} plus ancienne{restants > 1 ? 's' : ''}
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -176,14 +174,15 @@ function TimelineEvent({
     <li className="relative">
       {/* Marker (cercle) sur le rail */}
       <span
-        className="absolute -left-[27px] top-2 inline-block h-3 w-3 rounded-full border-2 border-white bg-accent shadow-sm"
+        className="absolute -left-[27px] top-3 inline-block h-3 w-3 rounded-full border-2 border-bg-raised bg-info"
         aria-hidden
       />
       <div className="rounded-lg border border-border bg-bg-raised">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left"
+          aria-expanded={open}
+          className="flex w-full flex-wrap items-start justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition-colors duration-150 hover:bg-bg-overlay"
         >
           <div className="flex items-start gap-2">
             {open ? (
@@ -196,14 +195,14 @@ function TimelineEvent({
                 <p className="truncate text-sm font-medium text-fg">
                   {entry.titre}
                 </p>
-                <Badge variant={typeBadgeVariant(entry.type)} className="text-[10px]">
+                <Badge variant={typeBadgeVariant(entry.type)}>
                   {entry.type ? ((TICKET_TYPE_LABELS as Record<string, string>)[entry.type] ?? entry.type) : '—'}
                 </Badge>
-                <Badge variant="neutral" className="text-[10px]">
+                <Badge variant="neutral">
                   {entry.reference}
                 </Badge>
               </div>
-              <p className="text-xs text-fg-subtle">
+              <p className="text-xs text-fg-muted">
                 Clôturé le {dateLabel}
                 {entry.description ? ` • ${entry.description}` : ''}
               </p>
@@ -211,12 +210,12 @@ function TimelineEvent({
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {generatedCount > 0 && (
-              <Badge variant="success" className="text-[10px]">
+              <Badge variant="success">
                 +{generatedCount} généré{generatedCount > 1 ? 's' : ''}
               </Badge>
             )}
             {replacedCount > 0 && (
-              <Badge variant="warning" className="text-[10px]">
+              <Badge variant="warning">
                 {replacedCount} ancien{replacedCount > 1 ? 's' : ''}
               </Badge>
             )}
@@ -225,14 +224,14 @@ function TimelineEvent({
         {open && (
           <div className="space-y-3 border-t border-border px-3 pb-3 pt-2">
             {generatedCount === 0 && replacedCount === 0 && (
-              <p className="rounded-md border border-border bg-bg-overlay px-3 py-2 text-xs italic text-fg-subtle">
+              <p className="rounded-md border border-border bg-bg-overlay px-3 py-2 text-xs text-fg-muted">
                 Opération sans modification de document.
               </p>
             )}
             {generatedCount > 0 && (
               <div>
-                <p className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-success">
-                  <FileText className="h-3.5 w-3.5" /> Documents generes
+                <p className="mb-1 flex items-center gap-1 text-xs font-semibold text-success">
+                  <FileText aria-hidden="true" className="h-3.5 w-3.5" /> Documents générés
                 </p>
                 <ul className="divide-y divide-border rounded-md border border-border">
                   {entry.generatedDocuments.map((d) => renderDocumentRow(d))}
@@ -241,8 +240,8 @@ function TimelineEvent({
             )}
             {replacedCount > 0 && (
               <div>
-                <p className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-warning">
-                  <History className="h-3.5 w-3.5" /> Anciennes versions remplacees
+                <p className="mb-1 flex items-center gap-1 text-xs font-semibold text-warning">
+                  <History aria-hidden="true" className="h-3.5 w-3.5" /> Anciennes versions remplacées
                 </p>
                 <ul className="divide-y divide-border rounded-md border border-border">
                   {entry.replacedDocuments.map((d) => renderDocumentRow(d))}

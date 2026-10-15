@@ -2,6 +2,11 @@ import { useMemo, useState } from 'react';
 import { AlertCircle, Check, Loader2, Trash2, Upload } from 'lucide-react';
 import { Drawer } from '../../../components/ui/Drawer';
 import { Button } from '../../../components/ui/Button';
+import { Badge } from '../../../components/ui/Badge';
+import { Message } from '../../../components/ui/Message';
+import { EmptyState } from '../../../components/ui/EmptyState';
+import { Select } from '../../../components/ui/Select';
+import { TextField } from '../../../components/ui/TextField';
 import { extractError } from '../../../lib/api';
 import {
   isMotifValid,
@@ -179,6 +184,10 @@ export function MultiUploadDrawer({
   }
 
   const allDone = rows.length > 0 && rows.every((r) => r.status === 'DONE');
+  const cibles = activeDocuments.map((d) => ({
+    value: d.id,
+    label: `${(DOCUMENT_TYPE_LABELS as Record<string, string>)[d.documentType ?? 'AUTRE'] ?? d.documentType ?? 'Autre'} — ${d.title} (version ${d.version})`,
+  }));
 
   return (
     <Drawer
@@ -187,14 +196,37 @@ export function MultiUploadDrawer({
       title="Ajouter plusieurs documents"
       subtitle="Pour chaque fichier : nouveau document, ou nouvelle version d’un document existant"
       width="lg"
+      closeOnBackdrop={false}
+      footer={
+        <div className="flex items-center justify-end gap-2">
+          <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+            {allDone ? 'Fermer' : 'Annuler'}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            icon={<Upload />}
+            onClick={submit}
+            loading={submitting}
+            disabled={!canSubmit}
+            data-testid="multi-submit"
+          >
+            Déposer {pendingRows.length > 0 ? `(${pendingRows.length})` : ''}
+          </Button>
+        </div>
+      }
     >
       <div className="space-y-4">
+        <p className="text-sm text-fg-muted">
+          Ajoutez les fichiers, choisissez pour chacun son type ou le document qu’il remplace (un motif
+          est alors demandé), puis cliquez sur « Déposer ». Chaque fichier reçoit son propre résultat.
+        </p>
         {/* Zone d'ajout */}
         <label
-          className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-bg-overlay px-3 text-sm font-medium text-accent transition hover:border-accent"
+          className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border-input bg-bg-overlay px-3 text-sm font-medium text-fg transition-colors duration-150 hover:border-accent focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus"
           data-testid="multi-add-files"
         >
-          <Upload className="h-4 w-4" /> Ajouter des fichiers
+          <Upload aria-hidden="true" className="h-4 w-4" /> Ajouter des fichiers
           <input
             type="file"
             multiple
@@ -203,166 +235,109 @@ export function MultiUploadDrawer({
               addFiles(e.target.files);
               e.target.value = '';
             }}
-            className="hidden"
+            className="sr-only"
           />
         </label>
 
         {recap && (
-          <div
-            role="status"
-            data-testid="multi-recap"
-            className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${
-              recap.ko === 0
-                ? 'border-success/30 bg-success/10 text-success'
-                : 'border-danger/30 bg-danger/10 text-danger'
-            }`}
-          >
-            {recap.ko === 0 ? (
-              <Check className="mt-0.5 h-4 w-4 flex-shrink-0" />
-            ) : (
-              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-            )}
-            <span>
+          <div data-testid="multi-recap">
+            <Message ton={recap.ko === 0 ? 'succes' : 'erreur'}>
               {recap.ok} fichier(s) déposé(s) avec succès
               {recap.ko > 0 && <> — {recap.ko} échec(s) (voir détails ci-dessous)</>}.
-            </span>
+            </Message>
           </div>
         )}
 
         {/* Liste des fichiers */}
         {rows.length === 0 ? (
-          <p className="rounded-lg border border-border/60 bg-bg-overlay px-3 py-6 text-center text-xs text-fg-subtle">
-            Aucun fichier ajouté. Sélectionnez un ou plusieurs fichiers à déposer.
-          </p>
+          <EmptyState
+            compact
+            icon={<Upload />}
+            title="Aucun fichier ajouté"
+            description="Sélectionnez un ou plusieurs fichiers à déposer avec « Ajouter des fichiers »."
+          />
         ) : (
           <ul className="space-y-2">
             {rows.map((r) => {
               const motifInvalid =
                 r.mode === 'version' && r.motif.length > 0 && !isMotifValid(r.motif);
+              const fige = r.status === 'UPLOADING' || r.status === 'DONE';
               return (
                 <li
                   key={r.id}
                   data-testid={`multi-row-${r.id}`}
-                  className="rounded-lg border border-border p-3"
+                  className="rounded-lg border border-border bg-bg-raised p-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-fg" title={r.file.name}>
                         {r.file.name}
                       </p>
-                      <p className="text-[11px] text-fg-subtle">
-                        {(r.file.size / 1024).toFixed(1)} Ko
-                      </p>
+                      <p className="text-xs text-fg-muted">{(r.file.size / 1024).toFixed(1)} Ko</p>
                     </div>
                     <RowStatusBadge status={r.status} error={r.error} />
-                    {r.status !== 'UPLOADING' && r.status !== 'DONE' && (
-                      <button
+                    {!fige && (
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        icon={<Trash2 className="text-danger" />}
                         onClick={() => removeRow(r.id)}
-                        className="rounded p-1 text-danger hover:bg-danger/10"
-                        aria-label="Retirer"
+                        aria-label={`Retirer ${r.file.name}`}
                         data-testid={`multi-remove-${r.id}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      />
                     )}
                   </div>
 
                   <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
                     {/* Action : nouveau document OU nouvelle version de… */}
-                    <div>
-                      <label
-                        htmlFor={`action-${r.id}`}
-                        className="mb-0.5 block text-[11px] text-fg-subtle"
-                      >
-                        Action
-                      </label>
-                      <select
-                        id={`action-${r.id}`}
-                        data-testid={`multi-action-${r.id}`}
-                        value={r.mode === 'new' ? NEW_DOCUMENT_VALUE : r.targetDocId}
-                        disabled={r.status === 'UPLOADING' || r.status === 'DONE'}
-                        onChange={(e) => onActionChange(r.id, e.target.value)}
-                        className="h-8 w-full rounded-lg border border-border-hi bg-bg-raised px-2 text-xs"
-                      >
-                        <option value={NEW_DOCUMENT_VALUE}>Nouveau document</option>
-                        {activeDocuments.length > 0 && (
-                          <optgroup label="Nouvelle version de…">
-                            {activeDocuments.map((d) => (
-                              <option key={d.id} value={d.id}>
-                                {(d.documentType ?? 'AUTRE')} — {d.title} (v{d.version})
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
-                      </select>
-                    </div>
+                    <Select
+                      id={`action-${r.id}`}
+                      label="Action"
+                      data-testid={`multi-action-${r.id}`}
+                      value={r.mode === 'new' ? NEW_DOCUMENT_VALUE : r.targetDocId}
+                      disabled={fige}
+                      onChange={(e) => onActionChange(r.id, e.target.value)}
+                      options={[{ value: NEW_DOCUMENT_VALUE, label: 'Nouveau document' }]}
+                      groups={cibles.length > 0 ? [{ label: 'Nouvelle version de…', options: cibles }] : undefined}
+                    />
 
                     {/* mode 'new' : type du document */}
                     {r.mode === 'new' && (
-                      <div>
-                        <label
-                          htmlFor={`type-${r.id}`}
-                          className="mb-0.5 block text-[11px] text-fg-subtle"
-                        >
-                          Type
-                        </label>
-                        <select
-                          id={`type-${r.id}`}
-                          data-testid={`multi-type-${r.id}`}
-                          value={r.documentType}
-                          disabled={r.status === 'UPLOADING' || r.status === 'DONE'}
-                          onChange={(e) => patchRow(r.id, { documentType: e.target.value })}
-                          className="h-8 w-full rounded-lg border border-border-hi bg-bg-raised px-2 text-xs"
-                        >
-                          {DOCUMENT_TYPE_OPTIONS.map((t) => (
-                            <option key={t.value} value={t.value}>
-                              {t.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <Select
+                        id={`type-${r.id}`}
+                        label="Type"
+                        data-testid={`multi-type-${r.id}`}
+                        value={r.documentType}
+                        disabled={fige}
+                        onChange={(e) => patchRow(r.id, { documentType: e.target.value })}
+                        options={DOCUMENT_TYPE_OPTIONS}
+                      />
                     )}
 
                     {/* mode 'version' : motif obligatoire */}
                     {r.mode === 'version' && (
-                      <div className="md:col-span-1">
-                        <label
-                          htmlFor={`motif-${r.id}`}
-                          className="mb-0.5 block text-[11px] text-fg-subtle"
-                        >
-                          Motif du remplacement * (≥ {MOTIF_MIN_LENGTH} car.)
-                        </label>
-                        <input
-                          id={`motif-${r.id}`}
-                          data-testid={`multi-motif-${r.id}`}
-                          type="text"
-                          value={r.motif}
-                          disabled={r.status === 'UPLOADING' || r.status === 'DONE'}
-                          onChange={(e) => patchRow(r.id, { motif: e.target.value })}
-                          placeholder="Exemple : version corrigée des statuts"
-                          className={`h-8 w-full rounded-lg border bg-bg-raised px-2 text-xs ${
-                            motifInvalid
-                              ? 'border-danger focus:border-danger'
-                              : 'border-border-hi focus:border-indigo-500'
-                          }`}
-                        />
-                      </div>
+                      <TextField
+                        id={`motif-${r.id}`}
+                        label={`Motif du remplacement (${MOTIF_MIN_LENGTH} caractères au moins)`}
+                        data-testid={`multi-motif-${r.id}`}
+                        value={r.motif}
+                        disabled={fige}
+                        onChange={(e) => patchRow(r.id, { motif: e.target.value })}
+                        placeholder="Exemple : version corrigée des statuts"
+                        error={motifInvalid ? `Le motif doit faire au moins ${MOTIF_MIN_LENGTH} caractères.` : undefined}
+                      />
                     )}
                   </div>
 
-                  {motifInvalid && (
-                    <p className="mt-1 text-[11px] text-danger">
-                      Le motif doit faire au moins {MOTIF_MIN_LENGTH} caractères.
-                    </p>
-                  )}
                   {r.status === 'ERROR' && r.error && (
                     <p
                       role="alert"
                       data-testid={`multi-error-${r.id}`}
-                      className="mt-1 flex items-start gap-1 text-[11px] text-danger"
+                      className="mt-2 flex items-start gap-1 text-xs text-danger"
                     >
-                      <AlertCircle className="mt-0.5 h-3 w-3 flex-shrink-0" /> {r.error}
+                      <AlertCircle aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" /> {r.error}
                     </p>
                   )}
                 </li>
@@ -370,27 +345,6 @@ export function MultiUploadDrawer({
             })}
           </ul>
         )}
-
-        <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
-          <Button type="button" variant="secondary" size="sm" onClick={onClose}>
-            {allDone ? 'Fermer' : 'Annuler'}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={submit}
-            loading={submitting}
-            disabled={!canSubmit}
-            data-testid="multi-submit"
-          >
-            {submitting ? (
-              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-            ) : (
-              <Upload className="mr-1 h-4 w-4" />
-            )}
-            Déposer {pendingRows.length > 0 ? `(${pendingRows.length})` : ''}
-          </Button>
-        </div>
       </div>
     </Drawer>
   );
@@ -399,28 +353,21 @@ export function MultiUploadDrawer({
 function RowStatusBadge({ status, error }: { status: RowStatus; error?: string }) {
   if (status === 'DONE')
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-success">
-        <Check className="h-3 w-3" /> Déposé
-      </span>
+      <Badge variant="success">
+        <Check aria-hidden="true" className="h-3 w-3" /> Déposé
+      </Badge>
     );
   if (status === 'UPLOADING')
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-fg-subtle">
-        <Loader2 className="h-3 w-3 animate-spin" /> En cours
-      </span>
+      <Badge variant="info">
+        <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin motion-reduce:animate-none" /> En cours
+      </Badge>
     );
   if (status === 'ERROR')
     return (
-      <span
-        className="inline-flex items-center gap-1 rounded-full bg-danger/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-danger"
-        title={error}
-      >
-        <AlertCircle className="h-3 w-3" /> Échec
-      </span>
+      <Badge variant="danger" title={error}>
+        <AlertCircle aria-hidden="true" className="h-3 w-3" /> Échec
+      </Badge>
     );
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-bg-overlay px-2 py-0.5 text-[10px] font-semibold uppercase text-fg-subtle">
-      En attente
-    </span>
-  );
+  return <Badge variant="neutral">En attente</Badge>;
 }

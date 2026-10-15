@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Drawer } from '../../../components/ui/Drawer';
 import { Button } from '../../../components/ui/Button';
 import { TextField } from '../../../components/ui/TextField';
+import { Badge } from '../../../components/ui/Badge';
+import { Message } from '../../../components/ui/Message';
+import { Skeleton } from '../../../components/ui/LoadingSkeleton';
 import { dataroomService } from '../../../services/dataroom.service';
 import { extractError } from '../../../lib/api';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
@@ -133,16 +136,16 @@ export function IdentifiantsDrawer({ open, view, onClose, onSaved, readOnly = fa
       footer={
         readOnly ? (
           <div className="flex items-center justify-end">
-            <Button variant="secondary" size="sm" onClick={onClose}>
+            <Button type="button" variant="secondary" size="sm" onClick={onClose}>
               Fermer
             </Button>
           </div>
         ) : (
           <div className="flex items-center justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={onClose} disabled={saving}>
+            <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={saving}>
               Annuler
             </Button>
-            <Button size="sm" onClick={save} loading={saving}>
+            <Button type="button" size="sm" onClick={save} loading={saving}>
               Enregistrer
             </Button>
           </div>
@@ -150,25 +153,26 @@ export function IdentifiantsDrawer({ open, view, onClose, onSaved, readOnly = fa
       }
     >
       {error && (
-        <p className="mb-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+        <Message ton="erreur" className="mb-4">
           {error}
-        </p>
+        </Message>
       )}
       {readOnly ? (
-        <p className="mb-4 rounded-lg border border-border bg-bg-overlay px-3 py-2 text-sm text-fg-subtle">
-          Consultation en lecture seule. Seul l’employé responsable du dossier peut
-          modifier ces identifiants (RG-U02-04).
-        </p>
+        <Message ton="info" className="mb-4">
+          Consultation en lecture seule. Seul l’employé responsable du dossier peut modifier ces
+          identifiants.
+        </Message>
       ) : (
-        <p className="mb-4 text-sm text-fg-subtle">
+        <p className="mb-4 text-sm text-fg-muted">
           Complétez les identifiants obtenus après l’immatriculation. Les champs
           laissés vides seront enregistrés comme non renseignés.
         </p>
       )}
       <fieldset
         disabled={readOnly}
-        className="grid grid-cols-1 gap-4 border-0 p-0 disabled:opacity-70 sm:grid-cols-2"
+        className="grid grid-cols-1 gap-4 border-0 p-0 sm:grid-cols-2"
       >
+        <legend className="sr-only">Identifiants de la société</legend>
         <TextField
           label="ICE"
           value={form.ice}
@@ -239,7 +243,7 @@ export function IdentifiantsDrawer({ open, view, onClose, onSaved, readOnly = fa
       </fieldset>
 
       <section aria-labelledby="versions-tp" className="mt-6 space-y-2">
-        <h3 id="versions-tp" className="flex items-center gap-1 text-sm font-semibold text-fg">
+        <h3 id="versions-tp" className="flex items-center gap-1 text-sm font-semibold text-heading">
           Versions de la taxe professionnelle
           <InfoBulle
             libelle="Pourquoi plusieurs versions ?"
@@ -256,11 +260,17 @@ export function IdentifiantsDrawer({ open, view, onClose, onSaved, readOnly = fa
             </p>
           </TexteAide>
         )}
+        {versions === null && (
+          <div className="space-y-1.5" aria-busy="true" aria-label="Chargement des versions">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        )}
         {versions && versions.length === 0 && (
-          <p className="text-sm text-fg-subtle">Aucune taxe professionnelle enregistrée.</p>
+          <p className="text-sm text-fg-muted">Aucune taxe professionnelle enregistrée.</p>
         )}
         {versions && versions.length > 0 && (
-          <ol className="divide-y divide-border rounded-md border border-border">
+          <ol className="divide-y divide-border rounded-lg border border-border">
             {[...versions].reverse().map((v) => (
               <li key={v.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
                 <span className="font-mono text-fg">{v.numero}</span>
@@ -269,11 +279,7 @@ export function IdentifiantsDrawer({ open, view, onClose, onSaved, readOnly = fa
                     ? `En vigueur à partir du ${new Date(v.dateEffet).toLocaleDateString('fr-MA')}`
                     : 'Date d’effet à compléter'}
                 </span>
-                {v.enVigueur && (
-                  <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
-                    En vigueur
-                  </span>
-                )}
+                {v.enVigueur && <Badge variant="success">En vigueur</Badge>}
               </li>
             ))}
           </ol>

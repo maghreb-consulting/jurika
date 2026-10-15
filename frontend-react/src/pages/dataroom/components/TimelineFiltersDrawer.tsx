@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '../../../components/ui/Button';
 import { Drawer } from '../../../components/ui/Drawer';
 import { TextField } from '../../../components/ui/TextField';
+import { PastilleFiltre } from './PastilleFiltre';
 import { DEFAULT_TIMELINE_FILTERS, type TimelineFilters } from './timelineFiltres';
 
 /**
@@ -59,19 +60,16 @@ export function TimelineFiltersDrawer({ open, filters, onClose, onApply }: Props
       subtitle="Affinez l’historique des opérations clôturées"
       width="md"
       footer={
-        <div className="flex justify-between gap-2 border-t border-border px-6 py-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setDraft(DEFAULT_TIMELINE_FILTERS)}
-          >
+        <div className="flex justify-between gap-2">
+          <Button type="button" variant="ghost" size="sm" onClick={() => setDraft(DEFAULT_TIMELINE_FILTERS)}>
             Réinitialiser
           </Button>
           <div className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={onClose}>
+            <Button type="button" variant="secondary" size="sm" onClick={onClose}>
               Annuler
             </Button>
             <Button
+              type="button"
               size="sm"
               onClick={() => {
                 onApply(draft);
@@ -85,52 +83,40 @@ export function TimelineFiltersDrawer({ open, filters, onClose, onApply }: Props
       }
     >
       <div className="space-y-6">
-        <section>
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
+        <p className="text-sm text-fg-muted">
+          Choisissez les types d’opération et la période de clôture, puis cliquez sur « Appliquer ».
+          Sans choix, tout l’historique s’affiche.
+        </p>
+        <section aria-labelledby="filtre-type-operation">
+          <h3 id="filtre-type-operation" className="mb-2 text-sm font-medium text-fg">
             Type d’opération
-          </h4>
+          </h3>
           <div className="flex flex-wrap gap-2">
-            {TICKET_TYPE_OPTIONS.map(({ value, label }) => {
-              const active = draft.types.includes(value);
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => toggleType(value)}
-                  className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
-                    active
-                      ? 'border-accent/40 bg-accent/10 text-accent'
-                      : 'border-border bg-bg-raised text-fg-muted hover:border-border-hi'
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
+            {TICKET_TYPE_OPTIONS.map(({ value, label }) => (
+              <PastilleFiltre key={value} actif={draft.types.includes(value)} onClick={() => toggleType(value)}>
+                {label}
+              </PastilleFiltre>
+            ))}
           </div>
         </section>
 
-        <section>
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
+        <section aria-labelledby="filtre-periode-cloture">
+          <h3 id="filtre-periode-cloture" className="mb-2 text-sm font-medium text-fg">
             Période de clôture
-          </h4>
+          </h3>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs text-fg-subtle">Du</label>
-              <TextField
-                type="date"
-                value={draft.from}
-                onChange={(e) => setDraft({ ...draft, from: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-fg-subtle">Au</label>
-              <TextField
-                type="date"
-                value={draft.to}
-                onChange={(e) => setDraft({ ...draft, to: e.target.value })}
-              />
-            </div>
+            <TextField
+              label="Du"
+              type="date"
+              value={draft.from}
+              onChange={(e) => setDraft({ ...draft, from: e.target.value })}
+            />
+            <TextField
+              label="Au"
+              type="date"
+              value={draft.to}
+              onChange={(e) => setDraft({ ...draft, to: e.target.value })}
+            />
           </div>
         </section>
       </div>

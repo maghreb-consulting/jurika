@@ -1,8 +1,13 @@
 import { useMemo, useState } from 'react';
-import { AlertCircle, FileUp, Loader2, X } from 'lucide-react';
+import { FileUp } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
+import { Modal } from '../../../components/ui/Modal';
+import { Message } from '../../../components/ui/Message';
+import { Select } from '../../../components/ui/Select';
+import { TextField, ZoneTexte } from '../../../components/ui/TextField';
 import { uploadOrReplace } from '../../../lib/dataroomUpload';
 import type { DocumentSummary, DocumentType } from '../../../types/dataroom';
+import { DOCUMENT_TYPE_LABELS } from '../../../types/dataroom';
 import { useDocumentTypes } from '../useDocumentTypes';
 
 /**
@@ -124,173 +129,122 @@ export function UploadDocumentDialog({
     }
   }
 
-  if (!open) return null;
+  const libelleType = (code: string | null | undefined) =>
+    (DOCUMENT_TYPE_LABELS as Record<string, string>)[code ?? 'AUTRE'] ?? code ?? 'Autre';
+  const motifTropCourt = motif.length > 0 && motifTrimmed.length < 5;
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="upload-dialog-title"
-      data-testid="upload-document-dialog"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+    <Modal
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose();
       }}
+      title="Ajouter un document"
+      description="Un nouveau document, ou une nouvelle version d’un document en vigueur (l’ancienne reste consultable)."
+      size="lg"
+      closeOnBackdrop={false}
     >
-      <div className="relative w-full max-w-lg rounded-xl bg-bg-raised shadow-xl">
-        <header className="flex items-center justify-between border-b border-border px-5 py-3">
-          <h2 id="upload-dialog-title" className="text-base font-semibold text-fg">
-            Ajouter un document
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fermer"
-            className="rounded p-1 text-fg-subtle hover:bg-bg-overlay"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </header>
+      <form onSubmit={submit} noValidate className="space-y-4" data-testid="upload-document-dialog">
+        {/* Choix : nouveau document ou nouvelle version d'un document actif */}
+        <Select
+          id="upload-target"
+          label="Destination"
+          data-testid="upload-target-select"
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+          hint="Choisissez « Nouvelle version de… » pour remplacer un document : un motif est alors demandé."
+          options={[{ value: NEW_DOCUMENT_VALUE, label: 'Nouveau document' }]}
+          groups={
+            activeDocuments.length > 0
+              ? [
+                  {
+                    label: 'Nouvelle version de…',
+                    options: activeDocuments.map((d) => ({
+                      value: d.id,
+                      label: `${libelleType(d.documentType)} — ${d.title} (version ${d.version})`,
+                    })),
+                  },
+                ]
+              : undefined
+          }
+        />
 
-        <form onSubmit={submit} noValidate className="space-y-4 p-5">
-          {/* SELECT : nouveau vs nouvelle version d'un document actif */}
-          <div>
-            <label htmlFor="upload-target" className="mb-1 block text-sm font-medium text-fg-muted">
-              Destination
-            </label>
-            <select
-              id="upload-target"
-              data-testid="upload-target-select"
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-              className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-            >
-              <option value={NEW_DOCUMENT_VALUE}>Nouveau document</option>
-              {activeDocuments.length > 0 && (
-                <optgroup label="Nouvelle version de…">
-                  {activeDocuments.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {(d.documentType ?? 'AUTRE')} — {d.title} (v{d.version})
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-          </div>
-
-          {/* Champs spécifiques au mode "Nouveau document" */}
-          {!isReplaceMode && (
-            <div className="grid gap-3 md:grid-cols-2">
-              <div>
-                <label htmlFor="upload-new-type" className="mb-1 block text-sm font-medium text-fg-muted">
-                  Type *
-                </label>
-                <select
-                  id="upload-new-type"
-                  data-testid="upload-new-type"
-                  value={newType}
-                  onChange={(e) => setNewType(e.target.value)}
-                  className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
-                >
-                  {options.map((t) => (
-                    <option key={t.code} value={t.code}>
-                      {t.libelle}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="upload-new-title" className="mb-1 block text-sm font-medium text-fg-muted">
-                  Titre *
-                </label>
-                <input
-                  id="upload-new-title"
-                  data-testid="upload-new-title"
-                  type="text"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Exemple : statuts refondus de la SARL"
-                  className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Champ motif : requis seulement en mode "Nouvelle version" */}
-          {isReplaceMode && (
-            <div>
-              <label htmlFor="upload-motif" className="mb-1 block text-sm font-medium text-fg-muted">
-                Motif du remplacement *
-                <span className="ml-1 text-xs text-fg-subtle">(≥ 5 caractères, traçabilité)</span>
-              </label>
-              <textarea
-                id="upload-motif"
-                data-testid="upload-motif"
-                value={motif}
-                onChange={(e) => setMotif(e.target.value)}
-                rows={2}
-                placeholder="Exemple : correction d’une coquille dans l’objet social"
-                className={`w-full rounded-lg border bg-bg-raised px-3 py-2 text-sm ${
-                  motif.length > 0 && motifTrimmed.length < 5
-                    ? 'border-danger focus:border-danger'
-                    : 'border-border-hi focus:border-indigo-500'
-                }`}
-              />
-              {motif.length > 0 && motifTrimmed.length < 5 && (
-                <p className="mt-1 text-xs text-danger">
-                  Le motif doit faire au moins 5 caractères.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Fichier */}
-          <div>
-            <label htmlFor="upload-file" className="mb-1 block text-sm font-medium text-fg-muted">
-              Fichier *
-            </label>
-            <input
-              id="upload-file"
-              data-testid="upload-file-input"
-              type="file"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-fg-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-accent hover:file:bg-accent/20"
+        {/* Champs du mode "Nouveau document" */}
+        {!isReplaceMode && (
+          <div className="grid gap-3 md:grid-cols-2">
+            <Select
+              id="upload-new-type"
+              label="Type"
+              data-testid="upload-new-type"
+              value={newType}
+              onChange={(e) => setNewType(e.target.value)}
+              options={options.map((t) => ({ value: t.code, label: t.libelle }))}
             />
-            {file && (
-              <p className="mt-1 text-xs text-fg-subtle">
-                {file.name} — {Math.round(file.size / 1024)} Ko
-              </p>
-            )}
+            <TextField
+              id="upload-new-title"
+              label="Titre"
+              data-testid="upload-new-title"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="Exemple : statuts refondus de la SARL"
+              required
+            />
           </div>
+        )}
 
-          {error && (
-            <div role="alert" className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger/10 p-2 text-xs text-danger">
-              <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-              <span>{error}</span>
-            </div>
+        {/* Motif : demande seulement en mode "Nouvelle version" */}
+        {isReplaceMode && (
+          <ZoneTexte
+            id="upload-motif"
+            label="Motif du remplacement"
+            data-testid="upload-motif"
+            value={motif}
+            onChange={(e) => setMotif(e.target.value)}
+            rows={2}
+            placeholder="Exemple : correction d’une coquille dans l’objet social"
+            hint="Au moins 5 caractères : le motif est conservé avec l’ancienne version."
+            error={motifTropCourt ? 'Le motif doit faire au moins 5 caractères.' : undefined}
+            required
+          />
+        )}
+
+        {/* Fichier */}
+        <div className="space-y-1.5">
+          <label htmlFor="upload-file" className="text-sm font-medium text-fg">
+            Fichier
+          </label>
+          <input
+            id="upload-file"
+            data-testid="upload-file-input"
+            type="file"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="block w-full text-sm text-fg-muted file:mr-3 file:h-9 file:cursor-pointer file:rounded-lg file:border file:border-border-input file:bg-bg-raised file:px-3 file:text-sm file:font-medium file:text-fg hover:file:bg-bg-overlay"
+          />
+          {file && (
+            <p className="text-xs text-fg-muted">
+              {file.name} — {Math.round(file.size / 1024)} Ko
+            </p>
           )}
+        </div>
 
-          <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
-            <Button type="button" variant="secondary" size="sm" onClick={onClose}>
-              Annuler
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              loading={submitting}
-              disabled={!canSubmit || submitting}
-              data-testid="upload-submit"
-            >
-              {submitting ? (
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-              ) : (
-                <FileUp className="mr-1 h-4 w-4" />
-              )}
-              {isReplaceMode ? 'Remplacer comme nouvelle version' : 'Créer le document'}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+        {error && <Message ton="erreur">{error}</Message>}
+
+        <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+          <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button
+            type="submit"
+            size="sm"
+            icon={<FileUp />}
+            loading={submitting}
+            disabled={!canSubmit || submitting}
+            data-testid="upload-submit"
+          >
+            {isReplaceMode ? 'Remplacer comme nouvelle version' : 'Créer le document'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
