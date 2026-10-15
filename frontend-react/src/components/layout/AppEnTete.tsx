@@ -114,8 +114,10 @@ export function AppEnTete({ onOuvrirMenuMobile }: { onOuvrirMenuMobile?: () => v
           </span>
         )}
 
-        {/* Changement de forfait : cabinet seulement (ni super-admin, ni client : lot M). */}
-        {user.role !== 'SUPER_ADMIN' && user.role !== 'CLIENT' && (
+        {/* Changement de forfait : superviseur du cabinet seulement (L6b E8 : le serveur le
+            refuse a l'employe, BillingController hasRole('SUPERVISEUR') ; ni super-admin, ni
+            client : lot M). */}
+        {superviseur && (
           <Link
             to="/app/billing/change-plan"
             className={classesBouton('secondary', 'sm', 'mr-1 hidden sm:inline-flex')}

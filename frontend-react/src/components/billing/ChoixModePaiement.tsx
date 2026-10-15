@@ -23,7 +23,7 @@ export function ChoixModePaiement({ valeur, onChange, carteDisponible, carteMoti
     <fieldset className="space-y-2" data-testid="choix-mode-paiement">
       <legend className="mb-1 flex items-center gap-1 text-sm font-medium text-fg">
         Mode de paiement
-        <InfoBulle texte="Carte : paiement immédiat sur la page du CMI. Virement, chèque ou espèces : JURIKA enregistre la réception, puis active ou prolonge votre abonnement." />
+        <InfoBulle libelle="Aide : mode de paiement" texte="Carte : paiement immédiat sur la page du CMI. Virement, chèque ou espèces : JURIKA enregistre la réception, puis active ou prolonge votre abonnement." />
       </legend>
       {MODES.map((m) => {
         const desactive = m.value === 'CARD' && !carteDisponible;
@@ -31,16 +31,16 @@ export function ChoixModePaiement({ valeur, onChange, carteDisponible, carteMoti
         return (
           <label key={m.value}
             className={[
-              'flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm',
-              valeur === m.value ? 'border-accent bg-accent/5' : 'border-border',
+              'flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors duration-150 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus',
+              valeur === m.value ? 'border-accent bg-accent-soft' : 'border-border-input bg-bg-raised hover:border-fg-subtle',
               desactive ? 'cursor-not-allowed opacity-60' : '',
             ].join(' ')}>
             <input type="radio" name="mode-paiement" value={m.value} checked={valeur === m.value}
-              disabled={desactive} onChange={() => onChange(m.value)} className="mt-1" />
-            <Icone className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" aria-hidden="true" />
+              disabled={desactive} onChange={() => onChange(m.value)} className="mt-1 accent-[var(--color-accent)]" />
+            <Icone className="mt-0.5 h-4 w-4 flex-shrink-0 text-fg-muted" aria-hidden="true" />
             <span>
               <span className="font-medium text-fg">{LIBELLE_MODE[m.value]}</span>
-              <span className="block text-xs text-fg-subtle">
+              <span className="block text-xs text-fg-muted">
                 {desactive ? (carteMotif || 'Paiement par carte indisponible.') : m.description}
               </span>
             </span>

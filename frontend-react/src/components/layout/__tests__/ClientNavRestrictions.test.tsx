@@ -75,12 +75,22 @@ describe('Coquille : en-tete et menu lateral', () => {
     expect(screen.getByText('Mon espace')).toBeInTheDocument();
   });
 
-  it('EMPLOYE : changement de forfait, Chat et échéances présents (non-régression)', () => {
+  // L6b (E8) : le changement de forfait est une operation du SUPERVISEUR (billing-service,
+  // BillingController : apercu et changement en hasRole('SUPERVISEUR')). L'employe ne voit
+  // plus un bouton que le serveur lui refuse (backlog L0).
+  it('EMPLOYE : Chat et échéances présents, pas de changement de forfait (refusé par le serveur)', () => {
     setRole('EMPLOYE');
     renderTopNav();
-    expect(screen.getByTestId('topnav-upgrade-cta')).toHaveTextContent('Changer de forfait');
+    expect(screen.queryByTestId('topnav-upgrade-cta')).not.toBeInTheDocument();
     expect(screen.getByText('Messagerie')).toBeInTheDocument();
     expect(screen.getByTestId('echeances')).toBeInTheDocument();
+  });
+
+  it('SUPERVISEUR : changement de forfait présent dans l’en-tête', () => {
+    setRole('SUPERVISEUR');
+    renderTopNav();
+    expect(screen.getByTestId('topnav-upgrade-cta')).toHaveTextContent('Changer de forfait');
+    expect(screen.getByTestId('topnav-upgrade-cta')).toHaveAttribute('href', '/app/billing/change-plan');
   });
 
   it('SUPER_ADMIN : présenté sous le nom JURIKA, sans le code du workspace qui l’héberge', () => {

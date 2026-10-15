@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Check, Minus } from 'lucide-react';
 import { billingService } from '../../services/billing.service';
 import { InfoBulle } from '../ui/Aide';
+import { Badge } from '../ui/Badge';
+import { classesBouton } from '../ui/boutonClasses';
 import { FONCTIONS_COMMUNES, GRILLE_CDC, lignesQuotas } from '../../lib/forfaits';
 import { formatMad, type BillingPeriod, type PricingTier } from '../../types/billing';
 
@@ -43,17 +45,17 @@ export function PlanPicker({ period, onPeriodChange, forfaitActuel, onChoisir, l
     <div data-testid={`${testIdPrefix}-picker`}>
       <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
         <div role="group" aria-label="Rythme de paiement"
-          className="inline-flex items-center rounded-full border border-border bg-bg-raised p-1">
+          className="inline-flex items-center rounded-full border border-border-input bg-bg-raised p-1">
           {(['monthly', 'yearly'] as BillingPeriod[]).map((p) => (
             <button key={p} type="button" onClick={() => onPeriodChange(p)} aria-pressed={period === p}
               data-testid={`${testIdPrefix}-period-${p}`}
-              className={['rounded-full px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-                period === p ? 'bg-accent text-bg' : 'text-fg-subtle hover:text-fg'].join(' ')}>
+              className={['rounded-full px-4 py-1.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
+                period === p ? 'bg-accent text-accent-fg' : 'text-fg-muted hover:bg-bg-overlay hover:text-fg'].join(' ')}>
               {p === 'monthly' ? 'Paiement mensuel' : 'Paiement annuel'}
             </button>
           ))}
         </div>
-        <InfoBulle texte="Le forfait est souscrit pour un an. Paiement annuel : un seul règlement par an. Paiement mensuel : douze mensualités égales au dixième du prix annuel ; le paiement annuel revient donc à deux mois offerts. Prix hors taxes." />
+        <InfoBulle libelle="Aide : rythme de paiement" texte="Le forfait est souscrit pour un an. Paiement annuel : un seul règlement par an. Paiement mensuel : douze mensualités égales au dixième du prix annuel ; le paiement annuel revient donc à deux mois offerts. Prix hors taxes." />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -62,24 +64,24 @@ export function PlanPicker({ period, onPeriodChange, forfaitActuel, onChoisir, l
           const prix = annuel ? t.yearly?.priceMad : t.monthly?.priceMad;
           return (
             <div key={t.code} data-testid={`${testIdPrefix}-${t.code}`}
-              className={['flex flex-col rounded-2xl border-2 bg-bg-raised p-5',
-                actuel ? 'border-accent' : 'border-border'].join(' ')}>
+              className={['@container flex flex-col rounded-xl border bg-bg-raised p-5 shadow-card',
+                actuel ? 'border-accent ring-1 ring-accent' : 'border-border'].join(' ')}>
               <div className="flex items-baseline justify-between gap-2">
-                <h3 className="font-heading text-xl font-semibold text-fg">{t.label}</h3>
-                {actuel && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">Votre forfait</span>}
+                <h3 className="text-lg font-semibold text-heading">{t.label}</h3>
+                {actuel && <Badge variant="default">Votre forfait</Badge>}
               </div>
               <div className="my-3 min-h-[4rem]">
                 {t.quoteOnly || prix === undefined ? (
                   <>
                     <p className="text-lg font-semibold text-fg">Selon devis</p>
-                    <p className="text-xs text-fg-subtle">Calculé selon l’usage réel ; devis établi par JURIKA.</p>
+                    <p className="text-xs text-fg-muted">Calculé selon l’usage réel ; devis établi par JURIKA.</p>
                   </>
                 ) : (
                   <>
                     <p className="text-2xl font-bold text-fg">
-                      {formatMad(prix)} <span className="text-sm font-normal text-fg-subtle">HT / {annuel ? 'an' : 'mois'}</span>
+                      {formatMad(prix)} <span className="text-sm font-normal text-fg-muted">HT / {annuel ? 'an' : 'mois'}</span>
                     </p>
-                    <p className="text-xs text-fg-subtle">
+                    <p className="text-xs text-fg-muted">
                       {annuel
                         ? `ou ${formatMad(t.monthly?.priceMad ?? 0)} HT par mois en paiement mensuel`
                         : `soit ${formatMad(t.totalAnnuelEnMensuelMad ?? 0)} HT sur un an ; ${formatMad(t.yearly?.priceMad ?? 0)} HT en paiement annuel`}
@@ -107,7 +109,7 @@ export function PlanPicker({ period, onPeriodChange, forfaitActuel, onChoisir, l
               </ul>
               <button type="button" disabled={desactive} onClick={() => onChoisir(t)}
                 data-testid={`${testIdPrefix}-choisir-${t.code}`}
-                className="mt-auto rounded-lg border border-accent px-4 py-2 text-sm font-semibold text-accent hover:bg-accent hover:text-bg disabled:cursor-not-allowed disabled:opacity-60">
+                className={classesBouton('secondary', 'md', 'mt-auto w-full')}>
                 {libelleAction ? libelleAction(t) : t.quoteOnly ? 'Demander un devis' : `Choisir ${t.label}`}
               </button>
             </div>
