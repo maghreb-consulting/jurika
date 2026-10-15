@@ -11,6 +11,8 @@ vi.mock('../../../lib/api', () => ({ api: { get } }));
 import { LandingPage } from '../LandingPage';
 import { oublierMentionsLegales } from '../mentionsLegales';
 import { FORFAITS, formatPrice } from '../config/pricing';
+import { NOMS_CAPTURES } from '../captures';
+import { FONCTIONNALITES } from '../contenu';
 
 /**
  * Lot L7 (E3), repris au lot L6b (E10) : la vitrine est alignee sur le cahier des charges
@@ -177,12 +179,16 @@ describe('Vitrine : grille tarifaire du cahier des charges (4.3, 4.5)', () => {
 });
 
 describe('Vitrine : affirmations', () => {
-  it("annonce l'hebergement AWS a Paris et l'objectif de 99,5 % en heures ouvrees", () => {
+  it("annonce l'hebergement AWS prevu a Paris, sans objectif de disponibilite chiffre", () => {
     rendre();
     const page = texte(document.body);
     expect(page).toContain('Amazon Web Services, à Paris');
-    expect(page).toContain('99,5 % de disponibilité en heures ouvrées');
+    expect(page).toMatch(/hébergement (est )?prévu chez Amazon Web Services/i);
     expect(page).toContain('Aucune intelligence artificielle ne rédige un acte');
+    // L6b E10 (V2) : l'objectif de disponibilite du contrat V1 n'est pas un engagement de
+    // service ; le plus sur est de ne pas l'afficher (demande du 2026-10-15).
+    expect(page).not.toMatch(/99[,.]\d/);
+    expect(page).not.toMatch(/disponibilité/i);
   });
 
   it('ne publie aucune affirmation contraire au cahier des charges', () => {
@@ -193,7 +199,9 @@ describe('Vitrine : affirmations', () => {
       '499', '1 199', 'Business', 'Entreprise sur devis', 'Utilisateurs illimités', 'chatbot RAG',
       'Messagerie entre le client', 'chat client', 'temps réel', 'DPO', 'jurika.ai', '+212',
       'Statuts générés', 'Génération IA', 'IA génération', 'Copilote', 'Spring AI', 'RLS', 'multi-tenant',
-      'Interopérable', '82%', 'SLA', 'Sans carte bancaire',
+      'Interopérable', '82%', 'SLA', 'Sans carte bancaire', '99,5', '99,9 %', 'garantie de disponibilité',
+      // L6b E10 (V2) : compteurs de l'ancienne vitrine (corpus du cabinet, pas une promesse).
+      '222', 'modèles d’actes', 'matrices de démarches',
       // L6b E10 : authentification unique absente du code et du contrat V1 (lot Securite).
       'authentification unique', "annuaire du cabinet",
     ];
@@ -222,23 +230,25 @@ describe('Vitrine : affirmations', () => {
       expect(page, String(motif)).not.toMatch(motif);
     }
     expect(document.querySelector('blockquote, q, cite')).toBeNull();
-    // Seules images : le logo Moucharabieh de JURIKA.
+    // Seules images : le logo Moucharabieh de JURIKA et les captures de la plateforme
+    // (public/vitrine, liste fermee de captures.ts) ; aucune autre image (logo de client...).
     const images = Array.from(document.querySelectorAll('img')).map((i) => i.getAttribute('src') ?? '');
     expect(images.length).toBeGreaterThan(0);
-    for (const src of images) expect(src, src).toMatch(/moucharabieh/);
+    const captures = new Set(NOMS_CAPTURES.map((n) => `/vitrine/${n}-800.webp`));
+    for (const src of images) expect(/moucharabieh/.test(src) || captures.has(src), src).toBe(true);
   });
 
   it('ne publie aucun chiffre ni statistique hors prix, quotas et textes du cahier des charges', () => {
     rendre();
     const page = texte(document.body);
     // Prix (4.3) ; quotas (4.3, 4.2) ; delais du contrat V1 (essai 7 et 30 jours, violation de
-    // donnees 72 heures) ; objectif de disponibilite (8.2) ; references des lois (5-96, 09-08) ;
+    // donnees 72 heures) ; references des lois (5-96, 09-08) ;
     // annee du droit d'auteur.
     const prix = FORFAITS.flatMap((f) =>
       f.prixAnnuelHt === null || f.prixMensuelHt === null ? [] : [f.prixAnnuelHt, f.prixMensuelHt, f.prixMensuelHt * 12],
     ).map((n) => formatPrice(n).replace(/\u00a0/g, ' '));
     const autorises = new Set([
-      ...prix, '1', '2', '3', '4', '5', '7', '10', '20', '25', '30', '50', '100', '500', '72', '99,5', '96', '09', '08',
+      ...prix, '1', '2', '3', '4', '5', '7', '10', '20', '25', '30', '50', '100', '500', '72', '96', '09', '08',
       String(new Date().getFullYear()),
     ]);
     const nombres = page.match(/\d+(?:[ ,]\d+)*/g) ?? [];
@@ -262,6 +272,100 @@ describe('Vitrine : affirmations', () => {
     }
     const html = readFileSync(resolve(__dirname, '../../../../index.html'), 'utf-8');
     expect(html).not.toMatch(/fonts\.googleapis|Playfair/);
+  });
+});
+
+describe('Vitrine : captures de la plateforme et mouvement', () => {
+  it('montre chaque capture prevue, optimisee : srcset 800w et 1600w, dimensions, chargement differe, alt', () => {
+    rendre();
+    const imgs = Array.from(document.querySelectorAll<HTMLImageElement>('img[src^="/vitrine/"]'));
+    const vues = new Set(imgs.map((i) => (i.getAttribute('src') ?? '').replace(/^\/vitrine\/|-800\.webp$/g, '')));
+    // Le tableau de bord de l'accroche suit le theme (clair en jsdom) ; la version sombre est
+    // montree a cote de la claire dans la section du suivi.
+    expect([...vues].sort()).toEqual([...NOMS_CAPTURES].sort());
+    for (const img of imgs) {
+      const src = img.getAttribute('src') ?? '';
+      const base = src.replace(/-800\.webp$/, '');
+      expect(img.getAttribute('srcset'), src).toBe(`${base}-800.webp 800w, ${base}-1600.webp 1600w`);
+      expect(img.getAttribute('sizes'), src).toBeTruthy();
+      expect(Number(img.getAttribute('width')), src).toBeGreaterThan(0);
+      expect(Number(img.getAttribute('height')), src).toBeGreaterThan(0);
+      expect(img.getAttribute('decoding'), src).toBe('async');
+      expect((img.getAttribute('alt') ?? '').length, src).toBeGreaterThan(20);
+    }
+    const accroche = imgs.filter((i) => screen.getByTestId('hero').contains(i));
+    expect(accroche).toHaveLength(1);
+    expect(accroche[0]).toHaveAttribute('loading', 'eager');
+    expect(accroche[0]).toHaveAttribute('fetchpriority', 'high');
+    for (const img of imgs.filter((i) => !accroche.includes(i))) expect(img, img.src).toHaveAttribute('loading', 'lazy');
+  });
+
+  it('presente chaque fonctionnalite livree une seule fois', () => {
+    rendre();
+    const section = screen.getByRole('region', { name: 'Ce que fait la plateforme' });
+    for (const f of FONCTIONNALITES) {
+      expect(within(section).getAllByRole('heading', { name: f.titre }), f.titre).toHaveLength(1);
+    }
+  });
+
+  it("n'anime rien quand l'ordinateur demande de reduire les animations", () => {
+    const origine = window.matchMedia;
+    window.matchMedia = ((q: string) => ({
+      matches: q.includes('reduce'),
+      media: q,
+      onchange: null,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      dispatchEvent: () => false,
+    })) as typeof window.matchMedia;
+    const io = vi.fn(function () {
+      return { observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn() };
+    });
+    vi.stubGlobal('IntersectionObserver', io);
+    try {
+      rendre();
+      expect(document.querySelector('[data-apparition]')).toBeNull();
+      expect(io).not.toHaveBeenCalled();
+    } finally {
+      window.matchMedia = origine;
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("anime les apparitions au defilement, sans masquer ce qui est deja a l'ecran", () => {
+    const observes: Element[] = [];
+    vi.stubGlobal(
+      'IntersectionObserver',
+      vi.fn(function () {
+        return { observe: (e: Element) => observes.push(e), unobserve: vi.fn(), disconnect: vi.fn() };
+      }),
+    );
+    try {
+      rendre();
+      expect(document.querySelector('[data-apparition]')).not.toBeNull();
+      expect(observes.length).toBeGreaterThan(5);
+      // jsdom : toutes les boites sont a 0 x 0, donc "a l'ecran" : rien n'est masque.
+      expect(document.querySelectorAll('[data-apparait]:not([data-visible])')).toHaveLength(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("garde des transitions courtes et coupe tout mouvement si l'animation est reduite (vitrine.css)", () => {
+    const css = readFileSync(resolve(__dirname, '../vitrine.css'), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const durees = [...css.matchAll(/(\d+(?:\.\d+)?)(ms|s)\b/g)].map((m) => (m[2] === 's' ? Number(m[1]) * 1000 : Number(m[1])));
+    expect(durees.length).toBeGreaterThan(0);
+    for (const d of durees) expect(d).toBeLessThanOrEqual(300);
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)/);
+    expect(css).not.toMatch(/@keyframes|animation\s*:/);
+    // Seules l'opacite, la transformation et les couleurs s'animent : aucun decalage de la mise en page.
+    for (const m of css.matchAll(/transition(?:-property)?\s*:\s*([^;]+);/g)) {
+      for (const prop of m[1].split(',').map((x) => x.trim().split(/\s+/)[0])) {
+        expect(['opacity', 'transform', 'background-color', 'border-color', 'box-shadow', 'color', 'none'], prop).toContain(prop);
+      }
+    }
   });
 });
 

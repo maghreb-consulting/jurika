@@ -1,9 +1,12 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { EnTeteVitrine } from './composants/EnTeteVitrine';
 import { PiedVitrine } from './composants/PiedVitrine';
+import { useApparitions } from './composants/useApparitions';
+import './vitrine.css';
 import {
   Accroche,
+  BandeOperations,
   Contact,
   Essai,
   Fonctionnalites,
@@ -15,20 +18,24 @@ import {
 } from './composants/Sections';
 
 /**
- * Lot L6b (E10) : vitrine publique de JURIKA, entierement refaite pour le premier lancement.
+ * Lot L6b (E10) : vitrine publique de JURIKA.
  *
- * Sections, dans l'ordre : accroche ; probleme et solution ; fonctionnalites ; parcours
- * couverts ; securite et confidentialite ; tarifs (config/pricing.ts, seule source) ; essai
- * gratuit ; questions frequentes ; contact. Pied de page : conditions generales, politique de
- * confidentialite (a venir), mentions legales de l'editeur (Parametres de l'editeur).
+ * Sections, dans l'ordre : accroche (avec la capture du tableau de bord) ; bande des
+ * operations ; probleme et solution ; fonctionnalites (piliers alternes avec captures, bande de
+ * l'IA) ; parcours couverts ; securite et confidentialite ; tarifs (config/pricing.ts, seule
+ * source) ; essai gratuit ; questions frequentes ; contact. Pied de page : conditions
+ * generales, politique de confidentialite (a venir), mentions legales de l'editeur.
  *
- * Remplace le portage du site marketing (Lenis, GSAP, Playfair, maquettes d'ecran a donnees
- * fictives, compteurs animes) : jetons du systeme de design, police auto-hebergee, aucune
- * animation d'entree, aucun decalage au chargement.
+ * V2 (demande du 2026-10-15) : mise en page et style riches de la vitrine d'avant L6b
+ * restaures, sur les jetons du systeme de design, avec de vraies captures de la plateforme ;
+ * sans Lenis, GSAP, Playfair, maquettes a donnees fictives, compteurs ni bandeau defilant.
+ * Apparitions au defilement courtes (useApparitions), coupees par "reduire les animations".
  */
 export function VitrineCadre({ surAccueil, children }: { surAccueil: boolean; children: ReactNode }) {
+  const racine = useRef<HTMLDivElement>(null);
+  useApparitions(racine);
   return (
-    <div className="flex min-h-screen flex-col bg-bg text-fg">
+    <div ref={racine} className="vitrine flex min-h-screen flex-col bg-bg text-fg">
       <a
         href="#contenu"
         className="sr-only z-50 rounded-md bg-bg-raised px-4 py-2 text-sm font-medium text-fg shadow-card-lifted focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
@@ -60,6 +67,7 @@ export function LandingPage() {
   return (
     <VitrineCadre surAccueil>
       <Accroche />
+      <BandeOperations />
       <ProblemeSolution />
       <Fonctionnalites />
       <Parcours />

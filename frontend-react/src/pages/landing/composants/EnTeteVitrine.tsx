@@ -62,7 +62,7 @@ export function EnTeteVitrine({ surAccueil }: { surAccueil: boolean }) {
   );
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-bg-raised">
+    <header className="sticky top-0 z-40 border-b border-border bg-bg-raised/90 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4 sm:px-6">
         {surAccueil ? (
           <a href="#haut" className="shrink-0 rounded-sm" aria-label="JURIKA, haut de la page">

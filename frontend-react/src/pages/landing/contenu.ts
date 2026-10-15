@@ -149,13 +149,20 @@ export const SECURITE: { icone: IconeSecurite; titre: string; texte: string }[] 
   { icone: 'ia', titre: 'Aucun entraînement d’IA', texte: 'Les données confiées par le cabinet ne servent jamais à entraîner un modèle d’intelligence artificielle ; le chatbot ne reçoit aucune donnée personnelle.' },
 ];
 
+/**
+ * L6b E10 (V2) : "prevu" (demande du 2026-10-15) : la plateforme n'est pas encore en
+ * production ; l'hebergement a Paris est celui que prevoit le contrat V1.
+ */
 export const HEBERGEMENT =
-  'La plateforme est hébergée chez Amazon Web Services, à Paris (Union européenne). L’hébergement hors du Maroc est réalisé sous réserve de l’autorisation de transfert de la CNDP, obtenue par l’éditeur avant la mise en production.';
+  'L’hébergement est prévu chez Amazon Web Services, à Paris (Union européenne). L’hébergement hors du Maroc est réalisé sous réserve de l’autorisation de transfert de la CNDP, obtenue par l’éditeur avant la mise en production.';
 
 export const CNDP_STATUT = 'Déclaration CNDP en cours';
 
-export const DISPONIBILITE =
-  'Objectif de 99,5 % de disponibilité en heures ouvrées. Un engagement de service contractuel n’est prévu que pour le forfait Sur Devis.';
+/*
+ * L6b E10 (V2) : l'objectif de disponibilite du contrat V1 (article 8.2) n'est plus affiche :
+ * ce n'est pas un engagement de service, et un chiffre sur une vitrine se lit comme une
+ * promesse. Option la plus sure retenue (demande du 2026-10-15) : ne pas l'afficher.
+ */
 
 /** Questions frequentes : reponses tirees du CDC et du contrat V1, rien d'ajoute. */
 export const FAQ: { q: string; a: string }[] = [
@@ -169,7 +176,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'Où sont hébergées les données ?',
-    a: 'Chez Amazon Web Services, à Paris (Union européenne). L’hébergement hors du Maroc est soumis à l’autorisation de transfert de la CNDP, que l’éditeur obtient avant la mise en production ; la déclaration auprès de la CNDP est en cours.',
+    a: 'L’hébergement est prévu chez Amazon Web Services, à Paris (Union européenne). L’hébergement hors du Maroc est soumis à l’autorisation de transfert de la CNDP, que l’éditeur obtient avant la mise en production ; la déclaration auprès de la CNDP est en cours.',
   },
   {
     q: 'Le chatbot a-t-il accès à mes dossiers ?',
@@ -199,8 +206,103 @@ export const FAQ: { q: string; a: string }[] = [
     q: 'Que se passe-t-il en cas de violation de données ?',
     a: 'L’éditeur informe le cabinet de toute violation de données personnelles dans les meilleurs délais, et au plus tard 72 heures après en avoir eu connaissance, en précisant sa nature, ses conséquences probables et les mesures prises.',
   },
+];
+
+/* ------------------------------------------------------------------------------------- */
+/* L6b E10 (V2) : mise en page restauree de la vitrine d'avant L6b (accroche centree,     */
+/* bande des operations, piliers alternes avec captures, bande de l'IA, appel final).     */
+/* Textes repris de l'ancienne vitrine (lot L7 E3, deja alignes sur le CDC), sans chiffre. */
+/* ------------------------------------------------------------------------------------- */
+
+export const ACCROCHE = {
+  surtitre: 'Gestion juridique des sociétés au Maroc',
+  titre: 'La gestion juridique des entreprises,',
+  accent1: 'rigoureuse',
+  accent2: 'traçable',
+  texte:
+    'JURIKA digitalise et centralise la gestion juridique des sociétés suivies par votre cabinet : création, modifications, dissolution, liquidation. Actes générés à partir de modèles validés, sans intelligence artificielle, lecture automatique des pièces, chatbot juridique qui cite ses sources et Data Room partagée avec vos clients.',
+  garantie: 'Aucune intelligence artificielle ne rédige un acte : à données identiques, acte identique.',
+};
+
+/** Bande sous l'accroche (CDC 1 et 16.1) : statique, aucun defilement automatique. */
+export const BANDE = {
+  titre: 'Conçu pour les cabinets qui gèrent la vie juridique des sociétés, en droit marocain.',
+  operations: [
+    'Création de SARL',
+    'SARL à associé unique',
+    'Modifications et vie sociale',
+    'Assemblée générale ordinaire',
+    'Succursales',
+    'Dissolution et liquidation',
+    'Import de dossier',
+  ],
+  textes: ['Loi n° 5-96', 'Code de commerce', 'Code général des impôts', 'Loi n° 09-08'],
+};
+
+/**
+ * Piliers de la section des fonctionnalites : chacun regroupe des FONCTIONNALITES (par leur
+ * cle `icone`, chacune une seule fois) et montre une capture de la plateforme. "duo" : le
+ * meme ecran en theme clair et en theme sombre, cote a cote.
+ */
+export interface Pilier {
+  id: string;
+  surtitre: string;
+  titre: string;
+  texte: string;
+  fonctions: IconeFonction[];
+  capture: 'ticket-frise-clair' | 'apercu-acte-clair' | 'data-room-clair' | 'duo';
+  legende?: string;
+}
+
+export const PILIERS: Pilier[] = [
   {
-    q: 'Quelle disponibilité est prévue ?',
-    a: 'L’objectif est de 99,5 % de disponibilité en heures ouvrées. Il s’agit d’un objectif ; un engagement de service contractuel n’est prévu que pour le forfait Sur Devis, dans les conditions de son offre.',
+    id: 'pilier-parcours',
+    surtitre: 'Parcours guidés',
+    titre: 'Chaque opération suit son parcours, de la saisie à la clôture',
+    texte: 'Création, modification, dissolution, liquidation : le parcours guide le juriste à l’aide des référentiels de démarches du cabinet, sans ressaisie.',
+    fonctions: ['parcours', 'saisie', 'delais'],
+    capture: 'ticket-frise-clair',
   },
+  {
+    id: 'pilier-actes',
+    surtitre: 'Actes',
+    titre: 'Des actes produits à partir de vos modèles validés',
+    texte: 'Le cabinet relit chaque acte et en reste seul responsable avant sa signature, son dépôt ou sa remise à un client.',
+    fonctions: ['actes', 'edition'],
+    capture: 'apercu-acte-clair',
+  },
+  {
+    id: 'pilier-dataroom',
+    surtitre: 'Data Room et accès du client',
+    titre: 'Une Data Room par dossier, partagée avec le client',
+    texte: 'Chaque société suivie a son espace documentaire, organisé par opération et strictement cloisonné d’un cabinet à l’autre.',
+    fonctions: ['dataroom', 'client'],
+    capture: 'data-room-clair',
+  },
+  {
+    id: 'pilier-suivi',
+    surtitre: 'Suivi et traçabilité',
+    titre: 'Suivez l’avancement, retrouvez chaque action',
+    texte: 'Le responsable du cabinet voit l’état exact de chaque ticket, par employé. Chaque utilisateur choisit le thème clair ou le thème sombre ; son choix est mémorisé sur son compte.',
+    fonctions: ['suivi', 'messagerie'],
+    capture: 'duo',
+    legende: 'Le même tableau de bord, en thème clair et en thème sombre.',
+  },
+];
+
+/** Bande de l'intelligence artificielle (CDC P1, RG-VAR-09, 12.1) : elle ne redige aucun acte. */
+export const IA = {
+  surtitre: 'Intelligence artificielle',
+  titre: 'L’IA vous assiste, elle ne rédige pas vos actes',
+  texte:
+    'L’intelligence artificielle intervient en appui : elle lit vos pièces et répond à vos questions juridiques générales. Vous gardez toujours la main sur ce qui est retenu.',
+  fonction: 'chatbot' as IconeFonction,
+};
+
+/** Rappel de l'appel final (ancienne vitrine, lot L7 E3). */
+export const RAPPEL_FINAL = [
+  { titre: 'Parcours guidés', texte: 'Création, modifications, dissolution, liquidation ; lecture automatique de la CIN et du certificat négatif.' },
+  { titre: 'Data Room par dossier', texte: 'Documents, dépôts et demandes du client, selon les permissions accordées.' },
+  { titre: 'Chatbot juridique', texte: 'Réponses tirées de sources fiables, toujours citées.' },
+  { titre: 'Suivi et traçabilité', texte: 'Tickets, démarches et délais ; auteur, date et heure de chaque action.' },
 ];
