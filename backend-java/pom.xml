@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.0</version>
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
 
@@ -39,11 +39,11 @@
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <spring-cloud.version>2024.0.0</spring-cloud.version>
+        <spring-cloud.version>2025.1.3</spring-cloud.version>
         <jjwt.version>0.12.6</jjwt.version>
         <googleauth.version>1.5.0</googleauth.version>
         <zxing.version>3.5.3</zxing.version>
-        <springdoc.version>2.7.0</springdoc.version>
+        <springdoc.version>3.1.1</springdoc.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <logstash-encoder.version>7.4</logstash-encoder.version>
         <sentry.version>7.14.0</sentry.version>
