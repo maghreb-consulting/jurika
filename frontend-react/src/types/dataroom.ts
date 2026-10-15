@@ -158,7 +158,8 @@ export function displayFormeJuridique(
   if (d.formeJuridique === 'ETRANGERE') {
     return d.formeJuridiqueOrigine?.trim() || 'Société étrangère';
   }
-  return d.formeJuridique;
+  // Lot L6b : jamais le code brut a l'ecran ("SARL_AU" -> "SARL AU").
+  return d.formeJuridique ? d.formeJuridique.replace(/_/g, ' ') : null;
 }
 
 export interface DocumentSummary {
