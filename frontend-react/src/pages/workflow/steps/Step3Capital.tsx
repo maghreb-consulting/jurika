@@ -291,7 +291,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
             <div className="space-y-3">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
-                  <label htmlFor="creation-numeraire-montant" className="mb-1 block text-xs text-fg-subtle">
+                  <label htmlFor="creation-numeraire-montant" className="mb-1.5 block text-sm font-medium text-fg">
                     Montant total (MAD)
                   </label>
                   <div className="relative">
@@ -312,7 +312,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
                 </div>
                 {!importMode && (
                 <div>
-                  <label htmlFor="creation-numeraire-libere" className="mb-1 flex items-center gap-1 text-xs text-fg-subtle">
+                  <label htmlFor="creation-numeraire-libere" className="mb-1.5 flex items-center gap-1 text-sm font-medium text-fg">
                     Dont libéré (MAD)
                     <InfoBulle
                       libelle="Qu’est-ce que la part libérée ?"
@@ -707,7 +707,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
             </Select>
           </div>
           <div>
-            <label htmlFor="creation-mode-signature" className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
+            <label htmlFor="creation-mode-signature" className="mb-1.5 flex items-center gap-1 text-sm font-medium text-fg">
               Mode de signature sociale (art. 15)
               <InfoBulle
                 libelle="Que signifie le mode de signature ?"

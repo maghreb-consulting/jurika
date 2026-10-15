@@ -467,7 +467,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* 2026-08 — ICE requis a la creation (choix produit) : affiche dans tous les modes. */}
           <div>
-              <label htmlFor="creation-ice" className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
+              <label htmlFor="creation-ice" className="mb-1.5 flex items-center gap-1 text-sm font-medium text-fg">
                 ICE <span className="text-danger">*</span>
                 <InfoBulle
                   libelle="Qu’est-ce que l’ICE ?"

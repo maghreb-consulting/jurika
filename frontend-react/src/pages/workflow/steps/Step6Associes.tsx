@@ -1092,7 +1092,7 @@ export function Step6Associes({
                 {/* 2026-08 (contrat CREATION) — genre grammatical + associe-gerant. */}
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
-                    <label htmlFor={`associe-genre-${a.id}`} className="mb-1 flex items-center gap-1 text-xs text-fg-subtle">
+                    <label htmlFor={`associe-genre-${a.id}`} className="mb-1.5 flex items-center gap-1 text-sm font-medium text-fg">
                       Genre (accord grammatical)
                       <InfoBulle
                         libelle="À quoi sert le genre ?"
@@ -1280,7 +1280,7 @@ export function Step6Associes({
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <Select
                       label="Civilité"
@@ -1322,14 +1322,14 @@ export function Step6Associes({
                     />
                   ) : (
                     <div>
-                      <label className="mb-1 block text-xs text-fg-subtle">Type de pièce</label>
+                      <p className="mb-1.5 block text-sm font-medium text-fg">Type de pièce</p>
                       <p className="flex h-9 items-center rounded-lg border border-border bg-bg-overlay px-3 text-sm opacity-60">
                         {a.pieceType || 'reprise de l’étape 5'}
                       </p>
                     </div>
                   )}
                   <div>
-                    <label htmlFor={`associe-piece-numero-${a.id}`} className="mb-1 block text-xs text-fg-subtle">
+                    <label htmlFor={`associe-piece-numero-${a.id}`} className="mb-1.5 block text-sm font-medium text-fg">
                       {libelleNumeroPiece(a.pieceType)} <span className="text-danger">*</span>
                     </label>
                     <TextField
@@ -1347,7 +1347,7 @@ export function Step6Associes({
                       className="uppercase"
                     />
                   </div>
-                  <div className="md:col-span-4">
+                  <div className="sm:col-span-2">
                     <TextField
                       label="Adresse *"
                       aria-label="Adresse"
@@ -1387,7 +1387,7 @@ export function Step6Associes({
                   <div>
                     {isPropagated ? (
                       <>
-                        <label className="mb-1 block text-xs text-fg-subtle">Nationalité</label>
+                        <label className="mb-1.5 block text-sm font-medium text-fg">Nationalité</label>
                         <p className="flex h-9 items-center rounded-lg border border-border bg-bg-overlay px-3 text-sm opacity-60">
                           {a.nationalite || 'à saisir à l’étape 5'}
                         </p>
@@ -1515,7 +1515,7 @@ export function Step6Associes({
                             />
                           </div>
                           <div>
-                            <label className="mb-1 block text-[10px] text-fg-subtle">
+                            <label className="mb-1.5 block text-sm font-medium text-fg">
                               Montant de la ligne (calculé)
                             </label>
                             <div className="flex h-9 items-center justify-between rounded-lg border border-border bg-bg-overlay px-3 text-sm">
@@ -1580,7 +1580,7 @@ export function Step6Associes({
                     {/* Totaux derives (parts + montant + %) — synthese visible */}
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                       <div>
-                        <label className="mb-1 block text-[10px] text-fg-subtle">
+                        <label className="mb-1.5 block text-sm font-medium text-fg">
                           Total des parts
                         </label>
                         <div className="flex h-9 items-center rounded-lg border border-warning/30 bg-bg-raised px-3 text-sm font-bold">
@@ -1593,7 +1593,7 @@ export function Step6Associes({
                         )}
                       </div>
                       <div>
-                        <label className="mb-1 block text-[10px] text-fg-subtle">
+                        <label className="mb-1.5 block text-sm font-medium text-fg">
                           Montant total (MAD), calculé
                         </label>
                         <div className="flex h-9 items-center justify-between rounded-lg border border-border bg-bg-overlay px-3 text-sm">
@@ -1614,7 +1614,7 @@ export function Step6Associes({
                         )}
                       </div>
                       <div>
-                        <label className="mb-1 block text-[10px] text-fg-subtle">
+                        <label className="mb-1.5 block text-sm font-medium text-fg">
                           Part du capital détenue
                         </label>
                         <div className="flex h-9 items-center rounded-lg border border-warning/30 bg-bg-raised px-3 text-sm font-bold text-warning">

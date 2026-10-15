@@ -36,7 +36,7 @@ export function ValeurProposee({
   const affichee = confirmee ? valeur : proposition;
   return (
     <div>
-      <label htmlFor={id} className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
+      <label htmlFor={id} className="mb-1.5 flex items-center gap-1 text-sm font-medium text-fg">
         {label}
         <InfoBulle
           libelle={`Pourquoi « ${label} » est-elle proposée ?`}

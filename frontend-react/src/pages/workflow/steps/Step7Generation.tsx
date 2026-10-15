@@ -316,7 +316,7 @@ function BoucleSaisie({
               <div key={champ.cle}>
                 <label
                   htmlFor={`boucle-${boucle.nom}-${index}-${champ.cle}`}
-                  className="mb-1 block text-xs font-medium text-fg"
+                  className="mb-1.5 block text-sm font-medium text-fg"
                 >
                   {champ.label}
                 </label>
@@ -1459,7 +1459,7 @@ export function Step7Generation({
           </TexteAide>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="complement-lieuSignature" className="mb-1 block text-xs font-medium text-fg">
+              <label htmlFor="complement-lieuSignature" className="mb-1.5 block text-sm font-medium text-fg">
                 Lieu de signature (ville)
               </label>
               <TextField
@@ -1470,7 +1470,7 @@ export function Step7Generation({
               />
             </div>
             <div>
-              <label htmlFor="complement-dateSignature" className="mb-1 block text-xs font-medium text-fg">
+              <label htmlFor="complement-dateSignature" className="mb-1.5 block text-sm font-medium text-fg">
                 Date de signature
               </label>
               <TextField
@@ -1520,7 +1520,7 @@ export function Step7Generation({
               </div>
             ) : (
             <div>
-              <label htmlFor="complement-commissaireComptesNom" className="mb-1 block text-xs font-medium text-fg">
+              <label htmlFor="complement-commissaireComptesNom" className="mb-1.5 block text-sm font-medium text-fg">
                 Commissaire aux comptes (s’il en est désigné)
               </label>
               <TextField
@@ -1572,7 +1572,7 @@ export function Step7Generation({
                   <div key={champ.cle}>
                     <label
                       htmlFor={`complement-${champ.cle}`}
-                      className="mb-1 block text-xs font-medium text-fg"
+                      className="mb-1.5 block text-sm font-medium text-fg"
                     >
                       {champ.label}
                       {champ.documents.length > 1 && (

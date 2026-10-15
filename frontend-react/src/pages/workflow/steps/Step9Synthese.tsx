@@ -305,7 +305,7 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
             </p>
           </div>
           <div className="md:col-span-2">
-            <label htmlFor="creation-article-designation" className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
+            <label htmlFor="creation-article-designation" className="mb-1.5 flex items-center gap-1 text-sm font-medium text-fg">
               Article de désignation des statuts (facultatif)
               <InfoBulle
                 libelle="Qu’est-ce que l’article de désignation ?"

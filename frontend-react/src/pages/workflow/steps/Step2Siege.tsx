@@ -451,7 +451,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
             La durée de la société est saisie à l'étape 3 (Capital), pas ici. */}
         <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label htmlFor="creation-ville-greffe" className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
+            <label htmlFor="creation-ville-greffe" className="mb-1.5 flex items-center gap-1 text-sm font-medium text-fg">
               Ville du greffe
               <InfoBulle
                 libelle="À quoi sert la ville du greffe ?"

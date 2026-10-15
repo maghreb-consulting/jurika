@@ -1332,12 +1332,12 @@ function ModificationWorkflowPageBody() {
                           <span className="text-fg">
                             {it.label}
                             {it.newAssocie && (
-                              <span className="ml-1 rounded bg-success-soft px-1 py-0.5 text-[9px] font-semibold text-success">
+                              <span className="ml-1.5 inline-block whitespace-nowrap rounded bg-success-soft px-1.5 py-0.5 align-middle text-[11px] font-semibold leading-none text-success">
                                 nouvel associé (lecture de la CIN)
                               </span>
                             )}
                             {it.generic && (
-                              <span className="ml-1 rounded bg-warning-soft px-1 py-0.5 text-[9px] font-semibold text-warning">
+                              <span className="ml-1.5 inline-block whitespace-nowrap rounded bg-warning-soft px-1.5 py-0.5 align-middle text-[11px] font-semibold leading-none text-warning">
                                 type générique
                               </span>
                             )}

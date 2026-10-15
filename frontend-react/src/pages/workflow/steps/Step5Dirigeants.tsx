@@ -830,7 +830,7 @@ export function Step5Dirigeants({
                   onChange={(v) => update(d.id, { pieceType: v })}
                 />
                 <div>
-                  <label htmlFor={`dirigeant-piece-numero-${d.id}`} className="mb-1 flex items-center gap-1 text-xs text-fg-subtle">
+                  <label htmlFor={`dirigeant-piece-numero-${d.id}`} className="mb-1.5 flex items-center gap-1 text-sm font-medium text-fg">
                     {libelleNumeroPiece(d.pieceType)} <span className="text-danger">*</span>
                     <InfoBulle
                       libelle="Format du numéro"
@@ -1221,7 +1221,7 @@ function GeranceFields({
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
         {/* Mode de designation — DERIVE de la case « Gerant statutaire », jamais saisi. */}
         <div>
-          <label className="mb-1 block text-xs font-medium text-fg">
+          <label className="mb-1.5 block text-sm font-medium text-fg">
             Mode de désignation
           </label>
           <p
@@ -1239,7 +1239,7 @@ function GeranceFields({
 
         {/* Duree du mandat */}
         <div>
-          <label className="mb-1 block text-xs font-medium text-fg">
+          <label className="mb-1.5 block text-sm font-medium text-fg">
             Durée du mandat <span className="text-danger">*</span>
           </label>
           <div className="flex flex-wrap items-center gap-2">
@@ -1274,7 +1274,7 @@ function GeranceFields({
 
         {/* Remuneration */}
         <div>
-          <label className="mb-1 block text-xs font-medium text-fg">
+          <label className="mb-1.5 block text-sm font-medium text-fg">
             Rémunération de la gérance <span className="text-danger">*</span>
           </label>
           <div className="flex flex-wrap items-center gap-2">

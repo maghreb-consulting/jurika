@@ -227,7 +227,7 @@ export function LiquidationAnnoncePanel({
       {onAvisChange && (
         <div className="grid gap-3 md:grid-cols-2" data-testid="avis-cloture">
           <div>
-            <label htmlFor="avis-acte-nature" className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
+            <label htmlFor="avis-acte-nature" className="mb-1.5 flex items-center gap-1 text-sm font-medium text-fg">
               Acte constatant la clôture *
               <InfoBulle
                 libelle="Quel acte constate la clôture ?"
