@@ -9,6 +9,9 @@ ARG VITE_API_URL=https://api.jurika.ma/api/v1
 ARG VITE_REALTIME_URL=
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_REALTIME_URL=$VITE_REALTIME_URL
+# Lot L7 (E3) : adresse de contact de la vitrine, vide par defaut (aucune adresse affichee).
+ARG VITE_CONTACT_EMAIL=
+ENV VITE_CONTACT_EMAIL=$VITE_CONTACT_EMAIL
 
 RUN npm run build
 

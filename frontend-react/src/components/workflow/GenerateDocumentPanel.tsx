@@ -4,7 +4,11 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { TexteAide } from '../ui/Aide';
+import { useEnEssai, estEnEssai } from '../../store/essaiStore';
+import { ApercuPagesModal } from '../document/ApercuPages';
+import type { ApercuPages } from '../../types/apercu';
 import {
+  apercuDocument,
   generateDocument,
   listTemplatesForWorkflow,
   type TemplateInfo,
@@ -158,6 +162,11 @@ export function GenerateDocumentPanel({
     };
   }, []);
 
+  // Decision du 2026-10-14 (RG-ESS-05, RG-ESS-06) : pendant l'essai, le document n'est pas
+  // telecharge ; il s'affiche en apercu (pages filigranees produites par le serveur).
+  const enEssai = useEnEssai();
+  const [apercuOuvert, setApercuOuvert] = useState<{ cle: string; titre: string; apercu: ApercuPages } | null>(null);
+
   const handleGenerate = useCallback(
     async (tpl: MergedTemplate) => {
       setGenerating((prev) => ({ ...prev, [tpl.code]: true }));
@@ -166,6 +175,11 @@ export function GenerateDocumentPanel({
         const payload = buildPayload();
         // dossierId → enrichissement identite societe depuis la BD cote backend.
         if (dossierId && payload.dossierId == null) payload.dossierId = dossierId;
+        if (await estEnEssai()) {
+          const r = await apercuDocument(tpl.workflowCode, tpl.code, payload);
+          setApercuOuvert({ cle: `${tpl.code}-${Date.now()}`, titre: tpl.documentKind || tpl.code, apercu: r.apercu });
+          return;
+        }
         const { blob, filename } = await generateDocument(
           tpl.workflowCode,
           tpl.code,
@@ -224,11 +238,27 @@ export function GenerateDocumentPanel({
 
   return (
     <div className="space-y-3">
+    {enEssai !== false ? (
+      <TexteAide cle="generer-documents-essai" titre="Ce qu’il faut faire">
+        Cliquez sur « Générer le document » : il est produit à partir des données du dossier
+        puis affiché en aperçu, avec la mention « VERSION D’ÉVALUATION — SANS VALEUR JURIDIQUE »
+        (essai gratuit : aucun téléchargement). S’il manque une donnée, le message la nomme ;
+        complétez-la puis réessayez.
+      </TexteAide>
+    ) : (
     <TexteAide cle="generer-documents" titre="Ce qu’il faut faire">
       Cliquez sur « Générer le document » : il est produit à partir des données du dossier
       puis téléchargé. S’il manque une donnée, le message la nomme ; complétez-la puis
       réessayez.
     </TexteAide>
+    )}
+    <ApercuPagesModal
+      open={apercuOuvert !== null}
+      cle={apercuOuvert?.cle ?? null}
+      titre={apercuOuvert?.titre ?? ''}
+      charger={() => (apercuOuvert ? Promise.resolve(apercuOuvert.apercu) : Promise.reject(new Error('Aperçu absent')))}
+      onClose={() => setApercuOuvert(null)}
+    />
     <div
       className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
       data-testid="generate-document-panel"
@@ -251,7 +281,9 @@ export function GenerateDocumentPanel({
               </span>
             </div>
             <p className="text-xs text-fg-subtle">
-              Le document est généré au format Word, puis téléchargé.
+              {enEssai !== false
+                ? 'Le document est généré puis affiché en aperçu (essai gratuit).'
+                : 'Le document est généré au format Word, puis téléchargé.'}
             </p>
 
             {error ? (
@@ -278,7 +310,7 @@ export function GenerateDocumentPanel({
                 {success ? (
                   <>
                     <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden />
-                    Téléchargé
+                    {enEssai !== false ? 'Généré' : 'Téléchargé'}
                   </>
                 ) : error ? (
                   <>

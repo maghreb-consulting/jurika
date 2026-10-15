@@ -31,7 +31,7 @@ public class WorkspaceEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    // Sprint 11 V16 — Trial 14 jours + ICE/IF/RC/city + flag wizard
+    // Sprint 11 V16 -- essai (7 jours depuis L7 E4, RG-SOU-02) + ICE/IF/RC/city + flag wizard
     @Column(name = "trial_started_at")
     private Instant trialStartedAt;
     @Column(name = "trial_ends_at")
@@ -88,6 +88,32 @@ public class WorkspaceEntity {
     private Instant activeSince;
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
+
+    // Lot L7 (E5) V44 -- mois d'abonnement (RG-PLN-01), rythme, archivage (RG-TAR-07).
+    @Column(name = "abonnement_debut")
+    private java.time.LocalDate abonnementDebut;
+    @Column(name = "rythme_paiement", length = 10)
+    private String rythmePaiement;
+    @Column(name = "archive_le")
+    private Instant archiveLe;
+    @Column(name = "archive_motif", length = 20)
+    private String archiveMotif;
+    /** Lot L7 (E8), auth V46 : suspension pour impaye (article 4.4 du contrat). */
+    @Column(name = "suspendu_le")
+    private Instant suspenduLe;
+    @Column(name = "suspension_motif", length = 20)
+    private String suspensionMotif;
+    // Lot L7 (E4) V40 -- cycle de l'essai gratuit (RG-ESS-10, RG-ESS-11).
+    @Column(name = "essai_expire_le")
+    private Instant essaiExpireLe;
+    @Column(name = "essai_avertissement_le")
+    private Instant essaiAvertissementLe;
+    @Column(name = "essai_prolonge_le")
+    private Instant essaiProlongeLe;
+    @Column(name = "essai_prolongation_jours")
+    private Integer essaiProlongationJours;
+    @Column(name = "essai_fin_motif", length = 300)
+    private String essaiFinMotif;
 
     @PrePersist
     void onPersist() {
@@ -157,4 +183,26 @@ public class WorkspaceEntity {
     public void setActiveSince(Instant v) { this.activeSince = v; }
     public Instant getCancelledAt() { return cancelledAt; }
     public void setCancelledAt(Instant v) { this.cancelledAt = v; }
+    public java.time.LocalDate getAbonnementDebut() { return abonnementDebut; }
+    public void setAbonnementDebut(java.time.LocalDate v) { this.abonnementDebut = v; }
+    public String getRythmePaiement() { return rythmePaiement; }
+    public void setRythmePaiement(String v) { this.rythmePaiement = v; }
+    public Instant getArchiveLe() { return archiveLe; }
+    public void setArchiveLe(Instant v) { this.archiveLe = v; }
+    public String getArchiveMotif() { return archiveMotif; }
+    public void setArchiveMotif(String v) { this.archiveMotif = v; }
+    public Instant getSuspenduLe() { return suspenduLe; }
+    public void setSuspenduLe(Instant v) { this.suspenduLe = v; }
+    public String getSuspensionMotif() { return suspensionMotif; }
+    public void setSuspensionMotif(String v) { this.suspensionMotif = v; }
+    public Instant getEssaiExpireLe() { return essaiExpireLe; }
+    public void setEssaiExpireLe(Instant v) { this.essaiExpireLe = v; }
+    public Instant getEssaiAvertissementLe() { return essaiAvertissementLe; }
+    public void setEssaiAvertissementLe(Instant v) { this.essaiAvertissementLe = v; }
+    public Instant getEssaiProlongeLe() { return essaiProlongeLe; }
+    public void setEssaiProlongeLe(Instant v) { this.essaiProlongeLe = v; }
+    public Integer getEssaiProlongationJours() { return essaiProlongationJours; }
+    public void setEssaiProlongationJours(Integer v) { this.essaiProlongationJours = v; }
+    public String getEssaiFinMotif() { return essaiFinMotif; }
+    public void setEssaiFinMotif(String v) { this.essaiFinMotif = v; }
 }

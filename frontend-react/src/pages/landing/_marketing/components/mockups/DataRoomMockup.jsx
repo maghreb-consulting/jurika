@@ -11,19 +11,18 @@ import { Icon } from './icons.jsx';
  * saisie des dirigeants — pas ici : la Data Room archive, cloisonne et partage.
  */
 const TABS = [
-  { label: 'Dossier Juridique', icon: 'fileText', tone: 'accent', active: true },
-  { label: 'Dossier Comptable', icon: 'calculator', tone: 'success' },
-  { label: 'Dossier Fiscal', icon: 'landmark', tone: 'warning' },
-  { label: 'Dépôts', icon: 'upload', tone: 'warning' },
-  { label: 'Demandes', icon: 'messageSquare', tone: 'accent' },
+  { label: 'Dossier juridique', icon: 'fileText', tone: 'accent', active: true },
+  { label: 'Dépôts du client', icon: 'upload', tone: 'warning' },
+  { label: 'Demandes du client', icon: 'messageSquare', tone: 'accent' },
+  { label: 'Requêtes du cabinet', icon: 'send', tone: 'success' },
 ];
 const DOCS = [
   { title: 'Statuts SARL AU', meta: 'Statuts · v3 · 26/07/2026' },
   { title: 'PV Assemblée Générale Ordinaire', meta: 'PV AGO · v1 · 12/07/2026' },
 ];
 const DEPOSITS = [
-  { title: 'Kbis_Atlas_2026.pdf', meta: 'Déposé par le client · 26/07/2026', state: 'À valider', tone: 'warning', ico: 'upload' },
-  { title: 'Bilan_2025.pdf', meta: 'Validé · classé au dossier comptable', state: 'Validé', tone: 'success', ico: 'fileText' },
+  { title: 'Certificat_negatif.pdf', meta: 'Déposé par le client · 26/07/2026', state: 'Déposé', tone: 'warning', ico: 'upload' },
+  { title: 'Contrat_de_bail.pdf', meta: 'Déposé par le client · 24/07/2026', state: 'Déposé', tone: 'success', ico: 'fileText' },
 ];
 
 export function DataRoomMockup() {
@@ -52,7 +51,7 @@ export function DataRoomMockup() {
           </div>
 
           <div className="mk-card mk-docs">
-            <div className="mk-card__head"><Icon name="fileText" size={15} /> Documents en vigueur <span className="mk-count">4</span></div>
+            <div className="mk-card__head"><Icon name="fileText" size={15} /> Documents en vigueur <span className="mk-count">2</span></div>
             {DOCS.map((d) => (
               <div className="mk-docrow" key={d.title}>
                 <span className="mk-docrow__ico"><Icon name="fileText" size={15} /></span>
@@ -68,7 +67,7 @@ export function DataRoomMockup() {
           </div>
 
           <div className="mk-card mk-docs">
-            <div className="mk-card__head"><Icon name="upload" size={15} /> Dépôts client <span className="mk-count">3</span></div>
+            <div className="mk-card__head"><Icon name="upload" size={15} /> Dépôts du client <span className="mk-count">2</span></div>
             {DEPOSITS.map((d) => (
               <div className="mk-docrow" key={d.title}>
                 <span className="mk-docrow__ico"><Icon name={d.ico} size={15} /></span>
@@ -82,7 +81,7 @@ export function DataRoomMockup() {
           </div>
 
           <div className="mk-perm">
-            <Icon name="lock" size={13} /> Permissions client : voir · télécharger · imprimer — cloisonné par cabinet (RLS)
+            <Icon name="lock" size={13} /> Permissions du client : consultation · téléchargement · dépôt · demandes
           </div>
         </div>
       </div>

@@ -31,6 +31,8 @@ import { ClausesLibresPanel } from './ClausesLibresPanel';
 import { GeneratedDocPreview } from '../document/GeneratedDocPreview';
 import { DocumentEditModal } from '../document/DocumentEditModal';
 import type { DocState } from './documentBlocks';
+import { useEnEssai } from '../../store/essaiStore';
+import { AideApercuEssai, ApercuPagesView } from '../document/ApercuPages';
 
 export type { DocState, UseDocumentBlocksParams } from './documentBlocks';
 
@@ -72,6 +74,8 @@ export function WorkflowDocumentBlock({
 }: WorkflowDocumentBlockProps) {
   const title = tpl.documentKind || tpl.code;
   const [editing, setEditing] = useState(false);
+  // Decision du 2026-10-14 (RG-ESS-05) : pendant l'essai, ni telechargement ni edition du fichier.
+  const enEssai = useEnEssai();
   return (
     <div
       className={`overflow-hidden rounded-xl border bg-bg-raised shadow-sm ${
@@ -167,7 +171,13 @@ export function WorkflowDocumentBlock({
                 filename={state.filename ?? title}
               />
             )}
-            {state.previewOpen && !state.blob && (
+            {state.previewOpen && !state.blob && state.apercu && (
+              <div className="max-h-[70vh] space-y-3 overflow-auto rounded-lg border border-border bg-bg-overlay p-3">
+                {state.apercu.filigrane && <AideApercuEssai />}
+                <ApercuPagesView apercu={state.apercu} titre={title} />
+              </div>
+            )}
+            {state.previewOpen && !state.blob && !state.apercu && (
               <div className="rounded-lg border border-border bg-bg-overlay p-3 text-[11px] text-fg-subtle">
                 <Eye className="mr-1 inline h-3.5 w-3.5 align-text-bottom" />
                 Aperçu indisponible : régénérez le document pour l’afficher.
@@ -195,7 +205,7 @@ export function WorkflowDocumentBlock({
               >
                 <RefreshCcw className="h-3.5 w-3.5" /> Régénérer
               </button>
-              {onEdited && (
+              {onEdited && enEssai === false && (
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
@@ -206,6 +216,7 @@ export function WorkflowDocumentBlock({
                   <Pencil className="h-3.5 w-3.5" /> Éditer
                 </button>
               )}
+              {enEssai === false && (
               <button
                 type="button"
                 onClick={onDownload}
@@ -213,13 +224,14 @@ export function WorkflowDocumentBlock({
               >
                 <Download className="h-3.5 w-3.5" /> Télécharger (Word)
               </button>
+              )}
               {!state.validated ? (
                 <button
                   type="button"
                   onClick={onValidate}
                   data-testid={`validate-btn-${tpl.code}`}
                   className={`flex h-9 items-center justify-center gap-1.5 rounded-lg bg-success text-xs font-semibold text-bg-raised transition hover:bg-success/85 ${
-                    onEdited ? 'col-span-2' : ''
+                    onEdited || enEssai !== false ? 'col-span-2' : ''
                   }`}
                 >
                   <CheckCircle className="h-3.5 w-3.5" /> Valider
@@ -229,7 +241,7 @@ export function WorkflowDocumentBlock({
                   type="button"
                   onClick={onRegenerate}
                   className={`flex h-9 items-center justify-center gap-1.5 rounded-lg border border-success bg-success/10 text-xs text-success ${
-                    onEdited ? 'col-span-2' : ''
+                    onEdited || enEssai !== false ? 'col-span-2' : ''
                   }`}
                 >
                   <RefreshCcw className="h-3.5 w-3.5" /> Régénérer

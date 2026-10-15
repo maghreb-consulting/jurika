@@ -96,6 +96,9 @@ public class SetUserStatusUseCase {
 
         // Reactivation EMPLOYE : on re-applique le quota plan (un EMPLOYE INACTIVE
         // ne consomme pas de siege, donc le reactiver peut depasser la limite).
+        if (cmd.active() && target.role() == Role.EMPLOYE) {
+            verifierEmployeEssai(target.workspaceId());
+        }
         if (cmd.active() && target.role() == Role.EMPLOYE && planLimitsService != null) {
             planLimitsService.enforceUserLimit(target.workspaceId());
         }
@@ -134,4 +137,17 @@ public class SetUserStatusUseCase {
 
         return new Result(target.id(), previous, next, true);
     }
+    /** Lot L7 (E4), RG-ESS-04 : pendant l'essai gratuit, 1 superviseur et 1 employe. */
+    private org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.EssaiQuotas> essaiQuotas;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setEssaiQuotas(org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.EssaiQuotas> q) {
+        this.essaiQuotas = q;
+    }
+
+    private void verifierEmployeEssai(java.util.UUID workspaceId) {
+        ma.jurika.common.trial.EssaiQuotas q = essaiQuotas == null ? null : essaiQuotas.getIfAvailable();
+        if (q != null) q.verifierNouvelEmploye(workspaceId);
+    }
+
 }

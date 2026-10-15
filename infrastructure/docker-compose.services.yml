@@ -150,6 +150,11 @@ services:
       # Liens des courriels (verification d'adresse, confirmation d'un changement de
       # compte) : adresse publique du front. Sans elle, le lien visait localhost:5173.
       FRONTEND_URL: ${FRONTEND_URL:-http://${JURIKA_LAN_HOST:-localhost}}
+      # Lot L7 (E5), RG-PLN-02 : alertes de quota (superviseur et canal du super-admin) envoyees
+      # au service temps reel. Sans cette adresse, le service visait localhost:3000, injoignable
+      # depuis le conteneur (l'alerte etait perdue, seulement journalisee).
+      JURIKA_REALTIME_BASE_URL: ${JURIKA_REALTIME_BASE_URL:-http://realtime-service:3000}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-}
     volumes:
       - ./secrets/jwt:/run/secrets/jwt:ro
     depends_on:
@@ -415,6 +420,10 @@ services:
       retries: 5
       # Premier boot : DL des poids docTR (~200 MB) puis warmup torch.
       start_period: 180s
+    volumes:
+      # Lot L7 (E1) : poids docTR gardes d'une recreation a l'autre (sans ce volume,
+      # ~160 Mo retelecharges a chaque fois : 12 minutes a l'activation de L6).
+      - ocr_modeles:/root/.cache/doctr
     networks:
       - jurika-network
 

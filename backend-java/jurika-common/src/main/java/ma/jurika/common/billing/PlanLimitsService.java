@@ -2,6 +2,7 @@ package ma.jurika.common.billing;
 
 import ma.jurika.common.billing.PlanCatalog.Plan;
 import ma.jurika.common.billing.PlanCatalog.Quotas;
+import ma.jurika.common.exception.FonctionHorsForfaitException;
 import ma.jurika.common.exception.PlanLimitException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,154 +11,240 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 /**
- * Sprint Beta (pricing-deploy) — TASK 3.
+ * Quotas et fonctions du forfait d'un cabinet, verifies par le serveur (P6).
  *
- * <p>Enforce les quotas du plan tarifaire actif d'un workspace
- * (RG-SAAS-06 + RG-BL-QUOTA). Lit {@code workspaces.selected_plan} pour
- * connaitre le plan, compte les entites concernees via JDBC direct, et
- * leve {@link PlanLimitException} si le seuil est atteint.
+ * <p><b>Lot L7 (E5)</b>, CDC 4.7 :
+ * <ul>
+ *   <li>RG-PLN-01 : sont comptes les dossiers OUVERTS AU COURS DU MOIS D'ABONNEMENT : un dossier
+ *       compte des qu'un ticket y est ouvert dans le mois, une seule fois quel que soit le nombre
+ *       de tickets (l'ancien compteur comptait tous les dossiers du cabinet). Mois d'abonnement :
+ *       {@link PeriodeAbonnement}, ancre sur {@code workspaces.abonnement_debut} (auth V44).</li>
+ *   <li>RG-PLN-03 : a 100 % du quota de dossiers, l'ouverture d'un dossier de plus dans le mois est
+ *       bloquee ({@link #enforceDossierLimit}) ; les dossiers deja comptes restent utilisables.</li>
+ *   <li>RG-PLN-04 : a 100 % du stockage, l'ajout de documents est bloque
+ *       ({@link #enforceStorageLimit}) ; consultation et telechargement restent permis (rien n'est
+ *       controle a la lecture).</li>
+ *   <li>RG-PLN-08 : les clients ne sont pas comptes ; le superviseur non plus (1 par cabinet) :
+ *       le quota d'utilisateurs porte sur les acces EMPLOYES.</li>
+ *   <li>CDC 4.5 : {@link #exigerFonction} refuse une fonction hors forfait.</li>
+ * </ul>
  *
- * <p>Pour le P0 demo : utilisateurs (EMPLOYE + SUPERVISEUR + CLIENT) et
- * dossiers ({@code entreprise_dossiers}). Storage = P1 partiel (compte
- * seulement pour le {@code /usage} sans bloquer l'upload).
- *
- * <p>Activation conditionnelle via property
- * {@code jurika.plan-limits.enabled=true} (defaut true). On peut couper
- * l'enforcement en local pour les tests d'integration qui sortent
- * volontairement du plan.
- *
- * <p>Resilience : si {@code workspaces.selected_plan} est NULL (workspaces
- * legacy pre-Sprint 11), on assume le plan {@code essentiel} (le plus
- * restrictif) — fail-safe vs fail-open.
+ * <p>Forfait absent ({@code selected_plan} NULL, workspace anterieur aux forfaits) : les quotas du
+ * forfait Essentiel (le plus restrictif) s'appliquent, et l'instantane le dit
+ * ({@code forfaitDefini = false}) au lieu de le masquer. Pendant l'essai ({@code trial_status =
+ * TRIAL_ACTIVE}), les fonctions sont celles du forfait Professionnel (RG-ESS-07).
  */
 @Service
 @ConditionalOnProperty(name = "jurika.plan-limits.enabled", havingValue = "true", matchIfMissing = true)
 public class PlanLimitsService {
 
     private static final Logger log = LoggerFactory.getLogger(PlanLimitsService.class);
-    private static final String DEFAULT_PLAN = "essentiel";
+    private static final long OCTETS_PAR_GO = 1024L * 1024L * 1024L;
 
     private final JdbcTemplate jdbc;
     private final boolean enforcementEnabled;
+    private final Clock horloge;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public PlanLimitsService(JdbcTemplate jdbc,
                              @Value("${jurika.plan-limits.enforcement-enabled:true}") boolean enforcementEnabled) {
-        this.jdbc = jdbc;
-        this.enforcementEnabled = enforcementEnabled;
+        this(jdbc, enforcementEnabled, Clock.systemUTC());
     }
 
+    PlanLimitsService(JdbcTemplate jdbc, boolean enforcementEnabled, Clock horloge) {
+        this.jdbc = jdbc;
+        this.enforcementEnabled = enforcementEnabled;
+        this.horloge = horloge;
+    }
+
+    /**
+     * Consommation du forfait. {@code dossiers} = dossiers comptes dans le mois d'abonnement
+     * [{@code periodeDebut}, {@code periodeFin}). {@code storageMesure = false} si les tables de la
+     * Data Room sont absentes de la base lue (le stockage n'est alors pas mesure, et le dit).
+     */
     public record UsageSnapshot(
             String planCode,
             String planLabel,
             int users, int maxUsers, boolean usersUnlimited,
             int dossiers, int maxDossiers, boolean dossiersUnlimited,
-            long storageBytes, int maxStorageGb, boolean storageUnlimited
+            long storageBytes, int maxStorageGb, boolean storageUnlimited,
+            boolean forfaitDefini,
+            LocalDate periodeDebut,
+            LocalDate periodeFin,
+            boolean storageMesure
     ) {
         public boolean usersOver()    { return !usersUnlimited && users >= maxUsers; }
         public boolean dossiersOver() { return !dossiersUnlimited && dossiers >= maxDossiers; }
+        public boolean storageOver()  { return !storageUnlimited && storageBytes >= (long) maxStorageGb * OCTETS_PAR_GO; }
     }
 
-    // ─── Snapshot pour /usage endpoint ──────────────────────────────────
+    /** Forfait du cabinet tel que lu en base. */
+    record Contexte(Plan plan, boolean forfaitDefini, LocalDate ancre, boolean essaiEnCours) {}
+
+    // ------------------------------------------------------------------ lecture
+
     public UsageSnapshot snapshot(UUID workspaceId) {
-        Plan plan = currentPlan(workspaceId);
-        Quotas q = plan.quotas();
+        Contexte c = contexte(workspaceId);
+        Quotas q = c.plan().quotas();
+        PeriodeAbonnement periode = PeriodeAbonnement.courante(c.ancre(), horloge.instant());
         int users = countUsers(workspaceId);
-        int dossiers = countDossiers(workspaceId);
-        long storage = countStorageBytes(workspaceId);
+        int dossiers = countDossiersDuMois(workspaceId, periode);
+        Long storage = countStorageBytes(workspaceId);
         return new UsageSnapshot(
-                plan.internalCode(), plan.displayLabel(),
+                c.plan().internalCode(), c.plan().displayLabel(),
                 users, q.maxUsers(), q.isUsersUnlimited(),
                 dossiers, q.maxDossiers(), q.isDossiersUnlimited(),
-                storage, q.maxStorageGb(), q.isStorageUnlimited());
+                storage == null ? 0L : storage, q.maxStorageGb(), q.isStorageUnlimited(),
+                c.forfaitDefini(), periode.debut(), periode.fin(), storage != null);
     }
 
-    // ─── Enforcement points ─────────────────────────────────────────────
-    /** A appeler AVANT d'inserer un nouvel utilisateur. */
+    /** Mois d'abonnement courant du cabinet. */
+    public PeriodeAbonnement periodeCourante(UUID workspaceId) {
+        return PeriodeAbonnement.courante(contexte(workspaceId).ancre(), horloge.instant());
+    }
+
+    /** Dossiers comptes dans le mois d'abonnement courant (RG-PLN-01). */
+    public int dossiersDuMois(UUID workspaceId) {
+        return countDossiersDuMois(workspaceId, periodeCourante(workspaceId));
+    }
+
+    /** Le forfait du cabinet (ou de l'essai) donne-t-il acces a la fonction ? */
+    public boolean fonctionIncluse(UUID workspaceId, FonctionForfait fonction) {
+        Contexte c = contexte(workspaceId);
+        if (c.essaiEnCours()) return PlanCatalog.PROFESSIONNEL.inclut(fonction);
+        return c.plan().inclut(fonction);
+    }
+
+    // ------------------------------------------------------------------ controles
+
+    /** A appeler AVANT d'inviter ou de reactiver un EMPLOYE. */
     public void enforceUserLimit(UUID workspaceId) {
         if (!enforcementEnabled) return;
-        Plan plan = currentPlan(workspaceId);
+        Plan plan = contexte(workspaceId).plan();
         Quotas q = plan.quotas();
         if (q.isUsersUnlimited()) return;
         int current = countUsers(workspaceId);
         if (current >= q.maxUsers()) {
             throw new PlanLimitException(
                     "PLAN_LIMIT_USERS",
-                    String.format("Limite d\u2019utilisateurs atteinte pour la formule %s : %d/%d. "
-                            + "Passez \u00e0 la formule sup\u00e9rieure pour ajouter des utilisateurs.",
+                    String.format(Locale.FRANCE, "Quota d\u2019acc\u00e8s employ\u00e9s atteint pour le forfait %s : %d sur %d. "
+                            + "Changez de forfait pour ajouter un employ\u00e9.",
                             plan.displayLabel(), current, q.maxUsers()),
                     "users", current, q.maxUsers(),
                     plan.internalCode(),
-                    upgradeHintFor(plan, "users"));
-        }
-    }
-
-    /** A appeler AVANT d'inserer un nouvel entreprise_dossier. */
-    public void enforceDossierLimit(UUID workspaceId) {
-        if (!enforcementEnabled) return;
-        Plan plan = currentPlan(workspaceId);
-        Quotas q = plan.quotas();
-        if (q.isDossiersUnlimited()) return;
-        int current = countDossiers(workspaceId);
-        if (current >= q.maxDossiers()) {
-            throw new PlanLimitException(
-                    "PLAN_LIMIT_DOSSIERS",
-                    String.format("Limite de dossiers atteinte pour la formule %s : %d/%d. "
-                            + "Passez \u00e0 la formule sup\u00e9rieure pour cr\u00e9er d\u2019autres dossiers.",
-                            plan.displayLabel(), current, q.maxDossiers()),
-                    "dossiers", current, q.maxDossiers(),
-                    plan.internalCode(),
-                    upgradeHintFor(plan, "dossiers"));
+                    upgradeHintFor(plan));
         }
     }
 
     /**
-     * Storage P1 — pour l'instant on logge le depassement sans bloquer
-     * l'upload (eviter de bloquer la demo si MinIO mesure mal le total).
-     * Le frontend l'affiche en warning via /usage.
+     * RG-PLN-01 et RG-PLN-03 : a appeler, DANS la transaction qui ouvre le ticket, avant de l'ouvrir.
+     * Le dossier deja compte dans le mois passe toujours ; sinon, le quota atteint bloque. Un verrou
+     * transactionnel par cabinet serialise les ouvertures concurrentes (deux ouvertures simultanees
+     * ne depassent pas le quota).
+     *
+     * @param dossierId dossier du ticket, ou {@code null} pour un dossier nouveau
      */
-    public void warnIfStorageOver(UUID workspaceId, long incomingBytes) {
-        Plan plan = currentPlan(workspaceId);
-        Quotas q = plan.quotas();
-        if (q.isStorageUnlimited()) return;
-        long current = countStorageBytes(workspaceId);
-        long limit = (long) q.maxStorageGb() * 1024L * 1024L * 1024L;
-        if (current + incomingBytes > limit) {
-            log.warn("Storage limit warning workspace={} plan={} current={}MB incoming={}MB limit={}GB",
-                    workspaceId, plan.internalCode(),
-                    current / 1024 / 1024, incomingBytes / 1024 / 1024,
-                    q.maxStorageGb());
+    public void enforceDossierLimit(UUID workspaceId, UUID dossierId) {
+        if (!enforcementEnabled) return;
+        Contexte c = contexte(workspaceId);
+        Quotas q = c.plan().quotas();
+        if (q.isDossiersUnlimited()) return;
+        jdbc.queryForObject("SELECT pg_advisory_xact_lock(hashtext(?))", Object.class,
+                "jurika-quota-dossiers:" + workspaceId);
+        PeriodeAbonnement periode = PeriodeAbonnement.courante(c.ancre(), horloge.instant());
+        if (dossierId != null && dossierDejaCompte(workspaceId, dossierId, periode)) return;
+        int current = countDossiersDuMois(workspaceId, periode);
+        if (current >= q.maxDossiers()) {
+            throw new PlanLimitException(
+                    "PLAN_LIMIT_DOSSIERS",
+                    String.format(Locale.FRANCE, "Quota de dossiers du mois atteint pour le forfait %s : %d dossiers ouverts sur %d "
+                            + "depuis le %s. Les dossiers d\u00e9j\u00e0 ouverts ce mois-ci restent accessibles ; "
+                            + "pour en ouvrir un autre, changez de forfait ou attendez le %s.",
+                            c.plan().displayLabel(), current, q.maxDossiers(),
+                            formatDate(periode.debut()), formatDate(periode.fin())),
+                    "dossiers", current, q.maxDossiers(),
+                    c.plan().internalCode(),
+                    upgradeHintFor(c.plan()));
         }
     }
 
-    // ─── DB queries ─────────────────────────────────────────────────────
-    private Plan currentPlan(UUID workspaceId) {
-        String code;
-        try {
-            code = jdbc.queryForObject(
-                    "SELECT selected_plan FROM workspaces WHERE id = ?",
-                    String.class, workspaceId);
-        } catch (org.springframework.dao.EmptyResultDataAccessException ex) {
-            log.warn("Workspace {} introuvable lors du check plan -- defaut {}", workspaceId, DEFAULT_PLAN);
-            return PlanCatalog.findByCode(DEFAULT_PLAN).orElseThrow();
+    /**
+     * RG-PLN-04 : a appeler avant d'AJOUTER un document. L'ajout qui ferait depasser le stockage du
+     * forfait est refuse ; la consultation et le telechargement ne passent jamais par ici.
+     */
+    public void enforceStorageLimit(UUID workspaceId, long incomingBytes) {
+        if (!enforcementEnabled) return;
+        Plan plan = contexte(workspaceId).plan();
+        Quotas q = plan.quotas();
+        if (q.isStorageUnlimited()) return;
+        Long current = countStorageBytes(workspaceId);
+        if (current == null) {
+            throw new IllegalStateException("Stockage non mesurable : tables de la Data Room absentes de la base");
         }
-        return PlanCatalog.findByCode(code != null ? code : DEFAULT_PLAN)
-                .orElse(PlanCatalog.findByCode(DEFAULT_PLAN).orElseThrow());
+        long limit = (long) q.maxStorageGb() * OCTETS_PAR_GO;
+        if (current + Math.max(0L, incomingBytes) > limit) {
+            throw new PlanLimitException(
+                    "PLAN_LIMIT_STORAGE",
+                    String.format(Locale.FRANCE, "Stockage du forfait %s atteint : %.2f Go utilis\u00e9s sur %d Go. "
+                            + "L\u2019ajout de documents est bloqu\u00e9 ; la consultation et le t\u00e9l\u00e9chargement restent possibles. "
+                            + "Changez de forfait pour ajouter ce document.",
+                            plan.displayLabel(), current / (double) OCTETS_PAR_GO, q.maxStorageGb()),
+                    "storage", current, limit,
+                    plan.internalCode(),
+                    upgradeHintFor(plan));
+        }
+    }
+
+    /** CDC 4.5 : refuse une fonction que le forfait du cabinet ne donne pas. */
+    public void exigerFonction(UUID workspaceId, FonctionForfait fonction) {
+        if (fonctionIncluse(workspaceId, fonction)) return;
+        throw new FonctionHorsForfaitException(fonction,
+                fonction.libelle() + " : fonction non comprise dans votre forfait. Elle est incluse dans le forfait "
+                        + premierForfaitAvec(fonction) + " et au-del\u00e0 ; changez de forfait pour y acc\u00e9der.");
+    }
+
+    /** Premier forfait (par rang) qui inclut la fonction. */
+    public static String premierForfaitAvec(FonctionForfait fonction) {
+        return PlanCatalog.ALL.stream().filter(p -> p.inclut(fonction))
+                .map(Plan::displayLabel).findFirst().orElse("Sur Devis");
+    }
+
+    // ------------------------------------------------------------------ requetes
+
+    Contexte contexte(UUID workspaceId) {
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT selected_plan, abonnement_debut, trial_status FROM workspaces WHERE id = ?", workspaceId);
+        if (rows.isEmpty()) {
+            throw new IllegalStateException("Workspace introuvable pour le controle du forfait : " + workspaceId);
+        }
+        Map<String, Object> r = rows.get(0);
+        String code = (String) r.get("selected_plan");
+        Object debut = r.get("abonnement_debut");
+        LocalDate ancre = debut instanceof Date d ? d.toLocalDate()
+                : debut instanceof Timestamp t ? t.toLocalDateTime().toLocalDate()
+                : debut instanceof LocalDate l ? l : null;
+        boolean essai = "TRIAL_ACTIVE".equals(r.get("trial_status"));
+        if (code == null) {
+            return new Contexte(PlanCatalog.ESSENTIEL, false, ancre, essai);
+        }
+        Plan plan = PlanCatalog.findByCode(code).orElseThrow(() ->
+                new IllegalStateException("Forfait inconnu en base pour le workspace " + workspaceId + " : " + code));
+        return new Contexte(plan, true, ancre, essai);
     }
 
     private int countUsers(UUID workspaceId) {
-        // 2026-06-04 (fix P1) : le quota maxUsers d'un plan ne s'applique
-        // QU'AUX EMPLOYE. Le SUPERVISEUR (1/workspace, admin du cabinet) est
-        // toujours autorise (1 par definition). Les CLIENT (utilisateurs finaux
-        // invites par dossier) ne sont jamais factures par siege.
-        // Reference : decision metier 2026-06-04 (Oussama) — un cabinet paie
-        // pour le nombre d'employes productifs, pas pour ses clients.
-        // 2026-06-07 (BUG 6) : on ne compte plus les EMPLOYE desactives (status
-        // INACTIVE) — sinon un superviseur ne pourrait pas re-utiliser un siege
-        // libere et serait piege par sa propre purge. PENDING (invite jamais
-        // venu) compte normalement : le siege est deja "reserve".
+        // Quota = acces EMPLOYES non desactives (PENDING reserve deja le siege). Le superviseur
+        // (un par cabinet) et les clients (RG-PLN-08) ne sont pas comptes.
         Integer n = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM users WHERE workspace_id = ? "
                         + "AND role = 'EMPLOYE' AND status <> 'INACTIVE'",
@@ -165,47 +252,58 @@ public class PlanLimitsService {
         return n == null ? 0 : n;
     }
 
-    private int countDossiers(UUID workspaceId) {
-        // entreprise_dossiers vit dans la DB principale jurika_db, accessible
-        // via le JdbcTemplate du service qui appelle (auth-service ou
-        // ticket-service partagent le datasource principal ; billing-service
-        // a sa propre DB jurika_billing et ne devrait pas appeler ce check).
+    private int countDossiersDuMois(UUID workspaceId, PeriodeAbonnement periode) {
         Integer n = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM entreprise_dossiers WHERE workspace_id = ?",
-                Integer.class, workspaceId);
+                "SELECT COUNT(DISTINCT dossier_id) FROM tickets WHERE workspace_id = ? "
+                        + "AND dossier_id IS NOT NULL AND created_at >= ? AND created_at < ?",
+                Integer.class, workspaceId,
+                Timestamp.from(periode.debutInstant()), Timestamp.from(periode.finInstant()));
         return n == null ? 0 : n;
     }
 
-    private long countStorageBytes(UUID workspaceId) {
-        // Somme des tailles des documents juridiques et des depots client. Les
-        // dossiers comptable et fiscal sont sortis du perimetre (dataroom V25).
-        // Les tables peuvent etre absentes selon le microservice qui appelle : on
-        // tente chacune et on tolere une erreur (renvoie 0).
-        long total = 0;
-        for (String sql : new String[]{
-                "SELECT COALESCE(SUM(file_size_bytes), 0) FROM dataroom_documents WHERE workspace_id = ?",
-                "SELECT COALESCE(SUM(size_bytes), 0) FROM dataroom_depots "
-                        + "WHERE workspace_id = ? AND deleted_at IS NULL"
-        }) {
-            try {
-                Long n = jdbc.queryForObject(sql, Long.class, workspaceId);
-                if (n != null) total += n;
-            } catch (Exception ex) {
-                // Table absente cote service appelant -- normal en hexagonal.
-            }
-        }
-        return total;
+    private boolean dossierDejaCompte(UUID workspaceId, UUID dossierId, PeriodeAbonnement periode) {
+        Boolean b = jdbc.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM tickets WHERE workspace_id = ? AND dossier_id = ? "
+                        + "AND created_at >= ? AND created_at < ?)",
+                Boolean.class, workspaceId, dossierId,
+                Timestamp.from(periode.debutInstant()), Timestamp.from(periode.finInstant()));
+        return Boolean.TRUE.equals(b);
     }
 
-    private String upgradeHintFor(Plan current, String quota) {
-        // Spec directeur 2026-06-02 : essentiel -> business -> entreprise.
-        if ("essentiel".equals(current.internalCode())) {
-            return "Passez \u00e0 la formule Business (100 dossiers, 6 utilisateurs, 20 Go).";
+    /**
+     * Somme des documents juridiques et des depots client. {@code null} si les tables de la Data
+     * Room n'existent pas dans la base lue (verifie par to_regclass, sans requete en echec qui
+     * avorterait la transaction).
+     */
+    private Long countStorageBytes(UUID workspaceId) {
+        Boolean presentes = jdbc.queryForObject(
+                "SELECT to_regclass('public.dataroom_documents') IS NOT NULL "
+                        + "AND to_regclass('public.dataroom_depots') IS NOT NULL", Boolean.class);
+        if (!Boolean.TRUE.equals(presentes)) {
+            log.warn("Stockage non mesure pour le workspace {} : tables de la Data Room absentes", workspaceId);
+            return null;
         }
-        if ("business".equals(current.internalCode())) {
-            return "Contactez le service commercial pour la formule Entreprise (illimit\u00e9e).";
-        }
-        return "Contactez le service commercial.";
+        Long documents = jdbc.queryForObject(
+                "SELECT COALESCE(SUM(size_bytes), 0) FROM dataroom_documents WHERE workspace_id = ?",
+                Long.class, workspaceId);
+        Long depots = jdbc.queryForObject(
+                "SELECT COALESCE(SUM(size_bytes), 0) FROM dataroom_depots WHERE workspace_id = ? AND deleted_at IS NULL",
+                Long.class, workspaceId);
+        return (documents == null ? 0L : documents) + (depots == null ? 0L : depots);
     }
 
+    private static String upgradeHintFor(Plan current) {
+        return PlanCatalog.ALL.stream()
+                .filter(p -> p.rang() == current.rang() + 1)
+                .findFirst()
+                .map(p -> p.quoteOnly()
+                        ? "Contactez JURIKA pour le forfait Sur Devis (plus de 100 dossiers par mois)."
+                        : String.format(Locale.FRANCE, "Passez au forfait %s (%d dossiers par mois, 1 superviseur et %d employ\u00e9s, %d Go).",
+                                p.displayLabel(), p.quotas().maxDossiers(), p.quotas().maxUsers(), p.quotas().maxStorageGb()))
+                .orElse("Contactez JURIKA.");
+    }
+
+    private static String formatDate(LocalDate d) {
+        return String.format(Locale.FRANCE, "%02d/%02d/%d", d.getDayOfMonth(), d.getMonthValue(), d.getYear());
+    }
 }

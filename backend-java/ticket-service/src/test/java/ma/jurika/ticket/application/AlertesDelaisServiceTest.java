@@ -62,12 +62,16 @@ class AlertesDelaisServiceTest {
     @Mock DossierRepository dossiers;
     @Mock SuperviseursDuCabinet superviseurs;
     @Mock NotificationPublisher notifier;
+    @Mock ma.jurika.common.billing.PlanLimitsService limites;
+    @Mock org.springframework.beans.factory.ObjectProvider<ma.jurika.common.billing.PlanLimitsService> forfaits;
 
     AlertesDelaisService service;
 
     @BeforeEach
     void setUp() {
-        service = new AlertesDelaisService(registre, demarches, tickets, dossiers, superviseurs, notifier);
+        service = new AlertesDelaisService(registre, demarches, tickets, dossiers, superviseurs, notifier, forfaits);
+        lenient().when(forfaits.getIfAvailable()).thenReturn(limites);
+        lenient().when(limites.fonctionIncluse(WS, ma.jurika.common.billing.FonctionForfait.ALERTES_DELAIS)).thenReturn(true);
         lenient().when(registre.ticketsASurveiller()).thenReturn(List.of(new TicketASurveiller(WS, TICKET)));
         lenient().when(tickets.findById(WS, TICKET)).thenReturn(Optional.of(new Ticket(TICKET, WS, "TK-2026-001",
                 "Creation", TicketType.CREATION, TicketStatut.DEROULEMENT_DEMARCHE, TicketPriorite.NORMALE,
@@ -83,6 +87,18 @@ class AlertesDelaisServiceTest {
     private void points(PointAttention... p) {
         Avancement av = new Avancement(TicketStatut.DEROULEMENT_DEMARCHE, 3, 4, 0, 0, null, null, List.of(p));
         when(demarches.vue(WS, TICKET)).thenReturn(new Vue("CREATION", TicketStatut.DEROULEMENT_DEMARCHE, List.of(), av));
+    }
+
+    /** Lot L7 (E5), CDC 4.5 : forfait Essentiel, aucune alerte de delai n'est emise par le serveur. */
+    @Test
+    void forfait_sans_alertes_de_delais_aucune_notification() {
+        when(limites.fonctionIncluse(WS, ma.jurika.common.billing.FonctionForfait.ALERTES_DELAIS)).thenReturn(false);
+
+        AlertesDelaisService.Bilan bilan = service.detecter();
+
+        assertThat(bilan.notifications()).isZero();
+        verify(notifier, never()).notifyUser(any(), any(), any(), any(), any(), any(), any());
+        verify(registre, never()).retenirSiNouveau(any(), any(), anyInt(), any(), anyString());
     }
 
     @Test

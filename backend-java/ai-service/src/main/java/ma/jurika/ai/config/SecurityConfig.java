@@ -1,6 +1,8 @@
 package ma.jurika.ai.config;
 
+import org.springframework.beans.factory.ObjectProvider;
 import ma.jurika.common.security.JwtAuthFilter;
+import ma.jurika.common.trial.TrialSoftLockFilter;
 import ma.jurika.common.security.JwtProperties;
 import ma.jurika.common.security.JwtPublicKeyProvider;
 import ma.jurika.common.security.JwtPublicKeyProviderFactory;
@@ -34,7 +36,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   ObjectProvider<TrialSoftLockFilter> filtresEssai, JwtAuthFilter jwtAuthFilter) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(AbstractHttpConfigurer::disable)
@@ -49,6 +52,12 @@ public class SecurityConfig {
                         .requestMatchers("/internal/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+        // Lot L7 (E4) : controles serveur de l'essai gratuit (RG-ESS-05 aucun telechargement,
+        // RG-ESS-10 lecture seule), apres JwtAuthFilter qui pose le workspace courant.
+        TrialSoftLockFilter filtreEssai = filtresEssai.getIfAvailable();
+        if (filtreEssai != null) {
+            http.addFilterAfter(filtreEssai, JwtAuthFilter.class);
+        }
         return http.build();
     }
 }

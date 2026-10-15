@@ -148,13 +148,12 @@ public class RegisterWorkspaceUseCase {
      * Spec directeur 2026-06-02 : essentiel / business / entreprise.
      */
     private static String planLabel(String code) {
-        if (code == null) return null;
-        return switch (ma.jurika.common.billing.PlanCatalog.normalize(code)) {
-            case "essentiel" -> "Essentiel (499 DH par mois)";
-            case "business"  -> "Business (1 199 DH par mois)";
-            case "entreprise" -> "Entreprise (sur devis)";
-            default -> code;
-        };
+        // Lot L7 (E5) : libelle et prix lus dans le catalogue (CDC 4.3), jamais recopies.
+        return ma.jurika.common.billing.PlanCatalog.findByCode(code)
+                .map(p -> p.quoteOnly() ? p.displayLabel() + " (selon devis)"
+                        : p.displayLabel() + " (" + p.priceMonthlyMad() + " DH HT par mois ou "
+                                + p.priceYearlyMad() + " DH HT par an)")
+                .orElse(code);
     }
 
     /**

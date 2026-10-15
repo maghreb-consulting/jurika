@@ -25,9 +25,8 @@ export function Navbar({ pulsing = false }) {
         <Logo pulsing={pulsing} />
         <nav className={`nav-links ${open ? 'open' : ''}`} aria-label="Navigation principale">
           <a href="#fonctionnalites" onClick={() => setOpen(false)}>Fonctionnalités</a>
-          <a href="#ia" onClick={() => setOpen(false)}>Assistant</a>
-          <a href="#pilotage-live" onClick={() => setOpen(false)}>Pilotage</a>
-          <a href="#cible" onClick={() => setOpen(false)}>Pour qui</a>
+          <a href="#ia" onClick={() => setOpen(false)}>IA</a>
+          <a href="#pilotage-live" onClick={() => setOpen(false)}>Suivi</a>
           <a href="#tarifs" onClick={() => setOpen(false)}>Tarifs</a>
           <a href="#faq" onClick={() => setOpen(false)}>FAQ</a>
         </nav>

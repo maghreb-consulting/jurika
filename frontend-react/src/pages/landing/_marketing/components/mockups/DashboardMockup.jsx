@@ -11,14 +11,14 @@ import { OdometerNumber } from '../interactive/OdometerNumber.jsx';
  */
 const DONUT_C = 2 * Math.PI * 42;
 const SEGMENTS = [
-  { label: 'Clôturés', pct: 52, color: '#10b981' },  // CLOTURE
-  { label: 'En cours', pct: 33, color: '#a8853d' },  // EN_COURS
-  { label: 'Nouveaux', pct: 15, color: '#1c3461' },  // NOUVEAU
+  { label: 'Clôture du dossier', pct: 52, color: '#10b981' },
+  { label: 'Déroulement de la démarche', pct: 33, color: '#a8853d' },
+  { label: 'Collecte d’information', pct: 15, color: '#1c3461' },
 ];
 const KPIS = [
   { icon: 'folder', tone: 'accent', label: 'Total dossiers', to: 128, tag: '112 actifs', tagTone: 'sub' },
   { icon: 'users', tone: 'accent', label: 'Employés', to: 6, tag: 'Actifs', tagTone: 'warn' },
-  { icon: 'ban', tone: 'danger', label: 'Tickets en cours', to: 23, tag: '5 nouveau(x)', tagTone: 'danger' },
+  { icon: 'ban', tone: 'danger', label: 'Tickets en cours', to: 23, tag: '5 en collecte', tagTone: 'danger' },
   { icon: 'checkCircle', tone: 'success', label: 'Clôturées', to: 94, tag: '3 annulé(s)', tagTone: 'sub' },
 ];
 const PERF = [

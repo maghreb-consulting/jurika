@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useStepAutosave, type RegisterDirty } from '../useStepAutosave';
 import {
   Check,
   CheckCircle2,
@@ -15,6 +16,8 @@ interface Props {
   dossierId?: string | null;
   saving: boolean;
   onSubmit: (payload: Record<string, unknown>) => Promise<void>;
+  /** Lot L7 (E2) : enregistrement automatique de la saisie (voir useStepAutosave). */
+  registerDirty?: RegisterDirty;
 }
 
 interface AssocieRow {
@@ -53,9 +56,12 @@ export function Step5Validation({
   dossierId,
   saving,
   onSubmit,
+  registerDirty,
 }: Props) {
   const e = (existing?.validation as { validated?: boolean } | undefined) ?? {};
   const [validated, setValidated] = useState<boolean>(e.validated ?? false);
+  // Lot L7 (E2) : la case cochee est conservee ; la finalisation reste un clic.
+  useStepAutosave(9, () => ({ validated, validation: { validated } }), registerDirty);
 
   // Refonte 2026-06-25 — meme tronc de saisie que la CREATION : on lit les
   // donnees dans les memes step bags (denomination/capital/dirigeants/associes)

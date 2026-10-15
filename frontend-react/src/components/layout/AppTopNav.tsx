@@ -1,11 +1,15 @@
 import { useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import {
+  Banknote,
   Bot,
+  Building,
   Building2,
   ChevronDown,
   Compass,
+  FileSignature,
   History,
+  Hourglass,
   Home,
   Inbox,
   Info,
@@ -13,6 +17,7 @@ import {
   Lock,
   LogOut,
   MessageSquare,
+  Receipt,
   ScrollText,
   Settings,
   Shield,
@@ -31,6 +36,7 @@ import type { Role } from '../../types/auth';
 import { DeadlineCountWidget } from './DeadlineCountWidget';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
+import { useDeconnexion } from './useDeconnexion';
 import { NOM_PLATEFORME, libelleRole } from './identite';
 
 interface NavItem {
@@ -70,10 +76,17 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Dossiers à vérifier', to: '/dossiers-a-verifier', icon: UserCheck, roles: ['SUPERVISEUR'] },
   // SUPER_ADMIN : gestion plateforme uniquement (RG-U07).
   { label: 'Cabinets', to: '/admin/workspaces', icon: Building2, roles: ['SUPER_ADMIN'] },
+  // Lot L7 (E5) : abonnements des cabinets et paiements a enregistrer (RG-PAY-02).
+  { label: 'Abonnements', to: '/admin/abonnements', icon: Receipt, roles: ['SUPER_ADMIN'] },
+  { label: 'Paiements', to: '/admin/paiements', icon: Banknote, roles: ['SUPER_ADMIN'] },
   { label: 'Utilisateurs', to: '/admin/users', icon: Users, roles: ['SUPER_ADMIN'] },
+  { label: 'Essais gratuits', to: '/admin/essais', icon: Hourglass, roles: ['SUPER_ADMIN'] },
   { label: 'Journal d’audit', to: '/admin/audit', icon: ScrollText, roles: ['SUPER_ADMIN'] },
   { label: 'Référentiel des démarches', to: '/admin/referentiel-demarches', icon: ListChecks, roles: ['SUPER_ADMIN'] },
   { label: 'Sources du chatbot', to: '/admin/chatbot-sources', icon: Bot, roles: ['SUPER_ADMIN'] },
+  // Lot L7 (E6) : contrats d'abonnement des cabinets et identite de l'editeur.
+  { label: 'Contrats', to: '/admin/contrats', icon: FileSignature, roles: ['SUPER_ADMIN'] },
+  { label: 'Éditeur', to: '/admin/editeur', icon: Building, roles: ['SUPER_ADMIN'] },
 ];
 
 /** Roles qui ont acces au calendrier des echeances (/calendar). */
@@ -95,16 +108,17 @@ const CLASSE_ENTREE_MENU =
  */
 export function AppTopNav() {
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
   const reafficherAide = useAidesStore((s) => s.reafficher);
   const reafficherTout = useAidesStore((s) => s.reafficherTout);
   const viderAides = useAidesStore((s) => s.vider);
-  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [annonce, setAnnonce] = useState('');
   // Badge « Chat » = vrai nombre de messages non lus (remplace l'ancien 3 figé).
   useChatUnreadSync();
   const chatUnread = useChatUnreadStore((s) => s.total);
+  // Lot L7 (E12) : les saisies gardees dans ce navigateur partent avant la deconnexion,
+  // ou l'employe confirme leur perte.
+  const { deconnecter, dialogue: dialogueDeconnexion } = useDeconnexion(viderAides);
 
   if (!user) return null;
 
@@ -120,9 +134,7 @@ export function AppTopNav() {
 
   async function handleLogout() {
     setMenuOpen(false);
-    viderAides();
-    await logout();
-    navigate('/login', { replace: true });
+    await deconnecter();
   }
 
   function revoirVisite() {
@@ -277,6 +289,12 @@ export function AppTopNav() {
               <Link role="menuitem" to="/settings/security" onClick={() => setMenuOpen(false)} className={CLASSE_ENTREE_MENU}>
                 <Shield className="h-4 w-4" aria-hidden="true" /> Sécurité de connexion
               </Link>
+              {/* Lot L7 (E6) : contrat d'abonnement du cabinet (superviseur). */}
+              {isSupervisor && (
+                <Link role="menuitem" to="/app/contrat" onClick={() => setMenuOpen(false)} className={CLASSE_ENTREE_MENU}>
+                  <FileSignature className="h-4 w-4" aria-hidden="true" /> Contrat d’abonnement
+                </Link>
+              )}
               {/* BUG 11 (2026-06-08) — page a onglets /settings. */}
               <Link role="menuitem" to="/settings" onClick={() => setMenuOpen(false)} className={CLASSE_ENTREE_MENU}>
                 <Settings className="h-4 w-4" aria-hidden="true" /> Paramètres
@@ -302,6 +320,7 @@ export function AppTopNav() {
       <p role="status" aria-live="polite" className="sr-only">
         {annonce}
       </p>
+      {dialogueDeconnexion}
     </header>
   );
 }

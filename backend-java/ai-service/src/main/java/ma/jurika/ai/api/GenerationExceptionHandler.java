@@ -62,6 +62,13 @@ public class GenerationExceptionHandler {
         return reponse(HttpStatus.UNPROCESSABLE_ENTITY, body);
     }
 
+    /** Decision du 2026-10-14 : apercu impossible (format ou document illisible), refus nomme. */
+    @ExceptionHandler(ma.jurika.common.trial.RenduApercu.ApercuImpossibleException.class)
+    public ResponseEntity<Map<String, Object>> apercu(ma.jurika.common.trial.RenduApercu.ApercuImpossibleException ex) {
+        log.warn("Apercu impossible : {}", ex.getMessage(), ex.getCause());
+        return reponse(HttpStatus.UNPROCESSABLE_ENTITY, corps("APERCU_IMPOSSIBLE", ex.getMessage()));
+    }
+
     @ExceptionHandler(GabaritIntrouvableException.class)
     public ResponseEntity<Map<String, Object>> introuvable(GabaritIntrouvableException ex) {
         log.error("{}", ex.getMessage());

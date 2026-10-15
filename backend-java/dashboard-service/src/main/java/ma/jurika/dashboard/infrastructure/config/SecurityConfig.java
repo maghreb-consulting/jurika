@@ -4,6 +4,8 @@ import ma.jurika.common.security.JwtAuthFilter;
 import ma.jurika.common.security.JwtProperties;
 import ma.jurika.common.security.JwtPublicKeyProvider;
 import ma.jurika.common.security.JwtPublicKeyProviderFactory;
+import ma.jurika.common.trial.TrialSoftLockFilter;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -28,7 +30,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter,
+                                                   ObjectProvider<TrialSoftLockFilter> filtresEssai) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(AbstractHttpConfigurer::disable)
@@ -42,7 +45,13 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-        // UX-3 (2026-06-02) : TrialSoftLockFilter supprime (concept trial efface).
+        // Decision du 2026-10-14 (RG-ESS-05) : le filtre commun de l'essai est branche ici aussi
+        // (il avait ete retire en UX-3) : pendant l'essai, aucun fichier ne sort de ce service
+        // (export CSV compris), quelle que soit la route.
+        TrialSoftLockFilter filtreEssai = filtresEssai.getIfAvailable();
+        if (filtreEssai != null) {
+            http.addFilterAfter(filtreEssai, JwtAuthFilter.class);
+        }
         return http.build();
     }
 }

@@ -116,14 +116,15 @@ public class VerifyRecoveryCodeUseCase {
         }
 
         Workspace workspace = workspaceRepository.findByCode(cmd.workspaceCode()).orElse(null);
-        if (workspace == null || !workspace.isActive()) {
+        if (workspace == null || (!workspace.ouvertALaConnexion())) {
             rateLimiter.recordFailure(rateKey);
             throw new UnauthorizedException(GENERIC_AUTH_ERROR);
         }
         TenantContext.set(workspace.id());
 
         User user = userRepository.findByWorkspaceAndEmail(workspace.id(), cmd.email()).orElse(null);
-        if (user == null || !user.active()) {
+        // Lot L7 (E5), RG-TAR-09 : workspace archive, seul le superviseur.
+        if (user == null || !user.active() || !workspace.accepteConnexion(user.role())) {
             rateLimiter.recordFailure(rateKey);
             auditLogger.log(workspace.id(), null, "RECOVERY_CODE_FAILED", "user", null,
                     cmd.ipAddress(), cmd.userAgent(), Map.of("reason", "USER_UNKNOWN"));

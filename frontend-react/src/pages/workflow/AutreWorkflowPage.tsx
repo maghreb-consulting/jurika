@@ -13,6 +13,7 @@ import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { TICKET_TYPE_LABELS } from '../../types/ticket';
 import { AIDE_PARCOURS_GENERIQUE } from './aidesParcours';
 import { useEtatReinitialise } from './parcoursHooks';
+import { useStepAutosave } from './useStepAutosave';
 
 /**
  * Monte {@link AutreWorkflowPageBody} SOUS {@link WorkflowBoot} : les champs de chaque
@@ -31,18 +32,23 @@ export function AutreWorkflowPage() {
 
 function AutreWorkflowPageBody() {
   const navigate = useNavigate();
-  const { ticket, progress, loading, saving, error, setError, stepData, saveDraft, executeStep, viewStep, maxStep, goToStep, goPrev: navPrev } = useWorkflow();
+  const { ticket, progress, loading, saving, error, setError, stepData, saveDraft, executeStep, viewStep, maxStep, goToStep, goPrev: navPrev, registerDirty } = useWorkflow();
   const [showCancel, setShowCancel] = useState(false);
-  // Contenu de l'etape courante, recharge quand le parcours ou son etape courante change
-  // (ajustement pendant le rendu, et non plus dans un effet).
+  // Contenu de l'etape AFFICHEE, recharge quand le parcours ou l'etape affichee change
+  // (ajustement pendant le rendu, et non plus dans un effet). Lot L7 (E2) : auparavant
+  // l'etape courante ; revenir sur une etape anterieure montrait alors le contenu d'une
+  // autre etape, que l'enregistrement automatique aurait range sous la mauvaise cle.
   const [rawJson, setRawJson] = useEtatReinitialise(
-    progress ? `${progress.id}|${progress.currentStep}` : null,
+    progress ? `${progress.id}|${viewStep}` : null,
     () => {
       if (!progress) return '{}';
-      const current = (stepData[`step${progress.currentStep}`] as Record<string, unknown>) ?? {};
+      const current = (stepData[`step${viewStep}`] as Record<string, unknown>) ?? {};
       return JSON.stringify(current, null, 2);
     },
   );
+  // Lot L7 (E2) : enregistrement automatique ; un JSON incomplet (en cours de frappe)
+  // n'est pas envoye, le dernier JSON valide l'a ete.
+  useStepAutosave(viewStep, () => objetJson(rawJson), progress?.statut === 'TERMINE' ? undefined : registerDirty);
 
   if (loading) return <Loader />;
   if (!ticket || !progress)
@@ -139,7 +145,7 @@ function AutreWorkflowPageBody() {
               Données de l’étape (JSON)
               <InfoBulle
                 libelle="Comment saisir les données ?"
-                texte="Saisissez un objet entre accolades, par exemple { &quot;motif&quot;: &quot;…&quot; }. Les données déjà enregistrées pour cette étape sont reprises ; « Sauvegarder brouillon » les conserve sans valider l’étape."
+                texte="Saisissez un objet entre accolades, par exemple { &quot;motif&quot;: &quot;…&quot; }. Les données déjà enregistrées pour cette étape sont reprises ; chaque contenu JSON valide est enregistré automatiquement en brouillon, sans valider l’étape."
               />
             </label>
             <textarea
@@ -180,6 +186,16 @@ function AutreWorkflowPageBody() {
       )}
     </>
   );
+}
+
+/** Objet JSON saisi, ou null s'il n'est pas (encore) valide. */
+function objetJson(texte: string): Record<string, unknown> | null {
+  try {
+    const v: unknown = JSON.parse(texte);
+    return typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
 }
 
 function Loader() {

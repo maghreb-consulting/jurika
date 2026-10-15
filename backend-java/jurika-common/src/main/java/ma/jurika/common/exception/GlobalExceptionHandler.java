@@ -90,6 +90,31 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(ex.code(), ex.getMessage()));
     }
 
+    /** Lot L7 (E5), CDC 4.5 : fonction hors forfait, 402 comme un quota atteint. */
+    @ExceptionHandler(FonctionHorsForfaitException.class)
+    public ResponseEntity<ErrorResponse> handleFonctionHorsForfait(FonctionHorsForfaitException ex) {
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                .body(new ErrorResponse(ex.code(), ex.getMessage()));
+    }
+
+    /**
+     * Decision du 2026-10-14 (RG-ESS-05) : apercu impossible (format sans apercu, document
+     * illisible) : 422 nomme, jamais de repli sur le fichier d'origine.
+     */
+    @ExceptionHandler(ma.jurika.common.trial.RenduApercu.ApercuImpossibleException.class)
+    public ResponseEntity<ErrorResponse> handleApercuImpossible(ma.jurika.common.trial.RenduApercu.ApercuImpossibleException ex) {
+        log.warn("Apercu impossible : {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new ErrorResponse("APERCU_IMPOSSIBLE", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ma.jurika.common.trial.RenduApercu.ApercuIndisponibleException.class)
+    public ResponseEntity<ErrorResponse> handleApercuIndisponible(ma.jurika.common.trial.RenduApercu.ApercuIndisponibleException ex) {
+        log.error("Apercu indisponible : {}", ex.getMessage(), ex.getCause());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new ErrorResponse("APERCU_INDISPONIBLE", ex.getMessage()));
+    }
+
     @ExceptionHandler(TooManyRequestsException.class)
     public ResponseEntity<ErrorResponse> handleTooMany(TooManyRequestsException ex) {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)

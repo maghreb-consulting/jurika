@@ -53,7 +53,9 @@ const ACTION_META: Record<
 > = {
   activate: { label: 'Activer', verb: 'activer', done: 'activé', target: 'ACTIVE', variant: 'primary' },
   suspend: { label: 'Suspendre', verb: 'suspendre', done: 'suspendu', target: 'SUSPENDED', variant: 'danger' },
-  deactivate: { label: 'Désactiver', verb: 'désactiver', done: 'désactivé', target: 'DEACTIVATED', variant: 'danger' },
+  // Lot L7 (E5), RG-PLN-07 : la désactivation archive le cabinet (rien n'est supprimé ; le
+  // superviseur garde l'accès pour souscrire de nouveau, exporter ou demander la suppression).
+  deactivate: { label: 'Archiver', verb: 'archiver', done: 'archivé', target: 'ARCHIVED', variant: 'danger' },
 };
 
 export function WorkspaceDetailPage() {
@@ -134,7 +136,7 @@ export function WorkspaceDetailPage() {
   const eventsByAction = ws.eventsByAction.map((c) => ({ label: libelleActionAudit(c.label), count: c.count }));
 
   const availableActions: WorkspaceStatusAction[] =
-    ws.statut === 'DEACTIVATED'
+    ws.statut === 'DEACTIVATED' || ws.statut === 'ARCHIVED'
       ? ['activate']
       : ws.statut === 'SUSPENDED'
         ? ['activate', 'deactivate']
@@ -282,6 +284,9 @@ export function WorkspaceDetailPage() {
         description={
           pending
             ? `Voulez-vous vraiment ${ACTION_META[pending].verb} le cabinet « ${ws.name} » (${ws.code}) ?`
+              + (pending === 'deactivate'
+                ? ' Les accès sont fermés, rien n’est supprimé : le superviseur garde l’accès pour souscrire de nouveau, exporter les données ou demander leur suppression.'
+                : '')
             : undefined
         }
         confirmLabel={pending ? ACTION_META[pending].label : 'Confirmer'}

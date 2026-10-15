@@ -13,10 +13,9 @@
 
     <artifactId>billing-service</artifactId>
     <name>JURIKA Billing Service</name>
-    <description>Sprint 12 : Stripe Checkout hosted + Customer Portal + webhooks (5 events) + TVA Maroc 20% backend + isolation PG jurika_billing. RG-BL01..18.</description>
+    <description>Lot L7 : forfaits du CDC, paiement par carte via le CMI (page hebergee, retour serveur signe), virement, cheque et especes enregistres par le super-admin, factures numerotees sans rupture. Base dediee jurika_billing.</description>
 
     <properties>
-        <stripe.version>28.4.0</stripe.version>
         <caffeine.version>3.1.8</caffeine.version>
     </properties>
 
@@ -82,11 +81,13 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Stripe Java SDK : runtime billing. NE PAS substituer par MCP (qui est un outil dev). -->
+        <!-- Lot L7 (E5, E6) : PDF des factures (RG-PAY-03) et exemplaire du contrat d'abonnement
+             (RG-CTR-04) au theme JURIKA (JurikaPdfDocument de jurika-common, ou PDFBox est
+             optionnel : chaque service qui rend un PDF le declare). Une seule declaration. -->
         <dependency>
-            <groupId>com.stripe</groupId>
-            <artifactId>stripe-java</artifactId>
-            <version>${stripe.version}</version>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.3</version>
         </dependency>
 
         <!-- Cache local pour WorkspaceStatusClient (T7) : evite spam vers auth-service. -->

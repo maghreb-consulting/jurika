@@ -46,7 +46,7 @@ export interface SignupCabinetPayload {
   /** Email professionnel unique (devient le contact du cabinet et du titulaire). */
   email: string;
   phone: string;
-  selectedPlan: string; // 'essentiel' | 'business' | 'entreprise' (spec 2026-06-02)
+  selectedPlan: string; // 'essentiel' | 'professionnel' | 'max' (lot L7, CDC 4.3)
   /** Onboarding 2026-06-24 — type de profil (8 valeurs ProfessionalType backend). */
   professionalType?: ProfessionalType;
   cguAccepted: boolean;
@@ -74,7 +74,7 @@ export interface SignupCabinetResponse {
   /**
    * BUG 14 (2026-06-07) — tokens transitoires renvoyes UNIQUEMENT quand
    * {@code deferCredentials: true}. Permet au wizard signup d'appeler
-   * /api/v1/billing/prepare-payment depuis l'etape Paiement sans passer
+   * /api/v1/billing/paiements (lot L7) depuis l'etape Paiement sans passer
    * par un login intermediaire (le user n'a pas encore son MDP final).
    */
   accessToken?: string;

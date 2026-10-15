@@ -506,8 +506,10 @@ public class WorkflowUseCases {
         // Sprint Beta — enforce maxDossiers du plan AVANT INSERT (RG-BL-QUOTA).
         // Si limite atteinte -> 402 PaymentRequired remonte au front qui affiche
         // l'upsell vers le plan superieur.
+        verifierDossierEssai(workspaceId);
         if (planLimitsService != null) {
-            planLimitsService.enforceDossierLimit(workspaceId);
+            // Lot L7 (RG-PLN-01, RG-PLN-03) : dossier nouveau (null) ; quota du mois d'abonnement.
+            planLimitsService.enforceDossierLimit(workspaceId, null);
         }
 
         // Forme juridique : SARL par defaut, SARL_AU si specifie
@@ -2213,4 +2215,17 @@ public class WorkflowUseCases {
                     ticketId, expectedFrom, newStatut, ex.getMessage());
         }
     }
+    /** Lot L7 (E4), RG-ESS-04 : pendant l'essai gratuit, 3 dossiers au plus. */
+    private org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.EssaiQuotas> essaiQuotas;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setEssaiQuotas(org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.EssaiQuotas> q) {
+        this.essaiQuotas = q;
+    }
+
+    private void verifierDossierEssai(java.util.UUID workspaceId) {
+        ma.jurika.common.trial.EssaiQuotas q = essaiQuotas == null ? null : essaiQuotas.getIfAvailable();
+        if (q != null) q.verifierNouveauDossier(workspaceId);
+    }
+
 }

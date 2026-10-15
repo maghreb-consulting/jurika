@@ -1,5 +1,8 @@
 package ma.jurika.ticket.application;
 
+import ma.jurika.common.billing.FonctionForfait;
+import ma.jurika.common.billing.PlanLimitsService;
+import org.springframework.beans.factory.ObjectProvider;
 import ma.jurika.common.notification.NotificationPublisher;
 import ma.jurika.common.security.TenantContext;
 import ma.jurika.ticket.application.DemarcheUseCases.PointAttention;
@@ -38,6 +41,10 @@ import java.util.UUID;
  * hors cabinet.
  *
  * <p>Chaque palier d'une echeance n'est notifie qu'une fois (registre V43).
+ *
+ * <p>Lot L7 (E5), CDC 4.5 : les alertes de delais legaux sont une fonction des forfaits
+ * Professionnel, Max et Sur Devis (et de l'essai). Un cabinet au forfait Essentiel n'en recoit
+ * aucune : le serveur ne les emet pas (P6) ; l'ecran l'explique.
  */
 @Service
 public class AlertesDelaisService {
@@ -55,16 +62,19 @@ public class AlertesDelaisService {
     private final DossierRepository dossiers;
     private final SuperviseursDuCabinet superviseurs;
     private final NotificationPublisher notifier;
+    private final ObjectProvider<PlanLimitsService> forfaits;
 
     public AlertesDelaisService(AlertesDelaisRegistre registre, DemarcheUseCases demarches,
                                 TicketRepository tickets, DossierRepository dossiers,
-                                SuperviseursDuCabinet superviseurs, NotificationPublisher notifier) {
+                                SuperviseursDuCabinet superviseurs, NotificationPublisher notifier,
+                                ObjectProvider<PlanLimitsService> forfaits) {
         this.registre = registre;
         this.demarches = demarches;
         this.tickets = tickets;
         this.dossiers = dossiers;
         this.superviseurs = superviseurs;
         this.notifier = notifier;
+        this.forfaits = forfaits;
     }
 
     /** Bilan d'un passage : tickets parcourus, notifications emises, tickets en erreur. */
@@ -97,6 +107,10 @@ public class AlertesDelaisService {
 
     private int traiter(TicketASurveiller cible) {
         UUID ws = cible.workspaceId();
+        // Lot L7 (E5), CDC 4.5 : fonction du forfait. Controle des forfaits coupe
+        // (jurika.plan-limits.enabled=false) : aucune restriction, comme pour les quotas.
+        PlanLimitsService limites = forfaits.getIfAvailable();
+        if (limites != null && !limites.fonctionIncluse(ws, FonctionForfait.ALERTES_DELAIS)) return 0;
         List<PointAttention> points = demarches.vue(ws, cible.ticketId()).avancement().pointsAttention();
         if (points == null || points.isEmpty()) return 0;
 

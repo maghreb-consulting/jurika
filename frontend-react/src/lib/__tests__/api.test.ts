@@ -7,7 +7,39 @@ import {
   extractError,
   MESSAGE_ERREUR_RESEAU,
   MESSAGE_ERREUR_INCONNUE,
+  redirigerSiArchive,
 } from '../api';
+
+describe('redirigerSiArchive (lot L7, RG-TAR-07)', () => {
+  const realLocation = window.location;
+  function mockLocation(pathname: string) {
+    Object.defineProperty(window, 'location', { configurable: true, writable: true, value: { pathname, href: '' } });
+  }
+  afterEach(() => {
+    Object.defineProperty(window, 'location', { configurable: true, writable: true, value: realLocation });
+  });
+
+  it('conduit le superviseur a la page du cabinet archive sur 403 WORKSPACE_ARCHIVE', () => {
+    mockLocation('/dashboard');
+    expect(redirigerSiArchive(axiosLikeError(403, 'WORKSPACE_ARCHIVE'))).toBe(true);
+    expect(window.location.href).toBe('/app/archive');
+  });
+
+  it('ignore les autres refus et ne boucle pas depuis la page archive', () => {
+    mockLocation('/dashboard');
+    expect(redirigerSiArchive(axiosLikeError(403, 'PERMISSION_DENIED'))).toBe(false);
+    mockLocation('/app/archive');
+    expect(redirigerSiArchive(axiosLikeError(403, 'WORKSPACE_ARCHIVE'))).toBe(false);
+  });
+
+  it('lot L7 (E8) : cabinet suspendu pour impayé, conduit à l’écran Facturation pour payer', () => {
+    mockLocation('/dashboard');
+    expect(redirigerSiArchive(axiosLikeError(403, 'WORKSPACE_SUSPENDU'))).toBe(true);
+    expect(window.location.href).toBe('/app/billing');
+    mockLocation('/app/billing/payment');
+    expect(redirigerSiArchive(axiosLikeError(403, 'WORKSPACE_SUSPENDU'))).toBe(false);
+  });
+});
 
 /** Fabrique un objet ressemblant a une AxiosError (isAxiosError=true). */
 function axiosLikeError(status: number | undefined, code?: string) {

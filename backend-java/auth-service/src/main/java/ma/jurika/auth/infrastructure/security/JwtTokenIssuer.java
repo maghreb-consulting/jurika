@@ -4,6 +4,8 @@ import io.jsonwebtoken.Jwts;
 import ma.jurika.auth.domain.model.AuthTokens;
 import ma.jurika.auth.domain.model.User;
 import ma.jurika.auth.domain.port.TokenIssuer;
+import ma.jurika.auth.domain.port.WorkspaceRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import ma.jurika.common.security.JwtClaims;
 import ma.jurika.common.security.JwtProperties;
 import ma.jurika.common.security.JwtSigningKeyProvider;
@@ -32,7 +34,21 @@ public class JwtTokenIssuer implements TokenIssuer {
     private final Duration refreshTtl;
     private final String issuer;
 
+    /** Lot L7 (E5) : etat du workspace (archive) lu a chaque emission ; null dans les tests unitaires. */
+    private final WorkspaceRepository workspaceRepository;
+    private final org.springframework.transaction.support.TransactionTemplate lecture;
+
     public JwtTokenIssuer(JwtSigningKeyProvider signingKeyProvider, JwtProperties props) {
+        this(signingKeyProvider, props, null, null);
+    }
+
+    @Autowired
+    public JwtTokenIssuer(JwtSigningKeyProvider signingKeyProvider, JwtProperties props,
+                          WorkspaceRepository workspaceRepository,
+                          org.springframework.transaction.PlatformTransactionManager transactions) {
+        this.workspaceRepository = workspaceRepository;
+        this.lecture = transactions == null ? null : new org.springframework.transaction.support.TransactionTemplate(transactions);
+        if (this.lecture != null) this.lecture.setReadOnly(true);
         this.signingKeyProvider = signingKeyProvider;
         this.accessTtl = Duration.ofMillis(props.accessTtlMs());
         this.refreshTtl = Duration.ofMillis(props.refreshTtlMs());
@@ -62,6 +78,15 @@ public class JwtTokenIssuer implements TokenIssuer {
                 .claim(JwtClaims.ROLE, user.role().name())
                 .claim(JwtClaims.MUST_CHANGE_PASSWORD, user.mustChangePassword())
                 .claim(JwtClaims.REQUIRES_2FA_SETUP, user.requires2faSetup());
+        // Lot L7 (E5), RG-TAR-07 : un workspace archive n'ouvre que les chemins de AccesArchive.
+        // Lot L7 (E8), article 4.4 du contrat : un workspace suspendu pour impaye, memes chemins.
+        ma.jurika.auth.domain.model.Workspace ws = workspaceDe(user);
+        if (ws != null && ws.isArchived()) {
+            builder.claim(JwtClaims.ARCHIVE, true);
+        }
+        if (ws != null && ws.isSuspenduImpaye()) {
+            builder.claim(JwtClaims.SUSPENDU, true);
+        }
 
         String accessToken;
         if (isRsa && key instanceof PrivateKey pk) {
@@ -107,6 +132,24 @@ public class JwtTokenIssuer implements TokenIssuer {
             return HexFormat.of().formatHex(digest);
         } catch (Exception e) {
             throw new IllegalStateException("SHA-256 indisponible", e);
+        }
+    }
+
+    /**
+     * Lot L7 (E5, E8) : workspace de l'utilisateur (archive, suspendu pour impaye). Lu dans une transaction (celle de
+     * l'appelant, ou une transaction de lecture ouverte ici) et dans le workspace de l'utilisateur,
+     * pour la RLS.
+     */
+    private ma.jurika.auth.domain.model.Workspace workspaceDe(User user) {
+        if (workspaceRepository == null) return null;
+        java.util.UUID avant = ma.jurika.common.security.TenantContext.get();
+        try {
+            if (avant == null) ma.jurika.common.security.TenantContext.set(user.workspaceId());
+            java.util.function.Supplier<ma.jurika.auth.domain.model.Workspace> lire =
+                    () -> workspaceRepository.findById(user.workspaceId()).orElse(null);
+            return lecture == null ? lire.get() : lecture.execute(st -> lire.get());
+        } finally {
+            if (avant == null) ma.jurika.common.security.TenantContext.clear();
         }
     }
 }

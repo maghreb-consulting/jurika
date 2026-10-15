@@ -1,11 +1,10 @@
 package ma.jurika.billing.api;
 
-import ma.jurika.billing.application.BillingQueryService;
-import ma.jurika.billing.application.ChangePlanUseCase;
+import ma.jurika.billing.application.AdministrationFacturationService;
 import ma.jurika.billing.application.ContactSalesUseCase;
-import ma.jurika.billing.application.PreparePaymentUseCase;
-import ma.jurika.billing.application.SubscribeUseCase;
-import ma.jurika.billing.application.ValidatePaymentUseCase;
+import ma.jurika.billing.application.abonnement.AbonnementService;
+import ma.jurika.billing.application.facture.FactureQueryService;
+import ma.jurika.billing.application.paiement.PaiementService;
 import ma.jurika.common.security.AuthenticatedUser;
 import ma.jurika.common.security.Role;
 import ma.jurika.common.security.RoleHierarchyAutoConfiguration;
@@ -33,25 +32,16 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Lot J3 (2026-06-27) — verifie l'ouverture du parcours d'upgrade a l'EMPLOYE.
- * Lot L0 (E17) : la validation des paiements est reservee au SUPER_ADMIN.
- *
- * <p>On teste l'AUTORISATION uniquement (le corps metier est mock) :
- * <ul>
- *   <li>endpoints upgrade/souscription : EMPLOYE doit passer (pas de 403) ;</li>
- *   <li>operations sensibles (invoices, payments, validate) : EMPLOYE reste 403,
- *       SUPERVISEUR passe.</li>
- * </ul>
- * Le @PreAuthorize de methode etant evalue AVANT le corps, "pas 403" suffit a
- * prouver que l'autorisation est accordee (le statut reel 2xx/4xx/5xx du corps
- * mock importe peu ici).
+ * Lot L7 (E5) : droits des points d'entree de la facturation (P6, controle cote serveur).
+ * Lecture de l'abonnement : superviseur et employe ; changement de forfait, paiement, factures :
+ * superviseur ; enregistrement des paiements hors ligne, factures de tous les cabinets, Sur Devis :
+ * super-admin seul (RG-PAY-02). Le corps est simule : "pas 403" suffit a prouver l'autorisation.
  */
-@WebMvcTest(controllers = BillingController.class)
+@WebMvcTest(controllers = {BillingController.class, AdminBillingController.class})
 @Import({RoleHierarchyAutoConfiguration.class, BillingRoleSecurityTest.MethodSecurity.class})
 class BillingRoleSecurityTest {
 
@@ -61,16 +51,14 @@ class BillingRoleSecurityTest {
 
     @Autowired MockMvc mvc;
 
-    @MockBean SubscribeUseCase subscribeUseCase;
-    @MockBean BillingQueryService queryService;
-    @MockBean ContactSalesUseCase contactSalesUseCase;
-    @MockBean ChangePlanUseCase changePlanUseCase;
-    @MockBean PreparePaymentUseCase preparePaymentUseCase;
-    @MockBean ValidatePaymentUseCase validatePaymentUseCase;
+    @MockBean AbonnementService abonnement;
+    @MockBean PaiementService paiements;
+    @MockBean FactureQueryService factures;
+    @MockBean ContactSalesUseCase contactSales;
+    @MockBean AdministrationFacturationService admin;
 
     @BeforeEach
     void setTenant() {
-        // requireWorkspace() lit TenantContext (pose en prod par JwtAuthFilter).
         TenantContext.set(UUID.randomUUID());
     }
 
@@ -80,113 +68,48 @@ class BillingRoleSecurityTest {
     }
 
     private static RequestPostProcessor as(Role role) {
-        AuthenticatedUser principal = new AuthenticatedUser(
-                UUID.randomUUID(), UUID.randomUUID(), "actor@jurika.ma", role);
-        var auth = new UsernamePasswordAuthenticationToken(
-                principal, "n/a", List.of(new SimpleGrantedAuthority("ROLE_" + role.name())));
+        AuthenticatedUser principal = new AuthenticatedUser(UUID.randomUUID(), UUID.randomUUID(), "actor@jurika.ma", role);
+        var auth = new UsernamePasswordAuthenticationToken(principal, "n/a",
+                List.of(new SimpleGrantedAuthority("ROLE_" + role.name())));
         return authentication(auth);
     }
 
-    /** Autorisation accordee : le statut n'est PAS 403 (le corps mock fait le reste). */
     private static ResultMatcher notForbidden() {
-        return result -> assertNotEquals(403, result.getResponse().getStatus(),
-                "l'autorisation doit etre accordee (pas de 403)");
-    }
-
-    // ─────────────── Parcours upgrade : EMPLOYE autorise ───────────────
-
-    @Test
-    void changePlan_employe_estAutorise() throws Exception {
-        mvc.perform(post("/api/v1/billing/change-plan").with(as(Role.EMPLOYE)).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"targetPlanCode\":\"business\"}"))
-                .andExpect(notForbidden());
+        return result -> assertNotEquals(403, result.getResponse().getStatus(), "l'autorisation doit etre accordee");
     }
 
     @Test
-    void previewChangePlan_employe_estAutorise() throws Exception {
-        mvc.perform(post("/api/v1/billing/change-plan/preview").with(as(Role.EMPLOYE)).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"targetPlanCode\":\"business\"}"))
-                .andExpect(notForbidden());
+    void abonnement_lisible_par_l_employe() throws Exception {
+        mvc.perform(get("/api/v1/billing/abonnement").with(as(Role.EMPLOYE))).andExpect(notForbidden());
     }
 
     @Test
-    void preparePayment_employe_estAutorise() throws Exception {
-        mvc.perform(post("/api/v1/billing/prepare-payment").with(as(Role.EMPLOYE)).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(notForbidden());
+    void changement_de_forfait_reserve_au_superviseur() throws Exception {
+        mvc.perform(post("/api/v1/billing/changement-forfait").with(as(Role.EMPLOYE)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/billing/changement-forfait").with(as(Role.SUPERVISEUR)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(notForbidden());
     }
 
     @Test
-    void checkoutSession_employe_estAutorise() throws Exception {
-        mvc.perform(post("/api/v1/billing/checkout-session").with(as(Role.EMPLOYE)).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"planCode\":\"business\",\"contactEmail\":\"a@b.ma\",\"workspaceName\":\"WS\"}"))
-                .andExpect(notForbidden());
+    void paiement_et_factures_reserves_au_superviseur() throws Exception {
+        mvc.perform(post("/api/v1/billing/paiements").with(as(Role.EMPLOYE)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/billing/factures").with(as(Role.EMPLOYE))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/billing/factures").with(as(Role.SUPERVISEUR))).andExpect(notForbidden());
+        mvc.perform(get("/api/v1/billing/paiements").with(as(Role.SUPERVISEUR))).andExpect(notForbidden());
     }
 
+    /** RG-PAY-02 : le cabinet ne valide jamais son propre paiement hors ligne. */
     @Test
-    void getSubscription_employe_estAutorise() throws Exception {
-        mvc.perform(get("/api/v1/billing/subscription").with(as(Role.EMPLOYE)))
-                .andExpect(notForbidden());
-    }
-
-    @Test
-    void customerPortal_employe_estAutorise() throws Exception {
-        mvc.perform(post("/api/v1/billing/customer-portal").with(as(Role.EMPLOYE)).with(csrf()))
-                .andExpect(notForbidden());
-    }
-
-    @Test
-    void contactSales_employe_estAutorise() throws Exception {
-        mvc.perform(post("/api/v1/billing/contact-sales").with(as(Role.EMPLOYE)).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(notForbidden());
-    }
-
-    // ─────────────── Operations sensibles : EMPLOYE refuse (403) ───────────────
-
-    @Test
-    void validatePayment_employe_estRefuse_403() throws Exception {
-        mvc.perform(patch("/api/v1/billing/payments/{id}/validate", 1L).with(as(Role.EMPLOYE)).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(status().isForbidden());
-    }
-
-    // Lot L0 (E17, RG-PAY-02) : la validation d'un paiement hors ligne est
-    // reservee au super-admin (JURIKA), jamais au cabinet lui-meme.
-    @Test
-    void validatePayment_superviseur_estRefuse_403() throws Exception {
-        mvc.perform(patch("/api/v1/billing/payments/{id}/validate", 1L).with(as(Role.SUPERVISEUR)).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void validatePayment_superAdmin_estAutorise() throws Exception {
-        mvc.perform(patch("/api/v1/billing/payments/{id}/validate", 1L).with(as(Role.SUPER_ADMIN)).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(notForbidden());
-        // Le paiement est designe par son identifiant seul : le workspace du
-        // super-admin n'est pas celui du cabinet qui a paye.
-        org.mockito.Mockito.verify(validatePaymentUseCase).execute(org.mockito.ArgumentMatchers.eq(1L),
-                org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    void listInvoices_employe_estRefuse_403() throws Exception {
-        mvc.perform(get("/api/v1/billing/invoices").with(as(Role.EMPLOYE)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void listInvoices_superviseur_estAutorise() throws Exception {
-        mvc.perform(get("/api/v1/billing/invoices").with(as(Role.SUPERVISEUR)))
-                .andExpect(notForbidden());
-    }
-
-    @Test
-    void listPayments_employe_estRefuse_403() throws Exception {
-        mvc.perform(get("/api/v1/billing/payments").with(as(Role.EMPLOYE)))
-                .andExpect(status().isForbidden());
+    void enregistrement_des_paiements_reserve_au_super_admin() throws Exception {
+        mvc.perform(post("/api/v1/billing/admin/paiements/{id}/valider", 1L).with(as(Role.SUPERVISEUR)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/billing/admin/paiements").with(as(Role.SUPERVISEUR)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/billing/admin/factures").with(as(Role.SUPERVISEUR))).andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/billing/admin/paiements/{id}/valider", 1L).with(as(Role.SUPER_ADMIN)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(notForbidden());
+        mvc.perform(get("/api/v1/billing/admin/abonnements").with(as(Role.SUPER_ADMIN))).andExpect(notForbidden());
     }
 }

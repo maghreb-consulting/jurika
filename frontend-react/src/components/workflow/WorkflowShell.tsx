@@ -7,6 +7,7 @@ import type { Ticket } from '../../types/ticket';
 import { TICKET_TYPE_LABELS } from '../../types/ticket';
 import { InfoBulle, TexteAide } from '../ui/Aide';
 import { WorkflowRoadmap, type RoadmapStep } from './WorkflowRoadmap';
+import { IndicateurEnregistrement } from './IndicateurEnregistrement';
 
 interface FooterButtons {
   showPrev?: boolean;
@@ -94,13 +95,14 @@ export function WorkflowShell({
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <IndicateurEnregistrement />
           <Button variant="secondary" onClick={() => navigate(-1)}>
             <ChevronLeft className="mr-1 h-4 w-4" /> Quitter
           </Button>
           <InfoBulle
             libelle="Que conserve « Quitter » ?"
-            texte="Les étapes validées sont conservées. La saisie en cours de l’étape affichée, non validée, n’est conservée que si vous l’avez sauvegardée en brouillon. Vous reprendrez le parcours depuis la page du ticket."
+            texte="Rien n’est perdu : les étapes validées sont conservées, et la saisie en cours de l’étape affichée est enregistrée automatiquement en brouillon au moment où vous quittez. Vous reprendrez le parcours là où vous l’avez laissé, depuis la page du ticket."
           />
           {onCancel && (
             <Button variant="danger" onClick={onCancel}>
@@ -123,9 +125,9 @@ export function WorkflowShell({
         Remplissez l’étape affichée, puis cliquez sur « {f.validateLabel} » : l’étape suivante
         s’ouvre une fois celle-ci validée. Ce qui manque est signalé à côté du bouton de
         validation. Vous pouvez revenir à une étape déjà validée en cliquant sur son numéro.
-        {f.showSaveDraft && onSaveDraft
-          ? ' « Sauvegarder le brouillon » conserve votre saisie sans la valider.'
-          : ''}
+        {' '}Votre saisie est enregistrée automatiquement en brouillon (l’heure du dernier
+        enregistrement s’affiche en haut de la page) : changer d’étape, quitter ou fermer la page
+        ne perd rien.
       </TexteAide>
 
       <WorkflowRoadmap currentStep={currentStep} steps={steps} blocked={blocked} viewStep={viewStep} onNavigate={onNavigate} />

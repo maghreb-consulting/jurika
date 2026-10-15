@@ -29,6 +29,13 @@ interface Props {
   registerDirty?: (step: number, getter: DirtyGetter) => () => void;
 }
 
+/** Nombre saisi, ou null si le champ est vide (jamais de valeur de repli). */
+function nombreOuVide(v: unknown): number | null {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function Step3Capital({ existing, importMode = false, saving, onSubmit, registerDirty }: Props) {
   // Persistance : donnee stockee sous `capital` (executeStep) ou a plat (draft).
   const e =
@@ -38,9 +45,11 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
   const [hasNumeraire, setHasNumeraire] = useState<boolean>(
     (e.hasNumeraire as boolean) ?? true,
   );
-  const [numeraire, setNumeraire] = useState<number>(
-    Number(e.apportNumeraire ?? 100000),
-  );
+  // Lot L7 (E2) : aucune valeur par defaut silencieuse. Montant, part liberee et
+  // nombre de parts partent VIDES (auparavant 100 000, 25 000 et 1 000, transmis aux
+  // actes sans geste de l'employe) ; un brouillon deja enregistre garde ses valeurs.
+  const [numeraireSaisi, setNumeraire] = useState<number | null>(nombreOuVide(e.apportNumeraire));
+  const numeraire = numeraireSaisi ?? 0;
   const [hasNature, setHasNature] = useState<boolean>(
     (e.hasNature as boolean) ?? false,
   );
@@ -67,16 +76,19 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
    * Sinon on tente de retrouver numeraireLibere par soustraction.
    */
   const initialNumeraireLibere = (() => {
-    const raw = e.apportNumeraireLibere;
-    if (raw != null) return Number(raw);
+    const raw = nombreOuVide(e.apportNumeraireLibere);
+    if (raw != null) return raw;
     // Legacy : si capitalLibere est present, on retire la part nature+industrie
-    const legacy = Number(e.capitalLibere ?? 25000);
+    const legacy = nombreOuVide(e.capitalLibere);
+    if (legacy == null) return null;
     const nat = (e.hasNature as boolean) ? Number(e.apportNature ?? 0) : 0;
     const ind = (e.hasIndustrie as boolean) ? Number(e.apportIndustrie ?? 0) : 0;
     return Math.max(0, legacy - nat - ind);
   })();
-  const [numeraireLibere, setNumeraireLibere] = useState<number>(initialNumeraireLibere);
-  const [nbParts, setNbParts] = useState<number>(Number(e.nombreParts ?? 1000));
+  const [numeraireLibereSaisi, setNumeraireLibere] = useState<number | null>(initialNumeraireLibere);
+  const numeraireLibere = numeraireLibereSaisi ?? 0;
+  const [nbPartsSaisi, setNbParts] = useState<number | null>(nombreOuVide(e.nombreParts));
+  const nbParts = nbPartsSaisi ?? 0;
   // Lot L3 (D6) : 99 ans est une valeur PROPOSEE, transmise une fois confirmee.
   const [dureeSaisie, setDureeSaisie] = useState<string | undefined>(
     e.dureeAnnees != null && e.dureeAnnees !== '' ? String(e.dureeAnnees) : undefined,
@@ -152,6 +164,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
       (hasNumeraire || hasNature || hasIndustrie)
     : capitalSocial > 0 &&
       !isBlocked &&
+      (!hasNumeraire || numeraireLibereSaisi != null) &&
       nbParts > 0 &&
       duree > 0 &&
       !!dateCommencement &&
@@ -166,6 +179,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
   const raisonsBlocage = [
     !(hasNumeraire || hasNature || hasIndustrie) && 'Cochez au moins un type d’apport.',
     capitalSocial <= 0 && 'Saisissez le montant des apports : le capital social est nul.',
+    !importMode && hasNumeraire && numeraireLibereSaisi == null && 'Saisissez la part libérée de l’apport en numéraire.',
     !importMode && isBlocked && 'Libérez au moins le quart du capital social.',
     nbParts <= 0 && 'Saisissez le nombre de parts sociales.',
     duree <= 0 && 'Confirmez ou saisissez la durée de la société.',
@@ -178,8 +192,8 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
   useStepAutosave(
     3,
     () => ({
-      apportNumeraire: hasNumeraire ? numeraire : 0,
-      apportNumeraireLibere: numeraireLibereSafe,
+      apportNumeraire: hasNumeraire ? numeraireSaisi : 0,
+      apportNumeraireLibere: hasNumeraire && numeraireLibereSaisi == null ? null : numeraireLibereSafe,
       apportNature: hasNature ? nature : 0,
       descriptionNature: hasNature ? natureDesc : '',
       apportIndustrie: hasIndustrie ? industrie : 0,
@@ -187,7 +201,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
       capitalLibere: libere,
       capitalSocialMad: capitalSocial,
       valeurNominale,
-      nombreParts: nbParts,
+      nombreParts: nbPartsSaisi,
       dureeAnnees: dureeSaisie ? duree : null,
       dateCommencement,
       dateFin,
@@ -212,8 +226,8 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
       onSubmit={(ev) => {
         ev.preventDefault();
         onSubmit({
-          apportNumeraire: hasNumeraire ? numeraire : 0,
-          apportNumeraireLibere: numeraireLibereSafe,
+          apportNumeraire: hasNumeraire ? numeraireSaisi : 0,
+          apportNumeraireLibere: hasNumeraire && numeraireLibereSaisi == null ? null : numeraireLibereSafe,
           apportNature: hasNature ? nature : 0,
           descriptionNature: hasNature ? natureDesc : '',
           apportIndustrie: hasIndustrie ? industrie : 0,
@@ -222,7 +236,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
           capitalLibere: libere,
           capitalSocialMad: capitalSocial,
           valeurNominale,
-          nombreParts: nbParts,
+          nombreParts: nbPartsSaisi,
           dureeAnnees: dureeSaisie ? duree : null,
           dateCommencement,
           dateFin,
@@ -285,8 +299,9 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
                     <input aria-label="Montant total (MAD)"
                       type="number"
                       min={0}
-                      value={numeraire}
-                      onChange={(ev) => setNumeraire(Number(ev.target.value))}
+                      value={numeraireSaisi ?? ''}
+                      placeholder="Montant à saisir"
+                      onChange={(ev) => setNumeraire(nombreOuVide(ev.target.value))}
                       className="h-10 w-full rounded-lg border-2 border-border bg-bg-raised px-3 pr-16 text-sm focus:border-accent focus:outline-none"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-fg-subtle">
@@ -308,9 +323,10 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
                       type="number"
                       min={0}
                       max={numeraire}
-                      value={numeraireLibere}
+                      value={numeraireLibereSaisi ?? ''}
+                      placeholder="Montant à saisir"
                       onChange={(ev) =>
-                        setNumeraireLibere(Number(ev.target.value))
+                        setNumeraireLibere(nombreOuVide(ev.target.value))
                       }
                       className="h-10 w-full rounded-lg border-2 border-border bg-bg-raised px-3 pr-16 text-sm focus:border-accent focus:outline-none"
                     />
@@ -504,8 +520,9 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
           <input aria-label="Nombre total de parts sociales"
             type="number"
             min={1}
-            value={nbParts}
-            onChange={(ev) => setNbParts(Number(ev.target.value))}
+            value={nbPartsSaisi ?? ''}
+            placeholder="Nombre à saisir"
+            onChange={(ev) => setNbParts(nombreOuVide(ev.target.value))}
             className="h-10 w-full max-w-xs rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
           />
         </div>

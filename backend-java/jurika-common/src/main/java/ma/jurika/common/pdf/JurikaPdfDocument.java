@@ -236,6 +236,48 @@ public final class JurikaPdfDocument implements AutoCloseable {
         return this;
     }
 
+    /**
+     * Titre de section sans numero (lot L7 : contrat d'abonnement, ou les pieces portent deja
+     * leur lettre dans le titre ou n'en ont pas).
+     */
+    public JurikaPdfDocument sectionTitle(String title) {
+        run(() -> {
+            ensure(70f);
+            float size = 14.5f;
+            for (String l : wrap(serifBold, size, CONTENT_WIDTH, title)) {
+                show(CONTENT_LEFT, y - size * 0.8f, serifBold, size, NAVY, l, 0f);
+                y -= size * LINE_FACTOR;
+            }
+            hrule(GOLD, 0.8f);
+            y -= 8f;
+        });
+        return this;
+    }
+
+    /**
+     * Garantit {@code hauteur} points disponibles sur la page courante, sinon passe a la page
+     * suivante (lot L7 : un en-tete de tableau ne reste pas seul en bas de page).
+     */
+    public JurikaPdfDocument espaceDisponible(float hauteur) {
+        run(() -> ensure(hauteur));
+        return this;
+    }
+
+    /** Intertitre (article d'un contrat) : gras, navy ; ne reste jamais seul en bas de page. */
+    public JurikaPdfDocument subheading(String text) {
+        run(() -> {
+            ensure(48f);
+            float size = 11f;
+            y -= 2f;
+            for (String l : wrap(serifBold, size, CONTENT_WIDTH, text)) {
+                show(CONTENT_LEFT, y - size * 0.8f, serifBold, size, NAVY_SOFT, l, 0f);
+                y -= size * LINE_FACTOR;
+            }
+            y -= 3f;
+        });
+        return this;
+    }
+
     // ── Bloc libelle / valeur ────────────────────────────────────────────────
 
     /**

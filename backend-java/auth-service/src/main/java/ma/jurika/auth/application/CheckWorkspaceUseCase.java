@@ -25,7 +25,8 @@ public class CheckWorkspaceUseCase {
     public Result execute(String code) {
         Workspace workspace = workspaceRepository.findByCode(code)
                 .orElseThrow(() -> new NotFoundException("Code workspace inconnu : v\u00e9rifiez le code de votre cabinet."));
-        if (!workspace.isActive()) {
+        // Lot L7 (E5), RG-TAR-09 : un workspace archive accepte la connexion de son superviseur.
+        if (!workspace.ouvertALaConnexion()) {
             throw new UnauthorizedException("Ce workspace est suspendu ou d\u00e9sactiv\u00e9 : adressez-vous au support JURIKA.");
         }
         return new Result(workspace.id(), workspace.name());

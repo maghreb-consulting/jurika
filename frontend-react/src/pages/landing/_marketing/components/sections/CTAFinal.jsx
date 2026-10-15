@@ -22,15 +22,15 @@ export function CTAFinal({ onDemoClick }) {
             Démarrez avec <em>JURIKA</em> en quelques minutes
           </h2>
           <p className="cta-sub">
-            Découvrez comment JURIKA accélère la production de vos actes
-            et offre à vos clients un suivi temps réel de leurs dossiers.
+            Essayez JURIKA gratuitement pendant 7 jours, sans moyen de paiement,
+            puis choisissez le forfait qui correspond à votre cabinet.
           </p>
           <ul className="cta-recap" aria-label="Ce que couvre JURIKA">
             {[
-              { t: 'Parcours guidés', d: 'Création, modifications, dissolution, liquidation — lecture assistée des pièces d’identité' },
-              { t: 'Data Room multi-tenant', d: 'Dépôts client, permissions, archivage cloisonné' },
-              { t: 'Assistant juridique sourcé', d: 'Réponses tirées de sources fiables, toujours citées' },
-              { t: 'Pilotage & traçabilité', d: 'Tickets, dashboards, journal d’audit' },
+              { t: 'Parcours guidés', d: 'Création, modifications, dissolution, liquidation — lecture automatique de la CIN et du certificat négatif' },
+              { t: 'Data Room par dossier', d: 'Documents, dépôts et demandes du client, selon les permissions accordées' },
+              { t: 'Chatbot juridique', d: 'Réponses tirées de sources fiables, toujours citées' },
+              { t: 'Suivi et traçabilité', d: 'Tickets, démarches et délais, auteur et date de chaque action' },
             ].map((it) => (
               <li key={it.t}>
                 <span className="cta-recap__ico" aria-hidden="true">
@@ -53,7 +53,7 @@ export function CTAFinal({ onDemoClick }) {
             Créer mon compte
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 8 }}><path d="M5 12h14M13 5l7 7-7 7"/></svg>
           </MagneticButton>
-          <p className="cta-fineprint">Sans carte bancaire · hébergement Maroc (plan Entreprise) ou UE · conçu pour la conformité CNDP / Loi 09-08</p>
+          <p className="cta-fineprint">Essai gratuit de 7 jours, sans moyen de paiement · prix hors taxes · hébergement Amazon Web Services à Paris</p>
         </div>
       </div>
     </section>

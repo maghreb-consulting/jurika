@@ -185,12 +185,134 @@ public class WorkflowDocumentController {
 
     @PostMapping("/{workflowCode}/documents/{templateCode}")
     @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
-    public ResponseEntity<byte[]> generate(@PathVariable String workflowCode,
-                                            @PathVariable String templateCode,
-                                            @AuthenticationPrincipal AuthenticatedUser user,
-                                            @RequestBody(required = false) Map<String, Object> payload) {
+    public ResponseEntity<?> generate(@PathVariable String workflowCode,
+                                      @PathVariable String templateCode,
+                                      @AuthenticationPrincipal AuthenticatedUser user,
+                                      @RequestBody(required = false) Map<String, Object> payload) {
         log.debug("Generate doc workflow={} template={}", workflowCode, templateCode);
+        // Decision du 2026-10-14 (RG-ESS-05) : pendant l'essai, le fichier de l'acte ne parvient
+        // jamais au navigateur, meme en apercu ; l'ecran passe par /apercu (pages filigranees)
+        // et /depot (enregistrement par le serveur). Controle en plus du filtre commun (P6).
+        if (enEssai(user == null ? null : user.workspaceId())) {
+            return refusEssai();
+        }
+        Production p = produire(workflowCode, templateCode, user, payload);
+        DocumentResult result = p.result();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + result.filename() + "\"")
+                .header("X-Jurika-Essai", "NON")
+                .header("X-Workflow-Code", workflowCode)
+                .header("X-Template-Code", templateCode)
+                .header("X-Missing-Variables", String.join(",", result.missingVariables()))
+                // Lot L3 : donnees externes manquantes (marquees "A OBTENIR"), en JSON
+                // encode URL : le front les affiche et la plateforme les reclame.
+                .header("X-Donnees-A-Obtenir",
+                        DocxTemplateEngine.enteteDonneesAObtenir(result, docxTemplateEngine.dictionnaire()))
+                .contentType(MediaType.parseMediaType(result.contentType()))
+                .body(p.octets());
+    }
 
+    /**
+     * Decision du 2026-10-14 (RG-ESS-05, RG-ESS-06) : APERCU de l'acte en affichage seulement.
+     * Meme generation que {@link #generate} (memes controles, meme reclamation des donnees a
+     * obtenir) ; la reponse est du JSON : les pages de l'acte en images PNG produites par le
+     * serveur, la mention de l'essai incrustee sur chaque page pendant l'essai. Aucun octet du
+     * .docx n'est transmis. Hors essai : memes pages, sans mention.
+     */
+    @PostMapping("/{workflowCode}/documents/{templateCode}/apercu")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
+    public Map<String, Object> apercu(@PathVariable String workflowCode,
+                                      @PathVariable String templateCode,
+                                      @AuthenticationPrincipal AuthenticatedUser user,
+                                      @RequestBody(required = false) Map<String, Object> payload) {
+        Production p = produire(workflowCode, templateCode, user, payload);
+        Map<String, Object> r = new java.util.LinkedHashMap<>();
+        r.put("apercu", ma.jurika.ai.document.apercu.ApercuDocuments.acte(p.octets(), p.essai()));
+        r.put("nomFichier", p.result().filename());
+        r.put("donneesAObtenir", DocxTemplateEngine.donneesAObtenir(p.result(), docxTemplateEngine.dictionnaire()));
+        return r;
+    }
+
+    /** Corps de la demande de depot : charge utile de la generation et parametres du depot. */
+    public record DemandeDepot(Map<String, Object> payload, ma.jurika.ai.workflow.depot.DepotDataroomClient.Depot depot) {}
+
+    /**
+     * Decision du 2026-10-14 (RG-ESS-05) : l'acte est genere ET enregistre dans la Data Room par
+     * le serveur (brouillon de generation, nouveau document ou nouvelle version), avec le jeton
+     * de l'utilisateur : le navigateur ne recoit que la fiche JSON du document enregistre.
+     * Pendant l'essai, l'acte enregistre porte la mention d'evaluation (RG-ESS-06, RG-ESS-09).
+     */
+    @PostMapping("/{workflowCode}/documents/{templateCode}/depot")
+    @PreAuthorize("hasAuthority('ROLE_EMPLOYE')")
+    public ResponseEntity<Map<String, Object>> deposer(@PathVariable String workflowCode,
+                                                       @PathVariable String templateCode,
+                                                       @AuthenticationPrincipal AuthenticatedUser user,
+                                                       @org.springframework.web.bind.annotation.RequestHeader(
+                                                               HttpHeaders.AUTHORIZATION) String autorisation,
+                                                       @RequestBody DemandeDepot demande) {
+        ma.jurika.ai.workflow.depot.DepotDataroomClient.Depot d = demande == null ? null : demande.depot();
+        String invalide = depotInvalide(d);
+        if (invalide != null) {
+            return ResponseEntity.badRequest().body(Map.of("code", "DEPOT_INVALIDE", "message", invalide));
+        }
+        if (depotDataroom == null) {
+            throw new IllegalStateException("Client de depot de la Data Room absent");
+        }
+        Map<String, Object> payload = demande.payload() == null ? new java.util.HashMap<>()
+                : new java.util.HashMap<>(demande.payload());
+        payload.putIfAbsent("dossierId", d.dossierId().toString());
+        if (d.ticketId() != null) payload.putIfAbsent("ticketId", d.ticketId().toString());
+        Production p = produire(workflowCode, templateCode, user, payload);
+        String nom = d.filename() == null || d.filename().isBlank() ? p.result().filename() : d.filename();
+        var complet = new ma.jurika.ai.workflow.depot.DepotDataroomClient.Depot(d.dossierId(), d.documentType(),
+                d.title(), nom, d.ticketId(), d.mode(), d.existingDocumentId(), d.motif());
+        try {
+            Map<String, Object> document = depotDataroom.deposer(autorisation, complet, p.octets());
+            Map<String, Object> r = new java.util.LinkedHashMap<>();
+            r.put("document", document);
+            r.put("nomFichier", nom);
+            r.put("filigrane", p.essai());
+            r.put("donneesAObtenir", DocxTemplateEngine.donneesAObtenir(p.result(), docxTemplateEngine.dictionnaire()));
+            return ResponseEntity.ok(r);
+        } catch (ma.jurika.ai.workflow.depot.DepotDataroomClient.DepotRefuseException e) {
+            return ResponseEntity.status(e.statut()).body(e.corps());
+        }
+    }
+
+    private static String depotInvalide(ma.jurika.ai.workflow.depot.DepotDataroomClient.Depot d) {
+        if (d == null || d.mode() == null) return "Le mode de d\u00e9p\u00f4t est obligatoire.";
+        if (d.dossierId() == null) return "Le dossier du d\u00e9p\u00f4t est obligatoire.";
+        switch (d.mode()) {
+            case NOUVELLE_VERSION -> {
+                if (d.existingDocumentId() == null) return "Le document \u00e0 remplacer est obligatoire.";
+            }
+            case BROUILLON -> {
+                if (d.ticketId() == null) return "Le ticket du brouillon est obligatoire.";
+                if (vide(d.documentType()) || vide(d.title())) return "Le type et le titre du document sont obligatoires.";
+            }
+            default -> {
+                if (vide(d.documentType()) || vide(d.title())) return "Le type et le titre du document sont obligatoires.";
+            }
+        }
+        return null;
+    }
+
+    private static boolean vide(String s) {
+        return s == null || s.isBlank();
+    }
+
+    private static ResponseEntity<Map<String, Object>> refusEssai() {
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("code", ma.jurika.common.trial.TrialSoftLockFilter.CODE_TELECHARGEMENT,
+                        "message", ma.jurika.common.trial.EssaiRegles.MESSAGE_TELECHARGEMENT_INTERDIT));
+    }
+
+    /** Acte produit : resultat du moteur, octets rendus (mention de l'essai posee) et etat de l'essai. */
+    private record Production(DocumentResult result, byte[] octets, boolean essai) {}
+
+    private Production produire(String workflowCode, String templateCode, AuthenticatedUser user,
+                                Map<String, Object> payload) {
         // Enrichissement identite societe depuis la BD (point unique, tous workflows PV).
         // Best-effort : si dossierId absent ou identite indisponible, payload inchange.
         UUID workspaceId = user == null ? null : user.workspaceId();
@@ -225,18 +347,21 @@ public class WorkflowDocumentController {
         refuserSiTrouGrammatical(workflowCode, templateCode, result);
         reclamerDonneesExternes(workflowCode, templateCode, enriched, workspaceId, result);
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + result.filename() + "\"")
-                .header("X-Workflow-Code", workflowCode)
-                .header("X-Template-Code", templateCode)
-                .header("X-Missing-Variables", String.join(",", result.missingVariables()))
-                // Lot L3 : donnees externes manquantes (marquees "A OBTENIR"), en JSON
-                // encode URL : le front les affiche et la plateforme les reclame.
-                .header("X-Donnees-A-Obtenir",
-                        DocxTemplateEngine.enteteDonneesAObtenir(result, docxTemplateEngine.dictionnaire()))
-                .contentType(MediaType.parseMediaType(result.contentType()))
-                .body(result.bytes());
+        // Lot L7 (E4) : pendant l'essai gratuit, l'acte porte la mention d'evaluation sur
+        // chaque page (RG-ESS-06), y compris l'acte enregistre dans la Data Room (RG-ESS-09 :
+        // seuls les actes regeneres apres la souscription en sont exempts). Memes donnees et
+        // meme statut : memes octets.
+        boolean essai = enEssai(workspaceId);
+        byte[] octets = essai ? ma.jurika.ai.document.FiligraneEssaiDocx.appliquer(result.bytes()) : result.bytes();
+        return new Production(result, octets, essai);
+    }
+
+    /** Client du depot dans la Data Room (absent des tests sans contexte). */
+    private ma.jurika.ai.workflow.depot.DepotDataroomClient depotDataroom;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setDepotDataroom(ma.jurika.ai.workflow.depot.DepotDataroomClient c) {
+        this.depotDataroom = c;
     }
 
     /**
@@ -438,4 +563,26 @@ public class WorkflowDocumentController {
                         "error", "Unprocessable Entity",
                         "message", ex.getMessage()));
     }
+
+    /** Lot L7 (E4) : etat de l'essai du cabinet (filigrane, apercu seul). */
+    private org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.TrialAccessChecker> essais;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setEssais(org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.TrialAccessChecker> e) {
+        this.essais = e;
+    }
+
+    /** Etat illisible : traite comme un essai (mention posee, apercu seul), jamais l'inverse. */
+    boolean enEssai(UUID workspaceId) {
+        ma.jurika.common.trial.TrialAccessChecker c = essais == null ? null : essais.getIfAvailable();
+        if (c == null || workspaceId == null) return false;
+        try {
+            return c.getState(workspaceId).map(ma.jurika.common.trial.TrialAccessChecker.TrialState::enEssai)
+                    .orElse(false);
+        } catch (RuntimeException ex) {
+            log.error("Etat d'essai illisible pour {} : acte rendu avec la mention d'evaluation", workspaceId, ex);
+            return true;
+        }
+    }
+
 }

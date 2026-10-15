@@ -67,7 +67,30 @@ public final class DashboardDtos {
             List<CategoryCount> ticketsParStatut,
             List<MonthlyFlow> evolutionMensuelle,
             List<CategoryCount> demandesParStatut,
-            Instant generatedAt) {}
+            Instant generatedAt,
+            /*
+             * Lot L7 (E5), CDC 4.5 : tableaux de bord de productivite (forfaits Max et Sur Devis).
+             * Faux : le temps moyen de cloture, l'evolution des tickets, les parcours les plus
+             * frequents et l'evolution mensuelle ne sont PAS rendus (vides, et non "zero activite") ;
+             * l'ecran l'explique. La supervision (charge par employe, echeances, dossiers a risque,
+             * RG-SUP-01) reste rendue a tous les forfaits.
+             */
+            boolean productiviteIncluse) {
+
+        /** Copie marquee "productivite incluse" (une entree de cache anterieure au lot n'a pas la marque). */
+        public SuperviseurDashboardDto avecProductivite() {
+            return productiviteIncluse ? this : new SuperviseurDashboardDto(ticketsOuverts, ticketsClos30d,
+                    tempsMoyenClotureHeures, evolutionTickets30j, topWorkflows, chargeParEmploye, echeancesJ30J15J3,
+                    dossiersARisque, ticketsParStatut, evolutionMensuelle, demandesParStatut, generatedAt, true);
+        }
+
+        /** Copie sans les indicateurs de productivite (forfait qui ne les inclut pas). */
+        public SuperviseurDashboardDto sansProductivite() {
+            return new SuperviseurDashboardDto(ticketsOuverts, ticketsClos30d, 0d, List.of(), List.of(),
+                    chargeParEmploye, echeancesJ30J15J3, dossiersARisque, ticketsParStatut, List.of(),
+                    demandesParStatut, generatedAt, false);
+        }
+    }
 
     // ----- EMPLOYE -----
     public record TicketLite(UUID id, String reference, String titre, String statut,

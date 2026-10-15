@@ -19,7 +19,6 @@ import { TrustMarquee } from './components/sections/TrustMarquee.jsx';
 import { PillarsShowcase } from './components/sections/PillarsShowcase.jsx';
 import { AISplitScroll } from './components/sections/AISplitScroll.jsx';
 import { PilotageShowcase } from './components/sections/PilotageShowcase.jsx';
-import { AudiencesCarousel } from './components/sections/AudiencesCarousel.jsx';
 import { Pricing } from './components/sections/Pricing.jsx';
 import { FAQ } from './components/sections/FAQ.jsx';
 import { CTAFinal } from './components/sections/CTAFinal.jsx';
@@ -69,8 +68,7 @@ export function MarketingApp() {
         <PillarsShowcase />
         <AISplitScroll />
         <PilotageShowcase />
-        <AudiencesCarousel />
-        <Pricing onDemoClick={goSignup} />
+        <Pricing />
         <FAQ />
         <CTAFinal onDemoClick={goSignup} />
       </main>

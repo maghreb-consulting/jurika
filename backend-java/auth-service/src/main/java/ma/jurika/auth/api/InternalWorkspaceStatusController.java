@@ -3,9 +3,11 @@ package ma.jurika.auth.api;
 import ma.jurika.auth.application.IssueCredentialsUseCase;
 import ma.jurika.auth.infrastructure.persistence.WorkspaceEntity;
 import ma.jurika.auth.infrastructure.persistence.WorkspaceJpaRepository;
+import ma.jurika.common.billing.PlanCatalog;
 import ma.jurika.common.billing.PlanLimitsService;
 import ma.jurika.common.billing.PlanLimitsService.UsageSnapshot;
 import ma.jurika.common.exception.NotFoundException;
+import ma.jurika.common.exception.ValidationException;
 import ma.jurika.common.trial.TrialAccessChecker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -45,15 +48,18 @@ public class InternalWorkspaceStatusController {
     private final TrialAccessChecker trialChecker;
     private final PlanLimitsService planLimitsService;
     private final IssueCredentialsUseCase issueCredentialsUseCase;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     public InternalWorkspaceStatusController(WorkspaceJpaRepository workspaceRepo,
                                               TrialAccessChecker trialChecker,
                                               @Autowired(required = false) PlanLimitsService planLimitsService,
-                                              IssueCredentialsUseCase issueCredentialsUseCase) {
+                                              IssueCredentialsUseCase issueCredentialsUseCase,
+                                              org.springframework.jdbc.core.JdbcTemplate jdbc) {
         this.workspaceRepo = workspaceRepo;
         this.trialChecker = trialChecker;
         this.planLimitsService = planLimitsService;
         this.issueCredentialsUseCase = issueCredentialsUseCase;
+        this.jdbc = jdbc;
     }
 
     public record WorkspaceStatusDto(
@@ -95,25 +101,36 @@ public class InternalWorkspaceStatusController {
     }
 
     /**
-     * PUT /internal/workspaces/{id}/status?transition=ACTIVATED|CANCELLED|PAST_DUE&planCode=...&accessUntil=ISO
+     * PUT /internal/workspaces/{id}/status : transitions d'abonnement propagees par billing-service.
      *
-     * <p>Appele par billing-service apres les webhooks Stripe (T4) pour
-     * propager les transitions de status. Depuis Sprint 12 finition
-     * (2026-06-04, V26) : persistance reelle des colonnes
-     * {@code subscription_status / subscription_ends_at / active_since /
-     * cancelled_at}, + bascule de {@code trial_status} vers {@code CONVERTED}
-     * lors de la 1re activation pour lever le bandeau TRIAL_ACTIVE cote UI.
-     *
-     * <p>Idempotent : rejouer la meme transition est sans effet (Stripe peut
-     * retenter le webhook). Pas d'exception remontee a billing-service pour
-     * un transition inconnu — on log et on renvoie 204.
+     * <p>Lot L7 (E5) :
+     * <ul>
+     *   <li>{@code ACTIVATED} : forfait ({@code planCode}, code du catalogue, refuse s'il est
+     *       inconnu), fin de la periode payee ({@code accessUntil}), debut de l'abonnement
+     *       ({@code abonnementDebut}, ancre du mois d'abonnement RG-PLN-01), rythme
+     *       ({@code rythme}). Un workspace ARCHIVE est reactive dans l'etat exact ou il a ete
+     *       laisse (RG-TAR-08) : seul son statut change, aucune donnee n'est touchee.</li>
+     *   <li>{@code ARCHIVED} : forfait arrete ({@code motif} IMPAYE, FIN_ABONNEMENT, RESILIATION,
+     *       DECISION) : statut ARCHIVED, rien n'est supprime (RG-TAR-07, RG-PLN-07).</li>
+     *   <li>{@code SUSPENDED_IMPAYE} (lot L7, E8, article 4.4 du contrat) : echeance impayee 15 jours
+     *       apres l'echeance et apres un rappel : statut SUSPENDED, motif IMPAYE (auth V46), rien
+     *       n'est supprime ; seul le superviseur se connecte, pour payer. Sans effet sur un workspace
+     *       qui n'est pas ACTIVE (archive, suspendu par decision : journalise). {@code ACTIVATED}
+     *       (paiement constate) retablit l'acces dans l'etat exact ; une suspension decidee par le
+     *       super-admin n'est jamais levee par un paiement.</li>
+     *   <li>{@code CANCELLED}, {@code PAST_DUE} : inchanges.</li>
+     * </ul>
+     * Idempotent. Une transition inconnue est REFUSEE (400) : avant, elle etait ignoree en silence.
      */
     @PutMapping("/{workspaceId}/status")
     @Transactional
     public ResponseEntity<Void> updateStatus(@PathVariable UUID workspaceId,
                                               @RequestParam String transition,
                                               @RequestParam(required = false) String planCode,
-                                              @RequestParam(required = false) String accessUntil) {
+                                              @RequestParam(required = false) String accessUntil,
+                                              @RequestParam(required = false) String abonnementDebut,
+                                              @RequestParam(required = false) String rythme,
+                                              @RequestParam(required = false) String motif) {
         WorkspaceEntity ws = workspaceRepo.findById(workspaceId)
                 .orElseThrow(() -> new NotFoundException("Workspace inconnu: " + workspaceId));
 
@@ -131,12 +148,61 @@ public class InternalWorkspaceStatusController {
                 }
                 ws.setCancelledAt(null);
                 if (planCode != null && !planCode.isBlank()) {
-                    ws.setSelectedPlan(planCode);
+                    ws.setSelectedPlan(PlanCatalog.findByCode(planCode)
+                            .orElseThrow(() -> new ValidationException("Forfait inconnu : " + planCode))
+                            .internalCode());
                 }
+                if (abonnementDebut != null && !abonnementDebut.isBlank()) {
+                    ws.setAbonnementDebut(LocalDate.parse(abonnementDebut));
+                }
+                if (rythme != null && !rythme.isBlank()) {
+                    ws.setRythmePaiement(PlanCatalog.BillingPeriod.fromString(rythme).codeContrat());
+                }
+                // RG-TAR-08 : reactivation dans l'etat exact (seul le statut change).
+                if ("ARCHIVED".equals(ws.getStatus())) {
+                    ws.setStatus("ACTIVE");
+                }
+                // Lot L7 (E8), article 4.4 : acces retabli des le paiement constate.
+                if ("SUSPENDED".equals(ws.getStatus())
+                        && ma.jurika.auth.domain.model.Workspace.SUSPENSION_IMPAYE.equals(ws.getSuspensionMotif())) {
+                    ws.setStatus("ACTIVE");
+                    log.info("Suspension pour impaye levee (paiement constate) workspace={}", workspaceId);
+                }
+                if (!"SUSPENDED".equals(ws.getStatus())) {
+                    ws.setSuspenduLe(null);
+                    ws.setSuspensionMotif(null);
+                }
+                ws.setArchiveLe(null);
+                ws.setArchiveMotif(null);
                 // RG-BL05 : le trial se cloture en "CONVERTED" pour lever le bandeau cote UI.
                 if (!"CONVERTED".equals(ws.getTrialStatus())) {
                     ws.setTrialStatus("CONVERTED");
                 }
+            }
+            case "ARCHIVED" -> {
+                if (motif == null || !MOTIFS_ARCHIVAGE.contains(motif)) {
+                    throw new ValidationException("Motif d'archivage attendu : " + MOTIFS_ARCHIVAGE);
+                }
+                if (!"ARCHIVED".equals(ws.getStatus())) {
+                    ws.setStatus("ARCHIVED");
+                    ws.setArchiveLe(now);
+                    ws.setArchiveMotif(motif);
+                }
+                // Lot L7 (E8) : l'archivage (forfait arrete) succede a la suspension.
+                ws.setSuspenduLe(null);
+                ws.setSuspensionMotif(null);
+                ws.setSubscriptionStatus("IMPAYE".equals(motif) ? "unpaid" : "cancelled");
+                if (ws.getCancelledAt() == null) ws.setCancelledAt(now);
+            }
+            case "SUSPENDED_IMPAYE" -> {
+                if ("ACTIVE".equals(ws.getStatus())) {
+                    ws.setStatus("SUSPENDED");
+                    ws.setSuspenduLe(now);
+                    ws.setSuspensionMotif(ma.jurika.auth.domain.model.Workspace.SUSPENSION_IMPAYE);
+                } else if (!ma.jurika.auth.domain.model.Workspace.SUSPENSION_IMPAYE.equals(ws.getSuspensionMotif())) {
+                    log.warn("Suspension pour impaye sans effet : workspace={} au statut {}", workspaceId, ws.getStatus());
+                }
+                ws.setSubscriptionStatus("past_due");
             }
             case "CANCELLED" -> {
                 ws.setSubscriptionStatus("cancelled");
@@ -152,16 +218,59 @@ public class InternalWorkspaceStatusController {
                     ws.setSubscriptionEndsAt(accessUntilParsed);
                 }
             }
-            default -> {
-                log.warn("Transition inconnue ignoree : workspace={} transition={}", workspaceId, transition);
-                return ResponseEntity.noContent().build();
-            }
+            default -> throw new ValidationException("Transition inconnue : " + transition);
         }
 
         workspaceRepo.save(ws);
         log.info("Transition workspace status persistee workspace={} transition={} plan={} subStatus={} endsAt={}",
                 workspaceId, transition, planCode, ws.getSubscriptionStatus(), ws.getSubscriptionEndsAt());
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Lot L7 (E5), RG-PAY-02 et RG-PLN-02 : super-admins actifs (identifiant et workspace), pour le
+     * canal du super-admin (paiement hors ligne a enregistrer). Fonction auth V44, hors workspace.
+     */
+    public record SuperAdminDto(UUID id, UUID workspaceId) {}
+
+    @GetMapping("/super-admins")
+    @Transactional(readOnly = true)
+    public java.util.List<SuperAdminDto> superAdmins() {
+        return jdbc.query("SELECT id, workspace_id FROM auth_super_admins_actifs()",
+                (rs, n) -> new SuperAdminDto((UUID) rs.getObject("id"), (UUID) rs.getObject("workspace_id")));
+    }
+
+    /**
+     * Lot L7 (E8) : superviseurs actifs d'un cabinet (rappel d'une echeance impayee, notifie a
+     * l'ecran). Lu dans le workspace du chemin (RLS).
+     */
+    @GetMapping("/{workspaceId}/superviseurs")
+    @Transactional(readOnly = true)
+    public java.util.List<UUID> superviseurs(@PathVariable UUID workspaceId) {
+        return jdbc.query("SELECT id FROM users WHERE workspace_id = ? AND role = 'SUPERVISEUR' AND status = 'ACTIVE' "
+                + "ORDER BY created_at", (rs, n) -> (UUID) rs.getObject("id"), workspaceId);
+    }
+
+    /** Lot L7 (E5) : motifs d'archivage (auth V44). */
+    static final java.util.Set<String> MOTIFS_ARCHIVAGE =
+            java.util.Set.of("IMPAYE", "FIN_ABONNEMENT", "RESILIATION", "DECISION");
+
+    /**
+     * Lot L7 (E5), RG-PAY-03 : identite du cabinet pour la facture (denomination, ICE, IF, RC,
+     * adresse, ville). Valeurs telles qu'en base, vides comprises : la facture nomme ce qui manque.
+     */
+    public record IdentiteFacturationDto(UUID workspaceId, String denomination, String ice, String identifiantFiscal,
+                                         String rc, String adresse, String ville, String email,
+                                         String statut, String forfait) {}
+
+    @GetMapping("/{workspaceId}/identite-facturation")
+    @Transactional(readOnly = true)
+    public ResponseEntity<IdentiteFacturationDto> identiteFacturation(@PathVariable UUID workspaceId) {
+        WorkspaceEntity ws = workspaceRepo.findById(workspaceId)
+                .orElseThrow(() -> new NotFoundException("Workspace inconnu: " + workspaceId));
+        return ResponseEntity.ok(new IdentiteFacturationDto(ws.getId(), ws.getName(), ws.getIce(), ws.getIfFiscal(),
+                ws.getRcNumber(), ws.getAdresse(), ws.getCity(), ws.getContactEmail(), ws.getStatus(),
+                ws.getSelectedPlan()));
     }
 
     /**

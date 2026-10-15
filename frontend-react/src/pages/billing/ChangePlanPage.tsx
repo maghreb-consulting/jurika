@@ -1,331 +1,205 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Banknote, CheckCircle2, ExternalLink, Loader2, Mail } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { billingService } from '../../services/billing.service';
-import { useAuthStore } from '../../store/authStore';
-import type {
-  BillingPeriod,
-  ChangePlanPreviewResponse,
-  PlanCode,
-  PricingTier,
-  SubscriptionDto,
+import { PlanPicker } from '../../components/billing/PlanPicker';
+import { ChoixModePaiement } from '../../components/billing/ChoixModePaiement';
+import { SuitePaiement } from '../../components/billing/SuitePaiement';
+import { ErreurFacturationBloc } from '../../components/billing/ErreurFacturation';
+import { InfoBulle, TexteAide } from '../../components/ui/Aide';
+import { oublierForfait } from '../../lib/useForfait';
+import { messageEchecDevis } from '../../lib/demandeDevis';
+import {
+  formatDateIso,
+  formatMadCents,
+  lireErreurFacturation,
+  LIBELLE_RYTHME,
+  type AbonnementVue,
+  type ApercuChangementVue,
+  type BillingPeriod,
+  type ErreurFacturation,
+  type PaymentMethod,
+  type PlanCode,
+  type PreparationPaiementVue,
+  type PricingTier,
 } from '../../types/billing';
-import { extractError } from '../../lib/api';
-import { libelleForfait } from '../../lib/adminLabels';
-import { TexteAide } from '../../components/ui/Aide';
+
+const LIBELLE_EFFET: Record<string, string> = {
+  APRES_PAIEMENT: 'Effectif dès la confirmation du paiement de la différence',
+  IMMEDIAT: 'Effectif immédiatement',
+  PROCHAINE_ECHEANCE: 'Effectif à la prochaine échéance',
+};
 
 /**
- * BUG 8 (2026-06-07) — page "Changer de forfait" pour un workspace deja
- * abonne.
- *
- * <p>Difference avec {@code PlanPicker} :
- *  - marque le plan courant ("Plan actuel")
- *  - autorise upgrade ET downgrade
- *  - prefetch un preview a chaque survol pour afficher proration / blocage
- *  - le bouton "Confirmer" appelle POST /change-plan (et NON /checkout-session)
- *  - Entreprise -> mailto:contact@jurika.ai (RG-BL10)
+ * Lot L7 (E5), RG-TAR-04 a RG-TAR-06 : changement de forfait ou de rythme. Un apercu calcule par
+ * le serveur est obligatoire avant la confirmation : nature, effet, date, montant au prorata (hausse
+ * en paiement annuel), ou ce qui depasse (baisse refusee). Sur Devis : demande de devis.
  */
 export function ChangePlanPage() {
-  const user = useAuthStore((s) => s.user);
-  const navigate = useNavigate();
-  const [subscription, setSubscription] = useState<SubscriptionDto | null>(null);
-  const [tiers, setTiers] = useState<PricingTier[]>([]);
-  const [period, setPeriod] = useState<BillingPeriod>('monthly');
-  const [previews, setPreviews] = useState<Record<string, ChangePlanPreviewResponse>>({});
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState<PlanCode | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [abonnement, setAbonnement] = useState<AbonnementVue | null>(null);
+  const [chargement, setChargement] = useState(true);
+  const [rythme, setRythme] = useState<BillingPeriod>('yearly');
+  const [vise, setVise] = useState<PlanCode | null>(null);
+  const [apercu, setApercu] = useState<ApercuChangementVue | null>(null);
+  const [mode, setMode] = useState<PaymentMethod | null>(null);
+  const [envoi, setEnvoi] = useState(false);
+  const [erreur, setErreur] = useState<ErreurFacturation | null>(null);
+  const [resultat, setResultat] = useState<string | null>(null);
+  const [preparation, setPreparation] = useState<PreparationPaiementVue | null>(null);
+  const [devis, setDevis] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [sub, pricing] = await Promise.all([
-          billingService.getSubscription(),
-          billingService.getPricing(),
-        ]);
-        if (cancelled) return;
-        setSubscription(sub);
-        setTiers(pricing.tiers);
-        if (sub?.planCode === 'business') setPeriod('monthly');
-      } catch (err) {
-        if (!cancelled) setError(`Les forfaits n’ont pas pu être chargés : ${extractError(err).message}`);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
+    billingService.getAbonnement()
+      .then((a) => {
+        setAbonnement(a);
+        if (a.rythme) setRythme(a.rythme);
+      })
+      .catch((err) => setErreur(lireErreurFacturation(err, 'L’abonnement n’a pas pu être chargé.')))
+      .finally(() => setChargement(false));
   }, []);
 
-  const currentPlanCode = subscription?.planCode ?? null;
-
-  // Prefetch previews pour chaque target plan != courant.
-  useEffect(() => {
-    if (!subscription) return;
-    let cancelled = false;
-    const fetchPreviews = async () => {
-      const targets = tiers
-        .filter((t) => !t.quoteOnly)
-        .filter((t) => t.code !== subscription.planCode);
-      const results = await Promise.all(targets.map(async (t) => {
-        try {
-          const p = await billingService.previewChangePlan({
-            targetPlanCode: t.code as PlanCode,
-            billingPeriod: period,
-          });
-          return [t.code, p] as const;
-        } catch {
-          return null;
-        }
-      }));
-      if (cancelled) return;
-      const map: Record<string, ChangePlanPreviewResponse> = {};
-      for (const r of results) {
-        if (r) map[r[0]] = r[1];
+  async function choisir(t: PricingTier, r: BillingPeriod = rythme) {
+    setErreur(null);
+    setResultat(null);
+    setApercu(null);
+    if (t.quoteOnly && abonnement?.forfait !== 'sur_devis') {
+      setVise(null);
+      try {
+        const rep = await billingService.contactSales({
+          workspaceName: '', contactEmail: '', contactName: '', phone: '',
+          message: 'Demande de devis pour le forfait Sur Devis depuis l’écran de changement de forfait.',
+        });
+        setDevis(rep.message);
+      } catch (err) {
+        setErreur(lireErreurFacturation(err, messageEchecDevis()));
       }
-      setPreviews(map);
-    };
-    void fetchPreviews();
-    return () => { cancelled = true; };
-  }, [subscription, tiers, period]);
-
-  const sortedTiers = useMemo(() => {
-    const rank: Record<string, number> = { essentiel: 0, business: 1, entreprise: 2 };
-    return [...tiers].sort((a, b) => (rank[a.code] ?? 99) - (rank[b.code] ?? 99));
-  }, [tiers]);
-
-  async function confirmChange(tier: PricingTier) {
-    if (tier.quoteOnly) {
-      window.location.assign(`mailto:contact@jurika.ai?subject=Forfait Entreprise — ${encodeURIComponent(user?.email ?? '')}`);
       return;
     }
-    setError(null);
-    setSuccess(null);
-    setSubmitting(tier.code as PlanCode);
+    setVise(t.code);
     try {
-      const res = await billingService.changePlan({
-        targetPlanCode: tier.code as PlanCode,
-        billingPeriod: period,
-      });
-      setSuccess(
-        `Forfait changé : ${libelleForfait(res.previousPlanCode)} → ${libelleForfait(res.newPlanCode)} (${res.billingPeriod === 'yearly' ? 'annuel' : 'mensuel'}). Le montant a été ajusté au prorata des jours restants.`,
-      );
-      // Refresh subscription apres 1s pour reflet visuel.
-      setTimeout(async () => {
-        try {
-          const s = await billingService.getSubscription();
-          setSubscription(s);
-        } catch { /* silent */ }
-      }, 800);
+      setApercu(await billingService.apercuChangement({ forfait: t.code, rythme: r }));
     } catch (err) {
-      setError(`Le changement de forfait a échoué : ${extractError(err).message}`);
-    } finally {
-      setSubmitting(null);
+      setErreur(lireErreurFacturation(err, 'L’aperçu du changement n’a pas pu être calculé.'));
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center" data-testid="change-plan-loading">
-        <Loader2 className="h-6 w-6 animate-spin text-accent" />
-      </div>
-    );
+  async function confirmer() {
+    if (!vise || !apercu) return;
+    if (apercu.effet === 'APRES_PAIEMENT' && !mode) {
+      setErreur({ code: null, message: 'Choisissez un mode de paiement pour la différence.', elements: [] });
+      return;
+    }
+    setEnvoi(true);
+    setErreur(null);
+    try {
+      const res = await billingService.changerForfait({ forfait: vise, rythme, mode: mode ?? undefined });
+      oublierForfait();
+      if (res.resultat === 'PAIEMENT_REQUIS' && res.paiement) {
+        setPreparation(res.paiement);
+      } else {
+        setResultat(res.message);
+        setApercu(null);
+        setAbonnement(await billingService.getAbonnement());
+      }
+    } catch (err) {
+      setErreur(lireErreurFacturation(err, 'Le changement n’a pas pu être enregistré.'));
+    } finally {
+      setEnvoi(false);
+    }
   }
 
-  // BUG 14 (2026-06-07) — sans abonnement actif, on route directement vers
-  // /app/billing qui propose le selecteur de plan + PaymentPage multi-moyens.
-  if (!subscription) {
-    return (
-      <div className="space-y-4" data-testid="change-plan-no-sub">
-        <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
-          Vous n’avez pas encore d’abonnement actif. Choisissez un forfait depuis l’écran
-          « Abonnement et facturation », puis sélectionnez votre moyen de paiement (carte, virement,
-          chèque, espèces).
-        </p>
-        <Link
-          to="/app/billing"
-          className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-bg hover:bg-accent-hover"
-        >
-          Choisir un forfait
-        </Link>
-      </div>
-    );
+  if (chargement) {
+    return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-accent" aria-label="Chargement" /></div>;
   }
+
+  const actif = abonnement?.statut === 'ACTIF';
 
   return (
-    <div className="space-y-6" data-testid="change-plan-page">
-      <header className="rounded-2xl bg-bg-raised p-6 shadow-sm">
-        <Link to="/app/billing" className="mb-3 inline-flex items-center gap-1 text-xs text-fg-subtle hover:text-fg">
-          <ArrowLeft className="h-3 w-3" /> Retour
-        </Link>
-        <h1 className="font-heading text-2xl font-semibold text-fg">Changer de forfait</h1>
-        <p className="mt-1 text-sm text-fg-muted">
-          Vous êtes actuellement au forfait <strong>{libelleForfait(currentPlanCode)}</strong>.
-          Sélectionnez un nouveau forfait ci-dessous. Le changement, à la hausse comme à la baisse,
-          s’applique immédiatement ; le montant est ajusté au prorata des jours restants.
-        </p>
+    <div className="mx-auto max-w-6xl space-y-6" data-testid="change-plan-page">
+      <Link to="/app/billing" className="inline-flex items-center gap-1 text-sm text-fg-muted hover:text-fg">
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Retour à la facturation
+      </Link>
+      <header>
+        <h1 className="font-heading text-2xl font-semibold text-fg">Changer de forfait ou de rythme</h1>
+        {actif && (
+          <p className="mt-1 text-sm text-fg-muted">
+            Forfait actuel : <strong>{abonnement?.forfaitLibelle}</strong>
+            {abonnement?.rythme ? `, ${LIBELLE_RYTHME[abonnement.rythme].toLowerCase()}` : ''}.
+          </p>
+        )}
       </header>
-
-      <TexteAide cle="changer-forfait" titre="Changer de forfait">
+      <TexteAide cle="changement-forfait" titre="Comment se passe un changement ?">
         <p>
-          Choisissez d’abord la périodicité (mensuelle ou annuelle), puis le forfait. « Passer à… »
-          utilise la carte déjà enregistrée ; « Payer par un autre moyen » vous mène au choix du
-          paiement (virement, chèque, espèces ou nouvelle carte). Un passage à un forfait inférieur
-          peut être bloqué si votre cabinet dépasse ses limites : la raison s’affiche sur la carte.
+          Forfait supérieur : effectif tout de suite ; en paiement annuel, vous réglez la différence au prorata des mois
+          restants, et les nouveaux quotas s’appliquent dès la confirmation du paiement ; en paiement mensuel, la mensualité
+          suivante est celle du nouveau forfait. Forfait inférieur : effectif à la prochaine échéance, sans remboursement,
+          et refusé si l’usage du cabinet dépasse le forfait visé. Rythme : changé à la prochaine échéance. Chaque changement
+          donne lieu à de nouvelles conditions particulières à accepter.
         </p>
       </TexteAide>
 
-      {error && (
-        <div role="alert" className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger" data-testid="change-plan-error">
-          {error}
-        </div>
-      )}
-      {success && (
-        <div role="status" className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-success" data-testid="change-plan-success">
-          {success}
-        </div>
-      )}
+      <ErreurFacturationBloc erreur={erreur} />
+      {resultat && <p role="status" className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-fg" data-testid="change-plan-resultat">{resultat}</p>}
+      {devis && <p role="status" className="rounded-lg border border-border bg-bg-overlay p-3 text-sm text-fg">{devis}</p>}
 
-      {/* Toggle Mensuel / Annuel */}
-      <div className="flex items-center justify-center gap-3">
-        {(['monthly', 'yearly'] as const).map((p) => (
-          <button
-            key={p}
-            type="button"
-            onClick={() => setPeriod(p)}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-              period === p
-                ? 'bg-fg text-bg shadow-card'
-                : 'bg-bg-raised text-fg-muted border border-border hover:text-fg'
-            }`}
-            data-testid={`change-plan-period-${p}`}
-          >
-            {p === 'monthly' ? 'Mensuel' : 'Annuel'}
-          </button>
-        ))}
-      </div>
+      {!actif ? (
+        <p className="rounded-lg border border-border bg-bg-overlay p-4 text-sm text-fg-muted">
+          Aucun abonnement actif : <Link to="/app/billing/payment?objet=SOUSCRIPTION" className="text-accent underline">souscrivez un forfait</Link>.
+        </p>
+      ) : preparation ? (
+        <SuitePaiement preparation={preparation} />
+      ) : (
+        <>
+          <PlanPicker period={rythme} forfaitActuel={abonnement?.forfait}
+            onPeriodChange={(r) => {
+              setRythme(r);
+              setApercu(null);
+              const t = vise ?? abonnement?.forfait;
+              if (t) void choisir({ code: t as PlanCode, quoteOnly: false } as PricingTier, r);
+            }}
+            testIdPrefix="change-plan"
+            libelleAction={(t) => (t.quoteOnly && abonnement?.forfait !== 'sur_devis' ? 'Demander un devis' : 'Voir l’effet')}
+            onChoisir={(t) => void choisir(t)} desactive={envoi} />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {sortedTiers.map((tier) => {
-          const isCurrent = tier.code === currentPlanCode;
-          const preview = previews[tier.code];
-          const blocked = preview && preview.isDowngrade && !preview.downgradeAllowed;
-          const slice = period === 'yearly' ? tier.yearly : tier.monthly;
-          return (
-            <article
-              key={tier.code}
-              data-testid={`change-plan-${tier.code}`}
-              className={`relative flex flex-col rounded-2xl border bg-bg-raised p-5 shadow-card ${
-                isCurrent ? 'border-success ring-2 ring-success/30' :
-                tier.featured ? 'border-accent ring-2 ring-accent/30' : 'border-border'
-              }`}
-            >
-              <header className="mb-3 flex items-center justify-between gap-2">
-                <h3 className="font-heading text-lg font-semibold text-fg">{tier.label}</h3>
-                {isCurrent ? (
-                  <span className="rounded-full bg-success/20 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-success">
-                    Forfait actuel
-                  </span>
-                ) : tier.featured && tier.ribbon ? (
-                  <span className="rounded-full bg-gradient-to-r from-accent to-accent-hover px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-bg shadow-card">
-                    {tier.ribbon}
-                  </span>
-                ) : null}
-              </header>
-              <p className="text-xs uppercase tracking-wider text-fg-muted">{tier.target}</p>
-
-              <div className="my-3">
-                {tier.quoteOnly ? (
-                  <p className="font-heading text-2xl font-semibold text-fg">Sur devis</p>
-                ) : slice ? (
-                  <>
-                    <p className="font-heading text-2xl font-semibold text-fg">
-                      {new Intl.NumberFormat('fr-FR').format(slice.priceMad)} MAD
-                    </p>
-                    <p className="text-xs text-fg-muted">/ {period === 'yearly' ? 'an' : 'mois'} HT</p>
-                  </>
-                ) : null}
-              </div>
-
-              {/* Preview info */}
-              {preview && !isCurrent && (
-                <p className="mb-2 rounded-lg bg-bg-overlay px-3 py-2 text-xs font-medium text-fg-muted" data-testid={`change-plan-${tier.code}-preview`}>
-                  {preview.isUpgrade && '⬆ Forfait supérieur : le complément au prorata est calculé à la confirmation.'}
-                  {preview.isDowngrade && preview.downgradeAllowed && '⬇ Forfait inférieur : un avoir au prorata est généré.'}
-                  {blocked && (
-                    <span className="flex items-start gap-1.5 text-warning">
-                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" />
-                      {preview.blockedReason}
-                    </span>
-                  )}
+          {apercu && (
+            <section className="space-y-3 rounded-2xl bg-bg-raised p-5 text-sm shadow-sm" data-testid="change-plan-apercu">
+              <h2 className="flex items-center gap-1 text-base font-semibold text-fg">
+                Aperçu : {apercu.versLibelle}, {LIBELLE_RYTHME[apercu.rythmeVise].toLowerCase()}
+                <InfoBulle texte="Calculé par le serveur à partir de votre abonnement et de l’usage du cabinet. Rien n’est enregistré avant la confirmation." />
+              </h2>
+              <p className="text-fg">{apercu.message}</p>
+              {apercu.effet && (
+                <p className="text-fg-muted">
+                  {LIBELLE_EFFET[apercu.effet]}{apercu.effectifLe ? ` (le ${formatDateIso(apercu.effectifLe)})` : ''}.
                 </p>
               )}
-
-              <ul className="mt-3 flex-1 space-y-1 text-sm text-fg-muted">
-                {tier.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none text-success" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {isCurrent ? (
-                <button
-                  type="button"
-                  disabled
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-bg-overlay px-4 py-2 text-sm font-medium text-fg-subtle"
-                  data-testid={`change-plan-${tier.code}-current`}
-                >
-                  Forfait actuel
-                </button>
-              ) : tier.quoteOnly ? (
-                <button
-                  type="button"
-                  onClick={() => confirmChange(tier)}
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border-hi bg-bg-raised px-4 py-2 text-sm font-medium text-fg-muted hover:bg-bg-overlay"
-                  data-testid={`change-plan-${tier.code}-contact`}
-                >
-                  <Mail className="h-4 w-4" /> Contacter les ventes
-                </button>
-              ) : (
-                <div className="mt-4 space-y-2">
-                  <button
-                    type="button"
-                    disabled={submitting !== null || blocked}
-                    onClick={() => confirmChange(tier)}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-bg hover:bg-accent-hover disabled:opacity-50"
-                    data-testid={`change-plan-${tier.code}-cta`}
-                  >
-                    {submitting === tier.code ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <ExternalLink className="h-4 w-4" />
-                    )}
-                    {submitting === tier.code
-                      ? 'Application en cours…'
-                      : blocked ? 'Changement impossible' : `Passer à ${tier.label} (carte enregistrée)`}
-                  </button>
-                  {/* BUG 14 — alternative : route vers PaymentPage pour
-                      payer ce nouveau plan par un autre moyen (virement, cheque,
-                      especes) ou par une nouvelle CB. Visible meme quand le
-                      downgrade rapide via Stripe est possible. */}
-                  <button
-                    type="button"
-                    disabled={blocked}
-                    onClick={() => navigate(`/app/billing/payment?plan=${encodeURIComponent(tier.code)}&period=${encodeURIComponent(period)}`)}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-bg-raised px-4 py-2 text-xs font-medium text-fg-muted hover:bg-bg-overlay disabled:opacity-50"
-                    data-testid={`change-plan-${tier.code}-payment-page`}
-                  >
-                    <Banknote className="h-3.5 w-3.5" /> Payer par un autre moyen
-                  </button>
-                </div>
+              {apercu.montants && (
+                <p className="text-fg">
+                  Différence à régler ({apercu.moisRestants} mois restants) : {formatMadCents(apercu.montants.htCentimes)} HT,{' '}
+                  <strong>{formatMadCents(apercu.montants.ttcCentimes)} TTC</strong>.
+                </p>
               )}
-            </article>
-          );
-        })}
-      </div>
+              {apercu.depassements.length > 0 && (
+                <ul className="list-disc space-y-0.5 pl-6 text-danger" data-testid="change-plan-depassements">
+                  {apercu.depassements.map((d) => <li key={d}>{d}</li>)}
+                </ul>
+              )}
+              {apercu.accepte && apercu.effet === 'APRES_PAIEMENT' && (
+                <ChoixModePaiement valeur={mode} onChange={setMode}
+                  carteDisponible={abonnement?.carteDisponible ?? false} carteMotif={abonnement?.carteIndisponibleMotif} />
+              )}
+              {apercu.accepte && (
+                <button type="button" onClick={() => void confirmer()} disabled={envoi}
+                  data-testid="change-plan-confirmer"
+                  className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2 text-sm font-bold text-bg hover:bg-accent-hover disabled:opacity-50">
+                  {envoi && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                  {apercu.effet === 'APRES_PAIEMENT' ? 'Confirmer et payer la différence' : 'Confirmer le changement'}
+                </button>
+              )}
+            </section>
+          )}
+        </>
+      )}
     </div>
   );
 }

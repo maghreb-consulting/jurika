@@ -59,9 +59,12 @@ public class WopiController {
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
     private final WopiService wopi;
+    private final org.springframework.beans.factory.ObjectProvider<ma.jurika.common.billing.PlanLimitsService> forfaits;
 
-    public WopiController(WopiService wopi) {
+    public WopiController(WopiService wopi,
+                          org.springframework.beans.factory.ObjectProvider<ma.jurika.common.billing.PlanLimitsService> forfaits) {
         this.wopi = wopi;
+        this.forfaits = forfaits;
     }
 
     // =================================================================
@@ -76,6 +79,12 @@ public class WopiController {
                     + "qu'une seule fois.")
     public WopiService.SeanceEdition ouvrirSeance(@AuthenticationPrincipal AuthenticatedUser user,
                                                    @PathVariable UUID documentId) {
+        // Lot L7 (E5), CDC 4.5 : l'edition des actes integree a la plateforme est une fonction des
+        // forfaits Max et Sur Devis ; le serveur refuse d'ouvrir la seance (402) hors forfait.
+        ma.jurika.common.billing.PlanLimitsService limites = forfaits.getIfAvailable();
+        if (limites != null) {
+            limites.exigerFonction(user.workspaceId(), ma.jurika.common.billing.FonctionForfait.EDITION_INTEGREE_ACTES);
+        }
         String nom = (user.email() == null || user.email().isBlank()) ? "Employé" : user.email();
         return wopi.ouvrir(documentId, user.userId(), nom, user.role());
     }

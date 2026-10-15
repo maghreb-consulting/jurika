@@ -191,6 +191,7 @@ export function isAuthRejection(error: unknown): boolean {
 const PUBLIC_PAGE_PREFIXES = [
   '/login',
   '/signup',
+  '/essai',
   '/register',
   '/reset-password',
   '/verify-email',
@@ -273,7 +274,7 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
  * de permission (PERMISSION_DENIED, SETUP_2FA_REQUIRED, PASSWORD_CHANGE_REQUIRED,
  * TRIAL_EXPIRED, etc.) qu'un refresh ne resoudra pas.
  */
-function isPermissionDenied(body: unknown): boolean {
+export function isPermissionDenied(body: unknown): boolean {
   if (!body || typeof body !== 'object') return false;
   const code = (body as { code?: string }).code;
   if (!code) return false;
@@ -281,7 +282,37 @@ function isPermissionDenied(body: unknown): boolean {
       || code === 'PASSWORD_CHANGE_REQUIRED'
       || code === 'SETUP_2FA_REQUIRED'
       || code === 'TRIAL_EXPIRED'
-      || code === 'PAYMENT_REQUIRED';
+      || code === 'PAYMENT_REQUIRED'
+      // Lot L7 (E5) : refus de forfait ou workspace archive : un refresh n'y change rien.
+      || code === 'WORKSPACE_ARCHIVE'
+      // Lot L7 (E8) : workspace suspendu pour impaye (article 4.4) : un refresh n'y change rien.
+      || code === 'WORKSPACE_SUSPENDU'
+      || code === 'FORFAIT_SANS_MESSAGERIE'
+      || code === 'FONCTION_HORS_FORFAIT';
+}
+
+/** Page du cabinet archive (lot L7, RG-TAR-07 et RG-TAR-09). */
+export const PAGE_ARCHIVE = '/app/archive';
+
+/** Page Facturation du cabinet (lot L7, E8 : cabinet suspendu pour impayé, paiement de l'échéance). */
+export const PAGE_FACTURATION = '/app/billing';
+
+/**
+ * Lot L7 (E5), RG-TAR-07 : le serveur refuse (403 WORKSPACE_ARCHIVE) tout chemin hors facturation
+ * quand le cabinet est archive. Le superviseur est conduit a la page du cabinet archive (nouvelle
+ * souscription, export et suppression au lot L8). Renvoie vrai si une redirection est faite.
+ */
+export function redirigerSiArchive(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false;
+  const code = (error.response?.data as { code?: string } | undefined)?.code;
+  if (error.response?.status !== 403) return false;
+  // Lot L7 (E8), article 4.4 du contrat : workspace SUSPENDU pour impaye (403 WORKSPACE_SUSPENDU) :
+  // le superviseur est conduit a l'ecran Facturation pour payer l'echeance.
+  const cible = code === 'WORKSPACE_ARCHIVE' ? PAGE_ARCHIVE : code === 'WORKSPACE_SUSPENDU' ? PAGE_FACTURATION : null;
+  if (cible === null) return false;
+  if (typeof window === 'undefined' || window.location.pathname.startsWith(cible)) return false;
+  window.location.href = cible;
+  return true;
 }
 
 api.interceptors.response.use(
@@ -293,6 +324,15 @@ api.interceptors.response.use(
     // de refresh ni de fin de session : un 401/403 y est soit attendu, soit sans
     // rapport avec une session utilisateur. (Corrige la redirection depuis /signup.)
     const skipSessionHandling = isPublicApiPath(original?.url ?? '');
+    if (redirigerSiArchive(error)) return Promise.reject(error);
+
+    // Lot L7 (E6, RG-CTR-03) : la passerelle refuse les routes du cabinet tant que son contrat
+    // d'abonnement attend l'acceptation du superviseur ; la garde de l'ecran (GardeContrat)
+    // relit alors l'etat et affiche l'ecran du contrat.
+    if (status === 423 && (error.response?.data as { code?: string } | undefined)?.code === 'CONTRAT_EN_ATTENTE'
+        && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('jurika:contrat-en-attente'));
+    }
 
     // HIGH-12 (audit 2026-06-02) : trigger refresh aussi sur 403. JwtAuthFilter de
     // jurika-common renvoie en effet 403 (Spring Security default) sur token
@@ -339,6 +379,8 @@ export const MESSAGE_ERREUR_INCONNUE =
 function messageParStatut(status: number | undefined): string {
   if (status === 401) return 'Votre session a expiré. Reconnectez-vous, puis réessayez.';
   if (status === 403) return 'Vous n’avez pas les droits nécessaires pour cette action.';
+  // Lot L7 (E4) : refus de l'essai gratuit ou d'une limite du forfait, sans message lisible (reponse binaire).
+  if (status === 402) return 'Action impossible avec votre formule : aucun téléchargement n’est permis pendant l’essai gratuit, ou une limite de votre forfait est atteinte.';
   if (status === 404) return 'L’élément demandé est introuvable : il a peut-être été supprimé.';
   if (status === 413) return 'Le fichier est trop volumineux.';
   if (status === 429) return 'Trop de demandes en peu de temps. Patientez quelques instants, puis réessayez.';

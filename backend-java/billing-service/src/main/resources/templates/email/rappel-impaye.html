@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head><meta charset="UTF-8"/><title>Rappel : échéance non réglée</title></head>
+<body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#0F172A;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:12px;overflow:hidden;">
+            <tr th:replace="~{email/_billing-base :: header(title='Rappel : échéance non réglée')}"></tr>
+            <tr><td style="padding:32px;">
+                <p style="margin:0 0 16px;">Bonjour,</p>
+                <p style="margin:0 0 16px;">L’échéance du <strong th:text="${echeance}">date</strong> de l’abonnement JURIKA du
+                    cabinet <strong th:text="${cabinet}">cabinet</strong> (forfait <span th:text="${forfait}">forfait</span>)
+                    n’est pas réglée à ce jour<span th:if="${montant != null}"> : <strong th:text="${montant}">montant</strong> TTC</span>.</p>
+                <p style="margin:0 0 16px;">Sans paiement constaté au plus tard le <strong th:text="${dernierJour}">date</strong>,
+                    l’accès au cabinet sera <strong>suspendu le <span th:text="${suspensionLe}">date</span></strong>, conformément
+                    à l’article 4.4 des conditions générales d’abonnement. Aucune donnée ne sera supprimée et l’accès sera
+                    rétabli dès le paiement constaté.</p>
+                <p style="margin:0 0 16px;">Pour régler l’échéance, le superviseur du cabinet se connecte à JURIKA, écran
+                    « Facturation », bouton « Payer l’échéance » : carte bancaire en ligne, virement, chèque ou espèces.</p>
+                <p style="margin:0 0 24px;"><a th:href="${lienPaiement}" href="#"
+                    style="display:inline-block;background:#0F2A4A;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;">Payer l’échéance</a></p>
+                <p style="margin:0;font-size:13px;color:#64748B;">Si vous avez déjà réglé cette échéance par virement, chèque ou
+                    espèces, elle sera prise en compte dès que JURIKA aura constaté sa réception.</p>
+            </td></tr>
+            <tr th:replace="~{email/_billing-base :: footer}"></tr>
+        </table>
+    </td></tr>
+</table>
+</body>
+</html>

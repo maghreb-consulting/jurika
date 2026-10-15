@@ -38,6 +38,8 @@ import { DOCUMENT_TYPE_LABELS } from '../../types/dataroom';
 import type { Role } from '../../types/auth';
 import type { DroitsDossier } from '../../types/dataroom';
 import { InfoBulle } from '../../components/ui/Aide';
+import { useEnEssai } from '../../store/essaiStore';
+import { AideApercuEssai } from '../../components/document/ApercuPages';
 import { STATUT_LABELS_COURTS } from '../../types/ticket';
 import type { TicketStatut } from '../../types/ticket';
 import { JuridiqueSearchBar } from './components/JuridiqueSearchBar';
@@ -250,6 +252,9 @@ export function DossierJuridiqueTab({
   // deposer, versionner ni supprimer sur une societe archivee.
   const canUpload = role === 'EMPLOYE' && !readOnly;
   const canRemove = canUpload && droits?.peutSupprimerDocuments === true;
+  // Decision du 2026-10-14 (RG-ESS-05) : pendant l'essai, ni telechargement ni archive ZIP ;
+  // les documents se consultent en apercu (pages filigranees).
+  const enEssai = useEnEssai();
 
   if (loading && !view) {
     return (
@@ -272,6 +277,7 @@ export function DossierJuridiqueTab({
   return (
     <SocieteDuDossier.Provider value={view.raisonSociale ?? ''}>
     <div className="space-y-4">
+      {enEssai && <AideApercuEssai />}
       <Card className="space-y-3 p-4">
         <JuridiqueSearchBar
           filters={filters}
@@ -293,6 +299,7 @@ export function DossierJuridiqueTab({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {enEssai === false && (
             <Button
               size="sm"
               variant="secondary"
@@ -302,6 +309,7 @@ export function DossierJuridiqueTab({
               <Download className="mr-1 h-4 w-4" />
               Télécharger (ZIP)
             </Button>
+            )}
             {canRemove && (
               <Button
                 size="sm"
@@ -751,6 +759,10 @@ function DocumentRow({
   const [downloading, setDownloading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  // Decision du 2026-10-14 (RG-ESS-05) : aucun telechargement ni impression pendant l'essai.
+  const enEssai = useEnEssai();
+  const peutTelecharger = canDownload && enEssai === false;
+  const peutImprimer = canPrint && enEssai === false;
   // Confirmation de suppression (remplace confirm() natif).
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const type = String(doc.documentType);
@@ -849,7 +861,7 @@ function DocumentRow({
               Aperçu
             </Button>
           )}
-          {canDownload && (
+          {peutTelecharger && (
             <Button
               size="sm"
               variant="secondary"
@@ -886,8 +898,8 @@ function DocumentRow({
         open={previewOpen}
         documentId={previewOpen ? doc.id : null}
         filename={doc.filename}
-        canDownload={canDownload}
-        canPrint={canPrint}
+        canDownload={peutTelecharger}
+        canPrint={peutImprimer}
         onClose={() => setPreviewOpen(false)}
         onDownload={download}
       />

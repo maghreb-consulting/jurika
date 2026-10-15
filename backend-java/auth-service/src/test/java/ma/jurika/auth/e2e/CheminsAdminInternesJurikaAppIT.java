@@ -277,6 +277,51 @@ class CheminsAdminInternesJurikaAppIT {
                 .isEqualTo("ACTIVE");
     }
 
+    /**
+     * Lot L7 (E8), article 4.4 du contrat : suspension pour impaye propagee par billing (motif
+     * IMPAYE, jeton restreint du superviseur), levee par le paiement constate ; une suspension
+     * decidee par le super-admin n'est jamais levee par un paiement.
+     */
+    @Test
+    void suspension_pour_impaye_puis_retablissement_au_paiement_constate() throws Exception {
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/internal/workspaces/" + WS_B + "/status").param("transition", "SUSPENDED_IMPAYE"))
+                .andExpect(status().isNoContent());
+        assertThat(jdbc.queryForMap("SELECT status, suspension_motif, suspendu_le IS NOT NULL AS date FROM workspaces WHERE id = ?", WS_B))
+                .containsEntry("status", "SUSPENDED").containsEntry("suspension_motif", "IMPAYE").containsEntry("date", true);
+        String charge = new String(java.util.Base64.getUrlDecoder().decode(jeton(SUPERVISEUR_B, WS_B).split("\\.")[1]),
+                java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(charge).contains("\"susp\":true").doesNotContain("\"arch\"");
+        // Superviseurs du cabinet (rappel a l'ecran), lus dans le workspace du chemin.
+        mvc.perform(get("/internal/workspaces/" + WS_B + "/superviseurs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value(SUPERVISEUR_B.toString()))
+                .andExpect(jsonPath("$.length()").value(1));
+        // Idempotent : une seconde suspension ne change rien.
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/internal/workspaces/" + WS_B + "/status").param("transition", "SUSPENDED_IMPAYE"))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/internal/workspaces/" + WS_B + "/status").param("transition", "ACTIVATED"))
+                .andExpect(status().isNoContent());
+        assertThat(jdbc.queryForMap("SELECT status, suspension_motif, suspendu_le FROM workspaces WHERE id = ?", WS_B))
+                .containsEntry("status", "ACTIVE").containsEntry("suspension_motif", null).containsEntry("suspendu_le", null);
+
+        String admin = jeton(ADMIN_ID);
+        mvc.perform(post("/api/v1/admin/workspaces/" + WS_B + "/suspend").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/internal/workspaces/" + WS_B + "/status").param("transition", "ACTIVATED"))
+                .andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("SELECT status FROM workspaces WHERE id = ?", String.class, WS_B))
+                .isEqualTo("SUSPENDED");
+        mvc.perform(post("/api/v1/admin/workspaces/" + WS_B + "/activate").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT status FROM workspaces WHERE id = ?", String.class, WS_B))
+                .isEqualTo("ACTIVE");
+    }
+
     @Test
     void super_admin_liste_et_suspend_un_utilisateur() throws Exception {
         String admin = jeton(ADMIN_ID);

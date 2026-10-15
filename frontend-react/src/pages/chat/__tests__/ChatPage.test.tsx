@@ -34,12 +34,24 @@ vi.mock('../../../store/authStore', () => ({
   useCurrentUser: () => ({ userId: 'me', firstName: 'Moi', lastName: 'Test', email: 'me@jurika.ma', role: 'EMPLOYE' }),
 }));
 
+// Lot L7 (E5), CDC 4.5 : forfait du cabinet (messagerie incluse sauf mention contraire).
+const forfait = vi.hoisted(() => ({ messagerie: true }));
+vi.mock('../../../lib/useForfait', () => ({
+  useForfait: () => ({
+    abonnement: null,
+    inclut: (code: string) => code !== 'MESSAGERIE_INTERNE' || forfait.messagerie,
+    disponibleDes: () => 'Professionnel',
+  }),
+}));
+
+import { MemoryRouter } from 'react-router-dom';
 import { ChatPage } from '../ChatPage';
 import { chatService } from '../../../services/chat.service';
 
 describe('<ChatPage>', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    forfait.messagerie = true;
     // jsdom n'implémente pas scrollIntoView (utilisé par l'auto-scroll).
     Element.prototype.scrollIntoView = vi.fn();
   });
@@ -157,5 +169,12 @@ describe('<ChatPage>', () => {
     render(<ChatPage />);
     expect(await screen.findByRole('note', { name: 'Messagerie interne du cabinet' })).toBeInTheDocument();
     expect(screen.getByText(/vos clients n’ont pas accès à la messagerie/)).toBeInTheDocument();
+  });
+
+  it('forfait sans messagerie interne : explication au lieu de la messagerie', () => {
+    forfait.messagerie = false;
+    render(<MemoryRouter><ChatPage /></MemoryRouter>);
+    expect(screen.getByTestId('fonction-hors-forfait')).toHaveTextContent('incluse dès le forfait Professionnel');
+    expect(screen.queryByTestId('chat-new-conversation')).not.toBeInTheDocument();
   });
 });

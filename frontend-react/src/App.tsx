@@ -3,6 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { LandingPage } from './pages/landing/LandingPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { SignupPage } from './pages/auth/SignupPage';
+import { EssaiGratuitPage } from './pages/auth/EssaiGratuitPage';
+import { EssaiConfirmerPage } from './pages/auth/EssaiConfirmerPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import { RecoverWithCodePage } from './pages/auth/RecoverWithCodePage';
 import { Setup2FAPage } from './pages/auth/Setup2FAPage';
@@ -28,13 +30,17 @@ import { RedirectionChatbot } from './components/chatbot/RedirectionChatbot';
 import { ChatbotSourcesPage } from './pages/admin/ChatbotSourcesPage';
 import AuditLogPage from './pages/admin/AuditLogPage';
 import { WorkspacesPage } from './pages/admin/WorkspacesPage';
+import { EssaisPage } from './pages/admin/EssaisPage';
 import { WorkspaceDetailPage } from './pages/admin/WorkspaceDetailPage';
 import { UsersPage } from './pages/admin/UsersPage';
 import { ReferentielDemarchesPage } from './pages/admin/ReferentielDemarchesPage';
 import { DelaisGreffePage } from './pages/referentiel/DelaisGreffePage';
 import { TicketPage } from './pages/tickets/TicketPage';
 import { BillingPage } from './pages/billing/BillingPage';
-import { BillingSuccessPage } from './pages/billing/BillingSuccessPage';
+import { PaiementRetourPage } from './pages/billing/PaiementRetourPage';
+import { ArchivePage } from './pages/billing/ArchivePage';
+import { PaiementsAdminPage } from './pages/admin/PaiementsAdminPage';
+import { AbonnementsAdminPage } from './pages/admin/AbonnementsAdminPage';
 import { TeamPage } from './pages/team/TeamPage';
 import { TracabilitePage } from './pages/tracabilite/TracabilitePage';
 import { DossiersAVerifierPage } from './pages/dossiers/DossiersAVerifierPage';
@@ -42,15 +48,22 @@ import { CalendarPage } from './pages/calendar/CalendarPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { ChangePlanPage } from './pages/billing/ChangePlanPage';
 import { PaymentPage } from './pages/billing/PaymentPage';
+import { ContratPage } from './pages/contrat/ContratPage';
+import { ContratsAdminPage } from './pages/admin/ContratsAdminPage';
+import { EditeurParametresPage } from './pages/admin/EditeurParametresPage';
 import { useAuthStore } from './store/authStore';
 import { useThemeStore } from './store/themeStore';
 import { GrainOverlay } from './components/layout/GrainOverlay';
 import { ToastProvider } from './components/ui/Toast';
 import { useLenisScroll } from './lib/useLenisScroll';
+import { useRenvoiBrouillons } from './pages/workflow/useRenvoiBrouillons';
 
 function App() {
   const hydrate = useAuthStore((s) => s.hydrate);
   const applyDomTheme = useThemeStore((s) => s.applyDomTheme);
+
+  // Lot L7 (E12) : saisies de parcours gardees dans ce navigateur, renvoyees a la reconnexion.
+  useRenvoiBrouillons();
 
   useEffect(() => {
     // Sprint 12.5 T2 — applique data-theme dès le mount (avant tout rendu visible)
@@ -76,7 +89,15 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        {/* Lot L7 (E4) : inscription a l'essai gratuit (CDC 4.2), distincte de l'inscription payante. */}
+        <Route path="/essai" element={<EssaiGratuitPage />} />
+        <Route path="/essai/confirmer" element={<EssaiConfirmerPage />} />
         <Route path="/register" element={<Navigate to="/signup" replace />} />
+        {/* Lot L7 (E5), RG-PAY-05 : retour du navigateur apres la page du CMI (aussi a l'inscription,
+            avec le jeton transitoire) ; l'etat du paiement est lu sur le serveur, jamais deduit du retour. */}
+        <Route path="/app/billing/paiement/retour" element={<PaiementRetourPage />} />
+        <Route path="/billing/success" element={<Navigate to="/app/billing" replace />} />
+        <Route path="/app/billing/success" element={<Navigate to="/app/billing" replace />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth/recover-with-code" element={<RecoverWithCodePage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -117,9 +138,8 @@ function App() {
             <Route path="/app/billing/change-plan" element={<ChangePlanPage />} />
             {/* BUG 14 (2026-06-07) -- page paiement multi-moyens entre choix forfait et activation */}
             <Route path="/app/billing/payment" element={<PaymentPage />} />
-            {/* Sprint 12 -- redirection Stripe Checkout success */}
-            <Route path="/billing/success" element={<BillingSuccessPage />} />
-            <Route path="/app/billing/success" element={<BillingSuccessPage />} />
+            {/* Lot L7 (E5) : cabinet archive (RG-TAR-07 a RG-TAR-09). */}
+            <Route path="/app/archive" element={<ArchivePage />} />
           </Route>
         </Route>
 
@@ -141,6 +161,8 @@ function App() {
         <Route element={<ProtectedRoute allowed={['SUPERVISEUR']} />}>
           <Route element={<AppShell />}>
             <Route path="/app/team" element={<TeamPage />} />
+            {/* Lot L7 (E6) : contrat d'abonnement du cabinet (CDC 4.8). */}
+            <Route path="/app/contrat" element={<ContratPage />} />
             <Route path="/tracabilite" element={<TracabilitePage />} />
             {/* Lot L1 (D1) : dossiers dont le responsable a ete designe d'office. */}
             <Route path="/dossiers-a-verifier" element={<DossiersAVerifierPage />} />
@@ -188,11 +210,19 @@ function App() {
           <Route element={<AppShell />}>
             <Route path="/admin/workspaces" element={<WorkspacesPage />} />
             <Route path="/admin/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
+            {/* Lot L7 (E5) : abonnements des cabinets et paiements a enregistrer (RG-PAY-02). */}
+            <Route path="/admin/abonnements" element={<AbonnementsAdminPage />} />
+            <Route path="/admin/paiements" element={<PaiementsAdminPage />} />
             <Route path="/admin/users" element={<UsersPage />} />
+            {/* Lot L7 (E4) : essais gratuits (RG-ESS-03, RG-ESS-11). */}
+            <Route path="/admin/essais" element={<EssaisPage />} />
             <Route path="/admin/audit" element={<AuditLogPage />} />
             <Route path="/admin/referentiel-demarches" element={<ReferentielDemarchesPage />} />
             {/* Lot L5 E8 : sources fiables communes du chatbot (CDC 3.1, RG-ADM-03). */}
             <Route path="/admin/chatbot-sources" element={<ChatbotSourcesPage />} />
+            {/* Lot L7 (E6) : contrats d'abonnement et parametres de l'editeur. */}
+            <Route path="/admin/contrats" element={<ContratsAdminPage />} />
+            <Route path="/admin/editeur" element={<EditeurParametresPage />} />
           </Route>
         </Route>
 

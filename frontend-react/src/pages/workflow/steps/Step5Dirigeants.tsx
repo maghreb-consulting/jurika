@@ -108,7 +108,9 @@ function newDirigeant(): Dirigeant {
     repAdresse: '',
     repDateNaissance: '',
     repLieuNaissance: '',
-    repNationalite: 'Marocaine',
+    // Lot L7 (E2) : plus de nationalite "Marocaine" posee d'office : elle est
+    // proposee a l'ecran et ne part dans les actes qu'une fois confirmee.
+    repNationalite: '',
     repPieceValidite: '',
     repQualite: 'Gérant',
     rcUploaded: false,
@@ -1685,16 +1687,13 @@ function MoraleForm({
               pour controle humain. */}
           {/* 2026-06-11 — Champs ajoutes : Adresse, Date+Lieu naissance,
               Nationalite, CIN valable jusqu'au + Qualite. */}
-          <div>
-            <label className="mb-1 block text-xs text-fg-subtle">Nationalité</label>
-            <input aria-label="Nationalité du représentant"
-              type="text"
-              value={d.repNationalite ?? ''}
-              onChange={(e) => onChange({ repNationalite: e.target.value })}
-              placeholder="Marocaine"
-              className="h-9 w-full rounded-lg border border-border bg-bg-raised px-3 text-sm"
-            />
-          </div>
+          <ValeurProposee
+            id={`dirigeant-rep-nationalite-${d.id}`}
+            label="Nationalité du représentant"
+            proposition="marocaine"
+            valeur={d.repNationalite || undefined}
+            onChange={(v) => onChange({ repNationalite: v })}
+          />
           <div>
             <label className="mb-1 block text-xs text-fg-subtle">Date de naissance</label>
             <input aria-label="Date de naissance du représentant"

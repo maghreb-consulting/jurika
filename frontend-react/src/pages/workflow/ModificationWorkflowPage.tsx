@@ -49,10 +49,14 @@ import {
 } from '../../components/workflow/convocationDelai';
 import type { DocumentType, DossierBrief } from '../../types/dataroom';
 import {
+  apercuDocument,
+  deposerDocument,
   generateDocument,
   listTemplatesForWorkflow,
   type TemplateInfo,
 } from '../../services/workflowDocumentService';
+import { estEnEssai, useEnEssai } from '../../store/essaiStore';
+import { AideApercuEssai, ApercuPagesView } from '../../components/document/ApercuPages';
 import {
   GROUP_LABELS,
   decisionsForForme,
@@ -146,6 +150,8 @@ interface DocState {
   generated: boolean;
   filename?: string;
   blob?: Blob;
+  /** Decision du 2026-10-14 (RG-ESS-05) : pendant l'essai, pages d'apercu filigranees au lieu du fichier. */
+  apercu?: import('../../types/apercu').ApercuPages;
   validated: boolean;
   error: string | null;
   previewOpen: boolean;
@@ -721,11 +727,11 @@ function ModificationWorkflowPageBody() {
    * progression de l'utilisateur (l'erreur est consignee mais le doc reste valide).
    */
   const depositGeneratedToDataroom = useCallback(
-    async (tpl: TemplateInfo, st: DocState) => {
+    async (tpl: TemplateInfo, st: DocState, payload?: Record<string, unknown>) => {
       // PROMPT F (2026-06-23) — on dépose dans le dossier CHOISI à l'étape 1
       // (et non plus celui rattaché au ticket).
       const targetDossierId = selectedDossierId || ticket?.dossierId;
-      if (!targetDossierId || !st.blob || !st.filename) return;
+      if (!targetDossierId || (!st.blob && !st.apercu) || !st.filename) return;
       if (st.depositedToDataroom) return;
       const targetType = mapTemplateToDocumentType(tpl.code);
       const targetTitle = tpl.documentKind || tpl.code;
@@ -760,6 +766,22 @@ function ModificationWorkflowPageBody() {
         // Le suffixe « - v<n> » n'apparaît que si un document de même type+nom existe déjà.
         const nextVersion = existingDocumentId ? (matchedVersion ?? 1) + 1 : undefined;
         const filename = workflowFilenameFor(tpl, { version: nextVersion });
+        if (!st.blob) {
+          // Decision du 2026-10-14 (RG-ESS-05) : pendant l'essai, le serveur genere et enregistre
+          // l'acte ; aucun fichier n'est recu par le navigateur.
+          await deposerDocument('MODIFICATION', tpl.code, payload ?? {}, {
+            dossierId: targetDossierId,
+            documentType: targetType,
+            title: targetTitle,
+            filename,
+            ticketId: ticket?.id,
+            mode: existingDocumentId ? 'NOUVELLE_VERSION' : 'NOUVEAU',
+            existingDocumentId,
+            motif,
+          });
+          updateDoc(tpl.code, { depositedToDataroom: true });
+          return;
+        }
         await dataroomService.depositGeneratedDoc(targetDossierId, st.blob, {
           documentType: targetType,
           title: targetTitle,
@@ -871,6 +893,20 @@ function ModificationWorkflowPageBody() {
   async function generateOne(tpl: TemplateInfo) {
     updateDoc(tpl.code, { generating: true, error: null, validated: false });
     try {
+      if (await estEnEssai()) {
+        // Decision du 2026-10-14 (RG-ESS-05, RG-ESS-06) : apercu en pages filigranees, aucun fichier.
+        const r = await apercuDocument('MODIFICATION', tpl.code, buildPayload());
+        updateDoc(tpl.code, {
+          generating: false,
+          generated: true,
+          blob: undefined,
+          apercu: r.apercu,
+          filename: r.nomFichier,
+          previewOpen: true,
+          depositedToDataroom: false,
+        });
+        return;
+      }
       const { blob, filename } = await generateDocument('MODIFICATION', tpl.code, buildPayload());
       updateDoc(tpl.code, {
         generating: false,
@@ -896,7 +932,7 @@ function ModificationWorkflowPageBody() {
     if (!st?.generated) return;
     updateDoc(tpl.code, { validated: true });
     // Depot auto dataroom (RG transverse 2026-06-05).
-    await depositGeneratedToDataroom(tpl, { ...st, validated: true });
+    await depositGeneratedToDataroom(tpl, { ...st, validated: true }, st.blob ? undefined : buildPayload());
   }
 
   // PREFLIGHT statut refondu — saisie d'un champ structuré manquant.
@@ -2515,6 +2551,8 @@ interface DocumentBlockProps {
 function DocumentBlock({ tpl, state, canGenerate, onGenerate, onDownload, onRegenerate, onValidate, onTogglePreview, onEdited }: DocumentBlockProps) {
   const title = tpl.documentKind || tpl.code;
   const [editing, setEditing] = useState(false);
+  // Decision du 2026-10-14 (RG-ESS-05) : pendant l'essai, ni telechargement ni edition du fichier.
+  const enEssai = useEnEssai();
   return (
     <div
       className={`overflow-hidden rounded-xl border bg-bg-raised shadow-sm ${
@@ -2587,7 +2625,13 @@ function DocumentBlock({ tpl, state, canGenerate, onGenerate, onDownload, onRege
                 filename={state.filename ?? title}
               />
             )}
-            {state.previewOpen && !state.blob && (
+            {state.previewOpen && !state.blob && state.apercu && (
+              <div className="max-h-[70vh] space-y-3 overflow-auto rounded-lg border border-border bg-bg-overlay p-3">
+                {state.apercu.filigrane && <AideApercuEssai />}
+                <ApercuPagesView apercu={state.apercu} titre={title} />
+              </div>
+            )}
+            {state.previewOpen && !state.blob && !state.apercu && (
               <div className="rounded-lg border border-border bg-bg-overlay p-3 text-[11px] text-fg-subtle">
                 <Eye className="mr-1 inline h-3.5 w-3.5 align-text-bottom" />
                 Aperçu indisponible : régénérez le document pour l’afficher.
@@ -2613,6 +2657,8 @@ function DocumentBlock({ tpl, state, canGenerate, onGenerate, onDownload, onRege
               >
                 <RefreshCcw className="h-3.5 w-3.5" /> Régénérer
               </button>
+              {enEssai === false && (
+              <>
               <button
                 type="button"
                 onClick={() => setEditing(true)}
@@ -2629,6 +2675,8 @@ function DocumentBlock({ tpl, state, canGenerate, onGenerate, onDownload, onRege
               >
                 <Download className="h-3.5 w-3.5" /> .docx
               </button>
+              </>
+              )}
               {!state.validated ? (
                 <button
                   type="button"

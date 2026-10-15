@@ -28,6 +28,11 @@ function fauxPool() {
       const [id, ws] = params;
       return { rows: USERS.filter((u) => u.id === id && u.workspace_id === ws) };
     }
+    // Lot L7 (E5, CDC 4.5) : forfait du cabinet, qui inclut la messagerie.
+    if (sql.includes('FROM workspaces')) {
+      const [id] = params;
+      return { rows: [CABINET_A, CABINET_B].includes(id) ? [{ id, selected_plan: 'professionnel', trial_status: null }] : [] };
+    }
     if (sql.includes('SELECT id FROM chat_conversations')) {
       const [ws, a, b] = params;
       return { rows: conversations.filter((c) => c.ws === ws && c.a === a && c.b === b) };

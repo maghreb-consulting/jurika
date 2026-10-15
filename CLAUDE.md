@@ -22,8 +22,14 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
 1. **Commits et push** : commits locaux sur une branche de lot, un par etape validee par les
    tests. Push autorise uniquement sur `lot/*` et `outillage/*` (`git push -u origin <branche>`,
    regle `allow` de `.claude/settings.json`), apres un verify complet vert. Jamais de push sur
-   `main`, jamais de fusion par Claude, jamais de reecriture d'historique. Une branche par lot.
+   `main`, jamais de fusion d'une branche dans `main` par Claude, jamais de reecriture
+   d'historique. Une branche par lot.
    Rapports factuels (ce qui est vert, ce qui est rouge, ce qui est saute -- sans arrondir).
+   **Avant chaque push** (decision du 2026-10-15, PR #42) : `git fetch origin` puis
+   `git merge origin/main` dans la branche du lot (fusion, jamais de rebase) ; conflits resolus
+   et verifies ; puis le verify complet et les conditions CI tournent sur le resultat FUSIONNE.
+   Un avertissement de modele Maven ("Some problems were encountered while building the
+   effective model", dependance declaree deux fois...) est un echec : la CI le refuse.
 2. **Cloture d'un lot** : `mvn -o clean verify -Pit` (le `clean` est obligatoire — un vert
    incremental ne prouve rien sur une suppression) + suite frontend + **lecture des documents
    produits**. Chaque defaut grave a ete trouve en ouvrant un fichier, jamais par un compteur.
@@ -209,9 +215,9 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 ### Lot L5b (corrections, 2026-10-13) -- dette relevee
 
 - **Conversations du chatbot : conservation** (decision du 2026-10-13) : gardees tant que le compte
-  existe, puis elles suivent le sort des donnees du cabinet. A faire en L7 / L8 : inclure
-  `chatbot_conversations` et `chatbot_echanges` (ai, colonne `workspace_id`) dans l'archivage a
-  l'arret du forfait et dans la suppression des donnees d'un cabinet sur sa demande.
+  existe, puis elles suivent le sort des donnees du cabinet : l'archivage (L7) les conserve ; la
+  suppression des donnees d'un cabinet sur sa demande (L8) doit inclure `chatbot_conversations`
+  et `chatbot_echanges` (la suppression d'un essai, L7, les inclut deja).
 - **`chatbotService.ask` (front)** n'est plus appele par aucun ecran (garde pour
   `scripts/rag-quality-check.mjs`).
 - **Commentaire de dataroom V36** parle encore de Word (migration appliquee, intouchable).
@@ -225,11 +231,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   chatbot) et le realtime-service (`jurika_user`) ; seul le filtrage applicatif protege.
 - **Realtime** : `/emit` sans authentification ; `HttpNotificationPublisher.publish` n'envoie pas
   le jeton interne.
-- **Super-admin non alerte a 80 % du quota** (RG-PLN-02) : RG-COM-08 interdit de notifier hors du
-  cabinet, il faut un canal propre au super-admin. `PlanLimitsService.countDossiers` compte tous les
-  dossiers, pas ceux du mois (RG-PLN-01) ; l'alerte de quota en herite.
-- **Fonctions par forfait non gardees** : alertes de delais et messagerie interne (absentes
-  d'Essentiel) ; quota de 20 questions au chatbot (CDC 4) non mis en oeuvre (L7).
 - **Trace des identifiants du dossier modifiable** par `jurika_app` (GRANT global de workflow V14,
   joue apres ticket V41) : REVOKE pose en dernier, ou declencheur de refus.
 - **CHECK `document_type` (dataroom)** : toute migration qui le redefinit doit reprendre
@@ -279,6 +280,53 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **Note interne `NOTE_DEFAUT_DECISION_ASSOCIE_UNIQUE_SARL_AU`** du corpus non branchee (constat de
   defaut de decision de l'associe unique).
 
+### Lot L7 (offre et facturation, 2026-10-14) -- dette relevee
+
+- **Supprimer `superadmin.test@jurika.invalid` avant la mise en production** : compte
+  super-admin de test cree le 2026-10-14 sur le Z440 seulement (accord de l'utilisateur), dans
+  le workspace du super-admin (JUR-DEMO1) ; mot de passe aleatoire dans
+  `~/.jurika-test/superadmin-test.txt` (mode 600), jamais affiche.
+- **CMI** : branchement au vrai CMI A_DECIDER (contrat) ; points de la specification a confirmer
+  (ordre du tri du hash, reponses texte, type de transaction) isoles dans `CmiSpecification` ;
+  `frontend-react/e2e/billing-*.spec.ts` decrivent encore le parcours Stripe.
+- **Essai** : SMS de verification par **Brevo SMS a la mise en production** (decision du
+  2026-10-14 ; d'ici la, le code SMS est ecrit dans le journal d'auth) ; apercu de l'essai en pages
+  filigranees : seuls PDF, images et .docx sont rendus (.doc, .xlsx, .odt : refus nomme), mise en
+  page du .docx approchee (`MiseEnPageDocx`, sans LibreOffice) ; billing (`/api/v1/billing/**`)
+  hors du filtre de l'essai ; impression de l'ecran de synthese (etape 9) encore possible ; aucun
+  controle de stockage sur l'enregistrement Collabora (WOPI PutFile) ; conservation du registre
+  des essais supprimes (empreintes, IP, appareil) A_DECIDER (CNDP).
+- **Disponibilite d'auth et de billing** : le filtre de l'essai (503 si l'etat est illisible) et
+  la garde du contrat de la passerelle (503 sans reponse connue) font d'auth-service et de
+  billing-service des dependances de toutes les routes du cabinet.
+- **Notifications des services Java** : `JURIKA_REALTIME_BASE_URL` absent en compose pour ticket
+  (alertes de delais) et les autres services hors auth et billing : ils visent localhost:3000,
+  notifications probablement perdues (journalisees seulement).
+- **Contrat (version 1 publiee)** : "$RYTHME_PAIEMENT (annuel ou mensuel)" s'imprime "Annuel
+  (annuel ou mensuel)" (ecart du modele) ; quotas du Sur Devis imprimes "selon devis" ; la
+  presentation annonce quatre pieces alors que l'exemplaire du contrat ne reproduit pas la piece D
+  (essai, acceptee a part, RG-CTR-10).
+- **Sur Devis** : prix par dossier A_DECIDER (`PRIX_PAR_DOSSIER_HT_A_DECIDER`) ; quotas
+  d'utilisateurs et de stockage du Sur Devis ; banque et RIB de l'editeur (`JURIKA_VIREMENT_*`).
+- **Suppression d'un essai (auth V45, liste explicite)** : toute nouvelle table de donnees d'un
+  cabinet dans `jurika_db` doit etre ajoutee a `essai_supprimer_definitivement` par une nouvelle
+  migration d'auth (sinon `SuppressionEssaiCouvertureIT` casse le verify) ; toute nouvelle table
+  de `jurika_billing` portant un cabinet doit etre classee dans `ClassementFacturationEssai`
+  (sinon `SuppressionEssaiFacturationIT` casse). Paiements aboutis et factures d'un essai supprime
+  conserves 10 ans puis purges (billing V18) ; preuves du contrat, `contrat_avis` et
+  `impaye_journal` d'un essai conserves sans purge : duree A_DECIDER (RG-CTR-09 : au moins dix
+  ans) ; ligne du registre `conservation_comptable` gardee sans limite. `factures` et `payments`
+  sans declencheur anti-DELETE : protection applicative tant que billing est proprietaire (L9).
+  `/internal/essais/**` de billing sans authentification entre services (dette L0).
+- **Contrat** : dans l'exemplaire, l'heure d'acceptation de l'essai s'ecrit "10 h 32" et celle du
+  contrat "10:32:05" (formats a harmoniser).
+- **Export CSV d'activite** : aucun ecran ne l'appelle.
+- **Import, etape 7** : publicites relues sous `juridique`, qui ne les porte pas (perte probable
+  au rechargement, a verifier).
+- **`VITE_CONTACT_EMAIL` en production** : `docker-compose.prod.yml` passe les variables VITE_* a
+  l'execution (sans effet) ; il faut un `--build-arg` au build de l'image du front.
+- **Commit e722be0** : message avec un caractere accentue (regle ASCII), historique conserve.
+
 ### Lot L6 (ergonomie, langue, identite, 2026-10-13) -- dette relevee
 
 - **Messages par defaut de Bean Validation** (`@NotBlank` sans `message`) : en anglais si la JVM
@@ -291,15 +339,10 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   dictionnaire de libelles) ; `OcrSuggestionsPanel` affiche la source "tesseract / llm" ;
   activite du client : colonne "Utilisateur" = 8 caracteres d'identifiant ; champ "Ticket lie"
   d'une demande saisi a la main.
-- **Valeurs par defaut silencieuses de la creation** (etape 3 : numeraire 100 000, liberation
-  25 000, 1 000 parts ; etape 5 : nationalite "Marocaine") : a passer en valeurs proposees puis
-  confirmees (comme D6 de L3), A_DECIDER cabinet.
-- **Vitrine et pages legales** : affirmations commerciales non verifiees (hebergement OVH
-  Casablanca, SLA 99,9 %, tarifs et forfaits differents du CDC, "conforme CNDP" alors que la
-  declaration est en cours, messagerie client-employe) ; CGU et confidentialite en brouillon
-  (jargon technique, adresses legal@ / dpo@ / contact@jurika.ma) : A_DECIDER directeur.
-- **billing** : client Stripe cree avec "billing@jurika.ma" a defaut d'adresse ; adresse
-  commerciale par defaut "contact@jurika.ai" (BILLING_SALES_EMAIL).
+- **Valeurs par defaut de liste encore transmises aux actes** (creation) : etape 3
+  `modeLiberation` ("integrale"), `modeSignature` ("separee") ; etape 5 `formeJuridiqueEntite`
+  ("SARL"), `repCivilite` ("M"), `repQualite` ("Gerant") du representant d'un associe personne
+  morale (capital, parts et nationalite : faits en L7).
 - **`scripts/demo-video/seed-demo-content.mjs`** (etape 6) depose des sources du chatbot avec le
   jeton du cabinet : refuse depuis L5 (super-admin seul).
 - **`ProfessionalType.java`** : libelles non accentues (non affiches par le front).
@@ -348,6 +391,8 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   d'erreurs (dead-letter) ou la rejouer.
 - **Bascule `jurika_app` restante** : supervision, dashboard, ai et billing se connectent encore
   en proprietaire (superutilisateur sur le Z440), donc hors RLS.
+  **billing sur `jurika_app` : lot L9** (decision du 2026-10-14 ; RLS de `factures` et du
+  contrat posee mais inoperante jusque-la).
 - **Seed e2e expose** : la passerelle route `/api/v1/test/**` (route `test-seed`) vers le seed
   de dataroom, actif sur le Z440 (`JURIKA_TEST_SEED_ENABLED=true`) : creation de workspaces et
   mots de passe en clair par un appel anonyme. A fermer (route hors profil de test, ou seed
@@ -364,8 +409,6 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   avant validation (dataroom).
 - **Front : boutons d'action encore visibles au superviseur** alors que le serveur les refuse
   (E5, E5b, E6) ; 46 fichiers du front citent `SUPERVISEUR`.
-- **Export ZIP du Dossier Juridique** : echec complet (`duplicate entry`) quand deux documents
-  d'un meme type portent le meme nom de fichier (`exportSelectionAsZip`).
 - **Exemple d'environnement serveur** : `.env.local.server.example` n'active pas le profil
   compose `mailhog` (`COMPOSE_PROFILES`) alors que `start-local.sh` attend `jurika-mailhog` :
   une installation faite depuis l'exemple n'atteint jamais 18/18.

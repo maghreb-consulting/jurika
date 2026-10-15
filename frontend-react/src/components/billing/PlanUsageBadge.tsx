@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertCircle, Gauge } from 'lucide-react';
 import { billingService } from '../../services/billing.service';
-import type { UsageSnapshot } from '../../types/billing';
+import { formatDateIso, formatFinIncluse, type UsageSnapshot } from '../../types/billing';
 
 /**
  * Sprint Beta (pricing-deploy) — TASK 3.
@@ -97,25 +97,34 @@ export function PlanUsageBadge({ variant = 'compact' }: PlanUsageBadgeProps) {
 
       <div className="space-y-3">
         <UsageRow
-          label="Utilisateurs"
+          label="Accès employés (en plus du superviseur)"
           current={usage.users}
           max={usage.maxUsers}
           unlimited={usage.usersUnlimited}
           percent={usersPct}
         />
         <UsageRow
-          label="Dossiers actifs"
+          label={usage.periodeDebut
+            ? `Dossiers du mois d’abonnement (du ${formatDateIso(usage.periodeDebut)} au ${formatFinIncluse(usage.periodeFin)})`
+            : 'Dossiers du mois d’abonnement'}
           current={usage.dossiers}
           max={usage.maxDossiers}
           unlimited={usage.dossiersUnlimited}
           percent={dossiersPct}
         />
+        {usage.storageMesure === false ? (
+          <p className="text-sm text-fg-muted">Stockage : non mesuré.</p>
+        ) : (
         <StorageRow
           bytes={usage.storageBytes}
           maxGb={usage.maxStorageGb}
           unlimited={usage.storageUnlimited}
         />
+        )}
       </div>
+      {usage.forfaitDefini === false && (
+        <p className="mt-3 text-xs text-warning">Aucun forfait enregistré : les limites du forfait Essentiel s’appliquent.</p>
+      )}
 
       {atAnyLimit && (
         <div
@@ -125,10 +134,10 @@ export function PlanUsageBadge({ variant = 'compact' }: PlanUsageBadgeProps) {
         >
           <AlertCircle className="mr-1 inline h-4 w-4" />
           Limite atteinte pour votre forfait {usage.planLabel}.{' '}
-          <Link to="/app/billing" className="underline">
-            Passez au forfait supérieur
+          <Link to="/app/billing/change-plan" className="underline">
+            Changez de forfait
           </Link>{' '}
-          pour continuer.
+          pour continuer ; les dossiers déjà ouverts restent accessibles.
         </div>
       )}
     </section>
@@ -153,7 +162,7 @@ function UsageRow({
       <div className="mb-1 flex items-center justify-between text-sm">
         <span className="text-fg-muted">{label}</span>
         <span className={`font-mono text-xs ${percent >= 100 ? 'font-bold text-danger' : 'text-fg'}`}>
-          {unlimited ? `${current} · illimité` : `${current} / ${max}`}
+          {unlimited ? `${current} · selon devis` : `${current} / ${max}`}
         </span>
       </div>
       {!unlimited && (
@@ -185,8 +194,8 @@ function StorageRow({
         <span className="text-fg-muted">Stockage</span>
         <span className={`font-mono text-xs ${percent >= 100 ? 'font-bold text-danger' : 'text-fg'}`}>
           {unlimited
-            ? `${usedGb.toFixed(2)} Go · sur mesure`
-            : `${usedGb.toFixed(2)} / ${maxGb} Go`}
+            ? `${usedGb.toFixed(2).replace('.', ',')} Go · selon devis`
+            : `${usedGb.toFixed(2).replace('.', ',')} / ${maxGb} Go`}
         </span>
       </div>
       {!unlimited && (

@@ -12,9 +12,9 @@ import emblemClair from '../../../../../assets/brand/jurika-emblem-clair.png';
  */
 const NAV = [
   { key: 'dashboard', label: 'Tableau de bord', icon: 'home' },
-  { key: 'tickets', label: 'Tous les Tickets', icon: 'ticket' },
+  { key: 'tickets', label: 'Tickets', icon: 'ticket' },
   { key: 'dataroom', label: 'Data Rooms', icon: 'lock' },
-  { key: 'chatbot', label: 'ChatBot IA', icon: 'bot' },
+  { key: 'chatbot', label: 'Chatbot juridique', icon: 'bot' },
   { key: 'tracabilite', label: 'Traçabilité', icon: 'history' },
 ];
 
@@ -39,7 +39,7 @@ export function AppChrome({ active = 'dashboard' }) {
       </nav>
       <div className="mk-nav__right">
         <span className="mk-nav__role">Superviseur</span>
-        <span className="mk-nav__upgrade"><Icon name="zap" size={13} /> Upgrade</span>
+        <span className="mk-nav__upgrade"><Icon name="zap" size={13} /> Forfait</span>
         <span className="mk-nav__avatar">K</span>
       </div>
     </header>

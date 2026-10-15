@@ -158,6 +158,21 @@ jurika:
     # NE PAS activer en prod (RG-AU26 exige le click pour eviter qu'un attaquant
     # cree un compte avec un email squatte).
     auto-verify-email: ${JURIKA_SIGNUP_AUTO_VERIFY_EMAIL:false}
+  # Lot L7 (E4) : essai gratuit (CDC 4.2). Lien de confirmation de l'adresse
+  # (route publique du front /essai/confirmer), cycle planifie (fin des 7 jours,
+  # avertissement, suppression definitive apres 30 jours de lecture seule),
+  # service qui supprime les objets MinIO d'un essai supprime.
+  essai:
+    confirmation-url: ${FRONTEND_URL:http://localhost:5173}/essai/confirmer
+    cycle:
+      enabled: ${JURIKA_ESSAI_CYCLE_ENABLED:true}
+      cron: ${JURIKA_ESSAI_CYCLE_CRON:0 15 * * * *}
+  dataroom:
+    internal-url: ${DATAROOM_INTERNAL_URL:http://dataroom-service:8084}
+  # Lot L7 (E14) : donnees de facturation d'un essai supprime (paiements non aboutis supprimes,
+  # pieces comptables conservees 10 ans), appel interne a billing-service avant toute suppression.
+  billing:
+    internal-url: ${BILLING_INTERNAL_URL:http://billing-service:8090}
   # Sprint 3 / TASK 1 — Provider SMS (logger en dev, twilio en prod, inwi possible plus tard).
   # Sprint 12 finition (2026-06-04) — httpgateway pour passerelles gratuites
   # (TextBee, SMSGateway-for-Android, etc. — voir HttpGatewaySmsSender).

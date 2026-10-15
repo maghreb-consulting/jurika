@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { TexteAide } from '../../components/ui/Aide';
 import { Drawer } from '../../components/ui/Drawer';
 import { Button } from '../../components/ui/Button';
@@ -84,6 +84,8 @@ export function NewTicketDrawer({ open, onClose, onCreated }: Props) {
   const [deadline, setDeadline] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Lot L7 (E5), RG-PLN-03 : quota de dossiers du mois atteint (402) : proposer le changement de forfait.
+  const [quotaAtteint, setQuotaAtteint] = useState(false);
 
   // Type effectif envoye au backend : le vrai sous-type si "Divers", sinon
   // la categorie elle-meme (qui est deja un TicketType direct).
@@ -142,7 +144,9 @@ export function NewTicketDrawer({ open, onClose, onCreated }: Props) {
       reset();
       navigate(`/workflows/${created.id}`);
     } catch (err) {
-      setError(extractError(err).message);
+      const e = extractError(err);
+      setQuotaAtteint(e.code.startsWith('PLAN_LIMIT'));
+      setError(e.message);
     } finally {
       setLoading(false);
     }
@@ -249,6 +253,9 @@ export function NewTicketDrawer({ open, onClose, onCreated }: Props) {
         {error && (
           <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
             {error}
+            {quotaAtteint && (
+              <Link to="/app/billing/change-plan" className="ml-1 font-medium underline">Changer de forfait</Link>
+            )}
           </div>
         )}
         <div className="flex justify-end gap-2 pt-2">

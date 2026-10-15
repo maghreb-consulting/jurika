@@ -6,6 +6,7 @@ import ma.jurika.auth.domain.port.RefreshTokenRepository;
 import ma.jurika.auth.domain.port.RefreshTokenRepository.StoredRefreshToken;
 import ma.jurika.auth.domain.port.TokenIssuer;
 import ma.jurika.auth.domain.port.UserRepository;
+import ma.jurika.auth.domain.port.WorkspaceRepository;
 import ma.jurika.common.audit.Auditable;
 import ma.jurika.common.exception.UnauthorizedException;
 import ma.jurika.common.observability.BusinessMetrics;
@@ -23,6 +24,7 @@ public class RefreshTokenUseCase {
     private final TokenIssuer tokenIssuer;
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserRepository userRepository;
+    private final WorkspaceRepository workspaceRepository;
     private final SessionLimitEnforcer sessionLimitEnforcer;
     private final BusinessMetrics businessMetrics;
     private final Duration inactivityWindow;
@@ -30,12 +32,14 @@ public class RefreshTokenUseCase {
     public RefreshTokenUseCase(TokenIssuer tokenIssuer,
                                RefreshTokenRepository refreshTokenRepository,
                                UserRepository userRepository,
+                               WorkspaceRepository workspaceRepository,
                                SessionLimitEnforcer sessionLimitEnforcer,
                                BusinessMetrics businessMetrics,
                                @Value("${jurika.auth.inactivity-window:30m}") Duration inactivityWindow) {
         this.tokenIssuer = tokenIssuer;
         this.refreshTokenRepository = refreshTokenRepository;
         this.userRepository = userRepository;
+        this.workspaceRepository = workspaceRepository;
         this.sessionLimitEnforcer = sessionLimitEnforcer;
         this.businessMetrics = businessMetrics;
         this.inactivityWindow = inactivityWindow;
@@ -73,6 +77,16 @@ public class RefreshTokenUseCase {
                 .orElseThrow(() -> new UnauthorizedException("Utilisateur introuvable."));
         if (!user.active()) {
             throw new UnauthorizedException("Ce compte est d\u00e9sactiv\u00e9 : adressez-vous \u00e0 votre cabinet.");
+        }
+        // Lot L7 (E5), RG-TAR-07 : le renouvellement de session suit l'etat du workspace (archive :
+        // seul le superviseur ; suspendu ou desactive : personne). Avant, il ne le lisait pas.
+        boolean accepte = workspaceRepository.findById(stored.workspaceId())
+                .map(ws -> ws.accepteConnexion(user.role()))
+                .orElse(false);
+        if (!accepte) {
+            refreshTokenRepository.revoke(parsed.hash(), now);
+            throw new UnauthorizedException("WORKSPACE_FERME",
+                    "L\u2019acc\u00e8s \u00e0 ce cabinet est ferm\u00e9 : reconnectez-vous ou adressez-vous au superviseur du cabinet.");
         }
 
         refreshTokenRepository.revoke(parsed.hash(), now);

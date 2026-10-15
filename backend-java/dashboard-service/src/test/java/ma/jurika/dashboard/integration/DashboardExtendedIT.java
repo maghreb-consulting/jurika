@@ -376,7 +376,7 @@ class DashboardExtendedIT {
                 2L, 1L, 12.5,
                 List.of(), List.of(), List.of(), List.of(), List.of(),
                 List.of(), List.of(), List.of(),
-                Instant.now());
+                Instant.now(), true);
     }
 
     private EmployeDashboardDto stubEmploye() {

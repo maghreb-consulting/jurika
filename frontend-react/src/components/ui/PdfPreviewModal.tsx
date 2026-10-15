@@ -3,6 +3,9 @@ import { Download, FileText, Loader2, Printer, X } from 'lucide-react';
 import { Button } from './Button';
 import { dataroomService } from '../../services/dataroom.service';
 import { extractError } from '../../lib/api';
+import { useEnEssai } from '../../store/essaiStore';
+import { ApercuPagesModal } from '../document/ApercuPages';
+import type { ApercuPages } from '../../types/apercu';
 
 /**
  * Sprint 7 / TASK 3.3 -- Modal d'apercu PDF reutilisable.
@@ -39,9 +42,38 @@ interface Props {
    * Depots passe previewDepot ; le rendu image/PDF est deja gere ci-dessous.
    */
   fetchPreview?: (id: string) => Promise<{ url: string; contentType: string }>;
+  /**
+   * Decision du 2026-10-14 (RG-ESS-05, RG-ESS-06) : apercu en pages (affichage seulement) servi
+   * pendant l'essai. Defaut = dataroomService.apercuDocument ; les depots et les versions passent
+   * le leur.
+   */
+  fetchApercu?: (id: string) => Promise<ApercuPages>;
 }
 
-export function PdfPreviewModal({
+/**
+ * Pendant l'essai gratuit (ou tant que l'etat n'est pas connu), l'apercu est un affichage en
+ * pages produites par le serveur, avec la mention incrustee : aucun fichier n'est recu, ni
+ * telechargement ni impression. Hors essai : apercu du fichier, inchange.
+ */
+export function PdfPreviewModal(props: Props) {
+  const enEssai = useEnEssai();
+  if (enEssai !== false) {
+    const id = props.documentId;
+    const charger = props.fetchApercu ?? dataroomService.apercuDocument;
+    return (
+      <ApercuPagesModal
+        open={props.open}
+        cle={id}
+        titre={props.filename}
+        charger={() => (id ? charger(id) : Promise.reject(new Error('Document absent')))}
+        onClose={props.onClose}
+      />
+    );
+  }
+  return <PdfPreviewModalFichier {...props} />;
+}
+
+function PdfPreviewModalFichier({
   open,
   documentId,
   filename,

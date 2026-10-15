@@ -8,10 +8,15 @@ import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { RetourGeneration } from '../../components/workflow/RetourGeneration';
 import { triggerBrowserDownload } from '../../components/workflow/documentBlocks';
 import {
+  apercuDocument,
+  deposerDocument,
   generateDocument,
   GenerationRefuseeError,
   type DonneeManquante,
 } from '../../services/workflowDocumentService';
+import { estEnEssai, useEnEssai } from '../../store/essaiStore';
+import { AideApercuEssai, ApercuPagesModal } from '../../components/document/ApercuPages';
+import type { ApercuPages } from '../../types/apercu';
 import { annulationService, type Ligne } from '../../services/annulation.service';
 import { dataroomService } from '../../services/dataroom.service';
 import { extractError } from '../../lib/api';
@@ -93,6 +98,8 @@ interface EtatDoc {
   erreur?: string | null;
   refus?: DonneeManquante[];
   blob?: Blob;
+  /** Decision du 2026-10-14 (RG-ESS-05) : pendant l'essai, pages d'apercu au lieu du fichier. */
+  apercu?: ApercuPages;
   filename?: string;
   depose?: boolean;
 }
@@ -108,6 +115,9 @@ export function AnnulationDocumentsPanel({ ticket, canAct }: { ticket: Ticket; c
   const [enregistre, setEnregistre] = useState<string | null>(null);
   const [docs, setDocs] = useState<Record<string, EtatDoc>>({});
   const [complements, setComplements] = useState<Record<string, string>>({});
+  // Decision du 2026-10-14 (RG-ESS-05) : pendant l'essai, apercu et depot par le serveur, aucun fichier.
+  const enEssai = useEnEssai();
+  const [apercuOuvert, setApercuOuvert] = useState<{ cle: string; titre: string; apercu: ApercuPages } | null>(null);
 
   const appliquer = useCallback((variables: Record<string, unknown>) => {
     const v: Record<string, string> = {};
@@ -180,10 +190,17 @@ export function AnnulationDocumentsPanel({ ticket, canAct }: { ticket: Ticket; c
   async function generer(doc: Doc) {
     setDocs((p) => ({ ...p, [doc.cle]: { enCours: true } }));
     try {
-      const r = await generateDocument(WORKFLOW, doc.code, {
+      const payload = {
         ticketId: ticket.id,
         ...(doc.retraitIndex !== undefined ? { retraitIndex: doc.retraitIndex } : {}),
-      });
+      };
+      if (await estEnEssai()) {
+        const a = await apercuDocument(WORKFLOW, doc.code, payload);
+        setDocs((p) => ({ ...p, [doc.cle]: { apercu: a.apercu, filename: a.nomFichier } }));
+        setApercuOuvert({ cle: `${doc.cle}-${Date.now()}`, titre: doc.libelle, apercu: a.apercu });
+        return;
+      }
+      const r = await generateDocument(WORKFLOW, doc.code, payload);
       setDocs((p) => ({ ...p, [doc.cle]: { blob: r.blob, filename: r.filename } }));
     } catch (err) {
       const refus = err instanceof GenerationRefuseeError ? err.donneesManquantes : [];
@@ -193,8 +210,26 @@ export function AnnulationDocumentsPanel({ ticket, canAct }: { ticket: Ticket; c
 
   async function deposer(doc: Doc) {
     const st = docs[doc.cle];
-    if (!st?.blob || !ticket.dossierId) return;
+    if (!st || (!st.blob && !st.apercu) || !ticket.dossierId) return;
     try {
+      if (!st.blob) {
+        // Essai : le serveur genere et enregistre l'acte (aucun fichier recu).
+        await deposerDocument(
+          WORKFLOW,
+          doc.code,
+          { ticketId: ticket.id, ...(doc.retraitIndex !== undefined ? { retraitIndex: doc.retraitIndex } : {}) },
+          {
+            dossierId: ticket.dossierId,
+            documentType: doc.type,
+            title: doc.libelle,
+            filename: st.filename ?? `${doc.code}.docx`,
+            ticketId: ticket.id,
+            mode: 'NOUVEAU',
+          },
+        );
+        setDocs((p) => ({ ...p, [doc.cle]: { ...st, depose: true } }));
+        return;
+      }
       await dataroomService.depositGeneratedDoc(ticket.dossierId, st.blob, {
         documentType: doc.type,
         title: doc.libelle,
@@ -430,15 +465,23 @@ export function AnnulationDocumentsPanel({ ticket, canAct }: { ticket: Ticket; c
                 <span className="text-sm font-medium text-fg">{doc.libelle}</span>
                 {canAct && (
                   <Button variant="secondary" disabled={st.enCours} onClick={() => void generer(doc)}>
-                    {st.enCours ? 'Génération…' : st.blob ? 'Régénérer' : 'Générer'}
+                    {st.enCours ? 'Génération…' : st.blob || st.apercu ? 'Régénérer' : 'Générer'}
                   </Button>
                 )}
-                {st.blob && (
+                {st.apercu && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setApercuOuvert({ cle: `${doc.cle}-${Date.now()}`, titre: doc.libelle, apercu: st.apercu! })}
+                  >
+                    <FileText className="mr-1 h-4 w-4" /> Aperçu
+                  </Button>
+                )}
+                {st.blob && enEssai === false && (
                   <Button variant="secondary" onClick={() => triggerBrowserDownload(st.blob!, st.filename ?? `${doc.code}.docx`)}>
                     <Download className="mr-1 h-4 w-4" /> Télécharger
                   </Button>
                 )}
-                {st.blob && canAct && ticket.dossierId && !st.depose && (
+                {(st.blob || st.apercu) && canAct && ticket.dossierId && !st.depose && (
                   <Button variant="secondary" onClick={() => void deposer(doc)}>
                     <Upload className="mr-1 h-4 w-4" /> Déposer au Dossier juridique
                   </Button>
@@ -465,6 +508,14 @@ export function AnnulationDocumentsPanel({ ticket, canAct }: { ticket: Ticket; c
           );
         })}
       </ul>
+      {enEssai && <AideApercuEssai />}
+      <ApercuPagesModal
+        open={apercuOuvert !== null}
+        cle={apercuOuvert?.cle ?? null}
+        titre={apercuOuvert?.titre ?? ''}
+        charger={() => (apercuOuvert ? Promise.resolve(apercuOuvert.apercu) : Promise.reject(new Error('Aperçu absent')))}
+        onClose={() => setApercuOuvert(null)}
+      />
     </section>
   );
 }

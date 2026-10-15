@@ -6,13 +6,14 @@
  *
  * Verifie en ~30 secondes que la stack DEMO est fonctionnelle :
  *   1. 10/10 services UP (healthcheck Docker + actuator)
- *   2. GET /api/v1/public/pricing renvoie 3 tiers (Essentiel/Business/Entreprise)
- *      avec quotas attendus (spec directeur 2026-06-02)
- *   3. Signup d'un workspace test -> trial 14j cree (cleanup en fin)
- *   4. Plan limit : ajoute 2 users (limite Essentiel) puis le 3e doit
- *      retourner 402 PLAN_LIMIT_USERS  -- SKIP si signup KO
- *   5. POST /billing/checkout-session sur ce workspace renvoie une URL
- *      Stripe Checkout (verifie l'integration STRIPE_PRICE_*_MONTHLY)
+ *   2. GET /api/v1/public/pricing renvoie les 4 forfaits du CDC 4.3 (Essentiel,
+ *      Professionnel, Max, Sur Devis) avec leurs quotas et prix HT (lot L7)
+ *   3. Inscription publique d'un cabinet de test (supprime en fin)
+ *   4. Quota d'utilisateurs : non verifiable ici (pas de connexion au compte
+ *      cree) -- SKIP explicite, jamais un PASS ; couvert par les tests d'integration
+ *   5. Paiement par carte (CMI, lot L7) : liaison configuree ou NON, lue sur
+ *      billing-service (GET /api/v1/billing/cmi/etat) ; non configuree = SKIP
+ *      explicite (noms des parametres manquants), jamais un PASS
  *   6. Au moins 1 email envoye (MailHog UI :8025 ou Brevo log)
  *
  * Sortie : ANSI colore, PASS/FAIL par check, code exit 0 si tout OK.
@@ -20,7 +21,7 @@
  * Usage :
  *   node scripts/smoke-test.mjs                  # full
  *   node scripts/smoke-test.mjs --base=http://192.168.1.42
- *   node scripts/smoke-test.mjs --skip-stripe    # si pas de cles Stripe
+ *   node scripts/smoke-test.mjs --skip-cmi       # sans controle du CMI
  *   node scripts/smoke-test.mjs --skip-cleanup   # garde le workspace test
  */
 
@@ -47,7 +48,7 @@ const opt = (k, d) => {
 const flag = (k) => args.includes(`--${k}`);
 
 const BASE = opt('base', null);
-const SKIP_STRIPE = flag('skip-stripe');
+const SKIP_CMI = flag('skip-cmi');
 const SKIP_CLEANUP = flag('skip-cleanup');
 
 // ─── Charge env ────────────────────────────────────────────────────────
@@ -179,18 +180,21 @@ async function checkPricing() {
     }
     const tiers = res.body.tiers || [];
     const codes = tiers.map(t => t.code).sort();
-    // Spec directeur 2026-06-02 : codes canoniques essentiel / business / entreprise.
-    const expected = ['business', 'entreprise', 'essentiel'];
+    // Lot L7 (E5) : grille du CDC 4.3 (prix HT ; quotas : employes en plus du superviseur,
+    // dossiers par mois d'abonnement, stockage).
+    const expected = ['essentiel', 'max', 'professionnel', 'sur_devis'];
     const ok = JSON.stringify(codes) === JSON.stringify(expected);
-    const essentiel = tiers.find(t => t.code === 'essentiel');
-    const okEssentiel = essentiel && essentiel.quotas.maxUsers === 2 && essentiel.quotas.maxDossiers === 30 && essentiel.label === 'Essentiel';
-    const business = tiers.find(t => t.code === 'business');
-    const okBusiness = business && business.quotas.maxUsers === 6 && business.quotas.maxDossiers === 100 && business.label === 'Business';
+    const grille = { essentiel: [1, 25, 5, 375, 3750], professionnel: [2, 50, 10, 750, 7500], max: [4, 100, 25, 1500, 15000] };
+    const ecarts = Object.entries(grille).filter(([code, [u, d, go, m, a]]) => {
+        const t = tiers.find(x => x.code === code);
+        return !t || t.quotas.maxUsers !== u || t.quotas.maxDossiers !== d || t.quotas.maxStorageGb !== go
+            || t.monthly?.priceMad !== m || t.yearly?.priceMad !== a;
+    }).map(([code]) => code);
     return passOrFail(
-        ok && okEssentiel && okBusiness,
-        '/api/v1/public/pricing (3 tiers + quotas + labels)',
-        `Essentiel ${essentiel?.quotas.maxUsers}u/${essentiel?.quotas.maxDossiers}d · Business ${business?.quotas.maxUsers}u/${business?.quotas.maxDossiers}d`,
-        `tiers=${codes.join(',')}`);
+        ok && ecarts.length === 0,
+        '/api/v1/public/pricing (4 forfaits du CDC 4.3 : quotas et prix HT)',
+        'Essentiel, Professionnel, Max, Sur Devis conformes',
+        `tiers=${codes.join(',')} ecarts=${ecarts.join(',')}`);
 }
 
 // ─── 3+4) Signup -> trial + plan limit users ──────────────────────────
@@ -222,21 +226,21 @@ async function checkSignupAndPlanLimit() {
         lastName: 'Test',
         email: adminEmail,
         phone: '+212600000000',
-        selectedPlan: 'essentiel', // Essentiel -> 2 users max (spec 2026-06-02)
+        selectedPlan: 'essentiel', // Essentiel : 1 superviseur + 1 employe (CDC 4.3)
         cguAccepted: true,
     };
     // Le controller maps PostMapping("/cabinet") sous @RequestMapping("/api/v1/public/signup").
     const res = await http('POST', '/api/v1/public/signup/cabinet', { body: payload });
     if (!res.ok) {
-        record('Signup -> trial', 'FAIL', `${res.status} ${res.body?.message || ''}`);
-        record('Plan limit users (3e refuse)', 'SKIP', 'signup KO, on n\'arrive pas au check');
+        record('Inscription publique d\'un cabinet', 'FAIL', `${res.status} ${res.body?.message || ''}`);
+        record('Quota d\'utilisateurs', 'SKIP', 'inscription en echec');
         return;
     }
     TEST_WORKSPACE_CODE = res.body?.workspaceCode;
     // La route publique d'inscription rend le resultat de l'envoi sous `verifyEmailSent`
     // (PublicSignupController) ; `emailDelivered` est le nom des autres routes d'auth.
     SIGNUP_EMAIL_DELIVERED = (res.body?.verifyEmailSent ?? res.body?.emailDelivered) === true;
-    record('Signup -> trial 14j', 'PASS', `workspace=${TEST_WORKSPACE_CODE}`);
+    record('Inscription publique d\'un cabinet', 'PASS', `workspace=${TEST_WORKSPACE_CODE}`);
 
     // Pour le check plan-limit, il faut un login admin + ajouter des users.
     // Le signup Sprint 11 envoie le mot de passe temporaire par email. On
@@ -251,32 +255,31 @@ async function checkSignupAndPlanLimit() {
     record('/workspace/usage protege (auth requise)', cond401 ? 'PASS' : 'FAIL',
         `status=${usageAnon.status}`);
 
-    // Le check ENFORCEMENT REEL du PLAN_LIMIT_USERS est mieux fait via le
-    // test e2e Playwright Sprint 11 quand un acces backend complet est dispo.
-    // Ici on signale ce qu'on a verifie.
-    record('Plan limit users (enforcement code en place)', 'PASS',
-        'verifie via PlanLimitsService.enforceUserLimit dans InviteClientUseCase');
+    // Lot L7 : le quota d'utilisateurs n'est PAS verifie ici (aucune connexion au compte cree).
+    // L'ancien PASS ecrit en dur affirmait un controle qui ne s'executait pas (motif 9) :
+    // SKIP explicite ; le refus est couvert par les tests d'integration (auth, PlanLimitsService).
+    record('Quota d\'utilisateurs', 'SKIP', 'non verifiable sans connexion au compte cree (tests d\'integration)');
 }
 
-// ─── 5) Stripe Checkout ───────────────────────────────────────────────
-async function checkStripe() {
-    if (SKIP_STRIPE) { record('Stripe checkout', 'SKIP', '--skip-stripe'); return; }
-    // Sans login admin, on verifie au moins que /billing/contact-sales est
-    // joignable (endpoint public + auth bypass-able si on a un workspace).
-    // Plus utile : verifier que les variables Stripe ne sont pas placeholders.
-    const sk = process.env.STRIPE_SECRET_KEY || '';
-    const pmEssentiel = process.env.STRIPE_PRICE_ESSENTIEL_MONTHLY || '';
-    if (!sk.startsWith('sk_test_') && !sk.startsWith('sk_live_')) {
-        record('Stripe env vars (sk + 4 prices)', 'FAIL', 'STRIPE_SECRET_KEY placeholder');
-        return;
+// ─── 5) Paiement par carte : CMI (lot L7) ─────────────────────────────────
+// Controle HONNETE : la liaison est lue sur billing-service (et non deduite de variables
+// locales). Non configuree : SKIP qui nomme les parametres manquants (le paiement par
+// carte est alors refuse avec un message ; virement, cheque, especes restent possibles).
+// Simulateur actif : signale (aucun paiement reel). Aucune valeur n'est affichee.
+async function checkCmi() {
+    if (SKIP_CMI) { record('Paiement par carte (CMI)', 'SKIP', '--skip-cmi'); }
+    else {
+        const etat = await http('GET', '/api/v1/billing/cmi/etat');
+        if (!etat.ok || !etat.body) {
+            record('Paiement par carte (CMI) : etat de la liaison', 'FAIL', `status=${etat.status} ${etat.networkError || ''}`);
+        } else if (!etat.body.configure) {
+            record('Paiement par carte (CMI) : non configure', 'SKIP',
+                `parametres manquants : ${(etat.body.manquants || []).join(', ')}`);
+        } else {
+            record(etat.body.simulateur ? 'Paiement par carte : SIMULATEUR du CMI (aucun paiement reel)'
+                : 'Paiement par carte : CMI configure', 'PASS', 'valeurs non affichees');
+        }
     }
-    if (!pmEssentiel.startsWith('price_')) {
-        record('Stripe env vars (4 prices)', 'FAIL', 'STRIPE_PRICE_ESSENTIEL_MONTHLY placeholder');
-        return;
-    }
-    // Lot L5 (E3) : aucune partie d'une cle n'est affichee (backlog L0).
-    record('Stripe env vars (sk + 4 prices configures)', 'PASS',
-        'cle secrete et identifiants de prix presents (valeurs non affichees)');
 
     // Test que billing-service repond en healthcheck. Lot L0 (E16e) : son port
     // n'est publie que sur 127.0.0.1 (comme les autres services, cf. checkHealth) :
@@ -348,7 +351,7 @@ let BASE_URL = '';
     await check10Healthy();
     await checkPricing();
     await checkSignupAndPlanLimit();
-    await checkStripe();
+    await checkCmi();
     await checkEmail();
     await cleanup();
 

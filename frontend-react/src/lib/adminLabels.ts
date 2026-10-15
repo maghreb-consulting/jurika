@@ -22,6 +22,10 @@ export const ACTION_AUDIT_LABELS: Record<string, string> = {
   WORKSPACE_ACTIVATED: 'Cabinet activé',
   WORKSPACE_SUSPENDED: 'Cabinet suspendu',
   WORKSPACE_DEACTIVATED: 'Cabinet désactivé',
+  WORKSPACE_ARCHIVED: 'Cabinet archivé',
+  BILLING_PAIEMENT_ENREGISTRE: 'Paiement enregistré',
+  BILLING_PAIEMENT_VALIDE: 'Paiement validé',
+  BILLING_PAIEMENT_REJETE: 'Paiement rejeté',
   USER_SUSPENDED: 'Utilisateur suspendu',
   USER_REACTIVATED: 'Utilisateur réactivé',
 };
@@ -49,12 +53,12 @@ export const STATUT_ABONNEMENT_LABELS: Record<string, string> = {
   unpaid: 'Impayé',
 };
 
-/** Libelle d'un forfait a partir de son code (essentiel, business, entreprise...). */
+/** Libelle d'un forfait a partir de son code (lot L7 : grille du CDC 4.3). */
 const FORFAIT_CODE_LABELS: Record<string, string> = {
   essentiel: 'Essentiel',
-  business: 'Business',
   professionnel: 'Professionnel',
-  entreprise: 'Entreprise',
+  max: 'Max',
+  sur_devis: 'Sur Devis',
 };
 
 export function libelleForfait(code: string | null | undefined): string {

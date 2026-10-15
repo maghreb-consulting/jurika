@@ -55,7 +55,7 @@ export function Hero({ onDemoClick }) {
       </div>
       <div className="container hero-inner">
         <span className="eyebrow hero-eyebrow">
-          <span className="dot-live" /> Plateforme SaaS B2B Multi-Tenant
+          <span className="dot-live" /> Gestion juridique des sociétés au Maroc
         </span>
         <h1 className="hero-title">
           <span className="hero-line hero-line-1">
@@ -71,9 +71,9 @@ export function Hero({ onDemoClick }) {
           </span>
         </h1>
         <p className={`hero-sub ${stage.subtitle ? 'is-in' : ''}`}>
-          JURIKA digitalise et automatise l'ensemble du cycle de vie juridique de vos dossiers d'entreprises au Maroc :
-          création de sociétés, modifications statutaires, dissolution, liquidation. Actes produits à partir des modèles
-          de votre cabinet, lecture assistée des pièces d’identité, assistant juridique qui cite ses sources et Data Room sécurisée.
+          JURIKA digitalise et centralise la gestion juridique des sociétés suivies par votre cabinet :
+          création, modifications, dissolution, liquidation. Actes générés à partir de modèles validés, sans intelligence
+          artificielle, lecture automatique des pièces, chatbot juridique qui cite ses sources et Data Room partagée avec vos clients.
         </p>
         <div className={`hero-cta ${stage.subtitle ? 'is-in' : ''}`}>
           <MagneticButton
@@ -91,23 +91,18 @@ export function Hero({ onDemoClick }) {
         </div>
         <div className={`hero-trust ${stage.trust ? 'is-in' : ''}`} data-testid="hero-trust">
           <div className="trust-item">
-            <OdometerNumber to={288} startDelayMs={0} suffix="+" />
-            <span>règles de gestion</span>
+            <OdometerNumber to={222} startDelayMs={0} />
+            <span>modèles d’actes</span>
           </div>
           <div className="trust-divider" />
           <div className="trust-item">
-            <OdometerNumber to={27} startDelayMs={120} />
-            <span>domaines fonctionnels</span>
+            <OdometerNumber to={12} startDelayMs={120} />
+            <span>matrices de démarches</span>
           </div>
           <div className="trust-divider" />
           <div className="trust-item">
-            <OdometerNumber to={16} startDelayMs={240} />
-            <span>modules métier</span>
-          </div>
-          <div className="trust-divider" />
-          <div className="trust-item">
-            <OdometerNumber to={9} startDelayMs={360} />
-            <span>workflows juridiques</span>
+            <OdometerNumber to={7} startDelayMs={240} />
+            <span>jours d’essai gratuit</span>
           </div>
         </div>
       </div>

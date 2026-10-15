@@ -18,8 +18,8 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
  * Sprint 12 — Security config billing-service.
  *
  * <p>Regles :
- *  - {@code /api/v1/billing/webhook/**} : permit ALL (Stripe ne porte pas notre
- *    JWT) ; la securite est la signature HMAC verifie dans le controller (RG-BL18).
+ *  - {@code /api/v1/billing/cmi/**} : permit ALL (le CMI ne porte pas notre JWT) ; la securite
+ *    du retour serveur est la signature verifiee (RG-PAY-05, Lot L7). Stripe est retire.
  *  - {@code /actuator/**} : permit (basic auth ops si configuree separement).
  *  - {@code /swagger-ui/**}, {@code /v3/api-docs/**} : permit.
  *  - Tout le reste de {@code /api/v1/billing/**} : authentifie + {@code ROLE_ADMIN_CABINET}
@@ -56,7 +56,17 @@ public class SecurityConfig {
                         // AntPath explicit -- evite l'ambiguite MvcRequestMatcher en
                         // Spring Security 6.4 sur les paths /api/v1/billing/webhook/**.
                         .requestMatchers(
-                                new AntPathRequestMatcher("/api/v1/billing/webhook/**"),
+                                // Lot L7 (E6) : controle "contrat en attente" de la passerelle
+                                // (appel interne ; /internal/** est refuse a l'entree publique).
+                                new AntPathRequestMatcher("/internal/contrat/**"),
+                                // Lot L7 (E14) : suppression d'un essai, appelee par auth-service
+                                // (meme regime : /internal/** refuse a l'entree publique).
+                                new AntPathRequestMatcher("/internal/essais/**"),
+                                // Lot L7 (E5) : points d'entree du CMI (retour serveur signe,
+                                // retour du navigateur, etat de la liaison) et simulateur de test
+                                // (present seulement si CMI_SIMULATEUR_ACTIF=true).
+                                new AntPathRequestMatcher("/api/v1/billing/cmi/**"),
+                                new AntPathRequestMatcher("/api/v1/billing/cmi-simulateur/**"),
                                 new AntPathRequestMatcher("/actuator/**"),
                                 new AntPathRequestMatcher("/v3/api-docs/**"),
                                 new AntPathRequestMatcher("/swagger-ui.html"),

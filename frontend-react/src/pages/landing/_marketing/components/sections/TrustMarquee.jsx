@@ -1,28 +1,23 @@
 /**
- * v2 Flagship — TASK 8 Trust marquee dual line (deux rangs opposés).
- *
- * Rang 1 : entités cabinet (Maghreb Consulting, avocats, etc.) — scroll →
- * Rang 2 : institutions officielles (OMPIC, RC, CNSS, DGI, CNDP) — scroll ←
- * Vitesses légèrement décalées pour effet "constellation" papier juridique.
+ * Bandeau defilant (lot L7 E3) : les operations couvertes (CDC 16.1) et les textes de
+ * droit marocain auxquels la plateforme s'applique (CDC 1). Aucune interoperabilite avec
+ * une administration n'est annoncee : la transmission electronique au greffe est une
+ * extension ulterieure (CDC 16.2).
  */
-const CABINETS = [
-  'Maghreb Consulting',
-  "Cabinets d'avocats",
-  'Experts-comptables',
-  "Centres d'affaires",
-  'Notaires',
-  'Conseils juridiques',
-  'Sociétés de domiciliation',
+const OPERATIONS = [
+  'Création de SARL',
+  'SARL à associé unique',
+  'Modifications et vie sociale',
+  'Assemblée générale ordinaire',
+  'Succursales',
+  'Dissolution et liquidation',
+  'Import de dossier',
 ];
-const INSTITUTIONS = [
-  'OMPIC',
-  'Registre de Commerce',
-  'CNSS',
-  'DGI',
-  'CNDP — Loi 09-08',
-  'CGI Article 211',
-  'Loi 5-96 (SARL)',
-  'Code de commerce MA',
+const TEXTES = [
+  'Loi n° 5-96',
+  'Code de commerce',
+  'Code général des impôts',
+  'Loi n° 09-08',
 ];
 
 function MarqueeRow({ items, reverse = false }) {
@@ -42,16 +37,15 @@ export function TrustMarquee() {
   return (
     <section
       className="cloud trust-marquee trust-marquee--dual"
-      aria-label="Conçu pour les cabinets et compatible avec les institutions du Royaume"
+      aria-label="Opérations couvertes et textes applicables"
     >
       <div className="container">
         <p className="cloud-title">
-          Conçu pour les cabinets de consulting, comptables agréés, avocats et notaires du Maghreb.
-          Interopérable avec les institutions du Royaume.
+          Conçu pour les cabinets qui gèrent la vie juridique des sociétés, en droit marocain.
         </p>
       </div>
-      <MarqueeRow items={CABINETS} />
-      <MarqueeRow items={INSTITUTIONS} reverse />
+      <MarqueeRow items={OPERATIONS} />
+      <MarqueeRow items={TEXTES} reverse />
     </section>
   );
 }

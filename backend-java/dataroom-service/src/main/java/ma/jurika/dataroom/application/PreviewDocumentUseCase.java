@@ -69,11 +69,51 @@ public class PreviewDocumentUseCase {
         this.watermarkEnabled = watermarkEnabled;
     }
 
+    private ApercuPagesService apercuPages;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setApercuPages(ApercuPagesService apercuPages) {
+        this.apercuPages = apercuPages;
+    }
+
     private static final DateTimeFormatter TS = DateTimeFormatter.ISO_INSTANT;
+
+    /**
+     * Decision du 2026-10-14 (RG-ESS-05, RG-ESS-06) : apercu en pages PNG produites par le serveur
+     * (JSON), memes controles et meme trace que l'apercu inline ; la mention de l'essai est
+     * incrustee pendant l'essai. Seule forme d'apercu servie pendant l'essai.
+     */
+    @Transactional(readOnly = true)
+    @Auditable(action = "DOCUMENT_PREVIEWED", resourceType = "document", resourceIdExpr = "#documentId")
+    public ma.jurika.common.trial.ApercuPages pages(UUID documentId, AuthenticatedUser user) {
+        if (apercuPages == null) throw new IllegalStateException("Service d'apercu absent");
+        DocumentEntity doc = controler(documentId, user);
+        ma.jurika.common.trial.ApercuPages a = apercuPages.rendre(doc.getObjectKey(), doc.getFilename(),
+                doc.getContentType(), doc.getWorkspaceId());
+        if (user != null) {
+            accessLogger.log(doc.getDossierId(), documentId, "PREVIEW_DOC", user);
+        }
+        return a;
+    }
 
     @Transactional(readOnly = true)
     @Auditable(action = "DOCUMENT_PREVIEWED", resourceType = "document", resourceIdExpr = "#documentId")
     public PreviewPayload execute(UUID documentId, AuthenticatedUser user) {
+        DocumentEntity doc = controler(documentId, user);
+
+        // Lot AB (2026-07-05) — Word/Excel -> PDF a la volee (via ai-service /
+        // LibreOffice + cache MinIO) pour l'apercu inline ; PDF/images inchanges ;
+        // fallback original si conversion indisponible. Se fait APRES le controle
+        // d'acces (SUSPENDED ci-dessus), sur les memes octets deja autorises.
+        // Decision du 2026-10-14 : pendant l'essai, cette route est refusee par le filtre de
+        // l'essai (RG-ESS-05) ; l'apercu passe par pages().
+        OfficePreviewSupport.Rendered rd =
+                office.render(doc.getObjectKey(), doc.getFilename(), doc.getContentType());
+        return suite(doc, documentId, user, rd);
+    }
+
+    /** RG-DR03 et lecture filtree par le workspace courant. */
+    private DocumentEntity controler(UUID documentId, AuthenticatedUser user) {
         // Lot L0 (E20, P9) : lecture filtree par le workspace courant.
         DocumentEntity doc = documents.findByWorkspaceIdAndId(TenantContext.get(), documentId)
                 .orElseThrow(() -> new NotFoundException("Document inconnu : " + documentId));
@@ -94,13 +134,11 @@ public class PreviewDocumentUseCase {
                 throw new ValidationException("Data Room suspendue : aper\u00e7u indisponible.");
             }
         }
+        return doc;
+    }
 
-        // Lot AB (2026-07-05) — Word/Excel -> PDF a la volee (via ai-service /
-        // LibreOffice + cache MinIO) pour l'apercu inline ; PDF/images inchanges ;
-        // fallback original si conversion indisponible. Se fait APRES le controle
-        // d'acces (SUSPENDED ci-dessus), sur les memes octets deja autorises.
-        OfficePreviewSupport.Rendered rd =
-                office.render(doc.getObjectKey(), doc.getFilename(), doc.getContentType());
+    private PreviewPayload suite(DocumentEntity doc, UUID documentId, AuthenticatedUser user,
+                                 OfficePreviewSupport.Rendered rd) {
         InputStream stream = rd.stream();
         String contentType = rd.contentType();
 

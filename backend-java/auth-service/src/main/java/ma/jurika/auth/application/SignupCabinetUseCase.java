@@ -39,7 +39,8 @@ public class SignupCabinetUseCase {
     private static final Logger log = LoggerFactory.getLogger(SignupCabinetUseCase.class);
 
     // Spec directeur 2026-06-02 — codes plan canoniques.
-    private static final Set<String> ALLOWED_PLANS = Set.of("essentiel", "business", "entreprise");
+    /** Lot L7 (E5) : forfaits souscriptibles en ligne (Sur Devis : contact JURIKA, RG-SOU-01). */
+    private static final Set<String> ALLOWED_PLANS = Set.of("essentiel", "professionnel", "max");
 
     private final RegisterWorkspaceUseCase registerWorkspaceUseCase;
     private final WorkspaceJpaRepository workspaceJpaRepository;

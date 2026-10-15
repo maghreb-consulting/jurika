@@ -32,9 +32,13 @@ import java.util.UUID;
  * {@link #SEUIL_ALERTE_POURCENT}. L'usage est celui de {@link PlanLimitsService}
  * (meme source que l'ecran d'usage et que le blocage a 100 %).
  *
- * <p>Une alerte par quota et par mois civil (Casablanca) : registre auth V38.
- * Le super-admin n'est pas notifie ici (il n'appartient pas au cabinet ;
- * RG-COM-08 interdit toute notification d'un autre cabinet) : voir le rapport.
+ * <p>Une alerte par quota et par MOIS D'ABONNEMENT (registre auth V38, cle = annee-mois du debut du
+ * mois d'abonnement, {@link ma.jurika.common.billing.PeriodeAbonnement#cle()}).
+ *
+ * <p>Lot L7 (E5), RG-PLN-02 : le super-admin est alerte aussi, dans SON workspace (canal du
+ * super-admin : super-admins actifs lus par la fonction auth V44). Il gere tous les cabinets ; la
+ * notification nomme le cabinet et renvoie a sa fiche. Aucun membre d'un cabinet ne recoit l'alerte
+ * d'un autre cabinet (RG-COM-08).
  */
 @Service
 public class AlertesQuotaService {
@@ -46,6 +50,9 @@ public class AlertesQuotaService {
 
     /** Type de notification connu du realtime-service. */
     public static final String TYPE = "QUOTA_APPROCHANT";
+
+    /** Lot L7 (E5) : type de la notification du super-admin (quota d'un cabinet). */
+    public static final String TYPE_SUPER_ADMIN = "QUOTA_CABINET_APPROCHANT";
 
     private static final ZoneId CASABLANCA = ZoneId.of("Africa/Casablanca");
     private static final long OCTETS_PAR_GO = 1024L * 1024L * 1024L;
@@ -101,14 +108,21 @@ public class AlertesQuotaService {
         return new Bilan(cabinets, notifications, erreurs);
     }
 
-    private int traiter(PlanLimitsService limites, UUID ws, String periode) {
-        List<Depassement> depassements = depassements(limites.snapshot(ws));
+    private int traiter(PlanLimitsService limites, UUID ws, String periodeCivile) {
+        UsageSnapshot usage = limites.snapshot(ws);
+        List<Depassement> depassements = depassements(usage);
         if (depassements.isEmpty()) return 0;
+        // RG-PLN-01 : le quota s'entend par mois d'abonnement ; la cle du registre est ce mois-la.
+        String periode = usage.periodeDebut() == null ? periodeCivile : YearMonth.from(usage.periodeDebut()).toString();
         List<UUID> superviseurs = registre.superviseursActifs(ws);
         if (superviseurs.isEmpty()) {
-            log.warn("Alertes de quota : cabinet {} sans superviseur actif, alerte non emise", ws);
-            return 0;
+            log.warn("Alertes de quota : cabinet {} sans superviseur actif ; seul le super-admin est alerte", ws);
         }
+        List<AlertesQuotaRegistre.SuperAdmin> superAdmins = registre.superAdminsActifs();
+        if (superAdmins.isEmpty()) {
+            log.warn("Alertes de quota : aucun super-admin actif, le canal du super-admin n'a pas de destinataire");
+        }
+        String cabinet = registre.denominationCabinet(ws);
         int emises = 0;
         for (Depassement d : depassements) {
             if (!registre.retenirSiNouvelle(ws, d.quota(), periode)) continue;
@@ -118,6 +132,15 @@ public class AlertesQuotaService {
             meta.put("periode", periode);
             for (UUID s : superviseurs) {
                 notifier.notifyUser(s, ws, TYPE, d.titre(), d.message(), "/app/billing/change-plan", meta);
+                emises++;
+            }
+            Map<String, Object> metaAdmin = new LinkedHashMap<>(meta);
+            metaAdmin.put("workspaceId", ws.toString());
+            String titre = (cabinet == null ? "Un cabinet" : cabinet) + " : " + d.titre().toLowerCase(Locale.FRANCE);
+            for (AlertesQuotaRegistre.SuperAdmin sa : superAdmins) {
+                notifier.notifyUser(sa.id(), sa.workspaceId(), TYPE_SUPER_ADMIN, titre,
+                        "Cabinet " + (cabinet == null ? ws.toString() : cabinet) + " : " + d.message(),
+                        "/admin/workspaces/" + ws, metaAdmin);
                 emises++;
             }
         }

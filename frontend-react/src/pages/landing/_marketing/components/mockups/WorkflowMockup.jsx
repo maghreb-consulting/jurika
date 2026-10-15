@@ -12,7 +12,7 @@ import { Icon } from './icons.jsx';
  */
 const STEPS = [
   'Dénomination', 'Siège social', 'Capital', 'Activité', 'Dirigeants',
-  'Associés', 'Génération IA', 'Pièces jointes', 'Synthèse',
+  'Associés', 'Génération des actes', 'Pièces jointes', 'Synthèse',
 ];
 const CURRENT = 4; // index 0-based → « Dirigeants » en cours (4 étapes validées)
 const CIN_FIELDS = [
@@ -33,9 +33,9 @@ export function WorkflowMockup() {
           <div className="mk-wf-head">
             <div>
               <p className="mk-mono mk-sub">TK-2026-0481</p>
-              <h3 className="mk-h1">Création SARL — ATLAS NÉGOCE</h3>
+              <h3 className="mk-h1">Création SARL AU — ATLAS NÉGOCE</h3>
             </div>
-            <span className="mk-badge">Mode : SARL_AU (1 associé)</span>
+            <span className="mk-badge">SARL à associé unique</span>
           </div>
 
           <nav className="mk-card mk-roadmap" aria-hidden="true">
@@ -64,9 +64,9 @@ export function WorkflowMockup() {
           <section className="mk-card mk-kie">
             <div className="mk-kie__head">
               <span className="mk-kie__title"><Icon name="sparkles" size={15} /> Gérant — extraction CIN</span>
-              <span className="mk-srcbadge"><Icon name="sparkles" size={11} /> Source : fusion (KIE + MRZ)</span>
+              <span className="mk-srcbadge"><Icon name="sparkles" size={11} /> Lu sur la pièce</span>
             </div>
-            <p className="mk-kie__hint">Champs lus depuis la CIN — à vérifier puis appliquer</p>
+            <p className="mk-kie__hint">Valeurs lues sur la CIN — à confirmer avant de les retenir</p>
             <div className="mk-kie__grid">
               {CIN_FIELDS.map((f) => (
                 <label className="mk-field" key={f.label}>

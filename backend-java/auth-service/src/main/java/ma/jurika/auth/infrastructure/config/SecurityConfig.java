@@ -1,8 +1,10 @@
 package ma.jurika.auth.infrastructure.config;
 
+import org.springframework.beans.factory.ObjectProvider;
 import ma.jurika.auth.infrastructure.security.ChangePasswordEnforcer;
 import ma.jurika.auth.infrastructure.security.Setup2faRequiredEnforcer;
 import ma.jurika.common.security.JwtAuthFilter;
+import ma.jurika.common.trial.TrialSoftLockFilter;
 import ma.jurika.common.security.JwtPublicKeyProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +27,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                    ObjectProvider<TrialSoftLockFilter> filtresEssai,
                                                     JwtAuthFilter jwtAuthFilter,
                                                     ChangePasswordEnforcer changePasswordEnforcer,
                                                     Setup2faRequiredEnforcer setup2faRequiredEnforcer) throws Exception {
@@ -70,8 +73,13 @@ public class SecurityConfig {
                 // CRIT-2 (audit 2026-06-02) -- bloque tout sauf /auth/2fa/* tant que
                 // requires_2fa_setup=TRUE dans le JWT (RG-AU30 enforce serveur).
                 .addFilterAfter(setup2faRequiredEnforcer, ChangePasswordEnforcer.class);
-        // UX-3 (2026-06-02) : TrialSoftLockFilter supprime (concept trial efface du produit).
 
+        // Lot L7 (E4) : controles serveur de l'essai gratuit (RG-ESS-05 aucun telechargement,
+        // RG-ESS-10 lecture seule), apres JwtAuthFilter qui pose le workspace courant.
+        TrialSoftLockFilter filtreEssai = filtresEssai.getIfAvailable();
+        if (filtreEssai != null) {
+            http.addFilterAfter(filtreEssai, JwtAuthFilter.class);
+        }
         return http.build();
     }
 }

@@ -67,6 +67,7 @@ public class DossierIdempotenceLookup {
                     existing.get().id(), existing.get().formeJuridique(), workspaceId);
             return existing.get();
         }
+        verifierDossierEssai(workspaceId);
         EntrepriseDossier stub = type == TicketType.CREATION
                 ? EntrepriseDossier.creationStub(workspaceId, raisonSociale, forme, responsableId)
                 : EntrepriseDossier.importStub(workspaceId, raisonSociale, forme, responsableId);
@@ -95,4 +96,17 @@ public class DossierIdempotenceLookup {
     public java.util.Optional<EntrepriseDossier> findAliveInNewTx(UUID workspaceId, String raisonSociale) {
         return dossierRepository.findAliveByRaisonSociale(workspaceId, raisonSociale);
     }
+    /** Lot L7 (E4), RG-ESS-04 : pendant l'essai gratuit, 3 dossiers au plus. */
+    private org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.EssaiQuotas> essaiQuotas;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setEssaiQuotas(org.springframework.beans.factory.ObjectProvider<ma.jurika.common.trial.EssaiQuotas> q) {
+        this.essaiQuotas = q;
+    }
+
+    private void verifierDossierEssai(java.util.UUID workspaceId) {
+        ma.jurika.common.trial.EssaiQuotas q = essaiQuotas == null ? null : essaiQuotas.getIfAvailable();
+        if (q != null) q.verifierNouveauDossier(workspaceId);
+    }
+
 }

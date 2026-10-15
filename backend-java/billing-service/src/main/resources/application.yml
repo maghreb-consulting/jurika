@@ -77,38 +77,36 @@ jurika:
   auth:
     internal-url: ${JURIKA_AUTH_INTERNAL_URL:http://localhost:8081}
 
-  # Sprint 12 — configuration Stripe TEST mode (placeholders en dev,
-  # vraies valeurs via .env.local — JAMAIS commit). Voir PLAN §3.
-  stripe:
-    publishable-key: ${STRIPE_PUBLISHABLE_KEY:pk_test_PLACEHOLDER}
-    secret-key: ${STRIPE_SECRET_KEY:sk_test_PLACEHOLDER}
-    webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_PLACEHOLDER}
-    checkout-locale: ${STRIPE_CHECKOUT_LOCALE:fr}
-    # Sprint Beta (pricing-deploy) — 4 prix : chaque plan a une variante
-    # mensuelle ET annuelle. Lookup_keys cote Stripe (spec 2026-06-02) :
-    #   essentiel_monthly / essentiel_yearly / business_monthly / business_yearly
-    # Generation idempotente via scripts/stripe-setup-products.mjs.
-    prices:
-      essentiel:
-        monthly: ${STRIPE_PRICE_ESSENTIEL_MONTHLY:${STRIPE_PRICE_ESSENTIEL:price_PLACEHOLDER_essentiel_monthly}}
-        yearly:  ${STRIPE_PRICE_ESSENTIEL_YEARLY:price_PLACEHOLDER_essentiel_yearly}
-      business:
-        monthly: ${STRIPE_PRICE_BUSINESS_MONTHLY:${STRIPE_PRICE_BUSINESS:price_PLACEHOLDER_business_monthly}}
-        yearly:  ${STRIPE_PRICE_BUSINESS_YEARLY:price_PLACEHOLDER_business_yearly}
+  # Lot L7 (E6) : contrat d'abonnement. Identite du cabinet et du signataire lue chez
+  # auth-service avec le jeton du superviseur (nom du service sur le reseau Docker).
+  contrat:
+    auth-url: ${JURIKA_CONTRAT_AUTH_URL:http://auth-service:8081}
 
   billing:
-    tva-rate-percent: ${BILLING_TVA_RATE_PERCENT:20.00}
-    sales-email: ${BILLING_SALES_EMAIL:contact@jurika.ai}
+    # Lot L7 : destinataire des demandes de devis ; vide = adresse d'expedition (SMTP_FROM).
+    sales-email: ${BILLING_SALES_EMAIL:}
     from-email: ${SMTP_FROM:}
-    # BUG 14 (2026-06-07) — autorise la methode TEST_BYPASS pour le wizard
-    # signup. EN PROD : forcer false. En local/staging : true pour tester
-    # le flow signup -> plan -> recap -> paiement -> activation sans Stripe.
-    test-bypass-enabled: ${BILLING_TEST_BYPASS_ENABLED:true}
-    checkout:
-      success-url: ${BILLING_CHECKOUT_SUCCESS_URL:http://localhost:5173/billing/success?session_id={CHECKOUT_SESSION_ID}}
-      cancel-url: ${BILLING_CHECKOUT_CANCEL_URL:http://localhost:5173/billing}
-    portal:
-      return-url: ${BILLING_PORTAL_RETURN_URL:http://localhost:5173/billing}
+    # Lot L7 (E5) : adresse publique du front (retour du navigateur apres la page du CMI).
+    front-url: ${FRONTEND_URL:http://localhost:5173}
+    # A_DECIDER (direction) : banque et RIB de l'editeur pour le virement ; vides tant que non
+    # communiques (l'ecran le dit, aucune coordonnee inventee).
+    virement-banque: ${JURIKA_VIREMENT_BANQUE:}
+    virement-rib: ${JURIKA_VIREMENT_RIB:}
+
+  # Lot L7 (E5), RG-PAY-04 : magasin chez le CMI. AUCUNE valeur par defaut : sans ces variables, le
+  # paiement par carte est refuse avec un message qui le dit. CMI_STORE_KEY est un secret.
+  cmi:
+    client-id: ${CMI_CLIENT_ID:}
+    store-key: ${CMI_STORE_KEY:}
+    gateway-url: ${CMI_GATEWAY_URL:}
+    callback-url: ${CMI_CALLBACK_URL:}
+    ok-url: ${CMI_OK_URL:}
+    fail-url: ${CMI_FAIL_URL:}
+    lang: fr
+    # Simulateur de test (jamais en production : refuse au demarrage si JURIKA_ENV=prod).
+    simulateur-actif: ${CMI_SIMULATEUR_ACTIF:false}
+
+  env: ${JURIKA_ENV:local}
 
 management:
   endpoints:
@@ -134,5 +132,4 @@ springdoc:
 
 logging:
   level:
-    com.stripe: INFO
     ma.jurika.billing: INFO

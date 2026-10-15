@@ -1,4 +1,6 @@
 import { api } from '../lib/api';
+import type { ApercuPages } from '../types/apercu';
+import type { DocumentSummary } from '../types/dataroom';
 
 /**
  * Sprint 12.X — Frontend service pour le manifest documentaire des workflows.
@@ -166,4 +168,72 @@ export async function emplacementClausesLibres(workflowCode: string, templateCod
     `/ai/workflows/${encodeURIComponent(workflowCode)}/templates/${encodeURIComponent(templateCode)}/clauses-libres`,
   );
   return data;
+}
+
+/**
+ * Decision du 2026-10-14 (RG-ESS-05, RG-ESS-06) : apercu de l'acte en AFFICHAGE seulement (pages
+ * PNG produites par le serveur ; pendant l'essai, la mention d'evaluation y est incrustee).
+ * Meme generation et memes refus nommes que `generateDocument`, sans aucun fichier recu.
+ */
+export interface ApercuActe {
+  apercu: ApercuPages;
+  nomFichier: string;
+  donneesAObtenir: DonneeNommee[];
+}
+
+export async function apercuDocument(
+  workflowCode: string,
+  templateCode: string,
+  payload: Record<string, unknown>,
+): Promise<ApercuActe> {
+  try {
+    const { data } = await api.post<ApercuActe>(
+      `/ai/workflows/${encodeURIComponent(workflowCode)}/documents/${encodeURIComponent(templateCode)}/apercu`,
+      payload,
+    );
+    return { ...data, donneesAObtenir: data.donneesAObtenir ?? [] };
+  } catch (err) {
+    throw await erreurLisible(err);
+  }
+}
+
+/** Parametres du depot d'un acte dans la Data Room, fait par le serveur. */
+export interface DepotActe {
+  dossierId: string;
+  documentType: string;
+  title: string;
+  filename?: string;
+  ticketId?: string;
+  mode: 'BROUILLON' | 'NOUVEAU' | 'NOUVELLE_VERSION';
+  existingDocumentId?: string;
+  motif?: string;
+}
+
+export interface ActeDepose {
+  document: DocumentSummary;
+  nomFichier: string;
+  filigrane: boolean;
+  donneesAObtenir: DonneeNommee[];
+}
+
+/**
+ * Decision du 2026-10-14 (RG-ESS-05) : le serveur genere l'acte ET l'enregistre dans la Data Room
+ * (brouillon, nouveau document ou nouvelle version) ; le navigateur ne recoit que la fiche du
+ * document enregistre. Seule voie d'enregistrement d'un acte pendant l'essai.
+ */
+export async function deposerDocument(
+  workflowCode: string,
+  templateCode: string,
+  payload: Record<string, unknown>,
+  depot: DepotActe,
+): Promise<ActeDepose> {
+  try {
+    const { data } = await api.post<ActeDepose>(
+      `/ai/workflows/${encodeURIComponent(workflowCode)}/documents/${encodeURIComponent(templateCode)}/depot`,
+      { payload, depot },
+    );
+    return { ...data, donneesAObtenir: data.donneesAObtenir ?? [] };
+  } catch (err) {
+    throw await erreurLisible(err);
+  }
 }

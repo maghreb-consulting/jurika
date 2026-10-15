@@ -2,7 +2,7 @@ package ma.jurika.billing.application.email;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
-import ma.jurika.billing.infrastructure.stripe.BillingProperties;
+import ma.jurika.billing.infrastructure.config.BillingProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
@@ -20,15 +20,14 @@ import java.util.Map;
  * Sprint 12 T10 — service envoi emails billing avec rendu Thymeleaf.
  *
  * <p>5 templates :
- *  - facture-disponible      (invoice.payment_succeeded -> RG-BL05)
- *  - paiement-echec          (invoice.payment_failed   -> RG-BL06)
- *  - conversion-active       (checkout.session.completed -> apres conversion)
- *  - annulation              (customer.subscription.deleted -> RG-BL07)
- *  - reactivation            (resume depuis Customer Portal)
+ *  - facture-disponible      (paiement confirme -> RG-BL05)
+ *  - conversion-active       (premiere souscription payee)
+ *  - annulation              (fin d'abonnement -> RG-BL07)
+ *  - reactivation            (reprise apres archivage)
  *
  * <p>RG-BL16 : tous les emails en FR.
- * Envoyes @Async pour ne pas bloquer le webhook handler. Si SMTP KO, log
- * + skip silencieux (l'event Stripe reste persiste cote DB, retry possible).
+ * Envoyes @Async pour ne pas bloquer l'appelant. Si SMTP KO, l'echec est
+ * journalise (le paiement reste persiste en base).
  */
 @Service
 public class BillingEmailService {
@@ -61,11 +60,6 @@ public class BillingEmailService {
     }
 
     @Async
-    public void sendPaymentFailed(String to, Map<String, Object> vars) {
-        send(to, "[URGENT] \u00c9chec de paiement : mettez \u00e0 jour votre carte", "email/paiement-echec", vars);
-    }
-
-    @Async
     public void sendConversionActive(String to, Map<String, Object> vars) {
         send(to, "Bienvenue dans JURIKA : votre abonnement est actif", "email/conversion-active", vars);
     }
@@ -78,6 +72,40 @@ public class BillingEmailService {
     @Async
     public void sendReactivation(String to, Map<String, Object> vars) {
         send(to, "Votre abonnement JURIKA est r\u00e9activ\u00e9", "email/reactivation", vars);
+    }
+
+    /**
+     * Lot L7 (E8), article 4.4 du contrat : rappel d'une echeance impayee, envoye SANS
+     * {@code @Async} : le resultat est rendu a l'appelant, qui le journalise (envoye ou echec) et
+     * ne suspend jamais l'acces sans rappel envoye. Jamais avale.
+     *
+     * @return null si le courriel est parti, sinon le motif de l'echec
+     */
+    public String envoyerRappelImpaye(String to, Map<String, Object> vars) {
+        if (to == null || to.isBlank()) {
+            return "Adresse \u00e9lectronique du cabinet absente";
+        }
+        if (props.getFromEmail() == null || props.getFromEmail().isBlank()) {
+            return "Exp\u00e9diteur non configur\u00e9 (SMTP_FROM)";
+        }
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
+            helper.setFrom(props.getFromEmail());
+            helper.setTo(to);
+            helper.setSubject("Rappel : \u00e9ch\u00e9ance de votre abonnement JURIKA non r\u00e9gl\u00e9e");
+            Context ctx = new Context();
+            vars.forEach(ctx::setVariable);
+            helper.setText(templateEngine.process("email/rappel-impaye", ctx), true);
+            attachInlineAssets(helper);
+            mailSender.send(message);
+            log.info("Rappel d'echeance impayee envoye to={}", to);
+            return null;
+        } catch (Exception e) {
+            log.warn("Echec du rappel d'echeance impayee to={} : {}", to, e.getMessage());
+            String m = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            return m.length() > 500 ? m.substring(0, 500) : m;
+        }
     }
 
     private void send(String to, String subject, String templatePath, Map<String, Object> vars) {

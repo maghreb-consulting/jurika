@@ -89,6 +89,25 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             Boolean mustChangePassword = claims.get(JwtClaims.MUST_CHANGE_PASSWORD, Boolean.class);
             Boolean requires2faSetup = claims.get(JwtClaims.REQUIRES_2FA_SETUP, Boolean.class);
 
+            // Lot L7 (E5), RG-TAR-07 : jeton d'un workspace archive, chemins restreints.
+            if (Boolean.TRUE.equals(claims.get(JwtClaims.ARCHIVE, Boolean.class))
+                    && !AccesArchive.cheminPermis(request.getRequestURI())) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType("application/json");
+                response.setCharacterEncoding("UTF-8");
+                response.getWriter().write(AccesArchive.CORPS_REFUS);
+                return;
+            }
+            // Lot L7 (E8), article 4.4 du contrat : workspace suspendu pour impaye, memes chemins.
+            if (Boolean.TRUE.equals(claims.get(JwtClaims.SUSPENDU, Boolean.class))
+                    && !AccesArchive.cheminPermis(request.getRequestURI())) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType("application/json");
+                response.setCharacterEncoding("UTF-8");
+                response.getWriter().write(AccesArchive.CORPS_REFUS_SUSPENDU);
+                return;
+            }
+
             AuthenticatedUser principal = new AuthenticatedUser(userId, workspaceId, email, role);
             TenantContext.set(workspaceId);
             MDC.put(MDC_WORKSPACE, workspaceId.toString());

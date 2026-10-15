@@ -48,7 +48,7 @@ import java.util.UUID;
 public class AdminWorkspaceController {
 
     private static final List<String> VALID_STATUSES =
-            List.of("ACTIVE", "SUSPENDED", "DEACTIVATED", "PENDING_VERIFICATION");
+            List.of("ACTIVE", "SUSPENDED", "ARCHIVED", "PENDING_VERIFICATION");
 
     private final ResendWelcomeUseCase resendWelcomeUseCase;
     private final JdbcTemplate jdbc;
@@ -146,7 +146,9 @@ public class AdminWorkspaceController {
             @PathVariable UUID workspaceId,
             @AuthenticationPrincipal AuthenticatedUser admin,
             HttpServletRequest http) {
-        return changeStatus(workspaceId, "DEACTIVATED", "WORKSPACE_DEACTIVATED", admin, http);
+        // Lot L7 (E5), RG-PLN-07 : la desactivation (decision) ARCHIVE le workspace : acces fermes,
+        // rien n'est supprime, le superviseur garde la connexion (RG-TAR-09).
+        return changeStatus(workspaceId, "ARCHIVED", "WORKSPACE_ARCHIVED", admin, http);
     }
 
     private ResponseEntity<Map<String, Object>> changeStatus(
@@ -155,9 +157,19 @@ public class AdminWorkspaceController {
         if (!VALID_STATUSES.contains(newStatus)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Statut non valide.");
         }
-        int updated = jdbc.update(
-                "UPDATE workspaces SET status = ?, updated_at = NOW() WHERE id = ?",
-                newStatus, workspaceId);
+        // Lot L7 (E5) : l'archivage date et motive ; toute autre transition efface l'archivage.
+        // Lot L7 (E8, auth V46) : une suspension par le super-admin est une DECISION (motif nul, ne
+        // s'ouvre a personne et n'est pas levee par un paiement) ; toute autre transition efface la
+        // suspension pour impaye.
+        int updated = switch (newStatus) {
+            case "ARCHIVED" -> jdbc.update("UPDATE workspaces SET status = ?, archive_le = COALESCE(archive_le, NOW()), "
+                    + "archive_motif = COALESCE(archive_motif, 'DECISION'), suspendu_le = NULL, suspension_motif = NULL, "
+                    + "updated_at = NOW() WHERE id = ?", newStatus, workspaceId);
+            case "SUSPENDED" -> jdbc.update("UPDATE workspaces SET status = ?, archive_le = NULL, archive_motif = NULL, "
+                    + "suspendu_le = NOW(), suspension_motif = NULL, updated_at = NOW() WHERE id = ?", newStatus, workspaceId);
+            default -> jdbc.update("UPDATE workspaces SET status = ?, archive_le = NULL, archive_motif = NULL, "
+                    + "suspendu_le = NULL, suspension_motif = NULL, updated_at = NOW() WHERE id = ?", newStatus, workspaceId);
+        };
         if (updated == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workspace introuvable.");
         }
