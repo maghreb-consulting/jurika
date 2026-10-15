@@ -94,7 +94,7 @@
         <dependency>
             <groupId>io.minio</groupId>
             <artifactId>minio</artifactId>
-            <version>8.5.14</version>
+            <version>9.0.3</version>
         </dependency>
         <!-- Migration 2026-07-14 : Apache PDFBox (Apache 2.0) remplace iText (AGPL).
              Le rendu PDF passe par le theme partage ma.jurika.common.pdf. -->
