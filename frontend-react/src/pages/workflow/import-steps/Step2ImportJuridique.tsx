@@ -716,7 +716,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
           disabled={!canSubmit || saving || !dossierId}
           className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
             canSubmit && !saving && dossierId
-              ? 'bg-accent text-bg-raised hover:bg-accent-hover'
+              ? 'bg-accent text-accent-fg hover:bg-accent-hover'
               : 'cursor-not-allowed bg-border text-fg-subtle'
           }`}
         >

@@ -2,7 +2,16 @@ import { useNavigate } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Eye, Save, X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
+import { Message } from '../../components/ui/Message';
+import { Page } from '../../components/layout/Page';
+import { useAuthStore } from '../../store/authStore';
+import { filDuParcours } from '../../components/workflow/etatsEtapes';
+import {
+  EtatTicketParcours,
+  MessageConsultationSuperviseur,
+  MetaTicketParcours,
+} from '../../components/workflow/EnTeteParcours';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
 import { ticketService } from '../../services/ticket.service';
 import { workflowService } from '../../services/workflow.service';
 import { dataroomService } from '../../services/dataroom.service';
@@ -129,6 +138,9 @@ function CreationSarlWorkflowPageBody() {
     viewStep, maxStep, saveDraft, executeStep, goToStep, goPrev, goNext, reload,
     registerDirty,
   } = useWorkflow();
+  // Lot L6b (E5) : le superviseur consulte le parcours ; le serveur lui refuse toute
+  // ecriture (enregistrement, validation, pieces, annulation).
+  const superviseur = useAuthStore((s) => s.user?.role === 'SUPERVISEUR');
   const [showCancel, setShowCancel] = useState(false);
   const [datasetWarnings, setDatasetWarnings] = useState<string[]>([]);
   // Fix 2026-06-07 (BUG 3) — Forme juridique definie a la creation du
@@ -342,18 +354,14 @@ function CreationSarlWorkflowPageBody() {
   );
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-      </div>
-    );
+    return <SqueletteParcours />;
   }
 
   if (!ticket || !progress) {
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+      <ErreurParcours>
         {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
-      </div>
+      </ErreurParcours>
     );
   }
 
@@ -371,6 +379,7 @@ function CreationSarlWorkflowPageBody() {
   // étapes + documents générés visibles, zéro écriture backend. Le flag est
   // ADDITIF : le mode normal (NOUVEAU / EN_COURS) est inchangé.
   const readOnly =
+    superviseur ||
     progress.statut === 'TERMINE' ||
     ticket.statut === 'CLOTURE_DOSSIER' ||
     ticket.statut === 'ANNULE';
@@ -609,36 +618,32 @@ function CreationSarlWorkflowPageBody() {
   );
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="font-mono text-xs text-fg-subtle">{ticket.reference}</p>
-          <h1 className="text-2xl font-bold text-fg">{ticket.titre}</h1>
-          <div className="mt-1">
-            <Badge variant={formeJuridique === 'SARL_AU' ? 'info' : 'default'}>
-              {formeLabel}
-            </Badge>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {readOnly ? (
-            // Consultation lecture seule : pas d'action mutante dans l'en-tête.
-            <Button variant="secondary" onClick={() => navigate('/tickets')}>
-              <ChevronLeft className="mr-1 h-4 w-4" /> Retour aux tickets
+    <Page
+      titre={ticket.titre}
+      fil={filDuParcours(ticket)}
+      etat={<EtatTicketParcours ticket={ticket} forme={formeLabel} />}
+      description={<MetaTicketParcours ticket={ticket} />}
+      actions={
+        readOnly ? (
+          // Consultation lecture seule : pas d'action mutante dans l'en-tête.
+          <Button type="button" variant="secondary" icon={<ChevronLeft />} onClick={() => navigate('/tickets')}>
+            Retour aux tickets
+          </Button>
+        ) : (
+          <>
+            <IndicateurEnregistrement />
+            <Button type="button" variant="secondary" icon={<Save />} onClick={() => navigate(-1)}>
+              Enregistrer et quitter
             </Button>
-          ) : (
-            <>
-              <IndicateurEnregistrement />
-              <Button variant="secondary" onClick={() => navigate(-1)}>
-                <Save className="mr-1 h-4 w-4" /> Enregistrer et quitter
-              </Button>
-              <Button variant="danger" onClick={() => setShowCancel(true)}>
-                <X className="mr-1 h-4 w-4" /> Annuler le ticket
-              </Button>
-            </>
-          )}
-        </div>
-      </header>
+            <Button type="button" variant="danger" icon={<X />} onClick={() => setShowCancel(true)}>
+              Annuler le ticket
+            </Button>
+          </>
+        )
+      }
+    >
+    <div className="space-y-5">
+      {superviseur && <MessageConsultationSuperviseur />}
 
       <WorkflowRoadmap
         currentStep={maxStep}
@@ -648,50 +653,50 @@ function CreationSarlWorkflowPageBody() {
       />
 
       {step < maxStep && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <Message ton="attention">
           Vous consultez l’étape {step}/{progress.totalSteps} (étape la plus avancée atteinte : {maxStep}).
           {!readOnly &&
             ' Vous pouvez modifier les valeurs puis revalider : la progression ne sera pas perdue.'}
-        </div>
+        </Message>
       )}
 
-      {error && (
-        <div className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">{error}</div>
-      )}
+      {error && <Message ton="erreur">{error}</Message>}
 
       {datasetWarnings.length > 0 && (
-        <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
-          <p className="font-semibold">Avertissements de la Data Room (la saisie n’est pas bloquée) :</p>
+        <Message
+          ton="attention"
+          titre="Avertissements de la Data Room (la saisie n’est pas bloquée)"
+          action={
+            <Button type="button" variant="secondary" size="sm" onClick={() => setDatasetWarnings([])}>
+              Effacer
+            </Button>
+          }
+        >
           <ul className="ml-4 list-disc">
             {datasetWarnings.slice(-3).map((w, i) => (
               <li key={i}>{w}</li>
             ))}
           </ul>
-          <button
-            type="button"
-            onClick={() => setDatasetWarnings([])}
-            className="mt-1 text-[11px] underline"
-          >
-            Effacer
-          </button>
-        </div>
+        </Message>
       )}
 
       {!readOnly && (
         <AideEtape parcours="creation" etapes={ETAPES_CREATION} etape={step} />
       )}
 
-      <div className="rounded-2xl border border-border bg-bg-raised p-6">
+      <section aria-label="Contenu de l’étape" className="rounded-xl border border-border bg-bg-raised p-6 shadow-card">
         {/* 2026-08-12 (consultation lecture seule) — bandeau unique, fusionne
             l'ancien bloc « Workflow terminé ». */}
         {readOnly && (
-          <div className="mb-5 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
-            <p className="flex items-start gap-2 text-sm text-amber-900">
-              <Eye className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <Message ton="attention" className="mb-5">
+            <p className="flex items-start gap-2">
+              <Eye className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
               <span>
                 <span className="font-semibold">Consultation (lecture seule)</span>
                 {' — '}
-                {ticket.statut === 'ANNULE'
+                {superviseur
+                  ? 'suivi du superviseur'
+                  : ticket.statut === 'ANNULE'
                   ? 'ticket annulé'
                   : ticket.statut === 'CLOTURE_DOSSIER'
                     ? 'ticket clôturé'
@@ -700,7 +705,7 @@ function CreationSarlWorkflowPageBody() {
                 consultables ; aucune modification n'est possible.
               </span>
             </p>
-          </div>
+          </Message>
         )}
 
         {/*
@@ -731,15 +736,15 @@ function CreationSarlWorkflowPageBody() {
         ) : (
           stepBodyExcept7
         )}
-      </div>
+      </section>
 
-      <footer className="flex flex-wrap items-center justify-between gap-2 pt-1">
-        <Button variant="secondary" onClick={goPrev} disabled={step <= 1 || saving}>
-          <ChevronLeft className="mr-1 h-4 w-4" /> Étape précédente
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
+        <Button type="button" variant="secondary" icon={<ChevronLeft />} onClick={goPrev} disabled={step <= 1 || saving}>
+          Étape précédente
         </Button>
         {step < maxStep && (
-          <Button variant="secondary" onClick={goNext} disabled={saving}>
-            Étape suivante (sans modifier) <ChevronRight className="ml-1 h-4 w-4" />
+          <Button type="button" variant="secondary" iconEnd={<ChevronRight />} onClick={goNext} disabled={saving}>
+            Étape suivante (sans modifier)
           </Button>
         )}
       </footer>
@@ -755,6 +760,7 @@ function CreationSarlWorkflowPageBody() {
         />
       )}
     </div>
+    </Page>
   );
 }
 

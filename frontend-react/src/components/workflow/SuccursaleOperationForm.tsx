@@ -680,7 +680,7 @@ export function SuccursaleOperationForm({
       {/* Génération du PV */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-violet-600" />
+          <Sparkles className="h-4 w-4 text-info" />
           <h4 className="text-sm font-semibold text-fg">
             {isFermeture ? 'Générer le PV de fermeture' : 'Générer le PV de création de succursale'}
           </h4>
@@ -745,7 +745,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <section className="space-y-4 rounded-xl border border-border bg-bg-raised p-4">
       <div className="flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-violet-600" />
+        <Sparkles className="h-4 w-4 text-info" />
         <h4 className="text-sm font-semibold text-fg">{title}</h4>
       </div>
       {children}

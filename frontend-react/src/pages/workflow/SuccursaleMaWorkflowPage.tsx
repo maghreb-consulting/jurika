@@ -22,7 +22,6 @@ import {
   AlertCircle,
   AlertTriangle,
   Building2,
-  CheckCircle,
   Megaphone,
   Paperclip,
   Sparkles,
@@ -60,6 +59,8 @@ import { buildDocFilename, formeLabel } from '../../components/workflow/workflow
 import type { TemplateInfo } from '../../services/workflowDocumentService';
 import type { AssocieInput, GerantInput } from '../../components/workflow/SeanceForm';
 import type { DossierBrief } from '../../types/dataroom';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
+import { BandeauFinParcours } from '../../components/workflow/BandeauFinParcours';
 
 const STEPS: RoadmapStep[] = etapesRoadmap(ETAPES_SUCCURSALE_MA);
 
@@ -345,9 +346,9 @@ function SuccursaleMaWorkflowPageBody() {
   if (loading) return <Loader />;
   if (!ticket || !progress)
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+      <ErreurParcours>
         {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
-      </div>
+      </ErreurParcours>
     );
 
   const step = viewStep;
@@ -517,7 +518,7 @@ function SuccursaleMaWorkflowPageBody() {
 
             {dossier && (
               <div
-                className="rounded-lg border border-indigo-200 bg-accent/10 p-3 text-xs text-fg-muted"
+                className="rounded-lg border border-info/30 bg-accent/10 p-3 text-xs text-fg-muted"
                 role="status"
               >
                 Organe compétent : <strong>{decisionLabel}</strong>. Actes produits : procès-verbal
@@ -655,7 +656,7 @@ function SuccursaleMaWorkflowPageBody() {
 
             <section className="space-y-3 rounded-xl border border-border bg-bg-raised p-4">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-violet-600" />
+                <Sparkles className="h-4 w-4 text-info" />
                 <h4 className="text-sm font-semibold text-fg">Formalités</h4>
               </div>
               <TextField
@@ -672,7 +673,7 @@ function SuccursaleMaWorkflowPageBody() {
           <div className="space-y-4" data-testid="succursale-ma-step3">
             <header>
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-violet-600" />
+                <Sparkles className="h-5 w-5 text-info" />
                 <h2 className="text-lg font-semibold text-fg">Étape 3 — Génération des actes</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -838,14 +839,10 @@ function SuccursaleMaWorkflowPageBody() {
 
         {step === 5 && (
           <div className="space-y-4" data-testid="succursale-ma-synthese">
-            <div className="rounded-xl bg-gradient-to-r from-accent to-indigo-600 p-6 text-bg-raised">
-              <CheckCircle className="mb-2 h-8 w-8" />
-              <h2 className="text-2xl font-bold">Succursale créée</h2>
-              <p className="text-sm text-indigo-100">
+            <BandeauFinParcours titre="Succursale créée">
                 Le procès-verbal de création et l’annonce légale d’ouverture ont été produits,
                 validés et déposés dans la Data Room.
-              </p>
-            </div>
+              </BandeauFinParcours>
 
             <div
               className="rounded-xl border border-border bg-bg-raised p-4"
@@ -995,9 +992,5 @@ function Field({
 }
 
 function Loader() {
-  return (
-    <div className="flex h-64 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-    </div>
-  );
+  return <SqueletteParcours />;
 }

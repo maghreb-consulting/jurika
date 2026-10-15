@@ -198,7 +198,7 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
               onClick={() => setReglementee(false)}
               className={`flex-1 rounded-lg border-2 py-3 text-sm font-medium transition ${
                 !reglementee
-                  ? 'border-success bg-success text-bg-raised'
+                  ? 'border-success bg-success text-success-fg'
                   : 'border-border bg-bg-raised text-fg-subtle hover:border-success'
               }`}
             >
@@ -209,7 +209,7 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
               onClick={() => setReglementee(true)}
               className={`flex-1 rounded-lg border-2 py-3 text-sm font-medium transition ${
                 reglementee
-                  ? 'border-warning bg-warning text-bg-raised'
+                  ? 'border-warning bg-warning text-warning-fg'
                   : 'border-border bg-bg-raised text-fg-subtle hover:border-warning'
               }`}
             >
@@ -325,7 +325,7 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
           disabled={!canSubmit || saving}
           className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
             canSubmit && !saving
-              ? 'bg-accent text-bg-raised hover:bg-accent-hover'
+              ? 'bg-accent text-accent-fg hover:bg-accent-hover'
               : 'cursor-not-allowed bg-border text-fg-subtle'
           }`}
         >

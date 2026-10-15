@@ -604,7 +604,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
           disabled={!allFilled || saving}
           className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
             allFilled && !saving
-              ? 'bg-accent text-bg-raised hover:bg-accent-hover'
+              ? 'bg-accent text-accent-fg hover:bg-accent-hover'
               : 'cursor-not-allowed bg-border text-fg-subtle'
           }`}
         >

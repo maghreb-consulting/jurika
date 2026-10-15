@@ -201,7 +201,7 @@ export function PiecesJointesPanel({
               value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
               placeholder="Ajouter une pièce (libellé)…"
-              className="flex-1 rounded-lg border border-border-hi bg-bg-raised px-3 py-1.5 text-xs focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              className="flex-1 rounded-lg border border-border-hi bg-bg-raised px-3 py-1.5 text-xs focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30"
             />
             <button
               type="button"

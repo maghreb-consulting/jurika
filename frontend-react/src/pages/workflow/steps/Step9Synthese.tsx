@@ -8,6 +8,8 @@ import { useStepAutosave } from '../useStepAutosave';
 import type { DirtyGetter } from '../useWorkflow';
 import { DOCUMENTS_PARCOURS } from './documents-creation';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
+import { Button } from '../../../components/ui/Button';
+import { BandeauFinParcours } from '../../../components/workflow/BandeauFinParcours';
 
 interface Props {
   data: Record<string, Record<string, unknown>>;
@@ -220,7 +222,7 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
   if (success) {
     return (
       <div className="mx-auto max-w-[640px] space-y-6 text-center">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-success text-bg-raised animate-bounce">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-success text-success-fg animate-bounce">
           <CheckCircle className="h-12 w-12" />
         </div>
         <h2 className="text-2xl font-black text-success">
@@ -244,18 +246,10 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
 
   return (
     <form noValidate onSubmit={handleSubmit} className="mx-auto max-w-[860px] space-y-6">
-      <div className="rounded-xl bg-gradient-to-r from-[#10B981] to-[#059669] p-6 text-bg-raised">
-        <div className="mb-2 flex items-center gap-3">
-          <CheckCircle className="h-8 w-8" />
-          <h2 className="text-2xl font-black">
-            {/* Fix B2 — titre aligné sur la forme réelle du dossier. */}
-            Synthèse — Création {formeLabel}
-          </h2>
-        </div>
-        <p className="text-green-100">
-          Toutes les étapes sont complétées. Voici le récapitulatif du dossier.
-        </p>
-      </div>
+      {/* Fix B2 — titre aligné sur la forme réelle du dossier. */}
+      <BandeauFinParcours titre={<>Synthèse — Création {formeLabel}</>}>
+        Toutes les étapes sont complétées. Voici le récapitulatif du dossier.
+      </BandeauFinParcours>
       <TexteAide cle="creation-etape-9" titre="Ce qu’il faut faire">
         Relisez le récapitulatif ; une erreur se corrige à l’étape concernée (cliquez sur
         son numéro). Complétez au besoin les paramètres de l’acte, puis cliquez sur
@@ -390,26 +384,13 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
       {/* Actions finales */}
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
         <div className="mb-4">
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-border text-sm font-medium text-fg transition hover:border-accent"
-          >
-            <Printer className="h-4 w-4" /> Imprimer la synthèse (ou l’enregistrer en PDF)
-          </button>
+          <Button type="button" variant="secondary" size="lg" fullWidth icon={<Printer />} onClick={() => window.print()}>
+            Imprimer la synthèse (ou l’enregistrer en PDF)
+          </Button>
         </div>
-        <button
-          type="submit"
-          disabled={saving}
-          className={`flex h-14 w-full items-center justify-center gap-3 rounded-xl font-bold transition ${
-            !saving
-              ? 'bg-success text-bg-raised shadow-lg shadow-[#10B981]/20 hover:bg-success/85'
-              : 'cursor-not-allowed bg-border text-fg-subtle'
-          }`}
-        >
-          <CheckCircle className="h-6 w-6" />
+        <Button type="submit" size="lg" fullWidth icon={<CheckCircle />} loading={saving}>
           {saving ? 'Finalisation en cours…' : 'Finaliser le dossier'}
-        </button>
+        </Button>
       </div>
     </form>
   );

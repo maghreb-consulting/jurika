@@ -109,8 +109,8 @@ describe('<IdentityExtractor> mode="cin"', () => {
     expect((screen.getByTestId('id-field-nom') as HTMLInputElement).value).toBe('BENATIK');
     expect((screen.getByTestId('id-field-cin') as HTMLInputElement).value).toBe('AB123456');
 
-    // Source merged -> badge "fusion" + archive visible.
-    expect(screen.getByText(/fusion/i)).toBeInTheDocument();
+    // Source merged -> badge "document et bande MRZ" + archive visible.
+    expect(screen.getByText(/bande de lecture automatique \(MRZ\)/i)).toBeInTheDocument();
     expect(screen.getByTestId('id-archived')).toBeInTheDocument();
 
     // Edition human-in-the-loop avant Appliquer.

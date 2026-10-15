@@ -210,7 +210,7 @@ export function DocumentEditor({
 
   if (loadError) {
     return (
-      <div className="border border-red-300 bg-red-50 p-4 rounded text-sm text-red-800">
+      <div className="border border-danger/40 bg-danger-soft p-4 rounded text-sm text-danger">
         Erreur de chargement du document : {loadError}
       </div>
     );
@@ -219,7 +219,7 @@ export function DocumentEditor({
   // En mode "fidele", on a juste besoin du blob — pas du tiptap.
   if (mode === 'edition' && !editor) {
     return (
-      <div className="border border-slate-200 bg-slate-50 p-4 rounded text-sm text-slate-600">
+      <div className="border border-border bg-bg-overlay p-4 rounded text-sm text-fg-muted">
         Chargement de l’éditeur…
       </div>
     );
@@ -256,18 +256,18 @@ export function DocumentEditor({
   };
 
   return (
-    <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+    <div className="border border-border rounded-lg overflow-hidden bg-bg-raised">
       {/* BLOC B 2026-06-21 — Toggle Aperçu fidèle / Édition libre. Mode fidèle
           = docx-preview (styles Word préservés) ; édition = TipTap. */}
       {docxBlob && !readOnly && !forceMode && (
-        <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs">
+        <div className="flex items-center gap-2 border-b border-border bg-bg-overlay px-3 py-2 text-xs">
           <button
             type="button"
             onClick={() => setMode('fidele')}
             className={`inline-flex items-center gap-1 rounded px-2 py-1 font-medium ${
               mode === 'fidele'
-                ? 'bg-slate-900 text-white'
-                : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
+                ? 'bg-fg text-bg-raised'
+                : 'border border-border-input bg-bg-raised text-fg hover:bg-bg-overlay'
             }`}
           >
             <Eye className="h-3.5 w-3.5" /> Aperçu fidèle
@@ -277,13 +277,13 @@ export function DocumentEditor({
             onClick={() => setMode('edition')}
             className={`inline-flex items-center gap-1 rounded px-2 py-1 font-medium ${
               mode === 'edition'
-                ? 'bg-slate-900 text-white'
-                : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
+                ? 'bg-fg text-bg-raised'
+                : 'border border-border-input bg-bg-raised text-fg hover:bg-bg-overlay'
             }`}
           >
             <Pencil className="h-3.5 w-3.5" /> Édition libre
           </button>
-          <span className="ml-auto text-[11px] text-slate-500">
+          <span className="ml-auto text-[11px] text-fg-subtle">
             {mode === 'fidele'
               ? 'Styles Word préservés (polices, marges, hiérarchie).'
               : 'Modifications libres — l’export reflète ce qui est affiché.'}
@@ -291,7 +291,7 @@ export function DocumentEditor({
         </div>
       )}
       {!readOnly && mode === 'edition' && editor && (
-        <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50 p-2">
+        <div className="flex flex-wrap items-center gap-1 border-b border-border bg-bg-overlay p-2">
           <ToolbarBtn
             active={editor.isActive('bold')}
             onClick={() => editor.chain().focus().toggleBold().run()}
@@ -321,7 +321,7 @@ export function DocumentEditor({
             <Strikethrough className="h-4 w-4" />
           </ToolbarBtn>
 
-          <span className="mx-1 h-6 w-px bg-slate-300" />
+          <span className="mx-1 h-6 w-px bg-border-hi" />
 
           <ToolbarBtn
             active={editor.isActive('heading', { level: 1 })}
@@ -345,7 +345,7 @@ export function DocumentEditor({
             <Heading3 className="h-4 w-4" />
           </ToolbarBtn>
 
-          <span className="mx-1 h-6 w-px bg-slate-300" />
+          <span className="mx-1 h-6 w-px bg-border-hi" />
 
           <ToolbarBtn
             active={editor.isActive('bulletList')}
@@ -369,7 +369,7 @@ export function DocumentEditor({
             <Quote className="h-4 w-4" />
           </ToolbarBtn>
 
-          <span className="mx-1 h-6 w-px bg-slate-300" />
+          <span className="mx-1 h-6 w-px bg-border-hi" />
 
           <ToolbarBtn
             onClick={() =>
@@ -400,7 +400,7 @@ export function DocumentEditor({
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="inline-flex items-center gap-1 rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded bg-success px-3 py-1.5 text-xs font-medium text-success-fg hover:bg-success/90 disabled:opacity-50"
               >
                 <Save className="h-4 w-4" />
                 {saving ? 'Enregistrement…' : 'Enregistrer'}
@@ -410,7 +410,7 @@ export function DocumentEditor({
               type="button"
               onClick={handleExportDocx}
               disabled={exporting !== null}
-              className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded border border-border-input bg-bg-raised px-3 py-1.5 text-xs font-medium text-fg hover:bg-bg-overlay disabled:opacity-50"
               title="Télécharger en .docx"
             >
               <FileText className="h-4 w-4" />
@@ -420,7 +420,7 @@ export function DocumentEditor({
               type="button"
               onClick={handleExportPdf}
               disabled={exporting !== null}
-              className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded border border-border-input bg-bg-raised px-3 py-1.5 text-xs font-medium text-fg hover:bg-bg-overlay disabled:opacity-50"
               title="Télécharger en .pdf"
             >
               <Download className="h-4 w-4" />
@@ -432,9 +432,9 @@ export function DocumentEditor({
 
       {/* BLOC B 2026-06-21 — Rendu fidele (docx-preview) ou edition (TipTap). */}
       {mode === 'fidele' && docxBlob ? (
-        <div className="overflow-x-hidden overflow-y-auto bg-slate-100 p-4">
+        <div className="overflow-x-hidden overflow-y-auto bg-bg-overlay p-4">
           {fidelityError ? (
-            <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+            <div className="rounded border border-danger/40 bg-danger-soft p-3 text-sm text-danger">
               Aperçu fidèle indisponible : {fidelityError}. Ouvrez
               «&nbsp;Éditer&nbsp;» pour visualiser le document.
             </div>
@@ -482,8 +482,8 @@ function ToolbarBtn(props: {
       disabled={disabled}
       title={title}
       className={
-        'rounded p-1.5 text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent ' +
-        (active ? 'bg-slate-300 text-slate-900' : '')
+        'rounded p-1.5 text-fg-muted hover:bg-border disabled:opacity-40 disabled:hover:bg-transparent ' +
+        (active ? 'bg-border-hi text-fg' : '')
       }
     >
       {children}

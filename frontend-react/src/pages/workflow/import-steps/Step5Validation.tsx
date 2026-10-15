@@ -244,7 +244,7 @@ export function Step5Validation({
           disabled={!validated || saving}
           className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
             validated && !saving
-              ? 'bg-success text-bg-raised hover:bg-success/85'
+              ? 'bg-success text-success-fg hover:bg-success/85'
               : 'cursor-not-allowed bg-border text-fg-subtle'
           }`}
         >

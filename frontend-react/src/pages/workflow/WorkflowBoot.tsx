@@ -26,25 +26,14 @@
  */
 import type { ReactNode } from 'react';
 import { WorkflowDataProvider } from './useWorkflow';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
 
 function WorkflowLoader() {
-  return (
-    <div className="flex h-64 items-center justify-center" data-testid="workflow-boot-loader">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-    </div>
-  );
+  return <SqueletteParcours testId="workflow-boot-loader" />;
 }
 
 function WorkflowLoadError({ message }: { message: string }) {
-  return (
-    <div
-      className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger"
-      role="alert"
-      data-testid="workflow-boot-error"
-    >
-      {message}
-    </div>
-  );
+  return <ErreurParcours testId="workflow-boot-error">{message}</ErreurParcours>;
 }
 
 export function WorkflowBoot({ children }: { children: ReactNode }) {

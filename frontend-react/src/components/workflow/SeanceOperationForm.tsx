@@ -402,7 +402,7 @@ export function SeanceOperationForm({
       {mode === 'dissolution' && !operation && (
         <section className="space-y-4 rounded-xl border border-border bg-bg-raised p-4">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-violet-600" />
+            <Sparkles className="h-4 w-4 text-info" />
             <h4 className="text-sm font-semibold text-fg">Liquidateur et siège de la liquidation</h4>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
@@ -435,7 +435,7 @@ export function SeanceOperationForm({
 
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-violet-600" />
+          <Sparkles className="h-4 w-4 text-info" />
           <h4 className="text-sm font-semibold text-fg">
             {mode === 'dissolution' ? 'Générer le PV de dissolution' : 'Générer le PV de clôture et le rapport'}
           </h4>

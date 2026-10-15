@@ -28,7 +28,7 @@ const OUI_NON = [
 ];
 
 const champTexte =
-  'w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200';
+  'w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30';
 
 function ZoneTexte({
   label,

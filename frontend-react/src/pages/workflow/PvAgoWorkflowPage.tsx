@@ -56,6 +56,8 @@ import {
   rapportGestionPayload,
   type RapportGestionSaisie,
 } from '../../components/workflow/rapportGestion';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
+import { BandeauFinParcours } from '../../components/workflow/BandeauFinParcours';
 
 /**
  * Workflow PV AGO — approbation des comptes, en 5 étapes (spec directeur, lot DIVERS §E,
@@ -694,9 +696,9 @@ function PvAgoWorkflowPageBody() {
   if (loading) return <Loader />;
   if (!ticket || !progress)
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+      <ErreurParcours>
         {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
-      </div>
+      </ErreurParcours>
     );
 
   const step = viewStep;
@@ -1149,7 +1151,7 @@ function PvAgoWorkflowPageBody() {
               </div>
               <div
                 className={`mt-3 rounded-lg p-2 text-xs ${
-                  affectationOk ? 'bg-emerald-50 text-emerald-700' : 'bg-danger/10 text-danger'
+                  affectationOk ? 'bg-success-soft text-success' : 'bg-danger/10 text-danger'
                 }`}
               >
                 Total affecté : <strong>{sumAffectations.toLocaleString('fr-FR')} MAD</strong>{' '}
@@ -1245,7 +1247,7 @@ function PvAgoWorkflowPageBody() {
                       onChange={(e) => setConventionsDetail(e.target.value)}
                       onBlur={() => setRevealErrors(true)}
                       placeholder="Ex. : convention de compte courant d’associé conclue le …, bail consenti par le gérant…"
-                      className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                      className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30"
                     />
                     {showErr('conventionsDetail') && (
                       <FieldError msg={showErr('conventionsDetail')!} />
@@ -1280,7 +1282,7 @@ function PvAgoWorkflowPageBody() {
           <div className="space-y-4">
             <header>
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-violet-600" />
+                <Sparkles className="h-5 w-5 text-info" />
                 <h2 className="text-lg font-semibold text-fg">
                   Étape 3 — Génération du procès-verbal d’approbation et du rapport de gestion
                 </h2>
@@ -1299,7 +1301,7 @@ function PvAgoWorkflowPageBody() {
               </div>
             )}
             {!loadingTemplates && templates.length === 0 && !loadTplErr && (
-              <div className="rounded-lg border border-amber-200 bg-warning/10 p-3 text-sm text-amber-800">
+              <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
                 Aucun modèle compatible n’a été trouvé pour ce dossier : vérifiez la forme juridique à l’étape 1, puis rechargez la page.
               </div>
             )}
@@ -1453,13 +1455,9 @@ function PvAgoWorkflowPageBody() {
 
         {step === 5 && (
           <div className="space-y-4" data-testid="pvago-synthese">
-            <div className="rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 p-6 text-bg-raised">
-              <CheckCircle className="mb-2 h-8 w-8" />
-              <h2 className="text-2xl font-bold">Procès-verbal d’approbation {exercice} finalisé</h2>
-              <p className="text-sm text-amber-100">
+            <BandeauFinParcours titre={<>Procès-verbal d’approbation {exercice} finalisé</>}>
                 Exercice {exercice} : les documents validés sont déposés dans la Data Room.
-              </p>
-            </div>
+              </BandeauFinParcours>
             <div className="rounded-xl border border-border bg-bg-raised p-4 text-sm">
               <p className="mb-3 font-semibold text-fg">Récapitulatif</p>
               <ul className="space-y-1 text-fg-muted">
@@ -1546,9 +1544,5 @@ function FieldError({ msg }: { msg: string }) {
 }
 
 function Loader() {
-  return (
-    <div className="flex h-64 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-    </div>
-  );
+  return <SqueletteParcours />;
 }

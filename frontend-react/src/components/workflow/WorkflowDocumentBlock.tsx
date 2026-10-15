@@ -139,7 +139,7 @@ export function WorkflowDocumentBlock({
             className={`flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium transition ${
               state.generating
                 ? 'cursor-wait bg-border text-fg-subtle'
-                : 'bg-accent text-bg-raised hover:bg-accent-hover'
+                : 'bg-accent text-accent-fg hover:bg-accent-hover'
             }`}
           >
             {state.generating ? (

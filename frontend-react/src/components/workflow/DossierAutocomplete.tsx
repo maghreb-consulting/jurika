@@ -70,13 +70,13 @@ function computeDissolutionDelayBadge(d: DossierBrief): DelaiBadge {
   if (joursDepuis >= LIQUIDATION_DELAI_JOURS) {
     return {
       label: `Délai de ${LIQUIDATION_DELAI_JOURS} jours écoulé`,
-      className: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
+      className: 'bg-success-soft text-success border border-success/40',
     };
   }
   const reste = Math.max(0, LIQUIDATION_DELAI_JOURS - joursDepuis);
   return {
     label: `Délai en cours (il reste ${reste} jour(s))`,
-    className: 'bg-warning/10 text-amber-800 border border-amber-300',
+    className: 'bg-warning/10 text-warning border border-warning/40',
   };
 }
 
@@ -205,12 +205,12 @@ export function DossierAutocomplete({
       </label>
 
       {selected ? (
-        <div className="flex items-center justify-between rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2">
+        <div className="flex items-center justify-between rounded-lg border border-success/40 bg-success-soft px-3 py-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-emerald-900">
+            <p className="truncate text-sm font-semibold text-success">
               {selected.raisonSociale}
             </p>
-            <p className="truncate text-xs text-emerald-700">
+            <p className="truncate text-xs text-success">
               {displayFormeJuridique(selected) ?? 'Forme inconnue'} ·{' '}
               {selected.origine === 'ETRANGERE'
                 ? (selected.pays ?? 'Pays inconnu')
@@ -233,7 +233,7 @@ export function DossierAutocomplete({
             <button
               type="button"
               onClick={handleClear}
-              className="ml-3 rounded px-2 py-1 text-xs text-emerald-800 hover:bg-emerald-100"
+              className="ml-3 rounded px-2 py-1 text-xs text-success hover:bg-success-soft"
               aria-label="Changer la société sélectionnée"
             >
               Changer
@@ -242,7 +242,7 @@ export function DossierAutocomplete({
         </div>
       ) : (
         <div className="relative">
-          <div className="flex items-center gap-2 rounded-lg border border-border-hi bg-bg-raised px-3 py-2 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-200">
+          <div className="flex items-center gap-2 rounded-lg border border-border-hi bg-bg-raised px-3 py-2 focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/30">
             <Search className="h-4 w-4 text-fg-subtle" />
             <input
               type="text"

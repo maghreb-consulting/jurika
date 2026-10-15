@@ -1746,7 +1746,7 @@ export function Step7Generation({
                     className={`flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium transition ${
                       st.generating
                         ? 'cursor-wait bg-border text-fg-subtle'
-                        : 'bg-accent text-bg-raised hover:bg-accent-hover'
+                        : 'bg-accent text-accent-fg hover:bg-accent-hover'
                     }`}
                   >
                     {st.generating ? (
@@ -1973,7 +1973,7 @@ export function Step7Generation({
             disabled={!canSubmit || saving}
             className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
               canSubmit && !saving
-                ? 'bg-accent text-bg-raised hover:bg-accent-hover'
+                ? 'bg-accent text-accent-fg hover:bg-accent-hover'
                 : 'cursor-not-allowed bg-border text-fg-subtle'
             }`}
             title={
@@ -2000,7 +2000,7 @@ export function Step7Generation({
           <div
             role="dialog"
             aria-modal="true"
-            className="fixed inset-0 z-50 flex flex-col bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex flex-col bg-scrim/60 backdrop-blur-sm"
             onClick={(e) => {
               if (e.target === e.currentTarget) setPreviewingTplCode(null);
             }}
@@ -2073,7 +2073,7 @@ export function Step7Generation({
             role="dialog"
             aria-modal="true"
             data-testid="confirmation-regeneration"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/60 p-6 backdrop-blur-sm"
             onClick={(e) => {
               if (e.target === e.currentTarget) setRegenerationAConfirmer(null);
             }}
@@ -2131,7 +2131,7 @@ export function Step7Generation({
             <div
               role="dialog"
               aria-modal="true"
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/60 p-6 backdrop-blur-sm"
               onClick={() => setEditingTplCode(null)}
             >
               <div className="max-w-md rounded-xl bg-bg-raised p-5 text-sm text-fg shadow-xl">
@@ -2144,7 +2144,7 @@ export function Step7Generation({
           <div
             role="dialog"
             aria-modal="true"
-            className="fixed inset-0 z-50 flex flex-col bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex flex-col bg-scrim/60 backdrop-blur-sm"
             onClick={(e) => {
               if (e.target === e.currentTarget) setEditingTplCode(null);
             }}

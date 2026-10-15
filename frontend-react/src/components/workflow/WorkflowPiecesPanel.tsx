@@ -126,9 +126,9 @@ export function WorkflowPiecesPanel({
         {registered.map((p) => (
           <li
             key={p.code}
-            className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2"
+            className="flex items-center gap-2 rounded-lg border border-success/40 bg-success-soft px-3 py-2"
           >
-            <CheckCircle className="h-4 w-4 flex-shrink-0 text-emerald-700" />
+            <CheckCircle className="h-4 w-4 flex-shrink-0 text-success" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-fg">{p.label}</p>
               <p className="truncate text-xs text-fg-subtle">

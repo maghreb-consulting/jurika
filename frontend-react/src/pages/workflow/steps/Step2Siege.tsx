@@ -532,7 +532,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
           disabled={!canSubmit || saving}
           className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
             canSubmit && !saving
-              ? 'bg-accent text-bg-raised hover:bg-accent-hover'
+              ? 'bg-accent text-accent-fg hover:bg-accent-hover'
               : 'cursor-not-allowed bg-border text-fg-subtle'
           }`}
         >

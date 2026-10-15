@@ -4,12 +4,17 @@ import {
   CheckCircle,
   FileText,
   Image as ImageIcon,
-  Loader,
   Sparkles,
   Trash2,
   Upload,
 } from 'lucide-react';
 import { identityService } from '../../services/identityService';
+import { Badge } from '../ui/Badge';
+import { Button } from '../ui/Button';
+import { Message } from '../ui/Message';
+import { TextField } from '../ui/TextField';
+import { cn } from '../../lib/utils';
+import { libelleSourceLecture } from '../workflow/sourceLecture';
 import type {
   ExtractedIdentity,
   IdentityFields,
@@ -180,19 +185,14 @@ function humanizeWarning(code: string): string {
 
 /** Badge "Source" affiché à droite des champs. */
 function SourceBadge({ source }: { source: string }) {
-  const label =
-    source === 'merged' ? 'fusion (KIE + MRZ)' : source === 'kie' ? 'KIE' : source;
-  const cls =
-    source === 'merged'
-      ? 'bg-success/10 text-success border-success/30'
-      : 'bg-accent/10 text-accent border-accent/30';
+  // Lot L6b (E5, backlog L6) : la source se dit en francais (jamais "KIE" ou "merged").
+  const label = libelleSourceLecture(source);
+  if (!label) return null;
   return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${cls}`}
-    >
-      <Sparkles className="h-3 w-3" />
+    <Badge variant={source === 'merged' ? 'success' : 'info'}>
+      <Sparkles className="h-3 w-3" aria-hidden="true" />
       Source : {label}
-    </span>
+    </Badge>
   );
 }
 
@@ -211,7 +211,7 @@ function FilePreview({
     [file],
   );
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-success/40 bg-success/5 p-2">
+    <div className="flex items-center gap-3 rounded-lg border border-success/40 bg-success-soft p-2">
       {url ? (
         <img
           src={url}
@@ -220,21 +220,14 @@ function FilePreview({
         />
       ) : (
         <div className="flex h-12 w-12 items-center justify-center rounded bg-bg-overlay">
-          <FileText className="h-6 w-6 text-fg-subtle" />
+          <FileText className="h-6 w-6 text-fg-subtle" aria-hidden="true" />
         </div>
       )}
       <div className="flex-1 text-xs">
         <p className="font-semibold text-fg">{label}</p>
         <p className="truncate text-fg-subtle">{file.name}</p>
       </div>
-      <button
-        type="button"
-        onClick={onClear}
-        aria-label={`Supprimer ${label}`}
-        className="rounded p-1 text-fg-subtle hover:bg-bg-overlay hover:text-danger"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
+      <Button type="button" variant="ghost" size="sm" iconOnly icon={<Trash2 />} onClick={onClear} aria-label={`Supprimer ${label}`} />
     </div>
   );
 }
@@ -254,21 +247,21 @@ function DropZone({
   return (
     <label
       htmlFor={inputId}
-      className="block cursor-pointer rounded-lg border-2 border-dashed border-border bg-bg-overlay p-4 text-center transition hover:border-accent hover:bg-accent/5"
+      className="block cursor-pointer rounded-lg border-2 border-dashed border-border-input bg-bg-overlay p-4 text-center transition-colors duration-150 hover:border-focus focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus"
     >
-      <Upload className="mx-auto mb-1 h-6 w-6 text-fg-subtle" />
+      <Upload className="mx-auto mb-1 h-6 w-6 text-fg-subtle" aria-hidden="true" />
       <p className="text-xs font-semibold text-fg">
         {label}
         {required && <span className="ml-1 text-danger">*</span>}
       </p>
       {/* 2026-06-22 — Restreint aux images : le modèle d'extraction (Donut) a été
           entraîné uniquement sur des images ; les PDF ne sont pas pris en charge. */}
-      <p className="text-[10px] text-fg-subtle">Image (JPG / PNG)</p>
+      <p className="text-xs text-fg-subtle">Image (JPG / PNG)</p>
       <input
         id={inputId}
         type="file"
         accept="image/*"
-        className="hidden"
+        className="sr-only"
         onChange={(ev) => {
           const f = ev.target.files?.[0];
           if (f) onFile(f);
@@ -451,17 +444,18 @@ export function IdentityExtractor({
   return (
     <section
       data-testid="identity-extractor"
-      className="space-y-3 rounded-xl border border-border bg-bg-raised p-4"
+      aria-label={mode === 'cn' ? 'Lecture automatique du certificat négatif' : 'Lecture automatique de la CIN'}
+      className="space-y-3 rounded-xl border border-border bg-bg-raised p-4 shadow-card"
     >
       <header className="flex items-start justify-between gap-3">
         <div>
-          <h4 className="flex items-center gap-2 text-sm font-bold text-fg">
-            <Sparkles className="h-4 w-4 text-accent" />
+          <h4 className="flex items-center gap-2 text-sm font-semibold text-heading">
+            <Sparkles className="h-4 w-4 text-info" aria-hidden="true" />
             {mode === 'cn'
               ? "Assistant d’extraction CN (carte / registre)"
               : "Assistant d’extraction CIN"}
           </h4>
-          <p className="text-[11px] text-fg-subtle">
+          <p className="mt-0.5 text-xs text-fg-subtle">
             {mode === 'cn'
               ? "Téléversez la carte / le registre, l’assistant pré-remplit les champs. La saisie manuelle reste possible."
               : "Téléversez recto + verso, l’assistant pré-remplit les champs. La saisie manuelle reste possible — chaque champ extrait est éditable."}
@@ -475,7 +469,7 @@ export function IdentityExtractor({
         <div
           role="radiogroup"
           aria-label="Type de CIN"
-          className="grid grid-cols-2 gap-2"
+          className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-bg-overlay p-1"
         >
           {(['NOUVELLE', 'ANCIENNE'] as IdentityType[]).map((t) => {
             const active = t === type;
@@ -488,11 +482,11 @@ export function IdentityExtractor({
                 aria-checked={active}
                 data-testid={`id-type-${t}`}
                 onClick={() => handleTypeChange(t)}
-                className={`rounded-lg border-2 px-3 py-2 text-xs font-semibold transition ${
-                  active
-                    ? 'border-accent bg-accent/5 text-fg'
-                    : 'border-border bg-bg-overlay text-fg-subtle hover:border-accent/40'
-                }`}
+                className={cn(
+                  'h-8 rounded-md px-3 text-sm font-medium transition-colors duration-150',
+                  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
+                  active ? 'bg-bg-raised text-fg shadow-card ring-1 ring-accent' : 'text-fg-muted hover:text-fg',
+                )}
               >
                 {label}
               </button>
@@ -531,28 +525,22 @@ export function IdentityExtractor({
       </div>
 
       {/* Bouton Extraire */}
-      <div className="flex items-center justify-between">
-        <button
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
           data-testid="id-extract-btn"
           onClick={handleExtract}
           disabled={!canExtract}
-          className={`inline-flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-semibold transition ${
-            canExtract
-              ? 'bg-accent text-bg-raised hover:bg-accent-hover'
-              : 'cursor-not-allowed bg-border text-fg-subtle'
-          }`}
+          loading={loading}
+          icon={<Sparkles />}
         >
-          {loading ? (
-            <Loader className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Sparkles className="h-3.5 w-3.5" />
-          )}
           {loading ? 'Extraction en cours…' : 'Extraire'}
-        </button>
+        </Button>
         {dossierId && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-fg-subtle">
-            <ImageIcon className="h-3 w-3" />
+          <span className="inline-flex items-center gap-1 text-xs text-fg-subtle">
+            <ImageIcon className="h-3.5 w-3.5" aria-hidden="true" />
             Archivage Data Room actif
           </span>
         )}
@@ -560,13 +548,8 @@ export function IdentityExtractor({
 
       {/* Erreur de bout en bout : on n'efface JAMAIS les inputs éditables si jamais remplis. */}
       {error && (
-        <div
-          role="alert"
-          data-testid="id-error"
-          className="flex items-start gap-2 rounded-lg border-l-4 border-danger bg-danger/10 p-3 text-xs text-fg"
-        >
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
-          <p>{error}</p>
+        <div data-testid="id-error">
+          <Message ton="erreur">{error}</Message>
         </div>
       )}
 
@@ -577,7 +560,7 @@ export function IdentityExtractor({
           className="space-y-3 rounded-lg border border-border bg-bg-overlay p-3"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-fg">
+            <p className="text-sm font-semibold text-fg">
               Champs extraits — à vérifier puis appliquer
             </p>
             <SourceBadge source={extracted.source} />
@@ -586,40 +569,36 @@ export function IdentityExtractor({
           {extracted.warnings.length > 0 && (
             <ul
               data-testid="id-warnings"
-              className="space-y-1 rounded-md border border-warning/40 bg-warning/5 p-2 text-[11px] text-fg"
+              className="space-y-1 rounded-md border border-warning/40 bg-warning-soft p-2 text-xs text-fg"
             >
               {extracted.warnings.map((w) => (
                 <li key={w} className="flex items-start gap-1">
-                  <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-warning" />
+                  <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-warning" aria-hidden="true" />
                   <span>{humanizeWarning(w)}</span>
                 </li>
               ))}
             </ul>
           )}
 
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {fieldOrder.map((field) => (
-              <div key={field}>
-                <label className="mb-1 block text-[11px] text-fg-subtle">
-                  {fieldLabels[field]}
-                </label>
-                <input
-                  type="text"
-                  data-testid={`id-field-${field}`}
-                  value={(editable as Record<string, string | undefined>)[field] ?? ''}
-                  onChange={(e) => handleEditableChange(field, e.target.value)}
-                  className="h-8 w-full rounded border border-border bg-bg-raised px-2 text-xs"
-                />
-              </div>
+              <TextField
+                key={field}
+                label={fieldLabels[field]}
+                data-testid={`id-field-${field}`}
+                value={(editable as Record<string, string | undefined>)[field] ?? ''}
+                onChange={(e) => handleEditableChange(field, e.target.value)}
+                className="h-9"
+              />
             ))}
           </div>
 
           {extracted.archivedDocumentId && (
             <div
               data-testid="id-archived"
-              className="flex items-center gap-2 rounded-md border border-success/30 bg-success/5 p-2 text-[11px] text-success"
+              className="flex items-center gap-2 rounded-md border border-success/30 bg-success-soft p-2 text-xs text-fg"
             >
-              <CheckCircle className="h-3.5 w-3.5" />
+              <CheckCircle className="h-3.5 w-3.5 text-success" aria-hidden="true" />
               Pièce archivée dans la Data Room (ref&nbsp;
               <code className="font-mono">{extracted.archivedDocumentId.slice(0, 8)}</code>).
             </div>
@@ -630,7 +609,7 @@ export function IdentityExtractor({
             <div
               role="alert"
               data-testid="id-overwrite-confirm"
-              className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900"
+              className="space-y-2 rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm text-fg"
             >
               <p className="font-medium">
                 {ecrasements.length === 1
@@ -646,36 +625,33 @@ export function IdentityExtractor({
                 ))}
               </ul>
               <div className="flex justify-end gap-2 pt-1">
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   data-testid="id-overwrite-cancel"
                   onClick={() => setConfirmerEcrasement(false)}
-                  className="inline-flex h-8 items-center rounded-lg border border-border bg-bg-raised px-3 font-semibold text-fg"
                 >
                   Conserver ma saisie
-                </button>
-                <button
-                  type="button"
-                  data-testid="id-overwrite-accept"
-                  onClick={applique}
-                  className="inline-flex h-8 items-center rounded-lg bg-amber-600 px-3 font-semibold text-white"
-                >
+                </Button>
+                <Button type="button" variant="danger" size="sm" data-testid="id-overwrite-accept" onClick={applique}>
                   Remplacer
-                </button>
+                </Button>
               </div>
             </div>
           )}
 
           <div className="flex justify-end">
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               data-testid="id-apply-btn"
               onClick={handleApply}
-              className="inline-flex h-8 items-center gap-2 rounded-lg bg-accent px-3 text-xs font-semibold text-bg-raised hover:bg-accent-hover"
+              icon={<CheckCircle />}
             >
-              <CheckCircle className="h-3.5 w-3.5" />
               Appliquer au formulaire
-            </button>
+            </Button>
           </div>
         </div>
       )}

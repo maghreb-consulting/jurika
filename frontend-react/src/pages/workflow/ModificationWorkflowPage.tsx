@@ -93,6 +93,8 @@ import {
   type AssembleeNature,
   type PreflightEntry,
 } from './modificationLogique';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
+import { BandeauFinParcours } from '../../components/workflow/BandeauFinParcours';
 
 // Phase 1 (2026-08-10) — voie directeur : déclencheurs basés sur le `resolutionType`
 // (snake_case) du catalogue officiel. Miroir de ModificationWorkflow.*_TRIGGERS_RT (backend).
@@ -885,9 +887,9 @@ function ModificationWorkflowPageBody() {
   if (loading) return <Loader2 />;
   if (!ticket || !progress)
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+      <ErreurParcours>
         {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
-      </div>
+      </ErreurParcours>
     );
 
   async function generateOne(tpl: TemplateInfo) {
@@ -1265,7 +1267,7 @@ function ModificationWorkflowPageBody() {
                 value={selectedDossierId}
                 onChange={(e) => setSelectedDossierId(e.target.value)}
                 disabled={dossiersLoading}
-                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30"
               >
                 <option value="">
                   {dossiersLoading ? 'Chargement…' : 'Sélectionnez une société…'}
@@ -1306,7 +1308,7 @@ function ModificationWorkflowPageBody() {
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="Rechercher une modification…"
                       data-testid="mod-search-input"
-                      className="w-full rounded-lg border border-border-hi bg-bg-raised py-1.5 pl-8 pr-3 text-xs focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                      className="w-full rounded-lg border border-border-hi bg-bg-raised py-1.5 pl-8 pr-3 text-xs focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/30"
                     />
                   </div>
                 </div>
@@ -1329,7 +1331,7 @@ function ModificationWorkflowPageBody() {
                       >
                         <span
                           className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border ${
-                            checked ? 'border-accent bg-accent text-bg-raised' : 'border-border-hi'
+                            checked ? 'border-accent bg-accent text-accent-fg' : 'border-border-hi'
                           }`}
                         >
                           {checked && <CheckCircle className="h-3 w-3" />}
@@ -1337,12 +1339,12 @@ function ModificationWorkflowPageBody() {
                         <span className="flex-1 text-fg">
                           {it.label}
                           {it.newAssocie && (
-                            <span className="ml-1 rounded bg-emerald-50 px-1 py-0.5 text-[9px] font-semibold text-emerald-700">
+                            <span className="ml-1 rounded bg-success-soft px-1 py-0.5 text-[9px] font-semibold text-success">
                               nouvel associé (OCR)
                             </span>
                           )}
                           {it.generic && (
-                            <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold text-amber-700">
+                            <span className="ml-1 rounded bg-warning-soft px-1 py-0.5 text-[9px] font-semibold text-warning">
                               type générique
                             </span>
                           )}
@@ -1355,7 +1357,7 @@ function ModificationWorkflowPageBody() {
 
               {/* DROITE : sélectionnées. */}
               <div className="flex flex-col rounded-xl border-2 border-accent/40 bg-bg-raised">
-                <div className="border-b border-indigo-100 bg-accent/10 p-3">
+                <div className="border-b border-info/30 bg-accent/10 p-3">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-accent" />
                     <p className="text-sm font-semibold text-fg">Modifications sélectionnées</p>
@@ -1385,16 +1387,16 @@ function ModificationWorkflowPageBody() {
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-semibold text-fg">{it.label}</p>
                             <p className="mt-0.5 flex flex-wrap items-center gap-1 text-[10px] text-fg-subtle">
-                              <span className="rounded bg-violet-50 px-1 py-0.5 font-medium text-violet-700">
+                              <span className="rounded bg-info-soft px-1 py-0.5 font-medium text-info">
                                 {GROUP_LABELS[it.group]}
                               </span>
                               {it.newAssocie && (
-                                <span className="rounded bg-emerald-50 px-1 py-0.5 font-medium text-emerald-700">
+                                <span className="rounded bg-success-soft px-1 py-0.5 font-medium text-success">
                                   nouvel associé (OCR)
                                 </span>
                               )}
                               {it.generic && (
-                                <span className="rounded bg-amber-100 px-1 py-0.5 font-medium text-amber-700">
+                                <span className="rounded bg-warning-soft px-1 py-0.5 font-medium text-warning">
                                   type générique
                                 </span>
                               )}
@@ -1479,17 +1481,17 @@ function ModificationWorkflowPageBody() {
               {(jalRequis || cacRequis || formeChangeRequis) && (
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {jalRequis && (
-                    <span className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                    <span className="flex items-center gap-2 rounded-lg bg-warning-soft px-3 py-2 text-xs font-medium text-warning">
                       <Megaphone className="h-4 w-4" /> Publication d’une annonce légale obligatoire
                     </span>
                   )}
                   {cacRequis && (
-                    <span className="flex items-center gap-2 rounded-lg bg-violet-50 px-3 py-2 text-xs font-medium text-violet-800">
+                    <span className="flex items-center gap-2 rounded-lg bg-info-soft px-3 py-2 text-xs font-medium text-info">
                       <Gavel className="h-4 w-4" /> Commissaire aux apports obligatoire
                     </span>
                   )}
                   {formeChangeRequis && (
-                    <span className="flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-800 sm:col-span-2">
+                    <span className="flex items-center gap-2 rounded-lg bg-danger-soft px-3 py-2 text-xs font-medium text-danger sm:col-span-2">
                       <AlertTriangle className="h-4 w-4" /> Cette cession entraînera l’adaptation
                       automatique des statuts en SARL à plusieurs associés
                     </span>
@@ -1601,7 +1603,7 @@ function ModificationWorkflowPageBody() {
             </div>
 
             {resolutions.length === 0 && (
-              <p className="rounded-lg border border-amber-200 bg-warning/10 p-3 text-xs text-amber-700">
+              <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
                 Aucune décision sélectionnée : revenez à l’étape 1 pour cocher les modifications.
               </p>
             )}
@@ -1618,24 +1620,24 @@ function ModificationWorkflowPageBody() {
                   data-testid={`mod-res-${r.id}`}
                 >
                   <div className="mb-3 flex items-start gap-2">
-                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-violet-600 text-[11px] font-bold text-white">
+                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-info text-[11px] font-bold text-info-fg">
                       {i + 1}
                     </span>
                     <div className="min-w-0 flex-1">
                       <h3 className="text-sm font-semibold text-fg">{decision?.label ?? spec?.label ?? r.type}</h3>
                       <p className="mt-0.5 flex flex-wrap items-center gap-1 text-[10px] text-fg-subtle">
                         {decision && (
-                          <span className="rounded bg-violet-50 px-1 py-0.5 font-medium text-violet-700">
+                          <span className="rounded bg-info-soft px-1 py-0.5 font-medium text-info">
                             {GROUP_LABELS[decision.group]}
                           </span>
                         )}
                         {decision?.newAssocie && (
-                          <span className="rounded bg-emerald-50 px-1 py-0.5 font-medium text-emerald-700">
+                          <span className="rounded bg-success-soft px-1 py-0.5 font-medium text-success">
                             nouvel associé (OCR)
                           </span>
                         )}
                         {decision?.generic && (
-                          <span className="rounded bg-amber-100 px-1 py-0.5 font-medium text-amber-700">
+                          <span className="rounded bg-warning-soft px-1 py-0.5 font-medium text-warning">
                             type générique
                           </span>
                         )}
@@ -1692,11 +1694,11 @@ function ModificationWorkflowPageBody() {
                       }
                     };
                     return (
-                      <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3" data-testid={`mod-newassocie-form-${r.id}`}>
-                        <p className="mb-1 text-xs font-semibold text-emerald-800">
+                      <div className="mt-4 rounded-lg border border-success/40 bg-success-soft p-3" data-testid={`mod-newassocie-form-${r.id}`}>
+                        <p className="mb-1 text-xs font-semibold text-success">
                           Nouvel associé entrant — saisie de la personne (comme à la création)
                         </p>
-                        <p className="mb-3 text-[11px] text-emerald-700">
+                        <p className="mb-3 text-[11px] text-success">
                           La lecture automatique de la CIN est <strong>facultative</strong> : elle pré-remplit les champs.
                           Vous pouvez aussi tout saisir manuellement.
                         </p>
@@ -1711,8 +1713,8 @@ function ModificationWorkflowPageBody() {
                               data-testid={`mod-newassocie-type-${tp}-${r.id}`}
                               className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
                                 (na.typePersonne ?? 'PHYSIQUE') === tp
-                                  ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
-                                  : 'border-border-hi text-fg hover:border-emerald-400'
+                                  ? 'border-success bg-success-soft text-success'
+                                  : 'border-border-hi text-fg hover:border-success/40'
                               }`}
                             >
                               {tp === 'PHYSIQUE' ? 'Personne physique' : 'Personne morale'}
@@ -1806,7 +1808,7 @@ function ModificationWorkflowPageBody() {
           <div className="space-y-4">
             <header className="mb-2">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-violet-600" />
+                <Sparkles className="h-5 w-5 text-info" />
                 <h2 className="text-lg font-semibold text-fg">Étape 3 — Génération des actes</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -1815,7 +1817,7 @@ function ModificationWorkflowPageBody() {
                 actions Télécharger, Éditer et Valider. Le document validé est automatiquement
                 déposé dans la Data Room du dossier.
                 {jalRequis && (
-                  <span className="ml-1 font-medium text-amber-700">
+                  <span className="ml-1 font-medium text-warning">
                     L’annonce légale est obligatoire pour cette modification.
                   </span>
                 )}
@@ -1828,10 +1830,10 @@ function ModificationWorkflowPageBody() {
                 ci-dessous (statuts refondus / JAL) restent disponibles (retrait au lot E2). */}
             <section
               data-testid="modification-directeur-voie"
-              className="rounded-2xl border border-violet-200 bg-violet-50/40 p-4"
+              className="rounded-2xl border border-info/30 bg-info-soft p-4"
             >
               <div className="mb-3 flex items-center gap-2">
-                <Gavel className="h-5 w-5 text-violet-600" />
+                <Gavel className="h-5 w-5 text-info" />
                 <h3 className="text-base font-semibold text-fg">
                   Procès-verbal de modification — résolutions saisies à l’étape 2
                 </h3>
@@ -1972,13 +1974,13 @@ function ModificationWorkflowPageBody() {
               <div
                 role="alert"
                 data-testid="refonte-preflight"
-                className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4"
+                className="rounded-xl border-2 border-warning/40 bg-warning-soft p-4"
               >
-                <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-amber-800">
+                <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-warning">
                   <AlertTriangle className="h-4 w-4" />
                   Statuts mis à jour : complétez les données de la société
                 </div>
-                <p className="mb-3 text-xs text-amber-700">
+                <p className="mb-3 text-xs text-warning">
                   Les statuts complets sont produits à partir des données saisies (jamais à partir
                   du document numérisé). Renseignez les champs manquants ci-dessous ; affichez les
                   statuts d’origine pour les lire. La génération des statuts mis à jour reste
@@ -1989,7 +1991,7 @@ function ModificationWorkflowPageBody() {
                   onClick={openOriginalStatutsScan}
                   disabled={scanLoading}
                   data-testid="refonte-open-scan"
-                  className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-amber-400 bg-bg-raised px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+                  className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-warning/40 bg-bg-raised px-3 py-1.5 text-xs font-medium text-warning hover:bg-warning-soft disabled:opacity-60"
                 >
                   <Eye className="h-3.5 w-3.5" />
                   {scanLoading ? 'Chargement…' : 'Afficher les statuts d’origine (document numérisé)'}
@@ -2002,7 +2004,7 @@ function ModificationWorkflowPageBody() {
                     <div key={fld.key} className={fld.type === 'textarea' ? 'md:col-span-2' : ''}>
                       <label
                         htmlFor={`refonte-${fld.key}`}
-                        className="mb-1 block text-xs font-medium text-amber-900"
+                        className="mb-1 block text-xs font-medium text-warning"
                       >
                         {fld.label} <span className="text-danger">*</span>
                       </label>
@@ -2013,7 +2015,7 @@ function ModificationWorkflowPageBody() {
                           rows={3}
                           value={ficheOverrides[fld.key] ?? ''}
                           onChange={(e) => setFicheOverride(fld.key, e.target.value)}
-                          className="w-full rounded-lg border border-amber-300 bg-bg-raised px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                          className="w-full rounded-lg border border-warning/40 bg-bg-raised px-3 py-2 text-sm focus:border-warning focus:outline-none focus:ring-2 focus:ring-warning/40"
                         />
                       ) : (
                         <input
@@ -2022,7 +2024,7 @@ function ModificationWorkflowPageBody() {
                           type={fld.type}
                           value={ficheOverrides[fld.key] ?? ''}
                           onChange={(e) => setFicheOverride(fld.key, e.target.value)}
-                          className="w-full rounded-lg border border-amber-300 bg-bg-raised px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                          className="w-full rounded-lg border border-warning/40 bg-bg-raised px-3 py-2 text-sm focus:border-warning focus:outline-none focus:ring-2 focus:ring-warning/40"
                         />
                       )}
                     </div>
@@ -2254,13 +2256,9 @@ function ModificationWorkflowPageBody() {
 
         {step === 5 && (
           <div className="space-y-4" data-testid="mod-synthese">
-            <div className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-bg-raised">
-              <CheckCircle className="mb-2 h-8 w-8" />
-              <h2 className="text-2xl font-bold">Synthèse de la modification</h2>
-              <p className="text-bg text-sm">
+            <BandeauFinParcours titre="Synthèse de la modification">
                 {selected.length} modification{selected.length > 1 ? 's' : ''} enregistrée{selected.length > 1 ? 's' : ''} pour {dossier?.denomination || ticket.titre}.
-              </p>
-            </div>
+              </BandeauFinParcours>
 
             {/* 1) IDENTITE SOCIETE ─────────────────────────────────────── */}
             <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-societe">
@@ -2337,7 +2335,7 @@ function ModificationWorkflowPageBody() {
                         <p className="mt-1 text-xs text-fg-subtle">Aucune valeur saisie.</p>
                       )}
                       {r.newAssocie && (r.newAssocie.nom || r.newAssocie.prenom) && (
-                        <p className="mt-1 text-xs text-emerald-700">
+                        <p className="mt-1 text-xs text-success">
                           Nouvel associé : {[r.newAssocie.prenom, r.newAssocie.nom].filter(Boolean).join(' ')}
                           {r.newAssocie.cin ? ` (CIN ${r.newAssocie.cin})` : ''}
                         </p>
@@ -2359,7 +2357,7 @@ function ModificationWorkflowPageBody() {
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {articlesImpactes.map((a) => (
-                      <span key={a} className="rounded-lg bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700">
+                      <span key={a} className="rounded-lg bg-info-soft px-2 py-1 text-xs font-medium text-info">
                         {a}
                       </span>
                     ))}
@@ -2376,17 +2374,17 @@ function ModificationWorkflowPageBody() {
                 ) : (
                   <div className="flex flex-col gap-2">
                     {jalRequis && (
-                      <span className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                      <span className="flex items-center gap-2 rounded-lg bg-warning-soft px-3 py-2 text-xs font-medium text-warning">
                         <Megaphone className="h-4 w-4" /> Publication d’une annonce légale obligatoire
                       </span>
                     )}
                     {cacRequis && (
-                      <span className="flex items-center gap-2 rounded-lg bg-violet-50 px-3 py-2 text-xs font-medium text-violet-800">
+                      <span className="flex items-center gap-2 rounded-lg bg-info-soft px-3 py-2 text-xs font-medium text-info">
                         <Gavel className="h-4 w-4" /> Commissaire aux apports obligatoire
                       </span>
                     )}
                     {formeChangeRequis && (
-                      <span className="flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-800">
+                      <span className="flex items-center gap-2 rounded-lg bg-danger-soft px-3 py-2 text-xs font-medium text-danger">
                         <AlertTriangle className="h-4 w-4" /> Passage de la SARL à associé unique à la SARL
                       </span>
                     )}
@@ -2483,7 +2481,7 @@ function ModificationWorkflowPageBody() {
               </div>
             )}
             {isTerminated && (
-              <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-800">
+              <div className="rounded-lg border border-success/40 bg-success-soft p-4 text-sm text-success">
                 Parcours terminé.
                 <Button className="ml-3" onClick={() => navigate('/tickets')}>
                   Retour aux tickets
@@ -2525,11 +2523,7 @@ function ModificationWorkflowPageBody() {
 }
 
 function Loader2() {
-  return (
-    <div className="flex h-64 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-    </div>
-  );
+  return <SqueletteParcours />;
 }
 
 // ============================================================================
@@ -2595,7 +2589,7 @@ function DocumentBlock({ tpl, state, canGenerate, onGenerate, onDownload, onRege
             className={`flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium transition ${
               state.generating || !canGenerate
                 ? 'cursor-not-allowed bg-border text-fg-subtle'
-                : 'bg-accent text-bg-raised hover:bg-accent-hover'
+                : 'bg-accent text-accent-fg hover:bg-accent-hover'
             }`}
           >
             {state.generating ? (

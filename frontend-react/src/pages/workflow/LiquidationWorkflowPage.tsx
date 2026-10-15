@@ -73,6 +73,8 @@ import type { DossierLiquidateur } from '../../services/workflow.service';
 import type { TemplateInfo } from '../../services/workflowDocumentService';
 import type { AssocieInput, GerantInput } from '../../components/workflow/SeanceForm';
 import type { DossierBrief } from '../../types/dataroom';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
+import { BandeauFinParcours } from '../../components/workflow/BandeauFinParcours';
 
 const STEPS: RoadmapStep[] = etapesRoadmap(ETAPES_LIQUIDATION);
 
@@ -553,9 +555,9 @@ function LiquidationWorkflowPageBody() {
   if (loading) return <Loader />;
   if (!ticket || !progress)
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+      <ErreurParcours>
         {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
-      </div>
+      </ErreurParcours>
     );
 
   const step = viewStep;
@@ -735,7 +737,7 @@ function LiquidationWorkflowPageBody() {
             </div>
 
             {dossierId && (
-              <div className="rounded-lg border border-indigo-200 bg-accent/10 p-3 text-xs text-fg-muted" role="status">
+              <div className="rounded-lg border border-info/30 bg-accent/10 p-3 text-xs text-fg-muted" role="status">
                 Organe compétent : <strong>{decisionLabel}</strong>. Actes produits : procès-verbal
                 de clôture de liquidation{isAU ? ' (SARL à associé unique)' : ' (SARL)'}, rapport du
                 liquidateur et annonce légale de clôture.
@@ -855,7 +857,7 @@ function LiquidationWorkflowPageBody() {
                 {!hasLiquidateurBd && (
                   <div
                     role="status"
-                    className="flex items-start gap-2 rounded-lg border-l-4 border-amber-400 bg-warning/10 p-3 text-xs text-warning"
+                    className="flex items-start gap-2 rounded-lg border-l-4 border-warning/40 bg-warning/10 p-3 text-xs text-warning"
                   >
                     <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>
@@ -925,7 +927,7 @@ function LiquidationWorkflowPageBody() {
                 <div
                   role="status"
                   data-testid="liquidation-delai-15j-ok"
-                  className="flex items-center gap-2 rounded-lg border-l-4 border-emerald-400 bg-emerald-50 p-3 text-xs text-emerald-800"
+                  className="flex items-center gap-2 rounded-lg border-l-4 border-success/40 bg-success-soft p-3 text-xs text-success"
                 >
                   <CheckCircle className="h-4 w-4" />
                   <span>
@@ -974,8 +976,8 @@ function LiquidationWorkflowPageBody() {
                       boniMali === null
                         ? 'text-fg-subtle'
                         : resultatType === 'boni'
-                          ? 'text-emerald-700'
-                          : 'text-rose-700'
+                          ? 'text-success'
+                          : 'text-danger'
                     }`}
                     data-testid="liquidation-boni-mali"
                   >
@@ -1074,7 +1076,7 @@ function LiquidationWorkflowPageBody() {
           <div className="space-y-4" data-testid="liquidation-step2">
             <header>
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-violet-600" />
+                <Sparkles className="h-5 w-5 text-info" />
                 <h2 className="text-lg font-semibold text-fg">Étape 2 — Génération des actes</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -1265,15 +1267,11 @@ function LiquidationWorkflowPageBody() {
                 </ul>
               </div>
             ) : (
-              <div className="rounded-xl bg-gradient-to-r from-violet-600 to-violet-700 p-6 text-bg-raised">
-                <CheckCircle className="mb-2 h-8 w-8" />
-                <h2 className="text-2xl font-bold">Liquidation finalisée</h2>
-                <p className="text-sm text-violet-100">
+              <BandeauFinParcours titre="Liquidation finalisée">
                   Le procès-verbal de clôture, le rapport de liquidation et l’annonce légale ont été
                   produits, validés et déposés dans la Data Room. La société est désormais{' '}
                   <strong>liquidée</strong>.
-                </p>
-              </div>
+                </BandeauFinParcours>
             )}
 
             <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-societe">
@@ -1405,9 +1403,5 @@ function LiquidationWorkflowPageBody() {
 }
 
 function Loader() {
-  return (
-    <div className="flex h-64 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-    </div>
-  );
+  return <SqueletteParcours />;
 }

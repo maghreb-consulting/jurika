@@ -188,7 +188,7 @@ export function IncidentSeancePanel({
   }, [open, isAU, modelesCharges, cleModeles]);
 
   return (
-    <section className="rounded-xl border border-amber-300/60 bg-warning/5">
+    <section className="rounded-xl border border-warning/40 bg-warning/5">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -211,7 +211,7 @@ export function IncidentSeancePanel({
       </button>
 
       {open && (
-        <div className="space-y-5 border-t border-amber-300/40 p-4">
+        <div className="space-y-5 border-t border-warning/40 p-4">
           <TexteAide cle="incident-seance" titre="Quand et comment l’utiliser ?">
             À n’utiliser que si l’assemblée n’a pas pu se tenir normalement (quorum non atteint,
             convocation irrégulière). Renseignez la séance, la convocation et, le cas échéant, la
@@ -229,7 +229,7 @@ export function IncidentSeancePanel({
 
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-violet-600" />
+              <Sparkles className="h-4 w-4 text-info" />
               <h4 className="text-sm font-semibold text-fg">Générer le procès-verbal d’incident</h4>
             </div>
 
@@ -240,7 +240,7 @@ export function IncidentSeancePanel({
               </div>
             )}
             {!loadingTemplates && templates.length === 0 && !loadTemplatesError && (
-              <div className="rounded-lg border border-amber-200 bg-warning/10 p-3 text-sm text-amber-800"
+              <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning"
                 data-testid="incident-seance-aucun">
                 {/* Lot L4d (E11) : variantes SARL AU retirees, sans objet. */}
                 {isAU

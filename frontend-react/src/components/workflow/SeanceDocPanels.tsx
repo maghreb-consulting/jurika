@@ -262,7 +262,7 @@ function SeanceDocPanel({
 
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-violet-600" />
+              <Sparkles className="h-4 w-4 text-info" />
               <h4 className="text-sm font-semibold text-fg">Générer le document</h4>
             </div>
 

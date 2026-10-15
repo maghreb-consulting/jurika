@@ -620,7 +620,7 @@ export function Step8PiecesJointes({
             disabled={!extraLabel.trim()}
             className={`flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium transition ${
               extraLabel.trim()
-                ? 'bg-accent text-bg-raised hover:bg-accent-hover'
+                ? 'bg-accent text-accent-fg hover:bg-accent-hover'
                 : 'cursor-not-allowed bg-border text-fg-subtle'
             }`}
           >
@@ -679,7 +679,7 @@ export function Step8PiecesJointes({
           disabled={!requiredOk || saving}
           className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
             requiredOk && !saving
-              ? 'bg-accent text-bg-raised hover:bg-accent-hover'
+              ? 'bg-accent text-accent-fg hover:bg-accent-hover'
               : 'cursor-not-allowed bg-border text-fg-subtle'
           }`}
         >

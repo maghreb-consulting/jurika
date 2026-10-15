@@ -21,7 +21,6 @@ import {
   AlertCircle,
   AlertTriangle,
   Building2,
-  CheckCircle,
   Globe,
   Megaphone,
   Paperclip,
@@ -59,6 +58,8 @@ import {
 import { buildDocFilename } from '../../components/workflow/workflowFilename';
 import type { TemplateInfo } from '../../services/workflowDocumentService';
 import type { DossierBrief } from '../../types/dataroom';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
+import { BandeauFinParcours } from '../../components/workflow/BandeauFinParcours';
 
 const STEPS: RoadmapStep[] = etapesRoadmap(ETAPES_SUCCURSALE_ETR);
 
@@ -397,9 +398,9 @@ function SuccursaleEtrWorkflowPageBody() {
   if (loading) return <Loader />;
   if (!ticket || !progress)
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+      <ErreurParcours>
         {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
-      </div>
+      </ErreurParcours>
     );
 
   const step = viewStep;
@@ -678,7 +679,7 @@ function SuccursaleEtrWorkflowPageBody() {
                   { value: 'ordinaire', label: 'Ordinaire' },
                 ]}
               />
-              <div className="rounded-lg border border-indigo-200 bg-accent/10 p-3 text-xs text-fg-muted">
+              <div className="rounded-lg border border-info/30 bg-accent/10 p-3 text-xs text-fg-muted">
                 Organe détecté : <strong>{isAU ? 'organe unipersonnel' : 'organe collégial'}</strong>.
                 Acte produit : procès-verbal de création de succursale par une société étrangère
                 {isAU ? ' (décision unipersonnelle)' : ' (décision collégiale)'}.
@@ -748,7 +749,7 @@ function SuccursaleEtrWorkflowPageBody() {
                 <div
                   role="status"
                   data-testid="succursale-etr-convocation-sans-dossier"
-                  className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+                  className="rounded-lg border border-warning/40 bg-warning-soft px-3 py-2 text-xs text-warning"
                 >
                   Validez l'étape 1 avant de générer la convocation : le dossier de la
                   société mère est créé à ce moment-là, et c'est lui qui reçoit le
@@ -839,7 +840,7 @@ function SuccursaleEtrWorkflowPageBody() {
 
             <section className="space-y-3 rounded-xl border border-border bg-bg-raised p-4">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-violet-600" />
+                <Sparkles className="h-4 w-4 text-info" />
                 <h4 className="text-sm font-semibold text-fg">Formalités</h4>
               </div>
               <TextField
@@ -856,7 +857,7 @@ function SuccursaleEtrWorkflowPageBody() {
           <div className="space-y-4" data-testid="succursale-etr-step3">
             <header>
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-violet-600" />
+                <Sparkles className="h-5 w-5 text-info" />
                 <h2 className="text-lg font-semibold text-fg">Étape 3 — Génération des actes</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -993,13 +994,9 @@ function SuccursaleEtrWorkflowPageBody() {
 
         {step === 5 && (
           <div className="space-y-4" data-testid="succursale-etr-synthese">
-            <div className="rounded-xl bg-gradient-to-r from-accent to-indigo-600 p-6 text-bg-raised">
-              <CheckCircle className="mb-2 h-8 w-8" />
-              <h2 className="text-2xl font-bold">Succursale créée</h2>
-              <p className="text-sm text-indigo-100">
+            <BandeauFinParcours titre="Succursale créée">
                 Le procès-verbal de création et l’annonce légale d’ouverture ont été produits et validés.
-              </p>
-            </div>
+              </BandeauFinParcours>
 
             <div className="rounded-xl border border-border bg-bg-raised p-4">
               <p className="mb-3 text-sm font-semibold text-fg">Société mère étrangère</p>
@@ -1104,9 +1101,5 @@ function Field({
 }
 
 function Loader() {
-  return (
-    <div className="flex h-64 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-    </div>
-  );
+  return <SqueletteParcours />;
 }

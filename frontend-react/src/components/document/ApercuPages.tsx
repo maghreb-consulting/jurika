@@ -53,7 +53,7 @@ export function ApercuPagesView({ apercu, titre }: { apercu: ApercuPages; titre:
           alt={`${titre} — page ${p.numero} sur ${apercu.nombrePages}`}
           draggable={false}
           onContextMenu={(e) => e.preventDefault()}
-          className="mx-auto block h-auto w-full max-w-3xl select-none rounded border border-border bg-white shadow-sm"
+          className="mx-auto block h-auto w-full max-w-3xl select-none rounded border border-border bg-bg-raised shadow-sm"
         />
       ))}
       {apercu.tronque && (

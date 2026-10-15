@@ -331,7 +331,7 @@ export function ModificationOperationForm({
                 key={r.id}
                 className="flex items-start gap-2 rounded-lg border border-border bg-bg p-2 text-sm"
               >
-                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-violet-600 text-[10px] font-bold text-white">
+                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-info text-[10px] font-bold text-info-fg">
                   {i + 1}
                 </span>
                 <span className="text-fg">{r.objet.trim() || RES_SPECS[r.type]?.label || 'Résolution'}</span>
@@ -344,7 +344,7 @@ export function ModificationOperationForm({
       {/* Génération du PV. */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-violet-600" />
+          <Sparkles className="h-4 w-4 text-info" />
           <h4 className="text-sm font-semibold text-fg">Générer le procès-verbal de modification</h4>
         </div>
         {loadingTemplates && <p className="text-sm text-fg-subtle">Chargement du modèle…</p>}
@@ -379,7 +379,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <section className="space-y-4 rounded-xl border border-border bg-bg-raised p-4">
       <div className="flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-violet-600" />
+        <Sparkles className="h-4 w-4 text-info" />
         <h4 className="text-sm font-semibold text-fg">{title}</h4>
       </div>
       {children}

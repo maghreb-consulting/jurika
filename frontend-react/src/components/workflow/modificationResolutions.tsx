@@ -178,7 +178,7 @@ export function SubListEditor({
         <button
           type="button"
           onClick={addRow}
-          className="inline-flex items-center gap-1 text-sm text-violet-600 hover:underline"
+          className="inline-flex items-center gap-1 text-sm text-info hover:underline"
         >
           <Plus className="h-4 w-4" /> Ajouter
         </button>
@@ -268,7 +268,7 @@ export function ResolutionFieldsEditor({
   return (
     <>
       {nonCouvert && (
-        <p role="alert" className="mb-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+        <p role="alert" className="mb-3 rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm text-warning">
           {nonCouvert}
         </p>
       )}

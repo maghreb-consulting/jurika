@@ -31,7 +31,7 @@ export function DocumentEditModal({ blob, title, filename, onClose, onSaved }: D
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex flex-col bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex flex-col bg-scrim/60 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

@@ -14,7 +14,7 @@
  */
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, AlertTriangle, CheckCircle, Megaphone, Paperclip, Sparkles } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Megaphone, Paperclip, Sparkles } from 'lucide-react';
 import { InfoBulle } from '../../components/ui/Aide';
 import { ValeurProposee } from '../../components/workflow/ValeurProposee';
 import { Button } from '../../components/ui/Button';
@@ -64,6 +64,8 @@ import {
 import type { TemplateInfo } from '../../services/workflowDocumentService';
 import type { AssocieInput, GerantInput } from '../../components/workflow/SeanceForm';
 import type { DossierBrief } from '../../types/dataroom';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
+import { BandeauFinParcours } from '../../components/workflow/BandeauFinParcours';
 
 const STEPS: RoadmapStep[] = etapesRoadmap(ETAPES_DISSOLUTION);
 
@@ -453,9 +455,9 @@ function DissolutionWorkflowPageBody() {
   if (loading) return <Loader />;
   if (!ticket || !progress)
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+      <ErreurParcours>
         {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
-      </div>
+      </ErreurParcours>
     );
 
   const step = viewStep;
@@ -622,7 +624,7 @@ function DissolutionWorkflowPageBody() {
             </div>
 
             {dossier && (
-              <div className="rounded-lg border border-indigo-200 bg-accent/10 p-3 text-xs text-fg-muted" role="status">
+              <div className="rounded-lg border border-info/30 bg-accent/10 p-3 text-xs text-fg-muted" role="status">
                 Organe compétent : <strong>{decisionLabel}</strong>. Actes produits : procès-verbal
                 de dissolution anticipée{isAU ? ' (SARL à associé unique)' : ' (SARL)'} et annonce
                 légale de dissolution.
@@ -727,11 +729,11 @@ function DissolutionWorkflowPageBody() {
                 className={`w-full rounded-lg border bg-bg-raised px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
                   showErr('motif')
                     ? 'border-danger focus:border-danger focus:ring-danger/30'
-                    : 'border-border-hi focus:border-indigo-500 focus:ring-indigo-200'
+                    : 'border-border-hi focus:border-focus focus:ring-focus/30'
                 }`}
                 aria-invalid={!!showErr('motif')}
               />
-              <p className={`mt-1 text-xs ${motif.trim().length < MOTIF_MIN_LENGTH ? 'text-danger' : 'text-emerald-600'}`}>
+              <p className={`mt-1 text-xs ${motif.trim().length < MOTIF_MIN_LENGTH ? 'text-danger' : 'text-success'}`}>
                 {motif.trim().length} / {MOTIF_MIN_LENGTH} caractères minimum
                 {motif.trim().length >= MOTIF_MIN_LENGTH && ' ✓'}
               </p>
@@ -887,7 +889,7 @@ function DissolutionWorkflowPageBody() {
           <div className="space-y-4" data-testid="dissolution-step2">
             <header>
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-violet-600" />
+                <Sparkles className="h-5 w-5 text-info" />
                 <h2 className="text-lg font-semibold text-fg">Étape 2 — Génération des actes</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -1034,14 +1036,10 @@ function DissolutionWorkflowPageBody() {
 
         {step === 4 && (
           <div className="space-y-4" data-testid="dissolution-synthese">
-            <div className="rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 p-6 text-bg-raised">
-              <CheckCircle className="mb-2 h-8 w-8" />
-              <h2 className="text-2xl font-bold">Dissolution finalisée</h2>
-              <p className="text-sm text-rose-100">
+            <BandeauFinParcours titre="Dissolution finalisée">
                 Le procès-verbal de dissolution et l’annonce légale ont été produits, validés et
                 déposés dans la Data Room. La société est désormais <strong>dissoute</strong>.
-              </p>
-            </div>
+              </BandeauFinParcours>
 
             <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-societe">
               <p className="mb-3 text-sm font-semibold text-fg">Société et décision</p>
@@ -1154,9 +1152,5 @@ function DissolutionWorkflowPageBody() {
 }
 
 function Loader() {
-  return (
-    <div className="flex h-64 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-    </div>
-  );
+  return <SqueletteParcours />;
 }

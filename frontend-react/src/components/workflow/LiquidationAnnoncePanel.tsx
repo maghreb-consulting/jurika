@@ -273,7 +273,7 @@ export function LiquidationAnnoncePanel({
       {resultat && (
         <p className="rounded-lg border border-border bg-bg-overlay p-3 text-xs text-fg-muted" data-testid="annonce-resultat">
           Résultat publié :{' '}
-          <strong className={resultat.sens === 'boni' ? 'text-emerald-700' : 'text-rose-700'}>
+          <strong className={resultat.sens === 'boni' ? 'text-success' : 'text-danger'}>
             {resultat.sens === 'boni' ? 'boni' : 'mali'} de liquidation de{' '}
             {resultat.montant.toLocaleString('fr-FR')} DH
           </strong>{' '}
