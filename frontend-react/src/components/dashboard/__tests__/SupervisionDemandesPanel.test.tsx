@@ -45,7 +45,8 @@ describe('SupervisionDemandesPanel', () => {
     expect(screen.getByText('Requêtes du cabinet aux clients')).toBeInTheDocument();
 
     // Demande : sujet + dataroom (raison sociale, pas l'UUID) + employe.
-    expect(screen.getByText('Besoin K-bis')).toBeInTheDocument();
+    // Les titres sont statiques : on attend la DONNEE (course sous charge vue le 2026-10-15).
+    expect(await screen.findByText('Besoin K-bis')).toBeInTheDocument();
     expect(screen.getByText('ACME SARL')).toBeInTheDocument();
     expect(screen.getByText('Karim Benani')).toBeInTheDocument();
 
