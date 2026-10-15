@@ -58,8 +58,10 @@ export function PageEnTete({ titre, description, action, actions, fil, infoBulle
   return (
     <header className={cn('@container mb-6 border-b border-border pb-4', className)}>
       <div className="min-h-[1.125rem]">{elements.length > 0 && <FilAriane elements={elements} />}</div>
-      <div className="mt-1.5 flex flex-col gap-3 @2xl:flex-row @2xl:items-start @2xl:justify-between">
-        <div className="min-w-0">
+      <div className="mt-1.5 flex flex-col gap-3 @2xl:flex-row @2xl:flex-wrap @2xl:items-start @2xl:justify-between">
+        {/* Le titre garde au moins 22rem : avec plusieurs actions, elles passent a la ligne au lieu de
+            reduire le titre a une colonne etroite (vu a l'ecran, Data Room, lot L6b). */}
+        <div className="min-w-0 @2xl:flex-[1_1_22rem]">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight text-heading">{titre}</h1>
             {infoBulle && <InfoBulle texte={infoBulle} libelle={`Aide : ${titre}`} />}
@@ -68,7 +70,7 @@ export function PageEnTete({ titre, description, action, actions, fil, infoBulle
           {description && <div className="mt-1 max-w-3xl text-sm text-fg-muted">{description}</div>}
         </div>
         {(action || actions) && (
-          <div className="flex shrink-0 flex-wrap items-center gap-2 @2xl:justify-end" data-zone="actions-page">
+          <div className="flex flex-wrap items-center gap-2 @2xl:flex-[0_1_auto] @2xl:justify-end" data-zone="actions-page">
             {actions}
             {action}
           </div>
