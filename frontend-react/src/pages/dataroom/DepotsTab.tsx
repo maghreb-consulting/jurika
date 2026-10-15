@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Download, Eye, FileText, Loader2, Upload } from 'lucide-react';
+import { Download, Eye, FileText, Upload } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { Card } from '../../components/ui/Card';
+import { Message } from '../../components/ui/Message';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Skeleton } from '../../components/ui/LoadingSkeleton';
 import { PdfPreviewModal } from '../../components/ui/PdfPreviewModal';
 import { dataroomService } from '../../services/dataroom.service';
 import { extractError } from '../../lib/api';
@@ -53,53 +59,51 @@ export function DepotsTab({
   }, [reload]);
 
   return (
-    <div className="rounded-xl border border-border bg-bg-raised p-4 md:p-6">
-      <div className="mb-4 flex items-center gap-2">
-        <Upload className="h-5 w-5 text-warning" />
-        <h3 className="text-sm font-semibold text-fg">Dépôts du client</h3>
+    <Card
+      padding={false}
+      titleAs="h3"
+      title={
+        <span className="flex items-center gap-2">
+          <Upload aria-hidden="true" className="h-4 w-4 text-fg-muted" />
+          Dépôts du client
+          {!loading && <Badge variant="neutral">{depots.length}</Badge>}
+        </span>
+      }
+      description="Consultation seulement : le client dépose ses pièces depuis son espace."
+    >
+      <div className="space-y-3 px-5 pb-5 pt-3">
+        {readOnly && (
+          <DataroomReadOnlyHint
+            statut={readOnlyStatut}
+            testId="depots-readonly-hint"
+          />
+        )}
+
+        {error && <Message ton="erreur">{error}</Message>}
+
+        {loading ? (
+          <div className="space-y-2" aria-busy="true" aria-label="Chargement des dépôts">
+            <Skeleton className="h-14 w-full" />
+            <Skeleton className="h-14 w-full" />
+          </div>
+        ) : depots.length === 0 ? (
+          !error && (
+            <EmptyState
+              compact
+              icon={<Upload />}
+              title="Aucun dépôt du client pour le moment"
+              description="Les pièces qu’il dépose depuis son espace apparaîtront ici. Pour lui en demander une, créez une requête dans « Requêtes du cabinet »."
+            />
+          )
+        ) : (
+          <ul className="divide-y divide-border rounded-lg border border-border">
+            {depots.map((dep) => (
+              <DepotRow key={dep.id} depot={dep} />
+            ))}
+          </ul>
+        )}
       </div>
-
-      {readOnly && (
-        <DataroomReadOnlyHint
-          statut={readOnlyStatut}
-          testId="depots-readonly-hint"
-          className="mb-4"
-        />
-      )}
-
-      {error && (
-        <div className="mb-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="flex justify-center py-10">
-          <Loader2 className="h-6 w-6 animate-spin text-warning" />
-        </div>
-      ) : depots.length === 0 ? (
-        <div className="py-12 text-center">
-          <Upload className="mx-auto mb-3 h-10 w-10 text-fg-subtle" />
-          <p className="text-sm text-fg-subtle">
-            Aucun dépôt du client pour le moment. Les pièces qu’il dépose depuis son espace apparaîtront ici.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {depots.map((dep) => (
-            <DepotRow key={dep.id} depot={dep} />
-          ))}
-        </div>
-      )}
-
-      {!loading && depots.length > 0 && (
-        <div className="mt-6 border-t border-border pt-5 text-center">
-          <p className="text-xs text-fg-subtle">
-            {depots.length} dépôt{depots.length > 1 ? 's' : ''}
-          </p>
-        </div>
-      )}
-    </div>
+    </Card>
   );
 }
 
@@ -126,37 +130,27 @@ function DepotRow({ depot }: { depot: DepotSummary }) {
   }
 
   return (
-    <div className="flex items-center gap-4 rounded-lg bg-bg-overlay p-3 md:p-4">
-      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center">
-        <FileText className="h-6 w-6 text-warning" />
+    <li className="flex flex-wrap items-center gap-3 px-4 py-3">
+      <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-bg-overlay">
+        <FileText className="h-4 w-4 text-fg-muted" />
       </div>
       <div className="min-w-0 flex-1">
-        <h4 className="truncate text-sm font-bold text-fg">{depot.title}</h4>
-        <p className="mt-0.5 text-[10px] text-fg-subtle">
-          Déposé par le client • {formatBytes(depot.sizeBytes)} •{' '}
+        <p className="truncate text-sm font-medium text-fg">{depot.title}</p>
+        <p className="mt-0.5 text-xs text-fg-muted">
+          Déposé par le client · {formatBytes(depot.sizeBytes)} ·{' '}
           {new Date(depot.createdAt).toLocaleDateString('fr-FR')}
         </p>
       </div>
-      <div className="flex flex-shrink-0 items-center gap-1">
-        <button
-          type="button"
-          onClick={() => setPreviewOpen(true)}
-          className="flex h-8 items-center gap-1 rounded border border-border bg-bg-raised px-3 text-xs text-fg transition hover:border-accent"
-          title="Voir le document"
-        >
-          <Eye className="h-3.5 w-3.5" /> Voir
-        </button>
+      <div className="ml-auto flex shrink-0 items-center gap-1">
+        <Button type="button" size="sm" variant="ghost" icon={<Eye />} onClick={() => setPreviewOpen(true)} title="Voir le document">
+          Voir
+        </Button>
         {enEssai !== false ? (
           <InfoBulle libelle="Téléchargement indisponible" texte="Téléchargement indisponible pendant l’essai gratuit : le document se consulte en aperçu, avec la mention d’évaluation. Il sera téléchargeable après la souscription d’un forfait." />
         ) : (
-        <button
-          type="button"
-          onClick={download}
-          disabled={downloading}
-          className="flex h-8 items-center gap-1 rounded border border-border bg-bg-raised px-3 text-xs text-fg transition hover:border-accent disabled:opacity-50"
-        >
-          <Download className="h-3.5 w-3.5" /> {downloading ? '…' : 'Télécharger'}
-        </button>
+          <Button type="button" size="sm" variant="secondary" icon={<Download />} onClick={download} loading={downloading}>
+            Télécharger
+          </Button>
         )}
       </div>
       <PdfPreviewModal
@@ -170,6 +164,6 @@ function DepotRow({ depot }: { depot: DepotSummary }) {
         fetchPreview={dataroomService.previewDepot}
         fetchApercu={dataroomService.apercuDepot}
       />
-    </div>
+    </li>
   );
 }

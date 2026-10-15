@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, Plus, CheckCircle2, RotateCcw, X, Send } from 'lucide-react';
+import { Plus, CheckCircle2, RotateCcw, Send } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { Badge, type BadgeVariant } from '../../components/ui/Badge';
+import { Card } from '../../components/ui/Card';
+import { Modal } from '../../components/ui/Modal';
+import { Message } from '../../components/ui/Message';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Skeleton } from '../../components/ui/LoadingSkeleton';
+import { GroupeRadio } from '../../components/ui/Choix';
+import { TextField, ZoneTexte } from '../../components/ui/TextField';
 import { PromptDialog } from '../../components/ui/PromptDialog';
 import { requiredMsg } from '../../lib/formValidation';
 import { dataroomService } from '../../services/dataroom.service';
@@ -18,11 +26,11 @@ import { InfoBulle } from '../../components/ui/Aide';
  * une requête (PIECE/INFO/SIGNATURE), suit son état, puis VALIDE (REPONDUE→CLOTUREE)
  * ou demande un COMPLÉMENT (REPONDUE→A_COMPLETER). C'est le client qui « répond ».
  */
-const STATUT_BADGE: Record<string, string> = {
-  OUVERTE: 'bg-amber-100 text-amber-700',
-  A_COMPLETER: 'bg-amber-100 text-amber-700',
-  REPONDUE: 'bg-accent/15 text-accent',
-  CLOTUREE: 'bg-emerald-100 text-emerald-700',
+const STATUT_VARIANTE: Record<string, BadgeVariant> = {
+  OUVERTE: 'warning',
+  A_COMPLETER: 'warning',
+  REPONDUE: 'info',
+  CLOTUREE: 'success',
 };
 
 const TYPE_OPTIONS: TypeRequete[] = ['PIECE', 'INFO', 'SIGNATURE'];
@@ -51,7 +59,11 @@ export function RequetesAuClientSection({
   // Requête ciblée par le dialog « Complément » (remplace window.prompt).
   const [complementId, setComplementId] = useState<string | null>(null);
 
-  const canManage = role === 'EMPLOYE' || role === 'SUPERVISEUR';
+  // Lecture : employe et superviseur. Creer, valider, demander un complement : POST /requetes,
+  // /demandes/{id}/valider et /complement sont reserves a l'employe (DemandesController) ;
+  // le superviseur suit sans bouton refuse (backlog L0).
+  const canVoir = role === 'EMPLOYE' || role === 'SUPERVISEUR';
+  const canAgir = role === 'EMPLOYE';
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -104,12 +116,12 @@ export function RequetesAuClientSection({
     }
   };
 
-  if (!canManage) return null;
+  if (!canVoir) return null;
 
   return (
-    <section className="mt-8">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="flex items-center gap-1 text-sm font-semibold text-fg">
+    <section aria-labelledby="requetes-cabinet-titre" className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 id="requetes-cabinet-titre" className="flex items-center gap-1 text-base font-semibold text-heading">
           Requêtes du cabinet au client
           <InfoBulle
             libelle="Aide sur les requêtes au client"
@@ -121,71 +133,91 @@ export function RequetesAuClientSection({
             statut={readOnlyStatut}
             testId="requetes-readonly-hint"
           />
-        ) : (
-          <Button size="sm" onClick={() => setNewOpen(true)}>
-            <Plus className="mr-1 h-4 w-4" /> Nouvelle requête
+        ) : canAgir ? (
+          <Button type="button" size="sm" icon={<Plus />} onClick={() => setNewOpen(true)}>
+            Nouvelle requête
           </Button>
-        )}
+        ) : null}
       </div>
 
-      {error && <p className="mb-2 text-xs text-danger">{error}</p>}
+      {!canAgir && (
+        <p className="text-sm text-fg-muted">
+          Seul l’employé responsable du dossier crée les requêtes et valide les réponses du client ; vous
+          les suivez ici.
+        </p>
+      )}
+
+      {error && <Message ton="erreur">{error}</Message>}
 
       {loading ? (
-        <div className="flex h-16 items-center justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-fg-subtle" />
+        <div className="space-y-2" aria-busy="true" aria-label="Chargement des requêtes">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
         </div>
       ) : sorted.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border bg-bg-raised p-4 text-center text-xs text-fg-subtle">
-          Aucune requête envoyée à ce client. Quand une pièce ou une réponse vous manque, cliquez sur « Nouvelle requête » : le client la verra dans son espace.
-        </p>
+        <Card padding={false}>
+          <EmptyState
+            compact
+            icon={<Send />}
+            title="Aucune requête envoyée à ce client"
+            description={
+              canAgir
+                ? 'Quand une pièce ou une réponse vous manque, cliquez sur « Nouvelle requête » : le client la verra dans son espace.'
+                : 'Les requêtes de l’employé responsable au client apparaîtront ici.'
+            }
+          />
+        </Card>
       ) : (
         <ul className="space-y-2">
           {sorted.map((r) => (
-            <li key={r.id} className="rounded-lg border border-border bg-bg-raised p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="mb-1 flex items-center gap-2">
-                    <span className="rounded bg-bg-overlay px-2 py-0.5 text-[10px] font-semibold text-fg-muted">
+            <li key={r.id} className="rounded-xl border border-border bg-bg-raised p-4 shadow-card">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <Badge variant="neutral">
                       {r.typeRequete ? TYPE_REQUETE_LABELS[r.typeRequete] : 'Requête'}
+                    </Badge>
+                    <span data-testid="etat-suivi-requete">
+                      <Badge variant={STATUT_VARIANTE[r.statut] ?? 'neutral'} dot>
+                        {r.etatSuivi ? ETAT_SUIVI_LABELS[r.etatSuivi] : 'État inconnu'}
+                      </Badge>
                     </span>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUT_BADGE[r.statut] ?? ''}`}
-                      data-testid="etat-suivi-requete"
-                    >
-                      {r.etatSuivi ? ETAT_SUIVI_LABELS[r.etatSuivi] : 'État inconnu'}
-                    </span>
-                    <span className="text-[10px] text-fg-subtle">{REQUETE_STATUT_LABELS[r.statut]}</span>
+                    <span className="text-xs text-fg-muted">{REQUETE_STATUT_LABELS[r.statut]}</span>
                   </div>
-                  <p className="truncate text-sm font-medium text-fg">{r.sujet}</p>
+                  <p className="text-sm font-medium text-fg">{r.sujet}</p>
                   {r.noteClient && r.statut !== 'CLOTUREE' && (
-                    <p className="mt-1 rounded bg-emerald-50 p-2 text-xs text-emerald-800">
+                    <p className="mt-2 rounded-lg border border-border border-l-4 border-l-success bg-success-soft px-3 py-2 text-sm text-fg">
                       Réponse du client : {r.noteClient}
                     </p>
                   )}
-                  <p className="mt-1 text-[10px] text-fg-subtle">
+                  <p className="mt-1 text-xs text-fg-muted">
                     Envoyée le {formatDateTime(r.createdAt)}
                     {r.reponduAt ? ` · répondue le ${formatDateTime(r.reponduAt)}` : ''}
                     {r.clotureAt ? ` · clôturée le ${formatDateTime(r.clotureAt)}` : ''}
                   </p>
                 </div>
-                {r.statut === 'REPONDUE' && (
-                  <div className="flex flex-shrink-0 flex-col gap-1.5">
-                    <button
+                {canAgir && r.statut === 'REPONDUE' && (
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <Button
                       type="button"
-                      disabled={busyId === r.id}
-                      onClick={() => valider(r.id)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60"
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Valider
-                    </button>
-                    <button
-                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      icon={<RotateCcw />}
                       disabled={busyId === r.id}
                       onClick={() => setComplementId(r.id)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-100 disabled:opacity-60"
                     >
-                      <RotateCcw className="h-3.5 w-3.5" /> Complément
-                    </button>
+                      Complément
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      icon={<CheckCircle2 className="text-success" />}
+                      disabled={busyId === r.id}
+                      onClick={() => valider(r.id)}
+                    >
+                      Valider
+                    </Button>
                   </div>
                 )}
               </div>
@@ -259,72 +291,52 @@ function NouvelleRequeteModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-xl bg-bg-raised p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-fg">Nouvelle requête au client</h3>
-          <button type="button" onClick={onClose} aria-label="Fermer" className="text-fg-subtle hover:text-fg">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <label className="mb-1 block text-xs font-medium text-fg-subtle">Type</label>
-        <div className="mb-3 flex gap-2">
-          {TYPE_OPTIONS.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTypeRequete(t)}
-              className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
-                typeRequete === t
-                  ? 'border-accent bg-accent/10 text-accent'
-                  : 'border-border text-fg-subtle hover:bg-bg-overlay'
-              }`}
-            >
-              {TYPE_REQUETE_LABELS[t]}
-            </button>
-          ))}
-        </div>
-
-        <label className="mb-1 block text-xs font-medium text-fg-subtle">Sujet</label>
-        <input
+    <Modal
+      open
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+      title="Nouvelle requête au client"
+      description="Le client la voit dans son espace et reçoit un courriel ; vous êtes notifié quand il répond."
+      closeOnBackdrop={false}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button type="button" icon={<Send />} loading={submitting} onClick={() => void submit()}>
+            Envoyer la requête
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <GroupeRadio
+          legende="Type"
+          name="type-requete"
+          horizontal
+          value={typeRequete}
+          onChange={(v) => setTypeRequete(v as TypeRequete)}
+          options={TYPE_OPTIONS.map((t) => ({ value: t, label: TYPE_REQUETE_LABELS[t] }))}
+        />
+        <TextField
+          label="Sujet"
           value={sujet}
           onChange={(e) => setSujet(e.target.value)}
           maxLength={200}
-          className="mb-3 w-full rounded-lg border border-border bg-bg-raised px-3 py-2 text-sm text-fg focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
           placeholder="Exemple : fournir le contrat de bail signé"
+          error={error === 'Le sujet est obligatoire.' ? error : undefined}
+          required
         />
-
-        <label className="mb-1 block text-xs font-medium text-fg-subtle">Description (facultatif)</label>
-        <textarea
+        <ZoneTexte
+          label="Description (facultatif)"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          className="w-full resize-none rounded-lg border border-border bg-bg-raised px-3 py-2 text-sm text-fg focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
           placeholder="Précisez ce que le client doit fournir ou répondre…"
         />
-
-        {error && <p className="mt-2 text-xs text-danger">{error}</p>}
-
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-border px-3 py-1.5 text-sm text-fg-subtle transition hover:bg-bg-overlay"
-          >
-            Annuler
-          </button>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={submitting}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-bg transition hover:bg-accent-hover disabled:opacity-60"
-          >
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Envoyer la requête
-          </button>
-        </div>
+        {error && error !== 'Le sujet est obligatoire.' && <Message ton="erreur">{error}</Message>}
       </div>
-    </div>
+    </Modal>
   );
 }

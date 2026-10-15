@@ -4,7 +4,10 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Drawer } from '../../components/ui/Drawer';
-import { TextField } from '../../components/ui/TextField';
+import { TextField, ZoneTexte } from '../../components/ui/TextField';
+import { Message } from '../../components/ui/Message';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Skeleton } from '../../components/ui/LoadingSkeleton';
 import { Select } from '../../components/ui/Select';
 import { dataroomService } from '../../services/dataroom.service';
 import { ticketService } from '../../services/ticket.service';
@@ -16,7 +19,7 @@ import type {
   DemandeSummary,
 } from '../../types/dataroom';
 import { DEMANDE_STATUT_LABELS } from '../../types/dataroom';
-import type { TicketType, TicketPriorite } from '../../types/ticket';
+import type { Ticket, TicketType, TicketPriorite } from '../../types/ticket';
 import { TICKET_TYPE_LABELS, TYPES_AUTO_DOSSIER } from '../../types/ticket';
 import type { Role } from '../../types/auth';
 import { InfoBulle } from '../../components/ui/Aide';
@@ -104,62 +107,58 @@ export function DemandesTab({
 
   return (
     <div className="space-y-4">
-      {error && (
-        <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-          {error}
-        </div>
-      )}
+      {error && <Message ton="erreur">{error}</Message>}
 
-      <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-accent/10 p-2 text-accent">
-            <MessageSquare className="h-4 w-4" />
-          </div>
-          <div className="flex items-center gap-2 text-sm text-fg-muted">
-            <Badge variant="info">{counts.NON_TRAITEE} non traitée{counts.NON_TRAITEE > 1 ? 's' : ''}</Badge>
-            <Badge variant="warning">{counts.EN_COURS} en cours</Badge>
-            <Badge variant="success">{counts.TRAITEE} traitée{counts.TRAITEE > 1 ? 's' : ''}</Badge>
-            <InfoBulle
-              libelle="Aide sur les demandes du client"
-              texte={
-                role === 'CLIENT'
-                  ? 'Vos demandes au cabinet sont suivies par trois états : « Non traitée », « En cours » (prise en charge par votre conseiller), « Traitée ». Vous êtes averti par courriel quand votre demande est traitée.'
-                  : 'Chaque demande du client est « Non traitée » jusqu’à sa prise en charge, puis « En cours », puis « Traitée ». Vous êtes notifié dans la cloche d’une nouvelle demande ; quand vous la passez à « Traitée », le client en est averti par courriel.'
-              }
-            />
-          </div>
+      <Card padding={false} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
+          <Badge variant="info">{counts.NON_TRAITEE} non traitée{counts.NON_TRAITEE > 1 ? 's' : ''}</Badge>
+          <Badge variant="warning">{counts.EN_COURS} en cours</Badge>
+          <Badge variant="success">{counts.TRAITEE} traitée{counts.TRAITEE > 1 ? 's' : ''}</Badge>
+          <InfoBulle
+            libelle="Aide sur les demandes du client"
+            texte={
+              role === 'CLIENT'
+                ? 'Vos demandes au cabinet sont suivies par trois états : « Non traitée », « En cours » (prise en charge par votre conseiller), « Traitée ». Vous êtes averti par courriel quand votre demande est traitée.'
+                : 'Chaque demande du client est « Non traitée » jusqu’à sa prise en charge, puis « En cours », puis « Traitée ». Vous êtes notifié dans la cloche d’une nouvelle demande ; quand vous la passez à « Traitée », le client en est averti par courriel.'
+            }
+          />
         </div>
         {canCreate && (
-          <Button size="sm" onClick={() => setNewOpen(true)}>
-            <Plus className="mr-1 h-4 w-4" />
+          <Button type="button" size="sm" icon={<Plus />} onClick={() => setNewOpen(true)}>
             Nouvelle demande
           </Button>
         )}
       </Card>
 
-      <Card>
-        <ul className="divide-y divide-border">
-          {loading && demandes.length === 0 && (
-            <li className="flex justify-center py-6">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-indigo-600" />
-            </li>
-          )}
-          {!loading && demandes.length === 0 && (
-            <li className="px-5 py-8 text-center text-sm text-fg-subtle">
-              {role === 'CLIENT'
-                ? 'Aucune demande pour ce dossier. Cliquez sur « Nouvelle demande » pour écrire au cabinet.'
-                : 'Aucune demande du client pour ce dossier. Les demandes qu’il adresse au cabinet apparaîtront ici.'}
-            </li>
-          )}
-          {demandes.map((demande) => (
-            <DemandeRow
-              key={demande.id}
-              demande={demande}
-              editable={canEdit}
-              onChanged={load}
-            />
-          ))}
-        </ul>
+      <Card padding={false}>
+        {loading && demandes.length === 0 ? (
+          <div className="space-y-3 px-5 py-4" aria-busy="true" aria-label="Chargement des demandes">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : !loading && demandes.length === 0 ? (
+          <EmptyState
+            compact
+            icon={<MessageSquare />}
+            title={role === 'CLIENT' ? 'Aucune demande pour ce dossier' : 'Aucune demande du client'}
+            description={
+              role === 'CLIENT'
+                ? 'Cliquez sur « Nouvelle demande » pour écrire au cabinet.'
+                : 'Les demandes que le client adresse au cabinet depuis son espace apparaîtront ici. Vous serez notifié dans la cloche.'
+            }
+          />
+        ) : (
+          <ul className="divide-y divide-border">
+            {demandes.map((demande) => (
+              <DemandeRow
+                key={demande.id}
+                demande={demande}
+                editable={canEdit}
+                onChanged={load}
+              />
+            ))}
+          </ul>
+        )}
       </Card>
 
       {/* Lot 1 (2026-09-04) — les requetes de l'employe AU client ont leur propre
@@ -184,14 +183,40 @@ interface DemandeRowProps {
   onChanged: () => Promise<void> | void;
 }
 
+const AUCUN_TICKET = '';
+
 function DemandeRow({ demande, editable, onChanged }: DemandeRowProps) {
   const [statut, setStatut] = useState<DemandeStatut>(demande.statut);
   const [noteInterne, setNoteInterne] = useState(demande.noteInterne ?? '');
-  const [ticketId, setTicketId] = useState(demande.ticketId ?? '');
+  const [ticketId, setTicketId] = useState(demande.ticketId ?? AUCUN_TICKET);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [ticketDrawerOpen, setTicketDrawerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Backlog L6 : le ticket lie se CHOISIT parmi les tickets du dossier (GET /tickets?dossierId=),
+  // lu a l'ouverture de la modification ; plus de saisie d'identifiant a la main.
+  const [ticketsDossier, setTicketsDossier] = useState<Ticket[] | null>(null);
+  const [ticketsErreur, setTicketsErreur] = useState(false);
+
+  function ouvrirModification() {
+    setEditing(true);
+    if (ticketsDossier !== null) return;
+    ticketService
+      .list({ dossierId: demande.dossierId, limit: 100 })
+      .then((page) => setTicketsDossier(page.items))
+      .catch(() => {
+        setTicketsDossier([]);
+        setTicketsErreur(true);
+      });
+  }
+
+  const optionsTickets = [
+    { value: AUCUN_TICKET, label: 'Aucun ticket lié' },
+    ...(ticketsDossier ?? []).map((t) => ({ value: t.id, label: `${t.reference} — ${t.titre}` })),
+  ];
+  if (ticketId && !(ticketsDossier ?? []).some((t) => t.id === ticketId)) {
+    optionsTickets.push({ value: ticketId, label: 'Ticket lié actuel (hors des tickets du dossier)' });
+  }
 
   async function save() {
     setSaving(true);
@@ -220,24 +245,20 @@ function DemandeRow({ demande, editable, onChanged }: DemandeRowProps) {
             <Badge variant={STATUT_VARIANTS[demande.statut]}>
               {DEMANDE_STATUT_LABELS[demande.statut]}
             </Badge>
-            {demande.ticketId && (
-              <Badge variant="neutral" className="text-[10px]">
-                Ticket lié
-              </Badge>
-            )}
+            {demande.ticketId && <Badge variant="neutral">Ticket lié</Badge>}
           </div>
           {demande.description && (
             <p className="mt-1 whitespace-pre-wrap text-sm text-fg-muted">
               {demande.description}
             </p>
           )}
-          <p className="mt-1 text-xs text-fg-subtle">
+          <p className="mt-1 text-xs text-fg-muted">
             Soumise le {formatDateTime(demande.createdAt)}
-            {demande.traiteAt ? ` • Traitée le ${formatDateTime(demande.traiteAt)}` : ''}
+            {demande.traiteAt ? ` · Traitée le ${formatDateTime(demande.traiteAt)}` : ''}
           </p>
           {demande.noteInterne && !editing && (
             <div className="mt-2 rounded-lg border border-border bg-bg-overlay px-3 py-2 text-xs text-fg-muted">
-              <span className="font-semibold">Note interne :</span> {demande.noteInterne}
+              <span className="font-semibold text-fg">Note interne :</span> {demande.noteInterne}
             </div>
           )}
         </div>
@@ -245,16 +266,17 @@ function DemandeRow({ demande, editable, onChanged }: DemandeRowProps) {
           <div className="flex shrink-0 items-center gap-2">
             {!demande.ticketId && (
               <Button
+                type="button"
                 size="sm"
                 variant="secondary"
+                icon={<TicketPlus />}
                 onClick={() => setTicketDrawerOpen(true)}
                 title="Ouvrir un ticket pour l’opération demandée ; il sera lié à la demande"
               >
-                <TicketPlus className="mr-1 h-4 w-4" />
                 Créer un ticket
               </Button>
             )}
-            <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+            <Button type="button" size="sm" variant="secondary" onClick={ouvrirModification}>
               Modifier
             </Button>
           </div>
@@ -262,34 +284,38 @@ function DemandeRow({ demande, editable, onChanged }: DemandeRowProps) {
       </div>
 
       {editable && editing && (
-        <div className="mt-3 grid gap-3 rounded-lg border border-border bg-bg-overlay p-3 md:grid-cols-2">
+        <div className="mt-3 grid gap-3 rounded-lg border border-border bg-bg-overlay p-4 md:grid-cols-2">
           <Select
             label="Statut"
             value={statut}
             onChange={(e) => setStatut(e.target.value as DemandeStatut)}
             options={STATUT_OPTIONS}
           />
-          <TextField
+          <Select
             label="Ticket lié (facultatif)"
             value={ticketId}
             onChange={(e) => setTicketId(e.target.value)}
-            placeholder="Identifiant du ticket"
-            hint="Le plus simple : le bouton « Créer un ticket » ouvre le ticket et le lie à la demande."
+            options={optionsTickets}
+            disabled={ticketsDossier === null}
+            hint={
+              ticketsDossier === null
+                ? 'Chargement des tickets du dossier…'
+                : ticketsErreur
+                  ? 'Les tickets du dossier n’ont pas pu être lus ; réessayez plus tard.'
+                  : 'Un ticket du dossier. Pour une opération nouvelle, « Créer un ticket » l’ouvre et le lie à la demande.'
+            }
           />
-          <div className="flex flex-col gap-1 md:col-span-2">
-            <label className="text-sm font-medium text-fg-muted">
-              Note interne
-            </label>
-            <textarea
-              rows={3}
-              value={noteInterne}
-              onChange={(e) => setNoteInterne(e.target.value)}
-              className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-            />
-          </div>
+          <ZoneTexte
+            label="Note interne"
+            rows={3}
+            value={noteInterne}
+            onChange={(e) => setNoteInterne(e.target.value)}
+            hint="Visible du cabinet seulement, jamais du client."
+            containerClassName="md:col-span-2"
+          />
           {error && (
-            <div className="md:col-span-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-              {error}
+            <div className="md:col-span-2">
+              <Message ton="erreur">{error}</Message>
             </div>
           )}
           <div className="flex justify-end gap-2 md:col-span-2">
@@ -301,7 +327,7 @@ function DemandeRow({ demande, editable, onChanged }: DemandeRowProps) {
                 setEditing(false);
                 setStatut(demande.statut);
                 setNoteInterne(demande.noteInterne ?? '');
-                setTicketId(demande.ticketId ?? '');
+                setTicketId(demande.ticketId ?? AUCUN_TICKET);
               }}
             >
               Annuler
@@ -421,26 +447,18 @@ function CreateTicketDrawer({ open, onClose, demande, onCreated }: CreateTicketD
             options={PRIORITE_OPTIONS}
           />
         </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-fg-muted">Description</label>
-          <textarea
-            rows={4}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-          />
-        </div>
-        {error && (
-          <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-            {error}
-          </div>
-        )}
+        <ZoneTexte
+          label="Description"
+          rows={4}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+        {error && <Message ton="erreur">{error}</Message>}
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>
             Annuler
           </Button>
-          <Button type="submit" loading={loading} disabled={!titre.trim()}>
-            <TicketPlus className="mr-1 h-4 w-4" />
+          <Button type="submit" icon={<TicketPlus />} loading={loading} disabled={!titre.trim()}>
             Créer et lier
           </Button>
         </div>
@@ -518,29 +536,19 @@ function NewDemandeDrawer({
           placeholder="Exemple : modification de l’objet social"
           required
         />
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-fg-muted">
-            Description
-          </label>
-          <textarea
-            rows={4}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Décrivez votre besoin…"
-            className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-          />
-        </div>
-        {error && (
-          <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-            {error}
-          </div>
-        )}
+        <ZoneTexte
+          label="Description"
+          rows={4}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Décrivez votre besoin…"
+        />
+        {error && <Message ton="erreur">{error}</Message>}
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>
             Annuler
           </Button>
-          <Button type="submit" loading={loading} disabled={!sujet.trim()}>
-            <Send className="mr-1 h-3.5 w-3.5" />
+          <Button type="submit" icon={<Send />} loading={loading} disabled={!sujet.trim()}>
             Envoyer
           </Button>
         </div>

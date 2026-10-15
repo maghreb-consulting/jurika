@@ -129,7 +129,7 @@ export function AccesClientPanel({
             <Button
               type="button"
               size="sm"
-              variant={suspendu ? 'secondary' : 'danger'}
+              variant="secondary"
               loading={enCours}
               onClick={() => void appliquer(() => dataroomService.toggleSuspension(dossierId, !suspendu))}
             >

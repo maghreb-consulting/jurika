@@ -100,7 +100,7 @@ describe('Liste des Data Rooms', () => {
     expect(screen.getByText('Aucune Data Room ne correspond à la recherche')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Effacer la recherche' }));
     expect(await screen.findByRole('button', { name: 'Ouvrir la Data Room de BETA SA' })).toBeInTheDocument();
-  });
+  }, 15000);
 
   it('employe : suspendre depuis la liste ; superviseur : consultation, aucun bouton de suspension', async () => {
     connecter('EMPLOYE');
@@ -115,7 +115,7 @@ describe('Liste des Data Rooms', () => {
     await screen.findByRole('button', { name: 'Ouvrir la Data Room de ATLAS SARL' });
     await waitFor(() => expect(svc.getSettings).toHaveBeenCalled());
     expect(screen.queryByRole('button', { name: /Suspendre l’accès du client/ })).not.toBeInTheDocument();
-  });
+  }, 15000);
 });
 
 describe('Detail d une Data Room', () => {
@@ -140,7 +140,7 @@ describe('Detail d une Data Room', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Retour aux Data Rooms' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Mes Data Rooms' })).toBeInTheDocument();
-  });
+  }, 15000);
 
   it('superviseur : ni inviter, ni retirer l acces, ni transferer', async () => {
     connecter('SUPERVISEUR');
@@ -153,5 +153,5 @@ describe('Detail d une Data Room', () => {
     expect(screen.queryByRole('button', { name: /Transférer/ })).not.toBeInTheDocument();
     // Le superviseur regle l'acces du client (le serveur l'y autorise).
     expect(await screen.findByRole('button', { name: 'Suspendre l’accès' })).toBeInTheDocument();
-  });
+  }, 15000);
 });

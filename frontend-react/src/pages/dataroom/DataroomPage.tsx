@@ -251,10 +251,10 @@ function DataroomManagementView() {
               },
             ]}
           />
-          <div className="relative w-full @2xl/page:w-80">
+          <div className="relative w-full @2xl/page:w-96">
             <Search
               aria-hidden="true"
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+              className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-fg-subtle"
             />
             <TextField
               type="search"
@@ -659,7 +659,7 @@ function DataroomDetail({
               onSettings={setSettings}
             />
           ) : (
-            <Card aria-busy="true" aria-label="Chargement de l’accès du client">
+            <Card className="p-5" aria-busy="true" aria-label="Chargement de l’accès du client">
               <div className="space-y-3">
                 <Skeleton className="h-4 w-40" />
                 <Skeleton className="h-4 w-full" />
@@ -781,12 +781,14 @@ function DataroomDetail({
 
         <div className="grid gap-4 @4xl/page:grid-cols-2">
           {/* E2 — Activite (tracabilite) de ce dossier */}
-          <Card>
-            <EntityActivityPanel entityType="dossier" entityId={dossier.id} title="Activité du dossier" />
+          <Card className="p-5">
+            <div>
+              <EntityActivityPanel entityType="dossier" entityId={dossier.id} title="Activité du dossier" />
+            </div>
           </Card>
 
           {/* Lot L1 : historique des responsables du dossier (employe responsable, superviseur). */}
-          <Card>
+          <Card className="p-5">
             <HistoriqueResponsablesPanel
               dossierId={dossier.id}
               raisonSociale={dossier.raisonSociale}

@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Paperclip } from 'lucide-react';
+import { Download, Paperclip, Receipt } from 'lucide-react';
+import { Button } from '../../../components/ui/Button';
+import { Card } from '../../../components/ui/Card';
+import { Message } from '../../../components/ui/Message';
+import { EmptyState } from '../../../components/ui/EmptyState';
+import { Skeleton } from '../../../components/ui/LoadingSkeleton';
 import { ticketService } from '../../../services/ticket.service';
 import { dataroomService } from '../../../services/dataroom.service';
 import { extractError } from '../../../lib/api';
@@ -48,8 +53,8 @@ export function ClientDebours({ operations, canDownload }: { operations: Dossier
   }
 
   return (
-    <section aria-labelledby="debours-client" className="space-y-3">
-      <h2 id="debours-client" className="flex items-center gap-1 text-base font-semibold text-fg">
+    <section aria-labelledby="debours-client" className="space-y-4">
+      <h2 id="debours-client" className="flex items-center gap-1 text-base font-semibold text-heading">
         Débours
         <InfoBulle
           libelle="Que sont les débours ?"
@@ -66,78 +71,96 @@ export function ClientDebours({ operations, canDownload }: { operations: Dossier
           « Demandes du client ».
         </p>
       </TexteAide>
-      {erreur && <p role="alert" className="text-sm text-danger">{erreur}</p>}
+      {erreur && <Message ton="erreur">{erreur}</Message>}
       {avecTicket.length === 0 && (
-        <p className="text-sm text-fg-subtle">Aucune opération en cours ou terminée pour ce dossier.</p>
+        <Card padding={false}>
+          <EmptyState
+            compact
+            icon={<Receipt />}
+            title="Aucune opération pour ce dossier"
+            description="Les frais avancés par votre cabinet apparaîtront ici dès qu’une opération sera ouverte."
+          />
+        </Card>
       )}
       {avecTicket.map((op) => {
         const id = op.ticketId as string;
         const etat = etats[id] ?? { type: 'chargement' };
         return (
-          <article key={id} className="rounded-lg border border-border">
-            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">
-              <p className="text-sm font-medium text-fg">
+          <article key={id} className="@container overflow-hidden rounded-xl border border-border bg-bg-raised shadow-card">
+            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-3">
+              <p className="text-sm font-semibold text-heading">
                 {op.libelle}
-                {op.reference ? <span className="ml-2 font-mono text-xs text-fg-subtle">{op.reference}</span> : null}
+                {op.reference ? <span className="ml-2 font-mono text-xs font-normal text-fg-muted">{op.reference}</span> : null}
               </p>
               {etat.type === 'ok' && etat.items.length > 0 && canDownload && (
-                <button
+                <Button
                   type="button"
+                  size="sm"
+                  variant="secondary"
+                  icon={<Download />}
                   onClick={() => telecharger(() => ticketService.downloadEtatDebours(id, op.reference ?? id))}
-                  className="text-xs font-medium text-accent underline"
                 >
                   Télécharger l’état des débours (PDF)
-                </button>
+                </Button>
               )}
             </header>
-            {etat.type === 'chargement' && <p className="px-4 py-3 text-sm text-fg-subtle">Chargement…</p>}
-            {etat.type === 'refus' && <p className="px-4 py-3 text-sm text-fg-muted">{etat.message}</p>}
+            {etat.type === 'chargement' && (
+              <div className="space-y-2 px-5 py-3" aria-busy="true" aria-label="Chargement des débours">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
+            )}
+            {etat.type === 'refus' && <p className="px-5 py-3 text-sm text-fg-muted">{etat.message}</p>}
             {etat.type === 'ok' && etat.items.length === 0 && (
-              <p className="px-4 py-3 text-sm text-fg-subtle">Aucun débours pour cette opération.</p>
+              <p className="px-5 py-3 text-sm text-fg-muted">Aucun débours pour cette opération.</p>
             )}
             {etat.type === 'ok' && etat.items.length > 0 && (
-              <table className="w-full text-sm">
-                <caption className="sr-only">Débours de l’opération {op.libelle}</caption>
-                <thead>
-                  <tr className="text-left text-xs text-fg-subtle">
-                    <th className="px-4 py-1 font-medium">Libellé</th>
-                    <th className="px-4 py-1 font-medium">Type</th>
-                    <th className="px-4 py-1 font-medium">Date</th>
-                    <th className="px-4 py-1 font-medium">Pièce justificative</th>
-                    <th className="px-4 py-1 text-right font-medium">Montant</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {etat.items.map((d) => (
-                    <tr key={d.id} className="border-t border-border">
-                      <td className="px-4 py-1.5 text-fg">{d.libelle}</td>
-                      <td className="px-4 py-1.5 text-fg-muted">{CATEGORIE_LABELS[d.categorie] ?? d.categorie}</td>
-                      <td className="px-4 py-1.5 text-fg-muted">{new Date(d.dateEngagement).toLocaleDateString('fr-MA')}</td>
-                      <td className="px-4 py-1.5 text-fg-muted">
-                        {d.pieceJointeFilename && d.pieceDocumentId && canDownload ? (
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1 text-accent underline"
-                            onClick={() => telecharger(() => dataroomService.downloadDocument(
-                              d.pieceDocumentId as string, d.pieceJointeFilename as string))}
-                          >
-                            <Paperclip className="h-3.5 w-3.5" /> {d.pieceJointeFilename}
-                          </button>
-                        ) : (
-                          d.pieceJointeFilename ?? 'Aucune'
-                        )}
-                      </td>
-                      <td className="px-4 py-1.5 text-right font-mono text-fg">{mad(d.montantMad)}</td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <caption className="sr-only">Débours de l’opération {op.libelle}</caption>
+                  <thead className="bg-bg-overlay">
+                    <tr className="text-left text-xs text-fg-muted">
+                      <th scope="col" className="px-5 py-2 font-medium">Libellé</th>
+                      <th scope="col" className="hidden px-3 py-2 font-medium @md:table-cell">Type</th>
+                      <th scope="col" className="px-3 py-2 font-medium">Date</th>
+                      <th scope="col" className="px-3 py-2 font-medium">Pièce justificative</th>
+                      <th scope="col" className="px-5 py-2 text-right font-medium">Montant</th>
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t border-border font-medium">
-                    <td colSpan={4} className="px-4 py-1.5 text-fg">Total</td>
-                    <td className="px-4 py-1.5 text-right font-mono text-fg">{mad(etat.total)}</td>
-                  </tr>
-                </tfoot>
-              </table>
+                  </thead>
+                  <tbody>
+                    {etat.items.map((d) => (
+                      <tr key={d.id} className="border-t border-border">
+                        <td className="px-5 py-2 text-fg">{d.libelle}</td>
+                        <td className="hidden px-3 py-2 text-fg-muted @md:table-cell">{CATEGORIE_LABELS[d.categorie] ?? d.categorie}</td>
+                        <td className="whitespace-nowrap px-3 py-2 text-fg-muted">{new Date(d.dateEngagement).toLocaleDateString('fr-MA')}</td>
+                        <td className="px-3 py-2 text-fg-muted">
+                          {d.pieceJointeFilename && d.pieceDocumentId && canDownload ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              icon={<Paperclip />}
+                              onClick={() => telecharger(() => dataroomService.downloadDocument(
+                                d.pieceDocumentId as string, d.pieceJointeFilename as string))}
+                            >
+                              {d.pieceJointeFilename}
+                            </Button>
+                          ) : (
+                            d.pieceJointeFilename ?? 'Aucune'
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-5 py-2 text-right tabular-nums text-fg">{mad(d.montantMad)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t border-border bg-bg-overlay font-semibold">
+                      <td colSpan={4} className="px-5 py-2 text-fg">Total</td>
+                      <td className="whitespace-nowrap px-5 py-2 text-right tabular-nums text-fg">{mad(etat.total)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             )}
           </article>
         );

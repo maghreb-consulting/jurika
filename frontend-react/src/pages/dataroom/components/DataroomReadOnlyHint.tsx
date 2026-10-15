@@ -21,11 +21,11 @@ export function DataroomReadOnlyHint({
 }) {
   return (
     <div
-      className={`flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-fg-subtle ${className}`}
+      className={`flex items-start gap-2 rounded-lg border border-border border-l-4 border-l-warning bg-warning-soft px-3 py-2 text-xs text-fg ${className}`}
       title={dataroomReadOnlyReason(statut)}
       data-testid={testId ?? 'dataroom-readonly-hint'}
     >
-      <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
+      <Lock aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
       <span>
         <span className="font-semibold text-fg">
           {archivedStatutLabel(statut)}
