@@ -143,6 +143,32 @@ class DataroomTenantIsolationTest {
     }
 
     @Test
+    void clientAccessLog_rendLeLibelleDeLAction() {
+        // Lot L6b (E9) : le libelle vient du serveur (AuditActionLabels), l'ecran
+        // l'affiche tel quel ; une action sans libelle est nommee, jamais deguisee.
+        UUID ws = UUID.randomUUID();
+        UUID dossier = UUID.randomUUID();
+        UUID client = UUID.randomUUID();
+        TenantContext.set(ws);
+        DossierViewEntity d = org.mockito.Mockito.mock(DossierViewEntity.class);
+        when(d.getClientId()).thenReturn(client);
+        when(dossierRepo.findByWorkspaceIdAndId(ws, dossier)).thenReturn(Optional.of(d));
+        ClientAccessLogEntity apercu = new ClientAccessLogEntity();
+        apercu.setAction("PREVIEW_VERSION");
+        ClientAccessLogEntity inconnue = new ClientAccessLogEntity();
+        inconnue.setAction("ACTION_FUTURE");
+        when(accessLogRepo.findAllByWorkspaceIdAndDossierIdAndUserIdOrderByCreatedAtDesc(
+                eq(ws), eq(dossier), eq(client), any())).thenReturn(new PageImpl<>(List.of(apercu, inconnue)));
+
+        AccessLogPage page = new ClientAccessLogQueryService(accessLogRepo, dossierRepo)
+                .findByDossier(dossier, 50, 0);
+
+        assertThat(page.items()).extracting(e -> e.actionLabel()).containsExactly(
+                "Aper\u00e7u d\u2019une version d\u2019un document",
+                "Action enregistr\u00e9e (code ACTION_FUTURE)");
+    }
+
+    @Test
     void clientAccessStats_derivesCountAndLastFromClientLog() {
         // Compteur "Acces client" REEL derive du log (source de verite), pas de
         // la colonne access_count (jamais incrementee -> restait a 0).

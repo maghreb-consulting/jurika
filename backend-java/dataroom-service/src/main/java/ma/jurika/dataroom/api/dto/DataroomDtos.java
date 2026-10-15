@@ -235,6 +235,8 @@ public final class DataroomDtos {
             UUID userId,
             UUID documentId,
             String action,
+            /** Lot L6b (E9) : libelle francais de l'action (AuditActionLabels), affiche tel quel. */
+            String actionLabel,
             String ipAddress,
             String userAgent,
             Instant createdAt) {}

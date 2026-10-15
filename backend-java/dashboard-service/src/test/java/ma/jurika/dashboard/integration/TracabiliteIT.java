@@ -114,6 +114,25 @@ class TracabiliteIT {
     }
 
     @Test
+    @DisplayName("L6b E9 : actions du filtre = codes presents dans le journal du workspace, avec leur libelle")
+    void actionsPresentesDuWorkspace() {
+        insert(ws1, user1, "LOGIN_SUCCESS", "user", user1);
+        insert(ws1, user1, "CODE_SANS_LIBELLE", "user", user1);
+        insert(ws2, UUID.randomUUID(), "BILLING_PAIEMENT_VALIDE", "payment", UUID.randomUUID());
+        TenantContext.set(ws1);
+
+        assertThat(service.actionsPresentes())
+                .extracting("code", "label")
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("CODE_SANS_LIBELLE",
+                                "Action enregistr\u00e9e (code CODE_SANS_LIBELLE)"),
+                        org.assertj.core.groups.Tuple.tuple("LOGIN_SUCCESS", "Connexion r\u00e9ussie"),
+                        org.assertj.core.groups.Tuple.tuple("DOSSIER_TRANSFERE", "Dossier transf\u00e9r\u00e9"),
+                        org.assertj.core.groups.Tuple.tuple("TICKET_CREATED", "Ticket cr\u00e9\u00e9"),
+                        org.assertj.core.groups.Tuple.tuple("TICKET_ASSIGNED", "Ticket r\u00e9assign\u00e9"));
+    }
+
+    @Test
     @DisplayName("Filtre par entite : seul l'historique du ticket cible (action presente)")
     void filterByEntity() {
         TenantContext.set(ws1);

@@ -1,5 +1,6 @@
 package ma.jurika.dataroom.application.access;
 
+import ma.jurika.common.audit.AuditActionLabels;
 import ma.jurika.common.security.TenantContext;
 import ma.jurika.dataroom.api.dto.DataroomDtos.AccessLogEntry;
 import ma.jurika.dataroom.api.dto.DataroomDtos.AccessLogPage;
@@ -127,7 +128,8 @@ public class ClientAccessLogQueryService {
     private AccessLogEntry toEntry(ClientAccessLogEntity e) {
         return new AccessLogEntry(
                 e.getId(), e.getDossierId(), e.getUserId(), e.getDocumentId(),
-                e.getAction(), e.getIpAddress(), e.getUserAgent(), e.getCreatedAt());
+                e.getAction(), AuditActionLabels.libelleAccesClient(e.getAction()),
+                e.getIpAddress(), e.getUserAgent(), e.getCreatedAt());
     }
 
     /** Compteur derive "Acces client" : total d'actions + dernier acces. */

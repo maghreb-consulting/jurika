@@ -21,7 +21,8 @@ public final class DashboardDtos {
 
     // ----- SUPER_ADMIN -----
     public record WorkspaceUsage(UUID workspaceId, String name, long eventsLast7d) {}
-    public record AuditEventSummary(UUID id, String action, UUID userId,
+    /** Lot L6b (E9) : {@code actionLabel} = libelle francais du code (AuditActionLabels). */
+    public record AuditEventSummary(UUID id, String action, String actionLabel, UUID userId,
                                       UUID workspaceId, String entityType,
                                       Instant createdAt) {}
     public record StorageSummary(long totalBytes, long fileCount) {}

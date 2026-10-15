@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import ma.jurika.dashboard.api.dto.TracabiliteDtos.ActionTracee;
 import ma.jurika.dashboard.api.dto.TracabiliteDtos.TracabilitePage;
 import ma.jurika.dashboard.application.TracabiliteQueryService;
 import ma.jurika.dashboard.application.TracabiliteQueryService.Filter;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -56,6 +58,13 @@ public class TracabiliteController {
             @RequestParam(defaultValue = "50") int limit,
             @RequestParam(defaultValue = "0") int offset) {
         return service.search(new Filter(entityType, entityId, userId, action, from, to, actorStatus, limit, offset));
+    }
+
+    @GetMapping("/actions")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPERVISEUR','ROLE_SUPER_ADMIN')")
+    @Operation(summary = "Actions presentes dans le journal du workspace, avec leur libelle (liste du filtre)")
+    public List<ActionTracee> actions() {
+        return service.actionsPresentes();
     }
 
     @GetMapping("/entite")

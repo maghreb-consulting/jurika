@@ -28,6 +28,9 @@ public final class TracabiliteDtos {
             Instant createdAt
     ) {}
 
+    /** Lot L6b (E9) : une action presente dans le journal du workspace et son libelle. */
+    public record ActionTracee(String code, String label) {}
+
     /** Page de resultats (tri created_at DESC). */
     public record TracabilitePage(
             List<TracabiliteEntry> items,
