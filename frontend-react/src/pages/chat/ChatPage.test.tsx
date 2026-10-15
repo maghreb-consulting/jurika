@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { ChatPage } from './ChatPage';
 import type { Conversation, ChatMessage } from '../../types/chat';
 
@@ -15,6 +16,8 @@ const SUPERVISEUR = { userId: 'sup-1', role: 'SUPERVISEUR' };
 
 vi.mock('../../store/authStore', () => ({
   useCurrentUser: () => SUPERVISEUR,
+  // L6b : Page (fil d'Ariane par defaut) lit le role dans le magasin.
+  useAuthStore: (sel: (s: { user: typeof SUPERVISEUR }) => unknown) => sel({ user: SUPERVISEUR }),
 }));
 
 vi.mock('../../services/chat.service', () => ({
@@ -51,7 +54,7 @@ beforeEach(() => {
 
 describe('ChatPage — accès superviseur (BUG 2)', () => {
   it("n'affiche AUCUNE bannière lecture seule pour un SUPERVISEUR", async () => {
-    render(<ChatPage />);
+    render(<ChatPage />, { wrapper: MemoryRouter });
     await waitFor(() => {
       expect(screen.getByText('Bonjour superviseur')).toBeInTheDocument();
     });
@@ -61,7 +64,7 @@ describe('ChatPage — accès superviseur (BUG 2)', () => {
 
   it('rend la zone de saisie quand une conversation est ouverte', async () => {
     const user = userEvent.setup();
-    render(<ChatPage />);
+    render(<ChatPage />, { wrapper: MemoryRouter });
 
     const convoText = await screen.findByText('Bonjour superviseur');
     await user.click(convoText.closest('button')!);

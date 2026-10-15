@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TracabilitePage } from '../TracabilitePage';
 
@@ -29,7 +30,11 @@ vi.mock('../../../services/dataroom.service', () => ({
 vi.mock('../../../services/ticket.service', () => ({
   ticketService: { list: (...a: unknown[]) => ticketList(...a) },
 }));
-vi.mock('../../../store/authStore', () => ({ useCurrentUser: () => null }));
+vi.mock('../../../store/authStore', () => ({
+  useCurrentUser: () => null,
+  // L6b : Page (fil d'Ariane par defaut) lit le role dans le magasin.
+  useAuthStore: (sel: (s: { user: null }) => unknown) => sel({ user: null }),
+}));
 
 const emptyPage = { items: [], total: 0, limit: 50, offset: 0 };
 
@@ -56,7 +61,7 @@ describe('TracabilitePage — filtres par nom + acteurs actifs/retires', () => {
 
   it('selectionner un utilisateur par nom -> /tracabilite appele avec son UUID', async () => {
     const user = userEvent.setup();
-    render(<TracabilitePage />);
+    render(<TracabilitePage />, { wrapper: MemoryRouter });
 
     // Le chargement initial appelle search avec des filtres vides.
     await waitFor(() => expect(search).toHaveBeenCalled());
@@ -73,7 +78,7 @@ describe('TracabilitePage — filtres par nom + acteurs actifs/retires', () => {
   });
 
   it('le CLIENT apparait par son NOM dans le groupe "Clients" (pas d\'UUID)', async () => {
-    render(<TracabilitePage />);
+    render(<TracabilitePage />, { wrapper: MemoryRouter });
     await waitFor(() => expect(search).toHaveBeenCalled());
 
     // Groupe optgroup "Clients" present + option client par nom.
@@ -88,7 +93,7 @@ describe('TracabilitePage — filtres par nom + acteurs actifs/retires', () => {
 
   it('selectionner le statut "Retires" -> /tracabilite appele avec actorStatus=RETIRED', async () => {
     const user = userEvent.setup();
-    render(<TracabilitePage />);
+    render(<TracabilitePage />, { wrapper: MemoryRouter });
     await waitFor(() => expect(search).toHaveBeenCalled());
 
     await user.selectOptions(screen.getByLabelText('Statut de l’auteur'), 'RETIRED');
@@ -108,7 +113,7 @@ describe('TracabilitePage — filtres par nom + acteurs actifs/retires', () => {
       ],
       total: 1, limit: 50, offset: 0,
     });
-    render(<TracabilitePage />);
+    render(<TracabilitePage />, { wrapper: MemoryRouter });
 
     // Le nom (pas l'UUID) apparait + badge "retire".
     await waitFor(() => expect(screen.getByText('Old Employe')).toBeInTheDocument());
@@ -126,7 +131,7 @@ describe('TracabilitePage — filtres par nom + acteurs actifs/retires', () => {
       ],
       total: 1, limit: 50, offset: 0,
     });
-    render(<TracabilitePage />);
+    render(<TracabilitePage />, { wrapper: MemoryRouter });
 
     await waitFor(() => expect(screen.getByText(/Utilisateur supprimé/)).toBeInTheDocument());
     // Jamais l'UUID brut complet.
@@ -135,7 +140,7 @@ describe('TracabilitePage — filtres par nom + acteurs actifs/retires', () => {
 
   it('selectionner un dossier par raison sociale -> /tracabilite appele avec son UUID', async () => {
     const user = userEvent.setup();
-    render(<TracabilitePage />);
+    render(<TracabilitePage />, { wrapper: MemoryRouter });
 
     await waitFor(() => expect(search).toHaveBeenCalled());
 

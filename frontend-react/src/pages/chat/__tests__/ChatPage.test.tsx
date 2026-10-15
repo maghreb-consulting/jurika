@@ -30,9 +30,14 @@ vi.mock('../../../lib/realtimeSocket', () => ({
   getSocket: () => fakeSocket,
 }));
 
-vi.mock('../../../store/authStore', () => ({
-  useCurrentUser: () => ({ userId: 'me', firstName: 'Moi', lastName: 'Test', email: 'me@jurika.ma', role: 'EMPLOYE' }),
-}));
+vi.mock('../../../store/authStore', () => {
+  const user = { userId: 'me', firstName: 'Moi', lastName: 'Test', email: 'me@jurika.ma', role: 'EMPLOYE' };
+  return {
+    useCurrentUser: () => user,
+    // L6b : Page (fil d'Ariane par defaut) lit le role dans le magasin.
+    useAuthStore: (sel: (s: { user: typeof user }) => unknown) => sel({ user }),
+  };
+});
 
 // Lot L7 (E5), CDC 4.5 : forfait du cabinet (messagerie incluse sauf mention contraire).
 const forfait = vi.hoisted(() => ({ messagerie: true }));
@@ -57,7 +62,7 @@ describe('<ChatPage>', () => {
   });
 
   it("utilise un <textarea> multi-lignes pour la saisie du message", async () => {
-    render(<ChatPage />);
+    render(<ChatPage />, { wrapper: MemoryRouter });
 
     // Ouvre la liste de contacts puis sélectionne un correspondant -> active la
     // conversation, ce qui monte la zone de saisie.
@@ -75,7 +80,7 @@ describe('<ChatPage>', () => {
   });
 
   it('enregistre les listeners socket une seule fois (pas de churn)', async () => {
-    render(<ChatPage />);
+    render(<ChatPage />, { wrapper: MemoryRouter });
     await waitFor(() => expect(fakeSocket.on).toHaveBeenCalledWith('chat:message', expect.any(Function)));
     const messageBinds = fakeSocket.on.mock.calls.filter((c) => c[0] === 'chat:message').length;
 
@@ -105,7 +110,7 @@ describe('<ChatPage>', () => {
       } satisfies Conversation,
     ]);
 
-    render(<ChatPage />);
+    render(<ChatPage />, { wrapper: MemoryRouter });
 
     // Le badge de messages non lus (3) est visible dans la liste.
     const badge = await screen.findByText('3');
@@ -129,7 +134,7 @@ describe('<ChatPage>', () => {
   it('affiche le refus du serveur et rend le message a la saisie', async () => {
     const refus = 'Ce destinataire n’appartient pas à votre cabinet.';
     vi.mocked(chatService.envoyer).mockRejectedValueOnce(new Error(refus));
-    render(<ChatPage />);
+    render(<ChatPage />, { wrapper: MemoryRouter });
     fireEvent.click(await screen.findByTestId('chat-new-conversation'));
     fireEvent.click(await screen.findByTestId('chat-contact-item'));
     const input = await screen.findByTestId('chat-message-input');
@@ -149,7 +154,7 @@ describe('<ChatPage>', () => {
       id: 'm-1', conversationId: 'c-1', from: 'me', to: 'peer-1', body: 'Bonjour Sara',
       createdAt: '2026-10-13T10:00:00.000Z',
     });
-    render(<ChatPage />);
+    render(<ChatPage />, { wrapper: MemoryRouter });
     fireEvent.click(await screen.findByTestId('chat-new-conversation'));
     fireEvent.click(await screen.findByTestId('chat-contact-item'));
     const input = await screen.findByTestId('chat-message-input');
@@ -166,7 +171,7 @@ describe('<ChatPage>', () => {
   });
 
   it("porte l'aide de la messagerie interne", async () => {
-    render(<ChatPage />);
+    render(<ChatPage />, { wrapper: MemoryRouter });
     expect(await screen.findByRole('note', { name: 'Messagerie interne du cabinet' })).toBeInTheDocument();
     expect(screen.getByText(/vos clients n’ont pas accès à la messagerie/)).toBeInTheDocument();
   });
