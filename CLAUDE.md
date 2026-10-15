@@ -22,8 +22,14 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
 1. **Commits et push** : commits locaux sur une branche de lot, un par etape validee par les
    tests. Push autorise uniquement sur `lot/*` et `outillage/*` (`git push -u origin <branche>`,
    regle `allow` de `.claude/settings.json`), apres un verify complet vert. Jamais de push sur
-   `main`, jamais de fusion par Claude, jamais de reecriture d'historique. Une branche par lot.
+   `main`, jamais de fusion d'une branche dans `main` par Claude, jamais de reecriture
+   d'historique. Une branche par lot.
    Rapports factuels (ce qui est vert, ce qui est rouge, ce qui est saute -- sans arrondir).
+   **Avant chaque push** (decision du 2026-10-15, PR #42) : `git fetch origin` puis
+   `git merge origin/main` dans la branche du lot (fusion, jamais de rebase) ; conflits resolus
+   et verifies ; puis le verify complet et les conditions CI tournent sur le resultat FUSIONNE.
+   Un avertissement de modele Maven ("Some problems were encountered while building the
+   effective model", dependance declaree deux fois...) est un echec : la CI le refuse.
 2. **Cloture d'un lot** : `mvn -o clean verify -Pit` (le `clean` est obligatoire — un vert
    incremental ne prouve rien sur une suppression) + suite frontend + **lecture des documents
    produits**. Chaque defaut grave a ete trouve en ouvrant un fichier, jamais par un compteur.

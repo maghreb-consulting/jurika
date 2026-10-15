@@ -91,6 +91,11 @@ appliquees intouchables, test rouge d'abord, motif 9, verify complet avant push.
   qu'avec un verify complet **vert** ; sinon, pas de push, et le RAPPORT le dit.
 
 ## 6. Push
+- **Avant chaque push** : `git fetch origin`, puis `git merge origin/main` dans la branche du lot
+  (fusion, jamais de rebase) ; conflits resolus ; puis `mvn -B -o clean verify -Pit` complet ET en
+  conditions CI, et la suite frontend, sur le resultat FUSIONNE (Reactor Summary lu ; aucun
+  avertissement "Some problems were encountered while building the effective model"). Sinon,
+  pas de push.
 - `git push -u origin <branche du lot>` (jamais `main`). Note le lien d'ouverture de la PR affiche
   par le push.
 
