@@ -7,6 +7,7 @@ import { EmptyState } from "../ui/EmptyState";
 import { ErrorState } from "../ui/ErrorState";
 import { CardSkeleton } from "../ui/LoadingSkeleton";
 import { cn } from "../../lib/utils";
+import { useCurrentUser } from "../../store/authStore";
 
 interface DeadlinesPanelProps {
   className?: string;
@@ -24,6 +25,9 @@ type ViewState = "loading" | "ready" | "error";
 export function DeadlinesPanel({ className, ticketId, limit = 10 }: DeadlinesPanelProps) {
   const [items, setItems] = useState<Deadline[]>([]);
   const [state, setState] = useState<ViewState>("loading");
+  // Lot L6b (E7, backlog L0) : terminer ou ignorer une echeance est refuse au superviseur par
+  // le serveur (DeadlineController, EMPLOYE seul) : les boutons ne lui sont pas montres.
+  const peutAgir = useCurrentUser()?.role === "EMPLOYE";
 
   const load = useCallback(async () => {
     setState("loading");
@@ -125,6 +129,7 @@ export function DeadlinesPanel({ className, ticketId, limit = 10 }: DeadlinesPan
                   <DeadlineBadge severity={d.severity} dueAt={d.dueAt} />
                 </div>
               </div>
+              {peutAgir && (
               <div className="flex shrink-0 items-center gap-1">
                 <button
                   type="button"
@@ -143,6 +148,7 @@ export function DeadlinesPanel({ className, ticketId, limit = 10 }: DeadlinesPan
                   <X className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
+              )}
             </li>
           ))}
         </ul>

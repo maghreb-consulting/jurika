@@ -1,25 +1,36 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Loader2, Inbox, CheckCircle2, Clock, Send, FileUp, X } from 'lucide-react';
+import { CheckCircle2, Clock, FileUp, Inbox, Send } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { Card } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Lien } from '../../components/ui/Lien';
+import { Message } from '../../components/ui/Message';
+import { Modal } from '../../components/ui/Modal';
+import { ZoneTexte } from '../../components/ui/TextField';
+import { CardSkeleton, Skeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
+import { Page } from '../../components/layout/Page';
 import { dataroomService } from '../../services/dataroom.service';
 import { formatDateTime } from '../../lib/date';
 import type { DossierBrief, RequeteSummary, RequeteStatut } from '../../types/dataroom';
 import { TYPE_REQUETE_LABELS } from '../../types/dataroom';
 
 /**
- * Lot AG — Ecran CLIENT « Demandes de mon conseiller » (requetes EMPLOYE_TO_CLIENT).
+ * Lot AG : ecran CLIENT "Requetes du cabinet" (requetes EMPLOYE_TO_CLIENT).
  *
- * <p>3 colonnes : « A faire » (OUVERTE + A_COMPLETER) / « En attente de validation »
- * (REPONDUE) / « Termine » (CLOTUREE). Le client repond/fournit -> REPONDUE. C'est
+ * <p>3 colonnes : "A faire" (OUVERTE + A_COMPLETER) / "En attente de validation"
+ * (REPONDUE) / "Termine" (CLOTUREE). Le client repond/fournit -> REPONDUE. C'est
  * l'employe qui valide (CLOTUREE) ou demande un complement (A_COMPLETER).
- * Ecran SEPARE de « Mes demandes » (client -> employe), qui reste inchange.
+ * Ecran SEPARE de "Mes demandes" (client -> employe).
+ *
+ * Lot L6b (E7) : structure commune <Page>, composants de la bibliotheque, <dialog>.
  */
 type Column = { key: 'A_FAIRE' | 'ATTENTE' | 'TERMINE'; label: string; match: RequeteStatut[]; accent: string };
 
 const COLUMNS: Column[] = [
-  { key: 'A_FAIRE', label: 'À faire', match: ['OUVERTE', 'A_COMPLETER'], accent: 'border-amber-500' },
-  { key: 'ATTENTE', label: 'En attente de validation', match: ['REPONDUE'], accent: 'border-accent' },
-  { key: 'TERMINE', label: 'Terminé', match: ['CLOTUREE'], accent: 'border-emerald-500' },
+  { key: 'A_FAIRE', label: 'À faire', match: ['OUVERTE', 'A_COMPLETER'], accent: 'border-l-warning' },
+  { key: 'ATTENTE', label: 'En attente de validation', match: ['REPONDUE'], accent: 'border-l-info' },
+  { key: 'TERMINE', label: 'Terminé', match: ['CLOTUREE'], accent: 'border-l-success' },
 ];
 
 export function MesRequetes() {
@@ -57,52 +68,53 @@ export function MesRequetes() {
     return map;
   }, [requetes]);
 
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-fg-subtle" />
-      </div>
-    );
-  }
-
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h2 className="font-heading text-2xl font-semibold text-fg">Requêtes du cabinet</h2>
-        <p className="text-sm text-fg-subtle">
-          Ce que votre conseiller attend de vous : une pièce à fournir ou une réponse. Répondez à chaque
-          requête « À faire » ; votre conseiller valide ensuite votre réponse.
-        </p>
-      </div>
-
-      {requetes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg-raised py-16 text-center">
-          <Inbox className="mb-3 h-10 w-10 text-fg-subtle" />
-          <p className="text-sm text-fg-muted">Aucune requête pour le moment : votre conseiller n’attend rien de vous.</p>
-        </div>
+    <Page
+      titre="Requêtes du cabinet"
+      description="Ce que votre conseiller attend de vous : une pièce à fournir ou une réponse. Répondez à chaque requête « À faire » ; votre conseiller valide ensuite votre réponse."
+    >
+      {loading ? (
+        <SqueletteZone libelle="Chargement des requêtes…">
+          <div className="grid gap-4 md:grid-cols-3">
+            {COLUMNS.map((c) => (
+              <div key={c.key} className="space-y-2">
+                <Skeleton className="h-10 rounded-lg" />
+                <CardSkeleton />
+              </div>
+            ))}
+          </div>
+        </SqueletteZone>
+      ) : requetes.length === 0 ? (
+        <Card padding={false}>
+          <EmptyState
+            icon={<Inbox />}
+            title="Rien à faire pour l’instant"
+            description="Aucune requête pour le moment : votre conseiller n’attend rien de vous."
+          />
+        </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-3">
           {COLUMNS.map((col) => (
-            <div key={col.key}>
-              <div className={`mb-3 rounded-t-lg border-t-4 bg-bg-overlay px-3 py-2 ${col.accent}`}>
-                <h3 className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-fg-subtle">
+            <section key={col.key} aria-labelledby={`requetes-${col.key}`} className="flex min-w-0 flex-col gap-2">
+              <div className={`flex items-center justify-between rounded-r-lg border border-border border-l-4 bg-bg-raised px-3 py-2 shadow-card ${col.accent}`}>
+                <h2 id={`requetes-${col.key}`} className="text-sm font-semibold text-heading">
                   {col.label}
-                  <span className="rounded-full bg-bg-raised px-2 py-0.5 text-[10px] font-bold text-fg-muted">
-                    {byColumn[col.key].length}
-                  </span>
-                </h3>
+                </h2>
+                <span className="rounded-full bg-bg-overlay px-2 py-0.5 text-xs font-semibold tabular-nums text-fg-muted">
+                  {byColumn[col.key].length}
+                </span>
               </div>
-              <div className="space-y-3">
+              <div className="flex flex-col gap-2">
                 {byColumn[col.key].length === 0 && (
-                  <div className="rounded-lg border border-dashed border-border bg-bg-raised p-4 text-center text-xs text-fg-subtle">
+                  <p className="rounded-lg border border-dashed border-border-hi px-2 py-6 text-center text-xs text-fg-muted">
                     Aucune requête
-                  </div>
+                  </p>
                 )}
                 {byColumn[col.key].map((r) => (
                   <RequeteCard key={r.id} r={r} onOpen={() => setActive(r)} />
                 ))}
               </div>
-            </div>
+            </section>
           ))}
         </div>
       )}
@@ -117,49 +129,41 @@ export function MesRequetes() {
           }}
         />
       )}
-    </div>
+    </Page>
   );
 }
 
 function RequeteCard({ r, onOpen }: { r: RequeteSummary; onOpen: () => void }) {
   const actionnable = r.statut === 'OUVERTE' || r.statut === 'A_COMPLETER';
   return (
-    <div className="rounded-lg border border-border bg-bg-raised p-4 shadow-sm">
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="rounded bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
-          {r.typeRequete ? TYPE_REQUETE_LABELS[r.typeRequete] : 'Requête'}
-        </span>
-        <span className="text-[10px] text-fg-subtle">
-          Envoyée {formatDateTime(r.createdAt)}
-        </span>
+    <div className="min-w-0 rounded-lg border border-border bg-bg-raised p-4 shadow-card">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <Badge variant="neutral">{(r.typeRequete && TYPE_REQUETE_LABELS[r.typeRequete]) || 'Requête'}</Badge>
+        <span className="text-[11px] text-fg-muted">Envoyée {formatDateTime(r.createdAt)}</span>
       </div>
-      <p className="text-sm font-semibold text-fg">{r.sujet}</p>
-      {r.description && <p className="mt-1 line-clamp-3 text-xs text-fg-subtle">{r.description}</p>}
+      <p className="break-words text-sm font-semibold text-fg">{r.sujet}</p>
+      {r.description && <p className="mt-1 line-clamp-3 break-words text-xs text-fg-muted">{r.description}</p>}
       {r.statut === 'A_COMPLETER' && r.noteInterne && (
-        <p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-800">
+        <Message ton="attention" className="mt-2">
           Complément demandé : {r.noteInterne}
-        </p>
+        </Message>
       )}
       {r.statut === 'REPONDUE' && (
-        <p className="mt-2 flex flex-wrap items-center gap-1 text-xs text-fg-subtle">
-          <Clock className="h-3.5 w-3.5" /> En attente de validation
+        <p className="mt-2 flex flex-wrap items-center gap-1 text-xs text-fg-muted">
+          <Clock className="h-3.5 w-3.5" aria-hidden="true" /> En attente de validation
           {r.reponduAt && <span>· répondue le {formatDateTime(r.reponduAt)}</span>}
         </p>
       )}
       {r.statut === 'CLOTUREE' && (
-        <p className="mt-2 flex flex-wrap items-center gap-1 text-xs text-emerald-600">
-          <CheckCircle2 className="h-3.5 w-3.5" /> Terminé
+        <p className="mt-2 flex flex-wrap items-center gap-1 text-xs text-success">
+          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> Terminé
           {r.clotureAt && <span>le {formatDateTime(r.clotureAt)}</span>}
         </p>
       )}
       {actionnable && (
-        <button
-          type="button"
-          onClick={onOpen}
-          className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-bg transition hover:bg-accent-hover"
-        >
-          <Send className="h-3.5 w-3.5" /> Répondre / Fournir
-        </button>
+        <Button type="button" size="sm" className="mt-3" icon={<Send />} onClick={onOpen}>
+          Répondre / Fournir
+        </Button>
       )}
     </div>
   );
@@ -174,7 +178,6 @@ function RepondreModal({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const navigate = useNavigate();
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -187,76 +190,55 @@ function RepondreModal({
       await dataroomService.repondreRequete(requete.id, { noteClient: note.trim() || undefined });
       onDone();
     } catch {
-      setError("L’envoi de votre réponse a échoué. Réessayez.");
+      setError('L’envoi de votre réponse a échoué. Réessayez.');
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-md rounded-xl bg-bg-raised p-5 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-3 flex items-start justify-between">
-          <div>
-            <h3 className="text-base font-semibold text-fg">Répondre à la requête</h3>
-            <p className="text-xs text-fg-subtle">{requete.sujet}</p>
-          </div>
-          <button type="button" onClick={onClose} className="text-fg-subtle hover:text-fg">
-            <X className="h-5 w-5" />
-          </button>
+    <Modal
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title="Répondre à la requête"
+      description={requete.sujet}
+      size="md"
+      closeOnBackdrop={false}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button type="button" icon={<Send />} loading={submitting} onClick={submit}>
+            Envoyer
+          </Button>
         </div>
-
+      }
+    >
+      <div className="space-y-4">
         {estPiece && (
-          <div className="mb-3 rounded-lg bg-accent/5 p-3 text-xs text-fg-muted">
-            <p className="flex items-start gap-2">
-              <FileUp className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
-              Pièce à fournir : déposez d’abord le document dans votre Data Room, onglet « Dépôts du client », puis
-              confirmez ci-dessous. Votre conseiller validera ensuite.
-            </p>
-            <button
-              type="button"
-              onClick={() => navigate('/data-rooms?tab=depots')}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent transition hover:bg-accent/20"
-            >
-              <FileUp className="h-3.5 w-3.5" /> Aller à mes Dépôts
-            </button>
-          </div>
+          <Message
+            ton="info"
+            titre="Pièce à fournir"
+            action={
+              <Lien to="/data-rooms?tab=depots" commeBouton={{ variant: 'secondary', size: 'sm' }}>
+                <FileUp className="h-4 w-4" aria-hidden="true" /> Aller à mes dépôts
+              </Lien>
+            }
+          >
+            Déposez d’abord le document dans votre Data Room, onglet « Dépôts du client », puis confirmez
+            ci-dessous. Votre conseiller validera ensuite.
+          </Message>
         )}
-
-        <label className="mb-1 block text-xs font-medium text-fg-subtle">
-          {estPiece ? 'Message (facultatif)' : 'Votre réponse'}
-        </label>
-        <textarea
+        <ZoneTexte
+          label={estPiece ? 'Message (facultatif)' : 'Votre réponse'}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={4}
+          autoFocus
           placeholder={estPiece ? 'Exemple : document déposé dans mes dépôts.' : 'Votre réponse…'}
-          className="w-full resize-none rounded-lg border border-border bg-bg-raised px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
         />
-
-        {error && <p className="mt-2 text-xs text-danger">{error}</p>}
-
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-border px-3 py-1.5 text-sm text-fg-subtle transition hover:bg-bg-overlay"
-          >
-            Annuler
-          </button>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={submitting}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-bg transition hover:bg-accent-hover disabled:opacity-60"
-          >
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Envoyer
-          </button>
-        </div>
+        {error && <Message ton="erreur">{error}</Message>}
       </div>
-    </div>
+    </Modal>
   );
 }

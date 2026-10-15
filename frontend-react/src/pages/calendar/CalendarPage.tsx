@@ -1,20 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  AlertCircle,
-  Calendar as CalendarIcon,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-  X,
-} from 'lucide-react';
+import { CalendarX, Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Drawer } from '../../components/ui/Drawer';
 import { deadlineService } from '../../services/deadline.service';
 import { ticketService } from '../../services/ticket.service';
 import { extractError } from '../../lib/api';
 import type { Deadline, DeadlineSeverity } from '../../types/deadline';
-import type { Ticket } from '../../types/ticket';
+import type { Ticket, TicketPriorite } from '../../types/ticket';
 import {
   PRIORITE_TOKENS,
   PRIORITE_ORDER,
@@ -26,6 +18,13 @@ import {
 import { STATUT_LABELS, TICKET_TYPE_LABELS } from '../../types/ticket';
 import { TicketDetailDrawer } from '../tickets/TicketDetailDrawer';
 import { TexteAide } from '../../components/ui/Aide';
+import { useCurrentUser } from '../../store/authStore';
+import { Page } from '../../components/layout/Page';
+import { Message } from '../../components/ui/Message';
+import { Lien } from '../../components/ui/Lien';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Skeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
+import { ChoixSegmente } from '../../components/tickets/ChoixSegmente';
 
 /** Lot L6 (E9) : libelles des codes d'une echeance (jamais le code brut a l'ecran). */
 const STATUT_ECHEANCE: Record<string, string> = { OUVERTE: 'Ouverte', TERMINEE: 'Traitée', IGNOREE: 'Ignorée' };
@@ -58,25 +57,20 @@ const REGLE_ECHEANCE: Record<string, string> = {
 type ViewMode = 'month' | 'week';
 type CalendarSource = 'tickets' | 'deadlines';
 
-const SEVERITY_TOKENS: Record<DeadlineSeverity, { dot: string; chip: string; ring: string; label: string }> = {
-  INFO: {
-    dot: 'bg-sky-500',
-    chip: 'bg-sky-500/15 text-sky-700 border-sky-200',
-    ring: 'ring-sky-300',
-    label: 'Info',
-  },
-  WARNING: {
-    dot: 'bg-amber-500',
-    chip: 'bg-amber-500/15 text-amber-800 border-amber-200',
-    ring: 'ring-amber-300',
-    label: 'Attention',
-  },
-  CRITICAL: {
-    dot: 'bg-rose-600',
-    chip: 'bg-rose-600/15 text-rose-700 border-rose-200',
-    ring: 'ring-rose-300',
-    label: 'Critique',
-  },
+// Lot L6b (E7) : teintes des jetons (paires texte / fond des badges, contraste AA dans les
+// deux themes) ; le libelle accompagne toujours la couleur.
+const SEVERITY_TOKENS: Record<DeadlineSeverity, { chip: string; label: string }> = {
+  INFO: { chip: 'bg-info-soft text-info border-info/30', label: 'Information' },
+  WARNING: { chip: 'bg-warning-soft text-warning border-warning/30', label: 'Attention' },
+  CRITICAL: { chip: 'bg-danger-soft text-danger border-danger/30', label: 'Critique' },
+};
+
+/** Teinte d'un ticket selon sa priorite (les libelles restent ceux de calendarBucketing). */
+const PUCES_PRIORITE: Record<TicketPriorite, string> = {
+  URGENTE: 'bg-danger-soft text-danger border-danger/30',
+  HAUTE: 'bg-warning-soft text-warning border-warning/30',
+  NORMALE: 'bg-info-soft text-info border-info/30',
+  BASSE: 'bg-bg-overlay text-fg-muted border-border',
 };
 
 const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -121,6 +115,9 @@ export function CalendarPage() {
   // Vue echeances metier : detail Deadline (legacy).
   const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(null);
   const [acting, setActing] = useState(false);
+  // Lot L6b (E7, backlog L0) : traiter ou ignorer une echeance est refuse au superviseur par
+  // le serveur (DeadlineController, EMPLOYE seul) : les boutons ne lui sont pas montres.
+  const peutAgir = useCurrentUser()?.role === 'EMPLOYE';
 
   const range = useMemo(() => {
     if (view === 'week') {
@@ -239,143 +236,120 @@ export function CalendarPage() {
     selectedDay != null ? ticketsByDay.get(dayKey(selectedDay)) ?? null : null;
 
   return (
-    <div className="space-y-4" data-testid="calendar-page">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold text-fg">
-            <CalendarIcon className="h-6 w-6 text-accent" /> Calendrier
-          </h1>
-          <p className="text-sm text-fg-muted">
-            {source === 'tickets'
-              ? 'Les échéances des tickets, par priorité. Cliquez sur un jour pour en voir la liste, sur un ticket pour son détail.'
-              : 'Les échéances ouvertes du cabinet (délais légaux, formalités). Cliquez sur une échéance pour la marquer traitée ou l’ignorer.'}
+    <Page
+      titre="Calendrier"
+      description={
+        source === 'tickets'
+          ? 'Les échéances des tickets, par priorité. Cliquez sur un jour pour en voir la liste, sur un ticket pour son détail.'
+          : 'Les échéances ouvertes du cabinet (délais légaux, formalités). Cliquez sur une échéance pour la marquer traitée ou l’ignorer.'
+      }
+      aide={
+        <TexteAide cle="calendrier" titre="Lire le calendrier">
+          <p>
+            La vue « Tickets » place chaque ticket à sa date d’échéance, coloré selon sa priorité ; un
+            ticket clos ou annulé est barré. La vue « Échéances du cabinet » réunit les délais à
+            surveiller : marquez une échéance traitée une fois la formalité accomplie. Les flèches
+            changent de mois ou de semaine ; « Aujourd’hui » y revient.
           </p>
-        </div>
-
+        </TexteAide>
+      }
+    >
+    <div className="space-y-4" data-testid="calendar-page">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          {/* Toggle source : tickets (defaut) vs echeances metier (legacy) */}
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-bg-raised p-1">
-            <button
-              type="button"
-              onClick={() => setSource('tickets')}
-              className={`rounded px-3 py-1 text-xs font-semibold ${
-                source === 'tickets' ? 'bg-accent text-bg' : 'text-fg-muted hover:bg-bg-overlay'
-              }`}
-              data-testid="cal-source-tickets"
-            >
-              Tickets
-            </button>
-            <button
-              type="button"
-              onClick={() => setSource('deadlines')}
-              className={`rounded px-3 py-1 text-xs font-semibold ${
-                source === 'deadlines' ? 'bg-accent text-bg' : 'text-fg-muted hover:bg-bg-overlay'
-              }`}
-              data-testid="cal-source-deadlines"
-            >
-              Échéances du cabinet
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-bg-raised p-1">
-            <button
-              type="button"
-              onClick={() => setView('month')}
-              className={`rounded px-3 py-1 text-xs font-semibold ${
-                view === 'month' ? 'bg-accent text-bg' : 'text-fg-muted hover:bg-bg-overlay'
-              }`}
-              data-testid="cal-view-month"
-            >
-              Mois
-            </button>
-            <button
-              type="button"
-              onClick={() => setView('week')}
-              className={`rounded px-3 py-1 text-xs font-semibold ${
-                view === 'week' ? 'bg-accent text-bg' : 'text-fg-muted hover:bg-bg-overlay'
-              }`}
-              data-testid="cal-view-week"
-            >
-              Semaine
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => (view === 'month' ? navMonth(-1) : navWeek(-1))}
-              aria-label="Période précédente"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => setCursor(new Date())}>
-              Aujourd’hui
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => (view === 'month' ? navMonth(1) : navWeek(1))}
-              aria-label="Période suivante"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-          <span className="rounded-lg border border-border bg-bg-raised px-3 py-1 text-sm font-semibold capitalize text-fg">
-            {formatMonthYear(cursor)}
-          </span>
+          <ChoixSegmente
+            libelle="Ce que montre le calendrier"
+            valeur={source}
+            onChange={setSource}
+            options={[
+              { valeur: 'tickets', libelle: 'Tickets', testId: 'cal-source-tickets' },
+              { valeur: 'deadlines', libelle: 'Échéances du cabinet', testId: 'cal-source-deadlines' },
+            ]}
+          />
+          <ChoixSegmente
+            libelle="Période affichée"
+            valeur={view}
+            onChange={setView}
+            options={[
+              { valeur: 'month', libelle: 'Mois', testId: 'cal-view-month' },
+              { valeur: 'week', libelle: 'Semaine', testId: 'cal-view-week' },
+            ]}
+          />
         </div>
-      </header>
 
-      <TexteAide cle="calendrier" titre="Lire le calendrier">
-        <p>
-          La vue « Tickets » place chaque ticket à sa date d’échéance, coloré selon sa priorité ; un
-          ticket clos ou annulé est barré. La vue « Échéances du cabinet » réunit les délais à
-          surveiller : marquez une échéance traitée une fois la formalité accomplie. Les flèches
-          changent de mois ou de semaine ; « Aujourd’hui » y revient.
-        </p>
-      </TexteAide>
-
-      {/* Legende */}
-      <div className="flex flex-wrap items-center gap-3 text-xs text-fg-muted">
-        {source === 'tickets'
-          ? PRIORITE_ORDER.map((p) => (
-              <span key={p} className="flex items-center gap-1.5">
-                <span className={`h-2 w-2 rounded-full ${PRIORITE_TOKENS[p].dot}`} />
-                {PRIORITE_TOKENS[p].label}
-              </span>
-            ))
-          : (Object.keys(SEVERITY_TOKENS) as DeadlineSeverity[]).map((s) => (
-              <span key={s} className="flex items-center gap-1.5">
-                <span className={`h-2 w-2 rounded-full ${SEVERITY_TOKENS[s].dot}`} />
-                {SEVERITY_TOKENS[s].label}
-              </span>
-            ))}
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            iconOnly
+            onClick={() => (view === 'month' ? navMonth(-1) : navWeek(-1))}
+            aria-label="Période précédente"
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          <Button type="button" variant="secondary" size="sm" onClick={() => setCursor(new Date())}>
+            Aujourd’hui
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            iconOnly
+            onClick={() => (view === 'month' ? navMonth(1) : navWeek(1))}
+            aria-label="Période suivante"
+          >
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          <h2 className="min-w-[10rem] text-base font-semibold capitalize text-heading" aria-live="polite">
+            {formatMonthYear(cursor)}
+          </h2>
+        </div>
       </div>
 
+      {/* Legende : la couleur est toujours accompagnee de son libelle. */}
+      <ul className="flex flex-wrap items-center gap-2 text-xs" aria-label="Légende">
+        {source === 'tickets'
+          ? PRIORITE_ORDER.map((p) => (
+              <li key={p} className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-medium ${PUCES_PRIORITE[p]}`}>
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+                Priorité {PRIORITE_TOKENS[p].label.toLowerCase()}
+              </li>
+            ))
+          : (Object.keys(SEVERITY_TOKENS) as DeadlineSeverity[]).map((s) => (
+              <li key={s} className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-medium ${SEVERITY_TOKENS[s].chip}`}>
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+                {SEVERITY_TOKENS[s].label}
+              </li>
+            ))}
+      </ul>
+
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-          <AlertCircle className="h-4 w-4" /> {error}
-        </div>
+        <Message ton="erreur" onFermer={() => setError(null)}>
+          {error}
+        </Message>
       )}
 
       {/* Grille */}
-      <div className="overflow-hidden rounded-2xl border border-border bg-bg-raised">
-        <div className="grid grid-cols-7 bg-bg-overlay">
+      <div className="overflow-hidden rounded-xl border border-border bg-bg-raised shadow-card">
+        <div className="grid grid-cols-7 border-b border-border bg-bg-overlay" aria-hidden="true">
           {DAY_LABELS.map((l) => (
-            <div
-              key={l}
-              className="px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-fg-subtle"
-            >
+            <div key={l} className="px-2 py-2 text-center text-xs font-semibold text-fg-muted">
               {l}
             </div>
           ))}
         </div>
 
         {loading && tickets.length === 0 && items.length === 0 ? (
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-accent" />
-          </div>
+          <SqueletteZone libelle="Chargement du calendrier…">
+            <div className="grid grid-cols-7">
+              {Array.from({ length: view === 'week' ? 7 : 35 }).map((_, i) => (
+                <div key={i} className="min-h-[110px] border-b border-r border-border p-1.5">
+                  <Skeleton className="h-3 w-5" />
+                </div>
+              ))}
+            </div>
+          </SqueletteZone>
         ) : (
           <div className="grid grid-cols-7">
             {days.map((d, idx) => {
@@ -386,9 +360,10 @@ export function CalendarPage() {
                 <div
                   key={idx}
                   data-testid="cal-day-cell"
-                  className={`relative min-h-[110px] border border-border/40 p-1.5 text-xs ${
-                    offMonth ? 'bg-bg-overlay/40 text-fg-subtle' : 'bg-bg-raised text-fg'
-                  } ${isToday ? 'ring-2 ring-accent/40' : ''}`}
+                  aria-current={isToday ? 'date' : undefined}
+                  className={`relative min-h-[110px] min-w-0 border-b border-r border-border p-1.5 text-xs ${
+                    offMonth ? 'bg-bg-overlay text-fg-muted' : 'bg-bg-raised text-fg'
+                  } ${isToday ? 'outline-2 -outline-offset-2 outline-accent' : ''}`}
                 >
                   {source === 'tickets'
                     ? renderTicketCell(d, key, isToday)
@@ -399,7 +374,6 @@ export function CalendarPage() {
           </div>
         )}
       </div>
-
       {/* Panneau liste des tickets d'un jour (vue tickets) */}
       <Drawer
         open={selectedDay != null}
@@ -419,24 +393,21 @@ export function CalendarPage() {
                   type="button"
                   data-testid="cal-day-ticket"
                   onClick={() => setSelectedTicketId(t.id)}
-                  className={`flex w-full items-start gap-2 rounded-lg border border-border bg-bg-raised px-3 py-2 text-left transition hover:bg-bg-overlay ${
-                    done ? 'opacity-60' : ''
-                  }`}
+                  className="flex w-full items-start gap-2 rounded-lg border border-border bg-bg-raised px-3 py-2 text-left transition-colors duration-150 hover:bg-bg-overlay"
                 >
-                  <span className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${tok.dot}`} />
                   <span className="min-w-0 flex-1">
                     <span className={`block truncate text-sm font-medium text-fg ${done ? 'line-through' : ''}`}>
                       {t.titre}
                     </span>
-                    <span className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-fg-subtle">
+                    <span className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-fg-muted">
                       <span className="font-mono">{t.reference}</span>
                       <span>· {TICKET_TYPE_LABELS[t.type]}</span>
                       <span
-                        className={`rounded-full border px-1.5 py-0.5 font-semibold ${tok.chip}`}
+                        className={`rounded-full border px-1.5 py-0.5 font-semibold ${PUCES_PRIORITE[t.priorite]}`}
                       >
                         {tok.label}
                       </span>
-                      <span>· {STATUT_LABELS[t.statut]}</span>
+                      <span>· {STATUT_LABELS[t.statut]}{done ? ' (terminé)' : ''}</span>
                     </span>
                   </span>
                 </button>
@@ -444,7 +415,7 @@ export function CalendarPage() {
             })}
           </div>
         ) : (
-          <p className="py-8 text-center text-sm text-fg-subtle">Aucun ticket n’arrive à échéance ce jour.</p>
+          <EmptyState compact icon={<CalendarX />} title="Aucun ticket ce jour" description="Aucun ticket n’arrive à échéance ce jour." />
         )}
       </Drawer>
 
@@ -469,61 +440,67 @@ export function CalendarPage() {
           <div className="space-y-4">
             <div>
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold ${
                   SEVERITY_TOKENS[selectedDeadline.severity].chip
                 }`}
               >
-                <span className={`h-1.5 w-1.5 rounded-full ${SEVERITY_TOKENS[selectedDeadline.severity].dot}`} />
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
                 {SEVERITY_TOKENS[selectedDeadline.severity].label}
               </span>
             </div>
 
-            <h3 className="text-lg font-semibold text-fg">{selectedDeadline.title}</h3>
+            <h3 className="text-lg font-semibold text-heading">{selectedDeadline.title}</h3>
             {selectedDeadline.description && (
               <p className="whitespace-pre-wrap text-sm text-fg-muted">{selectedDeadline.description}</p>
             )}
 
             <dl className="space-y-2 rounded-lg border border-border bg-bg-overlay p-3 text-sm">
               <div className="flex justify-between gap-3">
-                <dt className="text-fg-subtle">Statut</dt>
+                <dt className="text-fg-muted">Statut</dt>
                 <dd className="font-medium text-fg">{STATUT_ECHEANCE[selectedDeadline.statut] ?? selectedDeadline.statut}</dd>
               </div>
               {selectedDeadline.ruleKey && (
                 <div className="flex justify-between gap-3">
-                  <dt className="text-fg-subtle">Règle</dt>
+                  <dt className="text-fg-muted">Règle</dt>
                   <dd className="text-xs text-fg">{REGLE_ECHEANCE[selectedDeadline.ruleKey] ?? selectedDeadline.ruleKey}</dd>
                 </div>
               )}
               <div className="flex justify-between gap-3">
-                <dt className="text-fg-subtle">Source</dt>
+                <dt className="text-fg-muted">Source</dt>
                 <dd className="text-fg">{SOURCE_ECHEANCE[selectedDeadline.source] ?? selectedDeadline.source}</dd>
               </div>
               {selectedDeadline.ticketId && (
                 <div className="flex justify-between gap-3">
-                  <dt className="text-fg-subtle">Ticket</dt>
-                  <dd className="font-mono text-xs text-fg">{selectedDeadline.ticketId.slice(0, 8)}</dd>
+                  <dt className="text-fg-muted">Ticket</dt>
+                  <dd className="text-fg">
+                    <Lien to={`/tickets/${selectedDeadline.ticketId}`}>Ouvrir la page du ticket</Lien>
+                  </dd>
                 </div>
               )}
             </dl>
 
-            {selectedDeadline.statut === 'OUVERTE' && (
+            {selectedDeadline.statut === 'OUVERTE' && peutAgir && (
               <div className="flex gap-2">
                 <Button
+                  type="button"
+                  icon={<Check />}
                   onClick={() => handleComplete(selectedDeadline)}
                   loading={acting}
                   disabled={acting}
                   data-testid="cal-action-complete"
                 >
-                  <Check className="mr-1 h-4 w-4" /> Marquer comme traitée
+                  Marquer comme traitée
                 </Button>
                 <Button
+                  type="button"
                   variant="secondary"
+                  icon={<X />}
                   onClick={() => handleDismiss(selectedDeadline)}
                   loading={acting}
                   disabled={acting}
                   data-testid="cal-action-dismiss"
                 >
-                  <X className="mr-1 h-4 w-4" /> Ignorer
+                  Ignorer
                 </Button>
               </div>
             )}
@@ -531,6 +508,7 @@ export function CalendarPage() {
         )}
       </Drawer>
     </div>
+    </Page>
   );
 
   // --- Rendu d'une cellule jour (vue tickets) ---
@@ -543,13 +521,14 @@ export function CalendarPage() {
           type="button"
           onClick={() => dayTickets.length > 0 && setSelectedDay(d)}
           disabled={dayTickets.length === 0}
-          className="mb-1 flex w-full items-center justify-between disabled:cursor-default"
+          aria-label={dayTickets.length > 0 ? `${d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} : ${dayTickets.length} ticket(s), voir la liste` : undefined}
+          className="mb-1 flex w-full items-center justify-between rounded disabled:cursor-default"
         >
-          <span className={`text-[11px] font-semibold ${isToday ? 'text-accent' : ''}`}>
+          <span className={`text-xs font-semibold ${isToday ? 'text-accent' : ''}`}>
             {d.getDate()}
           </span>
           {dayTickets.length > 0 && (
-            <span className="rounded-full bg-bg-overlay px-1.5 text-[9px] font-semibold text-fg-subtle">
+            <span className="rounded-full bg-bg-overlay px-1.5 text-[11px] font-semibold text-fg-muted">
               {dayTickets.length}
             </span>
           )}
@@ -561,10 +540,11 @@ export function CalendarPage() {
             {PRIORITE_ORDER.filter((p) => bucket.counts[p] > 0).map((p) => (
               <span
                 key={p}
-                className="flex items-center gap-0.5 text-[9px] text-fg-subtle"
+                className={`inline-flex items-center gap-0.5 rounded-full border px-1 text-[10px] font-semibold ${PUCES_PRIORITE[p]}`}
                 title={`${bucket.counts[p]} ${PRIORITE_TOKENS[p].label}`}
               >
-                <span className={`h-1.5 w-1.5 rounded-full ${PRIORITE_TOKENS[p].dot}`} />
+                <span className="sr-only">{PRIORITE_TOKENS[p].label} : </span>
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
                 {bucket.counts[p]}
               </span>
             ))}
@@ -581,13 +561,14 @@ export function CalendarPage() {
                 type="button"
                 data-testid="cal-ticket-chip"
                 onClick={() => setSelectedTicketId(t.id)}
-                className={`flex items-center gap-1.5 truncate rounded border px-1.5 py-0.5 text-[10px] font-medium ${tok.chip} ${
-                  done ? 'opacity-50 line-through' : 'hover:ring-1'
-                } ${tok.ring}`}
-                title={`${t.reference} — ${t.titre}`}
+                className={`flex min-w-0 items-center gap-1.5 rounded border px-1.5 py-0.5 text-left text-[11px] font-medium ${PUCES_PRIORITE[t.priorite]} ${
+                  done ? 'line-through' : 'hover:border-current'
+                }`}
+                title={`${t.reference} — ${t.titre} (priorité ${tok.label.toLowerCase()}${done ? ', terminé' : ''})`}
               >
-                <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${tok.dot}`} />
+                <span aria-hidden="true" className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current" />
                 <span className="truncate">{t.titre}</span>
+                <span className="sr-only"> (priorité {tok.label.toLowerCase()}{done ? ', terminé' : ''})</span>
               </button>
             );
           })}
@@ -595,7 +576,7 @@ export function CalendarPage() {
             <button
               type="button"
               onClick={() => setSelectedDay(d)}
-              className="text-[10px] text-fg-subtle hover:text-accent"
+              className="rounded text-left text-[11px] font-medium text-fg-muted underline underline-offset-2 hover:text-fg"
             >
               +{dayTickets.length - 3} autres
             </button>
@@ -611,10 +592,10 @@ export function CalendarPage() {
     return (
       <>
         <div className="mb-1 flex items-center justify-between">
-          <span className={`text-[11px] font-semibold ${isToday ? 'text-accent' : ''}`}>
+          <span className={`text-xs font-semibold ${isToday ? 'text-accent' : ''}`}>
             {_d.getDate()}
           </span>
-          {dayItems.length > 0 && <span className="text-[9px] text-fg-subtle">{dayItems.length}</span>}
+          {dayItems.length > 0 && <span className="text-[11px] text-fg-muted">{dayItems.length}</span>}
         </div>
         <div className="flex flex-col gap-1">
           {dayItems.slice(0, 3).map((it) => {
@@ -626,13 +607,14 @@ export function CalendarPage() {
                 type="button"
                 data-testid="cal-deadline-chip"
                 onClick={() => setSelectedDeadline(it)}
-                className={`flex items-center gap-1.5 truncate rounded border px-1.5 py-0.5 text-[10px] font-medium ${tok.chip} ${
-                  done ? 'opacity-50 line-through' : 'hover:ring-1'
-                } ${tok.ring}`}
-                title={it.title}
+                className={`flex min-w-0 items-center gap-1.5 rounded border px-1.5 py-0.5 text-left text-[11px] font-medium ${tok.chip} ${
+                  done ? 'line-through' : 'hover:border-current'
+                }`}
+                title={`${it.title} (${tok.label.toLowerCase()})`}
               >
-                <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${tok.dot}`} />
+                <span aria-hidden="true" className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-current" />
                 <span className="truncate">{it.title}</span>
+                <span className="sr-only"> ({tok.label.toLowerCase()})</span>
               </button>
             );
           })}
@@ -640,7 +622,7 @@ export function CalendarPage() {
             <button
               type="button"
               onClick={() => setSelectedDeadline(dayItems[3])}
-              className="text-[10px] text-fg-subtle hover:text-accent"
+              className="rounded text-left text-[11px] font-medium text-fg-muted underline underline-offset-2 hover:text-fg"
             >
               +{dayItems.length - 3} autres
             </button>

@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Check, FolderCheck, UserCog } from 'lucide-react';
 import { dataroomService } from '../../services/dataroom.service';
 import { authService } from '../../services/auth.service';
 import { extractError } from '../../lib/api';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { Card } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Lien } from '../../components/ui/Lien';
+import { Message } from '../../components/ui/Message';
+import { Tableau, type ColonneTableau } from '../../components/ui/Tableau';
+import { Page } from '../../components/layout/Page';
 import type { ReaffectationVue } from '../../types/dataroom';
 import type { WorkspaceUser } from '../../types/auth';
 import { dateFr } from '../dataroom/components/responsables';
@@ -81,96 +88,113 @@ export function DossiersAVerifierPage() {
 
   const aVerifier = lignes?.filter((l) => !l.verifieLe).length ?? 0;
 
+  const colonnes: ColonneTableau<ReaffectationVue>[] = [
+    {
+      cle: 'dossier',
+      titre: 'Dossier',
+      rendu: (l) => (
+        <div className="min-w-0">
+          <Lien to={`/data-rooms?dossier=${l.dossierId}`}>{l.raisonSociale}</Lien>
+          <p className="text-xs text-fg-muted">Désigné le {dateFr(l.createdAt)}</p>
+        </div>
+      ),
+    },
+    { cle: 'designe', titre: 'Employé désigné', rendu: (l) => nom(l.nouveauResponsableNom) },
+    { cle: 'actuel', titre: 'Responsable actuel', rendu: (l) => nom(l.responsableActuelNom), masquerSous: 'md' },
+    {
+      cle: 'verification',
+      titre: 'Vérification',
+      rendu: (l) =>
+        l.verifieLe ? (
+          <span className="inline-flex items-start gap-1.5 text-sm text-success">
+            <Check className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>{`Vérifié par ${nom(l.verifieParNom)} le ${dateFr(l.verifieLe)}`}</span>
+          </span>
+        ) : (
+          <Badge variant="warning">À vérifier</Badge>
+        ),
+    },
+    {
+      cle: 'actions',
+      titre: <span className="sr-only">Actions</span>,
+      alignement: 'droite',
+      rendu: (l) =>
+        !l.verifieLe && (
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button type="button" size="sm" variant="secondary" icon={<Check />} onClick={() => void confirmer(l)} loading={enCours === l.id}>
+              Confirmer
+            </Button>
+            <Button type="button" size="sm" variant="ghost" icon={<UserCog />} onClick={() => setReaffectation(l)}>
+              Réaffecter
+            </Button>
+          </div>
+        ),
+    },
+  ];
+
   return (
-    <div className="mx-auto max-w-5xl space-y-4 p-6">
-      <header className="space-y-1">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-fg">
-          Dossiers à vérifier
-          <InfoBulle
-            libelle="Pourquoi vérifier ces dossiers ?"
-            texte="Ces dossiers n’avaient pas d’employé responsable. Lors de la mise à niveau des données, la plateforme en a désigné un d’office ; c’est à vous de confirmer ce choix ou de le corriger."
-          />
-        </h1>
-        <p className="text-sm text-fg-subtle">
-          {lignes === null ? 'Chargement…' : aVerifier === 0 ? 'Tous les dossiers ont été vérifiés.' : `${aVerifier} dossier(s) à vérifier.`}
-        </p>
-      </header>
-
-      <TexteAide cle="dossiers-a-verifier" titre="Comment vérifier un dossier ?">
-        <p>
-          Pour chaque dossier, la plateforme indique l’employé désigné et la règle appliquée (unique
-          employé assigné aux tickets du dossier, sinon créateur du premier ticket, sinon employé
-          actif le plus ancien). Si le choix vous convient, cliquez sur « Confirmer ». Sinon,
-          « Réaffecter » confie le dossier et tous ses tickets à un autre employé : il est prévenu,
-          et le changement est tracé.
-        </p>
-      </TexteAide>
-
-      {erreur && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{erreur}</p>}
-
-      {lignes && lignes.length === 0 && (
-        <p className="text-sm text-fg-subtle">Aucun dossier n’a reçu de responsable désigné d’office.</p>
-      )}
-
-      {lignes && lignes.length > 0 && (
-        <table className="w-full text-sm">
-          <caption className="sr-only">Dossiers dont le responsable a été désigné d’office</caption>
-          <thead>
-            <tr className="text-left text-xs text-fg-subtle">
-              <th className="py-2 pr-3 font-medium">Dossier</th>
-              <th className="py-2 pr-3 font-medium">Employé désigné</th>
-              <th className="py-2 pr-3 font-medium">Responsable actuel</th>
-              <th className="py-2 pr-3 font-medium">Vérification</th>
-              <th className="py-2 font-medium"><span className="sr-only">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            {lignes.map((l) => (
-              <tr key={l.id} className="border-t border-border align-top">
-                <td className="py-2 pr-3">
-                  <Link to={`/data-rooms?dossier=${l.dossierId}`} className="font-medium text-accent underline">
-                    {l.raisonSociale}
-                  </Link>
-                  <p className="text-xs text-fg-subtle">Désigné le {dateFr(l.createdAt)}</p>
-                </td>
-                <td className="py-2 pr-3 text-fg">{nom(l.nouveauResponsableNom)}</td>
-                <td className="py-2 pr-3 text-fg">{nom(l.responsableActuelNom)}</td>
-                <td className="py-2 pr-3 text-fg-muted">
-                  {l.verifieLe ? `Vérifié par ${nom(l.verifieParNom)} le ${dateFr(l.verifieLe)}` : 'À vérifier'}
-                </td>
-                <td className="py-2">
-                  {!l.verifieLe && (
-                    <div className="flex flex-wrap gap-2">
-                      <Button size="sm" onClick={() => void confirmer(l)} loading={enCours === l.id}>
-                        Confirmer
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => setReaffectation(l)}
-                      >
-                        Réaffecter
-                      </Button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {reaffectation && (
-        <ReaffectationForm
-          key={reaffectation.id}
-          raisonSociale={reaffectation.raisonSociale}
-          responsableActuelId={reaffectation.responsableActuelId}
-          employes={employes}
-          enCours={enCours === reaffectation.id}
-          onValider={(employe, motif) => void reaffecter(employe, motif)}
-          onAnnuler={() => setReaffectation(null)}
+    <Page
+      titre="Dossiers à vérifier"
+      etat={
+        <InfoBulle
+          libelle="Pourquoi vérifier ces dossiers ?"
+          texte="Ces dossiers n’avaient pas d’employé responsable. Lors de la mise à niveau des données, la plateforme en a désigné un d’office ; c’est à vous de confirmer ce choix ou de le corriger."
         />
-      )}
-    </div>
+      }
+      description={lignes === null ? 'Chargement…' : aVerifier === 0 ? 'Tous les dossiers ont été vérifiés.' : `${aVerifier} dossier(s) à vérifier.`}
+      aide={
+        <TexteAide cle="dossiers-a-verifier" titre="Comment vérifier un dossier ?">
+          <p>
+            Pour chaque dossier, la plateforme indique l’employé désigné et la règle appliquée (unique
+            employé assigné aux tickets du dossier, sinon créateur du premier ticket, sinon employé
+            actif le plus ancien). Si le choix vous convient, cliquez sur « Confirmer ». Sinon,
+            « Réaffecter » confie le dossier et tous ses tickets à un autre employé : il est prévenu,
+            et le changement est tracé.
+          </p>
+        </TexteAide>
+      }
+    >
+      <div className="space-y-4">
+        {erreur && (
+          <Message ton="erreur" onFermer={() => setErreur(null)}>
+            {erreur}
+          </Message>
+        )}
+
+        {(lignes === null || lignes.length > 0) && (
+          <Tableau
+            colonnes={colonnes}
+            lignes={lignes ?? []}
+            cleLigne={(l) => l.id}
+            legende="Dossiers dont le responsable a été désigné d’office"
+            chargement={lignes === null && !erreur}
+            lignesChargement={3}
+            enTeteCollant={false}
+          />
+        )}
+
+        {lignes && lignes.length === 0 && (
+          <Card padding={false}>
+            <EmptyState
+              icon={<FolderCheck />}
+              title="Rien à vérifier"
+              description="Aucun dossier n’a reçu de responsable désigné d’office."
+            />
+          </Card>
+        )}
+
+        {reaffectation && (
+          <ReaffectationForm
+            key={reaffectation.id}
+            raisonSociale={reaffectation.raisonSociale}
+            responsableActuelId={reaffectation.responsableActuelId}
+            employes={employes}
+            enCours={enCours === reaffectation.id}
+            onValider={(employe, motif) => void reaffecter(employe, motif)}
+            onAnnuler={() => setReaffectation(null)}
+          />
+        )}
+      </div>
+    </Page>
   );
 }
