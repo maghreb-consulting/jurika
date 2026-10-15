@@ -80,10 +80,10 @@ export function EnTeteVitrine({ surAccueil }: { surAccueil: boolean }) {
 
         <div className="ml-auto flex items-center gap-2">
           <ChoixThemeVitrine />
-          <Lien to="/login" commeBouton={{ variant: 'secondary', size: 'md' }} className="hidden sm:inline-flex" data-testid="navbar-login-cta">
+          <Lien to="/login" commeBouton={{ variant: 'secondary', size: 'md' }} className="v-bouton hidden sm:inline-flex" data-testid="navbar-login-cta">
             Se connecter
           </Lien>
-          <Lien to="/essai" commeBouton={{ variant: 'primary', size: 'md' }} className="hidden sm:inline-flex" data-testid="navbar-essai-cta">
+          <Lien to="/essai" commeBouton={{ variant: 'primary', size: 'md' }} className="v-bouton hidden sm:inline-flex" data-testid="navbar-essai-cta">
             Essai gratuit
           </Lien>
           <button

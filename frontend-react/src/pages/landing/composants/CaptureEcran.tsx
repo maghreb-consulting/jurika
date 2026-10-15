@@ -1,5 +1,6 @@
 import { cn } from '../../../lib/utils';
 import { CAPTURES, DIMENSIONS_CAPTURE, cheminCapture, type NomCapture } from '../captures';
+import { Vivante } from './Vivante';
 
 /**
  * Lot L6b (E10, V2) : capture de la plateforme dans un cadre d'ecran.
@@ -10,13 +11,17 @@ import { CAPTURES, DIMENSIONS_CAPTURE, cheminCapture, type NomCapture } from '..
  *   reservee avant le chargement, aucun decalage de la mise en page ;
  * - chargement differe (`loading="lazy"`) sauf l'image de l'accroche (`prioritaire` :
  *   chargement immediat, priorite haute) ; decodage asynchrone ;
- * - texte de remplacement descriptif (captures.ts).
+ * - texte de remplacement descriptif (captures.ts) ;
+ * - V3 : capture "vivante" par defaut (inclinaison, reflet et ombre au survol, voir
+ *   Vivante.tsx) ; `vivante={false}` quand le cadre vivant est porte par un parent (pile
+ *   d'ecrans du recit, bascule clair / sombre).
  */
 export function CaptureEcran({
   nom,
   sizes,
   prioritaire = false,
   compacte = false,
+  vivante = true,
   className,
 }: {
   nom: NomCapture;
@@ -24,11 +29,13 @@ export function CaptureEcran({
   prioritaire?: boolean;
   /** Cadre plus discret (captures cote a cote). */
   compacte?: boolean;
+  vivante?: boolean;
   className?: string;
 }) {
   const capture = CAPTURES[nom];
-  return (
-    <div className={cn('v-cadre overflow-hidden', compacte ? 'rounded-lg' : 'rounded-xl', className)}>
+  const arrondi = compacte ? 'rounded-lg' : 'rounded-xl';
+  const cadre = (
+    <div className={cn('v-cadre overflow-hidden', arrondi, !vivante && className)}>
       <div className={cn('v-cadre-barre flex items-center gap-1.5', compacte ? 'h-7 px-3' : 'h-9 px-4')} aria-hidden="true">
         <span className="v-point v-point-1" />
         <span className="v-point v-point-2" />
@@ -49,5 +56,11 @@ export function CaptureEcran({
         draggable={false}
       />
     </div>
+  );
+  if (!vivante) return cadre;
+  return (
+    <Vivante className={className} classeContenu={arrondi}>
+      {cadre}
+    </Vivante>
   );
 }

@@ -2,7 +2,9 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { EnTeteVitrine } from './composants/EnTeteVitrine';
 import { PiedVitrine } from './composants/PiedVitrine';
+import { RetourEnHaut } from './composants/RetourEnHaut';
 import { useApparitions } from './composants/useApparitions';
+import { useTransitionsVitrine } from './composants/useTransitionsVitrine';
 import './vitrine.css';
 import {
   Accroche,
@@ -28,12 +30,18 @@ import {
  *
  * V2 (demande du 2026-10-15) : mise en page et style riches de la vitrine d'avant L6b
  * restaures, sur les jetons du systeme de design, avec de vraies captures de la plateforme ;
- * sans Lenis, GSAP, Playfair, maquettes a donnees fictives, compteurs ni bandeau defilant.
- * Apparitions au defilement courtes (useApparitions), coupees par "reduire les animations".
+ * sans Lenis, GSAP, Playfair, maquettes a donnees fictives ni compteurs.
+ *
+ * V3 (demande du 2026-10-15) : vitrine animee (voir Sections.tsx et vitrine.css), toujours
+ * sans Lenis : le defilement a la molette reste natif. Apparitions en cascade
+ * (useApparitions), retour en haut (RetourEnHaut), transitions entre les pages de la
+ * vitrine (useTransitionsVitrine, View Transitions). Transform et opacity seulement ; tout
+ * s'arrete quand "reduire les animations" est actif.
  */
 export function VitrineCadre({ surAccueil, children }: { surAccueil: boolean; children: ReactNode }) {
   const racine = useRef<HTMLDivElement>(null);
   useApparitions(racine);
+  useTransitionsVitrine(racine);
   return (
     <div ref={racine} className="vitrine flex min-h-screen flex-col bg-bg text-fg">
       <a
@@ -47,6 +55,7 @@ export function VitrineCadre({ surAccueil, children }: { surAccueil: boolean; ch
         {children}
       </main>
       <PiedVitrine surAccueil={surAccueil} />
+      <RetourEnHaut />
     </div>
   );
 }

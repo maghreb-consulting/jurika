@@ -4,8 +4,12 @@ import { useMouvementReduit } from '../../../lib/mouvement';
 /**
  * Lot L6b (E10, V2) : apparitions au defilement de la vitrine, sans bibliotheque.
  *
- * Les elements marques `data-apparait` recoivent `data-visible` quand ils entrent a l'ecran
- * (IntersectionObserver) ; vitrine.css fait la transition (opacite et translation, 300 ms).
+ * Les elements marques `data-apparait` recoivent `data-visible="1"` quand ils entrent a l'ecran
+ * (IntersectionObserver) ; vitrine.css les anime (opacite et translation) ; ce qui est deja
+ * a l'ecran au montage recoit `data-visible="0"` (aucune animation).
+ * - V3 (demande du 2026-10-15) : cascade. Chaque element recoit son rang parmi les elements
+ *   apparaissants de son parent (`--rang`, 0 a 6) : vitrine.css en tire un delai, les
+ *   cartes d'une grille entrent l'une apres l'autre.
  * - "Reduire les animations", ou navigateur sans IntersectionObserver : rien n'est active,
  *   tout est visible d'emblee.
  * - Ce qui est deja a l'ecran au montage est marque visible AVANT l'activation : aucun
@@ -20,16 +24,22 @@ export function useApparitions(racineRef: RefObject<HTMLElement | null>) {
     const racine = racineRef.current;
     if (!racine || reduit || typeof window.IntersectionObserver !== 'function') return undefined;
     const elements = Array.from(racine.querySelectorAll<HTMLElement>('[data-apparait]'));
+    const rangs = new Map<Element | null, number>();
+    for (const el of elements) {
+      const n = rangs.get(el.parentElement) ?? 0;
+      el.style.setProperty('--rang', String(Math.min(n, 6)));
+      rangs.set(el.parentElement, n + 1);
+    }
     const hauteur = window.innerHeight;
     for (const el of elements) {
       const r = el.getBoundingClientRect();
-      if (r.top < hauteur && r.bottom >= 0) el.setAttribute('data-visible', '');
+      if (r.top < hauteur && r.bottom >= 0) el.setAttribute('data-visible', '0');
     }
     const observateur = new window.IntersectionObserver(
       (entrees) => {
         for (const e of entrees) {
           if (!e.isIntersecting) continue;
-          e.target.setAttribute('data-visible', '');
+          e.target.setAttribute('data-visible', '1');
           observateur.unobserve(e.target);
         }
       },
@@ -40,7 +50,7 @@ export function useApparitions(racineRef: RefObject<HTMLElement | null>) {
     return () => {
       observateur.disconnect();
       racine.removeAttribute('data-apparition');
-      for (const el of elements) el.setAttribute('data-visible', '');
+      for (const el of elements) if (!el.hasAttribute('data-visible')) el.setAttribute('data-visible', '0');
     };
   }, [racineRef, reduit]);
 }

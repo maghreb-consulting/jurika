@@ -353,17 +353,21 @@ describe('Vitrine : captures de la plateforme et mouvement', () => {
     }
   });
 
-  it("garde des transitions courtes et coupe tout mouvement si l'animation est reduite (vitrine.css)", () => {
+  it("n'anime que l'opacite et la transformation, et coupe tout mouvement si l'animation est reduite (vitrine.css)", () => {
+    // L6b E10 (V3, demande du 2026-10-15) : la vitrine est animee (keyframes, durees de plus
+    // de 300 ms permises) ; le principe reste : seules l'opacite et la transformation
+    // s'animent (aucun decalage de la mise en page) et "reduire les animations" arrete tout.
+    // Le detail des gardes est dans LandingMouvement.test.tsx.
     const css = readFileSync(resolve(__dirname, '../vitrine.css'), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
-    const durees = [...css.matchAll(/(\d+(?:\.\d+)?)(ms|s)\b/g)].map((m) => (m[2] === 's' ? Number(m[1]) * 1000 : Number(m[1])));
-    expect(durees.length).toBeGreaterThan(0);
-    for (const d of durees) expect(d).toBeLessThanOrEqual(300);
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)/);
-    expect(css).not.toMatch(/@keyframes|animation\s*:/);
-    // Seules l'opacite, la transformation et les couleurs s'animent : aucun decalage de la mise en page.
-    for (const m of css.matchAll(/transition(?:-property)?\s*:\s*([^;]+);/g)) {
-      for (const prop of m[1].split(',').map((x) => x.trim().split(/\s+/)[0])) {
-        expect(['opacity', 'transform', 'background-color', 'border-color', 'box-shadow', 'color', 'none'], prop).toContain(prop);
+    for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      for (const t of m[2].matchAll(/transition(?:-property)?\s*:\s*([^;]+);/g)) {
+        for (const prop of t[1].split(',').map((x) => x.trim().split(/\s+/)[0])) {
+          // Seule la regle .v-bouton reprend les transitions de couleur des boutons de la bibliotheque.
+          const permises = ['opacity', 'transform', 'translate', 'scale', 'rotate', 'none'];
+          if (m[1].includes('.v-bouton')) permises.push('color', 'background-color', 'border-color');
+          expect(permises, `${m[1].trim()} : ${prop}`).toContain(prop);
+        }
       }
     }
   });

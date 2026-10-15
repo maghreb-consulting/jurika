@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   Archive,
   ArrowRight,
@@ -21,12 +21,14 @@ import {
   Lock,
   MessagesSquare,
   MonitorSmartphone,
+  Moon,
   PenLine,
   Route,
   ScanLine,
   ScrollText,
   Server,
   ShieldCheck,
+  Sun,
   UserCheck,
   type LucideIcon,
 } from 'lucide-react';
@@ -34,6 +36,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { InfoBulle } from '../../../components/ui/Aide';
 import { Lien } from '../../../components/ui/Lien';
 import { cn } from '../../../lib/utils';
+import { mouvementReduit, useMouvementReduit } from '../../../lib/mouvement';
 import { useThemeStore } from '../../../store/themeStore';
 import { STATUT_LABELS } from '../../../types/ticket';
 import { adresseContact } from '../../legal/contact';
@@ -58,7 +61,11 @@ import {
   type IconeSecurite,
   type Pilier,
 } from '../contenu';
+import type { NomCapture } from '../captures';
 import { CaptureEcran } from './CaptureEcran';
+import { EmblemeAnime } from './EmblemeAnime';
+import { MotifZellige } from './MotifZellige';
+import { Vivante } from './Vivante';
 
 /**
  * Lot L6b (E10, V2) : sections de la vitrine, dans l'ordre de la page.
@@ -70,8 +77,13 @@ import { CaptureEcran } from './CaptureEcran';
  *
  * Contenu : contenu.ts et config/pricing.ts uniquement. Visuels : vraies captures de la
  * plateforme (captures.ts). Mouvement : `data-apparait` (apparition au defilement, voir
- * useApparitions et vitrine.css), survols de 150 ms ; rien ne bouge si les animations sont
- * reduites.
+ * useApparitions et vitrine.css) ; rien ne bouge si les animations sont reduites.
+ *
+ * V3 (demande du 2026-10-15) : accroche animee (embleme qui se dessine, titre mot par mot,
+ * capture en profondeur), bandeau defilant des parcours sur fond marine a motif de zellige,
+ * recit au defilement des fonctionnalites (capture fixe qui change d'ecran), captures
+ * vivantes, bascule clair / sombre, cartes de tarifs qui se soulevent, questions qui
+ * s'ouvrent en douceur. Transform et opacity seulement (vitrine.css).
  */
 
 /* ------------------------------------------------------------------- Briques */
@@ -164,13 +176,60 @@ function TuileIcone({ icone: Icone, ton = 'or' }: { icone: LucideIcon; ton?: 'or
 
 /* ---------------------------------------------------------------- Accroche */
 
+/** Mots du titre, chacun dans une boite qui peut glisser (apparition mot par mot). */
+function Mots({ texte, depart, accent = false }: { texte: string; depart: number; accent?: boolean }) {
+  return (
+    <>
+      {texte.split(/\s+/).map((mot, i) => (
+        <span key={`${mot}-${i}`}>
+          <span className={cn('v-mot', accent && 'text-accent')} style={{ '--i': depart + i } as CSSProperties}>
+            {mot}
+          </span>{' '}
+        </span>
+      ))}
+    </>
+  );
+}
+
+/**
+ * La capture de l'accroche entre en profondeur au chargement si elle est a l'ecran ; sinon
+ * (petit ecran), son entree attend qu'elle arrive a l'ecran (animation en pause, puis sans
+ * delai). Sans IntersectionObserver, l'animation joue au chargement.
+ */
+function useEntreeALecran(ref: { current: HTMLElement | null }) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof window.IntersectionObserver !== 'function') return undefined;
+    if (el.getBoundingClientRect().top < window.innerHeight * 0.85) return undefined;
+    el.setAttribute('data-attente', '');
+    el.style.animationDelay = '0ms';
+    const obs = new window.IntersectionObserver(
+      (entrees) => {
+        if (!entrees.some((e) => e.isIntersecting)) return;
+        el.removeAttribute('data-attente');
+        obs.disconnect();
+      },
+      { rootMargin: '0px 0px -12% 0px', threshold: 0 },
+    );
+    obs.observe(el);
+    return () => {
+      obs.disconnect();
+      el.removeAttribute('data-attente');
+    };
+  }, [ref]);
+}
+
 export function Accroche() {
   const mode = useThemeStore((s) => s.mode);
+  const motsTitre = ACCROCHE.titre.split(/\s+/).length;
+  const profondeur = useRef<HTMLDivElement>(null);
+  useEntreeALecran(profondeur);
   return (
     <section id="haut" aria-labelledby="accroche-titre" className="relative scroll-mt-16 overflow-hidden" data-testid="hero">
       <div className="v-fond-accroche" aria-hidden="true" />
-      <div className="relative mx-auto max-w-6xl px-4 pb-20 pt-16 text-center sm:px-6 lg:pb-28 lg:pt-24">
-        <span className="v-pastille inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-accent">
+      <div className="relative mx-auto max-w-6xl px-4 pb-20 pt-12 text-center sm:px-6 lg:pb-28 lg:pt-16">
+        <EmblemeAnime className="mx-auto mb-6" />
+        <span className="v-entree v-pastille inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-accent" style={{ '--d': '150ms' } as CSSProperties}>
           <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
           {ACCROCHE.surtitre}
         </span>
@@ -178,37 +237,43 @@ export function Accroche() {
           id="accroche-titre"
           className="mx-auto mt-6 max-w-4xl text-4xl font-bold leading-[1.1] tracking-tight text-heading sm:text-5xl lg:text-6xl"
         >
-          {ACCROCHE.titre}
+          <Mots texte={ACCROCHE.titre} depart={0} />
           <br />
-          <span>{ACCROCHE.accent1}</span> et <span className="text-accent">{ACCROCHE.accent2}</span>
+          <Mots texte={ACCROCHE.accent1} depart={motsTitre} />
+          <Mots texte="et" depart={motsTitre + 1} />
+          <Mots texte={ACCROCHE.accent2} depart={motsTitre + 2} accent />
         </h1>
-        <p className="mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-fg-muted">{ACCROCHE.texte}</p>
-        <p className="mx-auto mt-6 inline-flex max-w-2xl items-center gap-2 rounded-lg border border-border bg-bg-raised px-4 py-2 text-left text-sm font-medium text-fg">
+        <p className="v-entree mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-fg-muted" style={{ '--d': '550ms' } as CSSProperties}>
+          {ACCROCHE.texte}
+        </p>
+        <p className="v-entree mx-auto mt-6 inline-flex max-w-2xl items-center gap-2 rounded-lg border border-border bg-bg-raised px-4 py-2 text-left text-sm font-medium text-fg" style={{ '--d': '650ms' } as CSSProperties}>
           <ShieldCheck className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
           {ACCROCHE.garantie}
         </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Lien to="/essai" commeBouton={{ variant: 'primary', size: 'lg' }} data-testid="hero-essai-cta">
+        <div className="v-entree mt-8 flex flex-wrap justify-center gap-3" style={{ '--d': '750ms' } as CSSProperties}>
+          <Lien to="/essai" commeBouton={{ variant: 'primary', size: 'lg' }} className="v-bouton" data-testid="hero-essai-cta">
             Essayer gratuitement pendant {ESSAI.dureeJours} jours
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            <ArrowRight className="v-fleche h-4 w-4" aria-hidden="true" />
           </Lien>
-          <Lien href="#fonctionnalites" commeBouton={{ variant: 'secondary', size: 'lg' }}>
+          <Lien href="#fonctionnalites" commeBouton={{ variant: 'secondary', size: 'lg' }} className="v-bouton">
             Découvrir la plateforme
           </Lien>
         </div>
-        <p className="mt-4 text-sm text-fg-subtle">
+        <p className="v-entree mt-4 text-sm text-fg-subtle" style={{ '--d': '800ms' } as CSSProperties}>
           Sans moyen de paiement, un essai par cabinet.{' '}
           <Lien to="/signup" variante="discret" data-testid="hero-signup-cta">
             Souscrire directement un forfait
           </Lien>
         </p>
 
-        <div className="mx-auto mt-14 max-w-5xl text-left">
-          <CaptureEcran
-            nom={mode === 'dark' ? 'tableau-de-bord-employe-sombre' : 'tableau-de-bord-employe-clair'}
-            sizes="(min-width: 1100px) 1024px, calc(100vw - 2rem)"
-            prioritaire
-          />
+        <div className="v-scene mx-auto mt-14 max-w-5xl text-left">
+          <div ref={profondeur} className="v-profondeur">
+            <CaptureEcran
+              nom={mode === 'dark' ? 'tableau-de-bord-employe-sombre' : 'tableau-de-bord-employe-clair'}
+              sizes="(min-width: 1100px) 1024px, calc(100vw - 2rem)"
+              prioritaire
+            />
+          </div>
         </div>
       </div>
     </section>
@@ -217,19 +282,44 @@ export function Accroche() {
 
 /* --------------------------------------------------- Bande des operations */
 
+/**
+ * Bandeau des parcours reellement couverts (contenu.ts, PARCOURS : CDC 16.1 et types de
+ * tickets de l'application) : il defile lentement (transform), s'arrete au survol ou au
+ * focus ; la copie qui ferme la boucle est cachee aux lecteurs d'ecran. "Reduire les
+ * animations" : une seule liste, immobile, sur plusieurs lignes.
+ */
+function BandeauParcours() {
+  const reduit = useMouvementReduit();
+  const titres = PARCOURS.map((p) => p.titre);
+  const liste = (cachee: boolean) => (
+    <ul className="v-defile-liste" aria-hidden={cachee ? 'true' : undefined}>
+      {titres.map((t) => (
+        <li key={t} className="v-defile-element rounded-full border border-nav-border px-4 py-1.5 text-sm font-medium text-nav-fg-hi">
+          {t}
+        </li>
+      ))}
+    </ul>
+  );
+  return (
+    <div className="v-defile mt-5" data-testid="bandeau-parcours" data-defile={reduit ? undefined : ''}>
+      <div className="v-defile-rail">
+        {liste(false)}
+        {!reduit && liste(true)}
+      </div>
+    </div>
+  );
+}
+
 export function BandeOperations() {
   return (
-    <section aria-label="Opérations couvertes et textes applicables" className="border-y border-border bg-bg-raised py-10">
+    <section aria-label="Opérations couvertes et textes applicables" className="zone-marine v-marine-fond py-10 text-nav-fg">
+      <MotifZellige />
       <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
-        <p className="text-sm text-fg-muted">{BANDE.titre}</p>
-        <ul className="mt-5 flex flex-wrap justify-center gap-2.5">
-          {BANDE.operations.map((o) => (
-            <li key={o} className="rounded-full border border-border bg-bg px-4 py-1.5 text-sm font-medium text-heading">
-              {o}
-            </li>
-          ))}
-        </ul>
-        <ul className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs font-semibold uppercase tracking-[0.12em] text-fg-subtle">
+        <p className="text-sm">{BANDE.titre}</p>
+      </div>
+      <BandeauParcours />
+      <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
+        <ul className="mt-5 flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs font-semibold uppercase tracking-[0.12em] text-nav-active">
           {BANDE.textes.map((t) => (
             <li key={t}>{t}</li>
           ))}
@@ -323,48 +413,251 @@ function ElementFonction({ f, ton = 'clair' }: { f: Fonctionnalite; ton?: 'clair
   );
 }
 
-function VisuelPilier({ pilier }: { pilier: Pilier }) {
-  if (pilier.capture !== 'duo') {
-    return <CaptureEcran nom={pilier.capture} sizes="(min-width: 1024px) 560px, calc(100vw - 2rem)" />;
-  }
+/**
+ * Etapes du recit, dans l'ordre demande (2026-10-15) : tableau de bord, ticket, Data Room,
+ * acte, JURI. Chaque etape reprend un pilier de contenu.ts (ou la bande de l'IA) et l'ecran
+ * de la plateforme qui le montre.
+ */
+interface Etape {
+  id: string;
+  /** Libelle court de l'ecran (indicateur d'etape). */
+  ecran: string;
+  capture: NomCapture;
+  surtitre: string;
+  titre: string;
+  texte: string;
+  fonctions: IconeFonction[];
+  legende?: string;
+}
+
+function pilier(id: string): Pilier {
+  const p = PILIERS.find((x) => x.id === id);
+  if (!p) throw new Error(`Pilier absent de contenu.ts : ${id}`);
+  return p;
+}
+
+function etapeDuPilier(id: string, ecran: string, capture: NomCapture): Etape {
+  const p = pilier(id);
+  return { id: p.id, ecran, capture, surtitre: p.surtitre, titre: p.titre, texte: p.texte, fonctions: p.fonctions, legende: p.legende };
+}
+
+const ETAPES: Etape[] = [
+  etapeDuPilier('pilier-suivi', 'Tableau de bord', 'tableau-de-bord-employe-clair'),
+  etapeDuPilier('pilier-parcours', 'Ticket', 'ticket-frise-clair'),
+  etapeDuPilier('pilier-dataroom', 'Data Room', 'data-room-clair'),
+  etapeDuPilier('pilier-actes', 'Acte', 'apercu-acte-clair'),
+  { id: 'ia', ecran: 'JURI', capture: 'juri-chatbot-clair', surtitre: IA.surtitre, titre: IA.titre, texte: IA.texte, fonctions: [IA.fonction] },
+];
+
+/**
+ * Capture du tableau de bord, en theme clair ou sombre : les deux ecrans sont superposes
+ * (place reservee par le premier), la bascule fond l'un dans l'autre et fait passer un
+ * reflet (opacite et transform). Le theme de depart suit celui de la vitrine.
+ */
+function CaptureBascule({ sizes }: { sizes: string }) {
+  const mode = useThemeStore((s) => s.mode);
+  const [choix, setChoix] = useState<'clair' | 'sombre' | null>(null);
+  const face = choix ?? (mode === 'dark' ? 'sombre' : 'clair');
+  const faces = [
+    { face: 'clair' as const, nom: 'tableau-de-bord-employe-clair' as const, libelle: 'Thème clair', Icone: Sun },
+    { face: 'sombre' as const, nom: 'tableau-de-bord-employe-sombre' as const, libelle: 'Thème sombre', Icone: Moon },
+  ];
   return (
-    <figure>
-      <div className="grid grid-cols-2 gap-4">
-        <CaptureEcran nom="tableau-de-bord-employe-clair" sizes="(min-width: 1024px) 272px, 50vw" compacte />
-        <CaptureEcran nom="tableau-de-bord-employe-sombre" sizes="(min-width: 1024px) 272px, 50vw" compacte />
+    <div data-testid="bascule-theme" data-face-visible={face}>
+      <div className="v-pile">
+        {faces.map((f) => (
+          <div key={f.face} className="v-face" data-face={f.face} data-actif={face === f.face ? '' : undefined} aria-hidden={face === f.face ? undefined : 'true'}>
+            <CaptureEcran nom={f.nom} sizes={sizes} vivante={false} />
+          </div>
+        ))}
+        <span key={face} className="v-balayage" aria-hidden="true" />
       </div>
-      {pilier.legende && <figcaption className="mt-3 text-center text-sm text-fg-subtle">{pilier.legende}</figcaption>}
-    </figure>
+      <div className="mt-3 flex items-center justify-center gap-2" role="group" aria-label="Thème de la capture">
+        {faces.map((f) => (
+          <button
+            key={f.face}
+            type="button"
+            aria-pressed={face === f.face}
+            onClick={() => setChoix(f.face)}
+            className={cn(
+              'v-bouton inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
+              face === f.face ? 'border-accent bg-accent-soft text-accent' : 'border-border bg-bg-raised text-fg-muted hover:text-fg',
+            )}
+          >
+            <f.Icone className="h-3.5 w-3.5" aria-hidden="true" />
+            {f.libelle}
+          </button>
+        ))}
+        <InfoBulle
+          libelle="Thème clair ou sombre"
+          texte="Basculez la capture pour voir le même tableau de bord dans les deux thèmes. Dans la plateforme, chaque utilisateur choisit son thème ; son choix est mémorisé sur son compte."
+        />
+      </div>
+    </div>
   );
 }
 
-function BlocPilier({ pilier, inverse }: { pilier: Pilier; inverse: boolean }) {
+const TAILLE_RECIT = '(min-width: 1024px) 600px, calc(100vw - 2rem)';
+
+function VisuelEtape({ etape }: { etape: Etape }) {
+  if (etape.capture === 'tableau-de-bord-employe-clair') {
+    return (
+      <figure>
+        <Vivante>
+          <CaptureBascule sizes={TAILLE_RECIT} />
+        </Vivante>
+        {etape.legende && <figcaption className="mt-2 text-center text-sm text-fg-subtle">{etape.legende}</figcaption>}
+      </figure>
+    );
+  }
+  return <CaptureEcran nom={etape.capture} sizes={TAILLE_RECIT} />;
+}
+
+function BlocEtape({
+  etape,
+  index,
+  fixe,
+  refEtape,
+}: {
+  etape: Etape;
+  index: number;
+  /** Capture fixe a cote (recit) ; sinon la capture suit son texte a toutes les largeurs. */
+  fixe: boolean;
+  refEtape: (el: HTMLElement | null) => void;
+}) {
   return (
-    <article id={pilier.id} aria-labelledby={`${pilier.id}-titre`} className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-      <div className={cn(inverse && 'lg:order-2')}>
+    <article
+      id={etape.id}
+      ref={refEtape}
+      aria-labelledby={`${etape.id}-titre`}
+      data-etape={index}
+      data-capture={etape.capture}
+      className={cn(
+        'scroll-mt-24',
+        fixe ? 'lg:flex lg:min-h-[78vh] lg:flex-col lg:justify-center lg:py-12' : 'lg:grid lg:grid-cols-2 lg:items-center lg:gap-16',
+      )}
+    >
+      <div>
         <div data-apparait>
-          <Surtitre>{pilier.surtitre}</Surtitre>
-          <h3 id={`${pilier.id}-titre`} className="mt-4 text-2xl font-bold leading-snug tracking-tight text-heading sm:text-3xl">
-            {pilier.titre}
+          <Surtitre>{etape.surtitre}</Surtitre>
+          <h3 id={`${etape.id}-titre`} className="mt-4 text-2xl font-bold leading-snug tracking-tight text-heading sm:text-3xl">
+            {etape.titre}
           </h3>
-          <p className="mt-4 text-base leading-relaxed text-fg-muted">{pilier.texte}</p>
+          <p className="mt-4 text-base leading-relaxed text-fg-muted">{etape.texte}</p>
         </div>
         <ul className="mt-8 space-y-6">
-          {pilier.fonctions.map((cle) => (
+          {etape.fonctions.map((cle) => (
             <ElementFonction key={cle} f={fonction(cle)} />
           ))}
         </ul>
       </div>
-      <div className={cn(inverse && 'lg:order-1')} data-apparait>
-        <VisuelPilier pilier={pilier} />
+      {/* Sous 1024 px (ou animations reduites), pas de capture fixe : l'ecran suit son texte. */}
+      <div className={cn('mt-10', fixe ? 'lg:hidden' : 'lg:mt-0')} data-apparait>
+        <VisuelEtape etape={etape} />
       </div>
     </article>
   );
 }
 
+/**
+ * Recit au defilement : a partir de 1024 px, la colonne de droite reste fixe (position
+ * sticky, defilement natif) pendant que les textes defilent ; elle montre l'ecran de
+ * l'etape lue (IntersectionObserver sur une ligne au milieu de la fenetre). Changement
+ * d'ecran : fondu et leger glissement (opacity, transform) ; instantane si les animations
+ * sont reduites. Seul l'ecran actif est expose aux lecteurs d'ecran. Les captures des
+ * autres ecrans sont chargees en differe.
+ * "Reduire les animations" : aucun ecran ne change au defilement ; chaque etape montre sa
+ * capture a cote de son texte (tout est visible d'emblee).
+ */
+function RecitFonctionnalites() {
+  const reduit = useMouvementReduit();
+  const [actif, setActif] = useState(0);
+  const etapes = useRef<(HTMLElement | null)[]>([]);
+
+  useEffect(() => {
+    if (reduit || typeof window.IntersectionObserver !== 'function') return undefined;
+    const obs = new window.IntersectionObserver(
+      (entrees) => {
+        for (const e of entrees) {
+          if (!e.isIntersecting) continue;
+          const i = Number((e.target as HTMLElement).dataset.etape);
+          if (Number.isFinite(i)) setActif(i);
+        }
+      },
+      { rootMargin: '-50% 0px -50% 0px', threshold: 0 },
+    );
+    for (const el of etapes.current) if (el) obs.observe(el);
+    return () => obs.disconnect();
+  }, [reduit]);
+
+  if (reduit) {
+    return (
+      <div className="mt-16 space-y-24 lg:space-y-32">
+        {ETAPES.map((e, i) => (
+          <BlocEtape key={e.id} etape={e} index={i} fixe={false} refEtape={(el) => (etapes.current[i] = el)} />
+        ))}
+      </div>
+    );
+  }
+
+  function allerA(i: number) {
+    etapes.current[i]?.scrollIntoView({ behavior: mouvementReduit() ? 'auto' : 'smooth', block: 'center' });
+  }
+
+  return (
+    <div className="mt-16 lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16">
+      <div className="space-y-24 lg:space-y-0">
+        {ETAPES.map((e, i) => (
+          <BlocEtape key={e.id} etape={e} index={i} fixe refEtape={(el) => (etapes.current[i] = el)} />
+        ))}
+      </div>
+      <div className="hidden lg:block">
+        <div className="v-recit-fixe">
+          <div className="mb-5 flex items-center gap-2">
+            <ol className="flex flex-wrap gap-2" aria-label="Écrans de la plateforme">
+              {ETAPES.map((e, i) => (
+                <li key={e.id}>
+                  <button
+                    type="button"
+                    onClick={() => allerA(i)}
+                    aria-current={actif === i ? 'step' : undefined}
+                    className={cn(
+                      'v-bouton inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
+                      actif === i ? 'border-accent bg-accent-soft text-accent' : 'border-border bg-bg-raised text-fg-muted hover:text-fg',
+                    )}
+                  >
+                    {e.ecran}
+                  </button>
+                </li>
+              ))}
+            </ol>
+            <InfoBulle
+              libelle="Écrans de la plateforme"
+              texte="L’écran montré change avec la fonctionnalité que vous lisez. Cliquez sur un écran pour aller directement à sa fonctionnalité."
+            />
+          </div>
+          <div className="v-pile">
+            {ETAPES.map((e, i) => (
+              <div
+                key={e.id}
+                className="v-recit-ecran"
+                data-recit-ecran={e.capture}
+                data-actif={actif === i ? '' : undefined}
+                aria-hidden={actif === i ? undefined : 'true'}
+              >
+                <VisuelEtape etape={e} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Fonctionnalites() {
   return (
-    <section id="fonctionnalites" aria-labelledby="fonctionnalites-titre" className="scroll-mt-16 pt-20 lg:pt-28">
+    <section id="fonctionnalites" aria-labelledby="fonctionnalites-titre" className="scroll-mt-16 py-20 lg:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <EnTeteSection
           id="fonctionnalites"
@@ -372,29 +665,7 @@ export function Fonctionnalites() {
           titre="Ce que fait la plateforme"
           intro="Un seul flux de travail, du premier rendez-vous à la clôture du dossier. Les fonctions réservées à un forfait sont signalées comme telles."
         />
-        <div className="mt-16 space-y-24 lg:space-y-32">
-          {PILIERS.map((p, i) => (
-            <BlocPilier key={p.id} pilier={p} inverse={i % 2 === 1} />
-          ))}
-        </div>
-      </div>
-
-      <div id="ia" className="zone-marine v-marine-fond mt-24 py-20 text-nav-fg lg:mt-32 lg:py-28">
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16">
-          <div>
-            <div data-apparait>
-              <Surtitre ton="marine">{IA.surtitre}</Surtitre>
-              <h3 className="mt-4 text-2xl font-bold leading-snug tracking-tight text-nav-fg-hi sm:text-3xl">{IA.titre}</h3>
-              <p className="mt-4 text-base leading-relaxed text-nav-fg">{IA.texte}</p>
-            </div>
-            <ul className="mt-8">
-              <ElementFonction f={fonction(IA.fonction)} ton="marine" />
-            </ul>
-          </div>
-          <div data-apparait>
-            <CaptureEcran nom="juri-chatbot-clair" sizes="(min-width: 1024px) 560px, calc(100vw - 2rem)" />
-          </div>
-        </div>
+        <RecitFonctionnalites />
       </div>
     </section>
   );
@@ -552,7 +823,7 @@ export function Tarifs() {
             <article
               key={forfait.id}
               className={cn(
-                'v-carte flex flex-col rounded-2xl bg-bg p-6',
+                'v-carte v-carte-tarif flex flex-col rounded-2xl bg-bg p-6',
                 professionnel ? 'border-2 border-accent shadow-card-lifted' : 'border border-border shadow-card',
               )}
               data-testid={`pricing-card-${forfait.id}`}
@@ -606,7 +877,7 @@ export function Tarifs() {
                     <Lien
                       href={`mailto:${contact}?subject=${encodeURIComponent('Demande de devis JURIKA')}`}
                       commeBouton={{ variant: 'secondary', size: 'md' }}
-                      className="w-full"
+                      className="v-bouton w-full"
                       data-testid="pricing-cta-sur-devis"
                     >
                       Demander un devis
@@ -621,7 +892,7 @@ export function Tarifs() {
                   <Lien
                     to="/signup"
                     commeBouton={{ variant: professionnel ? 'primary' : 'secondary', size: 'md' }}
-                    className="w-full"
+                    className="v-bouton w-full"
                     data-testid={`pricing-cta-${forfait.id}`}
                   >
                     Choisir {forfait.label}
@@ -688,10 +959,10 @@ export function Essai() {
             ))}
           </ul>
           <div className="mt-7 flex flex-wrap gap-3">
-            <Lien to="/essai" commeBouton={{ variant: 'primary', size: 'md' }} data-testid="essai-cta">
+            <Lien to="/essai" commeBouton={{ variant: 'primary', size: 'md' }} className="v-bouton" data-testid="essai-cta">
               Commencer l’essai gratuit
             </Lien>
-            <Lien to="/cgu" commeBouton={{ variant: 'secondary', size: 'md' }}>
+            <Lien to="/cgu" commeBouton={{ variant: 'secondary', size: 'md' }} className="v-bouton">
               Lire les conditions de l’essai
             </Lien>
           </div>
@@ -723,7 +994,7 @@ export function Questions() {
                 <span>{f.q}</span>
                 <ChevronDown className="v-chevron h-5 w-5 shrink-0 text-fg-subtle" aria-hidden="true" />
               </summary>
-              <p className="px-5 pb-5 text-sm leading-relaxed text-fg-muted">{f.a}</p>
+              <p className="v-reponse px-5 pb-5 text-sm leading-relaxed text-fg-muted">{f.a}</p>
             </details>
           ))}
         </div>
@@ -740,6 +1011,7 @@ export function Contact() {
     <section id="contact" aria-labelledby="contact-titre" className="scroll-mt-16 py-20 lg:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="zone-marine v-marine-fond rounded-3xl px-6 py-14 text-center text-nav-fg sm:px-12 lg:py-20" data-apparait>
+          <MotifZellige />
           <Surtitre ton="marine">Prêt à digitaliser votre cabinet ?</Surtitre>
           <h2 id="contact-titre" className="mx-auto mt-5 max-w-3xl text-3xl font-bold leading-tight tracking-tight text-nav-fg-hi sm:text-4xl">
             Ouvrir l’espace de votre cabinet
@@ -762,11 +1034,11 @@ export function Contact() {
             ))}
           </ul>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
-            <Lien to="/essai" commeBouton={{ variant: 'primary', size: 'lg' }}>
+            <Lien to="/essai" commeBouton={{ variant: 'primary', size: 'lg' }} className="v-bouton">
               Essai gratuit
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              <ArrowRight className="v-fleche h-4 w-4" aria-hidden="true" />
             </Lien>
-            <Lien to="/signup" commeBouton={{ variant: 'secondary', size: 'lg' }}>
+            <Lien to="/signup" commeBouton={{ variant: 'secondary', size: 'lg' }} className="v-bouton">
               Souscrire un forfait
             </Lien>
           </div>

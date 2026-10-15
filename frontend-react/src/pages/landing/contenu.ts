@@ -224,18 +224,13 @@ export const ACCROCHE = {
   garantie: 'Aucune intelligence artificielle ne rédige un acte : à données identiques, acte identique.',
 };
 
-/** Bande sous l'accroche (CDC 1 et 16.1) : statique, aucun defilement automatique. */
+/**
+ * Bande sous l'accroche (CDC 1 et 16.1). V3 (demande du 2026-10-15) : elle porte le bandeau
+ * defilant des parcours, dont la liste est PARCOURS (titres), seule source : aucun parcours
+ * n'y est ajoute.
+ */
 export const BANDE = {
   titre: 'Conçu pour les cabinets qui gèrent la vie juridique des sociétés, en droit marocain.',
-  operations: [
-    'Création de SARL',
-    'SARL à associé unique',
-    'Modifications et vie sociale',
-    'Assemblée générale ordinaire',
-    'Succursales',
-    'Dissolution et liquidation',
-    'Import de dossier',
-  ],
   textes: ['Loi n° 5-96', 'Code de commerce', 'Code général des impôts', 'Loi n° 09-08'],
 };
 
