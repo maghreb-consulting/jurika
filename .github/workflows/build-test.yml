@@ -170,3 +170,48 @@ jobs:
           name: vitest-coverage
           path: frontend-react/coverage
           retention-days: 7
+
+  # Lot L6b (E4) : verification visuelle automatique (chevauchement, debordement, contraste,
+  # defilement a la molette) de chaque ecran principal, 1366 et 1920 px, clair et sombre.
+  # Aucun backend : le front est construit et servi par vite preview, l'API est simulee
+  # (frontend-react/e2e/visuel). Captures et rapport joints en artefact, meme en cas d'echec.
+  frontend-visuel:
+    name: Frontend (verification visuelle Playwright)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend-react/package-lock.json
+
+      - name: Install deps
+        working-directory: frontend-react
+        run: npm ci
+
+      - name: Typecheck du harnais visuel
+        working-directory: frontend-react
+        run: npx tsc -p e2e/visuel/tsconfig.json
+
+      - name: Install Chromium (Playwright)
+        working-directory: frontend-react
+        run: npx playwright install --with-deps chromium
+
+      - name: Verification visuelle
+        working-directory: frontend-react
+        run: npm run test:visuel
+
+      - name: Upload captures et rapport visuel
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-visuelle
+          path: |
+            frontend-react/test-results/captures
+            frontend-react/test-results/visuel-rapport
+          retention-days: 14
