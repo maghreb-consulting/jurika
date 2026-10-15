@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 /**
  * Lot L6b (E6) : l'espace du client reste simple, sur la coquille commune.
- *  - un seul titre (la societe), « Faire une demande » en action principale ;
+ *  - un seul titre (la societe), " Faire une demande " en action principale ;
  *  - pendant l'essai gratuit : aucun bouton de telechargement (apercu seulement, RG-ESS-05) ;
  *  - hors essai, sans permission de telecharger : pas de bouton refuse par le serveur ;
  *  - les demandes ne montrent aucun identifiant tronque.

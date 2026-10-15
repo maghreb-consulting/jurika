@@ -9,7 +9,7 @@ import { cn } from '../../lib/utils';
  * - `erreur` : role="alert" (annonce immediate) ; les autres : role="status".
  * - `onFermer` : bouton de fermeture (le message se masque ; a l'appelant de le retenir).
  *
- * Pour une confirmation passagere ("Enregistré"), utiliser le toast (useToast).
+ * Pour une confirmation passagere ("Enregistre"), utiliser le toast (useToast).
  */
 export type TonMessage = 'info' | 'succes' | 'attention' | 'erreur';
 

@@ -247,7 +247,7 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
 
   return (
     <form noValidate onSubmit={handleSubmit} className="mx-auto max-w-[860px] space-y-6">
-      {/* Fix B2 — titre aligné sur la forme réelle du dossier. */}
+      {/* Fix B2 -- titre aligne sur la forme reelle du dossier. */}
       <BandeauFinParcours titre={<>Synthèse — Création {formeLabel}</>}>
         Toutes les étapes sont complétées. Voici le récapitulatif du dossier.
       </BandeauFinParcours>

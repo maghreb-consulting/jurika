@@ -41,7 +41,7 @@ const TICKETS = Array.from({ length: 8 }, (_, i) => ({
   id: `t-${i}`,
   workspaceId: 'ws-1',
   reference: `TCK-2026-00${10 + i}`,
-  titre: `Ticket de démonstration ${i + 1}`,
+  titre: `Ticket de d\u00e9monstration ${i + 1}`,
   type: 'CREATION_SARL',
   statut: ['CREATION_TICKET', 'GENERATION_DOCUMENTS', 'DEROULEMENT_DEMARCHE', 'CLOTURE_DOSSIER'][i % 4],
   priorite: 'NORMALE',
@@ -59,7 +59,7 @@ const TICKETS = Array.from({ length: 8 }, (_, i) => ({
 const DOSSIERS = Array.from({ length: 6 }, (_, i) => ({
   id: `d-${i}`,
   raisonSociale: `SOCIETE EXEMPLE ${i + 1}`,
-  reference: `2026-${i + 1} — SOCIETE EXEMPLE ${i + 1}`,
+  reference: `2026-${i + 1} \u2014 SOCIETE EXEMPLE ${i + 1}`,
   formeJuridique: 'SARL',
   ice: null,
   ville: 'Casablanca',

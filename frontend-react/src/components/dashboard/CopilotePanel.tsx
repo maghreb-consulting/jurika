@@ -10,7 +10,7 @@ import { Message } from '../ui/Message';
 import { SqueletteTexte, SqueletteZone } from '../ui/LoadingSkeleton';
 
 /**
- * Lot IA-1 -- Panneau « Copilote » du dashboard employe.
+ * Lot IA-1 -- Panneau " Copilote " du dashboard employe.
  *
  * <p>Affiche le briefing du jour de l'agent (observe -> raisonne -> PROPOSE) :
  * (1) plan du jour priorise deep-linke, (2) echeances imminentes/depassees.

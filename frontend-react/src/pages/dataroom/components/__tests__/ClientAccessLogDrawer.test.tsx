@@ -2,8 +2,8 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ClientAccessLogDrawer } from '../ClientAccessLogDrawer';
 
-// Sprint 14 bis / D3 — ClientAccessLogDrawer, puis lot L6b (E6) : la colonne « Utilisateur »
-// et la colonne « Document » donnent un nom lisible, jamais un identifiant tronque (backlog L6).
+// Sprint 14 bis / D3 -- ClientAccessLogDrawer, puis lot L6b (E6) : la colonne " Utilisateur "
+// et la colonne " Document " donnent un nom lisible, jamais un identifiant tronque (backlog L6).
 
 const getAccessLog = vi.fn();
 const getJuridique = vi.fn();

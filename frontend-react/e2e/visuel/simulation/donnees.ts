@@ -124,14 +124,14 @@ interface TicketFictif {
 }
 
 const TICKETS: TicketFictif[] = [
-  { id: IDS.ticketCreation, reference: 'TK-2026-0101', titre: 'Creation SARL Atlas Distribution', type: 'CREATION', statut: 'CREATION_TICKET', priorite: 'HAUTE', dossier: 0, assigne: P.employe, echeance: 3, cree: -6 },
-  { id: '70000000-0000-4000-8000-000000000002', reference: 'TK-2026-0102', titre: 'Transfert du siege social Oasis Agro', type: 'MODIFICATION', statut: 'GENERATION_DOCUMENTS', priorite: 'NORMALE', dossier: 1, assigne: P.employe, echeance: -4, cree: -20 },
+  { id: IDS.ticketCreation, reference: 'TK-2026-0101', titre: 'Cr\u00e9ation SARL Atlas Distribution', type: 'CREATION', statut: 'CREATION_TICKET', priorite: 'HAUTE', dossier: 0, assigne: P.employe, echeance: 3, cree: -6 },
+  { id: '70000000-0000-4000-8000-000000000002', reference: 'TK-2026-0102', titre: 'Transfert du si\u00e8ge social Oasis Agro', type: 'MODIFICATION', statut: 'GENERATION_DOCUMENTS', priorite: 'NORMALE', dossier: 1, assigne: P.employe, echeance: -4, cree: -20 },
   { id: '70000000-0000-4000-8000-000000000003', reference: 'TK-2026-0103', titre: 'Approbation des comptes 2025 Rif Logistique', type: 'PV_AGO', statut: 'DEROULEMENT_DEMARCHE', priorite: 'URGENTE', dossier: 2, assigne: P.employe, echeance: 1, cree: -30 },
-  { id: '70000000-0000-4000-8000-000000000004', reference: 'TK-2026-0104', titre: 'Dissolution anticipee Saharienne Immobilier', type: 'DISSOLUTION', statut: 'CLOTURE_DOSSIER', priorite: 'BASSE', dossier: 3, assigne: EMPLOYE2, echeance: null, cree: -60 },
+  { id: '70000000-0000-4000-8000-000000000004', reference: 'TK-2026-0104', titre: 'Dissolution anticip\u00e9e Saharienne Immobilier', type: 'DISSOLUTION', statut: 'CLOTURE_DOSSIER', priorite: 'BASSE', dossier: 3, assigne: EMPLOYE2, echeance: null, cree: -60 },
   { id: '70000000-0000-4000-8000-000000000005', reference: 'TK-2026-0105', titre: 'Cession de parts Medina Tech', type: 'MODIFICATION', statut: 'CREATION_TICKET', priorite: 'NORMALE', dossier: 4, assigne: EMPLOYE2, echeance: 45, cree: -2 },
-  { id: '70000000-0000-4000-8000-000000000006', reference: 'TK-2026-0106', titre: 'Augmentation de capital Cooperative Argane du Souss', type: 'MODIFICATION', statut: 'DEROULEMENT_DEMARCHE', priorite: 'HAUTE', dossier: 5, assigne: P.employe, echeance: 30, cree: -12 },
+  { id: '70000000-0000-4000-8000-000000000006', reference: 'TK-2026-0106', titre: 'Augmentation de capital Coop\u00e9rative Argane du Souss', type: 'MODIFICATION', statut: 'DEROULEMENT_DEMARCHE', priorite: 'HAUTE', dossier: 5, assigne: P.employe, echeance: 30, cree: -12 },
   { id: '70000000-0000-4000-8000-000000000007', reference: 'TK-2026-0107', titre: 'Import du dossier Medina Tech', type: 'IMPORT', statut: 'ANNULE', priorite: 'BASSE', dossier: 4, assigne: EMPLOYE2, echeance: null, cree: -40 },
-  { id: '70000000-0000-4000-8000-000000000008', reference: 'TK-2026-0108', titre: 'Ouverture d une succursale a Rabat', type: 'SUCCURSALE_MA', statut: 'GENERATION_DOCUMENTS', priorite: 'NORMALE', dossier: 0, assigne: null, echeance: 12, cree: -1 },
+  { id: '70000000-0000-4000-8000-000000000008', reference: 'TK-2026-0108', titre: 'Ouverture d\u2019une succursale \u00e0 Rabat', type: 'SUCCURSALE_MA', statut: 'GENERATION_DOCUMENTS', priorite: 'NORMALE', dossier: 0, assigne: null, echeance: 12, cree: -1 },
 ];
 
 function ticketVue(t: TicketFictif) {
@@ -956,7 +956,7 @@ function vueJuridique(id: string) {
       {
         ticketId: IDS.ticketCreation,
         reference: 'TK-2026-0101',
-        titre: 'Creation SARL ' + d.raisonSociale,
+        titre: 'Cr\u00e9ation SARL ' + d.raisonSociale,
         type: 'CREATION',
         clotureAt: null,
         description: 'Constitution de la societe',
@@ -1028,16 +1028,16 @@ function ligneDemarche(ordre: number, phase: [string, string], libelle: string, 
 }
 
 function vueDemarches() {
-  const p1: [string, string] = ['PREALABLES', 'Formalites prealables'];
+  const p1: [string, string] = ['PREALABLES', 'Formalit\u00e9s pr\u00e9alables'];
   const p2: [string, string] = ['IMMATRICULATION', 'Immatriculation'];
   const l1 = [
-    ligneDemarche(1, p1, 'Obtenir le certificat negatif', 'COCHEE', { organisme: 'OMPIC' }),
+    ligneDemarche(1, p1, 'Obtenir le certificat n\u00e9gatif', 'COCHEE', { organisme: 'OMPIC' }),
     ligneDemarche(2, p1, 'Ouvrir le compte bancaire et bloquer le capital', 'COCHEE', { organisme: 'Banque' }),
-    ligneDemarche(3, p1, 'Faire enregistrer les statuts', 'A_FAIRE', { organisme: 'Direction generale des impots', delai: 'trente jours', echeance: -2 }),
+    ligneDemarche(3, p1, 'Faire enregistrer les statuts', 'A_FAIRE', { organisme: 'Direction g\u00e9n\u00e9rale des imp\u00f4ts', delai: 'trente jours', echeance: -2 }),
   ];
   const l2 = [
-    ligneDemarche(4, p2, 'Deposer le dossier au registre du commerce', 'A_FAIRE', { organisme: 'Tribunal de commerce', delai: 'trois jours', echeance: 3, actionnable: false }),
-    ligneDemarche(5, p2, 'Publier l annonce legale', 'A_FAIRE', { organisme: 'Journal d annonces legales', delai: 'trente jours', echeance: 40, actionnable: false }),
+    ligneDemarche(4, p2, 'D\u00e9poser le dossier au registre du commerce', 'A_FAIRE', { organisme: 'Tribunal de commerce', delai: 'trois jours', echeance: 3, actionnable: false }),
+    ligneDemarche(5, p2, 'Publier l\u2019annonce l\u00e9gale', 'A_FAIRE', { organisme: 'Journal d\u2019annonces l\u00e9gales', delai: 'trente jours', echeance: 40, actionnable: false }),
   ];
   return {
     workflowType: 'CREATION',
@@ -1056,8 +1056,7 @@ function vueDemarches() {
       prochainLibelle: 'Faire enregistrer les statuts',
       pointsAttention: [
         { ordre: 3, libelle: 'Faire enregistrer les statuts', delai: 'trente jours', echeance: jour(-2), joursRestants: -2, severite: 'DEPASSE' },
-        { ordre: 4, libelle: 'Deposer le dossier au registre du commerce', delai: 'trois jours', echeance: jour(3), joursRestants: 3, severite: 'CRITIQUE' },
-        { ordre: 5, libelle: 'Publier l annonce legale', delai: 'trente jours', echeance: jour(40), joursRestants: 40, severite: 'APPROCHE' },
+        { ordre: 4, libelle: 'D\u00e9poser le dossier au registre du commerce', delai: 'trois jours', echeance: jour(3), joursRestants: 3, severite: 'CRITIQUE' },
       ],
     },
   };
@@ -1145,7 +1144,7 @@ export const ROUTES: RouteSimulee[] = [
   })),
   r('POST', /^\/public\/events$/, () => reponse(204)),
   // Mentions legales publiques de l'editeur (L6b E2) : donnees fictives de demonstration ;
-  // une partie a null pour montrer « non renseigne ».
+  // une partie a null pour montrer "non renseigne".
   r('GET', /^\/public\/editeur\/mentions-legales$/, () => ({
     raisonSociale: 'Editeur de demonstration',
     formeJuridique: 'SARL',

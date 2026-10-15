@@ -136,7 +136,7 @@ export function InviteEmployeeDrawer({ open, onClose, onInvited, supervisorTaken
             <strong>Actif</strong> automatiquement après sa première connexion réussie.
           </Message>
 
-          {/* BUG 7 (2026-06-08) — identifiant @jurika.ma genere : a transmettre au membre. */}
+          {/* BUG 7 (2026-06-08) -- identifiant @jurika.ma genere : a transmettre au membre. */}
           {result.loginEmail && (
             <div className="rounded-lg border border-border bg-bg-overlay p-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-fg-muted">Identifiant de connexion attribué</p>

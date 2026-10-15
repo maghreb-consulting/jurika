@@ -611,7 +611,7 @@ function DataroomDetail({
           >
             Activité du client
           </Button>
-          {/* V9 — Transfert du dossier a un collegue (EMPLOYE seulement, le bouton se masque sinon). */}
+          {/* V9 -- Transfert du dossier a un collegue (EMPLOYE seulement, le bouton se masque sinon). */}
           <TransferDossierButton dossierId={dossier.id} raisonSociale={dossier.raisonSociale} />
         </>
       }
@@ -637,7 +637,7 @@ function DataroomDetail({
       <div className="space-y-6">
         {error && <Message ton="erreur">{error}</Message>}
 
-        {/* §A — bandeau explicite : archive legale, lecture seule pour tous. */}
+        {/* A -- bandeau explicite : archive legale, lecture seule pour tous. */}
         {archived && (
           <div data-testid="dataroom-readonly-banner">
             <Message ton="attention" titre={dataroomReadOnlyMessage(dossier.statut)}>
@@ -668,7 +668,7 @@ function DataroomDetail({
             </Card>
           )}
 
-          {/* 2026-07-01 — Client rattache au dossier (ou aucun). */}
+          {/* 2026-07-01 -- Client rattache au dossier (ou aucun). */}
           <Card title="Client rattaché" titleAs="h2">
             {loadingClient ? (
               <div className="space-y-2" aria-busy="true" aria-label="Chargement du client">
@@ -780,7 +780,7 @@ function DataroomDetail({
         </div>
 
         <div className="grid gap-4 @4xl/page:grid-cols-2">
-          {/* E2 — Activite (tracabilite) de ce dossier */}
+          {/* E2 -- Activite (tracabilite) de ce dossier */}
           <Card className="p-5">
             <div>
               <EntityActivityPanel entityType="dossier" entityId={dossier.id} title="Activité du dossier" />

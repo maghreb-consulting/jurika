@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 /**
- * Lot L6b (E6), backlog L0 : « boutons d'action encore visibles au superviseur alors que le
- * serveur les refuse ». POST /requetes, /demandes/{id}/valider et /complement sont reserves a
+ * Lot L6b (E6), backlog L0 : " boutons d'action encore visibles au superviseur alors que le
+ * serveur les refuse ". POST /requetes, /demandes/{id}/valider et /complement sont reserves a
  * l'employe (DemandesController) : le superviseur suit les requetes sans ces boutons.
  */
 

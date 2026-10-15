@@ -2,7 +2,7 @@ import { useCallback, useContext } from 'react';
 import { ToastContext } from '../ui/useToast';
 
 /**
- * Lot L6b (E9) : confirmation discrete « Enregistré » (toast de la bibliotheque) pour les ecrans
+ * Lot L6b (E9) : confirmation discrete " Enregistre " (toast de la bibliotheque) pour les ecrans
  * d'administration. Sans fournisseur de toasts (rendu isole d'un test), la confirmation est
  * simplement omise : l'action reste faite et son resultat visible a l'ecran.
  */

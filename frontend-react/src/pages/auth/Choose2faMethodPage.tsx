@@ -220,7 +220,7 @@ export function Choose2faMethodPage() {
           </button>
 
           {!SMS_2FA_ENABLED ? (
-            // SMS « Hors service » : aucun fournisseur SMS reel n'est branche
+            // SMS " Hors service " : aucun fournisseur SMS reel n'est branche
             // (flag SMS_2FA_ENABLED=false). Carte grisee, non selectionnable.
             <div
               aria-disabled="true"

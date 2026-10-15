@@ -69,7 +69,7 @@ export function WorkspaceDetailPage() {
   const [pending, setPending] = useState<WorkspaceStatusAction | null>(null);
   const [acting, setActing] = useState(false);
 
-  // Recuperation seule (etat pose dans la promesse) : appelee au montage et par « Reessayer ».
+  // Recuperation seule (etat pose dans la promesse) : appelee au montage et par " Reessayer ".
   const recuperer = useCallback(() => {
     if (!workspaceId) return Promise.resolve();
     return adminService

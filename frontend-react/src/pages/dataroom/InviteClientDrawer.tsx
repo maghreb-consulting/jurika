@@ -138,7 +138,7 @@ export function InviteClientDrawer({ open, dossierId, raisonSociale, onClose }: 
             passe temporaire, qu’il devra changer à sa première connexion.
           </Message>
 
-          {/* BUG 7 (2026-06-08) — identifiant @jurika.ma genere */}
+          {/* BUG 7 (2026-06-08) -- identifiant @jurika.ma genere */}
           {result.loginEmail && (
             <div className="rounded-lg border border-border bg-bg-overlay p-3">
               <p className="text-xs font-semibold text-fg-muted">Identifiant de connexion attribué</p>

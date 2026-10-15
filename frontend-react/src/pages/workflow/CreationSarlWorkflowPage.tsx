@@ -625,7 +625,7 @@ function CreationSarlWorkflowPageBody() {
       description={<MetaTicketParcours ticket={ticket} />}
       actions={
         readOnly ? (
-          // Consultation lecture seule : pas d'action mutante dans l'en-tête.
+          // Consultation lecture seule : pas d'action mutante dans l'en-tete.
           <Button type="button" variant="secondary" icon={<ChevronLeft />} onClick={() => navigate('/tickets')}>
             Retour aux tickets
           </Button>

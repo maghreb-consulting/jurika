@@ -15,7 +15,7 @@ import { filParDefaut } from './navigation';
  *
  *   <Page
  *     titre="Mes tickets"
- *     description="Les demandes de vos clients, de la saisie au dépôt."
+ *     description="Les demandes de vos clients, de la saisie au depot."
  *     action={<Button icon={<Plus />} onClick={creer}>Nouveau ticket</Button>}
  *     actions={<Button variant="secondary">Exporter</Button>}
  *     infoBulle="Un ticket suit une demande du client."

@@ -20,7 +20,7 @@ import { delaisGreffeService, type NatureActe, type SaisieDelai } from '../../se
  * ou marqué « probable » par la matrice, est « à confirmer ». Le superviseur peut l'ajuster
  * pour le cabinet : l'ajustement s'applique aux démarches de dépôt des tickets.
  *
- * Lot L6b (E9) : composants de la bibliotheque, confirmation « Enregistré ».
+ * Lot L6b (E9) : composants de la bibliotheque, confirmation " Enregistre ".
  */
 function libelleDelai(valeur: number | null, unite: string | null): string {
   if (valeur == null || !unite) return '--';

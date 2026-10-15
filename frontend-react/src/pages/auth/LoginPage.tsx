@@ -240,7 +240,7 @@ export function LoginPage() {
           </TitreAccueil>
 
           <div className="mb-4">
-            {/* « JUR- » est fixe : affiche comme partie du champ, jamais a
+            {/* " JUR- " est fixe : affiche comme partie du champ, jamais a
                 retaper. Un collage de « JUR-KDNJ2 » reste accepte — le
                 prefixe en trop est retire. Prefixe a la signature du logo
                 (lettres a l'encre, tiret or), tout en jetons. */}
@@ -318,7 +318,7 @@ export function LoginPage() {
                 value={mailSaisie}
                 onChange={(e) => {
                   const v = e.target.value.trim();
-                  // Un « @ » saisi ou colle bascule en adresse libre : les
+                  // Un " @ " saisi ou colle bascule en adresse libre : les
                   // comptes anterieurs a V28 ne sont pas en @jurika.ma.
                   setEmail(v.includes('@') ? v : v ? v + MAIL_SUFFIXE : '');
                 }}
@@ -340,7 +340,7 @@ export function LoginPage() {
                 </span>
               )}
             </div>
-            {/* BUG 7 (2026-06-08) — l'identifiant @jurika.ma est genere a
+            {/* BUG 7 (2026-06-08) -- l'identifiant @jurika.ma est genere a
                 l'inscription/invitation. Pour les comptes legacy d'avant
                 V28, login_email = email perso (backfill 1:1). */}
             <p id="login-email-aide" className="text-xs text-fg-subtle">

@@ -11,7 +11,7 @@ import { CLES_MENTIONS, LIBELLES_MENTIONS, lireMentions, oublierMentionsLegales 
 
 /**
  * Lot L6b (E10) : page /mentions-legales. Les douze mentions viennent des Parametres de
- * l'editeur (route publique simulee) ; une mention nulle s'affiche "non renseigné" ; une
+ * l'editeur (route publique simulee) ; une mention nulle s'affiche "non renseigne" ; une
  * erreur de chargement est dite, avec "Reessayer".
  */
 const COMPLETES = {

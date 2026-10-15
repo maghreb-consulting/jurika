@@ -67,7 +67,7 @@ const ESSAI_TELECHARGEMENT =
 /**
  * Portail client — version simplifiee de la Data Room pour les utilisateurs CLIENT.
  * - En-tete commun (Page) : nom de la societe, derniere mise a jour, action principale
- *   « Faire une demande ».
+ *   " Faire une demande ".
  * - Permissions rappelees en clair ; onglets : Dossier juridique (versions courantes
  *   uniquement), Depots du client, Debours, Demandes du client ; lien vers les requetes
  *   du cabinet (page dediee).
@@ -89,7 +89,7 @@ export function ClientDataroomView() {
     const allowed: Tab[] = ['juridique', 'depots', 'demandes'];
     return (allowed as string[]).includes(t ?? '') ? (t as Tab) : 'juridique';
   });
-  // « Faire une demande » (en-tete) : ouvre l'onglet et son formulaire.
+  // " Faire une demande " (en-tete) : ouvre l'onglet et son formulaire.
   const [signalDemande, setSignalDemande] = useState(0);
 
   const load = useCallback(async () => {
@@ -288,7 +288,7 @@ export function ClientDataroomView() {
           </div>
         )}
 
-        {/* §A — bandeau archive legale, cote client. */}
+        {/* A -- bandeau archive legale, cote client. */}
         {archived && (
           <DataroomReadOnlyHint
             statut={dossier.statut}
@@ -510,7 +510,7 @@ function ClientDemandes({
   /** §A — societe archivee : plus de nouvelle demande (lecture de l'historique OK). */
   readOnly?: boolean;
   readOnlyStatut?: string | null;
-  /** Change a chaque « Faire une demande » de l'en-tete : le formulaire s'ouvre. */
+  /** Change a chaque " Faire une demande " de l'en-tete : le formulaire s'ouvre. */
   signalOuverture?: number;
 }) {
   const [showForm, setShowForm] = useState(signalOuverture > 0);

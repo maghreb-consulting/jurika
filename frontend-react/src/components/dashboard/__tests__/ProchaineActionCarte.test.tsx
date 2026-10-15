@@ -7,7 +7,7 @@ import { aideStatutTicket } from '../../../pages/tickets/textesAideStatut';
 import type { Ticket } from '../../../types/ticket';
 import type { EcheanceItem } from '../../../types/dashboard';
 
-// Lot L6b (E9, point 8) : carte « Prochaine action » de l'employe. Ce qu'il faut faire vient
+// Lot L6b (E9, point 8) : carte " Prochaine action " de l'employe. Ce qu'il faut faire vient
 // de l'aide du statut du ticket (aucune regle nouvelle) ; l'echeance la plus proche trie.
 
 function ticket(p: Partial<Ticket>): Ticket {

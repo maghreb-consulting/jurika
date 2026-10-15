@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 /**
- * Lot L6b (E6), backlog L6 : « champ "Ticket lie" d'une demande saisi a la main ».
+ * Lot L6b (E6), backlog L6 : " champ "Ticket lie" d'une demande saisi a la main ".
  * Le ticket lie se choisit desormais parmi les tickets du dossier (appel existant
  * GET /tickets?dossierId=...), jamais en tapant un identifiant ; "Aucun" delie.
  */

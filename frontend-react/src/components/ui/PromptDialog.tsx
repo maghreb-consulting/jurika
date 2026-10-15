@@ -30,7 +30,7 @@ interface PromptDialogProps {
 /**
  * Remplaçant stylé de `window.prompt` : saisit une valeur texte unique dans un
  * Modal à la charte, avec validation JS in-app (aucune bulle native).
- * Bâti sur {@link Modal} (<dialog> natif : page inerte, Esc, voile).
+ * Bati sur {@link Modal} (<dialog> natif : page inerte, Esc, voile).
  */
 export function PromptDialog({
   open,

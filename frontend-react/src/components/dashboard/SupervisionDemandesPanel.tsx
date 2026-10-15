@@ -109,7 +109,7 @@ function SupervisionBlock({
   const navigate = useNavigate();
   const indisponible = lignes === null;
   const rows = useMemo(() => lignes ?? [], [lignes]);
-  // Lot L6 (E9) : une requete s'ouvre sur l'onglet « Requetes du cabinet »
+  // Lot L6 (E9) : une requete s'ouvre sur l'onglet " Requetes du cabinet "
   // (l'onglet Demandes ne les porte plus depuis le lot 1).
   const onglet = direction === 'EMPLOYE_TO_CLIENT' ? 'requetes' : 'demandes';
   const lien = (r: DemandeSupervisionRow) => `/data-rooms?dossier=${r.dossierId}&tab=${onglet}`;
