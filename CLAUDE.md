@@ -280,6 +280,28 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **Note interne `NOTE_DEFAUT_DECISION_ASSOCIE_UNIQUE_SARL_AU`** du corpus non branchee (constat de
   defaut de decision de l'associe unique).
 
+### Lot L6b (refonte de l'interface, 2026-10-15) -- dette relevee
+
+- **Police servie en `application/octet-stream`** par nginx (`/fonts/Inter-*.ttf`) : a declarer
+  `font/ttf` (types nginx du front).
+- **Code mort du front** : `components/billing/PlanUsageBadge.tsx` (importe nulle part) ;
+  dependances `lenis`, `gsap`, `@gsap/react` encore dans package.json (`gsap` importe par
+  `lib/motion.ts`) ; `scripts/check-pricing-purge.mjs` (lit l'ancienne vitrine) ;
+  `e2e/signup-funnel.spec.ts` et `e2e/billing-*.spec.ts` perimes.
+- **Harnais visuel** : donnees simulees en ASCII (texte non accentue sur les captures, pas dans
+  l'application) ; route `GET /ai/workflows/*/templates` de la modification non simulee ; contraste
+  calcule par le harnais (axe-core absent hors ligne : fonds en image ou degrade non evalues) ;
+  job CI `frontend-visuel` bloquant (duree en CI non mesuree, delai 30 min).
+- **Tests sensibles a la charge** : `step7-documents-conditionnels` (delai porte a 30 s),
+  `debours-panel`, `TracabilitePage` depassent 5 s quand le Z440 est tres charge (sous-agents en
+  parallele) ; verts a charge normale.
+- **Ecrans** : `ClientDataroomView` garde un avis fixe (z-50) de repli sans fournisseur de toasts
+  (tests seulement) ; reference du ticket affichee deux fois dans l'en-tete du parcours ; Inter
+  seule (Playfair et JetBrains Mono abandonnes, aucun fichier libre hors ligne) ; rendu d'Inter
+  verifie sous chromium Linux seulement.
+- **Copilote du tableau de bord employe** : les suggestions viennent du serveur ; a relire avec des
+  donnees reelles (textes non verifies hors harnais).
+
 ### Lot L7 (offre et facturation, 2026-10-14) -- dette relevee
 
 - **Supprimer `superadmin.test@jurika.invalid` avant la mise en production** : compte
@@ -331,14 +353,11 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 - **Messages par defaut de Bean Validation** (`@NotBlank` sans `message`) : en anglais si la JVM
   n'est pas en francais ; aucun `ValidationMessages_fr` (jurika-common/config).
-- **Theme** : envoye au serveur (`UpdateThemeUseCase`) mais jamais relu par le front (motif 9) ;
-  l'ecran dit desormais "memorise dans ce navigateur".
 - **Recuperation par code** : le compte est cherche sur la colonne `email` et non sur
   `login_email` ; un utilisateur qui ne connait que son identifiant pourrait echouer (a verifier).
-- **Ecrans** : `TicketPage` affiche les noms techniques des variables (ProvenanceDonnees sans
-  dictionnaire de libelles) ; `OcrSuggestionsPanel` affiche la source "tesseract / llm" ;
-  activite du client : colonne "Utilisateur" = 8 caracteres d'identifiant ; champ "Ticket lie"
-  d'une demande saisi a la main.
+- **Libelles des donnees hors creation** (`TicketPage`) : seul le catalogue de la creation
+  (`CHAMPS_CREATION`) donne des libelles ; les variables des autres parcours restent sous leur nom
+  technique faute de dictionnaire expose par le serveur (L6b).
 - **Valeurs par defaut de liste encore transmises aux actes** (creation) : etape 3
   `modeLiberation` ("integrale"), `modeSignature` ("separee") ; etape 5 `formeJuridiqueEntite`
   ("SARL"), `repCivilite` ("M"), `repQualite` ("Gerant") du representant d'un associe personne
@@ -407,8 +426,9 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **`AuditLogJpaRepository` (auth)** inutilise depuis E10b : code mort a retirer (test d'abord).
 - **Objets MinIO orphelins** quand l'ecriture en base echoue, et suppression de l'ancien objet
   avant validation (dataroom).
-- **Front : boutons d'action encore visibles au superviseur** alors que le serveur les refuse
-  (E5, E5b, E6) ; 46 fichiers du front citent `SUPERVISEUR`.
+- **Front : boutons refuses par le serveur** : revus ecran par ecran en L6b (parcours en lecture
+  seule pour le superviseur, requetes, echeances, nouveau ticket, forfait) ; a reverifier a chaque
+  nouvel ecran.
 - **Exemple d'environnement serveur** : `.env.local.server.example` n'active pas le profil
   compose `mailhog` (`COMPOSE_PROFILES`) alors que `start-local.sh` attend `jurika-mailhog` :
   une installation faite depuis l'exemple n'atteint jamais 18/18.
