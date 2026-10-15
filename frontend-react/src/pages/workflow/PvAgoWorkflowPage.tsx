@@ -943,7 +943,7 @@ function PvAgoWorkflowPageBody() {
               data-testid="pvago-convocation"
             >
               <div className="flex items-center gap-2">
-                <Megaphone className="h-4 w-4 text-accent" />
+                <Megaphone className="h-4 w-4 text-fg-muted" />
                 <h4 className="text-sm font-semibold text-fg">Convocation (facultative)</h4>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
@@ -974,7 +974,7 @@ function PvAgoWorkflowPageBody() {
                 <div
                   role="alert"
                   data-testid="pvago-convocation-16j-error"
-                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-2 text-xs text-danger"
+                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-soft p-2 text-xs text-danger"
                 >
                   <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                   <span>{convocationError}</span>
@@ -982,9 +982,9 @@ function PvAgoWorkflowPageBody() {
               )}
             </section>
 
-            <div className="rounded-lg border border-accent/40 bg-accent/10 p-3 text-xs text-fg-muted">
+            <div className="rounded-lg border border-info/30 bg-info-soft p-3 text-xs text-fg-muted">
               <div className="flex items-center gap-2">
-                <Info className="h-4 w-4 text-accent" />
+                <Info className="h-4 w-4 text-fg-muted" />
                 <span>
                   Acte produit : procès-verbal d’approbation des comptes
                   {isAU ? ' (SARL à associé unique)' : ' (SARL)'} — <strong>aucune annonce légale</strong> :
@@ -1113,7 +1113,7 @@ function PvAgoWorkflowPageBody() {
                 <button
                   type="button"
                   onClick={() => setAffectations((p) => [...p, { libelle: '', montant: '' }])}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-bg-raised px-2.5 py-1 text-xs font-medium text-fg hover:border-accent"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-bg-raised px-2.5 py-1 text-xs font-medium text-fg hover:border-border-hi"
                 >
                   <Plus className="h-3.5 w-3.5" /> Ajouter un poste
                 </button>
@@ -1151,7 +1151,7 @@ function PvAgoWorkflowPageBody() {
               </div>
               <div
                 className={`mt-3 rounded-lg p-2 text-xs ${
-                  affectationOk ? 'bg-success-soft text-success' : 'bg-danger/10 text-danger'
+                  affectationOk ? 'bg-success-soft text-success' : 'bg-danger-soft text-danger'
                 }`}
               >
                 Total affecté : <strong>{sumAffectations.toLocaleString('fr-FR')} MAD</strong>{' '}
@@ -1296,12 +1296,12 @@ function PvAgoWorkflowPageBody() {
 
             {loadingTemplates && <p className="text-sm text-fg-subtle">Chargement des modèles…</p>}
             {loadTplErr && (
-              <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger" role="alert">
+              <div className="rounded-lg border border-danger/30 bg-danger-soft p-3 text-sm text-danger" role="alert">
                 {loadTplErr}
               </div>
             )}
             {!loadingTemplates && templates.length === 0 && !loadTplErr && (
-              <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+              <div className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm text-warning">
                 Aucun modèle compatible n’a été trouvé pour ce dossier : vérifiez la forme juridique à l’étape 1, puis rechargez la page.
               </div>
             )}
@@ -1419,7 +1419,7 @@ function PvAgoWorkflowPageBody() {
           <div className="space-y-4" data-testid="pvago-step4-pieces">
             <header>
               <div className="flex items-center gap-2">
-                <Paperclip className="h-5 w-5 text-accent" />
+                <Paperclip className="h-5 w-5 text-fg-muted" />
                 <h2 className="text-lg font-semibold text-fg">
                   Étape 4 — Pièces jointes (facultative)
                 </h2>

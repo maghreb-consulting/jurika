@@ -154,7 +154,7 @@ export function Step5Validation({
           exploitable par une future Modification). */}
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
         <h3 className="mb-3 flex items-center gap-2 text-base font-bold text-fg">
-          <Users className="h-5 w-5 text-accent" />
+          <Users className="h-5 w-5 text-fg-muted" />
           Associés et gérants
         </h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -283,7 +283,7 @@ function CompletenessPanel({
     >
       <p className="mb-1 flex items-center justify-between text-xs font-semibold text-fg">
         {title}
-        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
+        <span className="rounded-full bg-info-soft px-2 py-0.5 text-[10px] font-medium text-info">
           {done} / {items.length}
         </span>
       </p>

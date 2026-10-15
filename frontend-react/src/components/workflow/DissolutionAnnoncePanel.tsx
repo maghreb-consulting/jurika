@@ -189,7 +189,7 @@ export function DissolutionAnnoncePanel({
   return (
     <section className="space-y-4 rounded-xl border border-border bg-bg-raised p-4" data-testid="dissolution-annonce">
       <div className="flex items-center gap-2">
-        <Megaphone className="h-4 w-4 text-accent" />
+        <Megaphone className="h-4 w-4 text-fg-muted" />
         <h4 className="text-sm font-semibold text-fg">Annonce légale de dissolution</h4>
       </div>
       <p className="text-xs text-fg-subtle">

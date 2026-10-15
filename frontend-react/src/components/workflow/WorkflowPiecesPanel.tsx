@@ -113,7 +113,7 @@ export function WorkflowPiecesPanel({
       </header>
 
       {error && (
-        <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-1.5 text-xs text-danger">
+        <div className="mb-3 rounded-md border border-danger/30 bg-danger-soft px-3 py-1.5 text-xs text-danger">
           {error}
         </div>
       )}
@@ -159,14 +159,14 @@ export function WorkflowPiecesPanel({
               <p className="truncate text-sm text-fg">
                 {k.label}
                 {k.obligatoire && (
-                  <span className="ml-2 rounded bg-danger/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-danger">
+                  <span className="ml-2 rounded bg-danger-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-danger">
                     obligatoire
                   </span>
                 )}
               </p>
               <p className="text-xs text-fg-subtle">À déposer</p>
             </div>
-            <label className="flex cursor-pointer items-center gap-1 rounded-md border border-accent/40 bg-accent/10 px-2 py-1 text-xs text-accent hover:bg-accent/20">
+            <label className="flex cursor-pointer items-center gap-1 rounded-md border border-border-input bg-bg-raised px-2 py-1 text-xs text-fg hover:bg-bg-overlay">
               <Upload className="h-3 w-3" />
               {busy === k.code ? 'Envoi…' : 'Importer'}
               <input

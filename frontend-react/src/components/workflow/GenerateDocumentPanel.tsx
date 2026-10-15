@@ -288,7 +288,7 @@ export function GenerateDocumentPanel({
 
             {error ? (
               <div
-                className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-2 text-xs text-danger"
+                className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-soft p-2 text-xs text-danger"
                 role="alert"
               >
                 <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />

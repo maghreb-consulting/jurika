@@ -526,7 +526,7 @@ function SuccursaleEtrWorkflowPageBody() {
           <div className="space-y-5" data-testid="succursale-etr-step1">
             <header>
               <div className="flex items-center gap-2">
-                <Globe className="h-5 w-5 text-accent" />
+                <Globe className="h-5 w-5 text-fg-muted" />
                 <h2 className="text-lg font-semibold text-fg">Étape 1 — Société mère étrangère</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -544,7 +544,7 @@ function SuccursaleEtrWorkflowPageBody() {
                 data-testid="etr-mode-saisie"
                 className={`rounded-lg border px-3 py-2 text-sm ${
                   !reuseExisting
-                    ? 'border-accent bg-accent/10 font-semibold text-accent'
+                    ? 'border-accent bg-accent-soft font-semibold text-accent'
                     : 'border-border bg-bg-raised text-fg-muted'
                 }`}
               >
@@ -556,7 +556,7 @@ function SuccursaleEtrWorkflowPageBody() {
                 data-testid="etr-mode-selection"
                 className={`rounded-lg border px-3 py-2 text-sm ${
                   reuseExisting
-                    ? 'border-accent bg-accent/10 font-semibold text-accent'
+                    ? 'border-accent bg-accent-soft font-semibold text-accent'
                     : 'border-border bg-bg-raised text-fg-muted'
                 }`}
               >
@@ -679,7 +679,7 @@ function SuccursaleEtrWorkflowPageBody() {
                   { value: 'ordinaire', label: 'Ordinaire' },
                 ]}
               />
-              <div className="rounded-lg border border-info/30 bg-accent/10 p-3 text-xs text-fg-muted">
+              <div className="rounded-lg border border-info/30 bg-info-soft p-3 text-xs text-fg-muted">
                 Organe détecté : <strong>{isAU ? 'organe unipersonnel' : 'organe collégial'}</strong>.
                 Acte produit : procès-verbal de création de succursale par une société étrangère
                 {isAU ? ' (décision unipersonnelle)' : ' (décision collégiale)'}.
@@ -691,7 +691,7 @@ function SuccursaleEtrWorkflowPageBody() {
               data-testid="succursale-etr-convocation"
             >
               <div className="flex items-center gap-2">
-                <Megaphone className="h-4 w-4 text-accent" />
+                <Megaphone className="h-4 w-4 text-fg-muted" />
                 <h4 className="text-sm font-semibold text-fg">Convocation (facultative)</h4>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
@@ -722,7 +722,7 @@ function SuccursaleEtrWorkflowPageBody() {
                 <div
                   role="alert"
                   data-testid="succursale-etr-convocation-16j-error"
-                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-2 text-xs text-danger"
+                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-soft p-2 text-xs text-danger"
                 >
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                   <span>{convocationError}</span>
@@ -819,7 +819,7 @@ function SuccursaleEtrWorkflowPageBody() {
           <div className="space-y-5" data-testid="succursale-etr-step2">
             <header>
               <div className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-accent" />
+                <Building2 className="h-5 w-5 text-fg-muted" />
                 <h2 className="text-lg font-semibold text-fg">Étape 2 — Données de la succursale</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -867,7 +867,7 @@ function SuccursaleEtrWorkflowPageBody() {
             </header>
 
             <div
-              className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-fg-muted"
+              className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning-soft p-3 text-xs text-fg-muted"
               role="status"
               data-testid="etr-annonce-derive-warning"
             >
@@ -947,7 +947,7 @@ function SuccursaleEtrWorkflowPageBody() {
           <div className="space-y-4" data-testid="succursale-etr-step4-pieces">
             <header>
               <div className="flex items-center gap-2">
-                <Paperclip className="h-5 w-5 text-accent" />
+                <Paperclip className="h-5 w-5 text-fg-muted" />
                 <h2 className="text-lg font-semibold text-fg">
                   Étape 4 — Pièces jointes (facultative)
                 </h2>
@@ -979,7 +979,7 @@ function SuccursaleEtrWorkflowPageBody() {
                 l’étape 1.
               </p>
             ) : (
-              <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-fg-muted">
+              <p className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-xs text-fg-muted">
                 Validez d’abord l’étape 1 : c’est elle qui crée (ou réutilise) la Data Room de la
                 société mère, destination de ces dépôts.
               </p>

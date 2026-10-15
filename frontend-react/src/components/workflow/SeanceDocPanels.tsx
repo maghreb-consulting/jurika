@@ -220,7 +220,7 @@ function SeanceDocPanel({
   }, [isOpen, modeleCharge, templateCode, title]);
 
   return (
-    <section className={embedded ? '' : 'rounded-xl border border-accent/30 bg-accent/5'}>
+    <section className={embedded ? '' : 'rounded-xl border border-info/30 bg-info-soft'}>
       {!embedded && (
         <button
           type="button"
@@ -230,7 +230,7 @@ function SeanceDocPanel({
           data-testid={`seance-doc-toggle-${templateCode}`}
         >
           <span className="flex items-center gap-2">
-            <span className="flex-shrink-0 text-accent">{icon}</span>
+            <span className="flex-shrink-0 text-fg-muted">{icon}</span>
             <span className="text-sm font-semibold text-fg">{title} (facultatif)</span>
           </span>
           {open ? (
@@ -268,7 +268,7 @@ function SeanceDocPanel({
 
             {loading && <p className="text-sm text-fg-subtle">Chargement du modèle…</p>}
             {loadError && (
-              <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger" role="alert">
+              <div className="rounded-lg border border-danger/30 bg-danger-soft p-3 text-sm text-danger" role="alert">
                 {loadError}
               </div>
             )}

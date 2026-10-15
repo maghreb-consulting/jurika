@@ -134,7 +134,7 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
     >
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
         <div className="mb-1 flex items-center gap-2">
-          <Briefcase className="h-5 w-5 text-accent" />
+          <Briefcase className="h-5 w-5 text-fg-muted" />
           <h3 className="text-lg font-bold text-fg">
             Activité de la société
           </h3>
@@ -171,12 +171,12 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
               'La formation professionnelle\n' +
               'L’import-export de matériel'
             }
-            className="w-full resize-none rounded-lg border-2 border-border bg-bg-overlay px-4 py-3 text-sm leading-relaxed focus:border-accent focus:outline-none"
+            className="w-full resize-none rounded-lg border-2 border-border bg-bg-overlay px-4 py-3 text-sm leading-relaxed focus:border-focus focus:outline-none"
           />
           <p className="mt-1 text-xs text-fg-subtle">
             {description.length} caractères (plus de 10 caractères attendus).
             {activites.length > 1 && (
-              <span className="ml-1 font-medium text-accent">
+              <span className="ml-1 font-medium text-heading">
                 {activites.length} activités détectées (présentées en liste).
               </span>
             )}
@@ -219,7 +219,7 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
         </div>
 
         {reglementee && (
-          <div className="mb-6 flex items-start gap-3 rounded-lg border-l-4 border-warning bg-warning/10 p-4">
+          <div className="mb-6 flex items-start gap-3 rounded-lg border-l-4 border-warning bg-warning-soft p-4">
             <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
             <div>
               <p className="text-sm font-semibold text-warning">
@@ -244,7 +244,7 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
               aria-label="Catégorie ONA"
               value={categorieOna}
               onChange={(ev) => setCategorieOna(ev.target.value)}
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             >
               <option value="">— Sélectionnez —</option>
               {CATEGORIES_ONA.map((c) => (
@@ -263,7 +263,7 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
               aria-label="Secteur économique"
               value={secteur}
               onChange={(ev) => setSecteur(ev.target.value)}
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             >
               <option value="">— Sélectionnez —</option>
               {SECTEURS.map((s) => (
@@ -293,7 +293,7 @@ export function Step4Activite({ existing, saving, onSubmit, importMode = false, 
               type="date"
               value={dateDebutExercice}
               onChange={(ev) => setDateDebutExercice(ev.target.value)}
-              className="h-10 w-full max-w-xs rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full max-w-xs rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             />
             <p className="mt-1 text-xs text-fg-subtle">
               Sert au suivi des exercices comptables de la société (étape Suivi).

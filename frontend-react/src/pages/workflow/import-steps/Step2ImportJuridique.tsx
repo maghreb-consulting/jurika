@@ -484,7 +484,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
       }}
       className="mx-auto max-w-[900px] space-y-6"
     >
-      <div className="rounded-xl border border-accent/20 bg-accent/10 p-4 text-xs text-fg">
+      <div className="rounded-xl border border-info/30 bg-info-soft p-4 text-xs text-fg">
         Déposez les documents juridiques existants (statuts, bail, CNIE, RC, IF,
         certificat négatif…). Pour chaque fichier,{' '}
         <strong>choisissez son type</strong> : le dépôt dans la Data Room
@@ -496,7 +496,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
       </div>
 
       {!dossierId && (
-        <div className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
+        <div className="rounded-lg border border-danger/40 bg-danger-soft p-3 text-sm text-danger">
           Aucun dossier n’est rattaché à ce ticket. Revenez à la liste des tickets
           et rouvrez le parcours.
         </div>
@@ -520,11 +520,11 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
           onDrop={handleDrop}
           className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition ${
             dragOver
-              ? 'border-accent bg-accent/10'
-              : 'border-border bg-bg-overlay hover:border-accent'
+              ? 'border-accent bg-accent-soft'
+              : 'border-border bg-bg-overlay hover:border-border-hi'
           }`}
         >
-          <Upload className="mx-auto mb-3 h-10 w-10 text-accent" />
+          <Upload className="mx-auto mb-3 h-10 w-10 text-fg-muted" />
           <p className="text-sm font-semibold text-fg">
             Glissez-déposez vos fichiers PDF ou images
           </p>
@@ -542,7 +542,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
         </label>
 
         {globalError && (
-          <p className="mt-3 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+          <p className="mt-3 rounded-lg border border-danger/30 bg-danger-soft px-3 py-2 text-xs text-danger">
             {globalError}
           </p>
         )}
@@ -569,7 +569,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
                 className="rounded-lg border border-border bg-bg-overlay p-3"
               >
                 <div className="flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-accent" />
+                  <FileText className="h-5 w-5 text-fg-muted" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-fg" title={d.filename}>
                       {d.filename}
@@ -608,7 +608,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
                     ))}
                   </select>
                   {d.busy ? (
-                    <Loader className="h-4 w-4 animate-spin text-accent" />
+                    <Loader className="h-4 w-4 animate-spin text-fg-subtle" />
                   ) : d.uploaded ? (
                     <CheckCircle2 className="h-4 w-4 text-success" />
                   ) : !d.uiType ? (
@@ -648,7 +648,7 @@ export function Step2ImportJuridique({ existing, dossierId, denomination, saving
                       className={`flex items-center gap-1.5 rounded-lg px-3 h-8 text-xs font-medium transition ${
                         d.extracting
                           ? 'cursor-wait bg-border text-fg-subtle'
-                          : 'bg-accent/15 text-accent hover:bg-accent/25'
+                          : 'bg-info-soft text-info hover:bg-bg-overlay'
                       }`}
                       title="Lance une extraction automatique pour pré-remplir la fiche de la société (facultatif)"
                     >

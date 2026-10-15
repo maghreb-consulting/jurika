@@ -259,7 +259,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
       {/* Apports */}
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
         <div className="mb-1 flex items-center gap-2">
-          <Calculator className="h-5 w-5 text-accent" />
+          <Calculator className="h-5 w-5 text-fg-muted" />
           <h3 className="text-lg font-bold text-fg">Apports et capital</h3>
         </div>
         <p className="mb-4 text-xs text-fg-subtle">
@@ -302,7 +302,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
                       value={numeraireSaisi ?? ''}
                       placeholder="Montant à saisir"
                       onChange={(ev) => setNumeraire(nombreOuVide(ev.target.value))}
-                      className="h-10 w-full rounded-lg border-2 border-border bg-bg-raised px-3 pr-16 text-sm focus:border-accent focus:outline-none"
+                      className="h-10 w-full rounded-lg border-2 border-border bg-bg-raised px-3 pr-16 text-sm focus:border-focus focus:outline-none"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-fg-subtle">
                       MAD
@@ -328,7 +328,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
                       onChange={(ev) =>
                         setNumeraireLibere(nombreOuVide(ev.target.value))
                       }
-                      className="h-10 w-full rounded-lg border-2 border-border bg-bg-raised px-3 pr-16 text-sm focus:border-accent focus:outline-none"
+                      className="h-10 w-full rounded-lg border-2 border-border bg-bg-raised px-3 pr-16 text-sm focus:border-focus focus:outline-none"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-fg-subtle">
                       {numeraireLiberePct}%
@@ -360,7 +360,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
             </span>
             <span className="text-xs text-fg-subtle">(facultatif)</span>
             {hasNature && (
-              <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/40 bg-success/10 px-2 py-0.5 text-[10px] font-bold uppercase text-success">
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/40 bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">
                 <Lock className="h-3 w-3" /> Libéré à 100 %
               </span>
             )}
@@ -409,7 +409,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
             </span>
             <span className="text-xs text-fg-subtle">(facultatif)</span>
             {hasIndustrie && (
-              <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/40 bg-success/10 px-2 py-0.5 text-[10px] font-bold uppercase text-success">
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/40 bg-success-soft px-2 py-0.5 text-[10px] font-bold uppercase text-success">
                 <Lock className="h-3 w-3" /> Libéré à 100 %
               </span>
             )}
@@ -445,10 +445,10 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
         </div>
 
         {/* Capital auto */}
-        <div className="rounded-lg border border-accent/20 bg-accent/10 p-5">
+        <div className="rounded-lg border border-info/30 bg-info-soft p-5">
           <div className="mb-2 flex items-center gap-2">
-            <Info className="h-4 w-4 text-accent" />
-            <span className="text-sm font-bold text-accent">
+            <Info className="h-4 w-4 text-fg-muted" />
+            <span className="text-sm font-bold text-heading">
               Capital social (calcul automatique)
             </span>
           </div>
@@ -523,7 +523,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
             value={nbPartsSaisi ?? ''}
             placeholder="Nombre à saisir"
             onChange={(ev) => setNbParts(nombreOuVide(ev.target.value))}
-            className="h-10 w-full max-w-xs rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+            className="h-10 w-full max-w-xs rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
           />
         </div>
 
@@ -536,7 +536,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
           const isInteger = Math.abs(valeurNominale - Math.round(valeurNominale)) < 1e-9;
           if (isInteger && Math.abs(reste) < 0.005) return null;
           return (
-            <div className="mb-4 flex items-start gap-2 rounded-lg border-l-4 border-warning bg-warning/10 p-3">
+            <div className="mb-4 flex items-start gap-2 rounded-lg border-l-4 border-warning bg-warning-soft p-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning" />
               <div className="text-xs text-warning">
                 <p>
@@ -590,7 +590,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
         </div>
 
         {!importMode && capitalSocial > 0 && isBlocked && (
-          <div className="flex items-start gap-3 rounded-lg border-l-4 border-danger bg-danger/10 p-4">
+          <div className="flex items-start gap-3 rounded-lg border-l-4 border-danger bg-danger-soft p-4">
             <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-danger" />
             <div>
               <p className="text-sm font-semibold text-danger">
@@ -608,7 +608,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
         )}
 
         {!importMode && capitalSocial > 0 && !isBlocked && (
-          <div className="flex items-start gap-3 rounded-lg border-l-4 border-success bg-success/10 p-4">
+          <div className="flex items-start gap-3 rounded-lg border-l-4 border-success bg-success-soft p-4">
             <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-success" />
             <p className="text-sm text-success">
               Libération du capital conforme : {percentLibere} % du capital est libéré (minimum légal : 25 %).
@@ -668,7 +668,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
       {!importMode && depotFondsBloque && (
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
         <h3 className="mb-3 flex items-center gap-2 text-lg font-bold text-fg">
-          <Lock className="h-5 w-5 text-accent" /> Compte de dépôt du capital
+          <Lock className="h-5 w-5 text-fg-muted" /> Compte de dépôt du capital
         </h3>
         <p className="mb-4 text-xs text-fg-subtle">
           Établissement et numéro du compte bloqué sur lequel les apports en numéraire
@@ -684,7 +684,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
               value={depotBanqueNom}
               onChange={(ev) => setDepotBanqueNom(ev.target.value)}
               placeholder="Ex. : Attijariwafa Bank, agence Anfa"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             />
           </div>
           <div>
@@ -696,7 +696,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
               value={depotNumero}
               onChange={(ev) => setDepotNumero(ev.target.value)}
               placeholder="Ex. : 007 780 1234567890123 45"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             />
           </div>
         </div>
@@ -715,7 +715,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
               aria-label="Libération des apports en numéraire"
               value={modeLiberation}
               onChange={(ev) => setModeLiberation(ev.target.value)}
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             >
               <option value="intégrale">Intégrale</option>
               <option value="partielle">Partielle (un quart au moins, solde dans les cinq ans)</option>
@@ -733,7 +733,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
               aria-label="Mode de signature sociale (art. 15)"
               value={modeSignature}
               onChange={(ev) => setModeSignature(ev.target.value)}
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             >
               <option value="séparée">Séparée (sans limitation)</option>
               <option value="séparée avec plafond">Séparée avec plafond</option>
@@ -751,7 +751,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
                 value={signaturePlafond || ''}
                 onChange={(ev) => setSignaturePlafond(Number(ev.target.value))}
                 placeholder="Ex. : 50000"
-                className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+                className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
               />
             </div>
           )}
@@ -769,7 +769,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
 
       {/* 2026-06-19 — Commissaire aux apports — conditionnel si nature > 100 000 MAD (Loi 5-96 Art. 53) */}
       {hasNature && nature > 100000 && (
-        <div className="rounded-xl border border-warning/30 bg-warning/5 p-6 shadow-sm">
+        <div className="rounded-xl border border-warning/30 bg-warning-soft p-6 shadow-sm">
           <h3 className="mb-3 flex items-center gap-2 text-base font-bold text-fg">
             <AlertTriangle className="h-4 w-4 text-warning" /> Commissaire aux apports (obligatoire)
           </h3>
@@ -783,7 +783,7 @@ export function Step3Capital({ existing, importMode = false, saving, onSubmit, r
             value={commissaireApportsNom}
             onChange={(ev) => setCommissaireApportsNom(ev.target.value)}
             placeholder="Nom du commissaire aux apports"
-            className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+            className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
           />
         </div>
       )}

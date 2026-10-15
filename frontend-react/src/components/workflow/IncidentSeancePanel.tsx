@@ -188,7 +188,7 @@ export function IncidentSeancePanel({
   }, [open, isAU, modelesCharges, cleModeles]);
 
   return (
-    <section className="rounded-xl border border-warning/40 bg-warning/5">
+    <section className="rounded-xl border border-warning/40 bg-warning-soft">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -235,12 +235,12 @@ export function IncidentSeancePanel({
 
             {loadingTemplates && <p className="text-sm text-fg-subtle">Chargement des modèles…</p>}
             {loadTemplatesError && (
-              <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger" role="alert">
+              <div className="rounded-lg border border-danger/30 bg-danger-soft p-3 text-sm text-danger" role="alert">
                 {loadTemplatesError}
               </div>
             )}
             {!loadingTemplates && templates.length === 0 && !loadTemplatesError && (
-              <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning"
+              <div className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm text-warning"
                 data-testid="incident-seance-aucun">
                 {/* Lot L4d (E11) : variantes SARL AU retirees, sans objet. */}
                 {isAU

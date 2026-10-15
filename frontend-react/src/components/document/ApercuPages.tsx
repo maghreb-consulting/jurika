@@ -94,14 +94,14 @@ export function ApercuPagesChargees({
   if (!courant) {
     return (
       <div className="flex flex-col items-center gap-2 py-10 text-fg-subtle">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        <Loader2 className="h-8 w-8 animate-spin text-fg-subtle" />
         <p className="text-sm">Préparation de l’aperçu…</p>
       </div>
     );
   }
   if (courant.erreur || !courant.apercu) {
     return (
-      <div role="alert" className="mx-auto max-w-md rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-center text-sm text-danger">
+      <div role="alert" className="mx-auto max-w-md rounded-lg border border-danger/40 bg-danger-soft px-4 py-3 text-center text-sm text-danger">
         <p className="font-semibold">Aperçu indisponible</p>
         <p className="mt-1 text-xs">{courant.erreur}</p>
       </div>
@@ -140,7 +140,7 @@ export function ApercuPagesModal({
   if (!open || !cle) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-fg/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex flex-col bg-scrim/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label={`Aperçu de ${titre}`}
@@ -151,7 +151,7 @@ export function ApercuPagesModal({
       <div className="m-4 flex flex-1 flex-col overflow-hidden rounded-xl bg-bg-raised shadow-2xl md:m-6">
         <header className="flex items-center justify-between border-b border-border px-5 py-3">
           <div className="flex min-w-0 items-center gap-2">
-            <FileText className="h-5 w-5 shrink-0 text-accent" />
+            <FileText className="h-5 w-5 shrink-0 text-fg-muted" />
             <h3 className="truncate text-sm font-semibold text-fg">{titre}</h3>
           </div>
           <button

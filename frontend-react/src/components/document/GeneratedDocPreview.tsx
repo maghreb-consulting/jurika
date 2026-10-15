@@ -35,7 +35,7 @@ export function GeneratedDocPreview({ blob, title, filename }: GeneratedDocPrevi
           type="button"
           onClick={() => setFullScreen(true)}
           title="Ouvrir l’aperçu en plein écran"
-          className="inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[11px] text-fg-subtle hover:border-accent hover:text-fg"
+          className="inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[11px] text-fg-subtle hover:border-border-hi hover:text-fg"
         >
           <Maximize2 className="h-3 w-3" /> Plein écran
         </button>
@@ -56,7 +56,7 @@ export function GeneratedDocPreview({ blob, title, filename }: GeneratedDocPrevi
           <div className="m-auto flex h-[90vh] w-[min(1200px,95vw)] flex-col overflow-hidden rounded-xl bg-bg-raised shadow-xl">
             <div className="flex items-center justify-between border-b border-border bg-bg-overlay px-4 py-3">
               <div className="flex items-center gap-2">
-                <Eye className="h-4 w-4 text-accent" />
+                <Eye className="h-4 w-4 text-fg-muted" />
                 <h3 className="text-sm font-semibold text-fg">Aperçu — {title}</h3>
               </div>
               <button

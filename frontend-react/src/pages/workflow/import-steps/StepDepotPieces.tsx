@@ -86,14 +86,14 @@ export function StepDepotPieces({ dossierId, existing, saving, onSubmit, registe
       </div>
 
       {!dossierId && (
-        <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-fg">
+        <p className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm text-fg">
           Aucun dossier n’est rattaché à ce ticket : le dépôt est désactivé. Revenez à la liste des tickets et rouvrez le parcours.
         </p>
       )}
 
       <label
         className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed
-          border-border bg-bg-overlay px-6 py-8 text-center transition hover:border-accent
+          border-border bg-bg-overlay px-6 py-8 text-center transition hover:border-border-hi
           ${!dossierId ? 'pointer-events-none opacity-50' : ''}`}
       >
         <FolderUp className="h-6 w-6 text-fg-subtle" />

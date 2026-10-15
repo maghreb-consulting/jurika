@@ -687,7 +687,7 @@ export function SuccursaleOperationForm({
         </div>
         {loadingTemplates && <p className="text-sm text-fg-subtle">Chargement du modèle…</p>}
         {loadTemplatesError && (
-          <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger" role="alert">
+          <div className="rounded-lg border border-danger/30 bg-danger-soft p-3 text-sm text-danger" role="alert">
             {loadTemplatesError}
           </div>
         )}
@@ -695,7 +695,7 @@ export function SuccursaleOperationForm({
           <div
             role="alert"
             data-testid="succursale-etr-bureau-requis"
-            className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger"
+            className="rounded-lg border border-danger/40 bg-danger-soft p-3 text-sm text-danger"
           >
             Renseignez le <strong>président de séance</strong> (bloc « Séance ») avant de
             générer le PV : la société mère étrangère n'est pas décrite en base, ce nom ne

@@ -232,7 +232,7 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
           La création de <strong>{denomination}</strong> a été finalisée. Les
           documents validés sont disponibles dans la Data Room du dossier.
         </p>
-        <div className="rounded-xl border border-success/20 bg-success/10 p-5 text-left text-sm">
+        <div className="rounded-xl border border-success/20 bg-success-soft p-5 text-left text-sm">
           <p className="mb-2 font-semibold text-success">Prochaines étapes</p>
           <ul className="list-disc space-y-1 pl-5 text-fg-muted">
             <li>Dépôt des documents au greffe du tribunal de commerce</li>
@@ -277,7 +277,7 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
               value={premierExerciceCloture}
               onChange={(e) => setPremierExerciceCloture(e.target.value)}
               placeholder="Ex. : 31 décembre 2026"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             />
           </div>
           <div className="md:col-span-2">
@@ -318,7 +318,7 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
               value={articleDesignationStatuts}
               onChange={(e) => setArticleDesignationStatuts(e.target.value)}
               placeholder="Ex. : Article 14"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             />
           </div>
           <div className="md:col-span-2">
@@ -330,7 +330,7 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
               value={engagementsMandat}
               onChange={(e) => setEngagementsMandat(e.target.value)}
               placeholder="Actes accomplis pour le compte de la société en formation…"
-              className="w-full resize-none rounded-lg border-2 border-border bg-bg-overlay px-3 py-2 text-sm focus:border-accent focus:outline-none"
+              className="w-full resize-none rounded-lg border-2 border-border bg-bg-overlay px-3 py-2 text-sm focus:border-focus focus:outline-none"
             />
           </div>
         </div>
@@ -398,7 +398,7 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
 
 function DocLine({ name }: { name: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-success/20 bg-success/10 p-3">
+    <div className="flex items-center gap-3 rounded-lg border border-success/20 bg-success-soft p-3">
       <FileText className="h-5 w-5 text-danger" />
       <span className="flex-1 text-sm font-medium text-fg">{name}</span>
       <CheckCircle className="h-4 w-4 text-success" />

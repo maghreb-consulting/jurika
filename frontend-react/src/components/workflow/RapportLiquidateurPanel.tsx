@@ -81,7 +81,7 @@ function Tableau({ t, titre, lignes, onChange }: {
       ))}
       <button type="button" onClick={() => onChange([...lignes, ligneVide(t)])}
         data-testid={`rapport-${t}-ajouter`}
-        className="inline-flex items-center gap-1 rounded-md border border-accent/40 px-2 py-1 text-xs font-medium text-accent hover:bg-accent/10">
+        className="inline-flex items-center gap-1 rounded-md border border-border-input px-2 py-1 text-xs font-medium text-fg hover:bg-bg-overlay bg-bg-raised">
         <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Ajouter une ligne
       </button>
     </div>
@@ -250,7 +250,7 @@ export function RapportLiquidateurPanel({ isAU, valeurs: v, onChange, contexte }
       </Bloc>
 
       {manques.length > 0 ? (
-        <div role="status" className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-fg" data-testid="rapport-manques">
+        <div role="status" className="rounded-md border border-warning/40 bg-warning-soft p-3 text-xs text-fg" data-testid="rapport-manques">
           <p className="mb-1 font-medium">Avant de générer le rapport, il reste à compléter :</p>
           <ul className="list-disc space-y-0.5 pl-5">
             {manques.map((x) => <li key={x}>{x}</li>)}

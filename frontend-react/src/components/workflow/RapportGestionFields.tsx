@@ -60,7 +60,7 @@ function BoutonAjouter({ libelle, onClick }: { libelle: string; onClick: () => v
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1 rounded-lg border border-border bg-bg-raised px-2.5 py-1 text-xs font-medium text-fg hover:border-accent"
+      className="inline-flex items-center gap-1 rounded-lg border border-border bg-bg-raised px-2.5 py-1 text-xs font-medium text-fg hover:border-border-hi"
     >
       <Plus className="h-3.5 w-3.5" /> {libelle}
     </button>
@@ -127,11 +127,11 @@ export function RapportGestionFields({
       </TexteAide>
 
       {manquants.length > 0 ? (
-        <div role="status" data-testid="pvago-rapport-manquants" className="rounded-lg border border-warning/40 bg-warning/10 p-2 text-xs text-fg-muted">
+        <div role="status" data-testid="pvago-rapport-manquants" className="rounded-lg border border-warning/40 bg-warning-soft p-2 text-xs text-fg-muted">
           Pour générer le rapport de gestion, il reste à saisir : {manquants.join(' ; ')}.
         </div>
       ) : (
-        <div role="status" data-testid="pvago-rapport-manquants" className="rounded-lg border border-success/40 bg-success/10 p-2 text-xs text-fg-muted">
+        <div role="status" data-testid="pvago-rapport-manquants" className="rounded-lg border border-success/40 bg-success-soft p-2 text-xs text-fg-muted">
           Le rapport de gestion est complet : vous pourrez le générer à l’étape 3.
         </div>
       )}

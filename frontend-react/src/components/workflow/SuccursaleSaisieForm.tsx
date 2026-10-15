@@ -82,7 +82,7 @@ export function SuccursaleSaisieForm({
       {/* ---------------- Localisation ---------------- */}
       <section className="space-y-4 rounded-xl border border-border bg-bg-raised p-4">
         <div className="flex items-center gap-2">
-          <Building2 className="h-4 w-4 text-accent" />
+          <Building2 className="h-4 w-4 text-fg-muted" />
           <h4 className="text-sm font-semibold text-fg">Identification et localisation</h4>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
@@ -175,7 +175,7 @@ export function SuccursaleSaisieForm({
       {/* ---------------- Responsable ---------------- */}
       <section className="space-y-4 rounded-xl border border-border bg-bg-raised p-4">
         <div className="flex items-center gap-2">
-          <UserCheck className="h-4 w-4 text-accent" />
+          <UserCheck className="h-4 w-4 text-fg-muted" />
           <h4 className="text-sm font-semibold text-fg">{roleLabel} (facultatif)</h4>
         </div>
         <label className="flex items-center gap-2 text-sm text-fg-muted">

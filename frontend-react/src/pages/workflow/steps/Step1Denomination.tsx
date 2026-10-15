@@ -312,7 +312,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
             <div className="mb-1 flex items-center gap-2">
               <span className="text-lg">🏢</span>
               <h3 className="text-lg font-bold text-fg">Identité de la société</h3>
-              <span className="rounded bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+              <span className="rounded bg-info-soft px-2 py-0.5 text-xs font-medium text-info">
                 Reprise d’une société existante
               </span>
             </div>
@@ -334,7 +334,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
         <div className="mb-1 flex items-center gap-2">
           <span className="text-lg">📜</span>
           <h3 className="text-lg font-bold text-fg">Certificat négatif</h3>
-          <span className="rounded bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+          <span className="rounded bg-info-soft px-2 py-0.5 text-xs font-medium text-info">
             Lecture automatique proposée
           </span>
         </div>
@@ -369,7 +369,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
               qu'un extracteur vide qui laisse croire à une perte de données. Le
               bouton « Remplacer » rouvre l'extracteur sans re-forcer la saisie. */}
           {cnArchivedId && !replacingCn ? (
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-success/30 bg-success/5 p-3">
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-success/30 bg-success-soft p-3">
               <div className="flex min-w-0 items-center gap-2">
                 <CheckCircle className="h-4 w-4 flex-shrink-0 text-success" />
                 <div className="min-w-0">
@@ -414,7 +414,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
         {/* Forme juridique : lecture seule si definie a la creation du ticket
             (BUG 3 fix 2026-06-07). Sinon, mode legacy radio. */}
         {lockedFormeJuridique ? (
-          <div className="mb-4 flex items-center gap-3 rounded-lg border border-success/30 bg-success/5 p-3">
+          <div className="mb-4 flex items-center gap-3 rounded-lg border border-success/30 bg-success-soft p-3">
             <CheckCircle className="h-4 w-4 text-success" />
             <div className="flex-1">
               <p className="text-xs font-semibold uppercase text-fg-subtle">
@@ -424,7 +424,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
                 {lockedFormeJuridique === 'SARL_AU' ? 'SARL AU (associé unique)' : 'SARL (deux associés ou plus)'}
               </p>
             </div>
-            <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-accent">
+            <span className="rounded-full bg-info-soft px-2 py-0.5 text-[10px] font-semibold uppercase text-info">
               Choisie à l’ouverture du ticket
             </span>
           </div>
@@ -434,7 +434,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
               Forme juridique
             </p>
             <div className="flex gap-3">
-              <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border-2 border-border bg-bg-raised px-3 py-2 text-sm hover:border-accent">
+              <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border-2 border-border bg-bg-raised px-3 py-2 text-sm hover:border-border-hi">
                 <input
                   type="radio"
                   name="formeJuridique"
@@ -445,7 +445,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
                 <span className="font-medium text-fg">SARL</span>
                 <span className="text-xs text-fg-subtle">(deux associés ou plus)</span>
               </label>
-              <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border-2 border-border bg-bg-raised px-3 py-2 text-sm hover:border-accent">
+              <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border-2 border-border bg-bg-raised px-3 py-2 text-sm hover:border-border-hi">
                 <input
                   type="radio"
                   name="formeJuridique"
@@ -483,7 +483,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
                 className={`h-10 w-full rounded-lg border-2 bg-bg-overlay px-3 text-sm text-fg focus:outline-none ${
                   iceError
                     ? 'border-danger focus:border-danger'
-                    : 'border-border focus:border-accent'
+                    : 'border-border focus:border-focus'
                 }`}
               />
               {iceError ? (
@@ -581,7 +581,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
         )}
 
         {!importMode && cnTooOld && (
-          <div className="mt-3 flex items-start gap-2 rounded-lg border-l-4 border-warning bg-warning/10 p-3 text-sm">
+          <div className="mt-3 flex items-start gap-2 rounded-lg border-l-4 border-warning bg-warning-soft p-3 text-sm">
             <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning" />
             <div>
               <p className="font-semibold text-warning">
@@ -631,7 +631,7 @@ function Field({
       <input
         aria-label={label}
         {...rest}
-        className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm text-fg focus:border-accent focus:outline-none"
+        className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm text-fg focus:border-focus focus:outline-none"
       />
     </div>
   );

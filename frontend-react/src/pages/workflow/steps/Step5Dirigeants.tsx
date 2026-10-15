@@ -574,7 +574,7 @@ export function Step5Dirigeants({
       }}
       className="mx-auto max-w-[880px] space-y-6"
     >
-      <div className="space-y-3 rounded-xl border border-border bg-accent/10 p-4 text-xs text-fg">
+      <div className="space-y-3 rounded-xl border border-border bg-info-soft p-4 text-xs text-fg">
         <h3 className="text-base font-bold text-fg">La gérance de la société</h3>
         {/* Lot 2 (2026-09-07) — le texte disait « aide optionnelle » alors que
             l'etape BLOQUE tant que l'extraction n'a pas ete lancee. L'un des
@@ -588,7 +588,7 @@ export function Step5Dirigeants({
           restent modifiables à la main.
         </p>
         {isSarlAu && (
-          <p className="font-medium text-accent">
+          <p className="font-medium text-heading">
             SARL AU : un seul dirigeant peut être coché comme « Également associé » ;
             il est repris automatiquement à l’étape des associés.
           </p>
@@ -613,7 +613,7 @@ export function Step5Dirigeants({
             {/* EX4 2026-06-09 — En-tete refondu : badges colores lisibles + select fonction. */}
             <div className="flex flex-col gap-3 border-b border-border bg-bg-overlay px-6 py-4 md:flex-row md:items-center md:justify-between">
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-bold text-bg-raised">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-info text-sm font-bold text-info-fg">
                   {i + 1}
                 </div>
                 <span className="text-sm font-bold text-fg">
@@ -635,12 +635,12 @@ export function Step5Dirigeants({
                 {/* Badges d'etat : visibles d'un coup d'oeil */}
                 <div className="flex flex-wrap items-center gap-2">
                   {d.isStatutaire && (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-success/40 bg-success/10 px-2.5 py-1 text-[11px] font-bold uppercase text-success">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-success/40 bg-success-soft px-2.5 py-1 text-[11px] font-bold uppercase text-success">
                       <CheckCircle className="h-3 w-3" /> Statutaire
                     </span>
                   )}
                   {d.isAssociate && (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 text-[11px] font-bold uppercase text-accent">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-info/30 bg-info-soft px-2.5 py-1 text-[11px] font-bold uppercase text-info">
                       <UserPlus className="h-3 w-3" /> Aussi associé
                     </span>
                   )}
@@ -671,11 +671,11 @@ export function Step5Dirigeants({
                   onClick={() => update(d.id, { typePersonne: 'PHYSIQUE' })}
                   className={`flex items-center gap-3 rounded-lg border-2 px-3 py-2.5 text-left transition ${
                     d.typePersonne === 'PHYSIQUE'
-                      ? 'border-accent bg-accent/5'
-                      : 'border-border bg-bg-overlay hover:border-accent/40'
+                      ? 'border-accent bg-accent-soft'
+                      : 'border-border bg-bg-overlay hover:border-border-hi'
                   }`}
                 >
-                  <User className={`h-4 w-4 ${d.typePersonne === 'PHYSIQUE' ? 'text-accent' : 'text-fg-subtle'}`} />
+                  <User className={`h-4 w-4 ${d.typePersonne === 'PHYSIQUE' ? 'text-fg' : 'text-fg-subtle'}`} />
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-fg">Personne physique</p>
                     <p className="text-[11px] text-fg-subtle">Une personne, titulaire d’une pièce d’identité</p>
@@ -688,11 +688,11 @@ export function Step5Dirigeants({
                   onClick={() => update(d.id, { typePersonne: 'MORALE' })}
                   className={`flex items-center gap-3 rounded-lg border-2 px-3 py-2.5 text-left transition ${
                     d.typePersonne === 'MORALE'
-                      ? 'border-accent bg-accent/5'
-                      : 'border-border bg-bg-overlay hover:border-accent/40'
+                      ? 'border-accent bg-accent-soft'
+                      : 'border-border bg-bg-overlay hover:border-border-hi'
                   }`}
                 >
-                  <Building2 className={`h-4 w-4 ${d.typePersonne === 'MORALE' ? 'text-accent' : 'text-fg-subtle'}`} />
+                  <Building2 className={`h-4 w-4 ${d.typePersonne === 'MORALE' ? 'text-fg' : 'text-fg-subtle'}`} />
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-fg">Personne morale</p>
                     <p className="text-[11px] text-fg-subtle">Une société (RC, ICE, IF et représentant légal)</p>
@@ -712,7 +712,7 @@ export function Step5Dirigeants({
                 }
                 className={`group flex w-full items-start gap-3 rounded-xl border-2 p-4 text-left transition ${
                   d.isStatutaire
-                    ? 'border-success bg-success/5 shadow-sm'
+                    ? 'border-success bg-success-soft shadow-sm'
                     : 'border-border bg-bg-overlay hover:border-success/40 hover:bg-success/5'
                 }`}
               >
@@ -724,7 +724,7 @@ export function Step5Dirigeants({
                   }`}
                 >
                   {d.isStatutaire && (
-                    <CheckCircle className="h-4 w-4 text-bg-raised" />
+                    <CheckCircle className="h-4 w-4 text-success-fg" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -747,8 +747,8 @@ export function Step5Dirigeants({
                 }
                 className={`group flex w-full items-start gap-3 rounded-xl border-2 p-4 text-left transition ${
                   d.isAssociate
-                    ? 'border-accent bg-accent/5 shadow-sm'
-                    : 'border-border bg-bg-overlay hover:border-accent/40 hover:bg-accent/5'
+                    ? 'border-accent bg-accent-soft shadow-sm'
+                    : 'border-border bg-bg-overlay hover:border-border-hi hover:bg-bg-overlay'
                 }`}
                 title="Cochée, le dirigeant est aussi associé : son identité est reprise à l’étape des associés."
               >
@@ -760,7 +760,7 @@ export function Step5Dirigeants({
                   }`}
                 >
                   {d.isAssociate && (
-                    <CheckCircle className="h-4 w-4 text-bg-raised" />
+                    <CheckCircle className="h-4 w-4 text-accent-fg" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -771,7 +771,7 @@ export function Step5Dirigeants({
                     Le dirigeant détient des parts sociales. Son identité sera
                     reprise automatiquement à l’étape des associés.
                     {isSarlAu && (
-                      <span className="ml-1 font-medium text-accent">
+                      <span className="ml-1 font-medium text-heading">
                         SARL AU : un seul dirigeant peut être coché.
                       </span>
                     )}
@@ -835,7 +835,7 @@ export function Step5Dirigeants({
                   />
                 )}
                 {d.cinUploaded && d.cinFileName && (
-                  <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-success/30 bg-success/5 p-2">
+                  <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-success/30 bg-success-soft p-2">
                     <p className="flex items-center gap-1.5 text-[11px] text-success">
                       <CheckCircle className="h-3 w-3" />
                       {d.cinFileName}
@@ -975,7 +975,7 @@ export function Step5Dirigeants({
               </div>
 
               {!d.isStatutaire && (
-                <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning/20 bg-warning/10 p-3">
+                <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning/20 bg-warning-soft p-3">
                   <AlertTriangle className="h-4 w-4 flex-shrink-0 text-warning" />
                   <p className="text-xs text-warning">
                     Gérant non statutaire : un acte de nomination séparé sera
@@ -1015,7 +1015,7 @@ export function Step5Dirigeants({
       <button
         type="button"
         onClick={() => setDirigeants([...dirigeants, newDirigeant()])}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-3 text-sm text-accent transition hover:border-accent hover:bg-accent/10"
+        className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-3 text-sm text-fg-muted transition hover:border-focus hover:bg-bg-overlay hover:text-fg"
       >
         <UserPlus className="h-4 w-4" /> Ajouter un dirigeant
       </button>
@@ -1041,7 +1041,7 @@ export function Step5Dirigeants({
           value={limitationPouvoirs}
           onChange={(ev) => setLimitationPouvoirs(ev.target.value)}
           placeholder="Ex. : les actes de disposition supérieurs à 100 000 MAD."
-          className="mt-3 w-full resize-none rounded-lg border-2 border-border bg-bg-overlay px-3 py-2 text-sm focus:border-accent focus:outline-none"
+          className="mt-3 w-full resize-none rounded-lg border-2 border-border bg-bg-overlay px-3 py-2 text-sm focus:border-focus focus:outline-none"
         />
       </div>
 
@@ -1063,7 +1063,7 @@ export function Step5Dirigeants({
               aria-label="Mode de signature"
               value={modeSignature}
               onChange={(ev) => setModeSignature(ev.target.value)}
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             >
               <option value="séparée">Séparée (sans limitation)</option>
               <option value="séparée avec plafond">Séparée avec plafond</option>
@@ -1081,7 +1081,7 @@ export function Step5Dirigeants({
                 value={signaturePlafond || ''}
                 onChange={(ev) => setSignaturePlafond(Number(ev.target.value))}
                 placeholder="Ex. : 50000"
-                className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+                className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
               />
             </div>
           )}
@@ -1097,7 +1097,7 @@ export function Step5Dirigeants({
                   ev.target.value as 'identique' | 'signature seule',
                 )
               }
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             >
               <option value="identique">Identique à la signature sociale</option>
               <option value="signature seule">Signature seule du gérant</option>
@@ -1168,7 +1168,7 @@ export function Step5Dirigeants({
                 { id: crypto.randomUUID(), nom: '', qualite: 'Gérant' },
               ])
             }
-            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-2 text-xs text-accent transition hover:border-accent hover:bg-accent/10"
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-2 text-xs text-fg-muted transition hover:border-focus hover:bg-bg-overlay hover:text-fg"
           >
             <UserPlus className="h-3.5 w-3.5" /> Ajouter un signataire
           </button>
@@ -1238,7 +1238,7 @@ export function Step5Dirigeants({
             onChange={(ev) => setCacNom(ev.target.value)}
             placeholder="Nom du commissaire aux comptes"
             aria-label="Nom du commissaire aux comptes"
-            className="mt-3 h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+            className="mt-3 h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
           />
         )}
       </div>
@@ -1305,7 +1305,7 @@ function GeranceFields({
   const qui = dirigeantLabel(d, 0);
   return (
     <div
-      className="mt-4 rounded-lg border border-accent/30 bg-accent/5 p-4"
+      className="mt-4 rounded-lg border border-info/30 bg-info-soft p-4"
       data-testid={`gerance-${d.id}`}
     >
       <p className="text-xs font-bold text-fg">
@@ -1587,8 +1587,8 @@ function MoraleForm({
       </div>
 
       {/* Representant legal — personne physique + upload CIN obligatoire */}
-      <div className="rounded-lg border border-accent/30 bg-accent/5 p-4">
-        <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase text-accent">
+      <div className="rounded-lg border border-info/30 bg-info-soft p-4">
+        <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase text-fg-muted">
           <User className="h-3.5 w-3.5" /> Représentant légal (personne physique)
         </p>
         {/* 2026-06-19 — Representant legal = personne physique : meme assistant
@@ -1631,7 +1631,7 @@ function MoraleForm({
             l'IdentityExtractor archive deja la piece. Affichage lecture seule
             pour controle humain de l'OCR. */}
         {d.repCinUploaded && (
-          <div className="mb-3 flex items-start gap-2 rounded-md border border-success/30 bg-success/5 p-2 text-xs">
+          <div className="mb-3 flex items-start gap-2 rounded-md border border-success/30 bg-success-soft p-2 text-xs">
             <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
             <div className="flex-1">
               <p className="font-semibold text-success">CIN du représentant lue</p>
@@ -1766,7 +1766,7 @@ function UploadCard({
 }) {
   if (uploaded) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-success bg-success/10 p-3">
+      <div className="flex items-center gap-2 rounded-lg border border-success bg-success-soft p-3">
         <FileText className="h-4 w-4 text-success" />
         <span className="flex-1 truncate text-xs">{filename ?? label}</span>
         <CheckCircle className="h-4 w-4 text-success" />

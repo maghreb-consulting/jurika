@@ -272,7 +272,7 @@ function BoucleSaisie({
   return (
     <div className="rounded-lg border border-border p-4" data-testid={`boucle-${boucle.nom}`}>
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+        <p className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
           {boucle.label}
         </p>
         <button
@@ -1298,15 +1298,15 @@ export function Step7Generation({
       }}
       className="space-y-6"
     >
-      <div className="rounded-xl border border-accent/20 bg-accent/10 p-4 text-sm text-fg">
+      <div className="rounded-xl border border-info/30 bg-info-soft p-4 text-sm text-fg">
         <div className="flex items-start gap-3">
           {readOnly ? (
-            <Eye className="mt-0.5 h-5 w-5 flex-shrink-0 text-accent" />
+            <Eye className="mt-0.5 h-5 w-5 flex-shrink-0 text-fg-muted" />
           ) : (
-            <Sparkles className="mt-0.5 h-5 w-5 flex-shrink-0 text-accent" />
+            <Sparkles className="mt-0.5 h-5 w-5 flex-shrink-0 text-fg-muted" />
           )}
           <div>
-            <p className="font-semibold text-accent">
+            <p className="font-semibold text-heading">
               {readOnly ? 'Documents générés' : 'Génération des documents'} —{' '}
               {String(den.denomination ?? 'votre société')}
             </p>
@@ -1340,7 +1340,7 @@ export function Step7Generation({
       )}
 
       {loadError && !loadingTemplates && (
-        <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+        <div className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm text-warning">
           <AlertTriangle className="mr-2 inline h-4 w-4" />
           {loadError}
         </div>
@@ -1362,7 +1362,7 @@ export function Step7Generation({
       )}
 
       {!readOnly && preflightBlocked && (
-        <div className="rounded-xl border-l-4 border-danger bg-danger/10 p-4">
+        <div className="rounded-xl border-l-4 border-danger bg-danger-soft p-4">
           <p className="flex items-center gap-2 text-sm font-bold text-danger">
             <AlertCircle className="h-5 w-5" />
             Informations obligatoires manquantes : à compléter avant de générer
@@ -1412,7 +1412,7 @@ export function Step7Generation({
                   key={choix.ligne}
                   data-testid={`choix-document-${choix.ligne}`}
                   className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${
-                    retenu ? 'border-accent/40 bg-accent/5' : 'border-border'
+                    retenu ? 'border-info/30 bg-info-soft' : 'border-border'
                   }`}
                 >
                   <input
@@ -1570,7 +1570,7 @@ export function Step7Generation({
           </p>
           {groupesChamps.map((groupe) => (
             <div key={groupe.code} className="mt-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+              <p className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
                 {libelleDocument(groupe.code)}
               </p>
               <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1696,7 +1696,7 @@ export function Step7Generation({
               <div className="flex items-start justify-between gap-2 border-b border-border bg-bg-overlay px-5 py-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 flex-shrink-0 text-accent" />
+                    <FileText className="h-4 w-4 flex-shrink-0 text-fg-muted" />
                     <h4
                       className="truncate text-sm font-semibold text-fg"
                       title={docLabel(tpl)}
@@ -1704,7 +1704,7 @@ export function Step7Generation({
                       {docLabel(tpl)}
                     </h4>
                     {isStatuts && (
-                      <span className="rounded bg-danger/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-danger">
+                      <span className="rounded bg-danger-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-danger">
                         Principal
                       </span>
                     )}
@@ -1763,7 +1763,7 @@ export function Step7Generation({
 
                 {st.generated && (
                   <>
-                    <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 p-2 text-xs">
+                    <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft p-2 text-xs">
                       <CheckCircle className="h-4 w-4 text-success" />
                       <span className="flex-1 truncate text-fg" title={fileFor(tpl)}>
                         {baseNameFor(tpl)} — généré
@@ -1847,7 +1847,7 @@ export function Step7Generation({
                         onClick={() => setPreviewingTplCode(tpl.code)}
                         disabled={(!st.blob && !st.apercu) || restoring[tpl.code]}
                         title="Aperçu plein écran du document"
-                        className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent disabled:opacity-60"
+                        className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-border-hi disabled:opacity-60"
                       >
                         <Maximize2 className="h-3.5 w-3.5" /> Plein écran
                       </button>
@@ -1856,7 +1856,7 @@ export function Step7Generation({
                         type="button"
                         onClick={() => void downloadDocx(tpl)}
                         disabled={st.generating || restoring[tpl.code] || (readOnly ? !st.blob : preflightBlocked)}
-                        className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent disabled:opacity-60"
+                        className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-border-hi disabled:opacity-60"
                       >
                         <Download className="h-3.5 w-3.5" /> Télécharger (Word)
                       </button>
@@ -1880,7 +1880,7 @@ export function Step7Generation({
                               void generateOne(tpl);
                             }}
                             disabled={st.generating || restoring[tpl.code] || preflightBlocked}
-                            className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent disabled:opacity-60"
+                            className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-border-hi disabled:opacity-60"
                           >
                             <RefreshCcw className="h-3.5 w-3.5" />
                             Régénérer
@@ -1889,7 +1889,7 @@ export function Step7Generation({
                             type="button"
                             onClick={() => setEditingTplCode(tpl.code)}
                             disabled={st.generating || restoring[tpl.code] || !st.blob || !editionIncluse || enEssai !== false}
-                            className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-accent/30 bg-accent/5 text-xs font-medium text-accent hover:bg-accent/10 disabled:opacity-60"
+                            className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border-input bg-bg-raised text-xs font-medium text-fg hover:bg-bg-overlay disabled:opacity-60"
                             title={editionIncluse
                               ? 'Éditer le document (style Word)'
                               : `Édition des actes intégrée à la plateforme : incluse dès le forfait ${editionDes}. Téléchargez le document pour le modifier dans Word.`}
@@ -1903,7 +1903,7 @@ export function Step7Generation({
                               type="button"
                               onClick={() => void validateOne(tpl)}
                               disabled={st.generating || preflightBlocked}
-                              className="col-span-2 flex h-9 items-center justify-center gap-1.5 rounded-lg bg-success text-xs font-semibold text-bg-raised transition hover:bg-success/85 disabled:cursor-wait disabled:opacity-60"
+                              className="col-span-2 flex h-9 items-center justify-center gap-1.5 rounded-lg bg-success text-xs font-semibold text-success-fg transition hover:bg-success/85 disabled:cursor-wait disabled:opacity-60"
                             >
                               <CheckCircle className="h-3.5 w-3.5" /> Valider et déposer en Data Room
                             </button>
@@ -1913,7 +1913,7 @@ export function Step7Generation({
                               onClick={() =>
                                 updateDoc(tpl.code, { validated: false })
                               }
-                              className="col-span-2 flex h-9 items-center justify-center gap-1.5 rounded-lg border border-success bg-success/10 text-xs text-success"
+                              className="col-span-2 flex h-9 items-center justify-center gap-1.5 rounded-lg border border-success bg-success-soft text-xs text-success"
                             >
                               <RefreshCcw className="h-3.5 w-3.5" /> Document validé : annuler la validation pour le modifier
                             </button>
@@ -1930,7 +1930,7 @@ export function Step7Generation({
       </div>
 
       {nonStatutaires.length > 0 && (
-        <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4">
+        <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning-soft p-4">
           <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
           <div className="text-xs">
             <p className="font-semibold text-warning">
@@ -1946,7 +1946,7 @@ export function Step7Generation({
       )}
 
       {statutaires.length === 0 && (
-        <div className="flex items-start gap-3 rounded-xl border border-danger/30 bg-danger/10 p-4">
+        <div className="flex items-start gap-3 rounded-xl border border-danger/30 bg-danger-soft p-4">
           <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-danger" />
           <p className="text-xs text-danger">
             Aucun gérant statutaire. Retournez à l’étape 5 pour en
@@ -2008,7 +2008,7 @@ export function Step7Generation({
             <div className="m-auto flex h-[90vh] w-[min(1200px,95vw)] flex-col overflow-hidden rounded-xl bg-bg-raised shadow-xl">
               <div className="flex items-center justify-between border-b border-border bg-bg-overlay px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <Eye className="h-4 w-4 text-accent" />
+                  <Eye className="h-4 w-4 text-fg-muted" />
                   <h3 className="text-sm font-semibold text-fg">
                     Aperçu — {docLabel(tpl)}
                   </h3>
@@ -2110,7 +2110,7 @@ export function Step7Generation({
                     setRegenerationAConfirmer(null);
                     void generateOne(tpl);
                   }}
-                  className="rounded-lg bg-warning px-3 py-2 text-xs font-semibold text-bg-raised"
+                  className="rounded-lg bg-warning px-3 py-2 text-xs font-semibold text-warning-fg"
                 >
                   Régénérer et remplacer
                 </button>
@@ -2152,7 +2152,7 @@ export function Step7Generation({
             <div className="m-auto flex h-[92vh] w-[min(1400px,97vw)] flex-col overflow-hidden rounded-xl bg-bg-raised shadow-xl">
               <div className="flex items-center justify-between border-b border-border bg-bg-overlay px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <Pencil className="h-4 w-4 text-accent" />
+                  <Pencil className="h-4 w-4 text-fg-muted" />
                   <h3 className="text-sm font-semibold text-fg">
                     Édition — {docLabel(tpl)}
                   </h3>

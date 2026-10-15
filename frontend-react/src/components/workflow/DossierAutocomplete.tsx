@@ -76,7 +76,7 @@ function computeDissolutionDelayBadge(d: DossierBrief): DelaiBadge {
   const reste = Math.max(0, LIQUIDATION_DELAI_JOURS - joursDepuis);
   return {
     label: `Délai en cours (il reste ${reste} jour(s))`,
-    className: 'bg-warning/10 text-warning border border-warning/40',
+    className: 'bg-warning-soft text-warning border border-warning/40',
   };
 }
 
@@ -283,7 +283,7 @@ export function DossierAutocomplete({
                     key={d.id}
                     role="option"
                     aria-selected={false}
-                    className="cursor-pointer border-b border-border last:border-none px-3 py-2 hover:bg-accent/10"
+                    className="cursor-pointer border-b border-border last:border-none px-3 py-2 hover:bg-bg-overlay"
                     onClick={() => handlePick(d)}
                   >
                     <p className="text-sm font-semibold text-fg">{d.raisonSociale}</p>

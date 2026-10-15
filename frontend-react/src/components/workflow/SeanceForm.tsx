@@ -327,7 +327,7 @@ export function SeanceFormFields({
                       key={`${i}-${pt}`}
                       className="flex items-start gap-2 rounded-lg bg-bg-overlay px-3 py-2 text-sm text-fg"
                     >
-                      <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-accent text-[10px] font-bold text-bg-raised">
+                      <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-info text-[10px] font-bold text-info-fg">
                         {i + 1}
                       </span>
                       <span className="flex-1">{pt}</span>
@@ -782,7 +782,7 @@ export function AssocieFields({
             type="checkbox"
             checked={!!value.estGerant}
             onChange={(e) => onChange({ ...value, estGerant: e.target.checked })}
-            className="h-4 w-4 rounded border-border-hi text-accent focus:ring-accent"
+            className="h-4 w-4 rounded border-border-hi text-accent focus:ring-focus"
           />
           Également gérant
         </label>
@@ -796,7 +796,7 @@ export function SmallAddButton({ label, onClick }: { label: string; onClick: () 
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1 rounded-lg border border-border bg-bg-raised px-2.5 py-1 text-xs font-medium text-fg hover:border-accent"
+      className="inline-flex items-center gap-1 rounded-lg border border-border bg-bg-raised px-2.5 py-1 text-xs font-medium text-fg hover:border-border-hi"
     >
       <Plus className="h-3.5 w-3.5" /> {label}
     </button>

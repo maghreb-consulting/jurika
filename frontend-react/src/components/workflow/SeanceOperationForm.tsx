@@ -442,7 +442,7 @@ export function SeanceOperationForm({
         </div>
         {loadingTemplates && <p className="text-sm text-fg-subtle">Chargement des modèles…</p>}
         {loadTemplatesError && (
-          <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger" role="alert">
+          <div className="rounded-lg border border-danger/30 bg-danger-soft p-3 text-sm text-danger" role="alert">
             {loadTemplatesError}
           </div>
         )}

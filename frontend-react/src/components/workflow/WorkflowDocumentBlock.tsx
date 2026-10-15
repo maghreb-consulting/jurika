@@ -86,7 +86,7 @@ export function WorkflowDocumentBlock({
       <div className="flex items-start justify-between gap-2 border-b border-border bg-bg-overlay px-5 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 flex-shrink-0 text-accent" />
+            <FileText className="h-4 w-4 flex-shrink-0 text-fg-muted" />
             <h4 className="truncate text-sm font-semibold text-fg" title={title}>
               {title}
             </h4>
@@ -154,7 +154,7 @@ export function WorkflowDocumentBlock({
           </button>
         ) : (
           <>
-            <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 p-2 text-xs">
+            <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft p-2 text-xs">
               <CheckCircle className="h-4 w-4 text-success" />
               <span className="flex-1 truncate text-fg">
                 {state.filename ?? 'Document généré'}
@@ -192,7 +192,7 @@ export function WorkflowDocumentBlock({
               <button
                 type="button"
                 onClick={onTogglePreview}
-                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent"
+                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-border-hi"
               >
                 <Eye className="h-3.5 w-3.5" />
                 {state.previewOpen ? 'Masquer l’aperçu' : 'Aperçu'}
@@ -200,7 +200,7 @@ export function WorkflowDocumentBlock({
               <button
                 type="button"
                 onClick={onRegenerate}
-                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent"
+                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-border-hi"
                 title="Régénérer le document après avoir corrigé les données saisies"
               >
                 <RefreshCcw className="h-3.5 w-3.5" /> Régénérer
@@ -210,7 +210,7 @@ export function WorkflowDocumentBlock({
                   type="button"
                   onClick={() => setEditing(true)}
                   disabled={!state.blob}
-                  className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-accent/30 bg-accent/5 text-xs font-medium text-accent hover:bg-accent/10 disabled:opacity-60"
+                  className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border-input bg-bg-raised text-xs font-medium text-fg hover:bg-bg-overlay disabled:opacity-60"
                   title="Éditer le document (style Word)"
                 >
                   <Pencil className="h-3.5 w-3.5" /> Éditer
@@ -220,7 +220,7 @@ export function WorkflowDocumentBlock({
               <button
                 type="button"
                 onClick={onDownload}
-                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent"
+                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-border-hi"
               >
                 <Download className="h-3.5 w-3.5" /> Télécharger (Word)
               </button>
@@ -230,7 +230,7 @@ export function WorkflowDocumentBlock({
                   type="button"
                   onClick={onValidate}
                   data-testid={`validate-btn-${tpl.code}`}
-                  className={`flex h-9 items-center justify-center gap-1.5 rounded-lg bg-success text-xs font-semibold text-bg-raised transition hover:bg-success/85 ${
+                  className={`flex h-9 items-center justify-center gap-1.5 rounded-lg bg-success text-xs font-semibold text-success-fg transition hover:bg-success/85 ${
                     onEdited || enEssai !== false ? 'col-span-2' : ''
                   }`}
                 >
@@ -240,7 +240,7 @@ export function WorkflowDocumentBlock({
                 <button
                   type="button"
                   onClick={onRegenerate}
-                  className={`flex h-9 items-center justify-center gap-1.5 rounded-lg border border-success bg-success/10 text-xs text-success ${
+                  className={`flex h-9 items-center justify-center gap-1.5 rounded-lg border border-success bg-success-soft text-xs text-success ${
                     onEdited || enEssai !== false ? 'col-span-2' : ''
                   }`}
                 >

@@ -380,7 +380,7 @@ export function Step8PiecesJointes({
       <div
         key={piece.code}
         className={`rounded-lg border-2 p-4 transition ${
-          done ? 'border-success bg-success/10' : 'border-border bg-bg-raised'
+          done ? 'border-success bg-success-soft' : 'border-border bg-bg-raised'
         }`}
       >
         <div className="flex items-start gap-3">
@@ -395,7 +395,7 @@ export function Step8PiecesJointes({
             <div className="mb-0.5 flex flex-wrap items-center gap-2">
               <p className="text-sm font-semibold text-fg">{piece.label}</p>
               {piece.obligatoire && (
-                <span className="rounded bg-danger/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-danger">
+                <span className="rounded bg-danger-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-danger">
                   Obligatoire
                 </span>
               )}
@@ -405,7 +405,7 @@ export function Step8PiecesJointes({
                 </span>
               )}
               {piece.fromRegistry && done && (
-                <span className="rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
+                <span className="rounded bg-info-soft px-1.5 py-0.5 text-[10px] font-semibold uppercase text-info">
                   Déjà déposée
                 </span>
               )}
@@ -441,7 +441,7 @@ export function Step8PiecesJointes({
                 </button>
               </div>
             ) : (
-              <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border px-3 py-2 text-xs text-accent transition hover:border-accent hover:bg-accent/10">
+              <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border px-3 py-2 text-xs text-fg-muted transition hover:border-focus hover:bg-bg-overlay hover:text-fg">
                 <Upload className="h-3.5 w-3.5" /> Importer le document
                 <input
                   type="file"
@@ -466,7 +466,7 @@ export function Step8PiecesJointes({
       <div
         key={p.code}
         className={`flex items-start gap-3 rounded-lg border-2 p-3 ${
-          done ? 'border-success bg-success/10' : 'border-danger/30 bg-danger/5'
+          done ? 'border-success bg-success-soft' : 'border-danger/30 bg-danger-soft'
         }`}
       >
         <IdCard
@@ -480,7 +480,7 @@ export function Step8PiecesJointes({
             <span
               className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
                 p.role === 'DIRIGEANT'
-                  ? 'bg-accent/10 text-accent'
+                  ? 'bg-info-soft text-info'
                   : 'bg-warning/15 text-warning'
               }`}
             >
@@ -537,8 +537,8 @@ export function Step8PiecesJointes({
       }}
       className="mx-auto max-w-[860px] space-y-6"
     >
-      <div className="flex items-start gap-3 rounded-lg border border-accent/20 bg-accent/10 p-4">
-        <Info className="h-5 w-5 flex-shrink-0 text-accent" />
+      <div className="flex items-start gap-3 rounded-lg border border-info/30 bg-info-soft p-4">
+        <Info className="h-5 w-5 flex-shrink-0 text-fg-muted" />
         <div>
           <h3 className="text-sm font-semibold text-fg">
             Pièces jointes pour l’immatriculation
@@ -563,7 +563,7 @@ export function Step8PiecesJointes({
       {cinPersonnes.length > 0 && (
         <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
           <h3 className="mb-1 flex items-center gap-2 text-base font-bold text-fg">
-            <IdCard className="h-4 w-4 text-accent" /> CIN — {cinPersonnes.length}{' '}
+            <IdCard className="h-4 w-4 text-fg-muted" /> CIN — {cinPersonnes.length}{' '}
             personne(s)
           </h3>
           <p className="mb-4 text-xs text-fg-subtle">
@@ -612,7 +612,7 @@ export function Step8PiecesJointes({
             value={extraLabel}
             onChange={(e) => setExtraLabel(e.target.value)}
             placeholder="Libellé d’une pièce complémentaire"
-            className="h-10 flex-1 rounded-lg border border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+            className="h-10 flex-1 rounded-lg border border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
           />
           <button
             type="button"
@@ -638,7 +638,7 @@ export function Step8PiecesJointes({
           <span className="text-sm font-bold text-fg">
             Progression des pièces jointes
           </span>
-          <span className="text-sm font-bold text-accent">
+          <span className="text-sm font-bold text-heading">
             {totalUploaded} / {totalCount} importées
           </span>
         </div>
@@ -651,7 +651,7 @@ export function Step8PiecesJointes({
       </div>
 
       {!requiredOk && (
-        <div className="flex items-start gap-3 rounded-lg border-l-4 border-danger bg-danger/10 p-4">
+        <div className="flex items-start gap-3 rounded-lg border-l-4 border-danger bg-danger-soft p-4">
           <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-danger" />
           <div>
             <p className="text-sm font-semibold text-danger">

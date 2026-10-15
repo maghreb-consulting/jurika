@@ -256,7 +256,7 @@ export function SuccursaleAnnoncePanel({
       data-testid={`succursale-annonce-${mode}`}
     >
       <div className="flex items-center gap-2">
-        <Megaphone className="h-4 w-4 text-accent" />
+        <Megaphone className="h-4 w-4 text-fg-muted" />
         <h4 className="text-sm font-semibold text-fg">{titre}</h4>
       </div>
       <p className="text-xs text-fg-subtle">

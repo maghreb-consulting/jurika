@@ -737,7 +737,7 @@ function LiquidationWorkflowPageBody() {
             </div>
 
             {dossierId && (
-              <div className="rounded-lg border border-info/30 bg-accent/10 p-3 text-xs text-fg-muted" role="status">
+              <div className="rounded-lg border border-info/30 bg-info-soft p-3 text-xs text-fg-muted" role="status">
                 Organe compétent : <strong>{decisionLabel}</strong>. Actes produits : procès-verbal
                 de clôture de liquidation{isAU ? ' (SARL à associé unique)' : ' (SARL)'}, rapport du
                 liquidateur et annonce légale de clôture.
@@ -749,7 +749,7 @@ function LiquidationWorkflowPageBody() {
                 tant qu'il en reste une ouverte — autant l'annoncer des l'etape 1. */}
             {dossierId && succursalesOuvertes.length > 0 && (
               <div
-                className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-fg-muted"
+                className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning-soft p-3 text-xs text-fg-muted"
                 role="alert"
                 data-testid="liquidation-succursales-ouvertes"
               >
@@ -778,7 +778,7 @@ function LiquidationWorkflowPageBody() {
                 data-testid="liquidation-faits-bd"
               >
                 <div className="flex items-center gap-2">
-                  <Lock className="h-4 w-4 text-accent" />
+                  <Lock className="h-4 w-4 text-fg-muted" />
                   <h4 className="text-sm font-semibold text-fg">Repris du dossier (lecture seule)</h4>
                 </div>
                 {partiesLoading && (
@@ -857,7 +857,7 @@ function LiquidationWorkflowPageBody() {
                 {!hasLiquidateurBd && (
                   <div
                     role="status"
-                    className="flex items-start gap-2 rounded-lg border-l-4 border-warning/40 bg-warning/10 p-3 text-xs text-warning"
+                    className="flex items-start gap-2 rounded-lg border-l-4 border-warning/40 bg-warning-soft p-3 text-xs text-warning"
                   >
                     <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>
@@ -870,9 +870,9 @@ function LiquidationWorkflowPageBody() {
                 {hasLiquidateurBd && (
                   <div
                     role="status"
-                    className="flex items-start gap-2 rounded-lg border-l-4 border-accent bg-accent/10 p-3 text-xs text-fg-muted"
+                    className="flex items-start gap-2 rounded-lg border-l-4 border-info bg-info-soft p-3 text-xs text-fg-muted"
                   >
-                    <Lock className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
+                    <Lock className="mt-0.5 h-4 w-4 flex-shrink-0 text-fg-muted" />
                     <span>
                       Liquidateur <strong>repris de la dissolution</strong> : les champs sont
                       déjà remplis, rien n’est à ressaisir. Complétez seulement ce qui manque —
@@ -914,7 +914,7 @@ function LiquidationWorkflowPageBody() {
               <div
                 role="alert"
                 data-testid="liquidation-delai-15j-error"
-                className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-3 text-xs text-danger"
+                className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-soft p-3 text-xs text-danger"
               >
                 <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                 <div>
@@ -1002,7 +1002,7 @@ function LiquidationWorkflowPageBody() {
             {/* ---- Convocation OPTIONNELLE — règle des 16 jours ---- */}
             <section className="space-y-3 rounded-xl border border-border bg-bg-raised p-4" data-testid="liquidation-convocation">
               <div className="flex items-center gap-2">
-                <Megaphone className="h-4 w-4 text-accent" />
+                <Megaphone className="h-4 w-4 text-fg-muted" />
                 <h4 className="text-sm font-semibold text-fg">Convocation (facultative)</h4>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
@@ -1035,7 +1035,7 @@ function LiquidationWorkflowPageBody() {
                 <div
                   role="alert"
                   data-testid="liquidation-convocation-16j-error"
-                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-2 text-xs text-danger"
+                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-soft p-2 text-xs text-danger"
                 >
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                   <span>{convocationError}</span>
@@ -1203,7 +1203,7 @@ function LiquidationWorkflowPageBody() {
           <div className="space-y-4" data-testid="liquidation-step3-pieces">
             <header>
               <div className="flex items-center gap-2">
-                <Paperclip className="h-5 w-5 text-accent" />
+                <Paperclip className="h-5 w-5 text-fg-muted" />
                 <h2 className="text-lg font-semibold text-fg">Étape 3 — Pièces jointes (facultative)</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -1239,7 +1239,7 @@ function LiquidationWorkflowPageBody() {
           <div className="space-y-4" data-testid="liquidation-synthese">
             {succursalesOuvertes.length > 0 ? (
               <div
-                className="rounded-xl border border-danger/40 bg-danger/10 p-6"
+                className="rounded-xl border border-danger/40 bg-danger-soft p-6"
                 role="alert"
                 data-testid="liquidation-blocage-succursales"
               >

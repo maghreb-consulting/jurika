@@ -835,7 +835,7 @@ export function Step6Associes({
             inconnue : on signale au user de retourner Step3 + on n'affiche pas de
             barre vide (qui pourrait laisser croire que tout va bien). */}
         {!isUnique && !expectsTotal && !expectsCapital && (
-          <div className="flex items-start gap-2 rounded-lg border-l-4 border-warning bg-warning/10 p-3 text-xs text-warning">
+          <div className="flex items-start gap-2 rounded-lg border-l-4 border-warning bg-warning-soft p-3 text-xs text-warning">
             <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
             <p>
               <strong>Nombre total de parts non défini.</strong> Retournez à
@@ -859,7 +859,7 @@ export function Step6Associes({
                 {expectsCapital && (
                   <span>
                     <strong className="text-fg">Capital</strong>{' '}
-                    <span className="font-bold text-accent">
+                    <span className="font-bold text-heading">
                       {capitalSocialExpected?.toLocaleString('fr-MA')} MAD
                     </span>
                   </span>
@@ -867,7 +867,7 @@ export function Step6Associes({
                 {expectsTotal && (
                   <span>
                     <strong className="text-fg">Total parts</strong>{' '}
-                    <span className="font-bold text-accent">{totalPartsExpected}</span>
+                    <span className="font-bold text-heading">{totalPartsExpected}</span>
                   </span>
                 )}
               </div>
@@ -884,7 +884,7 @@ export function Step6Associes({
                 {(apportNumeraireExpected ?? 0) > 0 && (
                   <span>
                     Numéraire{' '}
-                    <span className="font-bold text-accent">
+                    <span className="font-bold text-heading">
                       {(apportNumeraireExpected ?? 0).toLocaleString('fr-MA')} MAD
                     </span>{' '}
                     <span className="text-fg-subtle">({targetPartsByType.NUMERAIRE} parts)</span>
@@ -893,7 +893,7 @@ export function Step6Associes({
                 {(apportNatureExpected ?? 0) > 0 && (
                   <span>
                     Nature{' '}
-                    <span className="font-bold text-accent">
+                    <span className="font-bold text-heading">
                       {(apportNatureExpected ?? 0).toLocaleString('fr-MA')} MAD
                     </span>{' '}
                     <span className="text-fg-subtle">({targetPartsByType.NATURE} parts)</span>
@@ -902,7 +902,7 @@ export function Step6Associes({
                 {(apportIndustrieExpected ?? 0) > 0 && (
                   <span>
                     Industrie{' '}
-                    <span className="font-bold text-accent">
+                    <span className="font-bold text-heading">
                       {(apportIndustrieExpected ?? 0).toLocaleString('fr-MA')} MAD
                     </span>{' '}
                     <span className="text-fg-subtle">({targetPartsByType.INDUSTRIE} parts)</span>
@@ -964,7 +964,7 @@ export function Step6Associes({
           </div>
         )}
 
-        <div className="space-y-3 rounded-xl border border-accent/20 bg-accent/10 p-4 text-xs text-fg">
+        <div className="space-y-3 rounded-xl border border-info/30 bg-info-soft p-4 text-xs text-fg">
           <h3 className="text-base font-bold text-fg">Les associés et la répartition du capital</h3>
           <p>
             {isUnique
@@ -992,7 +992,7 @@ export function Step6Associes({
           <button
             type="button"
             onClick={autoDistribute}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs font-semibold text-accent hover:bg-accent/10"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-border-input bg-bg-raised px-3 py-2 text-xs font-semibold text-fg hover:bg-bg-overlay"
             title="Partage les parts et les apports à égalité entre les associés ; le dernier reçoit le reliquat, pour que la somme égale exactement le capital."
           >
             Répartir équitablement ({associes.length} associés,{' '}
@@ -1022,13 +1022,13 @@ export function Step6Associes({
               key={a.id}
               className={`overflow-hidden rounded-xl border shadow-sm ${
                 isPropagated
-                  ? 'border-accent/40 bg-accent/5'
+                  ? 'border-info/30 bg-info-soft'
                   : 'border-border bg-bg-raised'
               }`}
             >
               <div className="flex items-center justify-between border-b border-border bg-bg-overlay px-5 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-xs font-bold text-bg-raised">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-info text-xs font-bold text-info-fg">
                     <Users className="h-4 w-4" />
                   </div>
                   <span className="text-sm font-bold text-fg">
@@ -1038,7 +1038,7 @@ export function Step6Associes({
                   </span>
                   {isPropagated && (
                     <span
-                      className="inline-flex items-center gap-1 rounded bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-accent"
+                      className="inline-flex items-center gap-1 rounded bg-info-soft px-2 py-0.5 text-[10px] font-semibold uppercase text-info"
                       title="Repris d’un dirigeant coché « Également associé » à l’étape 5"
                     >
                       <Link2 className="h-3 w-3" /> Dirigeant associé
@@ -1075,11 +1075,11 @@ export function Step6Associes({
                       onClick={() => update(a.id, { typePersonne: 'PHYSIQUE' })}
                       className={`flex items-center gap-3 rounded-lg border-2 px-3 py-2.5 text-left transition disabled:opacity-60 ${
                         a.typePersonne === 'PHYSIQUE'
-                          ? 'border-accent bg-accent/5'
-                          : 'border-border bg-bg-overlay hover:border-accent/40'
+                          ? 'border-accent bg-accent-soft'
+                          : 'border-border bg-bg-overlay hover:border-border-hi'
                       }`}
                     >
-                      <User className={`h-4 w-4 ${a.typePersonne === 'PHYSIQUE' ? 'text-accent' : 'text-fg-subtle'}`} />
+                      <User className={`h-4 w-4 ${a.typePersonne === 'PHYSIQUE' ? 'text-fg' : 'text-fg-subtle'}`} />
                       <div>
                         <p className="text-sm font-bold text-fg">Personne physique</p>
                         <p className="text-[11px] text-fg-subtle">Une personne, titulaire d’une pièce d’identité</p>
@@ -1093,11 +1093,11 @@ export function Step6Associes({
                       onClick={() => update(a.id, { typePersonne: 'MORALE' })}
                       className={`flex items-center gap-3 rounded-lg border-2 px-3 py-2.5 text-left transition disabled:opacity-60 ${
                         a.typePersonne === 'MORALE'
-                          ? 'border-accent bg-accent/5'
-                          : 'border-border bg-bg-overlay hover:border-accent/40'
+                          ? 'border-accent bg-accent-soft'
+                          : 'border-border bg-bg-overlay hover:border-border-hi'
                       }`}
                     >
-                      <Building2 className={`h-4 w-4 ${a.typePersonne === 'MORALE' ? 'text-accent' : 'text-fg-subtle'}`} />
+                      <Building2 className={`h-4 w-4 ${a.typePersonne === 'MORALE' ? 'text-fg' : 'text-fg-subtle'}`} />
                       <div>
                         <p className="text-sm font-bold text-fg">Personne morale</p>
                         <p className="text-[11px] text-fg-subtle">Une société (RC, ICE, IF et représentant légal)</p>
@@ -1270,7 +1270,7 @@ export function Step6Associes({
                 )}
                 {/* Trace d'archivage : visible des qu'une pièce est presente. */}
                 {(isPropagated || a.cinUploaded) && a.cinFileName && (
-                  <div className="mb-3 flex items-center justify-between gap-2 rounded-md border border-success/30 bg-success/5 p-2">
+                  <div className="mb-3 flex items-center justify-between gap-2 rounded-md border border-success/30 bg-success-soft p-2">
                     <p className="flex items-center gap-1.5 text-[11px] text-success">
                       <CheckCircle className="h-3 w-3" />
                       {a.cinFileName}
@@ -1446,7 +1446,7 @@ export function Step6Associes({
                 </>
                 )}
 
-                <div className="rounded-xl border border-warning/20 bg-warning/10 p-4">
+                <div className="rounded-xl border border-warning/20 bg-warning-soft p-4">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs font-semibold uppercase text-warning">
                       Parts sociales et apport
@@ -1458,8 +1458,8 @@ export function Step6Associes({
                           <span
                             className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-bold uppercase ${
                               sumPartsValid
-                                ? 'border-success/40 bg-success/10 text-success'
-                                : 'border-danger/40 bg-danger/10 text-danger'
+                                ? 'border-success/40 bg-success-soft text-success'
+                                : 'border-danger/40 bg-danger-soft text-danger'
                             }`}
                           >
                             Total parts {totalParts}/{totalPartsExpected}
@@ -1474,8 +1474,8 @@ export function Step6Associes({
                           <span
                             className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-bold uppercase ${
                               apportValid
-                                ? 'border-success/40 bg-success/10 text-success'
-                                : 'border-danger/40 bg-danger/10 text-danger'
+                                ? 'border-success/40 bg-success-soft text-success'
+                                : 'border-danger/40 bg-danger-soft text-danger'
                             }`}
                           >
                             Apports {totalApport.toLocaleString('fr-MA')}/{capitalSocialExpected?.toLocaleString('fr-MA')} MAD
@@ -1520,7 +1520,7 @@ export function Step6Associes({
                                 const derived = deriveFromApports(newApports, valeurNominaleExpected);
                                 update(a.id, { apports: newApports, ...derived });
                               }}
-                              className="h-9 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+                              className="h-9 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
                             >
                               <option value="NUMERAIRE">Numéraire</option>
                               <option value="NATURE">Nature</option>
@@ -1588,7 +1588,7 @@ export function Step6Associes({
                         const derived = deriveFromApports(newApports, valeurNominaleExpected);
                         update(a.id, { apports: newApports, ...derived });
                       }}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-2 text-xs text-accent transition hover:border-accent hover:bg-accent/10"
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-2 text-xs text-fg-muted transition hover:border-focus hover:bg-bg-overlay hover:text-fg"
                     >
                       <UserPlus className="h-3.5 w-3.5" /> Ajouter une ligne d’apport
                     </button>
@@ -1639,7 +1639,7 @@ export function Step6Associes({
                           </p>
                         )}
                         {isLast && reliquatActif && (
-                          <p className="mt-0.5 text-[10px] text-accent">
+                          <p className="mt-0.5 text-[10px] text-info">
                             Le reliquat d’arrondi est attribué ici, pour que la somme égale exactement le capital.
                           </p>
                         )}
@@ -1711,14 +1711,14 @@ export function Step6Associes({
           <button
             type="button"
             onClick={() => setAssocies([...associes, newAssocie()])}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-3 text-sm text-accent transition hover:border-accent hover:bg-accent/10"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border py-3 text-sm text-fg-muted transition hover:border-focus hover:bg-bg-overlay hover:text-fg"
           >
             <UserPlus className="h-4 w-4" /> Ajouter un associé
           </button>
         )}
 
         {!isUnique && associes.length < 2 && (
-          <div className="rounded-lg border-l-4 border-warning bg-warning/10 p-3 text-sm text-warning">
+          <div className="rounded-lg border-l-4 border-warning bg-warning-soft p-3 text-sm text-warning">
             Une SARL requiert <strong>au moins 2 associés</strong>. Ajoutez un second
             associé pour continuer (une société à <strong>un seul</strong> associé relève
             du parcours « SARL AU »).
@@ -1726,7 +1726,7 @@ export function Step6Associes({
         )}
 
         {isUnique && associes.length > 1 && (
-          <div className="flex items-start gap-2 rounded-lg border-l-4 border-danger bg-danger/10 p-3">
+          <div className="flex items-start gap-2 rounded-lg border-l-4 border-danger bg-danger-soft p-3">
             <AlertTriangle className="h-4 w-4 flex-shrink-0 text-danger" />
             <p className="text-xs text-danger">
               SARL AU : un seul associé est autorisé. Retirez les associés
@@ -1736,7 +1736,7 @@ export function Step6Associes({
         )}
 
         {expectsTotal && !sumPartsValid && (
-          <div className="flex items-start gap-2 rounded-lg border-l-4 border-warning bg-warning/10 p-3">
+          <div className="flex items-start gap-2 rounded-lg border-l-4 border-warning bg-warning-soft p-3">
             <AlertTriangle className="h-4 w-4 flex-shrink-0 text-warning" />
             <p className="text-xs text-warning">
               La somme des parts réparties ({totalParts}) doit égaler le
@@ -1754,7 +1754,7 @@ export function Step6Associes({
         )}
 
         {expectsCapital && !apportValid && (
-          <div className="flex items-start gap-2 rounded-lg border-l-4 border-danger bg-danger/10 p-3">
+          <div className="flex items-start gap-2 rounded-lg border-l-4 border-danger bg-danger-soft p-3">
             <AlertTriangle className="h-4 w-4 flex-shrink-0 text-danger" />
             <p className="text-xs text-danger">
               La somme des apports répartis ({totalApport.toLocaleString('fr-MA')} MAD) doit
@@ -1819,8 +1819,8 @@ export function Step6Associes({
                 return (
                   <div key={a.id} className="flex items-center gap-3">
                     <div
-                      className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-bg-raised ${
-                        isMorale ? 'bg-fg' : 'bg-accent'
+                      className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold ${
+                        isMorale ? 'bg-fg text-bg-raised' : 'bg-info text-info-fg'
                       }`}
                       title={isMorale ? 'Personne morale' : 'Personne physique'}
                     >
@@ -1838,14 +1838,14 @@ export function Step6Associes({
                           </span>
                         )}
                         {a.fromDirigeantId && (
-                          <span className="ml-1 text-[10px] text-accent" title="Également dirigeant (étape 5)">
+                          <span className="ml-1 text-[10px] text-info" title="Également dirigeant (étape 5)">
                             (gérant)
                           </span>
                         )}
                       </p>
                       <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-bg-overlay">
                         <div
-                          className={`h-full rounded-full ${isMorale ? 'bg-fg' : 'bg-accent'}`}
+                          className={`h-full rounded-full ${isMorale ? 'bg-fg' : 'bg-info'}`}
                           style={{ width: `${pct(a)}%` }}
                         />
                       </div>
@@ -1877,10 +1877,10 @@ export function Step6Associes({
               <div
                 className={`mt-3 flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold ${
                   sumPartsValid
-                    ? 'bg-success/10 text-success'
+                    ? 'bg-success-soft text-success'
                     : totalParts > (totalPartsExpected ?? 0)
-                    ? 'bg-danger/10 text-danger'
-                    : 'bg-warning/10 text-warning'
+                    ? 'bg-danger-soft text-danger'
+                    : 'bg-warning-soft text-warning'
                 }`}
               >
                 <span>Parts réparties</span>
@@ -1928,12 +1928,12 @@ function DistributionBar({
     ? 'bg-success'
     : over
       ? 'bg-danger'
-      : 'bg-accent';
+      : 'bg-info';
   const textColor = exact
     ? 'text-success'
     : over
       ? 'text-danger'
-      : 'text-accent';
+      : 'text-info';
   return (
     <div>
       <div className="mb-1 flex items-baseline justify-between gap-3 text-xs">
@@ -2197,8 +2197,8 @@ function MoraleAssocieForm({
       </div>
 
       {/* Representant legal + upload CIN obligatoire */}
-      <div className="rounded-lg border border-accent/30 bg-accent/5 p-4">
-        <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase text-accent">
+      <div className="rounded-lg border border-info/30 bg-info-soft p-4">
+        <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase text-fg-muted">
           <User className="h-3.5 w-3.5" /> Représentant légal (personne physique)
         </p>
         {/* 2026-06-19 — Representant legal = personne physique : meme assistant
@@ -2242,7 +2242,7 @@ function MoraleAssocieForm({
             l'IdentityExtractor archive deja la piece. Affichage lecture seule
             pour controle humain de l'OCR. */}
         {a.repCinUploaded && (
-          <div className="mb-3 flex items-start gap-2 rounded-md border border-success/30 bg-success/5 p-2 text-xs">
+          <div className="mb-3 flex items-start gap-2 rounded-md border border-success/30 bg-success-soft p-2 text-xs">
             <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
             <div className="flex-1">
               <p className="font-semibold text-success">CIN du représentant lue</p>
@@ -2400,7 +2400,7 @@ function AssocUploadCard({
 }) {
   if (uploaded) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-success bg-success/10 p-3">
+      <div className="flex items-center gap-2 rounded-lg border border-success bg-success-soft p-3">
         <FileText className="h-4 w-4 text-success" />
         <span className="flex-1 truncate text-xs">{filename ?? label}</span>
         <CheckCircle className="h-4 w-4 text-success" />

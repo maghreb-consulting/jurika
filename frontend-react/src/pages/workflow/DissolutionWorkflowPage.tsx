@@ -624,7 +624,7 @@ function DissolutionWorkflowPageBody() {
             </div>
 
             {dossier && (
-              <div className="rounded-lg border border-info/30 bg-accent/10 p-3 text-xs text-fg-muted" role="status">
+              <div className="rounded-lg border border-info/30 bg-info-soft p-3 text-xs text-fg-muted" role="status">
                 Organe compétent : <strong>{decisionLabel}</strong>. Actes produits : procès-verbal
                 de dissolution anticipée{isAU ? ' (SARL à associé unique)' : ' (SARL)'} et annonce
                 légale de dissolution.
@@ -816,7 +816,7 @@ function DissolutionWorkflowPageBody() {
 
             <section className="space-y-3 rounded-xl border border-border bg-bg-raised p-4" data-testid="dissolution-convocation">
               <div className="flex items-center gap-2">
-                <Megaphone className="h-4 w-4 text-accent" />
+                <Megaphone className="h-4 w-4 text-fg-muted" />
                 <h4 className="text-sm font-semibold text-fg">Convocation (facultative)</h4>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
@@ -848,7 +848,7 @@ function DissolutionWorkflowPageBody() {
                 <div
                   role="alert"
                   data-testid="dissolution-convocation-16j-error"
-                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-2 text-xs text-danger"
+                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-soft p-2 text-xs text-danger"
                 >
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                   <span>{convocationError}</span>
@@ -1002,7 +1002,7 @@ function DissolutionWorkflowPageBody() {
           <div className="space-y-4" data-testid="dissolution-step3-pieces">
             <header>
               <div className="flex items-center gap-2">
-                <Paperclip className="h-5 w-5 text-accent" />
+                <Paperclip className="h-5 w-5 text-fg-muted" />
                 <h2 className="text-lg font-semibold text-fg">Étape 3 — Pièces jointes (facultative)</h2>
               </div>
               <p className="text-sm text-fg-subtle">

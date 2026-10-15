@@ -211,7 +211,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
     >
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
         <div className="mb-1 flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-accent" />
+          <Building2 className="h-5 w-5 text-fg-muted" />
           <h3 className="text-lg font-bold text-fg">Siège social</h3>
         </div>
         <p className="mb-4 text-xs text-fg-subtle">
@@ -237,7 +237,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
             value={adresse}
             onChange={(ev) => setAdresse(ev.target.value)}
             placeholder="Numéro, rue, quartier, ville"
-            className="w-full resize-none rounded-lg border-2 border-border bg-bg-overlay px-3 py-2 text-sm focus:border-accent focus:outline-none"
+            className="w-full resize-none rounded-lg border-2 border-border bg-bg-overlay px-3 py-2 text-sm focus:border-focus focus:outline-none"
           />
         </div>
 
@@ -264,7 +264,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
               }}
               className={`flex-1 rounded-lg border-2 p-4 text-left transition ${
                 justificatifType === 'BAIL'
-                  ? 'border-accent bg-accent/10'
+                  ? 'border-accent bg-accent-soft'
                   : 'border-border hover:border-border-hi'
               }`}
             >
@@ -281,7 +281,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
               }}
               className={`flex-1 rounded-lg border-2 p-4 text-left transition ${
                 justificatifType === 'DOMICILIATION'
-                  ? 'border-accent bg-accent/10'
+                  ? 'border-accent bg-accent-soft'
                   : 'border-border hover:border-border-hi'
               }`}
             >
@@ -304,7 +304,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
               : 'Contrat de domiciliation'}
           </label>
           {!mainDoc ? (
-            <label className="block cursor-pointer rounded-lg border-2 border-dashed border-border p-8 text-center transition hover:border-accent hover:bg-bg-overlay">
+            <label className="block cursor-pointer rounded-lg border-2 border-dashed border-border p-8 text-center transition hover:border-focus hover:bg-bg-overlay hover:text-fg">
               <Upload className="mx-auto mb-2 h-8 w-8 text-fg-subtle" />
               <p className="text-sm text-fg-subtle">
                 Cliquez pour importer le fichier (PDF ou image)
@@ -317,7 +317,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
               />
             </label>
           ) : (
-            <div className="flex items-center gap-3 rounded-lg border-2 border-success bg-success/10 p-3">
+            <div className="flex items-center gap-3 rounded-lg border-2 border-success bg-success-soft p-3">
               <FileText className="h-5 w-5 text-danger" />
               <p className="flex-1 text-sm font-medium text-fg">{mainDoc}</p>
               <CheckCircle className="h-5 w-5 text-success" />
@@ -339,7 +339,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
               Certificat de propriété
             </label>
             {!certifDoc ? (
-              <label className="block cursor-pointer rounded-lg border-2 border-dashed border-border p-6 text-center transition hover:border-accent hover:bg-bg-overlay">
+              <label className="block cursor-pointer rounded-lg border-2 border-dashed border-border p-6 text-center transition hover:border-focus hover:bg-bg-overlay hover:text-fg">
                 <Upload className="mx-auto mb-1 h-6 w-6 text-fg-subtle" />
                 <p className="text-sm text-fg-subtle">
                   Importer le certificat de propriété
@@ -352,7 +352,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
                 />
               </label>
             ) : (
-              <div className="flex items-center gap-3 rounded-lg border-2 border-success bg-success/10 p-3">
+              <div className="flex items-center gap-3 rounded-lg border-2 border-success bg-success-soft p-3">
                 <FileText className="h-5 w-5 text-danger" />
                 <p className="flex-1 text-sm font-medium text-fg">{certifDoc}</p>
                 <CheckCircle className="h-5 w-5 text-success" />
@@ -375,7 +375,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
               Attestation de réception du courrier
             </label>
             {!attestDoc ? (
-              <label className="block cursor-pointer rounded-lg border-2 border-dashed border-border p-6 text-center transition hover:border-accent hover:bg-bg-overlay">
+              <label className="block cursor-pointer rounded-lg border-2 border-dashed border-border p-6 text-center transition hover:border-focus hover:bg-bg-overlay hover:text-fg">
                 <Upload className="mx-auto mb-1 h-6 w-6 text-fg-subtle" />
                 <p className="text-sm text-fg-subtle">
                   Importer l’attestation de réception du courrier
@@ -388,7 +388,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
                 />
               </label>
             ) : (
-              <div className="flex items-center gap-3 rounded-lg border-2 border-success bg-success/10 p-3">
+              <div className="flex items-center gap-3 rounded-lg border-2 border-success bg-success-soft p-3">
                 <FileText className="h-5 w-5 text-danger" />
                 <p className="flex-1 text-sm font-medium text-fg">{attestDoc}</p>
                 <CheckCircle className="h-5 w-5 text-success" />
@@ -419,7 +419,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
               onChange={(ev) => handleProvince(ev.target.value)}
               placeholder="Choisir ou saisir une province"
               autoComplete="off"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             />
             <datalist id={provinceListId}>
               {MOROCCO_PROVINCES.map((p) => (
@@ -441,7 +441,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
               onChange={(ev) => setCommune(ev.target.value)}
               placeholder={communes.length ? 'Choisir ou saisir la commune' : 'Saisir la commune'}
               autoComplete="off"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             />
             <datalist id={communeListId}>
               {communes.map((c) => (
@@ -465,7 +465,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
               value={codePostal}
               onChange={(ev) => setCodePostal(ev.target.value)}
               placeholder="20000"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             />
           </div>
         </div>
@@ -487,7 +487,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
               value={villeGreffe}
               onChange={(ev) => setVilleGreffe(ev.target.value)}
               placeholder="Ex. : Casablanca"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             />
             <p className="mt-0.5 text-[10px] text-fg-subtle">
               Greffe du tribunal de commerce compétent (par défaut : la province du siège).
@@ -506,7 +506,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
               type="date"
               value={dateDebut}
               onChange={(ev) => setDateDebut(ev.target.value)}
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             />
           </div>
           <div>
@@ -517,7 +517,7 @@ export function Step2Siege({ existing, importMode = false, saving, onSubmit, onP
               type="date"
               value={dateFin}
               onChange={(ev) => setDateFin(ev.target.value)}
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-focus focus:outline-none"
             />
           </div>
         </div>

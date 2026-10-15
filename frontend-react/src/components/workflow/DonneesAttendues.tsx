@@ -89,7 +89,7 @@ export function DonneesAttendues({
                   type="button"
                   disabled={envoi === a.variable || !(valeurs[a.variable] ?? '').trim()}
                   onClick={() => void enregistrer(a)}
-                  className="rounded-md border border-accent/40 px-2 py-1 text-accent hover:bg-accent/10 disabled:opacity-50"
+                  className="rounded-md border border-border-input px-2 py-1 text-fg hover:bg-bg-overlay disabled:opacity-50 bg-bg-raised"
                 >
                   Enregistrer
                 </button>

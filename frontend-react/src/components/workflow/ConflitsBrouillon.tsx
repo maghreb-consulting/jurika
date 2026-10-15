@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import type { BrouillonLocal } from '../../pages/workflow/brouillonsLocaux';
 import { InfoBulle } from '../ui/Aide';
+import { Button } from '../ui/Button';
 
 /**
  * Lot L7 (E12) : une saisie gardee dans ce navigateur (session expiree, coupure) n'a
@@ -33,7 +34,7 @@ export function ConflitsBrouillon({
     <section
       role="alert"
       aria-label="Saisie gardée dans ce navigateur"
-      className="mb-4 space-y-3 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm text-fg"
+      className="mb-4 space-y-3 rounded-lg border border-warning/40 border-l-4 border-l-warning bg-warning-soft p-4 text-sm text-fg"
     >
       <p className="flex items-center gap-2 font-semibold">
         <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />
@@ -52,22 +53,18 @@ export function ConflitsBrouillon({
               L’étape a été modifiée depuis. Quelle version voulez-vous garder ?
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={enCours != null}
-                onClick={() => void choisir(b, 'local')}
-                className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-bg-raised hover:bg-accent-hover disabled:opacity-60"
-              >
+              <Button type="button" size="sm" disabled={enCours != null} onClick={() => void choisir(b, 'local')}>
                 Garder ma saisie de ce navigateur
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 disabled={enCours != null}
                 onClick={() => void choisir(b, 'serveur')}
-                className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-fg hover:bg-bg-overlay disabled:opacity-60"
               >
                 Garder la version enregistrée
-              </button>
+              </Button>
             </div>
             <p className="mt-2 text-xs text-fg-subtle">
               « Garder ma saisie » remplace l’étape enregistrée et réaffiche les champs ;

@@ -57,7 +57,7 @@ export function ValeurProposee({
           <button
             type="button"
             onClick={() => onChange(proposition)}
-            className="whitespace-nowrap rounded-md border border-accent/40 px-2 py-1 text-xs font-medium text-accent hover:bg-accent/10"
+            className="whitespace-nowrap rounded-md border border-border-input px-2 py-1 text-xs font-medium text-fg hover:bg-bg-overlay bg-bg-raised"
           >
             Confirmer
           </button>

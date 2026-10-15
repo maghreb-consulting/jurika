@@ -126,7 +126,7 @@ export function PiecesJointesPanel({
         className="flex w-full items-center gap-2 px-4 py-3 text-left"
         aria-expanded={open}
       >
-        <Paperclip className="h-4 w-4 text-accent" />
+        <Paperclip className="h-4 w-4 text-fg-muted" />
         <span className="text-sm font-semibold text-fg">Pièces jointes (facultatives)</span>
         <span className="ml-auto text-xs text-fg-subtle">
           {Object.keys(done).length > 0 ? `${Object.keys(done).length} déposée(s)` : 'Aucune obligatoire'}
@@ -156,7 +156,7 @@ export function PiecesJointesPanel({
                     </span>
                   ) : (
                     <>
-                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-bg-raised px-3 py-1.5 text-xs font-medium text-fg hover:border-accent">
+                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-bg-raised px-3 py-1.5 text-xs font-medium text-fg hover:border-border-hi">
                         {uploading[slot.id] ? (
                           <Loader className="h-3.5 w-3.5 animate-spin" />
                         ) : (
