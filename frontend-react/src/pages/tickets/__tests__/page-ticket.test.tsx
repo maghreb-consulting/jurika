@@ -36,18 +36,18 @@ vi.mock('../../../store/authStore', () => ({
   // L6b : la structure commune <Page> lit le role pour le fil d'Ariane.
   useAuthStore: (sel: (s: { user: { role: string } }) => unknown) => sel({ user: { role: role.value } }),
 }));
-const { stub } = vi.hoisted(() => ({ stub: () => null }));
-vi.mock('../DecisionsTicketPanel', () => ({ DecisionsTicketPanel: stub }));
-// L6b (E15) : le panneau des demarches est observe (montages et rappel de changement).
-const { demarches } = vi.hoisted(() => ({
-  demarches: { montages: 0, onChanged: null as null | (() => void) },
+const { stub, demarches } = vi.hoisted(() => ({
+  stub: () => null,
+  // Lot L6b (E14) : le panneau des demarches simule garde ses props et compte ses montages.
+  demarches: { onModifie: undefined as undefined | (() => void), montages: 0 },
 }));
+vi.mock('../DecisionsTicketPanel', () => ({ DecisionsTicketPanel: stub }));
 vi.mock('../DemarchesPanel', async () => {
-  const { useState } = await import('react');
+  const { useEffect } = await import('react');
   return {
-    DemarchesPanel: (p: { onChanged?: () => void }) => {
-      useState(() => { demarches.montages += 1; return 0; });
-      demarches.onChanged = p.onChanged ?? null;
+    DemarchesPanel: (p: { onModifie?: () => void }) => {
+      demarches.onModifie = p.onModifie;
+      useEffect(() => { demarches.montages += 1; }, []);
       return null;
     },
   };
@@ -111,6 +111,32 @@ describe('Page du ticket (tous parcours)', () => {
     await waitFor(() => expect(screen.getByTestId('refus-transition')).toHaveTextContent('$DATE_ACTE'));
   });
 
+  it('L6b E14 : un cochage de demarche relit les obstacles au passage, sans recharger la page', async () => {
+    role.value = 'EMPLOYE';
+    tickets.passage.mockResolvedValueOnce({ statut: 'CREATION_TICKET', suivant: 'GENERATION_DOCUMENTS',
+      obstacles: ['D\u00e9marche 1 (obligatoire) non coch\u00e9e : Ouverture du ticket'] });
+    monter();
+    expect(await screen.findByTestId('obstacles')).toHaveTextContent('Ouverture du ticket');
+    tickets.passage.mockResolvedValue({ statut: 'CREATION_TICKET', suivant: 'GENERATION_DOCUMENTS', obstacles: [] });
+    // Le panneau des demarches signale le cochage.
+    expect(demarches.onModifie, 'la page passe un rappel au panneau des demarches').toBeTypeOf('function');
+    demarches.onModifie?.();
+    expect(await screen.findByTestId('passage-possible')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Passer \u00e0/ })).toBeEnabled();
+  });
+
+  it('L6b E14 : apres un passage de statut, le panneau des demarches est recharge', async () => {
+    role.value = 'EMPLOYE';
+    tickets.passage.mockResolvedValue({ statut: 'CREATION_TICKET', suivant: 'GENERATION_DOCUMENTS', obstacles: [] });
+    tickets.transition.mockResolvedValue({});
+    monter();
+    expect(await screen.findByTestId('passage-possible')).toBeInTheDocument();
+    const avant = demarches.montages;
+    fireEvent.click(screen.getByRole('button', { name: /Passer \u00e0/ }));
+    await waitFor(() => expect(tickets.transition).toHaveBeenCalled());
+    await waitFor(() => expect(demarches.montages, 'demarches du nouveau statut relues').toBeGreaterThan(avant));
+  });
+
   it('le superviseur lit les obstacles sans pouvoir agir', async () => {
     role.value = 'SUPERVISEUR';
     tickets.acces.mockResolvedValue({ enCharge: false, peutAgir: false, raison: 'Consultation : seul l’employé responsable du dossier agit sur le ticket.' });
@@ -146,8 +172,8 @@ describe('Page du ticket (tous parcours)', () => {
     expect(await screen.findByTestId('obstacles')).toBeInTheDocument();
     tickets.passage.mockResolvedValue({ statut: 'GENERATION_DOCUMENTS', suivant: 'DEROULEMENT_DEMARCHE', obstacles: [] });
     const lectures = tickets.passage.mock.calls.length;
-    expect(demarches.onChanged).toBeTypeOf('function');
-    demarches.onChanged?.();
+    expect(demarches.onModifie).toBeTypeOf('function');
+    demarches.onModifie?.();
     await waitFor(() => expect(tickets.passage.mock.calls.length).toBeGreaterThan(lectures));
     expect(await screen.findByTestId('passage-possible')).toBeInTheDocument();
   });

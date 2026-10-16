@@ -292,3 +292,33 @@ describe('Un délai qui attend une saisie le dit, et dit quoi', () => {
     expect(within(taxe).queryByText(/le guide ne permet pas/i)).not.toBeInTheDocument();
   });
 });
+
+/**
+ * Lot L6b (E14) : trouves en parcours de bout en bout sur la pile.
+ *  - la page du ticket est prevenue de chaque changement (elle relit les obstacles au passage) ;
+ *  - le justificatif attendu se nomme en francais, jamais par son code technique ("STATUTS",
+ *    "FICHE_RENSEIGNEMENTS") : bouton d'import et message de blocage.
+ */
+describe('L6b E14 : retours du parcours de creation', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('previent la page apres un cochage', async () => {
+    const onModifie = vi.fn();
+    render(<DemarchesPanel ticketId="t-1" dossierId="dos-1" canAct onModifie={onModifie} />);
+    const retrait = await screen.findByTestId('demarche-20');
+    const fichier = retrait.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fichier, {
+      target: { files: [new File(['x'], 'statuts.pdf', { type: 'application/pdf' })] },
+    });
+    fireEvent.click(within(retrait).getByRole('button', { name: /^Cocher$/i }));
+    await waitFor(() => expect(cocher).toHaveBeenCalled());
+    await waitFor(() => expect(onModifie).toHaveBeenCalled());
+  });
+
+  it('nomme le justificatif attendu par son libelle, pas par son code', async () => {
+    rendre();
+    const retrait = await screen.findByTestId('demarche-20');
+    expect(retrait).not.toHaveTextContent('STATUTS');
+    expect(within(retrait).getAllByText(/Statuts/).length).toBeGreaterThan(0);
+  });
+});

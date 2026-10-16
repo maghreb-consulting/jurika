@@ -85,6 +85,11 @@ export function TicketPage() {
     Promise.resolve().then(charger).catch(() => undefined);
   }, [charger]);
 
+  /** Lot L6b (E14) : obstacles relus apres chaque changement des demarches. */
+  const relirePassage = useCallback(() => {
+    ticketService.passage(ticketId).then(setPassage).catch(() => undefined);
+  }, [ticketId]);
+
   const canAct = user?.role === 'EMPLOYE' && acces?.peutAgir === true;
   const actif = ticket ? ticket.statut !== 'CLOTURE_DOSSIER' && ticket.statut !== 'ANNULE' : false;
 
@@ -95,7 +100,8 @@ export function TicketPage() {
     try {
       await ticketService.transition(ticketId, { target: passage.suivant as TicketStatut });
       await charger();
-      // L6b (E15) : les demarches du nouveau statut deviennent actionnables (avant : rechargement).
+      // Lot L6b (E14) : les demarches du nouveau statut deviennent actionnables ; le panneau
+      // se recharge (sans cela, aucune n'offrait "Cocher" avant le rechargement de la page).
       setVersionDemarches((v) => v + 1);
     } catch (e) {
       // RG-TKT-06 : le refus du serveur s'affiche tel quel, avec sa raison.
@@ -271,7 +277,7 @@ export function TicketPage() {
           statut={ticket.statut} canAct={canAct} />
 
         <DemarchesPanel key={versionDemarches} ticketId={ticketId} dossierId={ticket.dossierId ?? null} canAct={canAct && actif}
-          onChanged={() => { void ticketService.passage(ticketId).then(setPassage).catch(() => undefined); }} />
+          onModifie={relirePassage} />
 
         <NoteTicketPanel ticketId={ticketId} statut={ticket.statut} role={user?.role} />
 

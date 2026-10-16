@@ -22,6 +22,7 @@ import { AvancementPanel } from './AvancementPanel';
 import { FriseDemarches } from '../../components/tickets/FriseDemarches';
 import { Message } from '../../components/ui/Message';
 import { CardSkeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
+import { DOCUMENT_TYPE_LABELS } from '../../types/dataroom';
 import type {
   DemarcheEvenement,
   JustificatifAttendu,
@@ -61,26 +62,38 @@ function groupesAttendus(attendus: JustificatifAttendu[]): JustificatifAttendu[]
   return [...parGroupe.entries()].sort(([a], [b]) => a - b).map(([, v]) => v);
 }
 
+/**
+ * Lot L6b (E14) : nom d'un justificatif attendu tel que l'employe le lit. Le code du type de
+ * document ("FICHE_RENSEIGNEMENTS") s'affichait sur le bouton d'import et dans le message de
+ * blocage ; le libelle du type, sinon celui du referentiel, le remplace. Le code reste le
+ * dernier recours (aucun libelle invente).
+ */
+function libelleJustificatif(a: { documentType: string; libelle?: string | null }): string {
+  return (DOCUMENT_TYPE_LABELS as Record<string, string>)[a.documentType] ?? (a.libelle?.trim() || a.documentType);
+}
+
 export function DemarchesPanel({
   ticketId,
   dossierId,
   canAct,
-  onChanged,
+  onModifie,
 }: {
   ticketId: string;
   dossierId: string | null;
   canAct: boolean;
   /**
-   * Lot L6b (E15) : appele apres chaque cochage, annulation ou mise a l'ecart, pour que la
-   * page relise le passage de statut (il restait bloque sur une demarche deja cochee).
+   * Lot L6b (E14) : appele apres chaque cochage, mise hors perimetre, annulation ou date
+   * saisie. La page du ticket y relit les obstacles au passage : sans lui, le bloc
+   * "Passage de statut" gardait "Demarche 1 non cochee" apres le cochage, et le bouton
+   * de passage restait grise jusqu'au rechargement de la page.
    */
-  onChanged?: () => void;
+  onModifie?: () => void;
 }) {
   const [vue, setVueLocale] = useState<VueDemarches | null>(null);
   const setVue = useCallback((v: VueDemarches) => {
     setVueLocale(v);
-    onChanged?.();
-  }, [onChanged]);
+    onModifie?.();
+  }, [onModifie]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
   const [ecarter, setEcarter] = useState<LigneDemarche | null>(null);
@@ -477,7 +490,7 @@ function DemarcheRow({
                         }`}
                       >
                         <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
-                        {a.documentType}
+                        {libelleJustificatif(a)}
                         <input
                           type="file"
                           className="sr-only"
@@ -497,7 +510,7 @@ function DemarcheRow({
                       </label>
                     ))}
                     {alternatives.length > 1 && !choisi && (
-                      <span className="text-xs text-fg-muted">(l&apos;un des trois suffit)</span>
+                      <span className="text-xs text-fg-muted">(l&apos;une de ces pi&egrave;ces suffit)</span>
                     )}
                     {choisi && (
                       <span className="truncate text-xs text-success">
@@ -515,7 +528,7 @@ function DemarcheRow({
             <p className="mt-2 text-xs text-warning">
               Cochage impossible tant que ces justificatifs ne sont pas fournis :{' '}
               {groupesManquants
-                .map((alt) => alt.map((a) => a.documentType).join(' ou '))
+                .map((alt) => alt.map(libelleJustificatif).join(' ou '))
                 .join(', ')}
               .
             </p>
