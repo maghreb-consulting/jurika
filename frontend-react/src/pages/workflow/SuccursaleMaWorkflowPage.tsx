@@ -771,6 +771,7 @@ function SuccursaleMaWorkflowPageBody() {
                 hideSeanceDate
                 hideConvDate
                 initialAssocies={bdAssocies}
+                initialOrdreDuJour={ORDRE_DU_JOUR_OUVERTURE_SUCCURSALE}
                 initialGerants={bdGerants}
               />
             )}

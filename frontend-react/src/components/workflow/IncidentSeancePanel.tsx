@@ -66,6 +66,12 @@ export interface IncidentSeancePanelProps {
    */
   initialAssocies?: AssocieInput[];
   initialGerants?: GerantInput[];
+  /**
+   * Lot L6b (E15) : ordre du jour de l'assemblée (le PV d'incident le rappelle). Modifiable :
+   * l'incident peut ne porter que sur une partie. Sans lui, le PV imprimait « l'ordre du
+   * jour suivant : » suivi de rien.
+   */
+  initialOrdreDuJour?: string[];
   /** Phase 7 — dépôt Data Room versionné (opt-in). */
   versioned?: boolean;
   /** Motif tracé sur le dépôt versionné. */
@@ -104,6 +110,7 @@ export function IncidentSeancePanel({
   hideConvDate,
   initialAssocies,
   initialGerants,
+  initialOrdreDuJour,
   versioned,
   motif,
   filenameFor: filenameForProp,
@@ -117,6 +124,7 @@ export function IncidentSeancePanel({
     defaults: { type: 'extraordinaire', ...defaultSeance },
     initialAssocies,
     initialGerants,
+    initialOrdreDuJour,
   });
 
   const [docs, setDocs] = useState<Record<string, DocState>>({});

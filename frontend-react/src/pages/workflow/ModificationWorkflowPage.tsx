@@ -2173,6 +2173,7 @@ function ModificationWorkflowPageBody() {
                 hideSeanceDate
                 hideConvDate
                 initialAssocies={bdAssocies}
+                initialOrdreDuJour={ordreDuJourFromMods}
                 initialGerants={bdGerants}
                 versioned
                 motif={depositMotif}

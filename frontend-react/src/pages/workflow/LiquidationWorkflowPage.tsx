@@ -1171,6 +1171,7 @@ function LiquidationWorkflowPageBody() {
                 hideSeanceDate
                 hideConvDate
                 initialAssocies={bdAssocies}
+                initialOrdreDuJour={ORDRE_DU_JOUR_CLOTURE_LIQUIDATION}
                 initialGerants={bdGerants}
               />
             )}

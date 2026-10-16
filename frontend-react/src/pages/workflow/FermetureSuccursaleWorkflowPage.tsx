@@ -975,6 +975,7 @@ function FermetureSuccursaleWorkflowPageBody() {
                 hideSeanceDate
                 hideConvDate
                 initialAssocies={bdAssocies}
+                initialOrdreDuJour={ORDRE_DU_JOUR_FERMETURE_SUCCURSALE}
                 initialGerants={bdGerants}
               />
             )}
