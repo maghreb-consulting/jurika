@@ -32,11 +32,8 @@ vi.mock('../../../services/dataroom.service', () => ({
 vi.mock('../../../components/dashboard/Sprint10EmployePanel', () => ({
   Sprint10EmployePanel: () => null,
 }));
-// Lot IA-1 — le panneau Copilote (useNavigate + appel dashboard-service) est
-// neutralise pour isoler le rendu des KpiCards du haut.
-vi.mock('../../../components/dashboard/CopilotePanel', () => ({
-  CopilotePanel: () => null,
-}));
+// L6b (demande du 2026-10-16) : le copilote est retire du tableau de bord (composant et service
+// supprimes) ; la carte "Prochaine action" prend sa place.
 vi.mock('../../../components/transfer/PendingTransfersPanel', () => ({
   PendingTransfersPanel: () => null,
 }));
@@ -220,6 +217,20 @@ describe('EmployeeDashboard', () => {
     expect(lien).toHaveAttribute('href', '/tickets/t1');
     expect(screen.getByText('Démarche : Dépôt au greffe')).toBeInTheDocument();
     expect(getEmploye).toHaveBeenCalledTimes(1);
+  });
+
+  it("sans copilote : la carte "Prochaine action" prend sa place, apres les requetes et les graphiques (demande du 2026-10-16)", async () => {
+    list.mockResolvedValue({ items: [] });
+    listDossiers.mockResolvedValue([]);
+    listDemandes.mockResolvedValue([]);
+
+    const { container } = renderDash();
+
+    const carte = await screen.findByRole('heading', { name: /Prochaine action/ });
+    const requetes = screen.getByRole('heading', { name: /Requêtes du cabinet au client/ });
+    expect(container.querySelector('#copilote'), 'aucun panneau du copilote').toBeNull();
+    // La carte suit desormais les sections (place de l'ancien copilote), elle n'est plus en tete.
+    expect(requetes.compareDocumentPosition(carte) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('tickets indisponibles : la carte le dit et les compteurs de tickets affichent "--"', async () => {

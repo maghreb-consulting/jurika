@@ -19,7 +19,6 @@ import { dashboardService } from '../../services/dashboard.service';
 import { Page } from '../../components/layout/Page';
 import { Sprint10EmployePanel } from '../../components/dashboard/Sprint10EmployePanel';
 import { EmployeeChartsPanel } from '../../components/dashboard/EmployeeChartsPanel';
-import { CopilotePanel } from '../../components/dashboard/CopilotePanel';
 import { ProchaineActionCarte } from '../../components/dashboard/ProchaineActionCarte';
 import { KpiCard } from '../../components/dashboard/KpiCard';
 import { PendingTransfersPanel } from '../../components/transfer/PendingTransfersPanel';
@@ -62,8 +61,9 @@ function dataroomLabel(dossierId: string, nameById: Record<string, string>): str
 }
 
 /**
- * Tableau de bord de l'employe (lot L6b, E9) : la carte "Prochaine action" en tete, puis ses
- * indicateurs, ses tickets par statut, les demandes de ses clients et ses requetes.
+ * Tableau de bord de l'employe (lot L6b, E9) : ses indicateurs, ses tickets par statut, les
+ * demandes de ses clients, ses requetes, ses graphiques, puis la carte "Prochaine action" (a la
+ * place du copilote, retire le 2026-10-16) et sa charge de la semaine.
  */
 export function EmployeeDashboard() {
   const user = useCurrentUser();
@@ -169,12 +169,6 @@ export function EmployeeDashboard() {
       {/* V9 -- Transferts de dossier en attente (recus a accepter/refuser + envoyes a annuler) */}
       <PendingTransfersPanel />
 
-      <ProchaineActionCarte
-        tickets={tickets}
-        echeances={indicateurs ? (indicateurs.mesEcheancesAssignees ?? []) : null}
-        userId={user?.userId}
-        loading={loading || loadingIndicateurs}
-      />
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard
@@ -290,10 +284,13 @@ export function EmployeeDashboard() {
       {/* Graphiques : repartition de mes tickets (statut + type) */}
       <EmployeeChartsPanel tickets={mesTickets} />
 
-      {/* Lot IA-1 -- agent copilote (plan du jour, echeances) */}
-      <div id="copilote">
-        <CopilotePanel />
-      </div>
+      {/* Demande du 2026-10-16 : le copilote est retire ; la carte "Prochaine action" prend sa place. */}
+      <ProchaineActionCarte
+        tickets={tickets}
+        echeances={indicateurs ? (indicateurs.mesEcheancesAssignees ?? []) : null}
+        userId={user?.userId}
+        loading={loading || loadingIndicateurs}
+      />
 
       {/* Sprint 10 -- ma charge semaine + echeances assignees */}
       <Sprint10EmployePanel data={indicateurs} loading={loadingIndicateurs} />

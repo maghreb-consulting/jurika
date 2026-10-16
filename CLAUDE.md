@@ -309,9 +309,12 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **Demonstration JUR-DEMO2** : description des tickets du seed technique et non accentuee ("Ticket de demonstration seede par scripts/seed-...", visible dans la video de la vitrine) ; ticket T-2026-00002 "Constitution Atlas Demo SARL" cree pour la video (etape 1) ; aucune demarche avec echeance ni acte genere ; un document "TEST"
   ("Les 28 types de modifications statutaires") dont l'origine est a verifier ; second facteur TOTP de
   `employe2` configure pour les captures (secret dans `~/.jurika-test/employe2-totp.txt`).
-- **Copilote du tableau de bord employe** : les suggestions viennent du serveur ; a relire avec des
-  donnees reelles (textes non verifies hors harnais). Le panneau affiche du Markdown brut
-  ("**PLAN DU JOUR**").
+- **Copilote retire du tableau de bord employe** (demande du 2026-10-16 ; panneau, service et types du
+  front supprimes, la carte "Prochaine action" prend sa place). Cote serveur, dashboard-service garde
+  `AgentCopiloteScheduler` (tous les jours a 8 h, Africa/Casablanca), `AgentCopiloteService`,
+  `AgentBriefingController` (`/api/v1/agent/briefing/**`) et l'appel au raisonnement d'ai-service :
+  des briefings sont encore generes sans aucun lecteur (motif 9, cout du modele). A retirer (test
+  d'abord ; la table des briefings reste, migration intouchable) ou a desactiver.
 - **Audit de billing jamais ecrit** (motif 9) : `JdbcAuditEventEmitter` de billing ecrit dans
   `audit_log` de `jurika_billing`, qui n'a pas cette table ("bad SQL grammar", journalise en WARN
   seulement, ex. `BILLING_PAIEMENT_VALIDE`) : les traces de paiement sont perdues sans bruit.
