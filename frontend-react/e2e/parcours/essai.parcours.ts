@@ -35,11 +35,11 @@ test('essai gratuit : demande jusqu\u2019aux verifications (code SMS et lien du 
   await capturer('essai-verifications');
 
   // Un code faux est refuse, nommement ; aucun essai n'est ouvert.
-  sentinelle.tolerer({ methode: 'POST', chemin: /\/public\/essai\/demandes\/[^/]+\/telephone$/, statut: [400, 422], motif: 'code SMS faux saisi expres : refus attendu' });
+  sentinelle.tolerer({ methode: 'POST', chemin: /\/public\/essai\/demandes\/[^/]+\/telephone$/, statut: 401, motif: 'code SMS faux saisi expres : refus attendu (401 "Code recu par SMS incorrect.")' });
   await champCode.fill('000000');
   await verifs.getByRole('button', { name: 'V\u00e9rifier le code' }).click();
   await expect(champCode).toHaveAttribute('aria-invalid', 'true');
-  await expect(verifs.getByRole('alert').first()).toBeVisible();
+  await expect(verifs.getByRole('alert').first()).toContainText('Code re\u00e7u par SMS incorrect.');
   await expect(page.getByTestId('essai-ouvert')).toHaveCount(0);
   info.annotations.push({ type: 'essai', description: 'arret aux verifications : code SMS (journal d\u2019auth, Docker) et lien du courriel (Brevo) non lisibles par le test' });
   await capturer('essai-code-refuse');
