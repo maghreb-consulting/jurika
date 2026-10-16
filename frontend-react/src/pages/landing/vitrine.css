@@ -16,8 +16,10 @@
  * - parallaxe des fonds : animations liees au defilement (animation-timeline),
  *   seulement si le navigateur les connait (@supports) ; ailleurs, fonds fixes.
  *   Aucun script de defilement : la molette reste native ;
- * - "reduire les animations" : rien ne bouge, tout est visible d'emblee (bloc
- *   final ; les scripts n'activent ni apparitions, ni inclinaison, ni bandeau).
+ * - "reduire les animations" : rien ne bouge (aucune transformation) ; V4
+ *   (demande du 2026-10-16) : les apparitions deviennent des fondus simples
+ *   (opacite seule) au lieu d'etre supprimees (bloc final) ; ni inclinaison, ni
+ *   bandeau defilant, ni lecture automatique des videos.
  * ===================================================================== */
 
 .vitrine {
@@ -172,6 +174,42 @@
   background: var(--jeton-bg-overlay);
 }
 
+/* ---- Videos en boucle (VideoBoucle.tsx, V4) ---------------------------- */
+/* Image fixe dans le flux (place reservee, ratio 16:10), video par-dessus, en fondu
+ * (opacite seule) quand sa lecture a commence. */
+.v-video-pile {
+  overflow: hidden;
+}
+.v-video-media {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: top left;
+  background: var(--jeton-bg-overlay);
+}
+.v-video-lecteur {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 400ms var(--v-ease);
+}
+.v-video-lecteur[data-actif] {
+  opacity: 1;
+}
+.v-video-bouton {
+  z-index: 1;
+  opacity: 0.92;
+  transition: opacity 200ms var(--v-ease);
+}
+.v-video-bouton:hover,
+.v-video-bouton:focus-visible,
+.v-video-bouton-lire {
+  opacity: 1;
+}
+
 /* ---- Captures vivantes (Vivante.tsx) ---------------------------------- */
 /* --rx, --ry : inclinaison ; --px, --py : position du pointeur (-0,5 a 0,5). */
 .v-vivante {
@@ -223,7 +261,7 @@
   transition: opacity 400ms var(--v-ease), transform 140ms linear;
 }
 
-/* ---- Piles d'ecrans (recit, bascule clair / sombre) -------------------- */
+/* ---- Pile d'ecrans du recit ------------------------------------------- */
 /* Ecrans superposes dans la meme case : la place est celle du plus grand. */
 .v-pile {
   display: grid;
@@ -231,33 +269,6 @@
 .v-pile > * {
   grid-area: 1 / 1;
   min-width: 0;
-}
-.v-face {
-  transition: opacity 600ms var(--v-ease), transform 600ms var(--v-ease);
-}
-.v-face:not([data-actif]) {
-  opacity: 0;
-  transform: scale(0.985);
-  pointer-events: none;
-}
-/* Reflet qui balaie la capture a chaque bascule. */
-.v-balayage {
-  position: relative;
-  overflow: hidden;
-  border-radius: 0.75rem;
-  pointer-events: none;
-}
-.v-balayage::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 35%, color-mix(in srgb, var(--jeton-nav-fg-hi) 38%, transparent) 50%, transparent 65%);
-  opacity: 0;
-  animation: v-balayage 850ms var(--v-ease) both;
-}
-@keyframes v-balayage {
-  from { opacity: 1; transform: translateX(-100%); }
-  to { opacity: 0; transform: translateX(100%); }
 }
 
 /* Recit au defilement : capture fixe (sticky, defilement natif), ecrans en fondu. */
@@ -515,7 +526,22 @@ details[open] > .v-reponse {
   }
 }
 
-/* ---- Mouvement reduit : rien ne bouge, tout est visible ----------------- */
+/* ---- Fondu simple (mouvement reduit) ------------------------------------ */
+@keyframes v-fondu {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---- Mouvement reduit : aucun mouvement, des fondus simples (V4) ------- */
+/* Demande du 2026-10-16 : sous "reduire les animations", rien ne se deplace, ne tourne
+ * ni ne change d'echelle ; les animations restent, en FONDUS SIMPLES (opacite seule,
+ * 300 ms) : entree de l'accroche (d'un seul tenant, sans cascade), reponses des
+ * questions, retour en haut, debut de lecture d'une video. Le contenu
+ * plus bas reste visible d'emblee (aucune apparition au defilement : rien n'est cache en
+ * attendant un defilement, ni a l'impression, ni aux controles du harnais). La regle
+ * globale (index.css) reduit toute duree a 0,01 ms : les fondus ci-dessous la
+ * surclassent (selecteurs plus precis, !important). Les videos montrent leur image fixe et un bouton "Lire la video"
+ * (VideoBoucle.tsx). */
 @media (prefers-reduced-motion: reduce) {
   .vitrine *,
   .vitrine *::before,
@@ -528,6 +554,22 @@ details[open] > .v-reponse {
     opacity: 1;
     transform: none;
   }
+  .vitrine .v-entree,
+  .vitrine .v-mot,
+  .vitrine .v-embleme-tuile,
+  .vitrine .v-embleme-treillis,
+  .vitrine .v-embleme-logo {
+    animation: v-fondu 300ms ease-out both !important;
+  }
+  .vitrine details[open] > .v-reponse {
+    animation: v-fondu 300ms ease-out both !important;
+  }
+  .vitrine .v-recit-ecran,
+  .vitrine .v-retour-haut,
+  .vitrine .v-video-lecteur,
+  .vitrine .v-video-bouton {
+    transition: opacity 300ms ease-out !important;
+  }
   .v-vivante,
   .v-vivante-cadre .v-ombre {
     transform: none !important;
@@ -536,7 +578,6 @@ details[open] > .v-reponse {
   .v-ombre {
     opacity: 0 !important;
   }
-  .v-face:not([data-actif]),
   .v-recit-ecran:not([data-actif]),
   .v-retour-haut {
     transform: none;

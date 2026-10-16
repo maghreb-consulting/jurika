@@ -164,7 +164,8 @@ describe('Vitrine (V3) : apparitions en cascade', () => {
   });
 });
 
-const ORDRE_RECIT = ['tableau-de-bord-employe-clair', 'ticket-frise-clair', 'data-room-clair', 'apercu-acte-clair', 'juri-chatbot-clair'];
+// V4 (demande du 2026-10-16) : une video par fonctionnalite (videos.ts), la Data Room garde sa capture.
+const ORDRE_RECIT = ['theme-clair-sombre', 'frise-demarches', 'data-room-clair', 'statuts-apercu', 'juri-aide'];
 
 describe('Vitrine (V3) : recit au defilement des fonctionnalites', () => {
   it("presente cinq etapes, dans l'ordre demande, et une capture fixe qui change d'ecran", () => {
@@ -185,21 +186,35 @@ describe('Vitrine (V3) : recit au defilement des fonctionnalites', () => {
     expect(within(section).getByRole('button', { name: /Acte/ })).toHaveAttribute('aria-current', 'step');
   });
 
-  it('bascule la capture du tableau de bord entre clair et sombre', async () => {
-    rendre();
-    const section = screen.getByRole('region', { name: 'Ce que fait la plateforme' });
-    const bascule = within(section).getAllByTestId('bascule-theme')[0];
-    const clair = within(bascule).getByRole('button', { name: 'Thème clair' });
-    const sombre = within(bascule).getByRole('button', { name: 'Thème sombre' });
-    expect(clair).toHaveAttribute('aria-pressed', 'true');
-    const visible = () => bascule.querySelector('[data-face][data-actif]')?.getAttribute('data-face');
-    expect(visible()).toBe('clair');
-    // Le reflet de bascule ne passe qu'apres un choix (jamais fige sur la capture).
-    expect(bascule.querySelector('.v-balayage')).toBeNull();
-    await userEvent.click(sombre);
-    expect(sombre).toHaveAttribute('aria-pressed', 'true');
-    expect(visible()).toBe('sombre');
-    expect(bascule.querySelector('.v-balayage')).not.toBeNull();
+  it("ne lit que la video de l'ecran actif de la pile, et la change avec l'etape lue", () => {
+    const io = simulerObservateurs();
+    const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+    try {
+      rendre();
+      const section = screen.getByRole('region', { name: 'Ce que fait la plateforme' });
+      const pile = Array.from(section.querySelectorAll<HTMLElement>('[data-recit-ecran]'));
+      // Toutes les boites de la pile entrent a l'ecran (meme place) : seule l'active monte sa video.
+      for (const e of pile) {
+        const b = e.querySelector('.v-video-pile');
+        if (b) act(() => io.entrer(b));
+      }
+      const lues = () => pile.filter((e) => e.querySelector('video')).map((e) => e.getAttribute('data-recit-ecran'));
+      expect(lues()).toEqual(['theme-clair-sombre']);
+      expect(play).toHaveBeenCalled();
+      // Les ecrans caches ne recoivent ni le focus ni la lecture (inert).
+      for (const e of pile) expect(e.hasAttribute('inert'), e.getAttribute('data-recit-ecran') ?? '').toBe(!e.hasAttribute('data-actif'));
+      act(() => io.entrer(section.querySelector('[data-etape="3"]') as Element));
+      for (const e of pile) {
+        const b = e.querySelector('.v-video-pile');
+        if (b) act(() => io.entrer(b));
+      }
+      expect(lues()).toContain('statuts-apercu');
+      const active = pile.find((e) => e.hasAttribute('data-actif'));
+      expect(active?.getAttribute('data-recit-ecran')).toBe('statuts-apercu');
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 });
 
@@ -367,10 +382,33 @@ describe('Vitrine (V3) : exigences du mouvement (vitrine.css)', () => {
     }
   });
 
-  it('arrete tout mouvement quand "reduire les animations" est actif, en laissant tout visible', () => {
+  it('remplace tout mouvement par des fondus simples quand "reduire les animations" est actif (opacite seule)', () => {
+    // V4 (demande du 2026-10-16) : sous "reduire les animations", aucune transformation ; les
+    // animations restent, en fondus simples. Garde : dans ce bloc, toute animation designe
+    // une image cle qui ne touche que l'opacite, toute transition ne porte que sur l'opacite.
     const bloc = blocsAt(CSS, /@media \(prefers-reduced-motion: reduce\)\s*\{/g).map((b) => b.corps).join('\n');
     expect(bloc).toMatch(/\.vitrine \*,\s*\.vitrine \*::before,\s*\.vitrine \*::after\s*\{[^}]*animation:\s*none !important;[^}]*transition:\s*none !important;/);
+    const imagesCles = new Map(blocsAt(CSS, /@keyframes\s+([\w-]+)\s*\{/g).map((k) => [k.nom, k.corps]));
+    const animations = [...bloc.matchAll(/animation(?:-name)?\s*:\s*([^;]+);/g)].map((m) => m[1].trim()).filter((v) => !/^none\b/.test(v));
+    expect(animations.length).toBeGreaterThanOrEqual(2);
+    for (const a of animations) {
+      const nom = a.split(/\s+/)[0];
+      const corps = imagesCles.get(nom);
+      expect(corps, `${a} : image cle connue`).toBeDefined();
+      const proprietes = [...(corps ?? '').matchAll(/([a-z-]+)\s*:/g)].map((m) => m[1]);
+      expect(new Set(proprietes), nom).toEqual(new Set(['opacity']));
+    }
+    for (const t of bloc.matchAll(/transition(?:-property)?\s*:\s*([^;]+);/g)) {
+      for (const prop of t[1].split(',').map((x) => x.trim().split(/\s+/)[0])) expect(['opacity', 'none'], t[1]).toContain(prop);
+    }
+    // Aucune transformation laissee active : toute valeur de transform, translate ou scale est neutre.
+    for (const m of bloc.matchAll(/\b(transform|translate|scale)\s*:\s*([^;]+);/g)) {
+      expect(m[2].trim(), `${m[1]} : ${m[2]}`).toMatch(/^(none( !important)?|rotate\(180deg\))$/);
+    }
+    // Le contenu qui apparait au defilement est visible d'emblee ; l'accroche entre en fondu ;
+    // les captures ne s'inclinent pas.
     expect(bloc).toMatch(/\[data-apparait\][^{]*\{[^}]*opacity:\s*1/);
+    expect(bloc).toMatch(/\.v-entree[^{]*\{[^}]*animation:\s*v-fondu/);
     expect(bloc).toMatch(/\.v-vivante[^{]*\{[^}]*transform:\s*none/);
   });
 

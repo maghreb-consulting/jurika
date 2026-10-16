@@ -236,8 +236,8 @@ export const BANDE = {
 
 /**
  * Piliers de la section des fonctionnalites : chacun regroupe des FONCTIONNALITES (par leur
- * cle `icone`, chacune une seule fois) et montre une capture de la plateforme. "duo" : le
- * meme ecran en theme clair et en theme sombre, cote a cote.
+ * cle `icone`, chacune une seule fois). Le visuel de chaque pilier (video ou capture) est
+ * choisi par le recit des fonctionnalites (Sections.tsx, ETAPES).
  */
 export interface Pilier {
   id: string;
@@ -245,8 +245,6 @@ export interface Pilier {
   titre: string;
   texte: string;
   fonctions: IconeFonction[];
-  capture: 'ticket-frise-clair' | 'apercu-acte-clair' | 'data-room-clair' | 'duo';
-  legende?: string;
 }
 
 export const PILIERS: Pilier[] = [
@@ -256,7 +254,6 @@ export const PILIERS: Pilier[] = [
     titre: 'Chaque opération suit son parcours, de la saisie à la clôture',
     texte: 'Création, modification, dissolution, liquidation : le parcours guide le juriste à l’aide des référentiels de démarches du cabinet, sans ressaisie.',
     fonctions: ['parcours', 'saisie', 'delais'],
-    capture: 'ticket-frise-clair',
   },
   {
     id: 'pilier-actes',
@@ -264,7 +261,6 @@ export const PILIERS: Pilier[] = [
     titre: 'Des actes produits à partir de vos modèles validés',
     texte: 'Le cabinet relit chaque acte et en reste seul responsable avant sa signature, son dépôt ou sa remise à un client.',
     fonctions: ['actes', 'edition'],
-    capture: 'apercu-acte-clair',
   },
   {
     id: 'pilier-dataroom',
@@ -272,7 +268,6 @@ export const PILIERS: Pilier[] = [
     titre: 'Une Data Room par dossier, partagée avec le client',
     texte: 'Chaque société suivie a son espace documentaire, organisé par opération et strictement cloisonné d’un cabinet à l’autre.',
     fonctions: ['dataroom', 'client'],
-    capture: 'data-room-clair',
   },
   {
     id: 'pilier-suivi',
@@ -280,8 +275,6 @@ export const PILIERS: Pilier[] = [
     titre: 'Suivez l’avancement, retrouvez chaque action',
     texte: 'Le responsable du cabinet voit l’état exact de chaque ticket, par employé. Chaque utilisateur choisit le thème clair ou le thème sombre ; son choix est mémorisé sur son compte.',
     fonctions: ['suivi', 'messagerie'],
-    capture: 'duo',
-    legende: 'Le même tableau de bord, en thème clair et en thème sombre.',
   },
 ];
 

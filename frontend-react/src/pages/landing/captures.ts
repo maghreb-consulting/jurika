@@ -5,18 +5,15 @@
  * dessinee a la main), deposees en WebP dans public/vitrine, chacune en deux largeurs :
  * <nom>-800.webp et <nom>-1600.webp. Le test capturesFournies.test.ts verifie leur presence.
  *
+ * V4 (demande du 2026-10-16) : les autres ecrans (tableau de bord clair et sombre, ticket,
+ * apercu d'un acte, JURI) sont montres par des videos en boucle (videos.ts) ; leurs captures
+ * fixes sont retirees. Seule la Data Room, sans video, garde sa capture.
+ *
  * Ratio d'affichage fixe (16:10) : la boite de l'image est reservee avant son chargement
  * (aspect-ratio, width et height), aucun decalage de la mise en page.
  */
 
-export const NOMS_CAPTURES = [
-  'tableau-de-bord-employe-clair',
-  'tableau-de-bord-employe-sombre',
-  'ticket-frise-clair',
-  'data-room-clair',
-  'apercu-acte-clair',
-  'juri-chatbot-clair',
-] as const;
+export const NOMS_CAPTURES = ['data-room-clair'] as const;
 
 export type NomCapture = (typeof NOMS_CAPTURES)[number];
 
@@ -33,29 +30,9 @@ export interface Capture {
 }
 
 export const CAPTURES: Record<NomCapture, Capture> = {
-  'tableau-de-bord-employe-clair': {
-    ecran: 'Tableau de bord de l’employé',
-    alt: 'Capture du tableau de bord de l’employé dans JURIKA, en thème clair.',
-  },
-  'tableau-de-bord-employe-sombre': {
-    ecran: 'Tableau de bord de l’employé',
-    alt: 'Capture du même tableau de bord de l’employé dans JURIKA, en thème sombre.',
-  },
-  'ticket-frise-clair': {
-    ecran: 'Ticket et frise des démarches',
-    alt: 'Capture de la page d’un ticket dans JURIKA, avec la frise des démarches de l’opération.',
-  },
   'data-room-clair': {
     ecran: 'Data Room du dossier',
     alt: 'Capture de la Data Room d’un dossier dans JURIKA, avec ses sections et ses documents.',
-  },
-  'apercu-acte-clair': {
-    ecran: 'Aperçu d’un acte',
-    alt: 'Capture de l’aperçu d’un acte généré par JURIKA à partir d’un modèle du cabinet.',
-  },
-  'juri-chatbot-clair': {
-    ecran: 'Chatbot juridique',
-    alt: 'Capture du chatbot juridique de JURIKA, ouvert depuis l’assistant JURI.',
   },
 };
 
@@ -63,7 +40,7 @@ export function cheminCapture(nom: NomCapture, largeur: (typeof LARGEURS_CAPTURE
   return `/vitrine/${nom}-${largeur}.webp`;
 }
 
-/** Les douze fichiers attendus dans public/vitrine. */
+/** Les fichiers attendus dans public/vitrine (deux largeurs par capture). */
 export function fichiersCaptures(): string[] {
   return NOMS_CAPTURES.flatMap((n) => LARGEURS_CAPTURE.map((l) => `${n}-${l}.webp`));
 }

@@ -21,14 +21,12 @@ import {
   Lock,
   MessagesSquare,
   MonitorSmartphone,
-  Moon,
   PenLine,
   Route,
   ScanLine,
   ScrollText,
   Server,
   ShieldCheck,
-  Sun,
   UserCheck,
   type LucideIcon,
 } from 'lucide-react';
@@ -37,7 +35,6 @@ import { InfoBulle } from '../../../components/ui/Aide';
 import { Lien } from '../../../components/ui/Lien';
 import { cn } from '../../../lib/utils';
 import { mouvementReduit, useMouvementReduit } from '../../../lib/mouvement';
-import { useThemeStore } from '../../../store/themeStore';
 import { STATUT_LABELS } from '../../../types/ticket';
 import { adresseContact } from '../../legal/contact';
 import { ESSAI, FORFAITS, SOCLE_COMMUN, fonctionsDuForfait, forfaitMinimal, formatPrice } from '../config/pricing';
@@ -62,10 +59,12 @@ import {
   type Pilier,
 } from '../contenu';
 import type { NomCapture } from '../captures';
+import type { NomVideo } from '../videos';
 import { CaptureEcran } from './CaptureEcran';
 import { EmblemeAnime } from './EmblemeAnime';
 import { MotifZellige } from './MotifZellige';
 import { Vivante } from './Vivante';
+import { VideoBoucle } from './VideoBoucle';
 
 /**
  * Lot L6b (E10, V2) : sections de la vitrine, dans l'ordre de la page.
@@ -84,6 +83,11 @@ import { Vivante } from './Vivante';
  * recit au defilement des fonctionnalites (capture fixe qui change d'ecran), captures
  * vivantes, bascule clair / sombre, cartes de tarifs qui se soulevent, questions qui
  * s'ouvrent en douceur. Transform et opacity seulement (vitrine.css).
+ *
+ * V4 (demande du 2026-10-16) : courtes videos en boucle (VideoBoucle.tsx, videos.ts) dans
+ * l'accroche et dans le recit, a la place des captures fixes (la Data Room garde la sienne) ;
+ * la bascule clair / sombre de la capture du tableau de bord devient la video du passage
+ * du theme clair au theme sombre.
  */
 
 /* ------------------------------------------------------------------- Briques */
@@ -219,8 +223,14 @@ function useEntreeALecran(ref: { current: HTMLElement | null }) {
   }, [ref]);
 }
 
+/**
+ * V4 (demande du 2026-10-16) : video principale de l'accroche, la creation d'un ticket de
+ * creation de SARL jusqu'a l'aide de la premiere etape du parcours (enregistree sur la pile
+ * de demonstration) : le geste central de la plateforme, ouvrir une operation et etre guide.
+ */
+const VIDEO_ACCROCHE: NomVideo = 'creation-ticket';
+
 export function Accroche() {
-  const mode = useThemeStore((s) => s.mode);
   const motsTitre = ACCROCHE.titre.split(/\s+/).length;
   const profondeur = useRef<HTMLDivElement>(null);
   useEntreeALecran(profondeur);
@@ -268,11 +278,9 @@ export function Accroche() {
 
         <div className="v-scene mx-auto mt-14 max-w-5xl text-left">
           <div ref={profondeur} className="v-profondeur">
-            <CaptureEcran
-              nom={mode === 'dark' ? 'tableau-de-bord-employe-sombre' : 'tableau-de-bord-employe-clair'}
-              sizes="(min-width: 1100px) 1024px, calc(100vw - 2rem)"
-              prioritaire
-            />
+            <Vivante classeContenu="rounded-xl">
+              <VideoBoucle nom={VIDEO_ACCROCHE} apresChargement prioritaire />
+            </Vivante>
           </div>
         </div>
       </div>
@@ -418,16 +426,22 @@ function ElementFonction({ f, ton = 'clair' }: { f: Fonctionnalite; ton?: 'clair
  * acte, JURI. Chaque etape reprend un pilier de contenu.ts (ou la bande de l'IA) et l'ecran
  * de la plateforme qui le montre.
  */
+/** Visuel d'une etape : une video en boucle (V4), ou une capture fixe. */
+type Visuel = { video: NomVideo } | { capture: NomCapture };
+
+function nomVisuel(v: Visuel): string {
+  return 'video' in v ? v.video : v.capture;
+}
+
 interface Etape {
   id: string;
   /** Libelle court de l'ecran (indicateur d'etape). */
   ecran: string;
-  capture: NomCapture;
+  visuel: Visuel;
   surtitre: string;
   titre: string;
   texte: string;
   fonctions: IconeFonction[];
-  legende?: string;
 }
 
 function pilier(id: string): Pilier {
@@ -436,81 +450,36 @@ function pilier(id: string): Pilier {
   return p;
 }
 
-function etapeDuPilier(id: string, ecran: string, capture: NomCapture): Etape {
+function etapeDuPilier(id: string, ecran: string, visuel: Visuel): Etape {
   const p = pilier(id);
-  return { id: p.id, ecran, capture, surtitre: p.surtitre, titre: p.titre, texte: p.texte, fonctions: p.fonctions, legende: p.legende };
+  return { id: p.id, ecran, visuel, surtitre: p.surtitre, titre: p.titre, texte: p.texte, fonctions: p.fonctions };
 }
-
-const ETAPES: Etape[] = [
-  etapeDuPilier('pilier-suivi', 'Tableau de bord', 'tableau-de-bord-employe-clair'),
-  etapeDuPilier('pilier-parcours', 'Ticket', 'ticket-frise-clair'),
-  etapeDuPilier('pilier-dataroom', 'Data Room', 'data-room-clair'),
-  etapeDuPilier('pilier-actes', 'Acte', 'apercu-acte-clair'),
-  { id: 'ia', ecran: 'JURI', capture: 'juri-chatbot-clair', surtitre: IA.surtitre, titre: IA.titre, texte: IA.texte, fonctions: [IA.fonction] },
-];
 
 /**
- * Capture du tableau de bord, en theme clair ou sombre : les deux ecrans sont superposes
- * (place reservee par le premier), la bascule fond l'un dans l'autre et fait passer un
- * reflet (opacite et transform). Le theme de depart suit celui de la vitrine.
+ * V4 (demande du 2026-10-16) : une video par fonctionnalite, a la place des captures fixes :
+ * tableau de bord (passage du theme clair au theme sombre), ticket (la frise des demarches
+ * qui se coche), acte (generation des statuts et apercu), JURI (il sort du bord et ouvre
+ * l'aide). La Data Room garde sa capture (aucune video demandee).
  */
-function CaptureBascule({ sizes }: { sizes: string }) {
-  const mode = useThemeStore((s) => s.mode);
-  const [choix, setChoix] = useState<'clair' | 'sombre' | null>(null);
-  const face = choix ?? (mode === 'dark' ? 'sombre' : 'clair');
-  const faces = [
-    { face: 'clair' as const, nom: 'tableau-de-bord-employe-clair' as const, libelle: 'Thème clair', Icone: Sun },
-    { face: 'sombre' as const, nom: 'tableau-de-bord-employe-sombre' as const, libelle: 'Thème sombre', Icone: Moon },
-  ];
-  return (
-    <div data-testid="bascule-theme" data-face-visible={face}>
-      <div className="v-pile">
-        {faces.map((f) => (
-          <div key={f.face} className="v-face" data-face={f.face} data-actif={face === f.face ? '' : undefined} aria-hidden={face === f.face ? undefined : 'true'}>
-            <CaptureEcran nom={f.nom} sizes={sizes} vivante={false} />
-          </div>
-        ))}
-        {choix && <span key={face} className="v-balayage" aria-hidden="true" />}
-      </div>
-      <div className="mt-3 flex items-center justify-center gap-2" role="group" aria-label="Thème de la capture">
-        {faces.map((f) => (
-          <button
-            key={f.face}
-            type="button"
-            aria-pressed={face === f.face}
-            onClick={() => setChoix(f.face)}
-            className={cn(
-              'v-bouton inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
-              face === f.face ? 'border-accent bg-accent-soft text-accent' : 'border-border bg-bg-raised text-fg-muted hover:text-fg',
-            )}
-          >
-            <f.Icone className="h-3.5 w-3.5" aria-hidden="true" />
-            {f.libelle}
-          </button>
-        ))}
-        <InfoBulle
-          libelle="Thème clair ou sombre"
-          texte="Basculez la capture pour voir le même tableau de bord dans les deux thèmes. Dans la plateforme, chaque utilisateur choisit son thème ; son choix est mémorisé sur son compte."
-        />
-      </div>
-    </div>
-  );
-}
+const ETAPES: Etape[] = [
+  etapeDuPilier('pilier-suivi', 'Tableau de bord', { video: 'theme-clair-sombre' }),
+  etapeDuPilier('pilier-parcours', 'Ticket', { video: 'frise-demarches' }),
+  etapeDuPilier('pilier-dataroom', 'Data Room', { capture: 'data-room-clair' }),
+  etapeDuPilier('pilier-actes', 'Acte', { video: 'statuts-apercu' }),
+  { id: 'ia', ecran: 'JURI', visuel: { video: 'juri-aide' }, surtitre: IA.surtitre, titre: IA.titre, texte: IA.texte, fonctions: [IA.fonction] },
+];
 
 const TAILLE_RECIT = '(min-width: 1024px) 600px, calc(100vw - 2rem)';
 
-function VisuelEtape({ etape }: { etape: Etape }) {
-  if (etape.capture === 'tableau-de-bord-employe-clair') {
+function VisuelEtape({ etape, actif = true }: { etape: Etape; actif?: boolean }) {
+  if ('video' in etape.visuel) {
     return (
-      <figure>
-        <Vivante>
-          <CaptureBascule sizes={TAILLE_RECIT} />
-        </Vivante>
-        {etape.legende && <figcaption className="mt-2 text-center text-sm text-fg-subtle">{etape.legende}</figcaption>}
-      </figure>
+      <Vivante classeContenu="rounded-xl">
+        <VideoBoucle nom={etape.visuel.video} actif={actif} />
+      </Vivante>
     );
   }
-  return <CaptureEcran nom={etape.capture} sizes={TAILLE_RECIT} />;
+  return <CaptureEcran nom={etape.visuel.capture} sizes={TAILLE_RECIT} />;
 }
 
 function BlocEtape({
@@ -531,7 +500,7 @@ function BlocEtape({
       ref={refEtape}
       aria-labelledby={`${etape.id}-titre`}
       data-etape={index}
-      data-capture={etape.capture}
+      data-capture={nomVisuel(etape.visuel)}
       className={cn(
         'scroll-mt-24',
         fixe ? 'lg:flex lg:min-h-[78vh] lg:flex-col lg:justify-center lg:py-12' : 'lg:grid lg:grid-cols-2 lg:items-center lg:gap-16',
@@ -641,11 +610,12 @@ function RecitFonctionnalites() {
               <div
                 key={e.id}
                 className="v-recit-ecran"
-                data-recit-ecran={e.capture}
+                data-recit-ecran={nomVisuel(e.visuel)}
                 data-actif={actif === i ? '' : undefined}
                 aria-hidden={actif === i ? undefined : 'true'}
+                inert={actif !== i}
               >
-                <VisuelEtape etape={e} />
+                <VisuelEtape etape={e} actif={actif === i} />
               </div>
             ))}
           </div>

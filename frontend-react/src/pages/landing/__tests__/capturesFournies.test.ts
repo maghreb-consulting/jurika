@@ -9,10 +9,10 @@ import { fichiersCaptures } from '../captures';
  * qu'elles ne sont pas deposees : aucune image provisoire n'est versionnee a leur place.
  */
 describe('Vitrine : captures fournies dans public/vitrine', () => {
-  it('trouve les douze fichiers WebP attendus', () => {
+  it('trouve les fichiers WebP attendus (deux largeurs par capture)', () => {
     const dossier = resolve(__dirname, '../../../../public/vitrine');
     const fichiers = fichiersCaptures();
-    expect(fichiers).toHaveLength(12);
+    expect(fichiers).toEqual(['data-room-clair-800.webp', 'data-room-clair-1600.webp']);
     const manquants = fichiers.filter((f) => !existsSync(resolve(dossier, f)) || statSync(resolve(dossier, f)).size === 0);
     expect(manquants, `captures absentes de public/vitrine : ${manquants.join(', ')}`).toEqual([]);
   });
