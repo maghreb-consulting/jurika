@@ -6,13 +6,38 @@ import { useState } from 'react';
 vi.mock('../../identity/IdentityExtractor', () => ({ IdentityExtractor: () => null }));
 
 import { LiquidateurPicker } from '../LiquidateurPicker';
-import { emptyLiquidateur, type LiquidateurState } from '../liquidateurOptions';
+import { buildLiquidateurOptions, emptyLiquidateur, type LiquidateurState } from '../liquidateurOptions';
 
 /** Lot L4d (E5) : l'écran du liquidateur offre la personne morale (tiers ou associé). */
 function Hote() {
   const [v, setV] = useState<LiquidateurState>(emptyLiquidateur());
   return <LiquidateurPicker value={v} onChange={setV} options={[]} />;
 }
+
+/**
+ * Lot L6b (E15, parcours « dissolution ») : choisi parmi les gérants, le liquidateur reprend
+ * sa nationalité et sa date de naissance connues du dossier (elles étaient redemandées
+ * vides) et sa civilité abrégée (« M. », jamais le code « M »).
+ */
+function HoteDossier() {
+  const [v, setV] = useState<LiquidateurState>(emptyLiquidateur());
+  const options = buildLiquidateurOptions({
+    gerants: [{ civilite: 'M', prenom: 'Mehdi', nom: 'Alaoui', cinNumero: 'BE123456', adresse: '8 rue des Essais',
+      nationalite: 'marocaine', dateNaissance: '1980-03-15' }],
+    associes: [],
+  });
+  return <LiquidateurPicker value={v} onChange={setV} options={options} />;
+}
+
+describe('Liquidateur choisi dans le dossier', () => {
+  it('reprend nationalité, date de naissance et civilité abrégée', () => {
+    render(<HoteDossier />);
+    fireEvent.change(screen.getByTestId('liquidateur-select'), { target: { value: 'gerant:mehdi alaoui' } });
+    expect(screen.getByTestId('liquidateur-nationalite')).toHaveValue('marocaine');
+    expect(screen.getByLabelText('Date de naissance')).toHaveValue('1980-03-15');
+    expect(screen.getByLabelText('Civilité')).toHaveValue('M.');
+  });
+});
 
 describe('Liquidateur : personne physique ou morale', () => {
   it('un tiers personne morale se saisit par sa dénomination et son représentant', () => {

@@ -23,6 +23,7 @@ import {
   emptyAssocie,
   emptyGerant,
   emptyResolution,
+  nomAvecCivilite,
   type AssocieInput,
   type GerantInput,
   type ResolutionInput,
@@ -94,9 +95,7 @@ export function SeanceFormFields({
   // L4d (E11b) : la lettre est signee par son auteur (nom), sa qualite en dessous : le premier
   // gerant est propose, jamais transmis sans confirmation.
   const premierGerant = f.gerants.find((g) => g?.nom?.trim() || g?.prenom?.trim());
-  const auteurPropose = premierGerant
-    ? [premierGerant.civilite, premierGerant.prenom, premierGerant.nom].filter(Boolean).join(' ').trim()
-    : '';
+  const auteurPropose = premierGerant ? nomAvecCivilite(premierGerant) : '';
   return (
     <div className="space-y-5">
       {sections.seance && (
