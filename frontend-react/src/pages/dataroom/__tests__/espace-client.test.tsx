@@ -108,6 +108,24 @@ describe('Espace du client', () => {
     expect(await screen.findByText('Demande envoyée')).toBeInTheDocument();
   }, 15000);
 
+  // Lot L6b (E16, parcours) : le rechargement qui suit l'envoi effacait la confirmation (tout
+  // l'ecran passait par le squelette de chargement, puis l'onglet se rouvrait a neuf).
+  it('apres l envoi depuis l onglet, la confirmation reste affichee', async () => {
+    // Un serveur reel repond apres un delai : le rechargement est visible a l'ecran.
+    const dossiers = [{ id: 'd1', raisonSociale: 'ATLAS SARL', formeJuridique: 'SARL', ice: null, ville: null, statut: 'ACTIVE' }];
+    svc.listDossiers.mockImplementation(() => new Promise((r) => setTimeout(() => r(dossiers), 30)));
+    afficher();
+    expect(await screen.findByText('Statuts de la société')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /Demandes du client/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Nouvelle demande' }));
+    fireEvent.change(screen.getByLabelText('Sujet'), { target: { value: 'Augmentation de capital' } });
+    const formulaire = screen.getByLabelText('Sujet').closest('form') as HTMLElement;
+    fireEvent.click(within(formulaire).getByRole('button', { name: 'Envoyer' }));
+    await waitFor(() => expect(svc.listDemandesByDossier).toHaveBeenCalledTimes(2));
+    await new Promise((r) => setTimeout(r, 100));
+    expect(screen.getByText('Demande envoyée')).toBeInTheDocument();
+  }, 15000);
+
   // Lot L6b (E16, parcours des permissions du client) : la permission "Envoyer des demandes"
   // etait ignoree par l'ecran : bouton et formulaire offerts, puis refus 403 du serveur.
   it('sans permission d envoyer des demandes : ni bouton ni formulaire, l ecran le dit, l historique reste', async () => {

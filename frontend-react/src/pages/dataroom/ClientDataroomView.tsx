@@ -188,7 +188,9 @@ export function ClientDataroomView() {
     );
   }, [demandes]);
 
-  if (loading) {
+  // Lot L6b (E16) : squelette au premier chargement seulement ; un rechargement (apres l'envoi
+  // d'une demande, par exemple) garde l'ecran, et la confirmation affichee.
+  if (loading && !dossier) {
     return (
       <Page titre="Mon espace" fil={false}>
         <div className="space-y-4" aria-busy="true" aria-label="Chargement de votre espace">
