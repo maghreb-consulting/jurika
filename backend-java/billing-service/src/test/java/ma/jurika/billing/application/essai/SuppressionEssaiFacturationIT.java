@@ -222,8 +222,12 @@ class SuppressionEssaiFacturationIT {
 
         Bilan b = service.supprimer(ws);
 
-        LocalDate attendue = LocalDate.now(CASA).plusYears(10);
+        // Regle : date (Casablanca) de la suppression + 10 ans, calculee avec l'horloge et les regles de fuseau de la
+        // base (celles de la JVM peuvent differer autour de minuit : echec vu le 2026-10-15 a 23 h 40 UTC).
+        LocalDate attendue = jdbc.queryForObject("SELECT ((essai_supprime_le AT TIME ZONE 'Africa/Casablanca')::date"
+                + " + INTERVAL '10 years')::date FROM conservation_comptable WHERE workspace_id = ?", LocalDate.class, ws);
         assertThat(b.echeanceConservation()).isEqualTo(attendue);
+        assertThat(attendue).isBetween(LocalDate.now(CASA).plusYears(10).minusDays(1), LocalDate.now(CASA).plusYears(10).plusDays(1));
         assertThat(b.supprimees()).containsEntry("payments", 1L).containsEntry("cmi_retours", 0L);
         assertThat(b.conservees10Ans()).containsEntry("payments", 1L).containsEntry("factures", 1L)
                 .containsEntry("cmi_retours", 1L);
