@@ -664,10 +664,19 @@ public final class CreationDirecteurVarsBuilder {
     private static Long toLong(Object o) {
         if (o == null) return null;
         if (o instanceof Number n) return n.longValue();
+        String t = String.valueOf(o).trim().replace(" ", "").replace("\u00a0", "").replace("\u202f", "");
         try {
-            return Long.parseLong(String.valueOf(o).trim().replace(" ", "").replace(" ", ""));
+            return Long.parseLong(t);
         } catch (NumberFormatException ex) {
-            return null;
+            // Lot L6b (E14) : un entier ecrit en decimal ("10000.0", "10000,00") est lu ; avant,
+            // il etait ecarte en silence et les statuts refuses ("Montant du capital" manquant).
+            // Une partie decimale non nulle reste illisible (aucun arrondi suppose).
+            try {
+                java.math.BigDecimal d = new java.math.BigDecimal(t.replace(',', '.'));
+                return d.stripTrailingZeros().scale() <= 0 ? d.longValueExact() : null;
+            } catch (NumberFormatException | ArithmeticException ex2) {
+                return null;
+            }
         }
     }
 

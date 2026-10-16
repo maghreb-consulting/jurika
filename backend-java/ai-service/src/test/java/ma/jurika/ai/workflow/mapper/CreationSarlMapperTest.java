@@ -399,4 +399,18 @@ class CreationSarlMapperTest {
         // Avant : "Qualite : gerant statutaire" sous "Mme Salma Tazi".
         assertThat(boucle(v, "GERANTS").get(0).get("GERANT_QUALITE")).isEqualTo("g\u00e9rante statutaire");
     }
+
+    @Test
+    @DisplayName("L6b E14 : un capital relu en decimal (100000.0) se lit comme 100000, jamais ecarte en silence")
+    @SuppressWarnings("unchecked")
+    void capitalDecimalLu() {
+        Map<String, Object> entier = mapper.map("STATUTS_SARL", payload());
+        Map<String, Object> p = payload();
+        ((Map<String, Object>) p.get("societe")).put("capitalChiffres", "100000.0");
+
+        Map<String, Object> v = mapper.map("STATUTS_SARL", p);
+
+        assertThat(v.get("CAPITAL_CHIFFRES")).isNotNull().isEqualTo(entier.get("CAPITAL_CHIFFRES"));
+        assertThat(String.valueOf(v.get("CAPITAL_CHIFFRES"))).isNotBlank();
+    }
 }

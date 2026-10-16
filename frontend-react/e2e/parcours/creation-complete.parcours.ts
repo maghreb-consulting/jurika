@@ -359,7 +359,9 @@ for (const cas of CAS) {
       await lu.promesse;
       const tout = lu.lignes.join('\n');
       expect(tout, `fiche ${f} : aucune donnee manquante`).not.toMatch(/Donn\u00e9e manquante|Non renseign/);
-      for (const v of [IDENTIFIANTS.rc, IDENTIFIANTS.if, IDENTIFIANTS.tp, IDENTIFIANTS.cnss, '001 234 567 000 089', '10 000', 'D\u00e9monstration']) {
+      // ICE saisi a l'etape 1 : la donnee, quelle que soit la mise en forme (groupes de chiffres ou non).
+      expect(tout, `fiche ${f} : ICE de l'etape 1`).toMatch(/001\s?234\s?567\s?000\s?089/);
+      for (const v of [IDENTIFIANTS.rc, IDENTIFIANTS.if, IDENTIFIANTS.tp, IDENTIFIANTS.cnss, '10 000', 'D\u00e9monstration']) {
         expect(tout, `fiche ${f} : ${v}`).toContain(v);
       }
       await t.getByRole('button', { name: 'Fermer' }).first().click();
