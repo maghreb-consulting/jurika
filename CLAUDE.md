@@ -299,6 +299,9 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   (tests seulement) ; reference du ticket affichee deux fois dans l'en-tete du parcours ; Inter
   seule (Playfair et JetBrains Mono abandonnes, aucun fichier libre hors ligne) ; rendu d'Inter
   verifie sous chromium Linux seulement.
+- **LCP de la vitrine sur reseau lent** : 3,4 s en "Fast 3G" avec CPU x4 (540 ms sans limitation),
+  deja avant les animations : paquet JavaScript de l'application charge par la vitrine (decoupage du
+  code a faire, chunk principal > 500 ko).
 - **Type d'element en code brut** ("USER", "TICKET", "PIECE_IDENTITE") sur la fiche d'un cabinet
   (super-admin) et dans les colonnes "Element" de la tracabilite ; panneau d'activite du tiroir du
   ticket non couvert par le harnais.
