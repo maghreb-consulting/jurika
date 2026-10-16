@@ -316,6 +316,20 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   `audit_log` de `jurika_billing`, qui n'a pas cette table ("bad SQL grammar", journalise en WARN
   seulement, ex. `BILLING_PAIEMENT_VALIDE`) : les traces de paiement sont perdues sans bruit.
   Releve par le lot L6b (parcours du paiement), anterieur au lot.
+- **Liquidation : "boni" calcule sur actif - passif cote serveur** (`LiquidationWorkflow`,
+  `comptesFinaux.resultatType`, et `cloture.resultatSens` envoye par le front) : ni frais, ni impot,
+  ni remboursement du capital. Les actes impriment le resultat du rapport final (juste) ; l'ecran
+  est corrige en L6b ; la donnee stockee reste trompeuse (motif 9). Releve par le lot L6b.
+- **Liquidation, etape 2** : organe, date et motif de la decision de dissolution, journal
+  d'annonces et siege de la liquidation redemandes alors qu'ils sont connus depuis la dissolution ;
+  libelle du corpus "Lieu de conservation des documents de l'etablissement ferme" pour une
+  liquidation. Annonce d'ouverture de succursale : "... SARL SARL" quand la denomination contient
+  deja la forme (ecart du modele, A_DECIDER cabinet).
+- **Nettoyage du seed de test** : les donnees de `jurika_billing` (abonnements, paiements,
+  factures) des cabinets de test ne sont pas supprimees ; des cabinets de test anterieurs au
+  correctif du nettoyage restent sur le Z440. Factures de test avec l'identite fictive de l'editeur.
+- **API `PATCH /dossiers/{id}/identifiants`** : efface tout champ non envoye (l'ecran envoie tout).
+  Le serveur accepte un PV d'incident de seance a ordre du jour vide (le front le remplit).
 - **Controle silencieux du capital** (ai-service, `CreationDirecteurVarsBuilder`) : `toLong` d'un
   montant decimal ("10000.0") rend null et la variable est ecartee ; corrige a la source en L6b
   (le projecteur de workflow pose des entiers), le constructeur reste a durcir.
