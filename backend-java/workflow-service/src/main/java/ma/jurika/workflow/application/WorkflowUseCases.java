@@ -329,6 +329,15 @@ public class WorkflowUseCases {
         if (step == 1 && p.type() == WorkflowType.FERMETURE_SUCCURSALE) {
             stepData = withSuccursaleCreeeSiSaisieManuelle(workspaceId, stepData);
         }
+        // Lot L6b (E15) : une reprise dont l'ICE ou la denomination appartient deja a un
+        // autre dossier du cabinet est refusee des l'etape 1, nommement (avant : 500 a la
+        // finalisation, index unique viole).
+        if (step == 1 && p.type() == WorkflowType.IMPORT) {
+            Map<String, Object> den = pickStep(stepData, "denomination");
+            refuserDoublonDossier(workspaceId, fetchDossierId(workspaceId, ticketId),
+                    firstNonNull(pickString(den, "ice"), pickString(stepData, "ice")),
+                    den.get("denomination") instanceof String d ? d : null);
+        }
 
         Map<String, Object> merged = new HashMap<>(p.data());
         merged.put("step" + step, stepData);
@@ -1199,12 +1208,17 @@ public class WorkflowUseCases {
             return;
         }
         String raisonSociale = pickString(denom, "denomination");
-        String ice = firstNonNull(pickString(denom, "ice"), pickString(denom, "icenumero"));
+        String ice = iceChiffres(firstNonNull(pickString(denom, "ice"), pickString(denom, "icenumero")));
         String rcNumero = pickString(denom, "rcNumero");
-        String ifNumero = pickString(denom, "ifNumero");
+        String ifNumero = firstNonNull(pickString(denom, "ifNumero"), pickString(denom, "ifFiscal"));
         String adresse = pickString(siege, "adresse");
         String ville = firstNonNull(pickString(siege, "commune"), pickString(siege, "ville"));
+        // Lot L6b (E15) : la ville du greffe saisie a l'etape 2 de la reprise n'arrivait
+        // jamais au dossier (rc_tribunal) : l'annonce legale de la modification qui suit
+        // etait refusee ("Immatriculation au registre du commerce").
+        String villeGreffe = blankToNull(pickString(siege, "villeGreffe"));
         BigDecimal capital = pickBigDecimal(capitalStep, "capitalSocialMad");
+        refuserDoublonDossier(workspaceId, dossierId, ice, raisonSociale);
 
         // Backbone refonte statuts : consolide l'état structuré importé COMPLET
         // (objet/duree/gérance/dirigeants/associés/parts inclus) dans
@@ -1221,6 +1235,7 @@ public class WorkflowUseCases {
                     adresse_siege      = COALESCE(?5, adresse_siege),
                     ville              = COALESCE(?6, ville),
                     capital_social_mad = COALESCE(?7, capital_social_mad),
+                    rc_tribunal        = COALESCE(?11, rc_tribunal),
                     fiche_structuree   = COALESCE(CAST(?10 AS jsonb), fiche_structuree),
                     statut             = 'ACTIVE',
                     updated_at         = NOW()
@@ -1236,6 +1251,7 @@ public class WorkflowUseCases {
                 .setParameter(8, dossierId)
                 .setParameter(9, workspaceId)
                 .setParameter(10, ficheJson)
+                .setParameter(11, villeGreffe)
                 .executeUpdate();
     }
 
@@ -1924,6 +1940,16 @@ public class WorkflowUseCases {
                 || forme.equals("SCS") || forme.equals("GIE");
     }
 
+    /**
+     * Lot L6b (E15) : sac d'etape a plat des parcours de creation et de reprise, quand la
+     * niche ecrite par le serveur a l'execution de l'etape (step1.denomination,
+     * step2.siege, step3.capital, step4.activite) a disparu : un brouillon enregistre
+     * APRES la validation remplace le sac entier (POST /save). La reprise finalisee
+     * laissait alors le siege et le capital du dossier vides, sans un mot (motif 9).
+     */
+    private static final Map<String, String> SAC_A_PLAT = Map.of(
+            "denomination", "step1", "siege", "step2", "capital", "step3", "activite", "step4");
+
     @SuppressWarnings("unchecked")
     private Map<String, Object> pickStep(Map<String, Object> data, String key) {
         Object v = data.get(key);
@@ -1935,7 +1961,59 @@ public class WorkflowUseCases {
                 if (inner instanceof Map<?, ?> im) return (Map<String, Object>) im;
             }
         }
+        String sac = SAC_A_PLAT.get(key);
+        if (sac != null && data.get(sac) instanceof Map<?, ?> plat && !plat.isEmpty()) {
+            return (Map<String, Object>) plat;
+        }
         return Map.of();
+    }
+
+    /** ICE reduit a ses chiffres (le sac a plat porte la saisie formatee "001 234 ..."). */
+    private static String iceChiffres(String ice) {
+        if (ice == null) return null;
+        String c = ice.replaceAll("\\D", "");
+        return c.isEmpty() ? null : c;
+    }
+
+    /**
+     * Lot L6b (E15) : refus NOMME d'une reprise dont l'ICE ou la denomination est deja
+     * celle d'un AUTRE dossier du cabinet (index uniques uq_dossier_workspace_ice_when_present
+     * et uq_dossier_workspace_raison_alive, ticket V6). Avant : HTTP 500 "Erreur interne du
+     * serveur" a la finalisation, la saisie de l'employe perdue sans explication.
+     * Appele a la validation de l'etape 1 et avant la consolidation.
+     */
+    void refuserDoublonDossier(UUID workspaceId, UUID dossierId, String ice, String raisonSociale) {
+        String chiffres = iceChiffres(ice);
+        if (chiffres != null) {
+            List<?> autres = em.createNativeQuery(
+                            "SELECT raison_sociale FROM entreprise_dossiers WHERE workspace_id = ?1 AND ice = ?2"
+                                    + (dossierId != null ? " AND id <> ?3" : "") + " LIMIT 1")
+                    .setParameter(1, workspaceId)
+                    .setParameter(2, chiffres)
+                    .setParameter(3, dossierId != null ? dossierId : workspaceId)
+                    .getResultList();
+            if (!autres.isEmpty()) {
+                throw new ValidationException("L\u2019ICE " + chiffres + " est d\u00e9j\u00e0 celui du dossier \u00ab "
+                        + autres.get(0) + " \u00bb de votre cabinet : un ICE d\u00e9signe une seule soci\u00e9t\u00e9. "
+                        + "Corrigez l\u2019ICE \u00e0 l\u2019\u00e9tape 1, ou travaillez sur le dossier existant.");
+            }
+        }
+        if (raisonSociale != null && !raisonSociale.isBlank()) {
+            List<?> autres = em.createNativeQuery(
+                            "SELECT raison_sociale FROM entreprise_dossiers WHERE workspace_id = ?1"
+                                    + " AND lower(raison_sociale) = lower(?2)"
+                                    + " AND statut IN ('EN_CONSTITUTION','ACTIVE','EN_LIQUIDATION')"
+                                    + (dossierId != null ? " AND id <> ?3" : "") + " LIMIT 1")
+                    .setParameter(1, workspaceId)
+                    .setParameter(2, raisonSociale.trim())
+                    .setParameter(3, dossierId != null ? dossierId : workspaceId)
+                    .getResultList();
+            if (!autres.isEmpty()) {
+                throw new ValidationException("La d\u00e9nomination \u00ab " + raisonSociale.trim()
+                        + " \u00bb est d\u00e9j\u00e0 celle d\u2019un dossier en cours de votre cabinet. "
+                        + "Corrigez la d\u00e9nomination \u00e0 l\u2019\u00e9tape 1, ou travaillez sur le dossier existant.");
+            }
+        }
     }
 
     private String pickString(Map<String, Object> m, String key) {
