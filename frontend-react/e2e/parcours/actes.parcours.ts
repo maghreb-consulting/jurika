@@ -348,6 +348,9 @@ test.describe('parcours actes', () => {
     await validerEtape(page);
     await validerEtape(page);
     await finaliser(page, liquidation);
+    // L6b : la synthese affiche le resultat du rapport et du PV (mali de 5 000), plus le solde
+    // actif - passif presente comme un boni de 100 000.
+    await expect(page.getByTestId('synthese-resultat'), 'resultat de la liquidation a la synthese').toHaveText(/^Mali de 5\s000(,00)? MAD$/);
     await capturer('actes-liquidation');
     await cloturerTicket(page, liquidation, /liquidation/i);
   });

@@ -1,3 +1,4 @@
+import userEvent from '@testing-library/user-event';
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -188,6 +189,21 @@ describe('LiquidationWorkflowPage — étape 1, anti-duplication', () => {
     const resultat = screen.getByTestId('liquidation-boni-mali');
     expect(resultat.tagName).toBe('P');
     expect(resultat).toHaveTextContent('—');
+  });
+
+  it("L6b : le solde actif - passif n'est pas presente comme le boni ou le mali de la liquidation", async () => {
+    // Vu sur la pile (parcours de liquidation) : actif 120 000, passif 20 000, frais 5 000,
+    // capital 100 000 => mali de 5 000 au rapport et au PV ; l'ecran annoncait "100 000 MAD (boni)".
+    getDossierParties.mockResolvedValue(partiesAvecLiquidateur());
+    const user = userEvent.setup();
+    render(<LiquidationWorkflowPage />);
+    await screen.findByTestId('liquidation-comptes');
+    await user.type(screen.getByTestId('liquidation-total-actif'), '120000');
+    await user.type(screen.getByTestId('liquidation-total-passif'), '20000');
+    const solde = screen.getByTestId('liquidation-boni-mali');
+    expect(solde.textContent?.replace(/\s/g, '')).toContain('100000MAD');
+    expect(solde).not.toHaveTextContent(/boni|mali/i);
+    expect(screen.getByText(/Solde actif − passif/)).toBeInTheDocument();
   });
 
   it("avertit dès l'étape 1 des succursales encore ouvertes", async () => {

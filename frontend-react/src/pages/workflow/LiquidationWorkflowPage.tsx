@@ -53,7 +53,13 @@ import { buildLiquidateurOptions, emptyLiquidateur } from '../../components/work
 import { champsPersonneMorale, estPersonneMorale, identiteLiquidateur } from '../../lib/liquidateur';
 import { champsMandatLiquidateur, type MentionsPv } from '../../lib/liquidationPv';
 import { RapportLiquidateurPanel } from '../../components/workflow/RapportLiquidateurPanel';
-import { rapportPayload, type RapportLiquidateur } from '../../lib/rapportLiquidateur';
+import {
+  calculer,
+  formatDh,
+  rapportPayload,
+  type ContexteRapport,
+  type RapportLiquidateur,
+} from '../../lib/rapportLiquidateur';
 import {
   PiecesJointesPanel,
   type PieceJointeEntry,
@@ -177,6 +183,11 @@ function personneMoraleBd(bd: Record<string, unknown>): Partial<LiquidateurState
  * reponse du serveur et tous les champs restent vides apres un rechargement
  * (F5, deconnexion/reconnexion), meme sur une etape deja validee.
  */
+/** L6b : date du formulaire (AAAA-MM-JJ) affichee JJ/MM/AAAA a la synthese ; tout autre texte tel quel. */
+function dateAffichee(d: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d.split('-').reverse().join('/') : d;
+}
+
 export function LiquidationWorkflowPage() {
   return (
     <WorkflowBoot>
@@ -392,6 +403,17 @@ function LiquidationWorkflowPageBody() {
   }, [totalActif, totalPassif]);
   const resultatType: 'boni' | 'mali' | null =
     boniMali === null ? null : boniMali < 0 ? 'mali' : 'boni';
+  // L6b : contexte du rapport final, partage par son panneau et la synthese (le resultat de la
+  // liquidation affiche est celui du rapport et du PV, frais et capital compris).
+  const contexteRapport: ContexteRapport = {
+    capital: dossierParties?.capitalSocial ?? null,
+    remuneration: liquidateur.remunerationApplicable === 'oui' ? liquidateur.remunerationMontant ?? null : 0,
+    impot: mentionsPv.isMontant ?? null,
+    fraisPv: mentionsPv.frais ?? null,
+    totalActif,
+    totalPassif,
+  };
+  const resultatFinal = calculer(rapportLiquidateur, contexteRapport).resultat;
 
   // ---- RG-LI03 : règle DURE des 15 jours (miroir exact du backend) ----
   const delaiError = useMemo(
@@ -973,20 +995,21 @@ function LiquidationWorkflowPageBody() {
                   onBlur={() => setRevealErrors(true)}
                 />
                 <div className="rounded-lg border border-border bg-bg-overlay p-3">
-                  <p className="text-xs text-fg-subtle">Boni / mali de liquidation</p>
+                  {/* L6b : ce solde n'est pas le resultat de la liquidation (frais, impot et
+                      remboursement du capital viennent ensuite, au rapport final) : il
+                      s'affichait "100 000 MAD (boni)" pour un mali de 5 000 au rapport et au PV. */}
+                  <p className="text-xs text-fg-subtle">Solde actif − passif</p>
                   <p
-                    className={`mt-1 text-lg font-bold ${
-                      boniMali === null
-                        ? 'text-fg-subtle'
-                        : resultatType === 'boni'
-                          ? 'text-success'
-                          : 'text-danger'
-                    }`}
+                    className={`mt-1 text-lg font-bold ${boniMali === null ? 'text-fg-subtle' : 'text-fg'}`}
                     data-testid="liquidation-boni-mali"
                   >
                     {boniMali === null
                       ? '—'
-                      : `${Math.abs(boniMali).toLocaleString('fr-FR')} MAD (${resultatType})`}
+                      : `${boniMali < 0 ? '−' : ''}${Math.abs(boniMali).toLocaleString('fr-FR')} MAD`}
+                  </p>
+                  <p className="mt-1 text-xs text-fg-subtle">
+                    Le boni ou le mali de la liquidation est calculé au rapport final du liquidateur,
+                    après les frais, l’impôt et le remboursement du capital.
                   </p>
                 </div>
               </div>
@@ -1095,14 +1118,7 @@ function LiquidationWorkflowPageBody() {
               isAU={isAU}
               valeurs={rapportLiquidateur}
               onChange={changerRapport}
-              contexte={{
-                capital: dossierParties?.capitalSocial ?? null,
-                remuneration: liquidateur.remunerationApplicable === 'oui' ? liquidateur.remunerationMontant ?? null : 0,
-                impot: mentionsPv.isMontant ?? null,
-                fraisPv: mentionsPv.frais ?? null,
-                totalActif,
-                totalPassif,
-              }}
+              contexte={contexteRapport}
             />
 
             <SeanceOperationForm
@@ -1294,13 +1310,13 @@ function LiquidationWorkflowPageBody() {
                 </div>
                 <div>
                   <p className="text-xs text-fg-subtle">Date de dissolution</p>
-                  <p className="text-sm font-medium text-fg">{dateDissolution || '—'}</p>
+                  <p className="text-sm font-medium text-fg">{dateDissolution ? dateAffichee(dateDissolution) : '—'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-fg-subtle">
                     Date {isAU ? 'de la décision' : 'de l’AGE'} de clôture
                   </p>
-                  <p className="text-sm font-medium text-fg">{dateCloture || '—'}</p>
+                  <p className="text-sm font-medium text-fg">{dateCloture ? dateAffichee(dateCloture) : '—'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-fg-subtle">Liquidateur</p>
@@ -1315,7 +1331,7 @@ function LiquidationWorkflowPageBody() {
                   <p className="text-xs text-fg-subtle">Convocation</p>
                   <p className="text-sm font-medium text-fg">
                     {convocationDate
-                      ? `${convocationDate}${convocationHeure ? ` à ${convocationHeure}` : ''}`
+                      ? `${dateAffichee(convocationDate)}${convocationHeure ? ` à ${convocationHeure}` : ''}`
                       : 'Aucune'}
                   </p>
                 </div>
@@ -1338,11 +1354,13 @@ function LiquidationWorkflowPageBody() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-fg-subtle">Résultat</p>
-                  <p className="text-sm font-medium text-fg">
-                    {boniMali === null
-                      ? '—'
-                      : `${Math.abs(boniMali).toLocaleString('fr-FR')} MAD (${resultatType})`}
+                  <p className="text-xs text-fg-subtle">Résultat de la liquidation</p>
+                  <p className="text-sm font-medium text-fg" data-testid="synthese-resultat">
+                    {resultatFinal
+                      ? resultatFinal.sens === 'nul'
+                        ? 'Ni boni ni mali'
+                        : `${resultatFinal.sens === 'boni' ? 'Boni' : 'Mali'} de ${formatDh(resultatFinal.montant)} MAD`
+                      : '—'}
                   </p>
                 </div>
               </div>
