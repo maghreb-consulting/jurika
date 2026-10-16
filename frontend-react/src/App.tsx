@@ -137,8 +137,10 @@ function App() {
         </Route>
 
         {/* Lot M (2026-06-30) — Facturation : SUPER_ADMIN + SUPERVISEUR + EMPLOYE.
-            CLIENT exclu (experience reduite, pas d'upgrade/abonnement/facturation). */}
-        <Route element={<ProtectedRoute allowed={['SUPER_ADMIN', 'SUPERVISEUR', 'EMPLOYE']} />}>
+            CLIENT exclu (experience reduite, pas d'upgrade/abonnement/facturation).
+            Lot L6b (E13) : SUPER_ADMIN exclu aussi : ces ecrans lisent l'abonnement DU CABINET,
+            que le serveur lui refuse (403) ; il suit les abonnements depuis /admin/abonnements. */}
+        <Route element={<ProtectedRoute allowed={['SUPERVISEUR', 'EMPLOYE']} />}>
           <Route element={<AppShell />}>
             {/* Sprint 11 TASK 4 -- billing/trial upgrade page */}
             <Route path="/app/billing" element={<BillingPage.Composant />} />
