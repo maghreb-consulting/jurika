@@ -19,7 +19,8 @@
     "e2e:report": "playwright show-report",
     "e2e:install": "playwright install --with-deps chromium firefox webkit",
     "test:visuel": "playwright test -c playwright.visuel.config.ts",
-    "test:visuel:captures": "playwright test -c playwright.visuel.config.ts"
+    "test:visuel:captures": "playwright test -c playwright.visuel.config.ts",
+    "e2e:parcours": "playwright test -c playwright.parcours.config.ts"
   },
   "dependencies": {
     "@gsap/react": "^2.1.1",
