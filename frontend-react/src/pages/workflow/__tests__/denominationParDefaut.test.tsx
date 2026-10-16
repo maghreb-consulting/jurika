@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  * Lot L6b (E15, parcours de bout en bout) : l'etape 1 d'une reprise (import) et d'une
  * creation propose comme denomination la RAISON SOCIALE saisie a l'ouverture du ticket
  * (celle du dossier cree avec lui), jamais le TITRE du ticket ("Import Atlas"), qui est un
- * libelle de travail. Defaut trouve a l'ecran : "Dénomination (raison sociale)" valait le titre.
+ * libelle de travail. Defaut trouve a l'ecran : "Denomination (raison sociale)" valait le titre.
  */
 
 const DOSSIER_ID = '3fa85f64-5717-4562-b3fc-2c963f66afa6';

@@ -19,9 +19,9 @@ vi.mock('../../../services/workflowDocumentService', () => ({
 import { IncidentSeancePanel } from '../IncidentSeancePanel';
 
 /**
- * Lot L6b (E15, parcours « incident d'assemblée ») : le PV de défaut de quorum rappelle
- * « l'ordre du jour suivant : » ; le panneau partait d'un ordre du jour VIDE, si bien que le
- * PV imprimait les deux-points suivis de rien. L'ordre du jour de l'assemblée lui est
+ * Lot L6b (E15, parcours " incident d'assemblee ") : le PV de defaut de quorum rappelle
+ * " l'ordre du jour suivant : " ; le panneau partait d'un ordre du jour VIDE, si bien que le
+ * PV imprimait les deux-points suivis de rien. L'ordre du jour de l'assemblee lui est
  * transmis (modifiable : l'incident peut porter sur une partie seulement).
  */
 describe('Incident de séance : ordre du jour de l’assemblée', () => {

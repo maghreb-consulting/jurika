@@ -77,9 +77,9 @@ export interface ModificationOperationFormProps {
   /** Nature d'assemblée choisie à l'étape 1 (ordinaire/extraordinaire) — évite le doublon. */
   defaultType?: 'ordinaire' | 'extraordinaire' | 'mixte';
   /**
-   * Lot L6b (E15) : date et heure de convocation saisies à l'étape 1. Fournies, le
-   * procès-verbal les reprend et ne les redemande pas (comme les panneaux de convocation
-   * et de présence) ; absentes, il les demande.
+   * Lot L6b (E15) : date et heure de convocation saisies a l'etape 1. Fournies, le
+   * proces-verbal les reprend et ne les redemande pas (comme les panneaux de convocation
+   * et de presence) ; absentes, il les demande.
    */
   defaultConvocation?: { date: string; heure?: string };
   /** Associés / gérants pré-remplis depuis la BD (fiche société) — zéro re-saisie. */

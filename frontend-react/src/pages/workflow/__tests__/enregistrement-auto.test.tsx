@@ -225,7 +225,7 @@ describe('enregistrement automatique des saisies du parcours', () => {
   });
 
   it('une donnee d’ecran gardee en brouillon seulement survit a la validation (fusion avec le sac du serveur)', async () => {
-    // Defaut trouve au lot L6b (parcours « succursale ») : l'etat du formulaire de l'etape 2
+    // Defaut trouve au lot L6b (parcours " succursale ") : l'etat du formulaire de l'etape 2
     // (succursaleForm) n'est envoye qu'en brouillon ; apres validation, le sac de l'etape ne
     // le portait plus et, au rechargement, l'etape 3 generait l'annonce avec une succursale vide.
     executeStep.mockReset();

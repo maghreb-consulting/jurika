@@ -124,7 +124,7 @@ export function LiquidateurPicker({
       cin: opt.cin,
       // L'adresse connue est pré-remplie ; sinon l'employé la saisit (publiée au JAL).
       adresse: opt.adresse || value.adresse,
-      // L6b (E15) : nationalité et date de naissance connues du dossier, sans re-saisie.
+      // L6b (E15) : nationalite et date de naissance connues du dossier, sans re-saisie.
       nationalite: opt.nationalite ?? value.nationalite,
       dateNaissance: opt.dateNaissance ?? value.dateNaissance,
     });

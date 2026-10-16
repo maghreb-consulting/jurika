@@ -435,9 +435,9 @@ export function buildChangeRows(
 }
 
 /**
- * Lot L6b (E15) : lieu de signature saisi dans la séance du procès-verbal (instantané du
+ * Lot L6b (E15) : lieu de signature saisi dans la seance du proces-verbal (instantane du
  * formulaire du PV), transmis aux documents de la grille (statuts refondus, annonce) qui
- * impriment « Fait à …, le … ». Absent : null (la génération le nomme, rien n'est deviné).
+ * impriment " Fait a ..., le ... ". Absent : null (la generation le nomme, rien n'est devine).
  */
 export function lieuSignatureDuPv(pvSnapshot: Record<string, unknown> | null | undefined): string | null {
   const v = pvSnapshot?.lieuSignature;

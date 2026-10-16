@@ -212,9 +212,9 @@ export function emptyResolution(): ResolutionInput {
 }
 
 /**
- * Nom precede de la civilite ABREGEE, tel qu'il s'imprime dans un acte : le code « M » des
- * etapes de saisie devient « M. » (« Mme » et « Mlle » restent). Lot L6b (E15) : le president
- * propose s'imprimait « M Mehdi Alaoui ».
+ * Nom precede de la civilite ABREGEE, tel qu'il s'imprime dans un acte : le code " M " des
+ * etapes de saisie devient " M. " (" Mme " et " Mlle " restent). Lot L6b (E15) : le president
+ * propose s'imprimait " M Mehdi Alaoui ".
  */
 export function nomAvecCivilite(g: Partial<GerantInput> | null | undefined): string {
   const brute = (g?.civilite ?? '').trim();
@@ -489,9 +489,9 @@ export function useSeanceForm(opts: UseSeanceFormOptions): SeanceFormApi {
       setConvDate(defaults.convDate ?? '');
     }
   }
-  // Lot L6b (E15) : l'heure suit la date (même source amont) ; elle n'était lue qu'au
-  // montage, si bien qu'une heure saisie à l'étape 1 après l'ouverture de la page
-  // n'atteignait jamais le procès-verbal.
+  // Lot L6b (E15) : l'heure suit la date (meme source amont) ; elle n'etait lue qu'au
+  // montage, si bien qu'une heure saisie a l'etape 1 apres l'ouverture de la page
+  // n'atteignait jamais le proces-verbal.
   const [convHeureVue, setConvHeureVue] = useState<{ valeur: string | undefined } | null>(null);
   if (convHeureVue === null || convHeureVue.valeur !== defaults?.convHeure) {
     setConvHeureVue({ valeur: defaults?.convHeure });

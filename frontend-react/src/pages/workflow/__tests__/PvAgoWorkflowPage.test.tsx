@@ -3,11 +3,11 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * Lot L6b (E15, parcours de bout en bout « approbation des comptes ») : etape 2 du PV AGO.
+ * Lot L6b (E15, parcours de bout en bout " approbation des comptes ") : etape 2 du PV AGO.
  * Defauts trouves a l'ecran sur le Z440 :
  *  - la convocation saisie a l'etape 1 (date, heure) etait redemandee VIDE a l'etape 2 ;
  *  - les postes d'affectation ajoutes n'avaient pas de libelle (montant sans nom accessible,
- *    poste nomme par son exemple « Ex. : Réserve légale... »).
+ *    poste nomme par son exemple " Ex. : Reserve legale... ").
  */
 
 const DOSSIER_ID = '3fa85f64-5717-4562-b3fc-2c963f66afa6';

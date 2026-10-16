@@ -58,7 +58,7 @@ export interface LiquidateurOption {
   nom: string;
   cin: string;
   adresse: string;
-  /** Lot L6b (E15) : identité connue du dossier, reprise sans re-saisie. */
+  /** Lot L6b (E15) : identite connue du dossier, reprise sans re-saisie. */
   nationalite?: string;
   dateNaissance?: string;
   /** Lot L4d (E5) : associé personne morale (désigné par sa dénomination). */
@@ -136,7 +136,7 @@ export function buildLiquidateurOptions(
     const dedupe = full.toLowerCase();
     if (seen.has(dedupe)) return;
     seen.add(dedupe);
-    // Lot L6b (E15) : rôle accordé à la personne (« associée », « gérante »).
+    // Lot L6b (E15) : role accorde a la personne (" associee ", " gerante ").
     const civ = str(p.civilite).toLowerCase();
     const feminin = civ.startsWith('mme') || civ.startsWith('mlle') || str(p.genre).toLowerCase().startsWith('f');
     const libelleRole = role === 'gerant' ? (feminin ? 'gérante' : 'gérant') : (feminin ? 'associée' : 'associé');
@@ -144,7 +144,7 @@ export function buildLiquidateurOptions(
       key: `${role}:${dedupe}`,
       label: `${full} — ${libelleRole}`,
       role,
-      // Lot L6b (E15) : civilité abrégée (le code « M » des étapes de saisie devient « M. »).
+      // Lot L6b (E15) : civilite abregee (le code " M " des etapes de saisie devient " M. ").
       civilite: str(p.civilite) === 'M' ? 'M.' : str(p.civilite) || 'M.',
       prenom,
       nom,

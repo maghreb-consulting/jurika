@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Lot L6b (E15, parcours de bout en bout « import de dossier ») : la finalisation d'une
+ * Lot L6b (E15, parcours de bout en bout " import de dossier ") : la finalisation d'une
  * reprise sur PostgreSQL reel (TestContainers, vraies migrations, role jurika_app).
  *
  * <p>Deux defauts trouves a l'ecran sur le Z440 :
@@ -161,12 +161,12 @@ class ImportConsolidationIT {
                         """, UUID.randomUUID(), workspace, SchemaJurikaDb.EMPLOYE_SEME);
         assertThatThrownBy(() -> inTx(() -> useCases.refuserDoublonDossier(workspace, dossier, null, "nour conseil sarl")))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("dénomination");
+                .hasMessageContaining("d\u00e9nomination");
         // Sa propre denomination (meme dossier) n'est jamais un doublon.
         inTx(() -> useCases.refuserDoublonDossier(workspace, dossier, null, "ATLAS IMPORT SARL"));
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────
+    // ?? Helpers ????????????????????????????????????????????????????????
 
     private void postCompletion(Map<String, Object> data) {
         ReflectionTestUtils.invokeMethod(useCases, "applyPostCompletion", WorkflowType.IMPORT, workspace, ticket, data);

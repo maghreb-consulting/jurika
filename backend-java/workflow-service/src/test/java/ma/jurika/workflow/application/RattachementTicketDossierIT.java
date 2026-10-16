@@ -25,11 +25,11 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Lot L6b (E15, parcours de bout en bout « approbation des comptes », « modification ») :
+ * Lot L6b (E15, parcours de bout en bout " approbation des comptes ", " modification ") :
  * le ticket d'un parcours qui choisit sa societe a l'etape 1 est rattache a ce dossier.
  *
  * <p>Constate sur le Z440 : le ticket d'approbation des comptes restait sans dossier ; sa
- * fiche affichait « Forme juridique du dossier inconnue », ne proposait ni decisions ni
+ * fiche affichait " Forme juridique du dossier inconnue ", ne proposait ni decisions ni
  * demarches, et le ticket ne pouvait jamais etre clos. PostgreSQL reel, role jurika_app.
  */
 @Testcontainers
@@ -127,7 +127,7 @@ class RattachementTicketDossierIT {
         assertThat(dossierDuTicket()).isNull();
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────
+    // ?? Helpers ????????????????????????????????????????????????????????
 
     private void insertDossier(UUID id, UUID ws, String raison) {
         owner.update("""

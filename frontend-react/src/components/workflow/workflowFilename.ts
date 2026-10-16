@@ -56,9 +56,9 @@ export function extensionOf(filename: string | null | undefined): string {
 }
 
 /**
- * Libellé « type de document » déduit du code template (pour le nommage). Le PV de
- * modification suit la nature de l'assemblée (lot L6b : une AGO s'appelait « (AGE) ») ;
- * celui de l'associé unique est un PV de décisions.
+ * Libelle " type de document " deduit du code template (pour le nommage). Le PV de
+ * modification suit la nature de l'assemblee (lot L6b : une AGO s'appelait " (AGE) ") ;
+ * celui de l'associe unique est un PV de decisions.
  */
 export function docTypeForTemplateCode(
   code: string,

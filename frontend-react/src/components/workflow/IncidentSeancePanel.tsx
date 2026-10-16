@@ -67,9 +67,9 @@ export interface IncidentSeancePanelProps {
   initialAssocies?: AssocieInput[];
   initialGerants?: GerantInput[];
   /**
-   * Lot L6b (E15) : ordre du jour de l'assemblée (le PV d'incident le rappelle). Modifiable :
-   * l'incident peut ne porter que sur une partie. Sans lui, le PV imprimait « l'ordre du
-   * jour suivant : » suivi de rien.
+   * Lot L6b (E15) : ordre du jour de l'assemblee (le PV d'incident le rappelle). Modifiable :
+   * l'incident peut ne porter que sur une partie. Sans lui, le PV imprimait " l'ordre du
+   * jour suivant : " suivi de rien.
    */
   initialOrdreDuJour?: string[];
   /** Phase 7 — dépôt Data Room versionné (opt-in). */

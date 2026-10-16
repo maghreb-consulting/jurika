@@ -216,7 +216,7 @@ describe('PV de modification — options du procès-verbal', () => {
 });
 
 /**
- * Lot L6b (E15, parcours de bout en bout « nomination du gerant ») : la date et l'heure de
+ * Lot L6b (E15, parcours de bout en bout " nomination du gerant ") : la date et l'heure de
  * convocation saisies a l'etape 1 du parcours de modification arrivent au proces-verbal
  * (etape 3) sans etre redemandees. Defaut trouve a l'ecran : le formulaire du PV les
  * reaffichait vides (les panneaux de convocation et de presence les recevaient deja).
@@ -246,7 +246,7 @@ describe('PV de modification — convocation saisie en amont', () => {
       );
     });
     expect(screen.getByLabelText('Président — Nom')).toHaveValue('M. Mehdi Alaoui');
-    // Président et auteur de la convocation (valeur proposée) : jamais le code « M » seul.
+    // President et auteur de la convocation (valeur proposee) : jamais le code " M " seul.
     expect(screen.getAllByDisplayValue('M. Mehdi Alaoui')).toHaveLength(2);
     expect(screen.queryAllByDisplayValue('M Mehdi Alaoui')).toHaveLength(0);
   });

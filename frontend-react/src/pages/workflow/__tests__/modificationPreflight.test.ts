@@ -238,9 +238,9 @@ describe('Modification — convocation, regle DURE des 16 jours', () => {
 });
 
 /**
- * Lot L6b (E15, parcours « nomination du gerant ») : les statuts refondus et l'annonce sont
+ * Lot L6b (E15, parcours " nomination du gerant ") : les statuts refondus et l'annonce sont
  * generes depuis la grille des documents, dont la charge ne portait pas le lieu de signature
- * saisi dans la seance du PV : statuts refuses (LIEU_SIGNATURE, « Fait a , le ... »), sans
+ * saisi dans la seance du PV : statuts refuses (LIEU_SIGNATURE, " Fait a , le ... "), sans
  * aucun champ pour le saisir a cote.
  */
 describe('Modification — lieu de signature des documents de la grille', () => {

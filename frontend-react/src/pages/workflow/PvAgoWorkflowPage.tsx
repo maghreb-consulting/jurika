@@ -288,7 +288,7 @@ function PvAgoWorkflowPageBody() {
   const seance = useSeanceForm({
     formeJuridique: isAU ? 'SARL_AU' : 'SARL',
     societe: societeInput,
-    // L6b (E15) : la convocation de l'étape 1 arrive au PV (date et heure), sans être redemandée.
+    // L6b (E15) : la convocation de l'etape 1 arrive au PV (date et heure), sans etre redemandee.
     defaults: {
       type: 'ordinaire',
       date: dateAgo,
@@ -1130,7 +1130,7 @@ function PvAgoWorkflowPageBody() {
                   <div key={i} className="grid items-end gap-2 md:grid-cols-[1fr_10rem_auto]">
                     <TextField
                       label={i === 0 ? 'Poste d’affectation' : undefined}
-                      // L6b (E15) : les lignes suivantes, sans libellé visible, gardent un nom.
+                      // L6b (E15) : les lignes suivantes, sans libelle visible, gardent un nom.
                       aria-label={i === 0 ? undefined : `Poste d’affectation ${i + 1}`}
                       value={a.libelle}
                       onChange={(e) =>

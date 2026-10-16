@@ -99,8 +99,8 @@ export interface SuccursaleOperationFormProps {
   societe: SeanceSocieteInput;
   defaultDate?: string;
   /**
-   * Lot L6b (E15) : date et heure de convocation saisies à l'étape 1 de la page hôte.
-   * Fournies, le procès-verbal les reprend et ne les redemande pas ; absentes, il les demande.
+   * Lot L6b (E15) : date et heure de convocation saisies a l'etape 1 de la page hote.
+   * Fournies, le proces-verbal les reprend et ne les redemande pas ; absentes, il les demande.
    */
   defaultConvocation?: { date: string; heure?: string };
   /** Pré-remplissage des blocs succursale depuis les étapes hôtes. */

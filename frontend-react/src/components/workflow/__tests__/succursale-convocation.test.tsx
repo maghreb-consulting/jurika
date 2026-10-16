@@ -11,7 +11,7 @@ import { SuccursaleOperationForm } from '../SuccursaleOperationForm';
 import { SeanceOperationForm } from '../SeanceOperationForm';
 
 /**
- * Lot L6b (E15, parcours de bout en bout « succursale ») : la date et l'heure de convocation
+ * Lot L6b (E15, parcours de bout en bout " succursale ") : la date et l'heure de convocation
  * saisies a l'etape 1 (ouverture d'une succursale marocaine, fermeture) arrivent au
  * proces-verbal de l'etape 3 sans etre redemandees. Constate a l'ecran : les deux champs
  * etaient vides a l'etape 3.

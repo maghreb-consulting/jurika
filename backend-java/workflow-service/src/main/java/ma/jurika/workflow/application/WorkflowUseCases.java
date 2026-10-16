@@ -331,8 +331,8 @@ public class WorkflowUseCases {
         }
         // Lot L6b (E15) : le ticket d'un parcours qui CHOISIT sa societe a l'etape 1
         // (modification, PV AGO, dissolution, liquidation, succursale marocaine, fermeture)
-        // restait sans dossier : la fiche du ticket ne connaissait pas sa forme (« Forme
-        // juridique du dossier inconnue »), ne proposait ni decisions ni demarches, et le
+        // restait sans dossier : la fiche du ticket ne connaissait pas sa forme ("Forme
+        // juridique du dossier inconnue"), ne proposait ni decisions ni demarches, et le
         // ticket ne pouvait jamais avancer jusqu'a sa cloture.
         if (step == 1 && TYPES_SOCIETE_CHOISIE.contains(p.type())) {
             UUID choisi = parseUuid(firstNonNull(strOrNull(stepData.get("dossierId")),

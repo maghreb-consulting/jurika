@@ -46,8 +46,8 @@ describe('buildLiquidateurOptions', () => {
     expect(opts[1]).toMatchObject({ civilite: 'Mme', adresse: 'RABAT' });
   });
 
-  // Lot L6b (E15, parcours « succursale ») : « Sara Bennani — associé » affiché pour une
-  // associée ; le rôle s'accorde à la civilité (ou au genre) de la personne.
+  // Lot L6b (E15, parcours " succursale ") : " Sara Bennani - associe " affiche pour une
+  // associee ; le role s'accorde a la civilite (ou au genre) de la personne.
   it('accorde le rôle au féminin pour une associée ou une gérante', () => {
     const opts = buildLiquidateurOptions({
       gerants: [{ civilite: 'Mme', prenom: 'Nadia', nom: 'IDRISSI' }],

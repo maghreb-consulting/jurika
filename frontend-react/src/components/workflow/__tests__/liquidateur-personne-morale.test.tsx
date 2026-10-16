@@ -15,9 +15,9 @@ function Hote() {
 }
 
 /**
- * Lot L6b (E15, parcours « dissolution ») : choisi parmi les gérants, le liquidateur reprend
- * sa nationalité et sa date de naissance connues du dossier (elles étaient redemandées
- * vides) et sa civilité abrégée (« M. », jamais le code « M »).
+ * Lot L6b (E15, parcours " dissolution ") : choisi parmi les gerants, le liquidateur reprend
+ * sa nationalite et sa date de naissance connues du dossier (elles etaient redemandees
+ * vides) et sa civilite abregee (" M. ", jamais le code " M ").
  */
 function HoteDossier() {
   const [v, setV] = useState<LiquidateurState>(emptyLiquidateur());

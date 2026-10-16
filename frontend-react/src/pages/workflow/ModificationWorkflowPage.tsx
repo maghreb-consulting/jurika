@@ -1153,8 +1153,8 @@ function ModificationWorkflowPageBody() {
       ficheStructuree: fiche,
       // L3 (D6) : valeurs confirmees a l'ecran (bloc "Statuts mis a jour").
       statutsRefondus,
-      // L6b (E15) : « Fait à …, le … » des statuts refondus : le lieu de signature saisi
-      // dans la séance du PV (aucun champ à côté des statuts ; il n'était pas transmis).
+      // L6b (E15) : " Fait a ..., le ... " des statuts refondus : le lieu de signature saisi
+      // dans la seance du PV (aucun champ a cote des statuts ; il n'etait pas transmis).
       lieuSignature: lieuSignatureDuPv(pvSnapshot),
     };
   }

@@ -137,9 +137,9 @@ describe('SeanceForm — contrat de séance partagé', () => {
 });
 
 /**
- * Lot L6b (E15, parcours « nomination du gerant ») : le nom propose (president, auteur de la
- * convocation) s'imprime avec la civilite abregee « M. », jamais le code « M » des etapes de
- * saisie (« sur convocation de M Mehdi Alaoui » dans le PV, constate a l'ecran). Rendu du
+ * Lot L6b (E15, parcours " nomination du gerant ") : le nom propose (president, auteur de la
+ * convocation) s'imprime avec la civilite abregee " M. ", jamais le code " M " des etapes de
+ * saisie (" sur convocation de M Mehdi Alaoui " dans le PV, constate a l'ecran). Rendu du
  * formulaire : pv-modification-corpus.test.tsx.
  */
 describe('SeanceForm — civilité abrégée', () => {
@@ -152,7 +152,7 @@ describe('SeanceForm — civilité abrégée', () => {
 });
 
 /**
- * Lot L6b (E15, parcours « approbation des comptes ») : la convocation saisie a l'etape 1 du
+ * Lot L6b (E15, parcours " approbation des comptes ") : la convocation saisie a l'etape 1 du
  * PV AGO arrive au formulaire de seance de l'etape 2 (date ET heure), meme saisie APRES le
  * montage du formulaire (la page le monte des l'ouverture). Constate a l'ecran : la date et
  * l'heure de convocation de l'etape 2 etaient vides.
