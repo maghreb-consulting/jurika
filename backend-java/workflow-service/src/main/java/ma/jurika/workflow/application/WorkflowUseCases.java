@@ -329,6 +329,16 @@ public class WorkflowUseCases {
         if (step == 1 && p.type() == WorkflowType.FERMETURE_SUCCURSALE) {
             stepData = withSuccursaleCreeeSiSaisieManuelle(workspaceId, stepData);
         }
+        // Lot L6b (E15) : le ticket d'un parcours qui CHOISIT sa societe a l'etape 1
+        // (modification, PV AGO, dissolution, liquidation, succursale marocaine, fermeture)
+        // restait sans dossier : la fiche du ticket ne connaissait pas sa forme (« Forme
+        // juridique du dossier inconnue »), ne proposait ni decisions ni demarches, et le
+        // ticket ne pouvait jamais avancer jusqu'a sa cloture.
+        if (step == 1 && TYPES_SOCIETE_CHOISIE.contains(p.type())) {
+            UUID choisi = parseUuid(firstNonNull(strOrNull(stepData.get("dossierId")),
+                    payload == null ? null : strOrNull(payload.get("dossierId"))));
+            if (choisi != null) lierTicketAuDossierChoisi(workspaceId, ticketId, choisi);
+        }
         // Lot L6b (E15) : une reprise dont l'ICE ou la denomination appartient deja a un
         // autre dossier du cabinet est refusee des l'etape 1, nommement (avant : 500 a la
         // finalisation, index unique viole).
@@ -610,6 +620,28 @@ public class WorkflowUseCases {
      * authentifie pouvait corrompre le ticket d'un workspace tiers en l'aiguillant vers
      * un dossierId du sien (cross-tenant write).
      */
+    /** Parcours dont la societe est choisie a l'etape 1 (le ticket nait sans dossier). */
+    static final java.util.Set<WorkflowType> TYPES_SOCIETE_CHOISIE = java.util.EnumSet.of(
+            WorkflowType.MODIFICATION, WorkflowType.PV_AGO, WorkflowType.DISSOLUTION,
+            WorkflowType.LIQUIDATION, WorkflowType.SUCCURSALE_MA, WorkflowType.FERMETURE_SUCCURSALE);
+
+    /**
+     * Lot L6b (E15) : rattache le ticket au dossier choisi a l'etape 1, s'il n'en a aucun.
+     * Un ticket deja rattache n'est jamais deplace. Le dossier doit appartenir au workspace
+     * (sous-requete filtree) : aucun rattachement inter-cabinets.
+     */
+    int lierTicketAuDossierChoisi(UUID workspaceId, UUID ticketId, UUID dossierId) {
+        return em.createNativeQuery(
+                        "UPDATE tickets SET dossier_id = ?1"
+                                + " WHERE id = ?2 AND workspace_id = ?3 AND dossier_id IS NULL"
+                                + " AND EXISTS (SELECT 1 FROM entreprise_dossiers d"
+                                + " WHERE d.id = ?1 AND d.workspace_id = ?3)")
+                .setParameter(1, dossierId)
+                .setParameter(2, ticketId)
+                .setParameter(3, workspaceId)
+                .executeUpdate();
+    }
+
     private void linkTicketToDossier(UUID workspaceId, UUID ticketId, UUID dossierId) {
         em.createNativeQuery("UPDATE tickets SET dossier_id = ?1 WHERE id = ?2 AND workspace_id = ?3")
                 .setParameter(1, dossierId)
