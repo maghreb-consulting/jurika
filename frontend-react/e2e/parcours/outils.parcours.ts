@@ -106,6 +106,8 @@ test.describe('controle des documents', () => {
     ['BLANC_PHRASE', 'M. Ahmed ALAOUI, n\u00e9 le , \u00e0 Casablanca.', 'n\u00e9 le ,'],
     ['BLANC_PHRASE', 'n\u00e9 le 12/05/1980 \u00e0 , demeurant \u00e0 Rabat.', '\u00e0 ,'],
     ['CHAMP_VIDE', 'Nom : , Prenom : Ahmed', 'Nom : ,'],
+    // L6b E14 : date saisie imprimee telle que l'ecran l'envoie (constate : bail, declaration d'existence).
+    ['DATE_ISO', 'Date de d\u00e9but d\u2019activit\u00e9 : 2026-11-01', '2026-11-01'],
   ];
   for (const [genre, ligne, attendu] of cas) {
     test(`${genre} est signale : "${ligne}"`, () => {

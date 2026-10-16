@@ -26,13 +26,15 @@ import { inflateRawSync, inflateSync } from 'node:zlib';
  *     d'une ponctuation ou d'un autre mot de liaison ("ne le , a", "demeurant a ,", "le  a") ;
  *  6. CHAMP_VIDE : libelle sans valeur entre deux libelles : deux paragraphes consecutifs qui ne
  *     sont chacun qu'un libelle termine par ":" (le premier est vide), ou " : " suivi d'une
- *     ponctuation (",", ";", ".") dans la meme ligne.
+ *     ponctuation (",", ";", ".") dans la meme ligne ;
+ *  7. DATE_ISO (L6b E14) : date imprimee au format de l'ecran (aaaa-mm-jj) au lieu de jj/mm/aaaa
+ *     (constate sur la pile : bail, declaration d'existence, declaration d'immatriculation).
  * PERMIS (regle des variables d'un acte, CLAUDE.md) : le marqueur "<< A OBTENIR : NOM >>" d'une
  * variable EXTERNE (donnee attendue d'un organisme) ; il est rendu a part (`aObtenir`).
  * Un test peut nommer des exceptions (`permis`) : texte du gabarit lui-meme (ligne de signature
  * pointillee d'un imprime, par exemple), chacune justifiee.
  */
-export type GenreDefaut = 'VALEUR_MANQUANTE' | 'A_COMPLETER' | 'MARQUEUR' | 'BLANC_POINTILLE' | 'BLANC_PHRASE' | 'CHAMP_VIDE';
+export type GenreDefaut = 'VALEUR_MANQUANTE' | 'A_COMPLETER' | 'MARQUEUR' | 'BLANC_POINTILLE' | 'BLANC_PHRASE' | 'CHAMP_VIDE' | 'DATE_ISO';
 
 export interface Defaut { genre: GenreDefaut; ligne: number; extrait: string }
 export interface Permis { texte: RegExp; motif: string }
@@ -277,6 +279,7 @@ const REGLES: { genre: GenreDefaut; motif: RegExp }[] = [
   // liaison ("le  a" : la valeur entre les deux a disparu). "de la", "a la" restent permis.
   { genre: 'BLANC_PHRASE', motif: new RegExp(`(?:^|[\\s(])${LIAISON}(?:\\s+[,;.)]|\\s{2,}${LIAISON}(?=[\\s,;.]))`, 'i') },
   { genre: 'CHAMP_VIDE', motif: /\s:\s*[,;.](?!\d)/ },
+  { genre: 'DATE_ISO', motif: /\b(?:19|20)\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])\b/ },
 ];
 const LIBELLE_SEUL = /^[^:\n]{1,60}:\s*$/;
 
