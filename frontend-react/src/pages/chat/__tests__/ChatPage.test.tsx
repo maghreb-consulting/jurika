@@ -43,6 +43,7 @@ vi.mock('../../../store/authStore', () => {
 const forfait = vi.hoisted(() => ({ messagerie: true }));
 vi.mock('../../../lib/useForfait', () => ({
   useForfait: () => ({
+    charge: true,
     abonnement: null,
     inclut: (code: string) => code !== 'MESSAGERIE_INTERNE' || forfait.messagerie,
     disponibleDes: () => 'Professionnel',

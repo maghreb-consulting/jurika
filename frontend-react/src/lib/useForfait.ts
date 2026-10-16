@@ -27,6 +27,8 @@ export function oublierForfait(): void {
 
 export interface EtatForfait {
   abonnement: AbonnementVue | null;
+  /** Lot L6b : vrai une fois la lecture terminee (reussie ou non). */
+  charge: boolean;
   /** Faux seulement si le serveur a dit que la fonction n'est pas incluse. */
   inclut: (code: string) => boolean;
   /** Premier forfait qui donne la fonction (pour l'explication). */
@@ -35,15 +37,17 @@ export interface EtatForfait {
 
 export function useForfait(actif = true): EtatForfait {
   const [abonnement, setAbonnement] = useState<AbonnementVue | null>(null);
+  const [charge, setCharge] = useState(false);
   useEffect(() => {
     if (!actif) return undefined;
     let annule = false;
-    void charger().then((a) => { if (!annule) setAbonnement(a); });
+    void charger().then((a) => { if (!annule) { setAbonnement(a); setCharge(true); } });
     return () => { annule = true; };
   }, [actif]);
   const fonction = (code: string) => abonnement?.fonctions?.find((f) => f.code === code);
   return {
     abonnement,
+    charge,
     inclut: (code) => fonction(code)?.incluse !== false,
     disponibleDes: (code) => fonction(code)?.disponibleDes ?? null,
   };

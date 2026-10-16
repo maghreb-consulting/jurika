@@ -14,6 +14,7 @@ import { useCurrentUser } from '../../store/authStore';
 import { refreshChatUnread } from '../../store/chatUnreadStore';
 import { extractError } from '../../lib/api';
 import { useForfait } from '../../lib/useForfait';
+import { SquelettePage } from '../../components/ui/LoadingSkeleton';
 import { FonctionHorsForfait } from '../../components/billing/FonctionHorsForfait';
 import type { ChatMessage, Conversation } from '../../types/chat';
 import type { WorkspaceUser } from '../../types/auth';
@@ -54,6 +55,14 @@ function formatDate(iso?: string | null): string {
  */
 export function ChatPage() {
   const forfait = useForfait();
+  // Lot L6b : attendre le forfait avant d'ouvrir la messagerie (sinon 403 FORFAIT_SANS_MESSAGERIE).
+  if (!forfait.charge) {
+    return (
+      <Page titre="Messagerie" description="Conversations internes du cabinet, en temps réel">
+        <SquelettePage />
+      </Page>
+    );
+  }
   if (!forfait.inclut('MESSAGERIE_INTERNE')) {
     return (
       <Page titre="Messagerie" description="Conversations internes du cabinet, en temps réel">
