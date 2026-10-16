@@ -16,6 +16,7 @@ import {
 } from '../../../lib/dataroomUpload';
 import type { DocumentSummary } from '../../../types/dataroom';
 import { DOCUMENT_TYPE_LABELS } from '../../../types/dataroom';
+import { identifiantUnique } from '../../../lib/identifiant';
 
 /**
  * Sprint 2026-06-24 — Upload MULTIPLE aligné sur l'upload SIMPLE.
@@ -69,8 +70,7 @@ export interface MultiUploadDrawerProps {
 }
 
 function rowUid(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
-  return `row-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+  return identifiantUnique();
 }
 
 export function MultiUploadDrawer({

@@ -1,4 +1,5 @@
 import { api } from '../lib/api';
+import { identifiantUnique } from '../lib/identifiant';
 
 /**
  * Lot L7 (E4) : essai gratuit (CDC 4.2).
@@ -101,7 +102,7 @@ export function identifiantAppareil(): string | null {
   try {
     const existant = localStorage.getItem(CLE_APPAREIL);
     if (existant && /^[A-Za-z0-9-]{8,64}$/.test(existant)) return existant;
-    const nouveau = crypto.randomUUID();
+    const nouveau = identifiantUnique();
     localStorage.setItem(CLE_APPAREIL, nouveau);
     return nouveau;
   } catch {

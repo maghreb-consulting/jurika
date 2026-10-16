@@ -29,6 +29,7 @@ import { TextField, ZoneTexte } from '../../../components/ui/TextField';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
 import { Case, GroupeRadio } from '../../../components/ui/Choix';
+import { identifiantUnique } from '../../../lib/identifiant';
 
 type TypePersonneAssocie = 'PHYSIQUE' | 'MORALE';
 
@@ -245,7 +246,7 @@ interface Associe {
 
 function newAssocie(): Associe {
   return {
-    id: crypto.randomUUID(),
+    id: identifiantUnique(),
     typePersonne: 'PHYSIQUE',
     civilite: 'M',
     nom: '',
@@ -261,7 +262,7 @@ function newAssocie(): Associe {
     nombreParts: 0,
     montantApport: 0,
     typeApport: 'NUMERAIRE',
-    apports: [{ id: crypto.randomUUID(), type: 'NUMERAIRE', parts: 0 }],
+    apports: [{ id: identifiantUnique(), type: 'NUMERAIRE', parts: 0 }],
     cinUploaded: false,
     extracting: false,
     // MORALE defaults
@@ -303,14 +304,14 @@ function hydrateApports(a: Partial<Associe>): Apport[] {
   // 2026-06-22 — parts forcées en ENTIER naturel (anciennes données / divisions).
   if (Array.isArray(raw) && raw.length > 0) {
     return raw.map((x) => ({
-      id: x?.id ?? crypto.randomUUID(),
+      id: x?.id ?? identifiantUnique(),
       type: (x?.type as TypeApport) ?? 'NUMERAIRE',
       parts: Math.max(0, Math.round(Number(x?.parts) || 0)),
     }));
   }
   return [
     {
-      id: crypto.randomUUID(),
+      id: identifiantUnique(),
       type: (a.typeApport as TypeApport) ?? 'NUMERAIRE',
       parts: Math.max(0, Math.round(Number(a.nombreParts) || 0)),
     },
@@ -402,7 +403,7 @@ export function Step6Associes({
     return {
       ...newAssocie(),
       ...a,
-      id: a.id ?? crypto.randomUUID(),
+      id: a.id ?? identifiantUnique(),
       apports,
       nombreParts: derived.nombreParts,
       montantApport: derived.montantApport,
@@ -1550,7 +1551,7 @@ export function Step6Associes({
                       onClick={() => {
                         const newApports: Apport[] = [
                           ...a.apports,
-                          { id: crypto.randomUUID(), type: 'NUMERAIRE', parts: 0 },
+                          { id: identifiantUnique(), type: 'NUMERAIRE', parts: 0 },
                         ];
                         const derived = deriveFromApports(newApports, valeurNominaleExpected);
                         update(a.id, { apports: newApports, ...derived });

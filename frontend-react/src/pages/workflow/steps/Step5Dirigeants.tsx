@@ -32,6 +32,7 @@ import { TextField, ZoneTexte } from '../../../components/ui/TextField';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
 import { Case, GroupeRadio, Interrupteur } from '../../../components/ui/Choix';
+import { identifiantUnique } from '../../../lib/identifiant';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -75,7 +76,7 @@ interface Props {
 
 function newDirigeant(): Dirigeant {
   return {
-    id: crypto.randomUUID(),
+    id: identifiantUnique(),
     typePersonne: 'PHYSIQUE',
     civilite: 'M',
     nom: '',
@@ -219,7 +220,7 @@ export function Step5Dirigeants({
     ...newDirigeant(),
     ...d,
     ...reprendreMandat(d),
-    id: d.id ?? crypto.randomUUID(),
+    id: d.id ?? identifiantUnique(),
   }));
   const [dirigeants, setDirigeants] = useState<Dirigeant[]>(
     fromData.length > 0 ? fromData : [newDirigeant()],
@@ -432,7 +433,7 @@ export function Step5Dirigeants({
   }
   const [signataires, setSignataires] = useState<Signataire[]>(
     ((existing?.signataires as Signataire[]) ?? []).map((s) => ({
-      id: s.id ?? crypto.randomUUID(),
+      id: s.id ?? identifiantUnique(),
       nom: s.nom ?? '',
       qualite: s.qualite ?? '',
     })),
@@ -1085,7 +1086,7 @@ export function Step5Dirigeants({
             onClick={() =>
               setSignataires((arr) => [
                 ...arr,
-                { id: crypto.randomUUID(), nom: '', qualite: 'Gérant' },
+                { id: identifiantUnique(), nom: '', qualite: 'Gérant' },
               ])
             }
             variant="secondary"

@@ -24,6 +24,7 @@ import { PublicitesSociete } from '../../../components/workflow/PublicitesSociet
 import { manquePublicite, type Publicite } from '../../../lib/publicites';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
+import { identifiantUnique } from '../../../lib/identifiant';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -145,8 +146,7 @@ interface UploadedDoc {
 }
 
 function uuid(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
-  return `doc-${Date.now()}-${Math.random()}`;
+  return identifiantUnique();
 }
 
 /**
