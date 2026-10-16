@@ -34,7 +34,8 @@ test.describe('formulaires EMPLOYE', () => {
     await page.getByLabel('Nouveau mot de passe', { exact: true }).fill('abc');
     await page.getByLabel('Confirmation', { exact: true }).fill('abc');
     await refusNomme(page, sentinelle, {
-      methode: 'POST', chemin: /^\/auth\/change-password$/, champ: /nouveau mot de passe[\s\S]*12 caract/i,
+      methode: 'POST', chemin: /^\/auth\/change-password$/, // Message du serveur (L6b E13) : "« nouveau mot de passe » : entre 12 et 100 caracteres".
+      champ: /nouveau mot de passe\W+entre 12 et 100 caract/i,
       soumettre: () => page.getByRole('button', { name: 'Changer le mot de passe' }).click(),
     });
     // Valide : le prenom.
