@@ -311,6 +311,10 @@ services:
       # Microservice kie-service (Donut KIE pour CIN / CN).
       KIE_BASE_URL: ${KIE_BASE_URL:-http://kie-service:8088}
       KIE_TIMEOUT: ${KIE_TIMEOUT:-30s}
+      # Lot L6b (E13) : route de seed des parcours de bout en bout (TestSeedController, profil
+      # hors prod). La variable de .env.local n'etait transmise a aucun conteneur : la route
+      # restait absente (404) alors que le fichier disait "true". Ferme par defaut.
+      JURIKA_TEST_SEED_ENABLED: ${JURIKA_TEST_SEED_ENABLED:-false}
     volumes:
       - ./secrets/jwt:/run/secrets/jwt:ro
     depends_on:
