@@ -28,7 +28,7 @@ import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
 import { TypePieceProposee, ValeurProposee } from './ValeurProposee';
 import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
-import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
+import { freshDocState, useDocumentBlocks, type DocState, documentTravaille } from './documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
@@ -495,7 +495,7 @@ export function SuccursaleOperationForm({
   }, [workflowCode, pvCode, templates.length]);
 
   useEffect(() => {
-    onReady?.(!!docs[pvCode]?.validated);
+    if (documentTravaille(docs[pvCode])) onReady?.(!!docs[pvCode]?.validated);
   }, [docs, pvCode, onReady]);
 
   return (

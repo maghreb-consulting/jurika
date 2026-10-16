@@ -22,7 +22,7 @@ import { Select } from '../ui/Select';
 import { InfoBulle, TexteAide } from '../ui/Aide';
 import { ValeurProposee } from './ValeurProposee';
 import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
-import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
+import { freshDocState, useDocumentBlocks, type DocState, documentTravaille } from './documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
@@ -198,9 +198,10 @@ export function LiquidationAnnoncePanel({
 
   const state = docs[code] ?? freshDocState();
   const ready = useMemo(() => !!docs[code]?.validated, [docs, code]);
+  const travaille = documentTravaille(docs[code]);
   useEffect(() => {
-    onReady?.(ready);
-  }, [ready, onReady]);
+    if (travaille) onReady?.(ready);
+  }, [ready, travaille, onReady]);
 
   return (
     <section className="space-y-4 rounded-xl border border-border bg-bg-raised p-4" data-testid="liquidation-annonce">

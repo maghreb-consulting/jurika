@@ -18,7 +18,7 @@ import { Sparkles } from 'lucide-react';
 import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
 import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
-import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
+import { freshDocState, useDocumentBlocks, type DocState, documentTravaille } from './documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
@@ -243,7 +243,7 @@ export function ModificationOperationForm({
   }, [pvCode, templates.length]);
 
   useEffect(() => {
-    onReady?.(!!docs[pvCode]?.validated);
+    if (documentTravaille(docs[pvCode])) onReady?.(!!docs[pvCode]?.validated);
   }, [docs, pvCode, onReady]);
 
   return (

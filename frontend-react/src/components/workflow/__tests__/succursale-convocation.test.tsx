@@ -44,6 +44,28 @@ describe('Succursale — convocation saisie en amont', () => {
     expect(onSnapshot).toHaveBeenLastCalledWith(expect.objectContaining({ convDate: '2026-10-20', convHeure: '10:00' }));
   });
 
+  // Lot L6b (E15, parcours succursale sur la pile redeployee) : apres un rechargement a
+  // l'etape 3, le PV deja genere et valide (depose en Data Room) etait declare "non valide"
+  // des le montage du formulaire, ce qui ecrasait l'etat persiste de la page : l'etape 3
+  // restait bloquee ("Generez puis validez le proces-verbal"). Un formulaire qui n'a encore
+  // rien genere ne remonte aucun etat.
+  it('au montage, sans document travaillé, aucun état « non validé » n’est remonté', async () => {
+    const onReadySucc = vi.fn();
+    const onReadySeance = vi.fn();
+    await act(async () => {
+      render(
+        <>
+          <SuccursaleOperationForm mode="creation-ma" formeJuridique="SARL"
+            societe={{ denomination: 'ATLAS NORD SARL' }} defaultDate="2026-11-05" onReady={onReadySucc} />
+          <SeanceOperationForm mode="dissolution" formeJuridique="SARL"
+            societe={{ denomination: 'ATLAS NORD SARL' }} defaultDate="2026-11-05" onReady={onReadySeance} />
+        </>,
+      );
+    });
+    expect(onReadySucc).not.toHaveBeenCalledWith(false);
+    expect(onReadySeance).not.toHaveBeenCalledWith(false);
+  });
+
   it('sans convocation en amont, le procès-verbal la demande', async () => {
     await act(async () => {
       render(

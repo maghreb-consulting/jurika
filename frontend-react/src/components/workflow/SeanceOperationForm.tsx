@@ -19,7 +19,7 @@ import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
 import { TypePieceProposee, ValeurProposee } from './ValeurProposee';
 import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
-import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
+import { freshDocState, useDocumentBlocks, type DocState, documentTravaille } from './documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
@@ -377,7 +377,9 @@ export function SeanceOperationForm({
   }, [workflowCode, mode, pvCode, templates.length]);
 
   useEffect(() => {
-    onReady?.(requiredCodes.every((c) => !!docs[c]?.validated));
+    if (requiredCodes.some((c) => documentTravaille(docs[c]))) {
+      onReady?.(requiredCodes.every((c) => !!docs[c]?.validated));
+    }
   }, [docs, requiredCodes, onReady]);
 
   return (
