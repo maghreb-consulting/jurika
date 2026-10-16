@@ -450,8 +450,8 @@ public class WorkflowUseCases {
             try {
                 UUID dossierId = finalizationService != null
                         ? finalizationService.createEntrepriseDossierInNewTransaction(
-                                workspaceId, ticketId, userId, merged)
-                        : createEntrepriseDossier(workspaceId, ticketId, userId, merged);
+                                workspaceId, ticketId, userId, normaliserCreation(merged))
+                        : createEntrepriseDossier(workspaceId, ticketId, userId, normaliserCreation(merged));
                 if (dossierId != null) {
                     linkTicketToDossier(workspaceId, ticketId, dossierId);
                     log.info("CREATION workflow termine -- dossier {} cree/lie au ticket {}",
@@ -706,7 +706,7 @@ public class WorkflowUseCases {
             // les associes / gerants saisis dans le wizard n'atterrissaient JAMAIS en base
             // (=> pre-remplissage impossible dans MODIFICATION). On consolide donc ici,
             // comme l'IMPORT le fait deja.
-            case CREATION -> applyCreationConsolidation(workspaceId, dossierId, data);
+            case CREATION -> applyCreationConsolidation(workspaceId, dossierId, normaliserCreation(data));
             // Lot Liquidation 4 etapes (2026-08-13) : la dissolution persiste desormais
             // AUSSI le liquidateur qu'elle nomme (+ le siege de la liquidation). Sans
             // cela, le workflow LIQUIDATION devait le re-saisir integralement — ce qui
@@ -1303,6 +1303,40 @@ public class WorkflowUseCases {
      * (comportement precedent conserve). Idempotent : re-soumettre la derniere etape
      * reecrit simplement les memes valeurs.
      */
+    /** Etapes de la creation et la cle sous laquelle la strategie range leur saisie. */
+    private static final String[][] ETAPES_CREATION = {
+            {"step1", "denomination"}, {"step2", "siege"}, {"step3", "capital"}, {"step4", "activite"},
+    };
+
+    /**
+     * Lot L6b (E14) : saisie de la creation relue sous les cles de la strategie.
+     *
+     * <p>La strategie range l'etape 1 sous {@code step1.denomination}, l'etape 2 sous
+     * {@code step2.siege}, l'etape 3 sous {@code step3.capital}. L'enregistrement automatique de
+     * l'ecran ({@code /save}) remplace ensuite {@code stepN} par la saisie A PLAT : ces cles
+     * disparaissent ({@code step1.denomination} redevient la chaine saisie). La consolidation du
+     * dossier ne trouvait plus rien : capital, ICE, adresse, ville et denomination de l'etape 1
+     * n'atteignaient jamais le dossier (constate sur la pile, parcours de creation), et le passage
+     * au deroulement de la demarche etait refuse ("$CAPITAL_CHIFFRES non renseignee").
+     *
+     * <p>Renvoie une COPIE ou chaque etape a plat recoit sa cle imbriquee (copie de la saisie a
+     * plat) ; une cle deja imbriquee (carte) est laissee telle quelle.
+     */
+    @SuppressWarnings("unchecked")
+    static Map<String, Object> normaliserCreation(Map<String, Object> data) {
+        if (data == null) return Map.of();
+        Map<String, Object> out = new HashMap<>(data);
+        for (String[] e : ETAPES_CREATION) {
+            if (!(data.get(e[0]) instanceof Map<?, ?> brut)) continue;
+            Map<String, Object> plat = (Map<String, Object>) brut;
+            if (plat.get(e[1]) instanceof Map<?, ?>) continue;
+            Map<String, Object> etape = new HashMap<>(plat);
+            etape.put(e[1], new HashMap<>(plat));
+            out.put(e[0], etape);
+        }
+        return out;
+    }
+
     private void applyCreationConsolidation(UUID workspaceId, UUID dossierId,
                                             Map<String, Object> data) {
         Map<String, Object> denom = pickStep(data, "denomination");
