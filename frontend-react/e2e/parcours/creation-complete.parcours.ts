@@ -6,7 +6,7 @@ import { API_URL } from './outils/env';
 import { analyserDocument, rapportDocument, texteDocx, textePdf, type Permis } from './outils/documents';
 import { calme, champ, pdfFictif, valider } from './outils/saisie';
 import {
-  KARIM, NADIA, SALMA, etape1, etape2, etape3, etape4, etape5, etape6, nouveauTicketCreation,
+  KARIM, NADIA, SALMA, suffixeUnique, etape1, etape2, etape3, etape4, etape5, etape6, nouveauTicketCreation,
   tolererPremiereOuverture, type Forme,
 } from './outils/creation';
 
@@ -289,8 +289,10 @@ for (const cas of CAS) {
     const nom = sarl ? 'creation-complete-sarl' : 'creation-complete-sarl-au';
 
     // ---- Statut 1 : ticket et parcours, etapes 1 a 6 -----------------------
-    const ticketId = await nouveauTicketCreation(page, aller, { titre: `Constitution ${cas.denomination}`, raison: cas.denomination.toUpperCase(), forme: cas.forme });
-    await etape1(page, cas.denomination);
+    // Denomination et ICE uniques par execution : le cabinet de test est partage par les parcours.
+    const denomination = cas.denomination.replace(/ (SARL( AU)?)$/, ` ${suffixeUnique()} $1`);
+    const ticketId = await nouveauTicketCreation(page, aller, { titre: `Constitution ${denomination}`, raison: denomination.toUpperCase(), forme: cas.forme });
+    const ice = await etape1(page, denomination);
     await etape2(page);
     await etape3(page);
     await etape4(page);
@@ -302,7 +304,7 @@ for (const cas of CAS) {
     const lus = await etape7(page, info);
     const texte = (t: string) => (lus.get(t)?.lignes ?? []).join('\n');
     const statuts = [...lus.keys()].find((t) => /^Statuts/.test(t)) as string;
-    expect(texte(statuts)).toContain(cas.denomination);
+    expect(texte(statuts)).toContain(denomination);
     expect(texte(statuts)).toContain('Karim');
     if (sarl) {
       expect(texte(statuts)).toContain('El Idrissi');
@@ -360,7 +362,7 @@ for (const cas of CAS) {
       const tout = lu.lignes.join('\n');
       expect(tout, `fiche ${f} : aucune donnee manquante`).not.toMatch(/Donn\u00e9e manquante|Non renseign/);
       // ICE saisi a l'etape 1 : la donnee, quelle que soit la mise en forme (groupes de chiffres ou non).
-      expect(tout, `fiche ${f} : ICE de l'etape 1`).toMatch(/001\s?234\s?567\s?000\s?089/);
+      expect(tout.replace(/(\d) (?=\d)/g, '$1'), `fiche ${f} : ICE de l'etape 1`).toContain(ice);
       for (const v of [IDENTIFIANTS.rc, IDENTIFIANTS.if, IDENTIFIANTS.tp, IDENTIFIANTS.cnss, '10 000', 'D\u00e9monstration']) {
         expect(tout, `fiche ${f} : ${v}`).toContain(v);
       }

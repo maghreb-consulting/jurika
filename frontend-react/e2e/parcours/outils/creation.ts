@@ -64,14 +64,29 @@ export async function nouveauTicketCreation(page: Page, aller: (c: string) => Pr
 }
 
 /** Etape 1 : denomination et certificat negatif (saisie manuelle, la lecture du certificat reste une aide). */
-export async function etape1(page: Page, denomination: string): Promise<void> {
-  await (await champ(page, 'ICE')).fill('001234567000089');
+/**
+ * ICE fictif UNIQUE par appel (15 chiffres) : un ICE designe une seule societe du cabinet, et les
+ * parcours d'un meme cabinet de test tournent en parallele (le serveur refuse le doublon).
+ */
+export function iceFictif(): string {
+  return `00${String(Date.now()).slice(-9)}${String(Math.floor(Math.random() * 10_000)).padStart(4, '0')}`;
+}
+
+/** Suffixe de denomination unique par execution (une denomination vivante est unique au cabinet). */
+export function suffixeUnique(): string {
+  return `${String(Date.now()).slice(-5)}${Math.floor(Math.random() * 100)}`;
+}
+
+/** Etape 1 ; renvoie l'ICE saisi. */
+export async function etape1(page: Page, denomination: string, ice = iceFictif()): Promise<string> {
+  await (await champ(page, 'ICE')).fill(ice);
   await (await champ(page, 'D\u00e9nomination (raison sociale)')).fill(denomination);
   await (await champ(page, 'Num\u00e9ro du certificat n\u00e9gatif')).fill('2026/123456');
   await (await champ(page, 'Date de d\u00e9livrance')).fill('2026-10-01');
   await (await champ(page, 'Activit\u00e9 port\u00e9e sur le certificat')).fill('Conseil en organisation et gestion des entreprises');
   await (await champ(page, 'B\u00e9n\u00e9ficiaire du certificat')).fill('Karim Benali');
   await valider(page);
+  return ice;
 }
 
 /** Etape 2 : siege, bail et certificat de propriete (pieces fictives). */

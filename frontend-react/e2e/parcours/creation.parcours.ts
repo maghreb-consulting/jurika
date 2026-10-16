@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { KARIM, SALMA, etape1, etape2, etape3, etape4, etape5, nouveauTicketCreation, tolererPremiereOuverture } from './outils/creation';
+import { KARIM, SALMA, suffixeUnique, etape1, etape2, etape3, etape4, etape5, nouveauTicketCreation, tolererPremiereOuverture } from './outils/creation';
 
 /**
  * Lot L6b (E13) : parcours de CREATION d'une SARL, etapes 1 a 5, dans le navigateur, sur la pile
@@ -21,9 +21,10 @@ test('parcours creation SARL : etapes 1 a 5, deux gerants aux remunerations diff
   test.setTimeout(400_000);
   tolererPremiereOuverture(sentinelle);
   await entrer('EMPLOYE');
-  await nouveauTicketCreation(page, aller, { titre: 'Constitution Atlas Parcours', raison: 'ATLAS PARCOURS SARL', forme: 'SARL' });
+  const denomination = `Atlas Etapes ${suffixeUnique()} SARL`;
+  await nouveauTicketCreation(page, aller, { titre: `Constitution ${denomination}`, raison: denomination.toUpperCase(), forme: 'SARL' });
   await capturer('creation-etape-1');
-  await etape1(page, 'Atlas Parcours SARL');
+  await etape1(page, denomination);
   await etape2(page);
   await etape3(page);
   await etape4(page);
