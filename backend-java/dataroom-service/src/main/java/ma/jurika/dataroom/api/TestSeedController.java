@@ -56,6 +56,9 @@ public class TestSeedController {
 
     private static final Logger log = LoggerFactory.getLogger(TestSeedController.class);
     private static final String DEFAULT_PASSWORD = "DemoPwd2026!";
+    /** Tables de traces a cles etrangeres RESTRICT, videes par le nettoyage (noms fixes). */
+    private static final java.util.List<String> TRACES_RESTRICT = java.util.List.of(
+            "dataroom_acces_client_historique", "dossier_reaffectations", "ticket_notes", "dossier_tp_versions");
 
     private final JdbcTemplate jdbc;
     private final BCryptPasswordEncoder bcrypt = new BCryptPasswordEncoder();
@@ -240,6 +243,15 @@ public class TestSeedController {
         // Lot L0 (E15, W5) : comme seedWorkspace, sans JWT ; sans ce reglage la
         // RLS ne laisserait voir aucune ligne a supprimer.
         poserWorkspace(workspaceId);
+        // Lot L6b (E16) : traces dont les cles etrangeres sont ON DELETE RESTRICT (voulu : une
+        // trace ne disparait pas avec son auteur). Route de test seulement : le cabinet de test
+        // les emporte, sinon la suppression du workspace echoue (500) et le cabinet reste.
+        for (String table : TRACES_RESTRICT) {
+            Boolean existe = jdbc.queryForObject("SELECT to_regclass(?) IS NOT NULL", Boolean.class, table);
+            if (Boolean.TRUE.equals(existe)) {
+                jdbc.update("DELETE FROM " + table + " WHERE workspace_id = ?", workspaceId);
+            }
+        }
         int ws = jdbc.update("DELETE FROM workspaces WHERE id = ?", workspaceId);
         log.info("TestSeed cleanup workspace={} workspaces={}", workspaceId, ws);
         return ResponseEntity.ok(Map.of(

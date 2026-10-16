@@ -89,6 +89,7 @@ class SeedE2eJurikaAppIT {
         jdbc.execute("SELECT set_config('app.current_workspace_id', '', false)");
         jdbc.execute("ALTER TABLE dataroom_documents DISABLE ROW LEVEL SECURITY");
         jdbc.execute("DELETE FROM dataroom_visibilite_evenements");
+        jdbc.execute("DELETE FROM dataroom_acces_client_historique");
         jdbc.execute("DELETE FROM dataroom_documents");
         jdbc.execute("DELETE FROM tickets");
         jdbc.execute("DELETE FROM entreprise_dossiers");
@@ -138,6 +139,30 @@ class SeedE2eJurikaAppIT {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM entreprise_dossiers WHERE workspace_id = ?",
                 Integer.class, cree)).isEqualTo(1);
         assertThat(TenantContext.get()).isNull();
+
+        var nettoyage = seed.cleanup(cree);
+
+        assertThat(nettoyage.getBody()).containsEntry("deleted", 1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM workspaces WHERE id = ?", Integer.class, cree))
+                .isZero();
+    }
+
+    /**
+     * Lot L6b (E16) : un parcours qui regle l'acces du client laisse une trace
+     * (dataroom_acces_client_historique, cles etrangeres ON DELETE RESTRICT, voulues pour la
+     * trace) ; le nettoyage du seed repondait alors 500 et le cabinet de test restait en base.
+     */
+    @Test
+    void le_nettoyage_supprime_aussi_un_cabinet_dont_l_acces_client_a_ete_regle() {
+        TenantContext.clear();
+        var reponse = seed.seedWorkspace(null, null, null, "EMPLOYE");
+        UUID cree = (UUID) reponse.getBody().get("workspaceId");
+        UUID dossier = (UUID) reponse.getBody().get("dossierId");
+        UUID employe = (UUID) reponse.getBody().get("employeUserId");
+        jdbc.update("""
+                INSERT INTO dataroom_acces_client_historique(workspace_id, dossier_id, acteur_id, nature, avant, apres)
+                VALUES (?, ?, ?, 'PERMISSIONS', '{"telechargement": true}'::jsonb, '{"telechargement": false}'::jsonb)
+                """, cree, dossier, employe);
 
         var nettoyage = seed.cleanup(cree);
 
