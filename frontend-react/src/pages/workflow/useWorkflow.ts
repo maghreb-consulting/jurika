@@ -163,6 +163,11 @@ function useWorkflowEngine(): UseWorkflowState {
   // Derniere saisie enregistree par cle d'etape (brouillon ou etape validee) : une saisie
   // identique n'est pas renvoyee (moteur d'enregistrement automatique, plus bas).
   const dernierEnregistreRef = useRef<Map<string, string>>(new Map());
+  // Lot L6b (E15) : envoi d'un sac fusionne apres une validation (defini plus bas, une fois
+  // le moteur d'envoi en place ; appele par executeStep).
+  const envoyerApresValidationRef = useRef<
+    (step: number, cle: string, contenu: Record<string, unknown>) => void
+  >(() => undefined);
   const ticketIdRef = useRef<string | undefined>(ticketId);
   const viewStepRef = useRef<number | null>(viewStep);
   // Lot L6 : les refs ne s'ecrivent pas pendant le rendu ; elles suivent l'etat juste apres,
@@ -273,9 +278,11 @@ function useWorkflowEngine(): UseWorkflowState {
           // Lot L7 (E12) : l'etape validee est au serveur ; son brouillon local n'a plus d'objet.
           const cle = `step${step}`;
           serveurConnuRef.current.set(cle, canonique(r.progress.data?.[cle]));
-          // Lot L6b (parcours d'import) : la saisie validee est au serveur, ENRICHIE par lui
-          // (step2.siege, step3.capital...). Le demontage de l'etape ne doit pas la renvoyer
-          // en brouillon : POST /save remplace le sac de l'etape et effacerait cet ajout.
+          // Lot L6b (E15) : la saisie validee est au serveur, ENRICHIE par lui (step2.siege,
+          // step3.capital...). Le demontage de l'etape ne doit pas la renvoyer telle quelle en
+          // brouillon : POST /save remplace le sac de l'etape et effacerait cet ajout. Seules
+          // les donnees d'ecran que la validation n'envoie pas (etat d'un formulaire garde en
+          // brouillon) sont ajoutees au sac du serveur, qui garde la main sur le reste.
           const getter = dirtyGettersRef.current.get(step);
           if (getter) {
             try {
@@ -285,6 +292,12 @@ function useWorkflowEngine(): UseWorkflowState {
                 const contenu: Record<string, unknown> = { ...saisie };
                 delete contenu.__stepKey;
                 dernierEnregistreRef.current.set(cleSaisie, JSON.stringify(contenu));
+                const sacServeur = r.progress.data?.[cleSaisie];
+                const serveur = sacServeur && typeof sacServeur === 'object' && !Array.isArray(sacServeur)
+                  ? (sacServeur as Record<string, unknown>) : {};
+                if (Object.keys(contenu).some((k) => !(k in serveur))) {
+                  envoyerApresValidationRef.current(step, cleSaisie, { ...contenu, ...serveur });
+                }
               }
             } catch {
               // getter en erreur : rien a marquer.
@@ -405,6 +418,12 @@ function useWorkflowEngine(): UseWorkflowState {
     },
     [],
   );
+
+  useEffect(() => {
+    envoyerApresValidationRef.current = (step, cle, contenu) => {
+      void envoyer(step, cle, contenu, JSON.stringify(contenu), false, false);
+    };
+  }, [envoyer]);
 
   const enregistrerSiChange = useCallback(
     (step: number, getter: DirtyGetter, fiable = false): Promise<void> => {

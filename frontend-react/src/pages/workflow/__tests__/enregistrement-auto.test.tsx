@@ -57,10 +57,12 @@ function Etape() {
  * Etape demontee a chaque changement d'etape, comme les pages de parcours (une etape = un
  * composant), avec un bouton qui VALIDE l'etape (execute-step).
  */
-function EtapeValidable() {
+function EtapeValidable({ formulaire = false }: { formulaire?: boolean }) {
   const { stepData, viewStep, registerDirty, executeStep: valider } = useWorkflow();
   const [nom, setNom] = useState(String(stepData[`step${viewStep}`]?.nom ?? ''));
-  useStepAutosave(viewStep, () => ({ nom }), registerDirty);
+  // `formulaire` : l'etat de l'ecran, garde en brouillon seulement (comme step2.succursaleForm
+  // de la succursale), que la validation n'envoie pas.
+  useStepAutosave(viewStep, () => (formulaire ? { nom, formulaire: { nom } } : { nom }), registerDirty);
   return (
     <div>
       <p>Étape affichée : {viewStep}</p>
@@ -73,9 +75,9 @@ function EtapeValidable() {
   );
 }
 
-function ParcoursValidable() {
+function ParcoursValidable({ formulaire = false }: { formulaire?: boolean }) {
   const { viewStep } = useWorkflow();
-  return <EtapeValidable key={viewStep} />;
+  return <EtapeValidable key={viewStep} formulaire={formulaire} />;
 }
 
 function Parcours({ ouvert }: { ouvert: boolean }) {
@@ -220,5 +222,35 @@ describe('enregistrement automatique des saisies du parcours', () => {
     await laisserFiler(ATTENTE_MAX_MS * 2);
     // Aucun brouillon de l'etape 2 apres sa validation : il ecraserait step2.siege.
     expect(save.mock.calls.filter((c) => (c[2] as Record<string, unknown>).step2 !== undefined)).toEqual([]);
+  });
+
+  it('une donnee d’ecran gardee en brouillon seulement survit a la validation (fusion avec le sac du serveur)', async () => {
+    // Defaut trouve au lot L6b (parcours « succursale ») : l'etat du formulaire de l'etape 2
+    // (succursaleForm) n'est envoye qu'en brouillon ; apres validation, le sac de l'etape ne
+    // le portait plus et, au rechargement, l'etape 3 generait l'annonce avec une succursale vide.
+    executeStep.mockReset();
+    executeStep.mockImplementation(async (_t: string, step: number, payload: Record<string, unknown>) => ({
+      progress: {
+        ...progression(),
+        currentStep: step + 1,
+        data: { [`step${step}`]: { ...payload, siege: { ...payload } } },
+      },
+      stepData: { ...payload, siege: { ...payload } },
+      advanced: true,
+    }));
+    render(
+      <WorkflowDataProvider fallback={<p>Chargement</p>}>
+        <ParcoursValidable formulaire />
+      </WorkflowDataProvider>,
+    );
+    await laisserFiler(0);
+    fireEvent.change(screen.getByLabelText('Nom'), { target: { value: 'ZETA' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Valider et continuer' }));
+    await laisserFiler(0);
+    await laisserFiler(ATTENTE_MAX_MS * 2);
+    const envois = save.mock.calls.filter((c) => (c[2] as Record<string, unknown>).step2 !== undefined);
+    expect(envois).toHaveLength(1);
+    // Le sac du serveur gagne (niche siege gardee) ; la donnee d'ecran est ajoutee.
+    expect(envois[0][2]).toEqual({ step2: { nom: 'ZETA', siege: { nom: 'ZETA' }, formulaire: { nom: 'ZETA' } } });
   });
 });
