@@ -4,11 +4,17 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import ma.jurika.auth.domain.port.DroitSuppressionDataroomRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
 /** Lot L1 : colonne users.droit_suppression_dataroom (V35), filtre workspace explicite. */
+/**
+ * Lot L6b : lectures en transaction (contexte du cabinet pose pour la RLS) ; le controleur
+ * les appelait hors transaction (500 sur la page Equipe, sentinelle 'hors-transaction').
+ */
 @Repository
+@Transactional(readOnly = true)
 public class DroitSuppressionDataroomRepositoryAdapter implements DroitSuppressionDataroomRepository {
 
     @PersistenceContext
@@ -35,6 +41,7 @@ public class DroitSuppressionDataroomRepositoryAdapter implements DroitSuppressi
     }
 
     @Override
+    @Transactional
     public void definir(UUID workspaceId, UUID userId, boolean accorde) {
         em.createNativeQuery(
                         "UPDATE users SET droit_suppression_dataroom = ?1 WHERE id = ?2 AND workspace_id = ?3")
