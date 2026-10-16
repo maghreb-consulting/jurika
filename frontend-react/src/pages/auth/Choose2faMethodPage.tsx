@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { PageAccueil, TitreAccueil } from '../../components/auth/PageAccueil';
 import { Badge } from '../../components/ui/Badge';
+import { copierTexte } from '../../lib/pressePapiers';
 import { Button, Spinner } from '../../components/ui/Button';
 import { Case } from '../../components/ui/Choix';
 import { Skeleton } from '../../components/ui/LoadingSkeleton';
@@ -164,7 +165,8 @@ export function Choose2faMethodPage() {
   }
 
   function copyRecoveryCodes() {
-    navigator.clipboard.writeText(recoveryCodes.join('\n')).catch(() => {});
+    // Lot L6b (E13) : copie aussi en HTTP (navigator.clipboard absent hors contexte securise).
+    void copierTexte(recoveryCodes.join('\n'));
   }
 
   function finalize() {

@@ -8,6 +8,7 @@ import { PhoneNumberInput } from '../../components/ui/PhoneNumberInput';
 import { isValidPhone } from '../../components/ui/phoneNumber';
 import { authService } from '../../services/auth.service';
 import { extractError } from '../../lib/api';
+import { copierTexte } from '../../lib/pressePapiers';
 import { firstError, requiredMsg, emailMsg } from '../../lib/formValidation';
 import { useCurrentUser } from '../../store/authStore';
 
@@ -98,7 +99,8 @@ export function InviteClientDrawer({ open, dossierId, raisonSociale, onClose }: 
       `Mot de passe temporaire : ${result.temporaryPassword}`,
     ];
     const creds = lignes.join('\n');
-    navigator.clipboard.writeText(creds).catch(() => {});
+    // Lot L6b (E13) : copie aussi en HTTP (navigator.clipboard absent hors contexte securise).
+    void copierTexte(creds);
   }
 
   function reset() {

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { Lien } from '../ui/Lien';
 import { Message } from '../ui/Message';
+import { copierTexte } from '../../lib/pressePapiers';
 
 interface SignupSuccessProps {
   workspaceCode: string;
@@ -31,7 +32,9 @@ export function SignupSuccess({ workspaceCode, email, contactEmail, selectedPlan
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
-    navigator.clipboard.writeText(workspaceCode).then(() => {
+    // Lot L6b (E13) : copie aussi en HTTP (navigator.clipboard absent hors contexte securise).
+    void copierTexte(workspaceCode).then((ok) => {
+      if (!ok) return;
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
