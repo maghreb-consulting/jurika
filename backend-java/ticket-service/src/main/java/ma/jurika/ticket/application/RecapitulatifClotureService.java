@@ -232,8 +232,11 @@ public class RecapitulatifClotureService {
         }
 
         // --- Les identifiants --------------------------------------------
-        Identifiants identifiants = dossiers
-                .findById(workspaceId, ticket.dossierId())
+        // Lot L6b (E15) : un ticket sans dossier (societe pas encore choisie a l'etape 1)
+        // n'a pas d'identifiants ; la recherche par un identifiant nul levait (HTTP 500).
+        Identifiants identifiants = (ticket.dossierId() == null
+                ? java.util.Optional.<EntrepriseDossier>empty()
+                : dossiers.findById(workspaceId, ticket.dossierId()))
                 .map(RecapitulatifClotureService::identifiants)
                 .orElse(new Identifiants(null, null, null, null, null));
 
