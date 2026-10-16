@@ -12,6 +12,7 @@ import {
   MetaTicketParcours,
 } from '../../components/workflow/EnTeteParcours';
 import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
+import { SqueletteTexte, SqueletteZone } from '../../components/ui/LoadingSkeleton';
 import { ticketService } from '../../services/ticket.service';
 import { workflowService } from '../../services/workflow.service';
 import { dataroomService } from '../../services/dataroom.service';
@@ -129,6 +130,9 @@ function ImportWorkflowPageBody() {
   } = useWorkflow();
   const [showCancel, setShowCancel] = useState(false);
   const [ticketForme, setTicketForme] = useState<SarlForm | null>(null);
+  // Lot L6b (E15) : raison sociale saisie a l'ouverture du ticket (celle du dossier cree
+  // avec lui), proposee a l'etape 1. `undefined` tant que le dossier n'est pas lu.
+  const [raisonSocialeDossier, setRaisonSocialeDossier] = useState<string | null | undefined>(undefined);
   const [datasetWarnings, setDatasetWarnings] = useState<string[]>([]);
   const [finalizing, setFinalizing] = useState(false);
 
@@ -140,12 +144,14 @@ function ImportWorkflowPageBody() {
       .then((list) => {
         if (cancelled) return;
         const d = list.find((x) => x.id === ticket.dossierId);
+        setRaisonSocialeDossier(d?.raisonSociale?.trim() || null);
         const forme = (d?.formeJuridique ?? '').toString().toUpperCase();
         if (forme === 'SARL_AU' || forme === 'SARL') {
           setTicketForme(forme as SarlForm);
         }
       })
       .catch(() => {
+        setRaisonSocialeDossier(null);
         /* best-effort : fallback lecture depuis stepData.step1. */
       });
     return () => { cancelled = true; };
@@ -390,11 +396,16 @@ function ImportWorkflowPageBody() {
 
       <section aria-label="Contenu de l’étape" className="rounded-xl border border-border bg-bg-raised p-6 shadow-card">
         <fieldset disabled={superviseur} className="m-0 min-w-0 border-0 p-0">
-        {step === 1 && (
+        {step === 1 && ticket?.dossierId && raisonSocialeDossier === undefined && (
+          <SqueletteZone libelle="Chargement de l’étape…">
+            <SqueletteTexte lignes={4} />
+          </SqueletteZone>
+        )}
+        {step === 1 && (!ticket?.dossierId || raisonSocialeDossier !== undefined) && (
           <Step1Denomination
             existing={stepData.step1}
             lockedFormeJuridique={ticketForme}
-            defaultDenomination={ticket?.titre}
+            defaultDenomination={raisonSocialeDossier}
             importMode
             saving={saving}
             onSubmit={(p) => submit(1, p)}

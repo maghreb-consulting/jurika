@@ -12,6 +12,7 @@ import {
   MetaTicketParcours,
 } from '../../components/workflow/EnTeteParcours';
 import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
+import { SqueletteTexte, SqueletteZone } from '../../components/ui/LoadingSkeleton';
 import { ticketService } from '../../services/ticket.service';
 import { workflowService } from '../../services/workflow.service';
 import { dataroomService } from '../../services/dataroom.service';
@@ -147,6 +148,9 @@ function CreationSarlWorkflowPageBody() {
   // ticket, lue depuis le dossier rattache et propagee aux steps en
   // lecture seule. Plus jamais redemandee a l'utilisateur.
   const [ticketForme, setTicketForme] = useState<SarlForm | null>(null);
+  // Lot L6b (E15) : raison sociale saisie a l'ouverture du ticket (celle du dossier cree
+  // avec lui), proposee a l'etape 1. `undefined` tant que le dossier n'est pas lu.
+  const [raisonSocialeDossier, setRaisonSocialeDossier] = useState<string | null | undefined>(undefined);
   // 2026-08-12 (consultation lecture seule) — miroir `ref` du flag `readOnly`
   // (calculé plus bas après chargement de progress/ticket). Les callbacks
   // mémoïsées (onPieceUploaded / onDocumentGenerated) le lisent à l'exécution
@@ -160,12 +164,14 @@ function CreationSarlWorkflowPageBody() {
       .then((list) => {
         if (cancelled) return;
         const d = list.find((x) => x.id === ticket.dossierId);
+        setRaisonSocialeDossier(d?.raisonSociale?.trim() || null);
         const forme = (d?.formeJuridique ?? '').toString().toUpperCase();
         if (forme === 'SARL_AU' || forme === 'SARL') {
           setTicketForme(forme as SarlForm);
         }
       })
       .catch(() => {
+        setRaisonSocialeDossier(null);
         // Best-effort : si on ne peut pas lire la forme du dossier on
         // tombe sur le legacy (lecture depuis stepData.step1).
       });
@@ -514,11 +520,16 @@ function CreationSarlWorkflowPageBody() {
   // `readOnly`. `effectiveRegisterDirty` est neutralisé en lecture seule.
   const stepBodyExcept7 = (
     <>
-      {step === 1 && (
+      {step === 1 && ticket?.dossierId && raisonSocialeDossier === undefined && (
+        <SqueletteZone libelle="Chargement de l’étape…">
+          <SqueletteTexte lignes={4} />
+        </SqueletteZone>
+      )}
+      {step === 1 && (!ticket?.dossierId || raisonSocialeDossier !== undefined) && (
         <Step1Denomination
           existing={stepData.step1}
           lockedFormeJuridique={ticketForme}
-          defaultDenomination={ticket?.titre}
+          defaultDenomination={raisonSocialeDossier}
           saving={saving}
           onSubmit={(p) => submit(1, p)}
           onSave={(p) => draft(1, { step1: p })}
