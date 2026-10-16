@@ -288,7 +288,12 @@ function PvAgoWorkflowPageBody() {
   const seance = useSeanceForm({
     formeJuridique: isAU ? 'SARL_AU' : 'SARL',
     societe: societeInput,
-    defaults: { type: 'ordinaire', date: dateAgo },
+    // L6b (E15) : la convocation de l'étape 1 arrive au PV (date et heure), sans être redemandée.
+    defaults: {
+      type: 'ordinaire',
+      date: dateAgo,
+      ...(convocationDate ? { convDate: convocationDate, convHeure: convocationHeure || '' } : {}),
+    },
     // Fix D1/PV AGO — sans eux la présence du PV AGO repartait d'un associé vierge.
     initialAssocies: bdAssocies,
     initialGerants: bdGerants,
@@ -1012,7 +1017,7 @@ function PvAgoWorkflowPageBody() {
             </header>
 
             {/* Sous-formulaire de séance PARTAGÉ (réutilisé par les documents de séance). */}
-            <SeanceFormFields form={seance} sections={SEANCE_SECTIONS} />
+            <SeanceFormFields form={seance} sections={SEANCE_SECTIONS} hideConvDate={!!convocationDate} />
 
             {/* Bloc approbation des comptes. */}
             <div className="rounded-xl border border-border bg-bg-raised p-4">
@@ -1125,6 +1130,8 @@ function PvAgoWorkflowPageBody() {
                   <div key={i} className="grid items-end gap-2 md:grid-cols-[1fr_10rem_auto]">
                     <TextField
                       label={i === 0 ? 'Poste d’affectation' : undefined}
+                      // L6b (E15) : les lignes suivantes, sans libellé visible, gardent un nom.
+                      aria-label={i === 0 ? undefined : `Poste d’affectation ${i + 1}`}
                       value={a.libelle}
                       onChange={(e) =>
                         setAffectations((p) => p.map((x, j) => (j === i ? { ...x, libelle: e.target.value } : x)))
@@ -1133,6 +1140,7 @@ function PvAgoWorkflowPageBody() {
                     />
                     <TextField
                       label={i === 0 ? 'Montant (MAD)' : undefined}
+                      aria-label={i === 0 ? undefined : `Montant du poste ${i + 1} (MAD)`}
                       type="number"
                       value={a.montant}
                       onChange={(e) =>
