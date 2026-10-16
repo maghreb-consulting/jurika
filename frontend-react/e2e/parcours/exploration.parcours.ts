@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { test, expect, calme, type Role } from './fixtures';
 
 /**
@@ -118,9 +118,13 @@ const ECRANS: Record<Role, Ecran[]> = {
   ],
 };
 
-/** Clique chaque onglet actif de la zone principale. */
-async function parcourirOnglets(page: Page): Promise<number> {
-  const onglets = page.locator('main [role="tab"]:not([disabled]):not([aria-disabled="true"])');
+/**
+ * Clique chaque onglet actif de la zone principale, ou de la fenetre ouverte : derriere une fenetre
+ * modale, les onglets de la page sont inertes (le clic attendait sans fin : defaut du test, vu le
+ * 2026-10-16 sur /design et la Data Room).
+ */
+async function parcourirOnglets(page: Page, dans?: Locator): Promise<number> {
+  const onglets = (dans ?? page.locator('main')).locator('[role="tab"]:not([disabled]):not([aria-disabled="true"])');
   const n = await onglets.count();
   for (let i = 0; i < n; i++) {
     const o = onglets.nth(i);
@@ -141,7 +145,7 @@ async function ouvrirFermer(page: Page, nom: string | RegExp): Promise<void> {
   const fenetre = page.getByRole('dialog').last();
   await expect.soft(fenetre, `fenetre ouverte par ${String(nom)}`).toBeVisible();
   await calme(page);
-  await parcourirOnglets(page);
+  await parcourirOnglets(page, fenetre);
   await page.keyboard.press('Escape');
   await expect.soft(page.getByRole('dialog'), `fenetre fermee (Echap) : ${String(nom)}`).toHaveCount(0);
 }
