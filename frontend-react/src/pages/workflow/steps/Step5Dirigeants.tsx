@@ -378,7 +378,7 @@ export function Step5Dirigeants({
     {};
 
   // Agrégation des mandats (fonction pure, cf. `agregerGerance`).
-  const { dureeGerance, remunerationMode, remunerationMontant } =
+  const { dureeGerance, remunerationMode, remunerationMontant, remunerationPhrase } =
     agregerGerance(dirigeants);
 
   /*
@@ -461,7 +461,9 @@ export function Step5Dirigeants({
     // mais elles portent maintenant la MÊME valeur, agrégée des dirigeants.
     dureeMandat: dureeGerance,
     dureeGerance,
-    remunerationMode: remunerationMode ? REMUNERATION_PHRASES[remunerationMode] : '',
+    // Lot L6b (E13) : modes différents entre gérants, phrase énumérée (jamais vide : le serveur
+    // refusait l'étape en 400 « Mode de rémunération de la gérance requis. »).
+    remunerationMode: remunerationMode ? REMUNERATION_PHRASES[remunerationMode] : remunerationPhrase,
     // 2026-08 (persistance) — clé interne persistée pour ré-hydrater le <select>
     // (la phrase ci-dessus reste consommée par le mapper/builder).
     remunerationModeKey: remunerationMode,
