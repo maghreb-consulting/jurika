@@ -1,0 +1,196 @@
+name: e2e-parcours
+
+# Lot L6b (E13) -- parcours de bout en bout dans le navigateur, sur une PILE REELLE.
+#
+# Demande du 2026-10-16 : chaque test echoue sur une reponse 4xx/5xx inattendue, une erreur de
+# la console du navigateur ou un document produit qui contient un blanc ou "VALEUR MANQUANTE".
+# Ce job monte la pile complete comme base-vierge.yml (volumes neufs, .env d'exemple, secrets
+# aleatoires, cles JWT, corpus FICTIF de test), active la route de seed de test (cabinets crees
+# et supprimes par la suite elle-meme), publie le front et la passerelle sur le runner, puis
+# lance `npm run e2e:parcours` (frontend-react/playwright.parcours.config.ts).
+#
+# Contexte NON securise, comme le Z440 servi en HTTP : le front est ouvert sous le nom
+# jurika.test (fichier hosts), jamais sous localhost (que le navigateur traite en contexte
+# securise : crypto.randomUUID, presse-papiers... y existent et masqueraient un defaut).
+#
+# Exclus ici, et dits : les tests etiquetes @corpus-reel (actes generes depuis le corpus REEL du
+# cabinet, non publie) ; ils se lancent sur le Z440.
+#
+# Bloquant pour les PR : declenche sur toute pull_request vers main (et push sur main, et a la
+# demande). Pour qu'il EMPECHE la fusion, la regle de protection de la branche main doit exiger
+# le controle "e2e-parcours / Parcours de bout en bout" (reglage du depot, hors fichier).
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-parcours-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  parcours:
+    name: Parcours de bout en bout
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    env:
+      COMPOSE_ARGS: >-
+        -f infrastructure/docker-compose.yml
+        -f infrastructure/docker-compose.services.yml
+        -f infrastructure/docker-compose.local.yml
+        -f infrastructure/docker-compose.ci-e2e.yml
+        --env-file .env
+        --env-file .env.local
+      COMPOSE_PROFILES: mailhog
+      HOTE: jurika.test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Nom d'hote du front (contexte non securise)
+        run: echo "127.0.0.1 ${HOTE}" | sudo tee -a /etc/hosts
+
+      - name: Fichiers d'environnement (valeurs d'exemple, secrets aleatoires)
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+          cp .env.local.server.example .env.local
+          for f in .env .env.local; do
+            while IFS= read -r cle; do
+              valeur="$(openssl rand -hex 24)"
+              sed -i "s|^${cle}=.*|${cle}=${valeur}|" "$f"
+            done < <(grep -oE '^[A-Z0-9_]+=CHANGE_ME[^[:space:]]*' "$f" | cut -d= -f1)
+          done
+          sed -i "s|^JURIKA_LAN_HOST=.*|JURIKA_LAN_HOST=${HOTE}|" .env.local
+          # Origine du front autorisee par la passerelle (CORS).
+          sed -i "s|^CORS_ALLOWED_ORIGINS=.*|CORS_ALLOWED_ORIGINS=http://${HOTE},http://${HOTE}:80|" .env.local
+          grep -q "^CORS_ALLOWED_ORIGINS=http://${HOTE}," .env.local
+          # Route de seed de test (profil hors prod) : les parcours creent leurs cabinets.
+          echo "JURIKA_TEST_SEED_ENABLED=true" >> .env.local
+          corpus="$GITHUB_WORKSPACE/backend-java/ai-service/src/test/resources/corpus-test/CORPUS_TEST"
+          test -f "$corpus/INDEX_CORPUS.xlsx"
+          sed -i "s|^JURIKA_CORPUS_DIR=.*|JURIKA_CORPUS_DIR=${corpus}|" .env.local
+          grep -q "^JURIKA_CORPUS_DIR=${corpus}\$" .env.local
+          grep -q '^JURIKA_APP_PASSWORD=' .env.local
+          if grep -qE '^[A-Z0-9_]+=CHANGE_ME' .env .env.local; then
+            echo "Valeur CHANGE_ME restante" >&2
+            exit 1
+          fi
+
+      - name: Cles JWT RS256 (comme start-local.sh)
+        run: |
+          set -euo pipefail
+          mkdir -p infrastructure/secrets/jwt
+          openssl genrsa -out infrastructure/secrets/jwt/jwt-private.pem 2048
+          openssl pkcs8 -topk8 -inform PEM -in infrastructure/secrets/jwt/jwt-private.pem \
+            -out infrastructure/secrets/jwt/jwt-private-pkcs8.pem -nocrypt
+          openssl rsa -in infrastructure/secrets/jwt/jwt-private.pem -pubout \
+            -out infrastructure/secrets/jwt/jwt-public.pem
+          sudo chown -R 1000:1000 infrastructure/secrets/jwt
+
+      - name: Ports publies (front et passerelle seulement, sur 127.0.0.1)
+        run: |
+          set -euo pipefail
+          BASE="-f infrastructure/docker-compose.yml -f infrastructure/docker-compose.services.yml -f infrastructure/docker-compose.local.yml --env-file .env --env-file .env.local"
+          {
+            echo "services:"
+            for s in $(docker compose $BASE config --services); do
+              case "$s" in
+                frontend) printf '  %s:\n    ports: !override ["127.0.0.1:80:80"]\n' "$s" ;;
+                gateway-service) printf '  %s:\n    ports: !override ["127.0.0.1:8080:8080"]\n' "$s" ;;
+                *) printf '  %s:\n    ports: !reset []\n' "$s" ;;
+              esac
+            done
+          } > infrastructure/docker-compose.ci-e2e.yml
+          cat infrastructure/docker-compose.ci-e2e.yml
+          docker compose $COMPOSE_ARGS config --quiet
+          # La route de seed doit atteindre le conteneur dataroom.
+          docker compose $COMPOSE_ARGS config --format json \
+            | python3 -c "import sys,json; e=json.load(sys.stdin)['services']['dataroom-service']['environment']; assert e.get('JURIKA_TEST_SEED_ENABLED')=='true', e.get('JURIKA_TEST_SEED_ENABLED')"
+
+      - name: Construction des images
+        run: docker compose $COMPOSE_ARGS build --parallel
+
+      - name: Demarrage
+        run: docker compose $COMPOSE_ARGS up -d
+
+      - name: Attente de tous les conteneurs sains
+        run: |
+          set -euo pipefail
+          ATTENDUS=(
+            jurika-postgres jurika-redis jurika-rabbitmq jurika-mailhog
+            jurika-discovery jurika-gateway jurika-auth jurika-ticket
+            jurika-workflow jurika-dataroom jurika-ai jurika-supervision
+            jurika-dashboard jurika-billing
+            jurika-realtime jurika-ocr jurika-kie
+            jurika-frontend
+          )
+          limite=$(( $(date +%s) + 1200 ))
+          while true; do
+            sains=0; attente=""
+            for c in "${ATTENDUS[@]}"; do
+              etat=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}sans-controle:{{.State.Status}}{{end}}' "$c" 2>/dev/null || echo "absent")
+              if [[ "$etat" == "healthy" || "$etat" == "sans-controle:running" ]]; then
+                sains=$((sains + 1))
+              else
+                attente="$attente $c=$etat"
+              fi
+            done
+            echo "$sains/${#ATTENDUS[@]} conteneurs prets${attente:+ ; en attente :$attente}"
+            [[ $sains -eq ${#ATTENDUS[@]} ]] && break
+            if [[ $(date +%s) -gt $limite ]]; then
+              echo "::error title=Delai depasse::Non prets :$attente"
+              exit 1
+            fi
+            sleep 10
+          done
+          curl -fsS -o /dev/null "http://${HOTE}/"
+          curl -fsS -o /dev/null "http://${HOTE}:8080/actuator/health"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend-react/package-lock.json
+
+      - name: Dependances et navigateur
+        working-directory: frontend-react
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Types des parcours
+        working-directory: frontend-react
+        run: npx tsc -p e2e/parcours/tsconfig.json
+
+      - name: Parcours (hors @corpus-reel)
+        working-directory: frontend-react
+        env:
+          CI: 'true'
+          E2E_BASE_URL: http://jurika.test
+          E2E_API_URL: http://jurika.test:8080/api/v1
+        run: npm run e2e:parcours -- --grep-invert @corpus-reel
+
+      - name: Rapport et captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-parcours
+          path: |
+            frontend-react/test-results/parcours
+            frontend-react/test-results/parcours-rapport
+            frontend-react/test-results/parcours-artefacts
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Journaux de la pile en cas d'echec
+        if: failure()
+        run: |
+          docker compose $COMPOSE_ARGS ps -a || true
+          for c in $(docker ps -a --format '{{.Names}}' | grep '^jurika-' | sort); do
+            echo "::group::$c"
+            docker logs --tail=200 "$c" 2>&1 || true
+            echo "::endgroup::"
+          done
