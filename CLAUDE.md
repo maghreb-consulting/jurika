@@ -315,6 +315,15 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   `AgentBriefingController` (`/api/v1/agent/briefing/**`) et l'appel au raisonnement d'ai-service :
   des briefings sont encore generes sans aucun lecteur (motif 9, cout du modele). A retirer (test
   d'abord ; la table des briefings reste, migration intouchable) ou a desactiver.
+- **Tableaux de bord (refonte L6b E17) : donnees absentes du serveur**, rien invente cote front :
+  delais du superviseur sans nom du dossier (rejoint par la liste des dossiers) ; motif de risque
+  non accentue ("Delai legal depasse", traduit par le front) ; dossiers a risque sans date ni
+  demarche ; delais en retard absents des tranches J-30 ; sante des services sans billing,
+  dashboard, gateway, kie, ocr ; aucun prenom de l'utilisateur connecte (accueil sur le debut du
+  courriel) ; page Tickets sans filtre lu dans l'URL (les indicateurs menent a la liste complete) ;
+  temps moyen de cloture a 0 quand rien n'est clos (COALESCE, masque par le front) ; colonne "En
+  production" de la supervision sans les tickets a la creation ; affichage sous 768 px non verifie
+  a l'ecran (harnais en 1366 et 1920 seulement).
 - **Audit de billing jamais ecrit** (motif 9) : `JdbcAuditEventEmitter` de billing ecrit dans
   `audit_log` de `jurika_billing`, qui n'a pas cette table ("bad SQL grammar", journalise en WARN
   seulement, ex. `BILLING_PAIEMENT_VALIDE`) : les traces de paiement sont perdues sans bruit.
