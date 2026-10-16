@@ -34,8 +34,8 @@ async function versLesTickets(page: Page, aller: (c: string) => Promise<void>) {
 }
 
 /** Convocation de l'etape 1 (date et heure), la date de l'assemblee suit (regle des 16 jours). */
-async function convoquer(page: Page) {
-  await page.locator('main').getByLabel('Date de convocation', { exact: true }).first().fill(CONVOCATION.date);
+async function convoquer(page: Page, date: string = CONVOCATION.date) {
+  await page.locator('main').getByLabel('Date de convocation', { exact: true }).first().fill(date);
   await page.locator('main').getByLabel('Heure de convocation', { exact: true }).first().fill(CONVOCATION.heure);
 }
 
@@ -143,10 +143,10 @@ test.describe('parcours actes', () => {
     await (await champ(page, 'Conventions r\u00e9glement\u00e9es intervenues')).selectOption('non');
     await validerEtape(page);
 
-    const pv = await genererDocument(page, info, 'approbation', 'pv-approbation-comptes');
+    const pv = await genererDocument(page, info, 'Approbation des comptes (AGO', 'pv-approbation-comptes');
     verifierRedactionSeance(pv.texte, CONVOCATION.affichee);
-    expect(pv.texte).toContain('50 000');
-    await validerDocument(page, 'approbation');
+    expect(pv.texte, 'resultat de l\'exercice').toMatch(/50\s000/);
+    await validerDocument(page, 'Approbation des comptes (AGO');
     await validerEtape(page);
     await validerEtape(page);
     await finaliser(page, ticketId);
@@ -207,7 +207,9 @@ test.describe('parcours actes', () => {
     const ticketId = await ouvrirTicket(page, { titre: `Dissolution anticipee ${s.raisonSociale}`, type: 'DISSOLUTION' });
 
     await choisirSociete(page, s.raisonSociale);
-    await convoquer(page);
+    // Dissolution passee (la liquidation refuse une date de dissolution future) : convocation
+    // le 01/09/2026, assemblee le 17/09/2026.
+    await convoquer(page, '2026-09-01');
     const main = page.locator('main');
     await main.locator('#dissolution-nature').selectOption('volonte_associes');
     const dateAge = await main.getByLabel('Date de l\u2019AGE *').inputValue();
@@ -232,7 +234,7 @@ test.describe('parcours actes', () => {
     await (await champ(page, 'Quitus donn\u00e9 \u00e0 la g\u00e9rance')).selectOption('oui');
     await (await champ(page, 'Dix salari\u00e9s ou plus')).selectOption('non');
     const pv = await genererDocument(page, info, 'PV', 'pv-dissolution');
-    verifierRedactionSeance(pv.texte, CONVOCATION.affichee);
+    verifierRedactionSeance(pv.texte, '01/09/2026');
     expect(pv.texte).toContain('liquidateur');
     await validerDocument(page, 'PV');
     await genererDocument(page, info, 'Annonce', 'annonce-dissolution');
@@ -247,19 +249,60 @@ test.describe('parcours actes', () => {
     await versLesTickets(page, aller);
     const liquidation = await ouvrirTicket(page, { titre: `Cloture de la liquidation ${s.raisonSociale}`, type: 'LIQUIDATION' });
     await choisirSociete(page, s.raisonSociale);
-    await expect(page.locator('main'), 'liquidateur nomme a la dissolution, lu en base').toContainText(ASSOCIES[0].nom);
-    await convoquer(page);
+    const liq = page.locator('main');
+    await expect(liq.getByLabel('Nom *').first(), 'liquidateur nomme a la dissolution, lu en base').toHaveValue(ASSOCIES[0].nom);
+    await expect(liq.getByLabel('Nationalit\u00e9', { exact: true }).first(), 'nationalite du liquidateur reprise').toHaveValue('marocaine');
+    await (await champ(page, 'R\u00e9mun\u00e9ration du liquidateur')).selectOption('non');
+    // La cloture se tient 15 jours au moins apres la dissolution (17/09/2026) : convocation le
+    // 20/09/2026, assemblee de cloture fixee 16 jours plus tard (06/10/2026).
+    await liq.getByLabel('Date de convocation', { exact: true }).first().fill('2026-09-20');
+    await liq.getByLabel('Heure de convocation', { exact: true }).first().fill('10:00');
+    await expect(liq.getByLabel('Date de l\u2019AGE de cl\u00f4ture *')).toHaveValue('2026-10-06');
+    await (await champ(page, 'Total actif (MAD)')).fill('120000');
+    await (await champ(page, 'Total passif (MAD)')).fill('20000');
     await confirmerPropositions(page);
     await validerEtape(page);
-    for (let i = 0; i < 4; i++) {
-      const pvLiq = page.locator('main').getByRole('button', { name: /^(G\u00e9n\u00e9rer|R\u00e9g\u00e9n\u00e9rer)$/ }).first();
-      if (!(await pvLiq.isVisible().catch(() => false))) break;
-      await remplirSeance(page);
-      const doc = await genererDocument(page, info, 'PV', `pv-liquidation-${i + 1}`);
-      verifierRedactionSeance(doc.texte);
-      await validerDocument(page, 'PV');
-      await validerEtape(page);
-    }
+    // Etape 2 : seance de cloture, compte definitif, PV de cloture et annonce.
+    await remplirSeance(page);
+    const texte = async (lib: string, v: string) => { const c = await champSiPresent(page, lib); if (c && !(await c.inputValue())) await c.fill(v); };
+    const choix = async (lib: string, v: string | number) => {
+      const c = await champSiPresent(page, lib);
+      if (!c || (await c.inputValue())) return;
+      // Valeur cherchee parmi les options (valeur ou libelle commencant par le texte), sinon l'option n.
+      const idx = typeof v === 'number' ? v : await c.evaluate((el, t) => [...(el as HTMLSelectElement).options]
+        .findIndex((o) => o.value && (o.value.toLowerCase().startsWith(t) || o.text.toLowerCase().startsWith(t))), v.toLowerCase());
+      await c.selectOption({ index: idx > 0 ? idx : 1 }, { timeout: 15_000 });
+    };
+    await texte('Folio du registre', '13');
+    await choix('Un commissaire aux comptes est-il en fonction', 'non');
+    await texte('Inscription de la dissolution au RC', '2026-09-25');
+    await texte('Journal d\u2019annonces l\u00e9gales de la nomination', 'Journal fictif des annonces');
+    await texte('Date de publication', '2026-09-25');
+    await choix('Assembl\u00e9e convoqu\u00e9e par', 1);
+    await texte('R\u00e9sum\u00e9 des op\u00e9rations de liquidation', 'R\u00e9alisation de l\u2019actif et apurement du passif.');
+    await texte('Frais et honoraires de liquidation', '5000');
+    await choix('Les comptes bancaires sont-ils cl\u00f4tur\u00e9s', 'oui');
+    await choix('Le compte d\u00e9finitif est-il approuv\u00e9', 'oui');
+    await choix('Retenue \u00e0 la source sur le boni', 1);
+    await texte('Modalit\u00e9s de paiement', 'par virement bancaire');
+    await texte('Paiement au plus tard le', '2026-10-31');
+    await texte('D\u00e9positaire', 'M. Mehdi Alaoui');
+    await texte('Qualit\u00e9 du d\u00e9positaire', 'ancien liquidateur');
+    await texte('Adresse de conservation', '8 rue des Essais, Casablanca');
+    await texte('Dur\u00e9e de conservation', 'dix ans');
+    await choix('Subsiste-t-il des passifs \u00e9ventuels', 'non');
+    await choix('Acte constatant la cl\u00f4ture', 1);
+    await texte('Compte d\u00e9finitif arr\u00eat\u00e9 au', '2026-10-06');
+    await choix('Quitus au liquidateur', 1);
+    await texte('Si\u00e8ge de la liquidation', 'au si\u00e8ge social');
+    await confirmerPropositions(page);
+    const pvCloture = await genererDocument(page, info, 'PV Dissolution / Liquidation', 'pv-cloture-liquidation');
+    verifierRedactionSeance(pvCloture.texte);
+    await validerDocument(page, 'PV Dissolution / Liquidation');
+    await genererDocument(page, info, 'Annonce l\u00e9gale de cl\u00f4ture', 'annonce-cloture-liquidation');
+    await validerDocument(page, 'Annonce l\u00e9gale de cl\u00f4ture');
+    await validerEtape(page);
+    await validerEtape(page);
     await finaliser(page, liquidation);
     await capturer('actes-liquidation');
     await cloturerTicket(page, liquidation, /liquidation/i);
@@ -365,6 +408,11 @@ test.describe('parcours actes', () => {
     await detail.getByLabel('Date de signature').fill('2026-10-16');
     await detail.getByLabel('Client signataire du bordereau').fill('M. Mehdi Alaoui');
     await detail.getByLabel('Qualit\u00e9 du client signataire').fill('g\u00e9rant');
+    // Une piece restituee au client : sans elle, le bordereau est refuse (pieces nommees).
+    await detail.getByRole('button', { name: /Ajouter une pi\u00e8ce/ }).click();
+    await detail.getByLabel('Pi\u00e8ce', { exact: true }).last().fill('Statuts certifi\u00e9s conformes');
+    await detail.getByLabel('Forme', { exact: true }).last().fill('original');
+    await detail.getByLabel('Nombre d\u2019exemplaires', { exact: true }).last().fill('1');
     const saisies = page.waitForResponse((r) => r.url().endsWith(`/workflows/${ticketId}/annulation/saisies`));
     await detail.getByRole('button', { name: 'Enregistrer les saisies' }).click();
     expect((await saisies).status()).toBeLessThan(400);

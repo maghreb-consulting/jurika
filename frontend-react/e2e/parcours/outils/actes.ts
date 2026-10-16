@@ -35,7 +35,8 @@ export function pdfFictif(): Buffer {
 
 /** Champ de la zone principale par le debut de son libelle (n-ieme occurrence). */
 export async function champ(page: Page, debut: string, n = 0, exact = false, zone = 'main'): Promise<Locator> {
-  const ids = await page.evaluate(([d, ex, z]) => {
+  // Les etapes montent apres leurs lectures (squelette de chargement) : on attend le champ.
+  const lire = () => page.evaluate(([d, ex, z]) => {
     const ok = (t: string) => (ex ? t.replace(/\s*\*$/, '') === d : t.startsWith(d));
     const racine = document.querySelector(z as string) ?? document.body;
     const parLibelle = Array.from(racine.querySelectorAll('label'))
@@ -46,7 +47,9 @@ export async function champ(page: Page, debut: string, n = 0, exact = false, zon
       .map((x) => x.id);
     return [...new Set([...parLibelle, ...parAria])];
   }, [debut, exact, zone] as const);
-  expect(ids.length, `champ introuvable : ${debut} (occurrence ${n + 1})`).toBeGreaterThan(n);
+  await expect.poll(async () => (await lire()).length, { message: `champ introuvable : ${debut} (occurrence ${n + 1})`, timeout: 20_000 })
+    .toBeGreaterThan(n);
+  const ids = await lire();
   return page.locator(`[id="${ids[n]}"]`);
 }
 
@@ -317,6 +320,7 @@ export const PERMIS_GABARIT: Permis[] = [
   { texte: /Signature(?: l\u00e9galis\u00e9e)?\s*:\s*\.{4,}/, motif: 'ligne de signature manuscrite du gabarit' },
   { texte: /Enregistr\u00e9 \u00e0 [^,]+, le \.{4,}, sous la r\u00e9f\u00e9rence \.{4,}, droits acquitt\u00e9s : \.{4,} dirhams\./, motif: 'mention d\'enregistrement remplie par l\'administration' },
   { texte: /R\u00e9serv\u00e9 \u00e0 l'administration : \.{4,}/, motif: 'cadre reserve a l\'administration' },
+  { texte: /\S \.{4,} \d[\d\s]* parts\b/, motif: 'points de conduite du tableau de repartition des parts (statuts du cabinet)' },
 ];
 
 export interface DocumentProduit { analyse: Analyse & { genre: 'docx' | 'pdf' }; texte: string; octets: Buffer }
@@ -380,6 +384,12 @@ export function verifierRedactionSeance(texte: string, convocation?: string): vo
  * Fiche du ticket : decisions proposees selon la forme du dossier (le ticket est rattache a la
  * societe choisie), puis toutes les demarches cochees statut par statut, jusqu'a la cloture.
  */
+const LIBELLES_STATUT: Record<string, string> = {
+  CREATION_TICKET: "Cr\u00e9ation du ticket et collecte d'information",
+  GENERATION_DOCUMENTS: 'G\u00e9n\u00e9ration des documents',
+  DEROULEMENT_DEMARCHE: 'D\u00e9roulement de la d\u00e9marche',
+};
+
 export async function cloturerTicket(page: Page, ticketId: string, decision: RegExp): Promise<void> {
   await page.goto(page.url().replace(/(https?:\/\/[^/]+).*/, '$1') + `/tickets/${ticketId}`, { waitUntil: 'domcontentloaded' });
   await calme(page);
@@ -391,21 +401,36 @@ export async function cloturerTicket(page: Page, ticketId: string, decision: Reg
     await main.getByRole('button', { name: 'Enregistrer les d\u00e9cisions' }).click();
     await calme(page);
   }
-  for (let tour = 0; tour < 5; tour++) {
+  for (let tour = 0; tour < 6; tour++) {
+    const statut = (await lireApi<{ statut: string }>(page, `/tickets/${ticketId}`)).statut;
+    if (statut === 'CLOTURE_DOSSIER') break;
+    // Les demarches se rechargent apres un passage (squelette) : on attend leur liste.
+    await expect(main.getByText('Chargement des d\u00e9marches\u2026')).toBeHidden({ timeout: 30_000 });
+    // Le groupe des demarches du statut courant est deplie (il peut rester replie apres un passage).
+    const libelle = LIBELLES_STATUT[statut];
+    if (libelle) {
+      const groupe = main.getByRole('button', { name: new RegExp(`^${libelle}\\s*\\d+\\s*/\\s*\\d+$`) }).first();
+      if ((await groupe.getAttribute('aria-expanded', { timeout: 3_000 }).catch(() => null)) === 'false') await groupe.click();
+    }
+    await main.locator('button:enabled').filter({ hasText: /^Cocher$/ }).first()
+      .waitFor({ state: 'visible', timeout: 10_000 }).catch(() => undefined);
+    // Seules les demarches actionnables (bouton actif) se cochent ; une demarche d'un autre
+    // statut garde un bouton inactif.
     for (let i = 0; i < 80; i++) {
-      const b = main.getByRole('button', { name: 'Cocher', exact: true }).first();
+      const b = main.locator('button:enabled').filter({ hasText: /^Cocher$/ }).first();
       if (!(await b.isVisible().catch(() => false))) break;
-      await b.click();
+      await b.click({ timeout: 15_000 });
       await calme(page);
     }
     const passer = main.getByRole('button', { name: /^Passer \u00e0 \u00ab / }).first();
-    if (!(await passer.isVisible().catch(() => false))) break;
-    await expect(passer, 'passage de statut possible une fois les demarches cochees').toBeEnabled();
-    await passer.click();
+    await expect(passer, `passage de statut possible une fois les demarches cochees (statut ${statut})`).toBeEnabled({ timeout: 30_000 });
+    await passer.click({ timeout: 30_000 });
     const dlg = page.getByRole('dialog');
     if (await dlg.isVisible().catch(() => false)) {
       await dlg.getByRole('button', { name: /^(Confirmer|Cl\u00f4turer|Passer)/ }).last().click();
     }
+    await expect.poll(async () => (await lireApi<{ statut: string }>(page, `/tickets/${ticketId}`)).statut,
+      { message: `passage depuis ${statut}`, timeout: 30_000 }).not.toBe(statut);
     await calme(page);
   }
   const t = await lireApi<{ statut: string }>(page, `/tickets/${ticketId}`);
