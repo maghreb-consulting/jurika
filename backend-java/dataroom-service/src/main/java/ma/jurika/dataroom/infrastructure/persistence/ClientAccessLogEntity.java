@@ -9,8 +9,14 @@ import java.util.UUID;
  * Sprint 7 / TASK 5 -- Trace detaillee des acces client au Data Room.
  *
  * Voir V11__rg_dr_access_log.sql pour le schema. La colonne ip_address est
- * INET cote DB ; on la mappe en VARCHAR cote JPA (insert/select fonctionnels,
- * comportement de comparaison reste cote SQL).
+ * INET cote DB et String cote JPA.
+ *
+ * <p>Lot L6b (E13) : le mapping d'origine liait l'adresse en VARCHAR ; PostgreSQL
+ * refusait CHAQUE insertion ("column ip_address is of type inet but expression is
+ * of type character varying", meme pour une adresse nulle) et le journal d'acces
+ * du client n'a jamais ete ecrit. L'ecriture convertit desormais explicitement
+ * ({@code CAST(? AS inet)}) ; une adresse illisible ferait encore echouer le CAST :
+ * elle est ecartee en amont ({@code ClientAccessLogger#adresseIp}, NULL stocke).
  */
 @Entity
 @Table(name = "dataroom_client_access_log")
@@ -34,8 +40,9 @@ public class ClientAccessLogEntity {
     @Column(nullable = false, length = 20)
     private String action;
 
-    /** Mappe INET en VARCHAR pour simplifier JPA -- PG accepte le cast. */
+    /** INET en base : conversion explicite a l'ecriture, adresse seule (sans masque) a la lecture. */
     @Column(name = "ip_address", columnDefinition = "inet")
+    @org.hibernate.annotations.ColumnTransformer(read = "host(ip_address)", write = "CAST(? AS inet)")
     private String ipAddress;
 
     @Column(name = "user_agent", length = 255)
