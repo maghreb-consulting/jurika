@@ -261,6 +261,27 @@ describe('<IdentityExtractor> degradation gracieuse', () => {
   });
 });
 
+// Lot L6b (E13) : le 400 du serveur porte son motif dans `message` (ErrorResponse {code, message}) ;
+// le composant lisait `detail`, toujours absent, et affichait « Requête invalide. » sans dire quoi corriger.
+describe('<IdentityExtractor> refus 400 du serveur', () => {
+  it('affiche le message du serveur, qui dit quoi corriger', async () => {
+    const motif = 'Format d’image non pris en charge pour le recto de la pièce : envoyez une photo au format JPG ou PNG.';
+    const extractFn = vi.fn().mockRejectedValue({ response: { status: 400, data: { code: 'BAD_REQUEST', message: motif } } });
+    render(<IdentityExtractor mode="cin" onApply={vi.fn()} extractFn={extractFn as never} />);
+    fireEvent.change(document.getElementById('id-recto-input') as HTMLInputElement, {
+      target: { files: [pngFile('r.png')] },
+    });
+    fireEvent.click(screen.getByTestId('id-extract-btn'));
+    const alert = await screen.findByTestId('id-error');
+    expect(alert.textContent).toContain(motif);
+  });
+
+  it('le sélecteur ne propose que les formats lus par le serveur (JPG, PNG)', () => {
+    render(<IdentityExtractor mode="cin" onApply={vi.fn()} extractFn={vi.fn() as never} />);
+    expect(document.getElementById('id-recto-input')).toHaveAttribute('accept', 'image/jpeg,image/png');
+  });
+});
+
 describe('<IdentityExtractor> mode="cin" — mapping enrichi date_validite + date_naissance', () => {
   it("expose date_validite dans le panel editable et le transmet a onApply", async () => {
     const ok: ExtractedIdentity = {

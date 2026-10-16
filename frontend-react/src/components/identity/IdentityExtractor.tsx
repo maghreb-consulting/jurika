@@ -260,7 +260,7 @@ function DropZone({
       <input
         id={inputId}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png"
         className="sr-only"
         onChange={(ev) => {
           const f = ev.target.files?.[0];
@@ -381,9 +381,11 @@ export function IdentityExtractor({
           "Service d’extraction indisponible. Vous pouvez saisir les informations manuellement ci-dessous.",
         );
       } else if (status === 400) {
+        // Lot L6b (E13) : le motif du serveur est dans `message` (ErrorResponse) ; `detail` en repli.
+        const data = (err as { response?: { data?: { message?: string; detail?: string } } })?.response?.data;
         setError(
-          (err as { response?: { data?: { detail?: string } } })?.response?.data
-            ?.detail ?? 'Requête invalide.',
+          data?.message?.trim() || data?.detail?.trim()
+            || 'La pièce n’a pas pu être lue : envoyez une photo au format JPG ou PNG.',
         );
       } else if (status === 403) {
         setError("Action refusée : vous n’avez pas le droit d’archiver dans la Data Room.");
