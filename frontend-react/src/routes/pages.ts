@@ -1,4 +1,5 @@
 import { lazy, type ComponentType } from 'react';
+import { chargerAvecReprise } from '../lib/chargementResilient';
 
 /**
  * Lot L6b (E3) : ecrans charges a la demande (React.lazy).
@@ -11,7 +12,7 @@ import { lazy, type ComponentType } from 'react';
 type Chargeur = () => Promise<unknown>;
 
 function ecran<M extends Record<string, unknown>>(charger: () => Promise<M>, nom: keyof M & string) {
-  const Composant = lazy(async () => ({ default: (await charger())[nom] as ComponentType }));
+  const Composant = lazy(async () => ({ default: (await chargerAvecReprise(charger))[nom] as ComponentType }));
   return { Composant, charger: charger as Chargeur };
 }
 

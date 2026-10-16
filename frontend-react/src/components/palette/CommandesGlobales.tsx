@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect } from 'react';
+import { chargerAvecReprise } from '../../lib/chargementResilient';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useCommandesStore } from '../../store/commandesStore';
@@ -19,7 +20,7 @@ import { FenetreRaccourcis } from './FenetreRaccourcis';
  *   parcours ; les listes de tickets montees sont rafraichies par le bus ticketsRefresh).
  */
 // Charge a la demande : le tiroir (et ses dependances) n'alourdit pas la coquille.
-const NewTicketDrawer = lazy(() => import('../../pages/tickets/NewTicketDrawer').then((m) => ({ default: m.NewTicketDrawer })));
+const NewTicketDrawer = lazy(() => chargerAvecReprise(() => import('../../pages/tickets/NewTicketDrawer')).then((m) => ({ default: m.NewTicketDrawer })));
 
 export function CommandesGlobales() {
   const navigate = useNavigate();
