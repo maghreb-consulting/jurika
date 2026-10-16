@@ -207,12 +207,15 @@ function page<T>(items: T[], q: URLSearchParams) {
 
 // ---------------------------------------------------------------- echeances
 
+// Lot L6b (E17) : delais legaux des demarches, sous la forme du serveur (DemarcheEcheancesSql) :
+// severite DEPASSE / CRITIQUE (J-3) / APPROCHE, libelles accentues du referentiel (ecrits en
+// \uXXXX : le fichier reste ASCII). Le serveur ne rend rien au-dela de 30 jours.
 const ECHEANCES = [
-  { id: 'e0000000-0000-4000-8000-000000000001', dossier: 1, libelle: 'Depot au greffe du PV de transfert du siege', jours: -4, severite: 'CRITICAL' },
-  { id: 'e0000000-0000-4000-8000-000000000002', dossier: 2, libelle: 'Depot des comptes annuels au tribunal de commerce', jours: 1, severite: 'CRITICAL' },
-  { id: 'e0000000-0000-4000-8000-000000000003', dossier: 0, libelle: 'Immatriculation au registre du commerce', jours: 3, severite: 'WARNING' },
-  { id: 'e0000000-0000-4000-8000-000000000004', dossier: 5, libelle: 'Publication de l augmentation de capital', jours: 30, severite: 'INFO' },
-  { id: 'e0000000-0000-4000-8000-000000000005', dossier: 4, libelle: 'Declaration CNSS des nouveaux associes', jours: 75, severite: 'INFO' },
+  { id: 'e0000000-0000-4000-8000-000000000001', dossier: 1, libelle: 'Dépôt au greffe du PV de transfert du siège', jours: -4, severite: 'DEPASSE' },
+  { id: 'e0000000-0000-4000-8000-000000000002', dossier: 2, libelle: 'Dépôt des comptes annuels au tribunal de commerce', jours: 1, severite: 'CRITIQUE' },
+  { id: 'e0000000-0000-4000-8000-000000000003', dossier: 0, libelle: 'Immatriculation au registre du commerce', jours: 3, severite: 'CRITIQUE' },
+  { id: 'e0000000-0000-4000-8000-000000000006', dossier: 0, libelle: 'Déclaration d’existence à la DGI', jours: 12, severite: 'APPROCHE' },
+  { id: 'e0000000-0000-4000-8000-000000000004', dossier: 5, libelle: 'Publication de l’augmentation de capital au Bulletin officiel', jours: 26, severite: 'APPROCHE' },
 ];
 
 function echeanceItem(e: (typeof ECHEANCES)[number]) {
@@ -809,25 +812,43 @@ function tableauSuperAdmin() {
     activeWorkspaces30d: 3,
     totalWorkspaces: CABINETS.length,
     totalUsers: UTILISATEURS_ADMIN.length,
-    signups30d: Array.from({ length: 30 }, (_, i) => ({ day: jour(i - 29), count: i % 9 === 0 ? 1 : 0 })),
+    // Lot L6b (E17) : formes du serveur (SuperAdminDashboardAggregator) : comptes crees par jour
+    // (jours sans creation absents), alertes de la liste fixe (LOGIN_FAILED, PASSWORD_CHANGED,
+    // RECOVERY_CODES_REGENERATED, EXERCICE_UNLOCKED ; entity_type en minuscules), sept services
+    // nommes "xxx-service", forfaits en minuscules (V44), statut ESSAI pour un essai en cours,
+    // inscriptions mensuelles sur douze mois.
+    signups30d: [-27, -18, -11, -4].map((j, i) => ({ day: jour(j), count: i === 2 ? 2 : 1 })),
     topWorkspacesByUsage: CABINETS.map((c, i) => ({ workspaceId: c.id, name: c.name, eventsLast7d: 120 - i * 25 })),
-    criticalAuditEvents24h: journalAudit()
-      .slice(0, 2)
-      .map((e) => ({ id: String(e.id), action: e.action, actionLabel: e.actionLabel, userId: e.userId, workspaceId: e.workspaceId, entityType: e.entityType, createdAt: e.createdAt })),
-    servicesHealth: { auth: 'UP', ticket: 'UP', dataroom: 'UP', ai: 'UP', billing: 'UP', workflow: 'UP' },
+    criticalAuditEvents24h: (
+      [
+        ['LOGIN_FAILED', -0.1],
+        ['LOGIN_FAILED', -0.12],
+        ['PASSWORD_CHANGED', -0.4],
+        ['RECOVERY_CODES_REGENERATED', -0.7],
+      ] as const
+    ).map(([action, j], i) => ({ id: `a0000000-0000-4000-8000-00000000000${i}`, action, actionLabel: libelleAudit(action), userId: P.employe.userId, workspaceId: WS_DEMO, entityType: 'user', createdAt: instant(j) })),
+    servicesHealth: {
+      'auth-service': 'UP',
+      'ticket-service': 'UP',
+      'workflow-service': 'UP',
+      'dataroom-service': 'UP',
+      'ai-service': 'UP',
+      'supervision-service': 'UP',
+      'realtime-service': 'DOWN',
+    },
     storage: { totalBytes: 13_094_617_088, fileCount: 1608 },
     workspacesParForfait: [
-      { label: 'Essentiel', count: 1 },
-      { label: 'Professionnel', count: 1 },
-      { label: 'Max', count: 1 },
-      { label: 'Essai', count: 1 },
+      { label: 'professionnel', count: 1 },
+      { label: 'essentiel', count: 1 },
+      { label: 'max', count: 1 },
+      { label: 'non_defini', count: 1 },
     ],
     workspacesParStatut: [
       { label: 'ACTIVE', count: 2 },
-      { label: 'TRIAL', count: 1 },
+      { label: 'ESSAI', count: 1 },
       { label: 'SUSPENDED', count: 1 },
     ],
-    signupsMensuels: Array.from({ length: 6 }, (_, i) => ({ month: jour(-30 * (5 - i)).slice(0, 7), count: (i * 3) % 5 + 1 })),
+    signupsMensuels: Array.from({ length: 12 }, (_, i) => ({ month: jour(-30 * (11 - i)).slice(0, 7), count: [0, 1, 0, 2, 1, 0, 1, 3, 1, 2, 0, 1][i] })),
     generatedAt: instant(0),
   };
 }
@@ -847,12 +868,10 @@ function tableauSuperviseur() {
       { userId: P.employe.userId, email: P.employe.email, ticketsOuverts: 4, echeancesAssignees: 3 },
       { userId: EMPLOYE2.userId, email: EMPLOYE2.email, ticketsOuverts: 2, echeancesAssignees: 1 },
     ],
-    echeancesJ30J15J3: [
-      { label: 'J-3', items: ECHEANCES.filter((e) => e.jours <= 3).map(echeanceItem) },
-      { label: 'J-15', items: [] },
-      { label: 'J-30', items: ECHEANCES.filter((e) => e.jours > 15 && e.jours <= 30).map(echeanceItem) },
-    ],
-    dossiersARisque: [{ dossierId: DOSSIERS[1].id, raisonSociale: DOSSIERS[1].raisonSociale, motif: 'Echeance de depot depassee de 4 jours' }],
+    // Forme du serveur : tranches cumulatives J-30 > J-15 > J-3, delais a venir seulement (de
+    // aujourd'hui a J+n) ; un delai depasse ne figure que dans dossiersARisque.
+    echeancesJ30J15J3: [30, 15, 3].map((n) => ({ label: `J-${n}`, items: ECHEANCES.filter((e) => e.jours >= 0 && e.jours <= n).map(echeanceItem) })),
+    dossiersARisque: [{ dossierId: DOSSIERS[1].id, raisonSociale: DOSSIERS[1].raisonSociale, motif: 'Delai legal depasse' }],
     ticketsParStatut: [
       { label: 'CREATION_TICKET', count: 2 },
       { label: 'GENERATION_DOCUMENTS', count: 2 },
