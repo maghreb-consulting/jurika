@@ -5,6 +5,11 @@ import { TextField } from '../ui/TextField';
 import { extractError } from '../../lib/api';
 import { workflowService, type DonneeAttendue } from '../../services/workflow.service';
 
+/** Contenu d'une liste de donnees attendues (variable et reception), pour la comparer. */
+function cleDe(liste: DonneeAttendue[]): string {
+  return liste.map((a) => `${a.templateCode}:${a.variable}:${a.recue ? 1 : 0}`).join('|');
+}
+
 /** Identifiants de la societe : ils se saisissent dans sa fiche, source unique (RG-VAR-08). */
 const DE_LA_FICHE = new Set(['ICE', 'IDENTIFIANT_FISCAL', 'IDENTIFIANT_TP', 'CNSS_NUMERO', 'RC_NUMERO']);
 
@@ -33,8 +38,12 @@ export function DonneesAttendues({
   const dejaRegenere = useRef(false);
   // Liste mise a jour par une saisie ; elle cede la place a la liste du parent des que
   // celui-ci en fournit une nouvelle (etat derive, sans effet).
-  const [maj, setMaj] = useState<{ source: DonneeAttendue[]; liste: DonneeAttendue[] } | null>(null);
-  const liste = maj && maj.source === attendues ? maj.liste : attendues;
+  // Lot L6b (E14) : la liste du parent est comparee par son CONTENU, pas par son identite : le
+  // parent passe `attendues.filter(...)`, un nouveau tableau a chaque rendu ; la mise a jour de
+  // la saisie etait ecartee au premier redessin et l'acte n'etait jamais regenere.
+  const cle = cleDe(attendues);
+  const [maj, setMaj] = useState<{ source: string; liste: DonneeAttendue[] } | null>(null);
+  const liste = maj && maj.source === cle ? maj.liste : attendues;
   const [valeurs, setValeurs] = useState<Record<string, string>>({});
   const [erreur, setErreur] = useState<string | null>(null);
   const [envoi, setEnvoi] = useState<string | null>(null);
@@ -55,7 +64,7 @@ export function DonneesAttendues({
     setErreur(null);
     try {
       const reponse = await workflowService.saisirDonneeAttendue(ticketId, a.variable, valeur);
-      setMaj({ source: attendues, liste: reponse.filter((x) => x.templateCode === a.templateCode) });
+      setMaj({ source: cle, liste: reponse.filter((x) => x.templateCode === a.templateCode) });
     } catch (err) {
       setErreur(extractError(err).message);
     } finally {

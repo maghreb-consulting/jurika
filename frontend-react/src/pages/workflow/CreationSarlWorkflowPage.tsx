@@ -36,6 +36,7 @@ import { WorkflowBoot } from './WorkflowBoot';
 import { AideEtape } from './AideEtape';
 import { IndicateurEnregistrement } from '../../components/workflow/IndicateurEnregistrement';
 import { ETAPES_CREATION } from './aidesParcours';
+import { identifiantsApresCreation } from './identifiantsFinalisation';
 
 /** Forme juridique restreinte aux 2 valeurs supportees par la creation SARL. */
 type SarlForm = 'SARL' | 'SARL_AU';
@@ -475,26 +476,12 @@ function CreationSarlWorkflowPageBody() {
          * finalisation déjà réussie ; il est remonté comme avertissement.
          */
         try {
-          const s1 = (stepData.step1 as Record<string, unknown> | undefined) ?? {};
-          const den = (s1.denomination as Record<string, unknown> | undefined) ?? s1;
-          const s2 = (stepData.step2 as Record<string, unknown> | undefined) ?? {};
-          const siege = (s2.siege as Record<string, unknown> | undefined) ?? s2;
-          const s9 = (stepData.step9 as Record<string, unknown> | undefined) ?? {};
-          const pi = (s9.postImmat as Record<string, unknown> | undefined) ?? {};
-          const txt = (v: unknown) => {
-            const s = v == null ? '' : String(v).trim();
-            return s ? s : null;
-          };
-          const payload = {
-            ice: txt(pi.ice ?? den.ice),
-            rcNumero: txt(pi.rcNumero ?? den.rcNumero),
-            rcTribunal: txt(pi.rcTribunal ?? siege.villeGreffe ?? siege.tribunal),
-            identifiantFiscal: txt(pi.identifiantFiscal ?? pi.ifNumero ?? den.ifFiscal),
-            taxeProfessionnelle: txt(pi.taxeProfessionnelle ?? pi.patente),
-            cnss: txt(pi.cnss),
-          };
-          // N'appelle l'API que si au moins un identifiant est réellement connu.
-          if (Object.values(payload).some((v) => v !== null)) {
+          // Lot L6b (E14) : la charge part de la fiche ACTUELLE (la route remplace tous les
+          // champs ; l'envoi des seuls identifiants effacait adresse, ville et capital).
+          const actuel = await dataroomService.getJuridique(dossierId);
+          const payload = identifiantsApresCreation(stepData, actuel);
+          // N'appelle l'API que si le parcours apporte un identifiant que la fiche n'a pas.
+          if (payload) {
             await dataroomService.updateIdentifiants(dossierId, payload);
           }
         } catch (err) {
@@ -736,6 +723,10 @@ function CreationSarlWorkflowPageBody() {
             dossierId={ticket?.dossierId ?? null}
             ticketId={ticket?.id ?? null}
             readOnly={readOnly}
+            completerDonneesAttendues={
+              !superviseur && progress.statut === 'TERMINE'
+              && ticket.statut !== 'CLOTURE_DOSSIER' && ticket.statut !== 'ANNULE'
+            }
             registerDirty={effectiveRegisterDirty}
           />
         ) : readOnly ? (

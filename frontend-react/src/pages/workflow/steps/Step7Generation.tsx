@@ -108,6 +108,13 @@ interface Props {
    * génération (y compris le fallback de ré-hydratation), aucun dépôt.
    */
   readOnly?: boolean;
+  /**
+   * Lot L6b (E14) : parcours TERMINE, ticket encore en cours (deroulement de la demarche). Les
+   * donnees attendues d'un organisme (date du depot legal...) arrivent apres la fin du parcours :
+   * en lecture seule, l'etape 7 les fait saisir et, quand tout est arrive, regenere l'acte et le
+   * depose en Data Room. Sans ce drapeau (ticket clos ou annule, superviseur), rien ne s'ecrit.
+   */
+  completerDonneesAttendues?: boolean;
   /** Lot L7 (E2) : enregistrement automatique de la saisie (voir useStepAutosave). */
   registerDirty?: RegisterDirty;
 }
@@ -446,8 +453,11 @@ export function Step7Generation({
   dossierId,
   ticketId,
   readOnly = false,
+  completerDonneesAttendues = false,
   registerDirty,
 }: Props) {
+  /** Lot L6b (E14) : lecture seule, mais les donnees attendues se completent encore. */
+  const completer = readOnly && completerDonneesAttendues;
   // Lot L7 (E5), CDC 4.5 : edition integree des actes, forfaits Max et Sur Devis (le serveur refuse
   // aussi l'ouverture de la seance : FONCTION_HORS_FORFAIT). Hors forfait, le bouton l'explique.
   const forfait = useForfait();
@@ -544,7 +554,7 @@ export function Step7Generation({
   /** Lot L3 : donnees externes reclamees pour les documents du ticket (regle des variables). */
   const [attendues, setAttendues] = useState<DonneeAttendue[]>([]);
   useEffect(() => {
-    if (!ticketId || readOnly) return undefined;
+    if (!ticketId || (readOnly && !completer)) return undefined;
     let actif = true;
     workflowService
       .donneesAttendues(ticketId)
@@ -553,7 +563,7 @@ export function Step7Generation({
     return () => {
       actif = false;
     };
-  }, [ticketId, readOnly]);
+  }, [ticketId, readOnly, completer]);
   // L6 : resultat du dernier chargement de la liste, avec la cle de la demande ; le
   // chargement « en cours » et l'erreur se DEDUISENT de la cle courante (plus de mise a
   // jour synchrone d'etat au debut de l'effet).
@@ -1057,6 +1067,48 @@ export function Step7Generation({
   }
 
   /**
+   * Lot L6b (E14) : regeneration d'un acte sur un parcours termine, quand les donnees attendues
+   * d'un organisme sont toutes arrivees. Aucun brouillon ni aucune saisie d'etape (lecture
+   * seule) : l'acte regenere est depose directement en Data Room, en nouvelle version.
+   */
+  async function regenererApresTerminaison(tpl: TemplateInfo) {
+    if (!dossierId || !ticketId) return;
+    const prev = docs[tpl.code];
+    const nextVersion = (prev?.version ?? 1) + 1;
+    updateDoc(tpl.code, { generating: true, error: null, refus: [] });
+    try {
+      const { blob, filename, donneesAObtenir } = await generateDocument(
+        'CREATION_SARL',
+        tpl.code,
+        await chargeServeur(false),
+      );
+      const nom = cleanDocFilename(tpl, denomination, forme, nextVersion);
+      await dataroomService.uploadJuridique(dossierId, {
+        file: new File([blob], nom, { type: blob.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }),
+        documentType: TEMPLATE_TO_DOCTYPE[tpl.code] ?? 'AUTRE',
+        title: docLabel(tpl),
+        ticketId,
+      });
+      updateDoc(tpl.code, {
+        generating: false,
+        generated: true,
+        validated: true,
+        blob,
+        filename,
+        version: nextVersion,
+        aObtenir: donneesAObtenir,
+      });
+      setAttendues(await workflowService.donneesAttendues(ticketId));
+    } catch (err) {
+      updateDoc(tpl.code, {
+        generating: false,
+        error: err instanceof Error ? err.message : 'Régénération impossible.',
+        refus: err instanceof GenerationRefuseeError ? err.donneesManquantes : [],
+      });
+    }
+  }
+
+  /**
    * Decision du 2026-10-14 (RG-ESS-05, RG-ESS-06) : generation pendant l'essai. Le serveur genere
    * l'acte et l'enregistre en BROUILLON dans la Data Room (aucun fichier recu) ; l'apercu est celui
    * du brouillon enregistre, en pages filigranees. Sans dossier ni ticket : apercu seul.
@@ -1314,7 +1366,9 @@ export function Step7Generation({
               {String(den.denomination ?? 'votre société')}
             </p>
             <p className="text-xs text-fg-subtle">
-              {readOnly
+              {completer
+                ? 'Parcours terminé : les documents générés sont consultables (aperçu) et téléchargeables. Une donnée attendue d’un organisme (date du dépôt légal, numéro du registre du commerce…) se saisit encore sur le document qui la réclame ; quand toutes sont arrivées, le document est régénéré et déposé dans la Data Room.'
+                : readOnly
                 ? 'Consultation (lecture seule) : les documents générés sont consultables (aperçu) et téléchargeables. Aucune génération, modification ni validation n’est possible sur un ticket clôturé.'
                 : 'Chaque document peut être généré indépendamment. Une fois généré : aperçu, téléchargement, modification et validation. Mise en page conforme, génération automatique sans IA. Les documents validés sont automatiquement déposés dans la Data Room du dossier.'}
             </p>
@@ -1708,11 +1762,11 @@ export function Step7Generation({
 
               <div className="space-y-3 p-5">
                 <RetourGeneration erreur={st.error} refus={st.refus} aObtenir={st.aObtenir} />
-                {!readOnly && (
+                {(!readOnly || completer) && (
                   <DonneesAttendues
                     attendues={attendues.filter((a) => a.templateCode === tpl.code)}
                     enCours={st.generating}
-                    onRegenerer={() => generateOne(tpl)}
+                    onRegenerer={() => (readOnly ? regenererApresTerminaison(tpl) : generateOne(tpl))}
                     ticketId={ticketId}
                   />
                 )}
