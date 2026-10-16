@@ -71,12 +71,12 @@ describe('ProchaineActionCarte', () => {
     const lignes = within(liste).getAllByRole('listitem');
     expect(lignes).toHaveLength(4);
     expect(within(lignes[0]).getByRole('link')).toHaveAttribute('href', '/tickets/f');
-    expect(within(lignes[0]).getByText('Dépassée de 1 jour')).toBeInTheDocument();
+    expect(within(lignes[0]).getByText('En retard de 1 jour')).toBeInTheDocument();
     expect(within(lignes[1]).getByRole('link')).toHaveAttribute('href', '/tickets/b');
-    expect(within(lignes[1]).getByText('Démarche : Enregistrement des statuts')).toBeInTheDocument();
+    expect(within(lignes[1]).getByText('Délai légal : Enregistrement des statuts')).toBeInTheDocument();
     expect(within(lignes[1]).getByText('Dans 2 jours')).toBeInTheDocument();
     expect(within(lignes[1]).getByText(aideStatutTicket('DEROULEMENT_DEMARCHE', 'RESPONSABLE').faire)).toBeInTheDocument();
-    expect(within(lignes[3]).getByText('Aucune échéance connue')).toBeInTheDocument();
+    expect(within(lignes[3]).getByText('Aucun délai connu')).toBeInTheDocument();
     expect(screen.queryByText(/TK-D/)).not.toBeInTheDocument();
   });
 
@@ -94,6 +94,6 @@ describe('ProchaineActionCarte', () => {
 
   it('echeances indisponibles : le dit', () => {
     rendre({ echeances: null });
-    expect(screen.getByText(/échéances des démarches n’ont pas pu être chargées/)).toBeInTheDocument();
+    expect(screen.getByText(/délais légaux des démarches n’ont pas pu être chargés/)).toBeInTheDocument();
   });
 });

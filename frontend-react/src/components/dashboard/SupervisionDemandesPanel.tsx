@@ -69,7 +69,7 @@ export function SupervisionDemandesPanel() {
         du dossier traite la demande ou valide la requête depuis la Data Room ; cliquez sur une
         ligne pour l’ouvrir.
       </TexteAide>
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4">
         <SupervisionBlock
           title="Demandes des clients"
           icon={MessageSquare}

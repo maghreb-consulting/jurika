@@ -1,35 +1,20 @@
 import { useEffect, useState } from 'react';
-import {
-  Activity,
-  Building2,
-  Database,
-  HardDrive,
-  Layers,
-  LineChart as LineChartIcon,
-  PieChart as PieChartIcon,
-  ScrollText,
-  ServerCog,
-  TrendingUp,
-  Users,
-} from 'lucide-react';
+import { Activity, BarChart3, Building2, HardDrive, Layers, ScrollText, ServerCog, ShieldAlert, Users } from 'lucide-react';
 import { Page } from '../../components/layout/Page';
 import { Card } from '../../components/ui/Card';
 import { Badge, type BadgeVariant } from '../../components/ui/Badge';
 import { Lien } from '../../components/ui/Lien';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { TexteAide } from '../../components/ui/Aide';
+import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { CardSkeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
 import { KpiCard } from '../../components/dashboard/KpiCard';
 import { decimal, longueur } from '../../components/dashboard/valeurs';
 import { ChartCard } from '../../components/dashboard/charts/ChartCard';
-import { DonutChart } from '../../components/dashboard/charts/DonutChart';
-import { TrendLineChart } from '../../components/dashboard/charts/TrendLineChart';
-import { DistributionChart } from '../../components/dashboard/DistributionChart';
-import { EvolutionChart } from '../../components/dashboard/EvolutionChart';
+import { ColonnesChart } from '../../components/dashboard/charts/ColonnesChart';
+import { BarresHorizontales, type Barre } from '../../components/dashboard/charts/BarresHorizontales';
 import { dashboardService } from '../../services/dashboard.service';
 import type { SuperAdminDashboardDto } from '../../types/dashboard';
-import { chartTheme } from '../../lib/chartTheme';
-import { FORFAIT_LABELS, STATUT_WORKSPACE_LABELS, labelOf, formatMonth } from '../../lib/dashboardLabels';
+import { ENTITE_AUDIT_LABELS, FORFAIT_LABELS, SERVICE_LABELS, STATUT_WORKSPACE_LABELS, formatMonth, labelOf } from '../../lib/dashboardLabels';
 import { libelleAction } from '../../lib/libelleAction';
 
 /**
@@ -39,6 +24,12 @@ import { libelleAction } from '../../lib/libelleAction';
  *
  * Lot L6b (E9) : chaque champ est lu avec garde (un instantane partiel plantait l'ecran,
  * "storage.totalBytes" sur undefined) ; composants de la bibliotheque.
+ *
+ * Lot L6b (E17) : codes bruts remplaces par des libelles (statut, type d'element, service) ;
+ * anneaux sans chiffres remplaces par des barres etiquetees ; "Inscriptions (30 jours)" retire
+ * (il comptait les comptes utilisateurs crees, en pics journaliers : le total sur 30 jours passe
+ * en indication sous "Utilisateurs") ; nouveaux cabinets par mois en colonnes ; les evenements
+ * critiques deviennent des alertes de securite, au ton de leur gravite.
  *
  * Le SUPER_ADMIN n'accede PAS aux tickets/dossiers/documents metier (RG-U07).
  */
@@ -63,14 +54,16 @@ export function SuperAdminDashboard() {
   return (
     <Page
       titre="Tableau de bord de la plateforme"
-      description="Vue globale des cabinets clients : comptes, stockage, activité et santé des services. Pas d’accès aux tickets ni aux dossiers des cabinets (RG-U07)."
+      description="Vue globale des cabinets clients : comptes, stockage, activité, sécurité et santé des services. Pas d’accès aux tickets ni aux dossiers des cabinets (RG-U07)."
       aide={
         <TexteAide cle="tableau-de-bord-super-admin" titre="Que suivre ici ?">
           <p>
-            Les chiffres de la plateforme (cabinets, utilisateurs, stockage, événements de sécurité des
-            dernières 24 heures) et la santé de chaque service. Un indicateur « -- » signale une donnée
-            que le serveur n’a pas rendue. La gestion des cabinets, des utilisateurs et le journal
-            d’audit restent accessibles en bas de page, même si les indicateurs sont indisponibles.
+            Regardez d’abord les alertes de sécurité des dernières 24 heures et la santé des services : un service
+            hors ligne ou une série de connexions échouées demande une action. Les graphiques suivent ensuite la
+            croissance (nouveaux cabinets par mois), la répartition par forfait et par statut, et les cabinets les
+            plus actifs. Un indicateur « -- » signale une donnée que le serveur n’a pas rendue. La gestion des
+            cabinets, des utilisateurs et le journal d’audit restent accessibles en bas de page, même si les
+            indicateurs sont indisponibles.
           </p>
         </TexteAide>
       }
@@ -78,7 +71,7 @@ export function SuperAdminDashboard() {
       <div className="space-y-6">
         {loading && (
           <SqueletteZone libelle="Chargement des indicateurs de la plateforme…" className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <CardSkeleton key={i} className="h-[6.5rem]" />
               ))}
@@ -112,69 +105,138 @@ export function SuperAdminDashboard() {
   );
 }
 
+/** Ton d'une alerte de securite selon son code (liste fixee par le serveur). */
+const TON_ALERTE: Record<string, BadgeVariant> = {
+  LOGIN_FAILED: 'danger',
+  PASSWORD_CHANGED: 'warning',
+  RECOVERY_CODES_REGENERATED: 'warning',
+  EXERCICE_UNLOCKED: 'warning',
+};
+
+function pluriel(n: number, singulier: string, plurielTexte: string): string {
+  return `${n} ${n > 1 ? plurielTexte : singulier}`;
+}
+
 function DashboardContent({ data }: { data: Partial<SuperAdminDashboardDto> }) {
-  const actifs = (data.workspacesParStatut ?? []).find((c) => c.label === 'ACTIVE')?.count ?? null;
+  const parStatutBrut = data.workspacesParStatut;
+  const compteStatut = (cle: string) => (parStatutBrut ?? []).find((c) => c.label === cle)?.count ?? 0;
   const evenements = data.criticalAuditEvents24h ?? [];
   const nbEvenements = longueur(data.criticalAuditEvents24h);
-  const signups30d = data.signups30d ?? [];
   const sante = Object.entries(data.servicesHealth ?? {});
+  const enLigne = sante.filter(([, s]) => s === 'UP').length;
   const stockage = data.storage;
+  const nouveauxUtilisateurs = Array.isArray(data.signups30d) ? data.signups30d.reduce((n, d) => n + (d.count ?? 0), 0) : null;
 
-  const parForfait = (data.workspacesParForfait ?? []).map((c) => ({ key: c.label, label: labelOf(FORFAIT_LABELS, c.label), count: c.count }));
-  const parStatut = (data.workspacesParStatut ?? []).map((c) => ({ key: c.label, label: labelOf(STATUT_WORKSPACE_LABELS, c.label), count: c.count }));
-  const inscriptions = (data.signupsMensuels ?? []).map((m) => ({ label: formatMonth(m.month), count: m.count }));
-  const topWs = (data.topWorkspacesByUsage ?? []).map((w) => ({ label: w.name, count: w.eventsLast7d }));
+  const parForfait: Barre[] = (data.workspacesParForfait ?? []).map((c) => ({ cle: c.label, libelle: labelOf(FORFAIT_LABELS, c.label), valeur: c.count }));
+  const parStatut: Barre[] = (parStatutBrut ?? []).map((c) => ({
+    cle: c.label,
+    libelle: labelOf(STATUT_WORKSPACE_LABELS, c.label),
+    valeur: c.count,
+    ton: c.label === 'ACTIVE' ? 'succes' : c.label === 'ESSAI' ? 'info' : c.label === 'SUSPENDED' ? 'attention' : 'neutre',
+  }));
+  const inscriptions = (data.signupsMensuels ?? []).map((m) => ({ mois: formatMonth(m.month), cabinets: m.count }));
+  const actifs: Barre[] = (data.topWorkspacesByUsage ?? []).map((w) => ({
+    cle: w.workspaceId,
+    libelle: w.name,
+    valeur: w.eventsLast7d,
+    lien: `/admin/workspaces/${w.workspaceId}`,
+  }));
 
-  const indiceActifs =
-    actifs !== null
-      ? `${actifs} actif${actifs > 1 ? 's' : ''}`
-      : typeof data.activeWorkspaces30d === 'number'
-        ? `${data.activeWorkspaces30d} actifs sur 30 jours`
-        : undefined;
+  const indiceCabinets = parStatutBrut
+    ? `${pluriel(compteStatut('ACTIVE'), 'actif', 'actifs')} · ${compteStatut('ESSAI')} en essai`
+    : typeof data.activeWorkspaces30d === 'number'
+      ? `${data.activeWorkspaces30d} avec une connexion sur 30 jours`
+      : undefined;
   const nbFichiers = stockage?.fileCount;
 
   return (
     <>
-      {/* KPIs plateforme -- toutes valeurs reelles issues du DTO. */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Cabinets" value={data.totalWorkspaces} hint={indiceActifs} icon={<Building2 />} />
-        <KpiCard label="Utilisateurs plateforme" value={data.totalUsers} hint="Tous rôles, tous cabinets" icon={<Users />} />
+      {/* Indicateurs de la plateforme -- toutes valeurs reelles issues du DTO. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard
+          label="Cabinets"
+          value={data.totalWorkspaces}
+          hint={indiceCabinets}
+          icon={<Building2 />}
+          to="/admin/workspaces"
+          aide="Tous les cabinets inscrits, quel que soit leur statut. « En essai » : essai gratuit en cours."
+        />
+        <KpiCard
+          label="Utilisateurs"
+          value={data.totalUsers}
+          hint={nouveauxUtilisateurs !== null ? `${nouveauxUtilisateurs} créé${nouveauxUtilisateurs > 1 ? 's' : ''} sur 30 jours` : undefined}
+          icon={<Users />}
+          to="/admin/users"
+          aide="Comptes de tous les cabinets, tous rôles confondus (superviseurs, employés, clients)."
+        />
         <KpiCard
           label="Stockage utilisé"
           value={typeof stockage?.totalBytes === 'number' ? `${decimal(stockage.totalBytes / (1024 * 1024 * 1024), 2)} Go` : null}
-          hint={typeof nbFichiers === 'number' ? `${nbFichiers} document${nbFichiers > 1 ? 's' : ''}` : undefined}
+          hint={typeof nbFichiers === 'number' ? pluriel(nbFichiers, 'document', 'documents') : undefined}
           icon={<HardDrive />}
+          aide="Documents courants des Data Rooms et dépôts des clients, tous cabinets confondus."
         />
         <KpiCard
-          label="Événements critiques 24 h"
+          label="Alertes de sécurité (24 h)"
           value={nbEvenements}
-          hint="Connexions échouées, 2FA, déblocages…"
-          icon={<Activity />}
+          hint="connexions échouées, mots de passe, codes de secours"
+          icon={<ShieldAlert />}
           variant={nbEvenements ? 'danger' : 'default'}
+          to="/admin/audit"
+          aide="Connexions échouées, changements de mot de passe, régénérations des codes de secours et déverrouillages des dernières 24 heures."
         />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Cabinets par forfait" icon={<Layers />} empty={parForfait.length === 0}>
-          <DonutChart data={parForfait} />
+        <ChartCard
+          title="Nouveaux cabinets par mois"
+          icon={<BarChart3 />}
+          empty={inscriptions.length === 0 || inscriptions.every((m) => m.cabinets === 0)}
+          emptyLabel="Aucun cabinet inscrit sur les douze derniers mois."
+        >
+          <ColonnesChart
+            donnees={inscriptions}
+            cleX="mois"
+            legende="Nouveaux cabinets par mois, douze derniers mois"
+            series={[{ cle: 'cabinets', nom: 'Nouveaux cabinets', ton: 'info' }]}
+          />
         </ChartCard>
-        <ChartCard title="Cabinets par statut" icon={<PieChartIcon />} empty={parStatut.length === 0}>
-          <DonutChart data={parStatut} />
+        <ChartCard title="Répartition des cabinets" icon={<Layers />} empty={parForfait.length === 0 && parStatut.length === 0}>
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div>
+              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-fg-muted">Par forfait</h4>
+              {parForfait.length === 0 ? (
+                <p className="text-sm text-fg-muted">Non rendue par le serveur.</p>
+              ) : (
+                <BarresHorizontales barres={parForfait} legende="Cabinets par forfait" ton="accent" part />
+              )}
+            </div>
+            <div>
+              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-fg-muted">Par statut</h4>
+              {parStatut.length === 0 ? (
+                <p className="text-sm text-fg-muted">Non rendue par le serveur.</p>
+              ) : (
+                <BarresHorizontales barres={parStatut} legende="Cabinets par statut" part />
+              )}
+            </div>
+          </div>
         </ChartCard>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Inscriptions (12 mois)" icon={<LineChartIcon />} empty={inscriptions.every((m) => m.count === 0)}>
-          <TrendLineChart data={inscriptions} xKey="label" series={[{ key: 'count', name: 'Inscriptions', color: chartTheme.accent }]} />
-        </ChartCard>
-        <ChartCard title="Inscriptions (30 jours)" icon={<TrendingUp />} empty={signups30d.length === 0}>
-          <EvolutionChart data={signups30d} color={chartTheme.success} />
-        </ChartCard>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Cabinets les plus actifs (7 jours)" icon={<Database />} empty={topWs.length === 0}>
-          <DistributionChart data={topWs} color={chartTheme.accent} height={220} />
+        <ChartCard
+          title="Cabinets les plus actifs (7 jours)"
+          icon={<Activity />}
+          empty={actifs.length === 0}
+          emptyLabel="Aucune action tracée sur les sept derniers jours."
+          actions={
+            <InfoBulle
+              libelle="Aide : cabinets les plus actifs"
+              texte="Nombre d’actions tracées au journal d’audit par cabinet sur les sept derniers jours (connexions, tickets, documents…)."
+            />
+          }
+        >
+          <BarresHorizontales barres={actifs} legende="Actions tracées par cabinet sur sept jours" ton="accent" />
         </ChartCard>
 
         <ChartCard
@@ -182,13 +244,23 @@ function DashboardContent({ data }: { data: Partial<SuperAdminDashboardDto> }) {
           icon={<ServerCog />}
           empty={sante.length === 0}
           emptyLabel="État des services non rendu par le serveur."
+          actions={
+            sante.length > 0 ? (
+              <Badge variant={enLigne === sante.length ? 'success' : 'danger'}>
+                {enLigne} sur {sante.length} en ligne
+              </Badge>
+            ) : undefined
+          }
         >
-          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <ul className="divide-y divide-border">
             {sante.map(([svc, status]) => {
               const s = santeService(status);
               return (
-                <li key={svc} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="truncate font-medium text-fg">{svc}</span>
+                <li key={svc} className="flex items-center justify-between gap-2 py-2 text-sm">
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium text-fg">{labelOf(SERVICE_LABELS, svc)}</span>
+                    <span className="block font-mono text-xs text-fg-subtle">{svc}</span>
+                  </span>
                   <Badge variant={s.ton} dot>
                     {s.libelle}
                   </Badge>
@@ -200,16 +272,17 @@ function DashboardContent({ data }: { data: Partial<SuperAdminDashboardDto> }) {
       </div>
 
       <ChartCard
-        title="Événements critiques (24 h)"
-        icon={<Activity />}
+        title="Alertes de sécurité (24 h)"
+        icon={<ShieldAlert />}
         empty={evenements.length === 0}
-        emptyLabel={nbEvenements === null ? 'Liste non rendue par le serveur.' : 'Aucun événement critique sur les dernières 24 heures.'}
+        emptyLabel={nbEvenements === null ? 'Liste non rendue par le serveur.' : 'Aucune alerte de sécurité sur les dernières 24 heures.'}
+        actions={<Lien to="/admin/audit">Ouvrir le journal d’audit</Lien>}
       >
         <ul className="divide-y divide-border">
           {evenements.slice(0, 12).map((e) => (
             <li key={e.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
-              <Badge variant="danger">{libelleAction(e.actionLabel, e.action)}</Badge>
-              {e.entityType && <span className="text-fg-muted">{e.entityType}</span>}
+              <Badge variant={TON_ALERTE[e.action] ?? 'neutral'}>{libelleAction(e.actionLabel, e.action)}</Badge>
+              {e.entityType && <span className="text-fg-muted">{labelOf(ENTITE_AUDIT_LABELS, e.entityType.toLowerCase())}</span>}
               <span className="ml-auto text-xs tabular-nums text-fg-subtle">
                 {new Date(e.createdAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
               </span>

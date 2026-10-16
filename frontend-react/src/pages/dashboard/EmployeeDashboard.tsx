@@ -1,26 +1,16 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  AlertTriangle,
-  ArrowRight,
-  Building2,
-  CheckCircle,
-  Clock,
-  FolderOpen,
-  MessageSquare,
-  Send,
-  Ticket as TicketIcon,
-  User,
-} from 'lucide-react';
+import { AlarmClock, ArrowRight, Building2, CalendarClock, Clock, Inbox, MessageSquare, Send, Ticket as TicketIcon, User } from 'lucide-react';
 import { useCurrentUser } from '../../store/authStore';
 import { ticketService } from '../../services/ticket.service';
 import { dataroomService } from '../../services/dataroom.service';
 import { dashboardService } from '../../services/dashboard.service';
 import { Page } from '../../components/layout/Page';
-import { Sprint10EmployePanel } from '../../components/dashboard/Sprint10EmployePanel';
-import { EmployeeChartsPanel } from '../../components/dashboard/EmployeeChartsPanel';
 import { ProchaineActionCarte } from '../../components/dashboard/ProchaineActionCarte';
+import { prochainesActions } from '../../components/dashboard/prochaineAction';
+import { joursRestants } from '../../components/dashboard/delais';
 import { KpiCard } from '../../components/dashboard/KpiCard';
+import { SectionTableauDeBord } from '../../components/dashboard/SectionTableauDeBord';
 import { PendingTransfersPanel } from '../../components/transfer/PendingTransfersPanel';
 import { TexteAide } from '../../components/ui/Aide';
 import { Badge, type BadgeVariant } from '../../components/ui/Badge';
@@ -32,12 +22,15 @@ import type { EmployeDashboardDto } from '../../types/dashboard';
 import type { DemandeSummary, DossierBrief, RequeteStatut, RequeteSummary } from '../../types/dataroom';
 import { TYPE_REQUETE_LABELS } from '../../types/dataroom';
 
-const KANBAN_STATUTS = ['CREATION_TICKET', 'GENERATION_DOCUMENTS', 'DEROULEMENT_DEMARCHE', 'CLOTURE_DOSSIER'] as const;
-const KANBAN_LABELS: Record<string, string> = {
-  CREATION_TICKET: 'Création',
-  GENERATION_DOCUMENTS: 'Génération',
+/**
+ * Lot L6b (E17) : seuls les tickets OUVERTS figurent au tableau de bord (un ticket clos n'a plus
+ * rien a faire ; la liste des tickets garde l'historique).
+ */
+const KANBAN_STATUTS = ['CREATION_TICKET', 'GENERATION_DOCUMENTS', 'DEROULEMENT_DEMARCHE'] as const;
+const KANBAN_LABELS: Record<(typeof KANBAN_STATUTS)[number], string> = {
+  CREATION_TICKET: 'Création et collecte',
+  GENERATION_DOCUMENTS: 'Génération des documents',
   DEROULEMENT_DEMARCHE: 'Démarches',
-  CLOTURE_DOSSIER: 'Clôture',
 };
 
 const DEMANDE_COLUMNS: Array<{ key: 'NON_TRAITEE' | 'EN_COURS' | 'TRAITEE'; label: string; ton: BadgeVariant }> = [
@@ -55,41 +48,55 @@ const REQUETE_COLUMNS: Array<{ key: 'A_FAIRE' | 'A_VALIDER' | 'TERMINE'; label: 
   { key: 'TERMINE', label: 'Terminées', match: ['CLOTUREE'], ton: 'success' },
 ];
 
+/** Horizon du compteur "Delai sous 7 jours". */
+const HORIZON_JOURS = 7;
+
 /** Nom du dataroom (raison sociale) avec repli sur les 8 premiers car. de l'UUID. */
 function dataroomLabel(dossierId: string, nameById: Record<string, string>): string {
   return nameById[dossierId] ?? dossierId.slice(0, 8).toUpperCase();
 }
 
+function pluriel(n: number, singulier: string, plurielTexte: string): string {
+  return `${n} ${n > 1 ? plurielTexte : singulier}`;
+}
+
 /**
- * Tableau de bord de l'employe (lot L6b, E9) : ses indicateurs, ses tickets par statut, les
- * demandes de ses clients, ses requetes, ses graphiques, puis la carte "Prochaine action" (a la
- * place du copilote, retire le 2026-10-16) et sa charge de la semaine.
+ * Tableau de bord de l'employe.
+ *
+ * Lot L6b (E17, demande du 2026-10-16 "regle moi tout le dashboard") : hierarchie unique.
+ * 1. Quatre indicateurs qui demandent une action : tickets en cours, tickets en retard, delais
+ *    sous 7 jours, echanges clients a traiter (aucun doublon : l'ancien "Taches urgentes"
+ *    recomptait les tickets en cours, "Clotures" ne demandait rien).
+ * 2. Le travail : mes tickets en cours par etape, les demandes de mes clients, mes requetes.
+ * 3. La carte "Prochaine action" (place choisie le 2026-10-16 : apres les sections de travail,
+ *    a la place de l'ancien copilote).
+ * Retires : le bandeau "N tickets en cours, pensez aux delais" (sans valeur), les anneaux de
+ * repartition (le tableau par etape les remplace), la zone "Mes indicateurs" (tickets ouverts,
+ * derniers tickets et delais assignes : tous deja affiches plus haut ; graphique par semaine a
+ * axe decimal).
+ *
+ * Toutes les sources sont SCOPEES a l'employe connecte (ticketService.list : assigne ou createur ;
+ * dossiers et demandes : ses dossiers ; requetes : les siennes ; delais des demarches :
+ * dashboard-service, dossiers dont il est responsable). Une source en echec rend null : ses
+ * compteurs affichent "--" et sa section le dit, jamais un zero invente (motif 9).
  */
 export function EmployeeDashboard() {
   const user = useCurrentUser();
   const [tickets, setTickets] = useState<Ticket[] | null>([]);
   const [dossiers, setDossiers] = useState<DossierBrief[]>([]);
-  const [demandes, setDemandes] = useState<DemandeSummary[]>([]);
-  const [requetes, setRequetes] = useState<RequeteSummary[]>([]);
+  const [demandes, setDemandes] = useState<DemandeSummary[] | null>([]);
+  const [requetes, setRequetes] = useState<RequeteSummary[] | null>([]);
   const [indicateurs, setIndicateurs] = useState<Partial<EmployeDashboardDto> | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingIndicateurs, setLoadingIndicateurs] = useState(true);
 
   useEffect(() => {
     let mounted = true;
-    // Toutes les sources sont SCOPEES a l'employe connecte :
-    //  - ticketService.list        -> assigne_or_creePar = userId (RG-U08) ;
-    //  - dataroomService.listDossiers -> responsable_id = userId (Lot Q) ;
-    //  - dataroomService.listDemandes -> demandes de MES dossiers (Lot S3).
-    //  - dataroomService.listMesRequetes -> MES requetes au client (EMPLOYE_TO_CLIENT).
-    // On n'appelle PLUS supervisionService.kpis() (agregat WORKSPACE-WIDE) qui
-    // faisait fuiter des totaux globaux (ex. "23 dossiers") a un employe qui
-    // n'en gere qu'un.
     Promise.all([
       ticketService.list({ limit: 50 }).catch(() => null),
       dataroomService.listDossiers().catch(() => [] as DossierBrief[]),
-      dataroomService.listDemandes().catch(() => [] as DemandeSummary[]),
-      dataroomService.listMesRequetes().catch(() => [] as RequeteSummary[]),
+      dataroomService.listDemandes().catch(() => null),
+      dataroomService.listMesRequetes().catch(() => null),
     ]).then(([t, dos, dem, req]) => {
       if (!mounted) return;
       setTickets(t ? (t.items ?? []) : null);
@@ -98,8 +105,8 @@ export function EmployeeDashboard() {
       setRequetes(req);
       setLoading(false);
     });
-    // Indicateurs de dashboard-service (echeances des demarches) : un seul appel, partage par
-    // la carte "Prochaine action" et le panneau des indicateurs.
+    // Delais legaux des demarches (dashboard-service) : un seul appel, lu par les compteurs de
+    // retard et par la carte "Prochaine action".
     dashboardService
       .getEmploye()
       .then((d) => mounted && setIndicateurs(d ?? {}))
@@ -110,46 +117,42 @@ export function EmployeeDashboard() {
     };
   }, []);
 
-  const mesTickets = tickets ?? [];
-  // Compteurs 100% derives de MES donnees (aucun total workspace-wide).
-  const dossiersInactifs = new Set(['CLOTURE', 'ARCHIVE', 'RADIE']);
-  const dossiersActifs = dossiers.filter((d) => !dossiersInactifs.has(d.statut)).length;
-  // « En cours » couvre les deux statuts de production : generation des actes,
-  // puis deroulement des demarches administratives.
-  const ticketsEnCours = mesTickets.filter((t) => t.statut === 'GENERATION_DOCUMENTS' || t.statut === 'DEROULEMENT_DEMARCHE').length;
-  const ticketsNouveaux = mesTickets.filter((t) => t.statut === 'CREATION_TICKET').length;
-  // "Taches urgentes" = mes tickets EN_COURS.
-  const taches = ticketsEnCours;
-  const cloturesMois = mesTickets.filter((t) => t.statut === 'CLOTURE_DOSSIER').length;
   const ticketsAbsents = tickets === null;
+  const ouverts = (tickets ?? []).filter((t) => (KANBAN_STATUTS as readonly string[]).includes(t.statut));
+  const enCreation = ouverts.filter((t) => t.statut === 'CREATION_TICKET').length;
 
-  const ticketsByStatut: Record<string, Ticket[]> = { CREATION_TICKET: [], GENERATION_DOCUMENTS: [], DEROULEMENT_DEMARCHE: [], CLOTURE_DOSSIER: [] };
-  for (const t of mesTickets) {
-    if (t.statut in ticketsByStatut) ticketsByStatut[t.statut].push(t);
-  }
+  const delaisDemarches = indicateurs ? (indicateurs.mesEcheancesAssignees ?? []) : null;
+  const actions = tickets ? prochainesActions(tickets, delaisDemarches, user?.userId) : [];
+  const aujourdHui = new Date();
+  const ecarts = actions.filter((a) => a.echeance).map((a) => joursRestants(a.echeance!.date, aujourdHui));
+  const enRetard = ecarts.filter((n) => n < 0).length;
+  const sousHorizon = ecarts.filter((n) => n >= 0 && n <= HORIZON_JOURS).length;
+
+  const ticketsByStatut: Record<string, Ticket[]> = { CREATION_TICKET: [], GENERATION_DOCUMENTS: [], DEROULEMENT_DEMARCHE: [] };
+  for (const t of ouverts) ticketsByStatut[t.statut].push(t);
 
   const demandesByStatut: Record<string, DemandeSummary[]> = { NON_TRAITEE: [], EN_COURS: [], TRAITEE: [] };
-  for (const d of demandes) {
+  for (const d of demandes ?? []) {
     if (d.statut in demandesByStatut) demandesByStatut[d.statut].push(d);
   }
   const nonTraitees = demandesByStatut.NON_TRAITEE.length;
 
-  // Map dossierId -> raisonSociale (jointure front, aucun appel back en plus).
   const dossierNameById: Record<string, string> = {};
   for (const d of dossiers) dossierNameById[d.id] = d.raisonSociale;
 
-  // Requetes au client regroupees par colonne de la machine a etats.
   const requetesByColumn: Record<string, RequeteSummary[]> = { A_FAIRE: [], A_VALIDER: [], TERMINE: [] };
-  for (const r of requetes) {
+  for (const r of requetes ?? []) {
     const col = REQUETE_COLUMNS.find((c) => c.match.includes(r.statut));
     if (col) requetesByColumn[col.key].push(r);
   }
   const aValider = requetesByColumn.A_VALIDER.length;
+  const echangesAbsents = demandes === null || requetes === null;
+  const indiceDelais = indicateurs === null && !loadingIndicateurs ? 'dates limites des tickets seulement' : undefined;
 
   return (
     <Page
       titre="Tableau de bord"
-      description={`Bonjour, ${user?.email?.split('@')[0] ?? 'Employé'}. Votre journée en un coup d’œil : ce qu’il faut faire maintenant, vos tickets par statut, les demandes de vos clients et les requêtes qui attendent une réponse.`}
+      description={`Bonjour, ${user?.email?.split('@')[0] ?? 'Employé'}. Ce qui demande votre attention aujourd’hui : vos tickets en retard ou proches de leur délai, et les échanges de vos clients qui attendent une réponse.`}
       action={
         <Lien to="/tickets" commeBouton={{ variant: 'primary' }}>
           Mes tickets
@@ -158,10 +161,11 @@ export function EmployeeDashboard() {
       aide={
         <TexteAide cle="tableau-de-bord-employe" titre="Par où commencer ?">
           <p>
-            Traitez d’abord les transferts de dossier en attente et les demandes « Non traitées » de vos
-            clients. Suivez ensuite la carte « Prochaine action » : pour chaque ticket en cours, elle dit
-            ce qu’il faut faire à son statut et l’échéance la plus proche ; ouvrez le ticket pour voir ce
-            qui manque. Les requêtes « À valider » attendent votre vérification de la réponse du client.
+            Les quatre indicateurs du haut disent ce qui presse : un ticket « en retard » a dépassé la date limite
+            fixée sur le ticket ou le délai légal d’une démarche du dossier. Traitez d’abord les transferts de
+            dossier en attente, puis les demandes « Non traitées » de vos clients et les réponses « À valider ».
+            La carte « Prochaine action », en bas de page, dit pour chaque ticket ce qu’il faut faire à son étape
+            et quel délai court ; ouvrez le ticket pour voir ce qui manque avant l’étape suivante.
           </p>
         </TexteAide>
       }
@@ -169,98 +173,129 @@ export function EmployeeDashboard() {
       {/* V9 -- Transferts de dossier en attente (recus a accepter/refuser + envoyes a annuler) */}
       <PendingTransfersPanel />
 
-
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard
-          icon={<FolderOpen />}
-          label="Dossiers actifs"
-          value={dossiersActifs}
-          hint={`${dossiers.length} dossier${dossiers.length > 1 ? 's' : ''} à vous`}
-          loading={loading}
-        />
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           icon={<TicketIcon />}
           label="Tickets en cours"
-          value={ticketsAbsents ? null : ticketsEnCours}
-          hint={ticketsAbsents ? undefined : `${ticketsNouveaux} nouveau${ticketsNouveaux > 1 ? 'x' : ''}`}
+          value={ticketsAbsents ? null : ouverts.length}
+          hint={ticketsAbsents ? 'liste des tickets indisponible' : enCreation > 0 ? `dont ${enCreation} en création` : 'aucun en création'}
           loading={loading}
+          to="/tickets"
+          aide="Vos tickets ouverts : création et collecte, génération des documents ou démarches. Les tickets clôturés ou annulés ne comptent pas."
         />
         <KpiCard
-          icon={<AlertTriangle />}
-          label="Tâches urgentes"
-          value={ticketsAbsents ? null : taches}
-          variant={taches > 0 ? 'warning' : 'default'}
-          hint={ticketsAbsents ? undefined : `sur ${mesTickets.length} de mes tickets`}
-          loading={loading}
+          icon={<AlarmClock />}
+          label="En retard"
+          value={ticketsAbsents ? null : enRetard}
+          variant={enRetard > 0 ? 'danger' : 'default'}
+          hint={indiceDelais ?? (enRetard > 0 ? 'délai dépassé : à traiter en priorité' : 'aucun délai dépassé')}
+          loading={loading || loadingIndicateurs}
+          aide="Tickets en cours dont la date limite du ticket, ou le délai légal d’une démarche restant à accomplir sur le dossier, est dépassé."
         />
         <KpiCard
-          icon={<CheckCircle />}
-          label="Clôturés"
-          value={ticketsAbsents ? null : cloturesMois}
-          variant="success"
-          hint={ticketsAbsents ? undefined : `${mesTickets.length} de mes tickets`}
+          icon={<CalendarClock />}
+          label={`Délai sous ${HORIZON_JOURS} jours`}
+          value={ticketsAbsents ? null : sousHorizon}
+          variant={sousHorizon > 0 ? 'warning' : 'default'}
+          hint={indiceDelais ?? 'tickets dont le délai tombe cette semaine'}
+          loading={loading || loadingIndicateurs}
+          aide={`Tickets en cours dont le délai le plus proche (date limite du ticket ou délai légal d’une démarche) tombe aujourd’hui ou dans les ${HORIZON_JOURS} prochains jours.`}
+        />
+        <KpiCard
+          icon={<Inbox />}
+          label="Échanges à traiter"
+          value={echangesAbsents ? null : nonTraitees + aValider}
+          variant={nonTraitees + aValider > 0 ? 'warning' : 'default'}
+          hint={
+            echangesAbsents
+              ? 'échanges indisponibles'
+              : `${pluriel(nonTraitees, 'demande non traitée', 'demandes non traitées')} · ${pluriel(aValider, 'réponse à valider', 'réponses à valider')}`
+          }
           loading={loading}
+          to="/data-rooms"
+          aide="Demandes de vos clients que personne n’a encore prises en charge, et réponses de vos clients à vos requêtes qui attendent votre validation."
         />
       </div>
 
-      {taches > 0 && (
-        <Message ton="attention" className="mb-6">
-          {taches} ticket{taches > 1 ? 's' : ''} en cours. Pensez à vérifier les délais.
-        </Message>
-      )}
-
-      <Section
-        titre="Mes tickets actifs"
+      <SectionTableauDeBord
+        titre="Mes tickets en cours"
         icone={<TicketIcon />}
+        etat={ticketsAbsents ? null : <Badge variant="neutral">{ouverts.length}</Badge>}
         lien={<Lien to="/tickets">Voir tous les tickets</Lien>}
       >
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {KANBAN_STATUTS.map((s) => (
-            <Colonne key={s} titre={KANBAN_LABELS[s]} nombre={ticketsAbsents ? null : ticketsByStatut[s].length}>
-              {ticketsByStatut[s].length === 0 ? (
-                <VideColonne>{ticketsAbsents ? 'Tickets indisponibles' : 'Aucun ticket'}</VideColonne>
-              ) : (
-                ticketsByStatut[s].slice(0, 4).map((t) => <TicketMiniCard key={t.id} ticket={t} />)
-              )}
-            </Colonne>
-          ))}
-        </div>
-      </Section>
+        {ticketsAbsents ? (
+          <Message ton="attention" titre="Vos tickets n’ont pas pu être chargés">
+            Rechargez la page dans quelques instants, ou ouvrez la liste des tickets.
+          </Message>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-3">
+            {KANBAN_STATUTS.map((s) => (
+              <Colonne key={s} titre={KANBAN_LABELS[s]} nombre={ticketsByStatut[s].length}>
+                {ticketsByStatut[s].length === 0 ? (
+                  <VideColonne>Aucun ticket à cette étape</VideColonne>
+                ) : (
+                  <>
+                    {ticketsByStatut[s].slice(0, 4).map((t) => (
+                      <TicketMiniCard key={t.id} ticket={t} />
+                    ))}
+                    {ticketsByStatut[s].length > 4 && (
+                      <p className="px-1.5 text-xs text-fg-muted">
+                        et {ticketsByStatut[s].length - 4} autre{ticketsByStatut[s].length - 4 > 1 ? 's' : ''} :{' '}
+                        <Lien to="/tickets">voir la liste</Lien>
+                      </p>
+                    )}
+                  </>
+                )}
+              </Colonne>
+            ))}
+          </div>
+        )}
+      </SectionTableauDeBord>
 
-      <Section
+      <SectionTableauDeBord
         titre="Demandes de mes clients"
         icone={<MessageSquare />}
         etat={nonTraitees > 0 ? <Badge variant="danger">{nonTraitees} non traitée{nonTraitees > 1 ? 's' : ''}</Badge> : null}
         lien={<Lien to="/data-rooms">Voir les Data Rooms</Lien>}
       >
-        <div className="grid gap-4 md:grid-cols-3">
-          {DEMANDE_COLUMNS.map((col) => (
-            <Colonne key={col.key} titre={col.label} nombre={demandesByStatut[col.key].length} ton={col.ton}>
-              {demandesByStatut[col.key].length === 0 ? (
-                <VideColonne>Aucune demande</VideColonne>
-              ) : (
-                demandesByStatut[col.key].slice(0, 4).map((d) => (
-                  <DemandeMiniCard
-                    key={d.id}
-                    demande={d}
-                    dossierName={dataroomLabel(d.dossierId, dossierNameById)}
-                    showCreateTicket={col.key === 'NON_TRAITEE'}
-                  />
-                ))
-              )}
-            </Colonne>
-          ))}
-        </div>
-      </Section>
+        {demandes === null ? (
+          <Message ton="attention" titre="Les demandes de vos clients n’ont pas pu être chargées">
+            Rechargez la page dans quelques instants ; chaque demande reste consultable dans la Data Room du dossier.
+          </Message>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-3">
+            {DEMANDE_COLUMNS.map((col) => (
+              <Colonne key={col.key} titre={col.label} nombre={demandesByStatut[col.key].length} ton={col.ton}>
+                {demandesByStatut[col.key].length === 0 ? (
+                  <VideColonne>Aucune demande</VideColonne>
+                ) : (
+                  demandesByStatut[col.key].slice(0, 4).map((d) => (
+                    <DemandeMiniCard
+                      key={d.id}
+                      demande={d}
+                      dossierName={dataroomLabel(d.dossierId, dossierNameById)}
+                      showCreateTicket={col.key === 'NON_TRAITEE'}
+                    />
+                  ))
+                )}
+              </Colonne>
+            ))}
+          </div>
+        )}
+      </SectionTableauDeBord>
 
       {/* Lot AG -- requetes du cabinet au client (direction EMPLOYE_TO_CLIENT) */}
-      <Section
+      <SectionTableauDeBord
         titre="Requêtes du cabinet au client"
         icone={<Send />}
         etat={aValider > 0 ? <Badge variant="warning">{aValider} à valider</Badge> : null}
         lien={<Lien to="/data-rooms">Voir les Data Rooms</Lien>}
       >
-        {requetes.length === 0 ? (
+        {requetes === null ? (
+          <Message ton="attention" titre="Vos requêtes n’ont pas pu être chargées">
+            Rechargez la page dans quelques instants ; chaque requête reste consultable dans la Data Room du dossier.
+          </Message>
+        ) : requetes.length === 0 ? (
           <p className="rounded-xl border border-dashed border-border-hi bg-bg-raised p-6 text-center text-sm text-fg-muted">
             Aucune requête envoyée à vos clients. Une requête se crée depuis la Data Room du dossier, onglet « Requêtes du cabinet ».
           </p>
@@ -279,40 +314,11 @@ export function EmployeeDashboard() {
             ))}
           </div>
         )}
-      </Section>
-
-      {/* Graphiques : repartition de mes tickets (statut + type) */}
-      <EmployeeChartsPanel tickets={mesTickets} />
+      </SectionTableauDeBord>
 
       {/* Demande du 2026-10-16 : le copilote est retire ; la carte "Prochaine action" prend sa place. */}
-      <ProchaineActionCarte
-        tickets={tickets}
-        echeances={indicateurs ? (indicateurs.mesEcheancesAssignees ?? []) : null}
-        userId={user?.userId}
-        loading={loading || loadingIndicateurs}
-      />
-
-      {/* Sprint 10 -- ma charge semaine + echeances assignees */}
-      <Sprint10EmployePanel data={indicateurs} loading={loadingIndicateurs} />
+      <ProchaineActionCarte tickets={tickets} echeances={delaisDemarches} userId={user?.userId} loading={loading || loadingIndicateurs} />
     </Page>
-  );
-}
-
-function Section({ titre, icone, etat, lien, children }: { titre: string; icone: ReactNode; etat?: ReactNode; lien?: ReactNode; children: ReactNode }) {
-  return (
-    <section className="mb-8">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-heading">
-          <span className="text-fg-subtle [&>svg]:h-5 [&>svg]:w-5" aria-hidden="true">
-            {icone}
-          </span>
-          {titre}
-          {etat}
-        </h2>
-        {lien && <span className="text-sm">{lien}</span>}
-      </div>
-      {children}
-    </section>
   );
 }
 
@@ -336,7 +342,15 @@ function VideColonne({ children }: { children: ReactNode }) {
 const CARTE = 'relative rounded-lg border border-border bg-bg-raised p-3 shadow-card transition-shadow duration-150 hover:border-border-hi hover:shadow-card-lifted';
 const LIEN_ETIRE = 'rounded-sm text-sm font-semibold text-fg after:absolute after:inset-0 after:rounded-lg hover:underline';
 
+const PRIORITE: Record<string, { libelle: string; ton: BadgeVariant }> = {
+  URGENTE: { libelle: 'Urgente', ton: 'danger' },
+  HAUTE: { libelle: 'Haute', ton: 'warning' },
+  NORMALE: { libelle: 'Normale', ton: 'neutral' },
+  BASSE: { libelle: 'Basse', ton: 'neutral' },
+};
+
 function TicketMiniCard({ ticket }: { ticket: Ticket }) {
+  const priorite = ticket.priorite ? PRIORITE[ticket.priorite.toUpperCase()] : undefined;
   return (
     <div className={CARTE}>
       <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -346,9 +360,18 @@ function TicketMiniCard({ ticket }: { ticket: Ticket }) {
       <Link to={`/workflows/${ticket.id}`} className={LIEN_ETIRE}>
         {ticket.titre}
       </Link>
-      <p className="mt-2 flex items-center gap-1 text-xs text-fg-muted">
-        <Clock className="h-3 w-3" aria-hidden="true" />
-        Priorité : {ticket.priorite ? ticket.priorite.toLowerCase() : '--'}
+      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-muted">
+        {priorite && priorite.ton !== 'neutral' ? (
+          <Badge variant={priorite.ton}>Priorité {priorite.libelle.toLowerCase()}</Badge>
+        ) : (
+          <span>Priorité {priorite ? priorite.libelle.toLowerCase() : 'non renseignée'}</span>
+        )}
+        {ticket.deadline && (
+          <span className="inline-flex items-center gap-1">
+            <Clock className="h-3 w-3" aria-hidden="true" />
+            Date limite : {new Date(ticket.deadline).toLocaleDateString('fr-FR')}
+          </span>
+        )}
       </p>
     </div>
   );
