@@ -1,6 +1,5 @@
 package ma.jurika.common.exception;
 
-import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.validation.ConstraintViolationException;
 import ma.jurika.common.dto.ErrorResponse;
 import org.slf4j.Logger;
@@ -53,19 +52,50 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(ex.code(), ex.getMessage()));
     }
 
+    /**
+     * Lot L6b (E13) : le message NOMME chaque champ a corriger, en francais quelle que soit la
+     * langue de la JVM (avant : "Donn\u00e9es invalides" et un detail "must not be blank").
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
         List<ErrorResponse.FieldError> errors = ex.getBindingResult().getFieldErrors().stream()
-                .map(fe -> new ErrorResponse.FieldError(fe.getField(), fe.getDefaultMessage()))
+                .map(fe -> new ErrorResponse.FieldError(fe.getField(), messageDuChamp(fe)))
                 .toList();
+        String message = MessagesValidation.synthese(errors);
+        if (errors.isEmpty() && ex.getBindingResult().hasGlobalErrors()) {
+            message = "Donn\u00e9es invalides : " + ex.getBindingResult().getGlobalErrors().stream()
+                    .map(org.springframework.validation.ObjectError::getDefaultMessage)
+                    .collect(java.util.stream.Collectors.joining(" ; "));
+        }
         return ResponseEntity.badRequest()
-                .body(new ErrorResponse("VALIDATION_ERROR", "Donn\u00e9es invalides", errors));
+                .body(new ErrorResponse("VALIDATION_ERROR", message, errors));
+    }
+
+    private static String messageDuChamp(org.springframework.validation.FieldError fe) {
+        if (fe.contains(jakarta.validation.ConstraintViolation.class)) {
+            return MessagesValidation.message(fe.unwrap(jakarta.validation.ConstraintViolation.class));
+        }
+        if (fe.isBindingFailure()) return "Valeur invalide.";
+        return fe.getDefaultMessage();
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
+        List<ErrorResponse.FieldError> errors = ex.getConstraintViolations() == null ? List.of()
+                : ex.getConstraintViolations().stream()
+                    .map(v -> new ErrorResponse.FieldError(dernierNoeud(v.getPropertyPath()), MessagesValidation.message(v)))
+                    .sorted(java.util.Comparator.comparing(ErrorResponse.FieldError::field))
+                    .toList();
         return ResponseEntity.badRequest()
-                .body(new ErrorResponse("VALIDATION_ERROR", ex.getMessage()));
+                .body(new ErrorResponse("VALIDATION_ERROR", MessagesValidation.synthese(errors), errors));
+    }
+
+    private static String dernierNoeud(jakarta.validation.Path chemin) {
+        String nom = null;
+        for (jakarta.validation.Path.Node n : chemin) {
+            if (n.getName() != null) nom = n.getName();
+        }
+        return nom == null ? chemin.toString() : nom;
     }
 
     @ExceptionHandler(AccessDeniedException.class)
@@ -144,28 +174,10 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
-        Throwable cause = ex.getCause();
-        String message;
-        if (cause instanceof InvalidFormatException ife) {
-            String field = ife.getPath().isEmpty() ? "?" : ife.getPath().get(ife.getPath().size() - 1).getFieldName();
-            Class<?> targetType = ife.getTargetType();
-            Object value = ife.getValue();
-            if (targetType != null && targetType.isEnum()) {
-                message = "Valeur invalide pour le champ '" + field + "' : \"" + value
-                        + "\". Valeurs accept\u00e9es : "
-                        + java.util.Arrays.toString(targetType.getEnumConstants());
-            } else {
-                message = "Format invalide pour le champ '" + field + "' : \"" + value
-                        + "\" (attendu : " + (targetType != null ? targetType.getSimpleName() : "?") + ")";
-            }
-        } else {
-            String rawMsg = ex.getMostSpecificCause() != null
-                    ? ex.getMostSpecificCause().getMessage() : ex.getMessage();
-            message = "Requ\u00eate JSON invalide : " + (rawMsg == null ? "format non reconnu" : rawMsg);
-        }
-        log.debug("400 JSON invalide : {}", message);
-        return ResponseEntity.badRequest()
-                .body(new ErrorResponse("BAD_REQUEST", message));
+        // Lot L6b (E13) : champ nomme et type attendu en francais ; jamais le texte de Jackson.
+        ErrorResponse corps = MessagesValidation.corpsIllisible(ex.getCause(), ex.getMessage());
+        log.debug("400 JSON invalide : {}", corps.message());
+        return ResponseEntity.badRequest().body(corps);
     }
 
     /**
@@ -250,6 +262,22 @@ public class GlobalExceptionHandler {
     private static String messageDe(Exception ex, HttpStatus statut) {
         if (ex instanceof org.springframework.web.server.ResponseStatusException rse) {
             return rse.getReason() != null ? rse.getReason() : statut.getReasonPhrase();
+        }
+        // Lot L6b (E13) : les refus courants de Spring MVC, en francais et nommes.
+        if (ex instanceof org.springframework.web.bind.MissingServletRequestParameterException m) {
+            return "Param\u00e8tre obligatoire manquant : \u00ab\u00a0" + m.getParameterName() + "\u00a0\u00bb.";
+        }
+        if (ex instanceof org.springframework.web.multipart.support.MissingServletRequestPartException m) {
+            return "Pi\u00e8ce obligatoire manquante : \u00ab\u00a0" + m.getRequestPartName() + "\u00a0\u00bb.";
+        }
+        if (ex instanceof org.springframework.web.multipart.MaxUploadSizeExceededException) {
+            return "Le fichier est trop volumineux.";
+        }
+        if (ex instanceof org.springframework.web.HttpRequestMethodNotSupportedException m) {
+            return "M\u00e9thode " + m.getMethod() + " non prise en charge pour cette adresse.";
+        }
+        if (ex instanceof org.springframework.web.HttpMediaTypeNotSupportedException) {
+            return "Type de contenu non pris en charge.";
         }
         String m = ex.getMessage();
         return m == null || m.isBlank() ? statut.getReasonPhrase() : m;
