@@ -98,8 +98,24 @@ public class GlobalExceptionHandler {
         return nom == null ? chemin.toString() : nom;
     }
 
+    /**
+     * Lot L6b (E13) : un utilisateur AUTHENTIFIE a qui son role refuse l'action recoit
+     * PERMISSION_DENIED (le front ne rafraichit pas la session : un nouveau jeton n'y changerait
+     * rien) ; une requete anonyme (jeton expire ou illisible) garde FORBIDDEN, que le front traite
+     * en rafraichissant la session puis en rejouant la requete. Avant, tout refus portait
+     * FORBIDDEN : chaque ecran refuse a un role declenchait une rotation de jeton et un second 403.
+     */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+        org.springframework.security.core.Authentication a =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        boolean authentifie = a != null && a.isAuthenticated()
+                && !(a instanceof org.springframework.security.authentication.AnonymousAuthenticationToken);
+        if (authentifie) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("PERMISSION_DENIED",
+                            "Vous n\u2019avez pas les droits n\u00e9cessaires pour cette action."));
+        }
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ErrorResponse("FORBIDDEN", "Acc\u00e8s refus\u00e9"));
     }
