@@ -219,7 +219,7 @@ describe('EmployeeDashboard', () => {
     expect(getEmploye).toHaveBeenCalledTimes(1);
   });
 
-  it("sans copilote : la carte "Prochaine action" prend sa place, apres les requetes et les graphiques (demande du 2026-10-16)", async () => {
+  it("sans copilote : la carte Prochaine action prend sa place, apres les requetes et les graphiques (demande du 2026-10-16)", async () => {
     list.mockResolvedValue({ items: [] });
     listDossiers.mockResolvedValue([]);
     listDemandes.mockResolvedValue([]);
