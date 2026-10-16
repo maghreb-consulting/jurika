@@ -61,6 +61,9 @@ export function DemandesKanban() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<DemandeSummary | null>(null);
   const [showForm, setShowForm] = useState(false);
+  // Lot L6b (E16) : dossiers sur lesquels le cabinet a ouvert l'envoi de demandes (RG-CLI-01) ;
+  // le serveur refuse (403) les autres : ni bouton ni dossier propose pour eux.
+  const [dossiersDemande, setDossiersDemande] = useState<DossierBrief[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,6 +79,10 @@ export function DemandesKanban() {
         ),
       );
       setDemandes(perDossier.flat());
+      const permissions = await Promise.all(
+        list.map((d) => dataroomService.getMyPermissions(d.id).catch(() => null)),
+      );
+      setDossiersDemande(list.filter((_, i) => permissions[i]?.permDemandes === true));
     } catch (err) {
       setError(extractError(err).message);
     } finally {
@@ -109,7 +116,7 @@ export function DemandesKanban() {
       titre="Mes demandes"
       description="Adressez vos demandes au cabinet et suivez leur avancement : « Non traitée » tant que votre conseiller ne l’a pas prise en charge, puis « En cours », puis « Traitée »."
       action={
-        !loading && dossiers.length > 0 ? (
+        !loading && dossiersDemande.length > 0 ? (
           <Button type="button" icon={<Plus />} onClick={() => setShowForm(true)}>
             Nouvelle demande
           </Button>
@@ -118,6 +125,12 @@ export function DemandesKanban() {
     >
       <div className="space-y-5">
         {error && <Message ton="erreur">{error}</Message>}
+        {!loading && !error && dossiers.length > 0 && dossiersDemande.length === 0 && (
+          <Message ton="attention" titre="Envoi de demandes non ouvert">
+            Votre cabinet n’a pas ouvert l’envoi de demandes sur votre espace. Vos demandes passées restent consultables
+            ci-dessous ; pour une nouvelle demande, contactez votre conseiller.
+          </Message>
+        )}
 
         {loading ? (
           <SqueletteZone libelle="Chargement de vos demandes…">
@@ -169,9 +182,9 @@ export function DemandesKanban() {
 
       {selected && <DemandeDetailModal demande={selected} onClose={() => setSelected(null)} />}
 
-      {showForm && dossiers.length > 0 && (
+      {showForm && dossiersDemande.length > 0 && (
         <NouvelleDemandeModal
-          dossiers={dossiers}
+          dossiers={dossiersDemande}
           onClose={() => setShowForm(false)}
           onCreated={async () => {
             setShowForm(false);

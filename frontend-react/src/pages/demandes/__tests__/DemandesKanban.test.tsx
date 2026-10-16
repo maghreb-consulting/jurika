@@ -14,12 +14,14 @@ import { DemandesKanban } from '../DemandesKanban';
 const listDossiers = vi.fn();
 const listDemandesByDossier = vi.fn();
 const createDemande = vi.fn();
+const getMyPermissions = vi.fn();
 
 vi.mock('../../../services/dataroom.service', () => ({
   dataroomService: {
     listDossiers: (...a: unknown[]) => listDossiers(...a),
     listDemandesByDossier: (...a: unknown[]) => listDemandesByDossier(...a),
     createDemande: (...a: unknown[]) => createDemande(...a),
+    getMyPermissions: (...a: unknown[]) => getMyPermissions(...a),
   },
 }));
 
@@ -44,6 +46,8 @@ describe('DemandesKanban', () => {
     listDossiers.mockReset();
     listDemandesByDossier.mockReset();
     createDemande.mockReset();
+    getMyPermissions.mockReset();
+    getMyPermissions.mockResolvedValue({ dossierId: 'dos-1', permDemandes: true, permConsultation: true });
   });
 
   it('groupe les demandes par statut dans la bonne colonne', async () => {
@@ -116,5 +120,23 @@ describe('DemandesKanban', () => {
     await waitFor(() =>
       expect(listDemandesByDossier).toHaveBeenCalledTimes(2),
     );
+  });
+
+  // Lot L6b (E16, parcours des permissions du client) : l'envoi de demandes ferme par le cabinet
+  // etait ignore ici aussi (bouton offert, refus 403 du serveur).
+  it('sans permission d envoyer des demandes : pas de bouton, l ecran le dit', async () => {
+    listDossiers.mockResolvedValue([{ id: 'dos-1', raisonSociale: 'ACME SARL' }]);
+    listDemandesByDossier.mockResolvedValue([demande('d1', 'EN_COURS', 'Demande C', '2026-06-03T10:00:00Z')]);
+    getMyPermissions.mockResolvedValue({ dossierId: 'dos-1', permDemandes: false, permConsultation: true });
+
+    render(
+      <MemoryRouter>
+        <DemandesKanban />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Demande C')).toBeInTheDocument();
+    expect(await screen.findByText(/n’a pas ouvert l’envoi de demandes/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Nouvelle demande/i })).not.toBeInTheDocument();
   });
 });

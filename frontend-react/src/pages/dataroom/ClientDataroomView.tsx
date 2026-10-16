@@ -172,6 +172,11 @@ export function ClientDataroomView() {
    */
   const archived = isDossierArchived(dossier?.statut);
   const canDepot = (settings?.permDepot ?? false) && !archived;
+  // Lot L6b (E16) : consultation et demandes, reglees par le cabinet (RG-CLI-01). Le serveur refuse
+  // (403) ce que la permission ferme : l'ecran ne l'offre pas et le dit. Reglages illisibles :
+  // la consultation n'est pas declaree fermee (le serveur reste juge), les demandes ne s'offrent pas.
+  const consultationOuverte = settings?.permConsultation !== false;
+  const canDemander = (settings?.permDemandes ?? false) && !archived;
 
   const counts = useMemo(() => {
     return demandes.reduce(
@@ -250,7 +255,7 @@ export function ClientDataroomView() {
         </>
       }
       action={
-        archived ? undefined : (
+        !canDemander ? undefined : (
           <Button
             type="button"
             icon={<Send />}
@@ -298,8 +303,9 @@ export function ClientDataroomView() {
 
         <Card padding={false} className="flex flex-wrap items-center gap-2 px-5 py-3">
           <span className="mr-1 text-sm font-medium text-fg">Vos permissions :</span>
-          <Badge variant="success">
-            <Eye aria-hidden="true" className="h-3 w-3" /> Visualiser
+          <Badge variant={consultationOuverte ? 'success' : 'neutral'}>
+            {consultationOuverte ? <Eye aria-hidden="true" className="h-3 w-3" /> : <Lock aria-hidden="true" className="h-3 w-3" />}
+            Visualiser{consultationOuverte ? '' : ' (non autorisé)'}
           </Badge>
           <Badge variant={canDownload ? 'success' : 'neutral'}>
             {canDownload ? <Download aria-hidden="true" className="h-3 w-3" /> : <Lock aria-hidden="true" className="h-3 w-3" />}
@@ -313,6 +319,12 @@ export function ClientDataroomView() {
             {canDepot ? <Upload aria-hidden="true" className="h-3 w-3" /> : <Lock aria-hidden="true" className="h-3 w-3" />}
             Déposer{canDepot ? '' : ' (non autorisé)'}
           </Badge>
+          {!archived && (
+            <Badge variant={canDemander ? 'success' : 'neutral'}>
+              {canDemander ? <Send aria-hidden="true" className="h-3 w-3" /> : <Lock aria-hidden="true" className="h-3 w-3" />}
+              Envoyer des demandes{canDemander ? '' : ' (non autorisé)'}
+            </Badge>
+          )}
         </Card>
 
         <div>
@@ -342,6 +354,7 @@ export function ClientDataroomView() {
           <div role="tabpanel" aria-label="Contenu de la section" className="pt-4">
             {tab === 'juridique' && (
               <ClientJuridique
+                consultationOuverte={consultationOuverte}
                 docs={juridique?.documentsEnVigueur ?? []}
                 canDownload={canDownload}
                 canPrint={canPrint}
@@ -360,6 +373,7 @@ export function ClientDataroomView() {
                 onChanged={load}
                 readOnly={archived}
                 readOnlyStatut={dossier.statut}
+                peutDemander={canDemander}
                 signalOuverture={signalDemande}
               />
             )}
@@ -380,16 +394,27 @@ export function ClientDataroomView() {
 // ============================================================
 
 function ClientJuridique({
+  consultationOuverte = true,
   docs,
   canDownload,
   canPrint,
   enEssai,
 }: {
+  /** Lot L6b (E16) : faux si le cabinet n'a pas ouvert la consultation (le serveur refuse). */
+  consultationOuverte?: boolean;
   docs: DocumentSummary[];
   canDownload: boolean;
   canPrint: boolean;
   enEssai: boolean;
 }) {
+  if (!consultationOuverte) {
+    return (
+      <Message ton="attention" titre="Consultation des documents non ouverte">
+        Votre cabinet n’a pas ouvert la consultation des documents sur cet espace. Vous pouvez toujours lui
+        transmettre vos pièces ; pour consulter vos documents, contactez votre conseiller.
+      </Message>
+    );
+  }
   return (
     <Card padding={false}>
       <p className="border-b border-border px-5 py-3 text-sm text-fg-muted">
@@ -501,6 +526,7 @@ function ClientDemandes({
   onChanged,
   readOnly = false,
   readOnlyStatut = null,
+  peutDemander = true,
   signalOuverture = 0,
 }: {
   dossierId: string;
@@ -510,6 +536,8 @@ function ClientDemandes({
   /** §A — societe archivee : plus de nouvelle demande (lecture de l'historique OK). */
   readOnly?: boolean;
   readOnlyStatut?: string | null;
+  /** Lot L6b (E16) : faux si le cabinet n'a pas ouvert l'envoi de demandes (le serveur refuse). */
+  peutDemander?: boolean;
   /** Change a chaque " Faire une demande " de l'en-tete : le formulaire s'ouvre. */
   signalOuverture?: number;
 }) {
@@ -568,6 +596,11 @@ function ClientDemandes({
       {/* §A — societe archivee : l'historique reste lisible, la creation part. */}
       {readOnly ? (
         <DataroomReadOnlyHint statut={readOnlyStatut} testId="client-demandes-readonly-hint" />
+      ) : !peutDemander ? (
+        <Message ton="attention" titre="Envoi de demandes non ouvert">
+          Votre cabinet n’a pas ouvert l’envoi de demandes sur cet espace. Vos demandes passées restent consultables
+          ci-dessous ; pour une nouvelle demande, contactez votre conseiller.
+        </Message>
       ) : !showForm ? (
         <Card padding={false} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
           <p className="text-sm text-fg-muted">

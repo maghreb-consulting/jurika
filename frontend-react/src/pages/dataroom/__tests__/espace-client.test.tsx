@@ -107,4 +107,29 @@ describe('Espace du client', () => {
     ));
     expect(await screen.findByText('Demande envoyée')).toBeInTheDocument();
   }, 15000);
+
+  // Lot L6b (E16, parcours des permissions du client) : la permission "Envoyer des demandes"
+  // etait ignoree par l'ecran : bouton et formulaire offerts, puis refus 403 du serveur.
+  it('sans permission d envoyer des demandes : ni bouton ni formulaire, l ecran le dit, l historique reste', async () => {
+    svc.getMyPermissions.mockResolvedValue({ permConsultation: true, permDownload: true, permPrint: true, permDepot: true, permDemandes: false });
+    afficher();
+    expect(await screen.findByText('Statuts de la société')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Faire une demande' })).not.toBeInTheDocument();
+    expect(screen.getByText(/Envoyer des demandes \(non autorisé\)/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /Demandes du client/ }));
+    expect(await screen.findByText(/n’a pas ouvert l’envoi de demandes/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Nouvelle demande' })).not.toBeInTheDocument();
+    expect(screen.getByText('Transfert du siège')).toBeInTheDocument();
+    expect(svc.createDemande).not.toHaveBeenCalled();
+  }, 15000);
+
+  // Meme defaut pour la consultation : le serveur refuse (403), l'ecran disait "Aucun document".
+  it('sans permission de consulter : l ecran le dit au lieu de "Aucun document"', async () => {
+    svc.getMyPermissions.mockResolvedValue({ permConsultation: false, permDownload: false, permPrint: false, permDepot: true, permDemandes: true });
+    svc.getJuridique.mockRejectedValue(new Error('403'));
+    afficher();
+    expect(await screen.findByText(/n’a pas ouvert la consultation des documents/)).toBeInTheDocument();
+    expect(screen.queryByText('Aucun document juridique pour le moment')).not.toBeInTheDocument();
+    expect(screen.getByText(/Visualiser \(non autorisé\)/)).toBeInTheDocument();
+  }, 15000);
 });

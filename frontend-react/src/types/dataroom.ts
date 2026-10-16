@@ -526,6 +526,9 @@ export interface ClientPermissions {
   permDownload: boolean;
   permPrint: boolean;
   permDepot: boolean;
+  /** Lot L1 (RG-CLI-01), rendus par le serveur ; lus par l'ecran depuis L6b (E16). */
+  permConsultation: boolean;
+  permDemandes: boolean;
 }
 
 // =====================================================================
