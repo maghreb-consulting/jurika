@@ -174,8 +174,8 @@ public class ContratService implements ContratAbonnementPort {
     // -- Port (partie abonnement) -------------------------------------------------------
 
     @Override
-    public UUID ouvrirConditionsParticulieres(ConditionsParticulieres c) {
-        return ouvrir(c, null, "ABONNEMENT");
+    public UUID ouvrirConditionsParticulieres(ConditionsParticulieres c, String modePaiement) {
+        return ouvrir(c, modePaiement, "ABONNEMENT");
     }
 
     @Override

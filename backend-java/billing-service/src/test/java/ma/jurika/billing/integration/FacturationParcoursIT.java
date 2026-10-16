@@ -237,7 +237,8 @@ class FacturationParcoursIT {
                 String.class, ws)).isEqualTo("professionnel");
         verify(cabinets).activer(eq(ws), eq("professionnel"), any(), eq("monthly"), any());
         verify(cabinets).emettreIdentifiants(eq(ws), anyString());
-        verify(contrat, atLeastOnce()).ouvrirConditionsParticulieres(any());
+        // Lot L6b (E16) : les conditions ouvertes par le paiement portent son mode (carte).
+        verify(contrat, atLeastOnce()).ouvrirConditionsParticulieres(any(), eq("CARTE"));
         assertThat(jdbc.queryForObject("SELECT activation_propagee FROM payments WHERE id = ?", Boolean.class, id)).isTrue();
     }
 
@@ -314,6 +315,8 @@ class FacturationParcoursIT {
         assertThat(p.factureNumero()).isNotNull();
         verify(cabinets).activer(eq(ws), eq("essentiel"), eq(recu), eq("yearly"), eq(recu.plusYears(1)));
         verify(cabinets, never()).emettreIdentifiants(any(), any());
+        // Lot L6b (E16) : le contrat ouvert par le virement imprime "Virement", pas "[non renseigne]".
+        verify(contrat).ouvrirConditionsParticulieres(any(), eq("VIREMENT"));
     }
 
     @Test

@@ -447,6 +447,15 @@ public class AbonnementService {
 
     /** RG-CTR-03, RG-CTR-05 : conditions particulieres en attente d'acceptation (partie contrat). */
     public void ouvrirConditions(SubscriptionEntity s, LocalDate dateDebut, UUID auteur) {
+        ouvrirConditions(s, dateDebut, auteur, null);
+    }
+
+    /**
+     * Lot L6b (E16) : conditions ouvertes par un paiement acquis : le mode de ce paiement est connu
+     * et s'imprime au contrat ({@code methodePaiement} : CARD, BANK_TRANSFER, CHEQUE, CASH ; null :
+     * non precise, par exemple pour un changement de forfait).
+     */
+    public void ouvrirConditions(SubscriptionEntity s, LocalDate dateDebut, UUID auteur, String methodePaiement) {
         ContratAbonnementPort port = contrat.getIfAvailable();
         if (port == null) {
             log.info("Contrat d'abonnement non branche : conditions particulieres non ouvertes workspace={}", s.getWorkspaceId());
@@ -458,7 +467,19 @@ public class AbonnementService {
         Long ht = e.htCentimes();
         port.ouvrirConditionsParticulieres(new ConditionsParticulieres(s.getWorkspaceId(), plan.codeContrat(),
                 rythme.codeContrat(), ht == null ? null : BigDecimal.valueOf(ht).movePointLeft(2),
-                dateDebut, s.getEngagementFin(), auteur));
+                dateDebut, s.getEngagementFin(), auteur), modeContrat(methodePaiement));
+    }
+
+    /** Mode de paiement (code du paiement) vers le code imprime au contrat ; null si inconnu. */
+    static String modeContrat(String methodePaiement) {
+        if (methodePaiement == null) return null;
+        return switch (methodePaiement) {
+            case "CARD" -> "CARTE";
+            case "BANK_TRANSFER" -> "VIREMENT";
+            case "CHEQUE" -> "CHEQUE";
+            case "CASH" -> "ESPECES";
+            default -> null;
+        };
     }
 
     // ------------------------------------------------------------------ propagation et archivage
