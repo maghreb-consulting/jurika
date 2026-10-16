@@ -56,18 +56,39 @@ public class DataroomSettingsService {
                 throw new NotFoundException(
                         "Cette Data Room a \u00e9t\u00e9 supprim\u00e9e (soci\u00e9t\u00e9 radi\u00e9e).");
             }
-            SettingsEntity s = new SettingsEntity();
-            s.setDossierId(dossierId);
-            s.setWorkspaceId(ws);
-            s.setAccessStatus("ACTIVE");
-            s.setPermDownload(true);
-            s.setPermPrint(false);
-            // V19 : par defaut le client est en consultation seule (pas de depot).
-            s.setPermDepot(false);
-            s.setClientLinkToken(UUID.randomUUID());
-            s.setAccessCount(0);
-            return repo.save(s);
+            creerParDefautSiAbsent(dossierId, ws);
+            return repo.findByDossierIdAndWorkspaceId(dossierId, ws).orElseThrow(() ->
+                    new IllegalStateException("Reglages de la Data Room introuvables apres creation : " + dossierId));
         });
+    }
+
+    /**
+     * Lot L6b (E13) : creation des reglages par defaut sure aux acces simultanes.
+     *
+     * <p>L'ouverture de la Data Room par le client lance plusieurs requetes en meme
+     * temps ; avec un {@code save} JPA, deux d'entre elles inseraient la meme cle
+     * ({@code dataroom_settings_pkey}) et l'une repondait 500. {@code ON CONFLICT DO
+     * NOTHING} ne leve jamais : la seconde attend la premiere puis ne fait rien, et la
+     * transaction courante reste utilisable (une violation capturee l'aurait avortee
+     * cote PostgreSQL et marquee rollback-only cote Spring, y compris celle de
+     * l'appelant, et la relecture aurait exige une nouvelle transaction ou le
+     * contexte RLS doit etre repose). L'insertion passe par la politique RLS
+     * (WITH CHECK sur le workspace courant), comme le {@code save} qu'elle remplace.
+     * Valeurs : celles de l'ancienne creation (V19 : consultation seule pour le
+     * depot ; V34 : consultation et demandes permises).
+     */
+    private void creerParDefautSiAbsent(UUID dossierId, UUID ws) {
+        Instant now = Instant.now();
+        em.createNativeQuery("INSERT INTO dataroom_settings (dossier_id, workspace_id, access_status, "
+                        + "perm_download, perm_print, perm_depot, perm_consultation, perm_demandes, "
+                        + "client_link_token, access_count, created_at, updated_at) "
+                        + "VALUES (?1, ?2, 'ACTIVE', TRUE, FALSE, FALSE, TRUE, TRUE, ?3, 0, ?4, ?4) "
+                        + "ON CONFLICT (dossier_id) DO NOTHING")
+                .setParameter(1, dossierId)
+                .setParameter(2, ws)
+                .setParameter(3, UUID.randomUUID())
+                .setParameter(4, java.sql.Timestamp.from(now))
+                .executeUpdate();
     }
 
     /**
