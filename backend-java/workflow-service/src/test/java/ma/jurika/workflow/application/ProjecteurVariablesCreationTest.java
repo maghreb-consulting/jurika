@@ -112,4 +112,21 @@ class ProjecteurVariablesCreationTest {
         assertThat(lire("BAIL", Map.of("complements", Map.of("bailDateEffet", "2026-10-15"))))
                 .containsEntry("BAIL_DATE_EFFET", "2026-10-01");
     }
+
+    @Test
+    @DisplayName("L6b E14 : un montant relu en decimal (10000.0) se pose en entier (10000) : les statuts le lisent")
+    void montantDecimalPoseEnEntier() {
+        // Constate sur la pile : apres la validation, l'ecran renvoie le sac de l'etape 3 fusionne
+        // avec celui du serveur ; le capital revient en decimal (10000.0), CAPITAL_CHIFFRES valait
+        // "10000.0" et les statuts etaient refuses ("Montant du capital" manquant).
+        MagasinVariables magasin = new MagasinVariables(ChaineEcranMagasinCreationTest.depotEnMemoire());
+        java.util.UUID ws = java.util.UUID.randomUUID();
+        java.util.UUID ticket = java.util.UUID.randomUUID();
+        Map<String, Object> data = Map.of("step3", Map.of("capitalSocialMad", 10000.0, "nombreParts", 100,
+                "valeurNominale", 100.0, "capital", Map.of("capitalSocialMad", 10000.0)));
+        new ProjecteurVariablesCreation(magasin).projeter(ws, ticket, data, java.util.UUID.randomUUID());
+        Map<String, Object> v = magasin.lirePourGeneration(ws, ticket);
+        assertThat(v).containsEntry("CAPITAL_CHIFFRES", "10000").containsEntry("NOMBRE_PARTS", "100")
+                .containsEntry("VALEUR_NOMINALE_PART", "100");
+    }
 }

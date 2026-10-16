@@ -559,7 +559,18 @@ public class ProjecteurVariablesCreation {
     }
 
     private static String txt(Object o) {
-        return o == null ? "" : String.valueOf(o);
+        if (o == null) return "";
+        // Lot L6b (E14) : un nombre relu en decimal (10000.0, sac de l'etape renvoye par
+        // l'ecran apres la validation) se pose sans zeros inutiles ("10000") : les actes lisent
+        // les montants et les nombres de parts en entiers ("10000.0" faisait refuser les statuts).
+        if (o instanceof Number) {
+            try {
+                return new java.math.BigDecimal(o.toString()).stripTrailingZeros().toPlainString();
+            } catch (NumberFormatException e) {
+                return String.valueOf(o);
+            }
+        }
+        return String.valueOf(o);
     }
 
     /** L'étape est stockée à plat OU nichée : on lit les deux, comme les écrans. */
