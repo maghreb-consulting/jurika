@@ -88,6 +88,7 @@ import {
   computePreflight,
   computeRefonteMissing,
   decisionTypeFor,
+  lieuSignatureDuPv,
   formatMad,
   isBlankValue,
   validateStep1Inputs,
@@ -536,12 +537,12 @@ function ModificationWorkflowPageBody() {
   const workflowFilenameFor = useCallback(
     (tpl: TemplateInfo, opts?: { version?: number }): string =>
       buildDocFilename(
-        docTypeForTemplateCode(tpl.code),
+        docTypeForTemplateCode(tpl.code, assembleeNature),
         targetDenomination,
         formeLabel(formeJuridique),
         opts?.version,
       ),
-    [targetDenomination, formeJuridique],
+    [targetDenomination, formeJuridique, assembleeNature],
   );
 
   // Le statut refondu n'est exigé que si un template REFONDUS est disponible.
@@ -1152,6 +1153,9 @@ function ModificationWorkflowPageBody() {
       ficheStructuree: fiche,
       // L3 (D6) : valeurs confirmees a l'ecran (bloc "Statuts mis a jour").
       statutsRefondus,
+      // L6b (E15) : « Fait à …, le … » des statuts refondus : le lieu de signature saisi
+      // dans la séance du PV (aucun champ à côté des statuts ; il n'était pas transmis).
+      lieuSignature: lieuSignatureDuPv(pvSnapshot),
     };
   }
 

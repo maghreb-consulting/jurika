@@ -55,9 +55,19 @@ export function extensionOf(filename: string | null | undefined): string {
   return m ? `.${m[1].toLowerCase()}` : '.docx';
 }
 
-/** Libellé « type de document » déduit du code template (pour le nommage). */
-export function docTypeForTemplateCode(code: string): string {
-  if (code.startsWith('PV_MODIFICATION')) return 'PV — Modification (AGE)';
+/**
+ * Libellé « type de document » déduit du code template (pour le nommage). Le PV de
+ * modification suit la nature de l'assemblée (lot L6b : une AGO s'appelait « (AGE) ») ;
+ * celui de l'associé unique est un PV de décisions.
+ */
+export function docTypeForTemplateCode(
+  code: string,
+  nature?: 'ordinaire' | 'extraordinaire' | 'mixte',
+): string {
+  if (code.startsWith('PV_MODIFICATION')) {
+    if (code.endsWith('_AU')) return 'PV — Décisions de l’associé unique';
+    return nature === 'ordinaire' ? 'PV — Modification (AGO)' : 'PV — Modification (AGE)';
+  }
   if (code.startsWith('STATUTS_')) return 'Statuts';
   if (code.startsWith('CONVOCATION')) return 'Convocation';
   if (code.startsWith('FEUILLE_PRESENCE')) return 'Feuille de présence';
