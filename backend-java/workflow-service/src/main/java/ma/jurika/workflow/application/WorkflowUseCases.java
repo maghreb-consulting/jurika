@@ -342,7 +342,8 @@ public class WorkflowUseCases {
         // Lot L6b (E15) : une reprise dont l'ICE ou la denomination appartient deja a un
         // autre dossier du cabinet est refusee des l'etape 1, nommement (avant : 500 a la
         // finalisation, index unique viole).
-        if (step == 1 && p.type() == WorkflowType.IMPORT) {
+        // Lot L6b (E14) : la creation aussi (constate sur le Z440 : 500 au bouton Finaliser).
+        if (step == 1 && (p.type() == WorkflowType.IMPORT || p.type() == WorkflowType.CREATION)) {
             Map<String, Object> den = pickStep(stepData, "denomination");
             refuserDoublonDossier(workspaceId, fetchDossierId(workspaceId, ticketId),
                     firstNonNull(pickString(den, "ice"), pickString(stepData, "ice")),
@@ -1344,10 +1345,14 @@ public class WorkflowUseCases {
         Map<String, Object> capitalStep = pickStep(data, "capital");
 
         String raisonSociale = pickString(denom, "denomination");
-        String ice = firstNonNull(pickString(denom, "ice"), pickString(denom, "icenumero"));
+        // Lot L6b (E14) : ICE reduit a ses chiffres (saisie formatee "001 234 ..."), et un ICE ou
+        // une denomination deja portes par un autre dossier du cabinet refuses nommement (avant :
+        // index unique viole, HTTP 500 a la finalisation de la creation).
+        String ice = iceChiffres(firstNonNull(pickString(denom, "ice"), pickString(denom, "icenumero")));
         String adresse = pickString(siege, "adresse");
         String ville = firstNonNull(pickString(siege, "commune"), pickString(siege, "ville"));
         BigDecimal capital = pickBigDecimal(capitalStep, "capitalSocialMad");
+        refuserDoublonDossier(workspaceId, dossierId, ice, raisonSociale);
 
         // La fiche n'est ecrite que si elle porte de VRAIES donnees (au-dela de la seule
         // cle technique "source") — sinon on laisse la fiche existante intacte (COALESCE).
