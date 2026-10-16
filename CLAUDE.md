@@ -302,6 +302,7 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **LCP de la vitrine sur reseau lent** : 3,4 s en "Fast 3G" avec CPU x4 (540 ms sans limitation),
   deja avant les animations : paquet JavaScript de l'application charge par la vitrine (decoupage du
   code a faire, chunk principal > 500 ko).
+- **Course a l'archivage d'une piece d'identite** (`DataroomIdentityArchiver` : lecture de la version courante puis insertion) : deux archivages simultanes de la meme piece pourraient heurter l'index unique "un seul courant" (rare, releve par le lot L6b).
 - **Type d'element en code brut** ("USER", "TICKET", "PIECE_IDENTITE") sur la fiche d'un cabinet
   (super-admin) et dans les colonnes "Element" de la tracabilite ; panneau d'activite du tiroir du
   ticket non couvert par le harnais.
