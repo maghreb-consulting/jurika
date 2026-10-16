@@ -305,7 +305,7 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **Type d'element en code brut** ("USER", "TICKET", "PIECE_IDENTITE") sur la fiche d'un cabinet
   (super-admin) et dans les colonnes "Element" de la tracabilite ; panneau d'activite du tiroir du
   ticket non couvert par le harnais.
-- **Demonstration JUR-DEMO2** : aucune demarche avec echeance ni acte genere ; un document "TEST"
+- **Demonstration JUR-DEMO2** : description des tickets du seed technique et non accentuee ("Ticket de demonstration seede par scripts/seed-...", visible dans la video de la vitrine) ; ticket T-2026-00002 "Constitution Atlas Demo SARL" cree pour la video (etape 1) ; aucune demarche avec echeance ni acte genere ; un document "TEST"
   ("Les 28 types de modifications statutaires") dont l'origine est a verifier ; second facteur TOTP de
   `employe2` configure pour les captures (secret dans `~/.jurika-test/employe2-totp.txt`).
 - **Copilote du tableau de bord employe** : les suggestions viennent du serveur ; a relire avec des
