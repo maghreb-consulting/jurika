@@ -490,6 +490,9 @@ function LiquidationWorkflowPageBody() {
           ? 'féminin'
           : 'masculin') as 'masculin' | 'féminin',
         remuneration: liquidateur.remuneration,
+        // L6b (E15) : mandat fixe a la dissolution (date d'entree en fonctions, duree...),
+        // enregistre avec le liquidateur : le rapport final l'imprime, aucun champ ne le redemande.
+        ...mandatConserve(liquidateurBd as Record<string, unknown> | null),
         ...champsPersonneMorale(liquidateur), // L4d (E5)
         ...champsMandatLiquidateur(liquidateur), // L4d (E11d)
         siegeIdentique: liquidateur.siegeIdentique,
@@ -508,7 +511,7 @@ function LiquidationWorkflowPageBody() {
       // L5 (E4) : operations de liquidation saisies pour le rapport du liquidateur.
       rapportLiquidateur: rapportPayload(rapportLiquidateur),
     }),
-    [liquidateur, siegeLiquidation, resultatType, boniMali, dateCloture,
+    [liquidateur, liquidateurBd, siegeLiquidation, resultatType, boniMali, dateCloture,
       totalActif, totalPassif, dateDissolution, avisCloture, rapportLiquidateur],
   );
 
