@@ -299,6 +299,50 @@ test.describe('parcours actes', () => {
     const pvCloture = await genererDocument(page, info, 'PV Dissolution / Liquidation', 'pv-cloture-liquidation');
     verifierRedactionSeance(pvCloture.texte);
     await validerDocument(page, 'PV Dissolution / Liquidation');
+
+    // Rapport final du liquidateur : montants qui s'equilibrent avec l'etape 1 (actif 120 000,
+    // passif 20 000) et les frais du PV (5 000, fonctions gratuites) ; tresorerie 95 000 pour
+    // un capital de 100 000 : mali de 5 000.
+    const rapport = page.locator('main');
+    const rt = (k: string, v: string) => rapport.getByTestId(`rapport-${k}`).fill(v);
+    const rs = (k: string, v: string) => rapport.getByTestId(`rapport-${k}`).selectOption(v);
+    await rt('periodeDebut', '2026-09-17');
+    await rt('periodeFin', '2026-10-06');
+    await rt('dissolutionOrgane', 'assembl\u00e9e g\u00e9n\u00e9rale extraordinaire des associ\u00e9s');
+    await rt('dissolutionDateDecision', '2026-09-17');
+    await rt('dissolutionMotifLibelle', 'cessation de l\u2019activit\u00e9 d\u00e9cid\u00e9e par les associ\u00e9s');
+    await rapport.getByLabel('Num\u00e9ro de l\u2019inscription modificative au registre du commerce').fill('RC-MOD-2026-1234');
+    await rs('prolongee', 'non');
+    const ligne = async (n: number, valeurs: [string, string][]) => {
+      await rapport.getByRole('button', { name: 'Ajouter une ligne' }).nth(n).click();
+      for (const [lib, v] of valeurs) await rapport.getByLabel(lib, { exact: true }).last().fill(v);
+    };
+    await ligne(0, [['Bien ou droit r\u00e9alis\u00e9', 'Mobilier et mat\u00e9riel de bureau'], ['Mode de r\u00e9alisation', 'cession de gr\u00e9 \u00e0 gr\u00e9'],
+      ['Acqu\u00e9reur ou d\u00e9biteur', 'Soci\u00e9t\u00e9 fictive des achats'], ['Prix ou montant encaiss\u00e9 (DH)', '120000'],
+      ['Date de r\u00e9alisation', '2026-09-30'], ['Valeur \u00e0 l\u2019inventaire d\u2019ouverture (DH)', '110000'], ['Observations', 'n\u00e9ant']]);
+    await ligne(1, [['Cr\u00e9ancier', 'Fournisseur fictif'], ['Nature de la dette', 'factures de fournitures'],
+      ['Montant admis (DH)', '20000'], ['Montant r\u00e9gl\u00e9 (DH)', '20000'], ['Date du r\u00e8glement', '2026-10-01'],
+      ['Mode de r\u00e8glement', 'virement bancaire'], ['Observations', 'n\u00e9ant']]);
+    await rs('creancesIrrecouvrablesExistent', 'non');
+    await rs('passifsContestesExistent', 'non');
+    await rs('cessionsRestreintesExistent', 'non');
+    await ligne(2, [['Nature du frais ou de l\u2019honoraire', 'frais de publicit\u00e9 et de greffe'], ['B\u00e9n\u00e9ficiaire', 'Greffe et journal fictifs'],
+      ['Montant (DH)', '5000'], ['\u00c9tat', 'r\u00e9gl\u00e9']]);
+    // "Date" est aussi le libelle de la date de seance, plus bas : la date du frais suit son montant.
+    await rapport.getByLabel('Montant (DH)', { exact: true }).last()
+      .locator('xpath=following::input[@type="date"][1]').fill('2026-10-02');
+    await rt('fraisRembourses', '0');
+    await rs('personnelExiste', 'non');
+    await rs('contratsExistent', 'non');
+    await ligne(3, [['Diligence', 'd\u00e9claration de cessation d\u2019activit\u00e9'], ['Organisme destinataire', 'Direction g\u00e9n\u00e9rale des imp\u00f4ts'],
+      ['Fondement', 'code g\u00e9n\u00e9ral des imp\u00f4ts'], ['Date limite', '2026-10-17'], ['Date d\u2019accomplissement', '2026-10-05'],
+      ['\u00c9tat', 'accomplie'], ['Observations', 'n\u00e9ant']]);
+    await rs('tvaAssujettie', 'non');
+    await rt('attestationsEtat', 'attestations de r\u00e9gularit\u00e9 fiscale et sociale obtenues');
+    await rt('dateSignature', '2026-10-06');
+    const rapportFinal = await genererDocument(page, info, 'Rapport final du liquidateur \u2014 mod\u00e8le', 'rapport-final-liquidateur');
+    expect(rapportFinal.texte, 'mali de 5 000 DH').toMatch(/5\s000/);
+    await validerDocument(page, 'Rapport final du liquidateur \u2014 mod\u00e8le');
     await genererDocument(page, info, 'Annonce l\u00e9gale de cl\u00f4ture', 'annonce-cloture-liquidation');
     await validerDocument(page, 'Annonce l\u00e9gale de cl\u00f4ture');
     await validerEtape(page);
