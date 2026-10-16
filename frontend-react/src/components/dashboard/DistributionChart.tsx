@@ -1,5 +1,6 @@
 import {
   Bar,
+  LabelList,
   BarChart,
   CartesianGrid,
   ResponsiveContainer,
@@ -20,13 +21,15 @@ interface Props {
  * Sprint 12.5 T7 — DistributionChart au theme marketing.
  * Default color = success (emerald) pour distribution positive ; passe en
  * accent (or) ou autre token via la prop color au besoin.
+ *
+ * Lot L6b (E17) : axe des comptages en entiers, valeur ecrite au bout de chaque barre.
  */
 export function DistributionChart({ data, color = chartTheme.success, height = 200 }: Props) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart layout="vertical" data={data} margin={{ top: 5, right: 10, bottom: 0, left: 30 }}>
+      <BarChart layout="vertical" data={data} margin={{ top: 5, right: 28, bottom: 0, left: 30 }}>
         <CartesianGrid strokeDasharray="3 3" stroke={AXES.grille} />
-        <XAxis type="number" tick={{ fontSize: 11, fill: AXES.texte }} />
+        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: AXES.texte }} />
         <YAxis
           type="category"
           dataKey="label"
@@ -34,7 +37,9 @@ export function DistributionChart({ data, color = chartTheme.success, height = 2
           width={80}
         />
         <Tooltip contentStyle={INFOBULLE_GRAPHIQUE} labelStyle={LIBELLE_INFOBULLE} cursor={{ fill: AXES.grille, opacity: 0.4 }} />
-        <Bar dataKey="count" fill={color} radius={[0, 4, 4, 0]} />
+        <Bar dataKey="count" fill={color} radius={[0, 4, 4, 0]} isAnimationActive={false}>
+          <LabelList dataKey="count" position="right" style={{ fontSize: 11, fill: AXES.texte }} />
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );

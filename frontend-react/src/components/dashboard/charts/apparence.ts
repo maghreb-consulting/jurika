@@ -20,3 +20,19 @@ export const INFOBULLE_GRAPHIQUE = {
 export const LIBELLE_INFOBULLE = { fontWeight: 600, color: 'var(--color-heading)' } as const;
 
 export const TEXTE_LEGENDE = { fontSize: 11, color: 'var(--color-fg-muted)' } as const;
+
+/**
+ * Lot L6b (E17) : couleurs des series lues dans les jetons (clair ET sombre), jamais en dur.
+ * Une serie = un sens : info (ouverture, flux entrant), succes (cloture), accent (activite),
+ * attention / danger (retard), neutre (repartition sans jugement).
+ */
+export const COULEUR_SERIE = {
+  info: 'var(--color-info)',
+  succes: 'var(--color-success)',
+  accent: 'var(--color-accent)',
+  attention: 'var(--color-warning)',
+  danger: 'var(--color-danger)',
+  neutre: 'var(--color-fg-subtle)',
+} as const;
+
+export type TonSerie = keyof typeof COULEUR_SERIE;

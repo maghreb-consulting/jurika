@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { cn } from '../../lib/utils';
+import { InfoBulle } from '../ui/Aide';
 import { Skeleton } from '../ui/LoadingSkeleton';
 
 import { ABSENT, valeurOuAbsent } from './valeurs';
@@ -13,12 +15,19 @@ interface Props {
   variant?: 'default' | 'success' | 'warning' | 'danger';
   /** Chargement : squelette aux dimensions de la valeur (aucun decalage). */
   loading?: boolean;
+  /** Lot L6b (E17) : liste ou ecran ou l'indicateur se detaille ; toute la carte devient un lien. */
+  to?: string;
+  /** Lot L6b (E17) : ce que compte l'indicateur (infobulle a cote du libelle). */
+  aide?: string;
 }
 
 /**
  * Lot L6b (E9) : indicateur chiffre d'un tableau de bord, aux jetons du systeme de design.
  * Le ton (succes, attention, danger) colore la seule valeur et un filet a gauche ; l'or n'est
  * pas utilise ici (reserve a l'action principale et a l'etat actif).
+ *
+ * Lot L6b (E17) : `to` rend la carte cliquable (lien etire sur le libelle, le clavier passe par
+ * lui) et `aide` explique le calcul dans une infobulle.
  */
 const FILET: Record<NonNullable<Props['variant']>, string> = {
   default: 'border-l-border-hi',
@@ -34,12 +43,31 @@ const VALEUR: Record<NonNullable<Props['variant']>, string> = {
   danger: 'text-danger',
 };
 
-export function KpiCard({ label, value, hint, icon, variant = 'default', loading = false }: Props) {
+export function KpiCard({ label, value, hint, icon, variant = 'default', loading = false, to, aide }: Props) {
   const affiche = valeurOuAbsent(value);
   return (
-    <div className={cn('rounded-xl border border-border border-l-4 bg-bg-raised px-4 py-3 shadow-card', FILET[variant])}>
+    <div
+      className={cn(
+        'relative rounded-xl border border-border border-l-4 bg-bg-raised px-4 py-3 shadow-card',
+        to && 'transition-[box-shadow,border-color] duration-150 hover:border-border-hi hover:shadow-card-lifted',
+        FILET[variant],
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-fg-muted">{label}</p>
+        <p className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
+          {to ? (
+            <Link to={to} className="rounded-sm after:absolute after:inset-0 after:rounded-xl hover:underline">
+              {label}
+            </Link>
+          ) : (
+            label
+          )}
+          {aide && (
+            <span className="relative z-10 normal-case tracking-normal">
+              <InfoBulle libelle={`Aide : ${label}`} texte={aide} />
+            </span>
+          )}
+        </p>
         {icon && (
           <span className="text-fg-subtle [&>svg]:h-4 [&>svg]:w-4" aria-hidden="true">
             {icon}

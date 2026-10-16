@@ -21,3 +21,13 @@ export function decimal(v: number | null | undefined, chiffres = 1): string {
 export function longueur(liste: unknown[] | null | undefined): number | null {
   return Array.isArray(liste) ? liste.length : null;
 }
+
+/**
+ * Lot L6b (E17) : duree lisible a partir d'heures ("196,0 h" ne se lisait pas) : en heures sous
+ * 48 h, en jours au-dela ("8,2 jours").
+ */
+export function dureeCloture(heures: number): string {
+  if (heures < 48) return `${decimal(heures, 0)} h`;
+  const jours = heures / 24;
+  return `${decimal(jours, jours < 10 ? 1 : 0)} jours`;
+}
