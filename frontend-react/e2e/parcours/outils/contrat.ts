@@ -23,7 +23,11 @@ export async function remplirIdentiteCabinet(page: Page): Promise<void> {
 }
 
 /** Accepte le contrat presente (conditions particulieres) ; rend le texte de l'exemplaire PDF. */
-export async function accepterContrat(page: Page, info: TestInfo, nomPdf: string): Promise<string> {
+export async function accepterContrat(page: Page, info: TestInfo, nomPdf: string,
+  options: { exigerComplet?: boolean } = {}): Promise<string> {
+  // exigerComplet (defaut) : aucune mention manquante, exemplaire sans blanc. Faux seulement pour un
+  // parcours dont le contrat n'est qu'un passage (son controle est fait par contrat/paiement).
+  const exigerComplet = options.exigerComplet ?? true;
   await allerA(page, '/app/contrat');
   const bloc = page.getByRole('region', { name: 'Contrat \u00e0 accepter' }).or(page.locator('[aria-label="Contrat \u00e0 accepter"]'));
   await expect(bloc.first()).toBeVisible();
@@ -36,7 +40,7 @@ export async function accepterContrat(page: Page, info: TestInfo, nomPdf: string
   const manquants = page.getByRole('note').filter({ hasText: 'Mentions non renseign\u00e9es dans ce contrat' });
   // Texte lu seulement s'il existe (innerText attendrait l'element sans fin).
   const nbManquants = await manquants.count();
-  expect(nbManquants, `mentions manquantes au contrat : ${nbManquants ? await manquants.innerText() : ''}`).toBe(0);
+  if (exigerComplet) expect(nbManquants, `mentions manquantes au contrat : ${nbManquants ? await manquants.innerText() : ''}`).toBe(0);
   await page.getByLabel('J\u2019ai lu et j\u2019accepte le contrat d\u2019abonnement JURIKA').check();
   await page.getByRole('button', { name: 'Accepter le contrat' }).click();
   const r = page.waitForResponse((x) => x.url().endsWith('/billing/contrat/accepter'));
@@ -48,6 +52,6 @@ export async function accepterContrat(page: Page, info: TestInfo, nomPdf: string
   expect(nom).toMatch(/^contrat-abonnement-jurika-.+\.pdf$/);
   const a = analyserDocument(corps);
   expect(a.genre).toBe('pdf');
-  expect(rapportDocument(nomPdf, a)).toBeNull();
+  if (exigerComplet) expect(rapportDocument(nomPdf, a)).toBeNull();
   return textePdf(corps).join('\n');
 }

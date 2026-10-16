@@ -25,6 +25,8 @@ export interface Cabinet {
   workspaceCode: string;
   principal: { email: string; role: RoleSeed; userId: string };
   client: { email: string; userId: string };
+  /** Lot L6b (E16) : employes de plus, sur demande (`creerCabinet(role, { employes })`). */
+  employes: { email: string; userId: string; prenom: string; nom: string }[];
   dossierId: string;
   /** Mot de passe du seed (memoire seulement). */
   readonly motDePasse: string;
@@ -75,12 +77,14 @@ export const api = {
 interface ReponseSeed {
   workspaceId: string; workspaceCode: string; adminEmail: string; employeUserId: string;
   clientUserId: string; clientEmail: string; password: string; dossierId: string;
+  employes?: { email: string; userId: string; prenom: string; nom: string }[];
 }
 
-export async function creerCabinet(role: Exclude<RoleSeed, 'CLIENT'>): Promise<Cabinet> {
+export async function creerCabinet(role: Exclude<RoleSeed, 'CLIENT'>, options: { employes?: number } = {}): Promise<Cabinet> {
   let s: ReponseSeed;
+  const employes = options.employes ? `&employes=${options.employes}` : '';
   try {
-    s = await appel<ReponseSeed>('POST', SEED_URL, `/test/seed/workspace?role=${role}`);
+    s = await appel<ReponseSeed>('POST', SEED_URL, `/test/seed/workspace?role=${role}${employes}`);
   } catch (e) {
     if (e instanceof ErreurApi && e.statut === 404) {
       throw new Error('Route de seed de test absente (404) : la pile doit transmettre '
@@ -93,6 +97,7 @@ export async function creerCabinet(role: Exclude<RoleSeed, 'CLIENT'>): Promise<C
     workspaceCode: s.workspaceCode,
     principal: { email: s.adminEmail, role, userId: s.employeUserId },
     client: { email: s.clientEmail, userId: s.clientUserId },
+    employes: s.employes ?? [],
     dossierId: s.dossierId,
     motDePasse: s.password,
     secrets: new Map(),
@@ -120,8 +125,9 @@ interface ReponseLogin {
 interface Jetons { accessToken: string; refreshToken: string; userId: string; workspaceId: string }
 
 /** Connexion d'un compte du cabinet, double authentification comprise. */
-export async function connecter(c: Cabinet, qui: 'principal' | 'client'): Promise<Session> {
-  const email = qui === 'principal' ? c.principal.email : c.client.email;
+export async function connecter(c: Cabinet, qui: 'principal' | 'client' | { employe: number }): Promise<Session> {
+  const email = qui === 'principal' ? c.principal.email : qui === 'client' ? c.client.email : c.employes[qui.employe]?.email;
+  if (!email) throw new Error(`Connexion : employe ${JSON.stringify(qui)} absent du cabinet ${c.workspaceCode} (seed sans employes de plus ?)`);
   const l = await api.post<ReponseLogin>('/auth/login', { workspaceCode: c.workspaceCode, email, password: c.motDePasse });
   let j: Jetons;
   if (l.requires2fa) {
@@ -138,6 +144,6 @@ export async function connecter(c: Cabinet, qui: 'principal' | 'client'): Promis
     throw new Error(`Connexion de ${email} : reponse inattendue (${Object.keys(l).join(', ')}).`);
   }
   if (l.mustChangePassword) throw new Error(`Connexion de ${email} : changement de mot de passe exige (seed inattendu).`);
-  const role = qui === 'principal' ? c.principal.role : 'CLIENT';
+  const role = qui === 'principal' ? c.principal.role : qui === 'client' ? 'CLIENT' : 'EMPLOYE';
   return { ...j, role, email };
 }

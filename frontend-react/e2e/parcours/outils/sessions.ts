@@ -59,8 +59,8 @@ export async function fenetre(browser: Browser, session?: Pick<Session, 'accessT
 }
 
 /** Cabinet dedie a un parcours (supprime par `liberer`). */
-export async function cabinetDedie(role: Exclude<RoleSeed, 'CLIENT'>): Promise<Cabinet> {
-  return creerCabinet(role);
+export async function cabinetDedie(role: Exclude<RoleSeed, 'CLIENT'>, options: { employes?: number } = {}): Promise<Cabinet> {
+  return creerCabinet(role, options);
 }
 
 export async function liberer(c: Cabinet | null | undefined): Promise<void> {
