@@ -1,4 +1,6 @@
 import { test, expect } from './fixtures';
+import { api } from './outils/comptes';
+import { API_URL } from './outils/env';
 import { allerA, fenetre } from './outils/sessions';
 
 /**
@@ -19,8 +21,10 @@ const SOURCE = 'SOURCE-TEST-PARCOURS-L6B.txt';
 const TEXTE_SOURCE = 'Texte de test des parcours JURIKA, depose puis retire par le test. '
   + 'Selon ce texte de test, le nombre des associes d\u2019une societe a responsabilite limitee ne peut etre superieur a cinquante.\n';
 test('chatbot : donnee personnelle refusee avant envoi, question generale sourcee', async ({ page, browser, comptes, entrer, aller, sentinelle, capturer }, info) => {
-  test.setTimeout(240_000);
-  const admin = await fenetre(browser, await comptes.session('SUPER_ADMIN'));
+  // Le modele de langage repond lentement quand la pile est chargee (autres parcours en parallele).
+  test.setTimeout(480_000);
+  const sessionAdmin = await comptes.session('SUPER_ADMIN');
+  const admin = await fenetre(browser, sessionAdmin);
   let deposee = false;
   try {
   await allerA(admin.page, '/admin/chatbot-sources');
@@ -61,7 +65,7 @@ test('chatbot : donnee personnelle refusee avant envoi, question generale source
     statut: [502, 503],
     motif: 'fournisseur du modele de langage absent de la pile visee : refus nomme "service indisponible" (verifie ci-dessous)',
   });
-  const reponse = page.waitForResponse((r) => /\/chatbot\/conversations/.test(r.url()) && r.request().method() === 'POST', { timeout: 120_000 });
+  const reponse = page.waitForResponse((r) => /\/chatbot\/conversations/.test(r.url()) && r.request().method() === 'POST', { timeout: 300_000 });
   await panneau.getByRole('button', { name: 'Envoyer la question' }).click();
   const r = await reponse;
   if (r.status() >= 500) {
@@ -78,10 +82,21 @@ test('chatbot : donnee personnelle refusee avant envoi, question generale source
   await capturer('chatbot-reponse-sourcee');
   } finally {
     if (deposee) {
-      await allerA(admin.page, '/admin/chatbot-sources');
-      await admin.page.getByRole('button', { name: `Retirer ${SOURCE}` }).click();
-      await admin.page.getByRole('button', { name: /^Retirer$/ }).last().click();
-      await expect(admin.page.getByRole('button', { name: `Retirer ${SOURCE}` })).toHaveCount(0);
+      // Source COMMUNE a tous les cabinets : elle ne doit jamais rester. Par l'ecran ; si la page
+      // n'est plus utilisable (test interrompu par son delai), par l'API du super-admin.
+      try {
+        await allerA(admin.page, '/admin/chatbot-sources');
+        await admin.page.getByRole('button', { name: `Retirer ${SOURCE}` }).click();
+        await admin.page.getByRole('button', { name: /^Retirer$/ }).last().click();
+        await expect(admin.page.getByRole('button', { name: `Retirer ${SOURCE}` })).toHaveCount(0);
+      } catch (e) {
+        console.warn(`Retrait de ${SOURCE} par l'ecran impossible (${(e as Error).message.split('\n')[0]}) : par l'API.`);
+        const sources = await api.get<{ doc_id: string; source: string }[]>('/chatbot/sources', sessionAdmin.accessToken);
+        for (const x of sources.filter((y) => y.source === SOURCE)) {
+          const r = await fetch(`${API_URL}/chatbot/sources/${x.doc_id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${sessionAdmin.accessToken}` } });
+          expect(r.ok, `source de test ${SOURCE} retiree (DELETE ${r.status}) ; sinon a retirer a la main`).toBe(true);
+        }
+      }
     }
     expect(await admin.fermer(), 'sentinelle du super-admin').toBeNull();
   }
