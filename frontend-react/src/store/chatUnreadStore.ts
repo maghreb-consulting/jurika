@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { chatService } from '../services/chat.service';
 import { getSocket } from '../lib/realtimeSocket';
 import { useAuthStore } from './authStore';
+import { useForfait } from '../lib/useForfait';
 
 /**
  * 2026-07-03 — Compteur de messages NON LUS pour le badge du menu « Chat »
@@ -54,10 +55,18 @@ export function refreshChatUnread(): void {
  */
 export function useChatUnreadSync(): void {
   const userId = useAuthStore((s) => s.user?.userId);
+  const role = useAuthStore((s) => s.user?.role);
   const refresh = useChatUnreadStore((s) => s.refresh);
+  // Lot L6b (E13) : la messagerie n'est ouverte qu'au cabinet (RG-U10) et selon son forfait ;
+  // sans cette garde, chaque ecran du client et du super-admin recevait un 403 ROLE_REFUSE, et
+  // ceux d'un cabinet sans messagerie un 403 FORFAIT_SANS_MESSAGERIE. Le compteur attend que le
+  // forfait soit connu.
+  const roleCabinet = role === 'SUPERVISEUR' || role === 'EMPLOYE';
+  const { abonnement, inclut } = useForfait(roleCabinet);
+  const messagerie = roleCabinet && abonnement !== null && inclut('MESSAGERIE_INTERNE');
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !messagerie) return;
     void refresh();
     const socket = getSocket();
     if (!socket) return;
@@ -71,5 +80,5 @@ export function useChatUnreadSync(): void {
       socket.off('chat:message', onMessage);
       if (timer) clearTimeout(timer);
     };
-  }, [userId, refresh]);
+  }, [userId, messagerie, refresh]);
 }
