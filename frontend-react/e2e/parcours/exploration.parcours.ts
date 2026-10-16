@@ -35,6 +35,13 @@ const OUVRIR_DATA_ROOM = async (page: Page) => {
   }
 };
 
+/**
+ * Bouton "Identifiants" du dossier juridique : toujours present (employe, superviseur), suivi
+ * pour l'employe d'une pastille du nombre d'identifiants a completer ("Identifiants 2") quand
+ * il en manque (cas du dossier du seed, sans RC ni IF ; espace eventuel selon le calcul du nom).
+ */
+const IDENTIFIANTS = /^Identifiants\s*\d*$/;
+
 const PARAMETRES_COMMUNS = ['/settings/profile', '/settings/security', '/settings/notifications', '/settings/preferences'];
 
 const ECRANS: Record<Role, Ecran[]> = {
@@ -45,7 +52,7 @@ const ECRANS: Record<Role, Ecran[]> = {
     {
       chemin: '/data-rooms',
       avant: OUVRIR_DATA_ROOM,
-      fenetres: ['Activit\u00e9 du client', 'Transf\u00e9rer \u00e0 un coll\u00e8gue', 'Identifiants', 'Fiche client', 'Fiche dossier',
+      fenetres: ['Activit\u00e9 du client', 'Transf\u00e9rer \u00e0 un coll\u00e8gue', IDENTIFIANTS, 'Fiche client', 'Fiche dossier',
         'Ajouter un document', 'Ajouter plusieurs documents', 'Filtres'],
     },
     { chemin: '/calendar' },
@@ -68,7 +75,7 @@ const ECRANS: Record<Role, Ecran[]> = {
     { chemin: '/dossiers-a-verifier' },
     { chemin: '/calendar' },
     { chemin: '/data-rooms' },
-    { chemin: '/data-rooms', avant: OUVRIR_DATA_ROOM, fenetres: ['Activit\u00e9 du client', 'Identifiants', 'Fiche client', 'Fiche dossier', 'Filtres'] },
+    { chemin: '/data-rooms', avant: OUVRIR_DATA_ROOM, fenetres: ['Activit\u00e9 du client', IDENTIFIANTS, 'Fiche client', 'Fiche dossier', 'Filtres'] },
     { chemin: '/app/team', fenetres: ['Inviter un membre'] },
     { chemin: '/tracabilite', fenetres: [] },
     { chemin: '/chat' },
@@ -126,7 +133,21 @@ const ECRANS: Record<Role, Ecran[]> = {
 async function parcourirOnglets(page: Page, dans?: Locator): Promise<number> {
   const onglets = (dans ?? page.locator('main')).locator('[role="tab"]:not([disabled]):not([aria-disabled="true"])');
   const n = await onglets.count();
+  // Onglets selectionnes a l'arrivee : re-selectionnes a la fin. Sans cela, les fenetres de
+  // l'ecran etaient cherchees sur le DERNIER onglet clique (detail de la Data Room : "Requetes
+  // du cabinet"), ou les boutons du dossier juridique (Identifiants, Fiche client...) n'existent
+  // pas : faux "bouton introuvable" (defaut du test, vu le 2026-10-16).
+  const initiaux: number[] = [];
   for (let i = 0; i < n; i++) {
+    if ((await onglets.nth(i).getAttribute('aria-selected')) === 'true') initiaux.push(i);
+  }
+  for (let i = 0; i < n; i++) {
+    const o = onglets.nth(i);
+    if (!(await o.isVisible().catch(() => false))) continue;
+    await o.click();
+    await calme(page);
+  }
+  for (const i of initiaux) {
     const o = onglets.nth(i);
     if (!(await o.isVisible().catch(() => false))) continue;
     await o.click();
