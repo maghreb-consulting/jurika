@@ -85,6 +85,11 @@ export interface SeanceOperationFormProps {
   formeJuridique: 'SARL' | 'SARL_AU';
   societe: SeanceSocieteInput;
   defaultDate?: string;
+  /**
+   * Lot L6b (E15) : date et heure de convocation saisies à l'étape 1 de la page hôte.
+   * Fournies, le procès-verbal les reprend et ne les redemande pas ; absentes, il les demande.
+   */
+  defaultConvocation?: { date: string; heure?: string };
   /** Motif de dissolution saisi à l'étape 1 (mode dissolution). */
   motif?: string;
   /** L4a (E2) : nature de la dissolution (anticipee, article 86, arrivee du terme), saisie. */
@@ -168,6 +173,7 @@ export function SeanceOperationForm({
   formeJuridique,
   societe,
   defaultDate,
+  defaultConvocation,
   motif,
   nature,
   operation,
@@ -192,7 +198,13 @@ export function SeanceOperationForm({
   const form = useSeanceForm({
     formeJuridique,
     societe,
-    defaults: { type: 'extraordinaire', date: defaultDate },
+    defaults: {
+      type: 'extraordinaire',
+      date: defaultDate,
+      ...(defaultConvocation?.date
+        ? { convDate: defaultConvocation.date, convHeure: defaultConvocation.heure ?? '' }
+        : {}),
+    },
     initialAssocies,
     initialGerants,
     initialSnapshot,
@@ -376,7 +388,7 @@ export function SeanceOperationForm({
         déposé dans la Data Room du dossier. Une donnée manquante vous est nommée à la
         génération.
       </TexteAide>
-      <SeanceFormFields form={form} sections={SECTIONS} />
+      <SeanceFormFields form={form} sections={SECTIONS} hideConvDate={!!defaultConvocation?.date} />
 
       <section className="rounded-xl border border-border bg-bg-raised p-4">
         <div className="max-w-xs">

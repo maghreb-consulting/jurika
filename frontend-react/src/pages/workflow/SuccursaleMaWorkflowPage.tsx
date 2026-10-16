@@ -691,6 +691,9 @@ function SuccursaleMaWorkflowPageBody() {
               formeJuridique={formeJuridique}
               societe={societeInput}
               defaultDate={dateAG}
+              defaultConvocation={
+                convocationDate ? { date: convocationDate, heure: convocationHeure || undefined } : undefined
+              }
               succursaleSeed={succursaleSeed}
               denominationForFilename={targetDenomination}
               locked

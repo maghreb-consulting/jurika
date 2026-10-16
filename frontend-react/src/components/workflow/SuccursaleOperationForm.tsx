@@ -98,6 +98,11 @@ export interface SuccursaleOperationFormProps {
   /** Identité société marocaine (AG) — pré-remplie BD via dossierId (MA / fermeture). */
   societe: SeanceSocieteInput;
   defaultDate?: string;
+  /**
+   * Lot L6b (E15) : date et heure de convocation saisies à l'étape 1 de la page hôte.
+   * Fournies, le procès-verbal les reprend et ne les redemande pas ; absentes, il les demande.
+   */
+  defaultConvocation?: { date: string; heure?: string };
   /** Pré-remplissage des blocs succursale depuis les étapes hôtes. */
   succursaleSeed?: SuccursaleSeed;
   /** Pré-remplissage société mère (ETR). */
@@ -199,6 +204,7 @@ export function SuccursaleOperationForm({
   formeJuridique,
   societe,
   defaultDate,
+  defaultConvocation,
   succursaleSeed,
   mereSeed,
   denominationForFilename,
@@ -226,6 +232,9 @@ export function SuccursaleOperationForm({
     defaults: {
       type: 'extraordinaire',
       date: defaultDate,
+      ...(defaultConvocation?.date
+        ? { convDate: defaultConvocation.date, convHeure: defaultConvocation.heure ?? '' }
+        : {}),
       // Fix D1/ETR — la séance est la décision de l'organe compétent de la mère
       // étrangère, pas une AG d'associés marocains : la qualité par défaut
       // « Gérant » y était juridiquement fausse.
@@ -528,7 +537,11 @@ export function SuccursaleOperationForm({
       )}
 
       {/* Noyau séance (AG des associés pour MA/fermeture ; bureau seul pour ETR). */}
-      <SeanceFormFields form={form} sections={isEtr ? ETR_SECTIONS : AG_SECTIONS} />
+      <SeanceFormFields
+        form={form}
+        sections={isEtr ? ETR_SECTIONS : AG_SECTIONS}
+        hideConvDate={!!defaultConvocation?.date}
+      />
 
       {/* Bloc succursale — RÉCAPITULATIF non éditable quand la saisie a déjà eu
           lieu à l'étape dédiée (anti-duplication : une donnée, un seul champ). */}

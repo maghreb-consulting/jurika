@@ -76,6 +76,12 @@ export interface ModificationOperationFormProps {
   defaultDate?: string;
   /** Nature d'assemblée choisie à l'étape 1 (ordinaire/extraordinaire) — évite le doublon. */
   defaultType?: 'ordinaire' | 'extraordinaire' | 'mixte';
+  /**
+   * Lot L6b (E15) : date et heure de convocation saisies à l'étape 1. Fournies, le
+   * procès-verbal les reprend et ne les redemande pas (comme les panneaux de convocation
+   * et de présence) ; absentes, il les demande.
+   */
+  defaultConvocation?: { date: string; heure?: string };
   /** Associés / gérants pré-remplis depuis la BD (fiche société) — zéro re-saisie. */
   initialAssocies?: AssocieInput[];
   initialGerants?: GerantInput[];
@@ -123,6 +129,7 @@ export function ModificationOperationForm({
   resolutions,
   defaultDate,
   defaultType,
+  defaultConvocation,
   initialAssocies,
   initialGerants,
   initialOrdreDuJour,
@@ -143,7 +150,13 @@ export function ModificationOperationForm({
   const form = useSeanceForm({
     formeJuridique,
     societe,
-    defaults: { type: defaultType ?? 'extraordinaire', date: defaultDate },
+    defaults: {
+      type: defaultType ?? 'extraordinaire',
+      date: defaultDate,
+      ...(defaultConvocation?.date
+        ? { convDate: defaultConvocation.date, convHeure: defaultConvocation.heure ?? '' }
+        : {}),
+    },
     initialAssocies,
     initialGerants,
     initialOrdreDuJour,
@@ -241,6 +254,7 @@ export function ModificationOperationForm({
         sections={isAU ? AU_SECTIONS : AG_SECTIONS}
         lockType={lockType}
         hideSeanceDate={hideSeanceDate}
+        hideConvDate={!!defaultConvocation?.date}
         lockOrdreDuJour={lockOrdreDuJour}
       />
 

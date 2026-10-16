@@ -489,6 +489,16 @@ export function useSeanceForm(opts: UseSeanceFormOptions): SeanceFormApi {
       setConvDate(defaults.convDate ?? '');
     }
   }
+  // Lot L6b (E15) : l'heure suit la date (même source amont) ; elle n'était lue qu'au
+  // montage, si bien qu'une heure saisie à l'étape 1 après l'ouverture de la page
+  // n'atteignait jamais le procès-verbal.
+  const [convHeureVue, setConvHeureVue] = useState<{ valeur: string | undefined } | null>(null);
+  if (convHeureVue === null || convHeureVue.valeur !== defaults?.convHeure) {
+    setConvHeureVue({ valeur: defaults?.convHeure });
+    if (defaults?.convHeure !== undefined && (defaults.convHeure ?? '') !== convHeure) {
+      setConvHeure(defaults.convHeure ?? '');
+    }
+  }
 
   // Ordre du jour = libellés des modifications choisies (re-sync si encore vierge).
   // Ordre du jour DYNAMIQUE : suit la sélection des modifications (ajout/retrait/

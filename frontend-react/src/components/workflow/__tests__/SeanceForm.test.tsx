@@ -5,6 +5,7 @@ import {
   serializeAssocie,
   sanitizeFilename,
   emptyAssocie,
+  nomAvecCivilite,
 } from '../seanceFormEtat';
 
 // Forme lue par ces tests (le payload est un Record<string, unknown>).
@@ -134,3 +135,40 @@ describe('SeanceForm — contrat de séance partagé', () => {
     expect(result.current.ordreDuJour).toEqual(['Point saisi']);
   });
 });
+
+/**
+ * Lot L6b (E15, parcours « nomination du gerant ») : le nom propose (president, auteur de la
+ * convocation) s'imprime avec la civilite abregee « M. », jamais le code « M » des etapes de
+ * saisie (« sur convocation de M Mehdi Alaoui » dans le PV, constate a l'ecran). Rendu du
+ * formulaire : pv-modification-corpus.test.tsx.
+ */
+describe('SeanceForm — civilité abrégée', () => {
+  it('le code « M » devient « M. », « Mme » reste « Mme »', () => {
+    expect(nomAvecCivilite({ civilite: 'M', prenom: 'Mehdi', nom: 'Alaoui' })).toBe('M. Mehdi Alaoui');
+    expect(nomAvecCivilite({ civilite: 'M.', prenom: 'Mehdi', nom: 'Alaoui' })).toBe('M. Mehdi Alaoui');
+    expect(nomAvecCivilite({ civilite: 'Mme', prenom: 'Sara', nom: 'Bennani' })).toBe('Mme Sara Bennani');
+    expect(nomAvecCivilite({ civilite: '', prenom: 'Sara', nom: 'Bennani' })).toBe('Sara Bennani');
+  });
+});
+
+/**
+ * Lot L6b (E15, parcours « approbation des comptes ») : la convocation saisie a l'etape 1 du
+ * PV AGO arrive au formulaire de seance de l'etape 2 (date ET heure), meme saisie APRES le
+ * montage du formulaire (la page le monte des l'ouverture). Constate a l'ecran : la date et
+ * l'heure de convocation de l'etape 2 etaient vides.
+ */
+describe('SeanceForm — convocation pilotée en amont', () => {
+  const societe = { denomination: 'ATLAS NORD SARL' };
+  it('date et heure de convocation suivent l’amont, même arrivées après le montage', () => {
+    const { result, rerender } = renderHook(
+      ({ d }: { d: { convDate?: string; convHeure?: string } }) =>
+        useSeanceForm({ formeJuridique: 'SARL', societe, defaults: { type: 'ordinaire', date: '2026-06-05', ...d } }),
+      { initialProps: { d: {} } },
+    );
+    expect(result.current.convDate).toBe('');
+    rerender({ d: { convDate: '2026-05-20', convHeure: '10:00' } });
+    expect(result.current.convDate).toBe('2026-05-20');
+    expect(result.current.convHeure).toBe('10:00');
+  });
+});
+

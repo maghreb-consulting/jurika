@@ -214,3 +214,50 @@ describe('PV de modification — options du procès-verbal', () => {
     expect(screen.queryByLabelText('N° du registre des décisions')).not.toBeInTheDocument();
   });
 });
+
+/**
+ * Lot L6b (E15, parcours de bout en bout « nomination du gerant ») : la date et l'heure de
+ * convocation saisies a l'etape 1 du parcours de modification arrivent au proces-verbal
+ * (etape 3) sans etre redemandees. Defaut trouve a l'ecran : le formulaire du PV les
+ * reaffichait vides (les panneaux de convocation et de presence les recevaient deja).
+ */
+const GERANTS = [{ civilite: 'M', prenom: 'Mehdi', nom: 'Alaoui' }];
+
+describe('PV de modification — convocation saisie en amont', () => {
+  it('la convocation de l’étape 1 est reprise par le procès-verbal, sans nouveau champ', async () => {
+    const onSnapshot = vi.fn();
+    await act(async () => {
+      render(
+        <ModificationOperationForm formeJuridique="SARL" societe={{ denomination: 'ATLAS IMPORT SARL' }}
+          resolutions={[]} defaultDate="2026-11-05" defaultType="ordinaire"
+          defaultConvocation={{ date: '2026-10-20', heure: '10:00' }} onSnapshot={onSnapshot} />,
+      );
+    });
+    expect(screen.queryByLabelText('Date de convocation')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Heure de convocation')).not.toBeInTheDocument();
+    expect(onSnapshot).toHaveBeenLastCalledWith(expect.objectContaining({ convDate: '2026-10-20', convHeure: '10:00' }));
+  });
+
+  it('président et auteur de la convocation proposés avec la civilité abrégée « M. »', async () => {
+    await act(async () => {
+      render(
+        <ModificationOperationForm formeJuridique="SARL" societe={{ denomination: 'ATLAS IMPORT SARL' }}
+          resolutions={[]} defaultDate="2026-11-05" defaultType="ordinaire" initialGerants={GERANTS} />,
+      );
+    });
+    expect(screen.getByLabelText('Président — Nom')).toHaveValue('M. Mehdi Alaoui');
+    // Président et auteur de la convocation (valeur proposée) : jamais le code « M » seul.
+    expect(screen.getAllByDisplayValue('M. Mehdi Alaoui')).toHaveLength(2);
+    expect(screen.queryAllByDisplayValue('M Mehdi Alaoui')).toHaveLength(0);
+  });
+
+  it('sans convocation en amont, le procès-verbal la demande', async () => {
+    await act(async () => {
+      render(
+        <ModificationOperationForm formeJuridique="SARL" societe={{ denomination: 'ATLAS IMPORT SARL' }}
+          resolutions={[]} defaultDate="2026-11-05" defaultType="ordinaire" />,
+      );
+    });
+    expect(screen.getByLabelText('Date de convocation')).toBeInTheDocument();
+  });
+});

@@ -897,6 +897,9 @@ function DissolutionWorkflowPageBody() {
               formeJuridique={isAU ? 'SARL_AU' : 'SARL'}
               societe={societeInput}
               defaultDate={dateAGE}
+              defaultConvocation={
+                convocationDate ? { date: convocationDate, heure: convocationHeure || undefined } : undefined
+              }
               motif={motif}
               nature={nature}
               operation={operationInput}

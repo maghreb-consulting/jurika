@@ -1870,6 +1870,9 @@ function ModificationWorkflowPageBody() {
                 resolutions={resolutions}
                 defaultDate={datePV || undefined}
                 defaultType={assembleeNature}
+                defaultConvocation={
+                  convocationDate ? { date: convocationDate, heure: convocationHeure || undefined } : undefined
+                }
                 initialAssocies={bdAssocies}
                 initialGerants={bdGerants}
                 initialOrdreDuJour={ordreDuJourFromMods}

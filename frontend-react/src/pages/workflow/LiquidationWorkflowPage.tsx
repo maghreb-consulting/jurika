@@ -1109,6 +1109,9 @@ function LiquidationWorkflowPageBody() {
               formeJuridique={isAU ? 'SARL_AU' : 'SARL'}
               societe={societeInput}
               defaultDate={dateCloture}
+              defaultConvocation={
+                convocationDate ? { date: convocationDate, heure: convocationHeure || undefined } : undefined
+              }
               operation={operationInput}
               initialAssocies={bdAssocies}
               initialGerants={bdGerants}
