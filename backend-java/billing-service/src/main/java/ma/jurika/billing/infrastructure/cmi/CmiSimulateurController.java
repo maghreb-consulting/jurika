@@ -95,6 +95,13 @@ public class CmiSimulateurController {
         log.info("Simulateur CMI : commande {} {} ; reponse du marchand : {}", champs.get(CmiSpecification.OID),
                 accepte ? "acceptee" : "refusee", reponse);
         String cible = accepte ? champs.get(CmiSpecification.OK_URL) : champs.get(CmiSpecification.FAIL_URL);
+        // Lot L6b (E16) : le retour automatique passe par un script en ligne ; la passerelle pose
+        // script-src 'self', qui l'interdisait (le navigateur restait sur cette page). La page
+        // porte sa propre politique : seul SON script (nonce aleatoire) s'execute ; la passerelle
+        // ne remplace pas un en-tete deja present. Pas de form-action : le retour poste vers
+        // okUrl, qui redirige vers le front (autre origine) ; form-action s'appliquerait aussi a
+        // cette redirection (simulateur de test seulement, refuse en production).
+        String nonce = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(aleatoireLong());
         StringBuilder caches = new StringBuilder();
         for (Map.Entry<String, String> e : retour.entrySet()) {
             caches.append(cache(e.getKey(), e.getValue()));
@@ -102,8 +109,11 @@ public class CmiSimulateurController {
         String corps = "<p>Retour serveur envoy\u00e9 ; r\u00e9ponse du marchand : <code>" + esc(reponse) + "</code>.</p>"
                 + "<form id=\"retour\" method=\"post\" action=\"" + esc(cible) + "\">" + caches
                 + "<button type=\"submit\">Revenir sur le site du marchand</button></form>"
-                + "<script>document.getElementById('retour').submit();</script>";
-        return ResponseEntity.ok(page(accepte ? "Paiement accept\u00e9 (simulateur)" : "Paiement refus\u00e9 (simulateur)", corps));
+                + "<script nonce=\"" + nonce + "\">document.getElementById('retour').submit();</script>";
+        return ResponseEntity.ok()
+                .header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-"
+                        + nonce + "'; base-uri 'none'; frame-ancestors 'none'")
+                .body(page(accepte ? "Paiement accept\u00e9 (simulateur)" : "Paiement refus\u00e9 (simulateur)", corps));
     }
 
     /** Parametres du retour serveur, signes comme ceux du CMI (voir CmiSpecification). */
@@ -134,6 +144,12 @@ public class CmiSimulateurController {
             m.put(e.getKey(), e.getValue() == null || e.getValue().isEmpty() ? "" : e.getValue().get(0));
         }
         return m;
+    }
+
+    private static byte[] aleatoireLong() {
+        byte[] b = new byte[18];
+        RNG.nextBytes(b);
+        return b;
     }
 
     private static byte[] aleatoire() {
