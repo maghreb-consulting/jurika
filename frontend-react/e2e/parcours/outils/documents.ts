@@ -305,11 +305,15 @@ export function analyserTexte(lignes: string[], permis: Permis[] = []): Analyse 
   });
   // Lisible : assez de lettres, dont la plupart forment des mots (3 lettres ou plus). Un texte
   // mal decode (glyphes lus comme des octets) donne des lettres isolees : "A \u00be U ...".
-  const tout = lignes.join(' ');
+  // Une empreinte hexadecimale (32 chiffres ou plus, SHA-256 du contrat par exemple) est un texte
+  // voulu, ni mot ni glyphe mal lu : elle est retiree de ces calculs (ses lettres a-f isolees
+  // feraient passer sa ligne pour brouillee, une fois sur deux selon le hasard de l'empreinte).
+  const sansEmpreinte = lignes.map((l) => l.replace(/\b[0-9a-fA-F]{32,}\b/g, ' '));
+  const tout = sansEmpreinte.join(' ');
   const signes = tout.replace(/\s+/g, '').length;
   const enMots = (tout.match(/[A-Za-z\u00c0-\u024f]{3,}/g) ?? []).join('').length;
   // Et aucune ligne brouillee : des lettres, mais presque aucune en mots.
-  const brouillee = lignes.some((l) => {
+  const brouillee = sansEmpreinte.some((l) => {
     const lettres = l.match(/[A-Za-z\u00c0-\u024f]/g)?.length ?? 0;
     const mots = (l.match(/[A-Za-z\u00c0-\u024f]{3,}/g) ?? []).join('').length;
     return lettres >= 4 && mots / lettres < 0.3;

@@ -220,6 +220,20 @@ test.describe('controle des documents : PDF a police composite', () => {
     expect(a.lisible).toBe(false);
   });
 
+  // L6b E16 : l'exemplaire du contrat imprime l'empreinte SHA-256 du texte (64 chiffres
+  // hexadecimaux) ; selon le hasard des lettres a-f, la ligne passait pour "brouillee" et le contrat
+  // etait declare illisible une fois sur deux. Une empreinte est un texte voulu, pas un glyphe mal lu.
+  test('empreinte hexadecimale (SHA-256) : lue comme telle, le document reste lisible', () => {
+    const a = analyserTexte([
+      'Contrat d abonnement du cabinet Demo, conditions generales version 1',
+      'Empreinte du texte (SHA-256) :',
+      'a1e2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90.',
+    ]);
+    expect(a.lisible).toBe(true);
+    // Une ligne brouillee a cote d'une empreinte reste detectee.
+    expect(analyserTexte(['Contrat d abonnement du cabinet Demo', 'a1e2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90', ' = B : ) = ] ) B = Q W X']).lisible).toBe(false);
+  });
+
   test('le texte est decode par la table ToUnicode ; le defaut est signale', () => {
     const a = analyserDocument(pdfComposite('VALEUR MANQUANTE POUR LE GERANT DE LA SOCIETE'));
     expect(a.lisible).toBe(true);
