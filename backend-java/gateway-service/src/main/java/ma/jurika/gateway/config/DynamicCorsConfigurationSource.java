@@ -105,7 +105,10 @@ public class DynamicCorsConfigurationSource implements CorsConfigurationSource {
                 HttpHeaders.AUTHORIZATION,
                 HttpHeaders.CONTENT_TYPE,
                 HttpHeaders.ACCEPT,
-                "X-Requested-With"
+                "X-Requested-With",
+                // Lot L6b (E16) : empreinte de l'appareil envoyee par la demande d'essai gratuit
+                // (PublicEssaiController, anti-abus) ; sans elle, le navigateur bloquait la demande.
+                "X-Jurika-Appareil"
         ));
         cfg.setExposedHeaders(List.of(HttpHeaders.AUTHORIZATION));
         cfg.setMaxAge(3600L);
