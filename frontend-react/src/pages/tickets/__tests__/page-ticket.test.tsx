@@ -38,7 +38,20 @@ vi.mock('../../../store/authStore', () => ({
 }));
 const { stub } = vi.hoisted(() => ({ stub: () => null }));
 vi.mock('../DecisionsTicketPanel', () => ({ DecisionsTicketPanel: stub }));
-vi.mock('../DemarchesPanel', () => ({ DemarchesPanel: stub }));
+// L6b (E15) : le panneau des demarches est observe (montages et rappel de changement).
+const { demarches } = vi.hoisted(() => ({
+  demarches: { montages: 0, onChanged: null as null | (() => void) },
+}));
+vi.mock('../DemarchesPanel', async () => {
+  const { useState } = await import('react');
+  return {
+    DemarchesPanel: (p: { onChanged?: () => void }) => {
+      useState(() => { demarches.montages += 1; return 0; });
+      demarches.onChanged = p.onChanged ?? null;
+      return null;
+    },
+  };
+});
 vi.mock('../NoteTicketPanel', () => ({ NoteTicketPanel: stub }));
 vi.mock('../DeboursPanel', () => ({ DeboursPanel: stub }));
 vi.mock('../RecapitulatifPanel', () => ({ RecapitulatifPanel: stub }));
@@ -107,5 +120,35 @@ describe('Page du ticket (tous parcours)', () => {
     expect(screen.queryByRole('button', { name: /Passer à/ })).toBeNull();
     expect(screen.getByTestId('aide-statut-ticket')).toHaveTextContent('Seul l’employé responsable du dossier fait avancer ce ticket');
     expect(await screen.findByTestId('acces-raison')).toHaveTextContent('Consultation');
+  });
+
+  // Lot L6b (E15, parcours de bout en bout) : apres le passage de statut, les demarches du
+  // nouveau statut restaient " d'un autre statut, pas cochables " ; apres un cochage, le
+  // passage restait bloque sur la demarche pourtant cochee : il fallait recharger la page.
+  it('recharge les démarches après un passage de statut', async () => {
+    role.value = 'EMPLOYE';
+    demarches.montages = 0;
+    tickets.passage.mockResolvedValue({ statut: 'GENERATION_DOCUMENTS', suivant: 'DEROULEMENT_DEMARCHE', obstacles: [] });
+    tickets.transition.mockResolvedValue({});
+    monter();
+    expect(await screen.findByTestId('passage-possible')).toBeInTheDocument();
+    const avant = demarches.montages;
+    fireEvent.click(screen.getByRole('button', { name: /Passer à/ }));
+    await waitFor(() => expect(tickets.transition).toHaveBeenCalled());
+    await waitFor(() => expect(demarches.montages).toBeGreaterThan(avant));
+  });
+
+  it('relit le passage de statut après un cochage de démarche', async () => {
+    role.value = 'EMPLOYE';
+    tickets.passage.mockResolvedValue({ statut: 'GENERATION_DOCUMENTS', suivant: 'DEROULEMENT_DEMARCHE',
+      obstacles: ['Démarche 110011 (obligatoire) non cochée'] });
+    monter();
+    expect(await screen.findByTestId('obstacles')).toBeInTheDocument();
+    tickets.passage.mockResolvedValue({ statut: 'GENERATION_DOCUMENTS', suivant: 'DEROULEMENT_DEMARCHE', obstacles: [] });
+    const lectures = tickets.passage.mock.calls.length;
+    expect(demarches.onChanged).toBeTypeOf('function');
+    demarches.onChanged?.();
+    await waitFor(() => expect(tickets.passage.mock.calls.length).toBeGreaterThan(lectures));
+    expect(await screen.findByTestId('passage-possible')).toBeInTheDocument();
   });
 });

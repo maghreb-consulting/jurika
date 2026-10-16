@@ -65,12 +65,22 @@ export function DemarchesPanel({
   ticketId,
   dossierId,
   canAct,
+  onChanged,
 }: {
   ticketId: string;
   dossierId: string | null;
   canAct: boolean;
+  /**
+   * Lot L6b (E15) : appele apres chaque cochage, annulation ou mise a l'ecart, pour que la
+   * page relise le passage de statut (il restait bloque sur une demarche deja cochee).
+   */
+  onChanged?: () => void;
 }) {
-  const [vue, setVue] = useState<VueDemarches | null>(null);
+  const [vue, setVueLocale] = useState<VueDemarches | null>(null);
+  const setVue = useCallback((v: VueDemarches) => {
+    setVueLocale(v);
+    onChanged?.();
+  }, [onChanged]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
   const [ecarter, setEcarter] = useState<LigneDemarche | null>(null);
@@ -80,7 +90,7 @@ export function DemarchesPanel({
   const charger = useCallback(async () => {
     setChargement(true);
     try {
-      setVue(await demarcheService.vue(ticketId));
+      setVueLocale(await demarcheService.vue(ticketId));
       setErreur(null);
     } catch (err) {
       setErreur(extractError(err).message);
