@@ -310,7 +310,15 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   ("Les 28 types de modifications statutaires") dont l'origine est a verifier ; second facteur TOTP de
   `employe2` configure pour les captures (secret dans `~/.jurika-test/employe2-totp.txt`).
 - **Copilote du tableau de bord employe** : les suggestions viennent du serveur ; a relire avec des
-  donnees reelles (textes non verifies hors harnais).
+  donnees reelles (textes non verifies hors harnais). Le panneau affiche du Markdown brut
+  ("**PLAN DU JOUR**").
+- **Audit de billing jamais ecrit** (motif 9) : `JdbcAuditEventEmitter` de billing ecrit dans
+  `audit_log` de `jurika_billing`, qui n'a pas cette table ("bad SQL grammar", journalise en WARN
+  seulement, ex. `BILLING_PAIEMENT_VALIDE`) : les traces de paiement sont perdues sans bruit.
+  Releve par le lot L6b (parcours du paiement), anterieur au lot.
+- **Controle silencieux du capital** (ai-service, `CreationDirecteurVarsBuilder`) : `toLong` d'un
+  montant decimal ("10000.0") rend null et la variable est ecartee ; corrige a la source en L6b
+  (le projecteur de workflow pose des entiers), le constructeur reste a durcir.
 
 ### Lot L7 (offre et facturation, 2026-10-14) -- dette relevee
 
