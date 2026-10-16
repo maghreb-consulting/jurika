@@ -160,6 +160,9 @@ function useWorkflowEngine(): UseWorkflowState {
   // P1 2026-06-21 — registre des dirty getters par etape. Lu par flushDraft()
   // avant tout changement de viewStep pour persister les saisies sans submit.
   const dirtyGettersRef = useRef<Map<number, DirtyGetter>>(new Map());
+  // Derniere saisie enregistree par cle d'etape (brouillon ou etape validee) : une saisie
+  // identique n'est pas renvoyee (moteur d'enregistrement automatique, plus bas).
+  const dernierEnregistreRef = useRef<Map<string, string>>(new Map());
   const ticketIdRef = useRef<string | undefined>(ticketId);
   const viewStepRef = useRef<number | null>(viewStep);
   // Lot L6 : les refs ne s'ecrivent pas pendant le rendu ; elles suivent l'etat juste apres,
@@ -270,6 +273,23 @@ function useWorkflowEngine(): UseWorkflowState {
           // Lot L7 (E12) : l'etape validee est au serveur ; son brouillon local n'a plus d'objet.
           const cle = `step${step}`;
           serveurConnuRef.current.set(cle, canonique(r.progress.data?.[cle]));
+          // Lot L6b (parcours d'import) : la saisie validee est au serveur, ENRICHIE par lui
+          // (step2.siege, step3.capital...). Le demontage de l'etape ne doit pas la renvoyer
+          // en brouillon : POST /save remplace le sac de l'etape et effacerait cet ajout.
+          const getter = dirtyGettersRef.current.get(step);
+          if (getter) {
+            try {
+              const saisie = getter();
+              if (saisie) {
+                const cleSaisie = typeof saisie.__stepKey === 'string' ? saisie.__stepKey : cle;
+                const contenu: Record<string, unknown> = { ...saisie };
+                delete contenu.__stepKey;
+                dernierEnregistreRef.current.set(cleSaisie, JSON.stringify(contenu));
+              }
+            } catch {
+              // getter en erreur : rien a marquer.
+            }
+          }
           dernierLocalRef.current.delete(cle);
           const auteur = auteurCourant();
           if (auteur) {
@@ -309,7 +329,6 @@ function useWorkflowEngine(): UseWorkflowState {
   //
   // Le stockage reste `workflow_progress.data` (JSONB, cloisonne par workspace),
   // deja la source de verite du parcours (decision du 2026-08-14).
-  const dernierEnregistreRef = useRef<Map<string, string>>(new Map());
   const fileRef = useRef<Promise<void>>(Promise.resolve());
   // Saisie dont l'envoi a echoue : la lecture periodique ne la renvoie pas en
   // boucle ; elle repart a la prochaine modification, navigation ou sortie, au
