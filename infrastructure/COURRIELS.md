@@ -42,9 +42,11 @@ La région SES dépend de l'hébergement AWS de la mise en production (**A_DECID
 
 - Le test de fumée inscrit un cabinet de test et exige que le courriel de bienvenue soit **parti**
   (`verifyEmailSent` de la réponse d'inscription : accepté par le relais) ; il échoue sinon.
-  Destinataire : `SMOKE_CONTACT_EMAIL` (`.env.local`) s'il est défini, en sous-adresse
-  `+smoke-<horodatage>`, sinon une adresse `@jurika.test` (acceptée par le relais, puis rejetée
-  par le destinataire : rebond compté par le fournisseur).
+  Destinataire : toujours une adresse `@jurika.test` (acceptée par le relais, puis rejetée
+  par le destinataire : rebond compté par le fournisseur). Depuis la recette R1, aucun courriel
+  du test n'atteint une vraie boîte : `SMOKE_CONTACT_EMAIL` n'est plus lu (ses courriels
+  « Bonjour Smoke », de même sujet que le vrai courriel de bienvenue, se mêlaient à ceux d'un
+  vrai cabinet).
 - Journal : `docker logs jurika-auth | grep "Courriels :"`.
 
 ## 2 bis. Courriels au client (lot L5, E9, RG-COM-09)

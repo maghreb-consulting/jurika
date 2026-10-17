@@ -30,6 +30,7 @@ import { readFile, access } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { constants as fsConstants } from 'node:fs';
+import { identiteDeFumee } from './smoke-identite.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..');
@@ -205,26 +206,19 @@ let SIGNUP_EMAIL_DELIVERED = null;
 
 async function checkSignupAndPlanLimit() {
     const ts = Math.floor(Date.now() / 1000);
-    const wsName = `SmokeTest Cabinet ${ts}`;
-    // Lot L5 (E3) : le courriel de bienvenue part a l'adresse `email` (le formulaire n'en saisit
-    // plus qu'une). Destinataire reel facultatif : SMOKE_CONTACT_EMAIL (.env.local), sous-adresse
-    // "+smoke-<horodatage>" ; a defaut, une adresse @jurika.test (acceptee par le relais, puis
-    // rejetee par le destinataire).
-    const reel = (process.env.SMOKE_CONTACT_EMAIL || '').match(/^([^@\s+]+)@([^@\s]+)$/);
-    const adminEmail = reel ? `${reel[1]}+smoke-${ts}@${reel[2]}` : `admin+smoke-${ts}@jurika.test`;
-    // Payload aligne sur SignupCabinetRequest.java (DTO sprint 11 wizard) :
-    //   contactEmail (cabinet) != email (admin) ; phone +212[5-7]\d{8} ; rcNumber digits only ;
-    //   cguAccepted (et pas consentTerms) ; pas de prefix adminX.
+    // Recette R1 : identite du cabinet de test (scripts/smoke-identite.mjs), adresses toutes en
+    // @jurika.test : aucun courriel de test n'atteint une vraie boite.
+    const id = identiteDeFumee(ts);
     const payload = {
-        workspaceName: wsName,
-        contactEmail: `contact+smoke-${ts}@jurika.test`,
+        workspaceName: id.workspaceName,
+        contactEmail: id.contactEmail,
         ice: '999999999000099',
         ifFiscal: '99999999',
         rcNumber: '12345678',  // 1-20 digits regex
         city: 'Casablanca',
-        firstName: 'Smoke',
-        lastName: 'Test',
-        email: adminEmail,
+        firstName: id.firstName,
+        lastName: id.lastName,
+        email: id.email,
         phone: '+212600000000',
         selectedPlan: 'essentiel', // Essentiel : 1 superviseur + 1 employe (CDC 4.3)
         cguAccepted: true,
