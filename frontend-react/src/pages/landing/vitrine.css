@@ -260,11 +260,12 @@
 .v-demo-cachee {
   opacity: 0;
 }
-/* Tiroirs, voiles et feuilles au-dessus des pastilles de la frise des etapes (z-10). */
+/* Tiroirs, voiles et feuilles au-dessus des pastilles de la frise des etapes (z-10) et de
+ * l'en-tete de la coquille (z-30, qui porte le menu du theme). */
 .v-demo-tiroir,
 .v-demo-voile,
 .v-demo-feuille {
-  z-index: 20;
+  z-index: 40;
 }
 .v-demo-tiroir {
   transition: transform 550ms var(--v-ease);
@@ -297,7 +298,7 @@
   position: absolute;
   left: 0;
   top: 0;
-  z-index: 30;
+  z-index: 50;
   transition: transform 850ms var(--v-ease), opacity 300ms var(--v-ease);
 }
 .v-curseur-fleche {

@@ -11,7 +11,10 @@ import { LandingPage } from '../LandingPage';
 import { oublierMentionsLegales } from '../mentionsLegales';
 import { DemonstrationAnimee } from '../demonstrations/DemonstrationAnimee';
 import { NOMS_SCENES, SCENES, dureeCycle } from '../demonstrations/scenes';
-import { SOCIETE_DEMO } from '../demonstrations/donnees';
+import { LIBELLES_THEME_DEMO, SOCIETE_DEMO, TITRE_TICKETS_DEMO } from '../demonstrations/donnees';
+import { menuDuRole } from '../../../components/layout/navigation';
+import { LIBELLES_THEME } from '../../../store/themeStore';
+import { titreTickets } from '../../../components/tickets/libellesTickets';
 import { EmblemeAnime } from '../composants/EmblemeAnime';
 import { CYCLE_LOGO_S, DEPART_BOUCLE_LOGO_S } from '../logo';
 
@@ -338,5 +341,53 @@ describe('Vitrine (L6c) : logo anime en boucle', () => {
     const bloc = CSS.slice(debut);
     expect(bloc).toMatch(/\.vitrine \*,\s*\.vitrine \*::before,\s*\.vitrine \*::after\s*\{[^}]*animation:\s*none !important;/);
     expect(bloc).not.toMatch(/v-embleme-(reflet|halo|etoile|boucle)|v-curseur|v-demo/);
+  });
+});
+
+describe('Vitrine (L6c E3) : les demonstrations reprennent les ecrans reels', () => {
+  // Entree active du menu, par scene : celle de la page reelle montree.
+  const ACTIF: Record<(typeof NOMS_SCENES)[number], string> = {
+    'creation-ticket': 'Mes tickets',
+    'frise-demarches': 'Mes tickets',
+    'statuts-apercu': 'Mes tickets',
+    'juri-aide': 'Tableau de bord',
+    'theme-clair-sombre': 'Tableau de bord',
+  };
+
+  it("affiche le menu reel de l'employe (groupes, libelles, ordre) avec l'entree active de chaque scene", () => {
+    restaurer();
+    restaurer = simulerMouvement(true);
+    const attendu = menuDuRole('EMPLOYE').map((g) => ({ titre: g.titre, entrees: g.entrees.map((e) => e.libelle) }));
+    for (const nom of NOMS_SCENES) {
+      const { unmount } = render(<DemonstrationAnimee nom={nom} />);
+      const menus = Array.from(document.querySelectorAll<HTMLElement>('[data-menu-demo]'));
+      expect(menus.length, nom).toBeGreaterThan(0);
+      for (const menu of menus) {
+        const groupes = Array.from(menu.querySelectorAll<HTMLElement>('[data-groupe-demo]')).map((g) => ({
+          titre: g.getAttribute('data-groupe-demo'),
+          entrees: Array.from(g.querySelectorAll('[data-entree-demo]')).map((e) => e.textContent),
+        }));
+        expect(groupes, nom).toEqual(attendu);
+        const actifs = Array.from(menu.querySelectorAll('[data-entree-demo][data-actif]')).map((e) => e.textContent);
+        expect(actifs, nom).toEqual([ACTIF[nom]]);
+      }
+      unmount();
+    }
+  });
+
+  it("n'affiche aucun ecran ni libelle absent de l'application", () => {
+    restaurer();
+    restaurer = simulerMouvement(true);
+    for (const nom of NOMS_SCENES) {
+      const { container, unmount } = render(<DemonstrationAnimee nom={nom} />);
+      const t = container.textContent ?? '';
+      for (const faux of ['Clients', 'Échéances', 'Actes de la création', 'Modèle du cabinet', 'Cocher la démarche', 'Démarche cochée', 'À générer']) {
+        expect(t, `${nom} : ${faux}`).not.toContain(faux);
+      }
+      unmount();
+    }
+    // Libelles du choix du theme et titre de la page des tickets : ceux de l'application.
+    expect(LIBELLES_THEME_DEMO).toEqual([LIBELLES_THEME.SYSTEME, LIBELLES_THEME.CLAIR, LIBELLES_THEME.SOMBRE]);
+    expect(TITRE_TICKETS_DEMO).toBe(titreTickets('EMPLOYE'));
   });
 });

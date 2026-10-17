@@ -69,9 +69,9 @@ export const SCENES: Record<NomScene, Scene> = {
   'theme-clair-sombre': {
     ecran: 'Tableau de bord, thème clair et sombre',
     description:
-      'Démonstration animée, données fictives : le tableau de bord d’un employé passe du thème clair au thème sombre, puis revient au thème clair. Animations réduites : les deux thèmes côte à côte.',
+      'Démonstration animée, données fictives : depuis le choix du thème de l’en-tête, le tableau de bord d’un employé passe du thème clair au thème sombre, puis revient au thème clair. Animations réduites : les deux thèmes côte à côte.',
     legende: 'Le même tableau de bord, en thème clair et en thème sombre : chacun choisit le sien.',
-    durees: [1200, 900, 2800, 900, 1600],
+    durees: [1000, 900, 800, 700, 2400, 800, 700, 700, 1500],
     etapeFinale: 0,
   },
 };
