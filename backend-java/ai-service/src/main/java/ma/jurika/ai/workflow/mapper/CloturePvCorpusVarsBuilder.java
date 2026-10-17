@@ -19,8 +19,9 @@ import static ma.jurika.ai.workflow.mapper.LiquidationCorpusCommun.*;
  * ({@code PV_CLOTURE_LIQUIDATION_SARL} / {@code _SARL_AU}), qui remplace le PV unifie du
  * classpath a l'etape "cloture" (L2_correspondance_gabarits.md).
  *
- * <p>Le compte definitif se CALCULE : actif net disponible = actif realise - passif regle -
- * frais - remuneration du liquidateur - impot ; remboursement du nominal a concurrence du
+ * <p>Le compte definitif se CALCULE, a partir du rapport final du liquidateur et par la regle
+ * unique {@link ResultatLiquidation} (L6b E19) : actif net disponible = actif realise - passif
+ * regle - frais (remuneration du liquidateur comprise) - impot ; remboursement du nominal a concurrence du
  * capital ; le solde est un boni, un mali ou nul. Le sens n'est jamais suppose : sans les
  * donnees du calcul, la generation est refusee et elles sont nommees. La repartition du boni
  * entre associes se calcule au prorata des parts ; une quote-part qui ne tombe pas juste au
@@ -83,7 +84,7 @@ final class CloturePvCorpusVarsBuilder {
         v.put("LIQUIDATION_COMPTES_BANCAIRES_CLOTURES", SaisieExigee.ouiNon(templateCode,
                 c.get("comptesBancairesClotures"), "LIQUIDATION_COMPTES_BANCAIRES_CLOTURES",
                 "Les comptes bancaires de la soci\u00e9t\u00e9 sont-ils cl\u00f4tur\u00e9s (oui ou non)"));
-        String type = compteDefinitif(templateCode, v, c, societe);
+        String type = compteDefinitif(templateCode, v, c, safe);
 
         decisions(templateCode, v, c);
         LocalDate dateCloture = toDate(first0(c.get("dateClotureLiquidation"), c.get("dateCloture")));
@@ -144,58 +145,57 @@ final class CloturePvCorpusVarsBuilder {
 
     /**
      * Compte definitif : totaux, actif net disponible, nominal rembourse, boni / mali / nul.
+     * L6b (E19) : le compte vient du rapport final du liquidateur par la regle unique
+     * {@link ResultatLiquidation} (meme calcul que le rapport) ; les totaux de l'etape 1 et les
+     * frais du PV n'y sont que controles.
      * @return le sens du solde ("boni", "mali" ou "nul")
      */
     private static String compteDefinitif(String templateCode, Map<String, Object> v, Map<String, Object> c,
-                                          Map<String, Object> societe) {
-        Long actif = toLong(first0(c.get("actifRealise"), c.get("actifRealiseChiffres"), c.get("totalActif")));
-        Long passif = toLong(first0(c.get("passifRegle"), c.get("passifRegleChiffres"), c.get("totalPassif")));
-        Long frais = toLong(c.get("frais"));
-        Long impot = toLong(c.get("isMontant"));
-        Long capital = toLong(first0(societe.get("capitalChiffres"), societe.get("capitalSocial")));
+                                          Map<String, Object> safe) {
         // Liquidateur non remunere : aucune remuneration a deduire (donnee saisie, pas supposee).
         Long remuneration = "oui".equals(v.get("LIQUIDATEUR_REMUNERATION_APPLICABLE"))
                 ? toLong(str(v.get("LIQUIDATEUR_REMUNERATION_MONTANT_CHIFFRES"))) : Long.valueOf(0);
+        if (remuneration == null) {
+            throw new GenerationRefuseeException(templateCode, "Compte d\u00e9finitif incomplet : R\u00e9mun\u00e9ration du liquidateur",
+                    List.of(manque("LIQUIDATEUR_REMUNERATION_MONTANT_CHIFFRES", "R\u00e9mun\u00e9ration du liquidateur")));
+        }
+        ResultatLiquidation.Compte k = ResultatLiquidation.depuisRapport(templateCode, safe, BigDecimal.valueOf(remuneration));
+        long actif = entier(templateCode, k.actif(), "LIQUIDATION_ACTIF_REALISE_TOTAL_CHIFFRES", "Produit total de la r\u00e9alisation de l'actif");
+        long passif = entier(templateCode, k.passif(), "LIQUIDATION_PASSIF_REGLE_TOTAL_CHIFFRES", "Montant total du passif acquitt\u00e9");
+        long frais = entier(templateCode, k.frais(), "LIQUIDATION_FRAIS_CHIFFRES", "Frais et honoraires de liquidation") - remuneration;
+        long impot = entier(templateCode, k.impot(), "LIQUIDATION_IS_MONTANT_CHIFFRES", "Imp\u00f4t sur les soci\u00e9t\u00e9s de la liquidation");
+        long capital = entier(templateCode, k.capital(), "CAPITAL_CHIFFRES", "Capital social");
         paire(v, "LIQUIDATION_ACTIF_REALISE_TOTAL", actif);
         paire(v, "LIQUIDATION_PASSIF_REGLE_TOTAL", passif);
-        if (frais != null) v.put("LIQUIDATION_FRAIS_CHIFFRES", formatAmount(frais));
-        if (impot != null) v.put("LIQUIDATION_IS_MONTANT_CHIFFRES", formatAmount(impot));
+        v.put("LIQUIDATION_FRAIS_CHIFFRES", formatAmount(frais));
+        if (!str(c.get("isMontant")).isBlank()) v.put("LIQUIDATION_IS_MONTANT_CHIFFRES", formatAmount(impot));
 
-        List<GenerationRefuseeException.DonneeManquante> manquantes = new ArrayList<>();
-        if (actif == null) manquantes.add(manque("LIQUIDATION_ACTIF_REALISE_TOTAL_CHIFFRES", "Produit total de la r\u00e9alisation de l'actif"));
-        if (passif == null) manquantes.add(manque("LIQUIDATION_PASSIF_REGLE_TOTAL_CHIFFRES", "Montant total du passif acquitt\u00e9"));
-        if (frais == null) manquantes.add(manque("LIQUIDATION_FRAIS_CHIFFRES", "Frais et honoraires de liquidation"));
-        if (capital == null) manquantes.add(manque("CAPITAL_CHIFFRES", "Capital social"));
-        if (remuneration == null) manquantes.add(manque("LIQUIDATEUR_REMUNERATION_MONTANT_CHIFFRES", "R\u00e9mun\u00e9ration du liquidateur"));
-        if (!manquantes.isEmpty()) {
-            // Le sens du solde (boni, mali ou nul) pilote le compte et la repartition : il se
-            // calcule, il ne se suppose pas.
-            throw new GenerationRefuseeException(templateCode, "Compte d\u00e9finitif incomplet : "
-                    + String.join(", ", manquantes.stream().map(GenerationRefuseeException.DonneeManquante::libelle).toList()),
-                    manquantes);
-        }
-        long disponible = actif - passif - frais - remuneration - (impot == null ? 0 : impot);
+        long disponible = entier(templateCode, k.disponible(), "LIQUIDATION_DISPONIBLE_CHIFFRES", "Actif net disponible");
         if (disponible < 0) {
             throw new GenerationRefuseeException(templateCode,
                     "Compte d\u00e9finitif incoh\u00e9rent : l'actif r\u00e9alis\u00e9 ne couvre pas le passif, les frais et "
                             + "les imp\u00f4ts, alors que le proc\u00e8s-verbal d\u00e9clare tout le passif acquitt\u00e9",
                     List.of(manque("LIQUIDATION_DISPONIBLE_CHIFFRES", "Actif net disponible (n\u00e9gatif)")));
         }
-        long rembourse = Math.min(disponible, capital);
         paire(v, "LIQUIDATION_DISPONIBLE", disponible);
-        paire(v, "LIQUIDATION_CAPITAL_REMBOURSE", rembourse);
-        String type;
-        if (disponible > capital) {
-            type = "boni";
-            paire(v, "LIQUIDATION_BONI", disponible - capital);
-        } else if (disponible < capital) {
-            type = "mali";
-            paire(v, "LIQUIDATION_MALI", capital - disponible);
-        } else {
-            type = "nul";
-        }
+        paire(v, "LIQUIDATION_CAPITAL_REMBOURSE", Math.min(disponible, capital));
+        String type = k.sens();
+        long montant = entier(templateCode, k.montant(), "LIQUIDATION_DISPONIBLE_CHIFFRES", "R\u00e9sultat de la liquidation");
+        if (ResultatLiquidation.BONI.equals(type)) paire(v, "LIQUIDATION_BONI", montant);
+        if (ResultatLiquidation.MALI.equals(type)) paire(v, "LIQUIDATION_MALI", montant);
         v.put("LIQUIDATION_RESULTAT_TYPE", type);
         return type;
+    }
+
+    /** Le PV de cloture s'etablit en dirhams entiers : un montant en centimes est refuse et nomme. */
+    private static long entier(String templateCode, BigDecimal b, String variable, String libelle) {
+        try {
+            return b.longValueExact();
+        } catch (ArithmeticException e) {
+            throw new GenerationRefuseeException(templateCode, "Compte d\u00e9finitif : " + libelle
+                    + " en centimes, le proc\u00e8s-verbal de cl\u00f4ture s'\u00e9tablit en dirhams entiers",
+                    List.of(manque(variable, libelle + " (dirhams entiers)")));
+        }
     }
 
     /** Approbation du compte definitif et quitus du liquidateur (saisis). */

@@ -110,15 +110,9 @@
     "ancienGerant": "oui"
   },
   "cloture": {
-    "resultatSens": "boni",
-    "resultatMontant": 50000,
-    "boniExiste": "oui",
-    "boniMontant": 50000,
-    "boniParPart": 50,
     "dateClotureLiquidation": "2026-06-20",
     "actifRealise": 300000,
     "passifRegle": 150000,
-    "resultatType": "boni",
     "acteNature": "Décision des associés",
     "dissolutionDateEffet": "2026-05-15",
     "compteDefinitifDate": "2026-06-10",

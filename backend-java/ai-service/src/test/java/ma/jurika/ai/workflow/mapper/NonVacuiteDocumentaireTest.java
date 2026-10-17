@@ -266,6 +266,11 @@ class NonVacuiteDocumentaireTest {
         c.put("conservationDuree", "dix ans");
         c.put("passifEventuelApplicable", "non");
         p.put("cloture", c);
+        // L6b (E19) : le compte definitif du PV vient du rapport final du liquidateur.
+        p.put("rapportLiquidateur", Map.of(
+                "realisations", List.of(Map.of("designation", "Fonds de commerce", "prix", 300_000)),
+                "apurements", List.of(Map.of("creancier", "BANQUE POPULAIRE", "montantAdmis", 150_000, "montantRegle", 150_000)),
+                "frais", List.of(Map.of("nature", "Honoraires", "montant", 10_000))));
         return p;
     }
 

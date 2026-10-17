@@ -131,6 +131,11 @@ class LiquidationCorpusRenderTest {
                 .contains("au plus tard le 04/08/2026");
         Map<String, Object> p = fixture("liquidation.json");
         p.put("liquidateur", liquidateurPersonneMorale());
+        // L6b (E19) : le compte du PV vient du rapport final, dont les frais comprennent la
+        // remuneration du liquidateur (20 000).
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> fraisRapport = (List<Map<String, Object>>) DissolutionMapperTest.bloc(p, "rapportLiquidateur").get("frais");
+        fraisRapport.add(new LinkedHashMap<>(Map.of("nature", "R\u00e9mun\u00e9ration du liquidateur", "montant", 20_000)));
         assertThat(complet(new LiquidationMapper(), "PV_DISSOLUTION_LIQUIDATION_SARL", p,
                 "PV_CLOTURE_LIQUIDATION_SARL_personne_morale"))
                 .contains("la soci\u00e9t\u00e9 FIDUCIAIRE ATLAS, SARL dont le si\u00e8ge social est situ\u00e9 \u00e0 8 RUE IBN BATOUTA, RABAT")

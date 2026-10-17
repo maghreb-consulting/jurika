@@ -471,50 +471,32 @@ final class RapportLiquidateurCorpusVarsBuilder {
     // ------------------------------------------------------------------ resultat
 
     /**
-     * XI : resultat de la liquidation, calcule (arithmetique du compte de cloture, decision D27
-     * du lot L4d), puis controle de concordance avec le PV de cloture.
+     * XI : resultat de la liquidation, calcule par la regle unique {@link ResultatLiquidation}
+     * (decision D27 du lot L4d, L6b E19), concordance avec le PV de cloture comprise.
      */
     private static void resultat(String templateCode, Map<String, Object> v, Map<String, Object> r, Map<String, Object> c,
                                  Map<String, Object> safe, Map<String, Object> societe, Calcul k, boolean au) {
-        Long capital = toLong(first0(societe.get("capitalChiffres"), societe.get("capitalSocial")));
-        BigDecimal impot = k.montantFacultatif(c.get("isMontant"), "LIQUIDATION_IS_MONTANT_CHIFFRES", "Imp\u00f4t sur les soci\u00e9t\u00e9s de la liquidation");
         BigDecimal remuneration = BigDecimal.ZERO;
         if ("oui".equals(v.get("LIQUIDATEUR_REMUNERATION_APPLICABLE"))) {
             remuneration = k.montant(asMap(safe.get("liquidateur")).get("remunerationMontant"),
                     "LIQUIDATEUR_REMUNERATION_MONTANT_CHIFFRES", "R\u00e9mun\u00e9ration du liquidateur");
         }
-        if (capital == null) k.manque("CAPITAL_CHIFFRES", "Capital social");
         k.refuserSiManquantes("Compte de la liquidation incomplet");
 
-        // Concordance avec le PV de cloture (memes comptes, jamais deux versions).
-        concorde(k, c.get("actifRealise"), k.actif, "LIQUIDATION_ACTIF_REALISE_TOTAL_CHIFFRES",
-                "Total des r\u00e9alisations de l'actif", "total de l'actif des comptes finaux (\u00e9tape 1)");
-        concorde(k, c.get("passifRegle"), k.passif, "LIQUIDATION_PASSIF_REGLE_TOTAL_CHIFFRES",
-                "Total du passif r\u00e9gl\u00e9", "total du passif des comptes finaux (\u00e9tape 1)");
-        BigDecimal fraisPv = montantOuNull(c.get("frais"));
-        if (fraisPv != null) {
-            concorde(k, fraisPv.add(remuneration), k.frais, "LIQUIDATION_FRAIS_TOTAL_CHIFFRES",
-                    "Total des frais et honoraires de liquidation",
-                    "frais du proc\u00e8s-verbal de cl\u00f4ture augment\u00e9s de la r\u00e9mun\u00e9ration du liquidateur");
-        }
-        if (k.frais.compareTo(remuneration) < 0) {
-            k.manque("LIQUIDATION_FRAIS_TOTAL_CHIFFRES", "Frais et honoraires de liquidation : la r\u00e9mun\u00e9ration du "
-                    + "liquidateur (" + decimal(remuneration) + " dirhams) doit figurer au tableau des frais, dont le total la comprend");
-        }
-        k.refuserSiManquantes("Le rapport ne concorde pas avec le proc\u00e8s-verbal de cl\u00f4ture");
-
-        BigDecimal disponible = k.actif.subtract(k.passif).subtract(k.frais).subtract(impot == null ? BigDecimal.ZERO : impot);
+        // L6b (E19) : regle unique du resultat, partagee avec le PV de cloture (concordance
+        // avec l'etape 1 et les frais du PV comprise).
+        ResultatLiquidation.Compte compte = ResultatLiquidation.depuisRapport(templateCode, safe, remuneration);
+        BigDecimal disponible = compte.disponible();
         if (disponible.signum() < 0) {
             throw new GenerationRefuseeException(templateCode,
                     "Compte de la liquidation incoh\u00e9rent : l'actif r\u00e9alis\u00e9 ne couvre pas le passif, les frais et "
                             + "les imp\u00f4ts, alors que le rapport final d\u00e9clare tout le passif acquitt\u00e9",
                     List.of(new DonneeManquante("LIQUIDATION_TRESORERIE_DISPONIBLE_CHIFFRES", "Tr\u00e9sorerie disponible (n\u00e9gative)", null)));
         }
-        BigDecimal cap = BigDecimal.valueOf(capital);
         v.put("LIQUIDATION_TRESORERIE_DISPONIBLE_CHIFFRES", decimal(disponible));
-        v.put("LIQUIDATION_CAPITAL_REMBOURSE_CHIFFRES", decimal(disponible.min(cap)));
-        int sens = disponible.compareTo(cap);
-        if (sens == 0) {
+        v.put("LIQUIDATION_CAPITAL_REMBOURSE_CHIFFRES", decimal(compte.rembourse()));
+        String sensCompte = compte.sens();
+        if (ResultatLiquidation.NUL.equals(sensCompte)) {
             // Le modele n'a que deux branches (boni, sinon mali) : un solde nul y imprimerait
             // "un mali de 0 dirhams" (ecart du corpus, rapporte) ; jamais suppose.
             throw new GenerationRefuseeException(templateCode,
@@ -522,25 +504,18 @@ final class RapportLiquidateurCorpusVarsBuilder {
                             + "(\u00e9cart du mod\u00e8le du cabinet, \u00e0 d\u00e9cider)",
                     List.of(new DonneeManquante("LIQUIDATION_RESULTAT_TYPE", "Sens du r\u00e9sultat de la liquidation (solde nul)", null)));
         }
-        if (sens > 0) {
+        if (ResultatLiquidation.BONI.equals(sensCompte)) {
             v.put("LIQUIDATION_RESULTAT_TYPE", "boni");
-            BigDecimal boni = disponible.subtract(cap);
+            BigDecimal boni = compte.montant();
             k.paire(v, "LIQUIDATION_BONI", boni);
             repartitionBoni(templateCode, v, safe, societe, boni, au);
             retenue(templateCode, v, r, c);
         } else {
             v.put("LIQUIDATION_RESULTAT_TYPE", "mali");
-            k.paire(v, "LIQUIDATION_MALI", cap.subtract(disponible));
+            k.paire(v, "LIQUIDATION_MALI", compte.montant());
             putSi(v, "LIQUIDATION_MALI_OBSERVATIONS", str(r.get("maliObservations")));
             associes(v, safe, au, null, null);
         }
-    }
-
-    /** Ecart entre un total du PV et le total des lignes du rapport : refus nomme. */
-    private static void concorde(Calcul k, Object attendu, BigDecimal calcule, String variable, String libelle, String source) {
-        BigDecimal a = attendu instanceof BigDecimal b ? b : montantOuNull(attendu);
-        if (a == null || a.compareTo(calcule) == 0) return;
-        k.manque(variable, libelle + " (" + decimal(calcule) + " dirhams) diff\u00e9rent du " + source + " (" + decimal(a) + " dirhams)");
     }
 
     /** Boni : reparti au prorata des parts (exact au centime, sinon refuse) ou attribue a l'associe unique. */
@@ -626,7 +601,7 @@ final class RapportLiquidateurCorpusVarsBuilder {
     }
 
     /** Lignes d'un tableau, lignes entierement vides ignorees. */
-    private static List<Map<String, Object>> lignesSaisies(Object o) {
+    static List<Map<String, Object>> lignesSaisies(Object o) {
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> m : asListOfMaps(o)) {
             if (m.values().stream().anyMatch(x -> x != null && !String.valueOf(x).isBlank())) out.add(m);
@@ -687,11 +662,6 @@ final class RapportLiquidateurCorpusVarsBuilder {
                 manque(variable, libelle + (saisi ? " (montant illisible : dirhams, au plus deux d\u00e9cimales, positif)" : ""));
             }
             return b;
-        }
-
-        BigDecimal montantFacultatif(Object raw, String variable, String libelle) {
-            if (raw == null || String.valueOf(raw).isBlank()) return null;
-            return montant(raw, variable, libelle);
         }
 
         void manque(String variable, String libelle) {
