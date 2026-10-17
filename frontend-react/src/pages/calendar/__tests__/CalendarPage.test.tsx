@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { CalendarPage } from '../CalendarPage';
 import type { Ticket } from '../../../types/ticket';
+import { MemoryRouter } from 'react-router-dom';
 
 // 2026-06-25 — Calendrier tickets : clic sur un ticket -> TicketDetailDrawer.
 // On stub TicketDetailDrawer pour isoler le wiring du calendrier de son arbre de deps.
@@ -61,7 +62,8 @@ describe('CalendarPage (vue tickets)', () => {
     });
 
     const user = userEvent.setup();
-    render(<CalendarPage />);
+    // L6b : la page passe par <Page> (fil d'Ariane), qui vit dans un routeur.
+    render(<MemoryRouter><CalendarPage /></MemoryRouter>);
 
     // La pastille du ticket est rendue dans sa cellule jour.
     const chip = await screen.findByTestId('cal-ticket-chip');
@@ -78,7 +80,8 @@ describe('CalendarPage (vue tickets)', () => {
 
   it('source par defaut = tickets : appelle ticketService.list (pas la vue echeances)', async () => {
     list.mockResolvedValue({ items: [], total: 0 });
-    render(<CalendarPage />);
+    // L6b : la page passe par <Page> (fil d'Ariane), qui vit dans un routeur.
+    render(<MemoryRouter><CalendarPage /></MemoryRouter>);
     await waitFor(() => expect(list).toHaveBeenCalledWith({ limit: 500 }));
   });
 });

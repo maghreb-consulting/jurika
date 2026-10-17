@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle, Mail, UserPlus, X } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { GroupeRadio } from '../../components/ui/Choix';
+import { Message } from '../../components/ui/Message';
+import { Modal } from '../../components/ui/Modal';
 import { TextField } from '../../components/ui/TextField';
 import { PhoneNumberInput } from '../../components/ui/PhoneNumberInput';
 import { isValidPhone } from '../../components/ui/phoneNumber';
@@ -106,200 +109,129 @@ export function InviteEmployeeDrawer({ open, onClose, onInvited, supervisorTaken
     setResult(null);
   }
 
+  function fermer() {
+    onClose();
+    reset();
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-bg-raised shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <h3 className="flex items-center gap-2 text-base font-semibold text-fg">
-            <UserPlus className="h-4 w-4 text-accent" />
-            Inviter un membre
-          </h3>
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              reset();
-            }}
-            className="rounded-lg p-1 text-fg-subtle hover:bg-bg-overlay"
-            aria-label="Fermer"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <Modal
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) fermer();
+      }}
+      title={
+        <span className="flex items-center gap-2">
+          <UserPlus className="h-4 w-4 text-fg-subtle" aria-hidden="true" />
+          Inviter un membre
+        </span>
+      }
+      size="md"
+      closeOnBackdrop={false}
+    >
+      {result ? (
+        <div className="space-y-4">
+          <Message ton="succes" titre={result.message}>
+            Le nouveau membre apparaît dans l’équipe avec le statut <strong>En attente</strong>. Il passera{' '}
+            <strong>Actif</strong> automatiquement après sa première connexion réussie.
+          </Message>
 
-        <div className="p-5">
-          {result ? (
-            <div className="space-y-4">
-              <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-success" />
-                <div className="text-sm text-emerald-800">
-                  <p className="font-semibold">{result.message}</p>
-                  <p className="mt-1 text-xs">
-                    Le nouveau membre apparaît dans l’équipe avec le statut <strong>En attente</strong>.
-                    Il passera <strong>Actif</strong> automatiquement après sa première connexion réussie.
-                  </p>
-                </div>
-              </div>
-
-              {/* BUG 7 (2026-06-08) — identifiant @jurika.ma genere : a transmettre au membre. */}
-              {result.loginEmail && (
-                <div className="rounded-lg border border-accent/40 bg-accent/10 p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-accent">
-                    Identifiant de connexion attribué
-                  </p>
-                  <code className="mt-1 block break-all rounded bg-bg-raised px-2 py-1 font-mono text-sm text-fg">
-                    {result.loginEmail}
-                  </code>
-                  {result.contactEmail && result.contactEmail !== result.loginEmail && (
-                    <p className="mt-2 text-[11px] text-fg-muted">
-                      Notifications envoyées à <span className="font-mono">{result.contactEmail}</span>.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {!result.emailDelivered && result.tempPassword && (
-                <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-warning/10 p-3">
-                  <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
-                  <div className="text-xs text-amber-900">
-                    <p className="font-semibold">Courriel non remis : communiquez le mot de passe temporaire</p>
-                    <p className="mt-1">
-                      Transmettez ces identifiants au membre par un moyen sûr (en personne, par téléphone).
-                      Il devra changer ce mot de passe à sa première connexion.
-                    </p>
-                    <div className="mt-2 rounded bg-bg-raised px-2 py-1 font-mono text-sm text-fg">
-                      {result.tempPassword}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-2 pt-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    reset();
-                  }}
-                  className="flex-1"
-                >
-                  Inviter un autre
-                </Button>
-                <Button
-                  onClick={() => {
-                    onClose();
-                    reset();
-                  }}
-                  className="flex-1"
-                >
-                  Terminer
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              <p className="text-xs text-fg-muted">
-                Crée un compte interne (employé ou superviseur) rattaché à votre cabinet. Un courriel
-                contenant un mot de passe temporaire et le lien de connexion lui est envoyé automatiquement.
-              </p>
-
-              <div className="grid grid-cols-2 gap-3">
-                <TextField
-                  label="Prénom"
-                  name="firstName"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  required
-                />
-                <TextField
-                  label="Nom"
-                  name="lastName"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  required
-                />
-              </div>
-              <TextField
-                label="Adresse électronique professionnelle"
-                name="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="prenom.nom@cabinet.ma"
-                required
-              />
-              <PhoneNumberInput
-                label="Téléphone (facultatif)"
-                name="phone"
-                value={phone}
-                onChange={setPhone}
-                defaultCountry="MA"
-              />
-              <div>
-                <label className="mb-1 block text-xs font-medium text-fg-subtle">
-                  Rôle
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['EMPLOYE', 'SUPERVISEUR'] as const).map((r) => {
-                    const disabled = r === 'SUPERVISEUR' && supervisorTaken;
-                    return (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => !disabled && setRole(r)}
-                        disabled={disabled}
-                        title={
-                          disabled
-                            ? 'Ce cabinet a déjà un superviseur (un seul par cabinet).'
-                            : undefined
-                        }
-                        className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                          disabled
-                            ? 'cursor-not-allowed border-border bg-bg-overlay text-fg-subtle opacity-50'
-                            : role === r
-                              ? 'border-accent bg-accent/10 text-accent'
-                              : 'border-border bg-bg-raised text-fg-subtle hover:bg-bg-overlay'
-                        }`}
-                      >
-                        {r === 'EMPLOYE' ? 'Employé' : 'Superviseur'}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="mt-1 text-[11px] text-fg-muted">
-                  {supervisorTaken
-                    ? 'Le poste de superviseur est déjà occupé : désactivez d’abord son titulaire pour en désigner un autre.'
-                    : 'Seuls les employés comptent dans le quota du forfait. Un seul superviseur par cabinet.'}
+          {/* BUG 7 (2026-06-08) -- identifiant @jurika.ma genere : a transmettre au membre. */}
+          {result.loginEmail && (
+            <div className="rounded-lg border border-border bg-bg-overlay p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-fg-muted">Identifiant de connexion attribué</p>
+              <code className="mt-1 block break-all rounded-md bg-bg-raised px-2 py-1 font-mono text-sm text-fg ring-1 ring-border">
+                {result.loginEmail}
+              </code>
+              {result.contactEmail && result.contactEmail !== result.loginEmail && (
+                <p className="mt-2 text-xs text-fg-muted">
+                  Notifications envoyées à <span className="font-mono">{result.contactEmail}</span>.
                 </p>
-              </div>
-
-              {error && (
-                <div role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-                  {error}
-                </div>
               )}
-
-              <div className="flex items-center gap-2 rounded-lg bg-accent/10 p-3 text-xs text-accent">
-                <Mail className="h-4 w-4 flex-shrink-0" />
-                <span>
-                  Le membre recevra le code du cabinet, son identifiant, un mot de passe temporaire et le
-                  lien de connexion. À sa première connexion, il changera son mot de passe et choisira sa
-                  méthode de double authentification.
-                </span>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="secondary" onClick={() => { onClose(); reset(); }}>
-                  Annuler
-                </Button>
-                <Button type="submit" loading={loading}>
-                  <UserPlus className="mr-1 h-3.5 w-3.5" />
-                  Inviter
-                </Button>
-              </div>
-            </form>
+            </div>
           )}
+
+          {!result.emailDelivered && result.tempPassword && (
+            <Message ton="attention" titre="Courriel non remis : communiquez le mot de passe temporaire">
+              Transmettez ces identifiants au membre par un moyen sûr (en personne, par téléphone). Il devra
+              changer ce mot de passe à sa première connexion.
+              <span className="mt-2 block rounded-md bg-bg-raised px-2 py-1 font-mono text-sm text-fg ring-1 ring-border">
+                {result.tempPassword}
+              </span>
+            </Message>
+          )}
+
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={() => reset()}>
+              Inviter un autre
+            </Button>
+            <Button type="button" onClick={fermer}>
+              Terminer
+            </Button>
+          </div>
         </div>
-      </div>
-    </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <p className="text-sm text-fg-muted">
+            Crée un compte interne (employé ou superviseur) rattaché à votre cabinet. Un courriel contenant un mot
+            de passe temporaire et le lien de connexion lui est envoyé automatiquement.
+          </p>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <TextField label="Prénom" name="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+            <TextField label="Nom" name="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+          </div>
+          <TextField
+            label="Adresse électronique professionnelle"
+            name="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="prenom.nom@cabinet.ma"
+            required
+          />
+          <PhoneNumberInput label="Téléphone (facultatif)" name="phone" value={phone} onChange={setPhone} defaultCountry="MA" />
+
+          <GroupeRadio
+            legende="Rôle"
+            name="role-invitation"
+            horizontal
+            value={role}
+            onChange={(v) => setRole(v as 'EMPLOYE' | 'SUPERVISEUR')}
+            options={[
+              { value: 'EMPLOYE', label: 'Employé' },
+              {
+                value: 'SUPERVISEUR',
+                label: 'Superviseur',
+                disabled: supervisorTaken,
+                description: supervisorTaken ? 'Ce cabinet a déjà un superviseur (un seul par cabinet).' : undefined,
+              },
+            ]}
+          />
+          <p className="-mt-2 text-xs text-fg-muted">
+            {supervisorTaken
+              ? 'Le poste de superviseur est déjà occupé : désactivez d’abord son titulaire pour en désigner un autre.'
+              : 'Seuls les employés comptent dans le quota du forfait. Un seul superviseur par cabinet.'}
+          </p>
+
+          {error && <Message ton="erreur">{error}</Message>}
+
+          <Message ton="info">
+            Le membre recevra le code du cabinet, son identifiant, un mot de passe temporaire et le lien de
+            connexion. À sa première connexion, il changera son mot de passe et choisira sa méthode de double
+            authentification.
+          </Message>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={fermer}>
+              Annuler
+            </Button>
+            <Button type="submit" loading={loading} icon={<UserPlus />}>
+              Inviter
+            </Button>
+          </div>
+        </form>
+      )}
+    </Modal>
   );
 }

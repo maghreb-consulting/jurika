@@ -22,7 +22,7 @@ export function CguPage() {
       subtitle="Contrat d’abonnement JURIKA : conditions générales, accord de traitement des données personnelles et conditions d’utilisation de l’essai gratuit"
       lastUpdated="14 octobre 2026"
     >
-      <div className="not-prose rounded-md border border-border bg-bg-raised p-4 text-sm text-fg-muted">
+      <div className="not-prose rounded-lg border border-border border-l-4 border-l-info bg-info-soft p-4 text-sm text-fg">
         <p className="m-0" data-testid="cgu-version">
           Version {VERSION_CONDITIONS} du contrat d’abonnement, en vigueur depuis le 14 octobre 2026. Le contrat se
           compose de quatre pièces : les conditions particulières (votre cabinet, votre forfait, votre rythme de

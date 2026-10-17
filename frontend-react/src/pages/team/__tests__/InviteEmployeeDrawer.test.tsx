@@ -26,8 +26,9 @@ describe('InviteEmployeeDrawer — validation in-app', () => {
   });
 
   it('le formulaire porte noValidate', () => {
-    const { container } = renderDrawer();
-    expect(container.querySelector('form')).toHaveAttribute('novalidate');
+    renderDrawer();
+    // L6b (E8) : la fenetre est un <dialog> natif rendu dans document.body (portail).
+    expect(document.querySelector('dialog form')).toHaveAttribute('novalidate');
   });
 
   it('submit avec champs vides : erreur in-app + pas d’appel API', async () => {

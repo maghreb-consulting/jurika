@@ -23,7 +23,7 @@ export function RetourGeneration({
   return (
     <div className="space-y-2">
       {refus.length > 0 ? (
-        <div role="alert" className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-fg">
+        <div role="alert" className="rounded-lg border border-danger/40 bg-danger-soft p-3 text-sm text-fg">
           <p className="flex items-center gap-1 font-medium text-danger">
             Document non généré : des données manquent
             <InfoBulle
@@ -44,13 +44,13 @@ export function RetourGeneration({
         </div>
       ) : (
         erreur && (
-          <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
+          <p role="alert" className="rounded-lg border border-danger/40 bg-danger-soft p-3 text-sm text-danger">
             {erreur}
           </p>
         )
       )}
       {aObtenir.length > 0 && (
-        <div role="status" className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-fg">
+        <div role="status" className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm text-fg">
           <p className="flex items-center gap-1 font-medium">
             Données à obtenir d’un organisme
             <InfoBulle

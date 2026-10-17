@@ -1,4 +1,5 @@
 import { Mail, ShieldCheck, KeyRound } from 'lucide-react';
+import { classesBouton } from '../ui/boutonClasses';
 
 /**
  * Sprint 11 TASK 2 — Etape 3 du wizard cabinet signup.
@@ -12,9 +13,9 @@ import { Mail, ShieldCheck, KeyRound } from 'lucide-react';
  */
 export function SignupStep3Security({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8" data-testid="signup-step-security">
-      <div className="rounded-2xl bg-bg-raised p-6 shadow-md sm:p-8">
-        <h2 className="mb-2 font-heading text-2xl font-semibold text-fg">Sécurité du compte</h2>
+    <div className="mx-auto max-w-2xl py-4" data-testid="signup-step-security">
+      <div className="rounded-xl border border-border border-t-2 border-t-accent bg-bg-raised p-6 shadow-card sm:p-8">
+        <h2 className="mb-2 text-2xl font-semibold tracking-tight text-heading">Sécurité du compte</h2>
         <p className="mb-6 text-sm text-fg-subtle">
           Comment votre mot de passe est créé et comment votre compte est activé. Rien à saisir ici :
           lisez, puis continuez.
@@ -39,8 +40,8 @@ export function SignupStep3Security({ onBack, onNext }: { onBack: () => void; on
   );
 }
 
-const btnPrimary = 'flex-1 rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-bg hover:bg-accent-hover transition-colors';
-const btnSecondary = 'rounded-lg border border-border-hi bg-bg-raised px-4 py-3 text-sm font-semibold text-fg hover:bg-bg-overlay transition-colors';
+const btnPrimary = classesBouton('primary', 'lg', 'h-auto min-h-11 flex-1 whitespace-normal py-2 text-center');
+const btnSecondary = classesBouton('secondary', 'lg', 'h-auto min-h-11 py-2');
 
 function Card({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (

@@ -29,6 +29,14 @@ const AIDES: EtapeVisite = {
     'Chaque écran porte des encadrés d’aide et des icônes « i » : ce qu’il faut faire, ce qui manque, ce qui vient ensuite. Une aide déjà lue se masque d’un clic ; elle se réaffiche depuis votre compte.',
 };
 
+/** Lot L6b (E11) : JURI remplace la bulle du chatbot (meme cible "chatbot"). */
+const JURI_CABINET: EtapeVisite = {
+  cible: 'chatbot',
+  titre: 'JURI, votre assistant',
+  texte:
+    'JURI attend sur le bord droit de l’écran : un clic ouvre l’aide de l’écran en cours, les raccourcis clavier et le chatbot juridique, dont chaque réponse cite ses sources. Ctrl + K ouvre la palette de commandes pour retrouver un dossier ou un ticket.',
+};
+
 const ETAPES: Record<Role, EtapeVisite[]> = {
   EMPLOYE: [
     {
@@ -52,11 +60,7 @@ const ETAPES: Record<Role, EtapeVisite[]> = {
       titre: 'Les notifications',
       texte: 'La cloche vous avertit d’une nouvelle affectation, d’une remarque du superviseur ou d’une pièce déposée par un client.',
     },
-    {
-      cible: 'chatbot',
-      titre: 'L’assistant juridique',
-      texte: 'Posez une question de droit des sociétés : chaque réponse cite ses sources.',
-    },
+    JURI_CABINET,
     COMPTE,
     AIDES,
   ],
@@ -82,11 +86,7 @@ const ETAPES: Record<Role, EtapeVisite[]> = {
       titre: 'Les notifications',
       texte: 'La cloche vous avertit des événements du cabinet, dont les quotas de votre abonnement qui approchent de leur limite.',
     },
-    {
-      cible: 'chatbot',
-      titre: 'L’assistant juridique',
-      texte: 'Posez une question de droit des sociétés : chaque réponse cite ses sources.',
-    },
+    JURI_CABINET,
     {
       ...COMPTE,
       texte:
@@ -105,6 +105,11 @@ const ETAPES: Record<Role, EtapeVisite[]> = {
       titre: 'Le menu',
       texte:
         '« Mon espace » rassemble les documents de vos dossiers. « Mes demandes » vous permet d’adresser une demande au cabinet et d’en suivre l’avancement. « Demandes de mon conseiller » liste ce que votre conseiller attend de vous : commencez par là.',
+    },
+    {
+      ...JURI_CABINET,
+      texte:
+        'JURI attend sur le bord droit de l’écran : un clic ouvre l’aide de l’écran en cours et la liste des raccourcis clavier. Vous pouvez le masquer, puis le réafficher depuis le menu de votre compte.',
     },
     COMPTE,
     AIDES,
@@ -127,9 +132,9 @@ const ETAPES: Record<Role, EtapeVisite[]> = {
       texte: 'La cloche vous avertit des événements de la plateforme.',
     },
     {
-      cible: 'chatbot',
-      titre: 'L’assistant juridique',
-      texte: 'Vérifiez ici les réponses de l’assistant à partir des sources communes que vous gérez.',
+      ...JURI_CABINET,
+      texte:
+        'JURI attend sur le bord droit de l’écran : un clic ouvre l’aide de l’écran en cours, les raccourcis clavier et le chatbot, pour vérifier ses réponses à partir des sources communes que vous gérez.',
     },
     COMPTE,
     AIDES,

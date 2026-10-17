@@ -620,5 +620,33 @@ class TicketJurikaAppIT {
         mvc.perform(post("/api/v1/dossiers/reaffectations/" + forcee + "/verification").header("Authorization", superviseur))
                 .andExpect(status().isNotFound());
     }
-}
 
+    /**
+     * Lot L6b (E14) : un ICE deja porte par un autre dossier du cabinet, saisi dans les
+     * identifiants de la fiche, violait uq_dossier_workspace_ice_when_present : HTTP 500
+     * (constate sur le Z440, journaux de ticket-service). Refus nomme, jamais 500.
+     */
+    @Test
+    @Order(27)
+    void identifiants_ice_deja_pris_refus_nomme() throws Exception {
+        UUID cible = UUID.randomUUID();
+        owner.update("INSERT INTO entreprise_dossiers (id, workspace_id, raison_sociale, forme_juridique, statut, responsable_id) "
+                + "VALUES (?, ?, 'ATLAS DOUBLON SARL', 'SARL', 'ACTIVE', ?)", cible, WS_A, KARIM);
+        owner.update("INSERT INTO entreprise_dossiers (id, workspace_id, raison_sociale, forme_juridique, ice, statut, responsable_id) "
+                + "VALUES (?, ?, 'NOUR CONSEIL SARL', 'SARL', '009876543000021', 'ACTIVE', ?)", UUID.randomUUID(), WS_A, KARIM);
+
+        mvc.perform(patch("/api/v1/dossiers/" + cible + "/identifiants").header("Authorization", karim())
+                        .contentType("application/json").content("{\"ice\":\"009 876 543 000 021\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("009876543000021")))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("NOUR CONSEIL SARL")));
+        assertThat(owner.queryForObject("SELECT ice FROM entreprise_dossiers WHERE id = ?", String.class, cible)).isNull();
+        // Son propre ICE, reenvoye, n'est jamais un doublon.
+        mvc.perform(patch("/api/v1/dossiers/" + cible + "/identifiants").header("Authorization", karim())
+                        .contentType("application/json").content("{\"ice\":\"001112223000034\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(patch("/api/v1/dossiers/" + cible + "/identifiants").header("Authorization", karim())
+                        .contentType("application/json").content("{\"ice\":\"001112223000034\"}"))
+                .andExpect(status().isOk());
+    }
+}

@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState, useEffectEvent } from 'react';
+import { useEffect, useId, useMemo, useState, useEffectEvent } from 'react';
 import { Search } from 'lucide-react';
 import { InfoBulle } from '../ui/Aide';
+import { Button } from '../ui/Button';
+import { TextField } from '../ui/TextField';
 import { dataroomService } from '../../services/dataroom.service';
 import { LIQUIDATION_DELAI_JOURS, joursCalendairesEntre } from './liquidationDelai';
 import { displayFormeJuridique } from '../../types/dataroom';
@@ -70,13 +72,13 @@ function computeDissolutionDelayBadge(d: DossierBrief): DelaiBadge {
   if (joursDepuis >= LIQUIDATION_DELAI_JOURS) {
     return {
       label: `Délai de ${LIQUIDATION_DELAI_JOURS} jours écoulé`,
-      className: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
+      className: 'bg-success-soft text-success border border-success/40',
     };
   }
   const reste = Math.max(0, LIQUIDATION_DELAI_JOURS - joursDepuis);
   return {
     label: `Délai en cours (il reste ${reste} jour(s))`,
-    className: 'bg-warning/10 text-amber-800 border border-amber-300',
+    className: 'bg-warning-soft text-warning border border-warning/40',
   };
 }
 
@@ -188,6 +190,8 @@ export function DossierAutocomplete({
     onSelect(d);
   };
 
+  const idChamp = useId();
+  const idAide = `${idChamp}-aide`;
   const handleClear = () => {
     setSelected(null);
     setSearch('');
@@ -196,7 +200,7 @@ export function DossierAutocomplete({
 
   return (
     <div className="space-y-1">
-      <label className="flex items-center gap-1 text-sm font-medium text-fg-muted">
+      <label htmlFor={idChamp} className="flex items-center gap-1 text-sm font-medium text-fg-muted">
         {label} *
         <InfoBulle
           libelle="Comment choisir la société ?"
@@ -205,12 +209,12 @@ export function DossierAutocomplete({
       </label>
 
       {selected ? (
-        <div className="flex items-center justify-between rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2">
+        <div className="flex items-center justify-between rounded-lg border border-success/40 bg-success-soft px-3 py-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-emerald-900">
+            <p className="truncate text-sm font-semibold text-success">
               {selected.raisonSociale}
             </p>
-            <p className="truncate text-xs text-emerald-700">
+            <p className="truncate text-xs text-success">
               {displayFormeJuridique(selected) ?? 'Forme inconnue'} ·{' '}
               {selected.origine === 'ETRANGERE'
                 ? (selected.pays ?? 'Pays inconnu')
@@ -230,21 +234,23 @@ export function DossierAutocomplete({
             )}
           </div>
           {!disabled && (
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={handleClear}
-              className="ml-3 rounded px-2 py-1 text-xs text-emerald-800 hover:bg-emerald-100"
+              className="ml-3"
               aria-label="Changer la société sélectionnée"
             >
               Changer
-            </button>
+            </Button>
           )}
         </div>
       ) : (
         <div className="relative">
-          <div className="flex items-center gap-2 rounded-lg border border-border-hi bg-bg-raised px-3 py-2 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-200">
-            <Search className="h-4 w-4 text-fg-subtle" />
-            <input
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
+            <TextField
               type="text"
               value={search}
               onChange={(e) => {
@@ -254,7 +260,9 @@ export function DossierAutocomplete({
               onFocus={() => setOpen(true)}
               placeholder={loading ? 'Chargement…' : 'Rechercher par nom, ICE ou ville…'}
               disabled={disabled || loading}
-              className="flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed"
+              id={idChamp}
+              className="pl-9"
+              aria-describedby={help ? idAide : undefined}
               aria-label="Recherche de société"
               aria-expanded={open}
             />
@@ -283,7 +291,7 @@ export function DossierAutocomplete({
                     key={d.id}
                     role="option"
                     aria-selected={false}
-                    className="cursor-pointer border-b border-border last:border-none px-3 py-2 hover:bg-accent/10"
+                    className="cursor-pointer border-b border-border last:border-none px-3 py-2 hover:bg-bg-overlay"
                     onClick={() => handlePick(d)}
                   >
                     <p className="text-sm font-semibold text-fg">{d.raisonSociale}</p>
@@ -314,7 +322,11 @@ export function DossierAutocomplete({
         </div>
       )}
 
-      {help && <p className="text-xs text-fg-subtle">{help}</p>}
+      {help && (
+        <p id={idAide} className="text-xs text-fg-subtle">
+          {help}
+        </p>
+      )}
     </div>
   );
 }

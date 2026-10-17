@@ -2,6 +2,9 @@ import { useMemo, useRef, useState } from 'react';
 import { Filter, Search, X } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Drawer } from '../../../components/ui/Drawer';
+import { Badge } from '../../../components/ui/Badge';
+import { GroupeRadio } from '../../../components/ui/Choix';
+import { PastilleFiltre } from './PastilleFiltre';
 import { TextField } from '../../../components/ui/TextField';
 import {
   DOCUMENT_TYPE_LABELS,
@@ -109,10 +112,14 @@ export function JuridiqueSearchBar({
 
   return (
     <>
-      <div className="flex flex-col gap-2 md:flex-row md:items-center">
+      <div className="flex flex-col gap-2 @md:flex-row @md:items-center">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" />
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+          />
           <TextField
+            type="search"
             value={localQuery}
             onChange={(e) => handleQueryChange(e.target.value)}
             placeholder="Rechercher dans les documents juridiques (titre, nom de fichier)…"
@@ -120,39 +127,35 @@ export function JuridiqueSearchBar({
           />
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={openDrawer}
-            className="relative"
-          >
-            <Filter className="mr-1 h-4 w-4" />
+          <Button type="button" variant="secondary" size="sm" icon={<Filter />} onClick={openDrawer}>
             Filtres
-            {activeFiltersCount > 0 && (
-              <span className="ml-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-bold text-bg-raised">
-                {activeFiltersCount}
-              </span>
-            )}
+            {activeFiltersCount > 0 && <Badge variant="default">{activeFiltersCount}</Badge>}
           </Button>
           {hasAnyActive && (
             <Button
+              type="button"
               variant="ghost"
               size="sm"
+              iconOnly
+              icon={<X />}
               onClick={resetAll}
-              title="Réinitialiser tous les filtres"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+              title="Effacer la recherche et les filtres"
+              aria-label="Effacer la recherche et les filtres"
+            />
           )}
         </div>
       </div>
 
       {(filters.q || activeFiltersCount > 0) && (
-        <p className="text-xs text-fg-subtle">
+        <p className="text-xs text-fg-muted" aria-live="polite">
           {loading
             ? 'Recherche en cours…'
             : `${totalResults ?? 0} résultat${(totalResults ?? 0) > 1 ? 's' : ''}`}
-          {filters.q && <> pour <strong>"{filters.q}"</strong></>}
+          {filters.q && (
+            <>
+              {' '}pour <strong className="text-fg">« {filters.q} »</strong>
+            </>
+          )}
         </p>
       )}
 
@@ -163,95 +166,66 @@ export function JuridiqueSearchBar({
         subtitle="Affinez la liste des documents juridiques"
         width="md"
         footer={
-          <div className="flex justify-end gap-2 border-t border-border px-6 py-3">
+          <div className="flex justify-end gap-2">
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               onClick={() => setDraft({ ...DEFAULT_FILTERS, q: filters.q })}
             >
               Réinitialiser
             </Button>
-            <Button size="sm" onClick={applyDraft}>
+            <Button type="button" size="sm" onClick={applyDraft}>
               Appliquer
             </Button>
           </div>
         }
       >
         <div className="space-y-6">
-          <section>
-            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
+          <p className="text-sm text-fg-muted">
+            Choisissez un ou plusieurs types, une période ou les versions à inclure, puis cliquez sur
+            « Appliquer ». La recherche par mot reste active.
+          </p>
+          <section aria-labelledby="filtre-type-document">
+            <h3 id="filtre-type-document" className="mb-2 text-sm font-medium text-fg">
               Type de document
-            </h4>
+            </h3>
             <div className="flex flex-wrap gap-2">
-              {DOCUMENT_TYPE_OPTIONS.map(([value, label]) => {
-                const active = draft.types.includes(value);
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => toggleType(value)}
-                    className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
-                      active
-                        ? 'border-accent/40 bg-accent/10 text-accent'
-                        : 'border-border bg-bg-raised text-fg-muted hover:border-border-hi'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section>
-            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
-              Periode (date d'upload)
-            </h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-xs text-fg-subtle">Du</label>
-                <TextField
-                  type="date"
-                  value={draft.from}
-                  onChange={(e) => setDraft({ ...draft, from: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-fg-subtle">Au</label>
-                <TextField
-                  type="date"
-                  value={draft.to}
-                  onChange={(e) => setDraft({ ...draft, to: e.target.value })}
-                />
-              </div>
-            </div>
-          </section>
-
-          <section>
-            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
-              Versions
-            </h4>
-            <div className="space-y-1.5">
-              {VERSION_SCOPE_OPTIONS.map(([value, label]) => (
-                <label
-                  key={value}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-bg-raised px-3 py-2 text-sm hover:border-border-hi"
-                >
-                  <input
-                    type="radio"
-                    name="versionScope"
-                    value={value}
-                    checked={draft.versionScope === value}
-                    onChange={() =>
-                      setDraft({ ...draft, versionScope: value as VersionScope })
-                    }
-                    className="text-accent"
-                  />
-                  <span className="text-fg-muted">{label}</span>
-                </label>
+              {DOCUMENT_TYPE_OPTIONS.map(([value, label]) => (
+                <PastilleFiltre key={value} actif={draft.types.includes(value)} onClick={() => toggleType(value)}>
+                  {label}
+                </PastilleFiltre>
               ))}
             </div>
           </section>
+
+          <section aria-labelledby="filtre-periode">
+            <h3 id="filtre-periode" className="mb-2 text-sm font-medium text-fg">
+              Période (date d’ajout du document)
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              <TextField
+                label="Du"
+                type="date"
+                value={draft.from}
+                onChange={(e) => setDraft({ ...draft, from: e.target.value })}
+              />
+              <TextField
+                label="Au"
+                type="date"
+                value={draft.to}
+                onChange={(e) => setDraft({ ...draft, to: e.target.value })}
+              />
+            </div>
+          </section>
+
+          <GroupeRadio
+            legende="Versions"
+            name="versionScope"
+            value={draft.versionScope}
+            onChange={(v) => setDraft({ ...draft, versionScope: v as VersionScope })}
+            options={VERSION_SCOPE_OPTIONS.map(([value, label]) => ({ value, label }))}
+          />
         </div>
       </Drawer>
     </>

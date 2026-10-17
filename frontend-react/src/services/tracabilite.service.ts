@@ -1,5 +1,5 @@
 import { api } from '../lib/api';
-import type { TracabiliteFilters, TracabilitePage } from '../types/tracabilite';
+import type { ActionTracee, TracabiliteFilters, TracabilitePage } from '../types/tracabilite';
 
 /**
  * Traçabilité (E2) — appelle dashboard-service via la gateway. Le workspace
@@ -20,6 +20,15 @@ export const tracabiliteService = {
     params.offset = filters.offset ?? 0;
     const { data } = await api.get<TracabilitePage>('/tracabilite', { params });
     return data;
+  },
+
+  /**
+   * Lot L6b (E9) : actions reellement presentes dans le journal du cabinet, avec leur
+   * libelle (liste du filtre "Action") ; SUPERVISEUR.
+   */
+  async actions(): Promise<ActionTracee[]> {
+    const { data } = await api.get<ActionTracee[]>('/tracabilite/actions');
+    return Array.isArray(data) ? data : [];
   },
 
   /** Historique d'une entite precise (dossier / ticket) — EMPLOYE + SUPERVISEUR. */

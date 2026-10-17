@@ -45,6 +45,40 @@ export const STATUT_WORKSPACE_LABELS: Record<string, string> = {
   DEACTIVATED: 'Désactivé',
   // Lot L7 (E5), RG-TAR-07 : forfait arrêté, rien n'est supprimé.
   ARCHIVED: 'Archivé',
+  // Lot L6b (E17) : statut admis par la contrainte d'auth V44, absent jusque-là (code brut).
+  PENDING_VERIFICATION: 'En attente de vérification',
+};
+
+/**
+ * Lot L6b (E17) : services suivis par le tableau de bord du super-admin
+ * (SuperAdminDashboardAggregator.MONITORED_SERVICES), nommés par leur fonction.
+ */
+export const SERVICE_LABELS: Record<string, string> = {
+  'auth-service': 'Comptes et connexions',
+  'ticket-service': 'Tickets et démarches',
+  'workflow-service': 'Parcours',
+  'dataroom-service': 'Data Rooms',
+  'ai-service': 'Génération des actes et assistant',
+  'supervision-service': 'Supervision',
+  'realtime-service': 'Notifications en temps réel',
+};
+
+/** Lot L6b (E17) : type d'élément d'une trace du journal (colonne entity_type, en minuscules). */
+export const ENTITE_AUDIT_LABELS: Record<string, string> = {
+  user: 'Compte utilisateur',
+  ticket: 'Ticket',
+  workspace: 'Cabinet',
+  dossier: 'Dossier',
+  document: 'Document',
+  dashboard: 'Tableau de bord',
+};
+
+/**
+ * Lot L6b (E17) : motif d'un dossier à risque rendu par le serveur (SuperviseurDashboardAggregator,
+ * texte sans accents) ; un motif inconnu s'affiche tel quel.
+ */
+export const MOTIF_RISQUE_LABELS: Record<string, string> = {
+  'Delai legal depasse': 'Délai légal dépassé',
 };
 
 /** Renvoie le libelle FR d'une cle via une map, avec repli sur la cle brute. */

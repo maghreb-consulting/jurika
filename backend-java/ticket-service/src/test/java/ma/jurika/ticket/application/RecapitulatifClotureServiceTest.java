@@ -287,4 +287,33 @@ class RecapitulatifClotureServiceTest {
                     assertThat(d.cocheAt()).isNotNull();
                 });
     }
+
+    @Test
+    @DisplayName("Ticket sans dossier (societe pas encore choisie) : recapitulatif sans identifiants, jamais un 500")
+    void ticketSansDossier_recapitulatifSansIdentifiants() {
+        // Lot L6b (E15) : constate sur le Z440, GET .../demarches/recapitulatif repondait 500
+        // pour tout ticket de modification, de PV AGO ou annule avant le choix de la societe :
+        // la recherche du dossier par un identifiant NUL leve (Spring Data : "id must not be null").
+        TicketRepository tickets = mock(TicketRepository.class);
+        when(tickets.findById(any(), any())).thenAnswer(inv -> Optional.of(new Ticket(
+                TICKET, WS, "T-2026-00013", "Nomination d'un gerant", TicketType.MODIFICATION,
+                TicketStatut.ANNULE, TicketPriorite.NORMALE, null,
+                ACTEUR, ACTEUR, null, null, null, null, null, Instant.now())));
+        DossierRepository dossiers = mock(DossierRepository.class);
+        when(dossiers.findById(any(), any())).thenAnswer(inv -> {
+            if (inv.getArgument(1) == null) throw new IllegalArgumentException("The given id must not be null");
+            return Optional.of(dossier);
+        });
+        RecapitulatifClotureService sansDossier = new RecapitulatifClotureService(tickets,
+                (DemarcheReferentielRepository) org.springframework.test.util.ReflectionTestUtils.getField(service, "referentiel"),
+                (TicketDemarcheRepository) org.springframework.test.util.ReflectionTestUtils.getField(service, "etats"),
+                (DemarcheJournalRepository) org.springframework.test.util.ReflectionTestUtils.getField(service, "journal"),
+                (DataroomDocumentLookup) org.springframework.test.util.ReflectionTestUtils.getField(service, "documents"),
+                dossiers);
+
+        var recap = sansDossier.recapitulatif(WS, TICKET);
+
+        assertThat(recap.identifiants().rcNumero()).isNull();
+        assertThat(recap.identifiants().ice()).isNull();
+    }
 }

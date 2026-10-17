@@ -78,13 +78,36 @@ public final class CreationCorpusVarsBuilder {
         for (CreationChampsCatalogue.Champ c : cat.champsDe(templateCode)) {
             if (c.boucle() != null) continue;
             String valeur = str(saisies.get(c.cle()));
-            if (!valeur.isBlank()) v.put(c.variable(), valeur);
+            if (!valeur.isBlank()) v.put(c.variable(), imprimable(c, valeur));
         }
 
         // ---- 2. Les boucles --------------------------------------------------
         Map<String, List<CreationChampsCatalogue.Champ>> parBoucle = cat.champsParBoucle();
         for (CreationChampsCatalogue.Boucle b : cat.bouclesDe(templateCode)) {
             List<Map<String, Object>> saisie = asListOfMaps(saisies.get(cleDeBoucle(b.nom())));
+            // Lot L6b (E14) : une boucle DEJA produite par les builders existants (ASSOCIES, des
+            // etapes 6 et 3) n'est ni videe ni remplacee par la saisie de l'etape 7 : celle-ci
+            // COMPLETE chaque occurrence (la residence de l'associe), au rang de l'occurrence.
+            // Constate sur la declaration d'immatriculation au RC : sans residence saisie, la
+            // section 6 sortait sans associe ; avec, le premier associe sortait deux fois.
+            List<Map<String, Object>> existantes = asListOfMaps(base.get(b.nom()));
+            if (!existantes.isEmpty()) {
+                List<Map<String, Object>> completees = new ArrayList<>(existantes.size());
+                List<CreationChampsCatalogue.Champ> champsB = parBoucle.getOrDefault(b.nom(), List.of());
+                for (int i = 0; i < existantes.size(); i++) {
+                    Map<String, Object> item = new LinkedHashMap<>(existantes.get(i));
+                    Map<String, Object> brut = i < saisie.size() ? saisie.get(i) : Map.of();
+                    for (CreationChampsCatalogue.Champ c : champsB) {
+                        String valeur = str(brut.get(c.cle()));
+                        if (!valeur.isBlank() && str(item.get(c.variable())).isBlank()) {
+                            item.put(c.variable(), imprimable(c, valeur));
+                        }
+                    }
+                    completees.add(item);
+                }
+                v.put(b.nom(), completees);
+                continue;
+            }
             if (saisie.isEmpty()) {
                 // UNE LISTE VIDE, PAS RIEN.
                 //
@@ -109,7 +132,7 @@ public final class CreationCorpusVarsBuilder {
                 Map<String, Object> item = new LinkedHashMap<>();
                 for (CreationChampsCatalogue.Champ c : champs) {
                     String valeur = str(brut.get(c.cle()));
-                    if (!valeur.isBlank()) item.put(c.variable(), valeur);
+                    if (!valeur.isBlank()) item.put(c.variable(), imprimable(c, valeur));
                 }
                 // DÉRIVATION — la numérotation d'une occurrence ne se saisit pas :
                 // « bénéficiaire n° 2 » est le rang dans la liste, rien d'autre.
@@ -273,7 +296,10 @@ public final class CreationCorpusVarsBuilder {
      */
     private static void deriverBail(Map<String, Object> v, Map<String, Object> saisies) {
         LocalDate effet = date(str(saisies.get("bailDateEffet")));
-        BigDecimal duree = decimal(str(saisies.get("bailDuree")));
+        // Lot L6b (E14) : la duree s'imprime telle que saisie ("pour une duree de 3 ans") et
+        // donne l'echeance : on en lit le nombre d'annees en tete ("3 ans" -> 3). Avant,
+        // "3 ans" n'etait pas un nombre : l'echeance restait vide et le bail etait refuse.
+        BigDecimal duree = anneesEnTete(str(saisies.get("bailDuree")));
         if (effet != null && duree.signum() > 0) {
             put(v, "BAIL_DATE_FIN", DATE_FR.format(effet.plusYears(duree.longValue())));
         }
@@ -402,7 +428,10 @@ public final class CreationCorpusVarsBuilder {
     private static void alignerFormeJuridiqueSurLImprime(String templateCode,
                                                           Map<String, Object> v,
                                                           Map<String, Object> base) {
-        if (!"DECLARATION_EXISTENCE".equals(templateCode)) return;
+        // Lot L6b (E14) : la declaration d'immatriculation au RC (modele 2) porte la MEME case
+        // a cocher, pilotee par le libelle complet ; avec "SARL", aucune case n'etait cochee.
+        if (!"DECLARATION_EXISTENCE".equals(templateCode)
+                && !"DECLARATION_IMMATRICULATION_RC".equals(templateCode)) return;
         boolean associeUnique = "oui".equalsIgnoreCase(str(base.get("ASSOCIE_UNIQUE")));
         v.put("FORME_JURIDIQUE", associeUnique
                 ? "Société à responsabilité limitée à associé unique"
@@ -494,6 +523,24 @@ public final class CreationCorpusVarsBuilder {
             }
         }
         return null;
+    }
+
+    /**
+     * Lot L6b (E14) : valeur d'une saisie de l'etape 7 telle qu'elle s'imprime. Un champ de type
+     * date arrive de l'ecran en ISO ("2026-11-01") et s'imprimait tel quel dans la declaration
+     * d'existence, le bail, la declaration d'immatriculation, l'etat des actes ; il s'imprime
+     * en jj/mm/aaaa. Une valeur qui n'est pas une date lisible reste inchangee.
+     */
+    private static String imprimable(CreationChampsCatalogue.Champ c, String valeur) {
+        if (!"date".equals(c.type())) return valeur;
+        LocalDate d = date(valeur);
+        return d == null ? valeur : DATE_FR.format(d);
+    }
+
+    /** Nombre entier en tete d'une duree saisie ("3 ans", "3") ; zero sinon. */
+    private static BigDecimal anneesEnTete(String s) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("^\\s*(\\d{1,3})(?!\\d)").matcher(s == null ? "" : s);
+        return m.find() ? new BigDecimal(m.group(1)) : BigDecimal.ZERO;
     }
 
     private static String dateFr(String s) {

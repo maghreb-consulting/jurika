@@ -31,7 +31,7 @@ export function DocumentEditModal({ blob, title, filename, onClose, onSaved }: D
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex flex-col bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex flex-col bg-scrim/60 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -39,7 +39,7 @@ export function DocumentEditModal({ blob, title, filename, onClose, onSaved }: D
       <div className="m-auto flex h-[90vh] w-[min(1200px,95vw)] flex-col overflow-hidden rounded-xl bg-bg-raised shadow-xl">
         <div className="flex items-center justify-between border-b border-border bg-bg-overlay px-4 py-3">
           <div className="flex items-center gap-2">
-            <Pencil className="h-4 w-4 text-accent" />
+            <Pencil className="h-4 w-4 text-fg-muted" />
             <h3 className="text-sm font-semibold text-fg">Édition — {title}</h3>
           </div>
           <button

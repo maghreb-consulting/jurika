@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Smartphone, QrCode } from 'lucide-react';
 import { SMS_2FA_ENABLED } from '../../lib/featureFlags';
+import { Badge } from '../ui/Badge';
+import { classesBouton } from '../ui/boutonClasses';
 
 /**
  * Sprint 11 TASK 2 — Etape 4 du wizard cabinet signup.
@@ -42,9 +44,9 @@ export function SignupStep4TwoFactor({ initial, onBack, onNext }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8" data-testid="signup-step-2fa">
-      <div className="rounded-2xl bg-bg-raised p-6 shadow-md sm:p-8">
-        <h2 className="mb-2 font-heading text-2xl font-semibold text-fg">Méthode de double authentification</h2>
+    <div className="mx-auto max-w-2xl py-4" data-testid="signup-step-2fa">
+      <div className="rounded-xl border border-border border-t-2 border-t-accent bg-bg-raised p-6 shadow-card sm:p-8">
+        <h2 className="mb-2 text-2xl font-semibold tracking-tight text-heading">Méthode de double authentification</h2>
         <p className="mb-6 text-sm text-fg-subtle">
           La double authentification est obligatoire pour protéger les données du cabinet.
           Choisissez dès maintenant votre méthode : vous l’activerez à votre première connexion.
@@ -92,12 +94,12 @@ function PrefCard({ value, current, setPref, icon, title, body, disabled, disabl
     <label
       aria-disabled={disabled || undefined}
       className={[
-        'flex items-start gap-3 rounded-lg border-2 p-4 transition-colors',
+        'flex items-start gap-3 rounded-lg border p-4 transition-colors duration-150 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus',
         disabled
           ? 'cursor-not-allowed border-border bg-bg-overlay opacity-60'
           : selected
-            ? 'cursor-pointer border-accent bg-accent/10'
-            : 'cursor-pointer border-border bg-bg-raised hover:border-border-hi',
+            ? 'cursor-pointer border-accent bg-accent-soft'
+            : 'cursor-pointer border-border-input bg-bg-raised hover:border-fg-subtle',
       ].join(' ')}
       data-testid={`signup-2fa-option-${value.toLowerCase()}`}
     >
@@ -108,16 +110,14 @@ function PrefCard({ value, current, setPref, icon, title, body, disabled, disabl
         checked={selected}
         disabled={disabled}
         onChange={() => !disabled && setPref(value)}
-        className="mt-1.5 h-4 w-4 accent-[#2563EB]"
+        className="mt-1.5 h-4 w-4 accent-[var(--color-accent)]"
       />
       <div className={`mt-0.5 ${disabled ? 'text-fg-subtle' : 'text-accent'}`}>{icon}</div>
       <div>
         <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-fg">
           {title}
           {disabled && disabledLabel && (
-            <span className="rounded-full bg-fg-subtle/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-fg-muted">
-              {disabledLabel}
-            </span>
+            <Badge variant="neutral">{disabledLabel}</Badge>
           )}
         </h3>
         <p className="text-xs text-fg-subtle leading-relaxed">{body}</p>
@@ -126,5 +126,5 @@ function PrefCard({ value, current, setPref, icon, title, body, disabled, disabl
   );
 }
 
-const btnPrimary = 'flex-1 rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-bg hover:bg-accent-hover transition-colors';
-const btnSecondary = 'rounded-lg border border-border-hi bg-bg-raised px-4 py-3 text-sm font-semibold text-fg hover:bg-bg-overlay transition-colors';
+const btnPrimary = classesBouton('primary', 'lg', 'h-auto min-h-11 flex-1 whitespace-normal py-2 text-center');
+const btnSecondary = classesBouton('secondary', 'lg', 'h-auto min-h-11 py-2');

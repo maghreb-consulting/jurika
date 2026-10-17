@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, KeyRound, ShieldCheck, X } from 'lucide-react';
-import { BrandLogo } from '../../components/ui/BrandLogo';
+import { PageAccueil, TitreAccueil } from '../../components/auth/PageAccueil';
 import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
+import { Message } from '../../components/ui/Message';
 import { TextField } from '../../components/ui/TextField';
 import { authService } from '../../services/auth.service';
 import { extractError, tokenStorage } from '../../lib/api';
@@ -56,79 +56,57 @@ export function ForceChangePasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-warning/10 via-bg-raised to-accent/10 px-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 flex items-center justify-center">
-          <BrandLogo variant="full" size={48} />
-        </div>
+    <PageAccueil titre="Choisissez votre mot de passe" largeur="etroite" retourAccueil={false}>
+      <TitreAccueil icone={<KeyRound />} ton="attention" titre="Choisissez votre mot de passe">
+        Par sécurité, remplacez le mot de passe temporaire reçu par courriel avant de continuer. Étape suivante :
+        la double authentification.
+      </TitreAccueil>
 
-        <Card className="p-8">
-          <div className="space-y-2 text-center">
-            <KeyRound className="mx-auto h-10 w-10 text-warning" />
-            <h1 className="font-heading text-xl font-semibold text-fg">Choisissez votre mot de passe</h1>
-            <p className="text-sm text-fg-muted">
-              Par sécurité, remplacez le mot de passe temporaire reçu par courriel avant de continuer.
-              Étape suivante : la double authentification.
-            </p>
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        <TextField
+          label="Mot de passe temporaire (reçu par courriel)"
+          type="password"
+          value={oldPassword}
+          onChange={(e) => setOldPassword(e.target.value)}
+          autoComplete="current-password"
+          required
+        />
+        <TextField
+          label="Nouveau mot de passe"
+          type="password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          autoComplete="new-password"
+          required
+        />
+        <TextField
+          label="Confirmez le nouveau mot de passe"
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          autoComplete="new-password"
+          required
+        />
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
-            <TextField
-              label="Mot de passe temporaire (reçu par courriel)"
-              type="password"
-              value={oldPassword}
-              onChange={(e) => setOldPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
-            <TextField
-              label="Nouveau mot de passe"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              autoComplete="new-password"
-              required
-            />
-            <TextField
-              label="Confirmez le nouveau mot de passe"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              autoComplete="new-password"
-              required
-            />
+        <ul aria-label="Règles du mot de passe" className="space-y-1 rounded-lg border border-border bg-bg-overlay px-3 py-2.5 text-xs">
+          {ruleStatus.map((r) => (
+            <li key={r.label} className={`flex items-center gap-2 ${r.ok ? 'text-success' : 'text-fg-muted'}`}>
+              {r.ok ? <Check className="h-3.5 w-3.5" aria-label="respectée" /> : <X className="h-3.5 w-3.5" aria-label="à respecter" />}
+              {r.label}
+            </li>
+          ))}
+          <li className={`flex items-center gap-2 ${passwordsMatch ? 'text-success' : 'text-fg-muted'}`}>
+            {passwordsMatch ? <Check className="h-3.5 w-3.5" aria-label="respectée" /> : <X className="h-3.5 w-3.5" aria-label="à respecter" />}
+            Les deux saisies correspondent
+          </li>
+        </ul>
 
-            <ul aria-label="Règles du mot de passe" className="space-y-1 rounded-lg border border-border bg-bg-overlay px-3 py-2 text-xs">
-              {ruleStatus.map((r) => (
-                <li
-                  key={r.label}
-                  className={`flex items-center gap-2 ${r.ok ? 'text-success' : 'text-fg-subtle'}`}
-                >
-                  {r.ok ? <Check className="h-3.5 w-3.5" aria-label="respectée" /> : <X className="h-3.5 w-3.5" aria-label="à respecter" />}
-                  {r.label}
-                </li>
-              ))}
-              <li
-                className={`flex items-center gap-2 ${passwordsMatch ? 'text-success' : 'text-fg-subtle'}`}
-              >
-                {passwordsMatch ? <Check className="h-3.5 w-3.5" aria-label="respectée" /> : <X className="h-3.5 w-3.5" aria-label="à respecter" />}
-                Les deux saisies correspondent
-              </li>
-            </ul>
+        {error && <Message ton="erreur">{error}</Message>}
 
-            {error && (
-              <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-                {error}
-              </div>
-            )}
-
-            <Button type="submit" className="w-full" loading={loading} disabled={!canSubmit}>
-              <ShieldCheck className="mr-2 h-4 w-4" />
-              Enregistrer et continuer
-            </Button>
-          </form>
-        </Card>
-      </div>
-    </div>
+        <Button type="submit" size="lg" fullWidth loading={loading} disabled={!canSubmit} icon={<ShieldCheck />}>
+          Enregistrer et continuer
+        </Button>
+      </form>
+    </PageAccueil>
   );
 }

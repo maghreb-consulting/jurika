@@ -3,6 +3,7 @@ package ma.jurika.auth.api;
 import jakarta.servlet.http.HttpServletRequest;
 import ma.jurika.auth.application.ResendWelcomeUseCase;
 import ma.jurika.auth.domain.port.AuditLogger;
+import ma.jurika.common.audit.AuditActionLabels;
 import ma.jurika.common.security.AuthenticatedUser;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.ResponseEntity;
@@ -243,16 +244,19 @@ public class AdminWorkspaceController {
                 GROUP BY 1 ORDER BY 1
                 """, (rs, i) -> new DayCount(rs.getObject("d", LocalDate.class).toString(), rs.getLong(2)),
                 workspaceId);
+        // Lot L6b (E9) : le libelle de l action (et non son code) est la categorie affichee.
         List<CategoryCount> eventsByAction = jdbc.query("""
                 SELECT action, COUNT(*) FROM audit_log
                 WHERE workspace_id = ? AND created_at >= NOW() - INTERVAL '30 days'
                 GROUP BY action ORDER BY 2 DESC LIMIT 8
-                """, (rs, i) -> new CategoryCount(rs.getString(1), rs.getLong(2)), workspaceId);
+                """, (rs, i) -> new CategoryCount(AuditActionLabels.label(rs.getString(1)), rs.getLong(2)),
+                workspaceId);
         List<EventLite> recentEvents = jdbc.query("""
                 SELECT id, action, user_id, entity_type, created_at FROM audit_log
                 WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 15
                 """, (rs, i) -> new EventLite(
                         rs.getLong("id"), rs.getString("action"),
+                        AuditActionLabels.label(rs.getString("action")),
                         (UUID) rs.getObject("user_id"), rs.getString("entity_type"),
                         rs.getTimestamp("created_at").toInstant()),
                 workspaceId);
@@ -354,7 +358,9 @@ public class AdminWorkspaceController {
 
     public record CategoryCount(String label, long count) {}
     public record DayCount(String day, long count) {}
-    public record EventLite(long id, String action, UUID userId, String entityType, Instant createdAt) {}
+    /** Lot L6b (E9) : {@code actionLabel} = libelle francais du code (AuditActionLabels). */
+    public record EventLite(long id, String action, String actionLabel, UUID userId, String entityType,
+                            Instant createdAt) {}
 
     public record WorkspaceDetail(
             UUID id, String code, String name, String statut, String forfait,

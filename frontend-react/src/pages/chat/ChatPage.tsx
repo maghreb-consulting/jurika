@@ -3,6 +3,7 @@ import { MessageSquarePlus, Send, Search, Loader2, AlertCircle, Plug, PlugZap, U
 import type { Socket } from 'socket.io-client';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import { Page } from '../../components/layout/Page';
 import { TextField } from '../../components/ui/TextField';
 import { Badge } from '../../components/ui/Badge';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
@@ -13,6 +14,7 @@ import { useCurrentUser } from '../../store/authStore';
 import { refreshChatUnread } from '../../store/chatUnreadStore';
 import { extractError } from '../../lib/api';
 import { useForfait } from '../../lib/useForfait';
+import { SquelettePage } from '../../components/ui/LoadingSkeleton';
 import { FonctionHorsForfait } from '../../components/billing/FonctionHorsForfait';
 import type { ChatMessage, Conversation } from '../../types/chat';
 import type { WorkspaceUser } from '../../types/auth';
@@ -53,11 +55,19 @@ function formatDate(iso?: string | null): string {
  */
 export function ChatPage() {
   const forfait = useForfait();
+  // Lot L6b : attendre le forfait avant d'ouvrir la messagerie (sinon 403 FORFAIT_SANS_MESSAGERIE).
+  if (!forfait.charge) {
+    return (
+      <Page titre="Messagerie" description="Conversations internes du cabinet, en temps réel">
+        <SquelettePage />
+      </Page>
+    );
+  }
   if (!forfait.inclut('MESSAGERIE_INTERNE')) {
     return (
-      <div className="p-6">
+      <Page titre="Messagerie" description="Conversations internes du cabinet, en temps réel">
         <FonctionHorsForfait fonction="Messagerie interne" disponibleDes={forfait.disponibleDes('MESSAGERIE_INTERNE')} />
-      </div>
+      </Page>
     );
   }
   return <MessagerieInterne />;
@@ -471,48 +481,51 @@ function MessagerieInterne() {
   const activeConversationSubtitle = activePeer ? peerSubtitle(activePeer) : null;
 
   return (
-    <div className="flex h-[calc(100vh-9rem)] flex-col gap-4">
-      <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-fg">Messagerie</h1>
-          <p className="text-sm text-fg-subtle">
-            Conversations internes du cabinet, en temps réel
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
+    <Page
+      titre="Messagerie"
+      description="Conversations internes du cabinet, en temps réel"
+      etat={
+        <span className="inline-flex items-center gap-1">
           {/* Lot L5b (E1, RG-COM-06) : indicateur seulement ; il ne bloque jamais l'envoi. */}
           {connected ? (
             <Badge variant="success">
-              <PlugZap className="mr-1 h-3 w-3" /> Temps réel actif
+              <PlugZap className="h-3 w-3" aria-hidden="true" /> Temps réel actif
             </Badge>
           ) : (
             <Badge variant="warning">
-              <Plug className="mr-1 h-3 w-3" /> Temps réel interrompu
+              <Plug className="h-3 w-3" aria-hidden="true" /> Temps réel interrompu
             </Badge>
           )}
           <InfoBulle
             libelle="Que signifie l’indicateur de connexion ?"
             texte="« Temps réel actif » : les messages de vos collègues s’affichent dès leur envoi. « Temps réel interrompu » : vos messages partent et sont enregistrés quand même ; ceux de vos collègues apparaissent à la prochaine actualisation, faite automatiquement toutes les 15 secondes."
           />
-        </div>
-      </header>
-
-      <TexteAide cle="messagerie-interne" titre="Messagerie interne du cabinet">
-        Échangez ici avec le superviseur et les employés de votre cabinet, et uniquement eux :
-        vos clients n’ont pas accès à la messagerie (ils vous écrivent par leurs demandes, dans
-        la Data Room). Choisissez « Nouvelle conversation » pour écrire à un collègue ; une
-        conversation non lue porte un compteur, et le destinataire reçoit une notification
-        dans la cloche.
-      </TexteAide>
-
-      <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden md:grid-cols-[320px_1fr]">
+        </span>
+      }
+      aide={
+        <TexteAide cle="messagerie-interne" titre="Messagerie interne du cabinet">
+          Échangez ici avec le superviseur et les employés de votre cabinet, et uniquement eux :
+          vos clients n’ont pas accès à la messagerie (ils vous écrivent par leurs demandes, dans
+          la Data Room). Choisissez « Nouvelle conversation » pour écrire à un collègue ; une
+          conversation non lue porte un compteur, et le destinataire reçoit une notification
+          dans la cloche.
+        </TexteAide>
+      }
+    >
+      {/* Lot L6b (E9) : la zone de conversation tient dans la fenetre sous l'en-tete de la
+          coquille (--hauteur-entete) moins les marges du contenu (3rem) ; c'est la PAGE qui
+          defile au-dessus (en-tete, aide), puis les listes dans leur cadre (defilement en
+          chaine, jamais bloque). Sur petit ecran, pas de hauteur fixe : chaque liste a la
+          sienne. */}
+      <div className="grid grid-cols-1 gap-4 md:h-[calc(100dvh-var(--hauteur-entete)-3rem)] md:min-h-[30rem] md:grid-cols-[320px_1fr]">
         {/* Sidebar */}
         <Card className="flex min-h-0 flex-col overflow-hidden">
           <div className="space-y-3 border-b border-border p-3">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-fg-subtle" />
+              <Search className="pointer-events-none absolute left-3 top-2.5 z-10 h-4 w-4 text-fg-subtle" aria-hidden="true" />
               <TextField
                 placeholder="Rechercher un correspondant…"
+                aria-label="Rechercher un correspondant"
                 value={searchPeer}
                 onChange={(e) => setSearchPeer(e.target.value)}
                 className="pl-9"
@@ -527,10 +540,10 @@ function MessagerieInterne() {
               data-testid="chat-new-conversation"
               className="w-full"
             >
-              <UserPlus className="mr-1.5 h-4 w-4" />
+              <UserPlus className="h-4 w-4" aria-hidden="true" />
               {showContacts ? 'Fermer la liste' : 'Nouvelle conversation'}
             </Button>
-            <p className="flex items-center gap-1 text-[11px] text-fg-subtle">
+            <p className="flex items-center gap-1 text-xs text-fg-muted">
               Collègues de votre cabinet
               <InfoBulle
                 libelle="Aide sur la liste des collègues"
@@ -555,10 +568,10 @@ function MessagerieInterne() {
                         <button
                           type="button"
                           onClick={() => handleStartConversationWith(c.userId)}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-bg-raised"
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors duration-150 hover:bg-bg-raised"
                           data-testid="chat-contact-item"
                         >
-                          <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-accent/15 text-[10px] font-bold text-accent">
+                          <span aria-hidden="true" className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-border bg-bg-raised text-[10px] font-semibold text-fg-muted">
                             {(c.firstName?.[0] ?? c.email[0] ?? '?').toUpperCase()}
                             {(c.lastName?.[0] ?? '').toUpperCase()}
                           </span>
@@ -566,7 +579,7 @@ function MessagerieInterne() {
                             <span className="block truncate text-fg">
                               {c.firstName} {c.lastName}
                             </span>
-                            <span className="block truncate text-[10px] text-fg-subtle">
+                            <span className="block truncate text-xs text-fg-muted">
                               {c.role === 'SUPERVISEUR' ? 'Superviseur' : 'Employé'} · {c.email}
                             </span>
                           </span>
@@ -579,13 +592,13 @@ function MessagerieInterne() {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="max-h-80 min-h-0 flex-1 overflow-y-auto md:max-h-none">
             {loadingList && conversations.length === 0 ? (
               <div className="flex h-32 items-center justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-fg-subtle" />
+                <Loader2 className="h-5 w-5 animate-spin text-fg-subtle" aria-label="Chargement" />
               </div>
             ) : visibleConversations.length === 0 ? (
-              <div className="p-6 text-center text-sm text-fg-subtle">
+              <div className="p-6 text-center text-sm text-fg-muted">
                 Aucune conversation pour le moment. Cliquez sur « Nouvelle conversation » pour écrire à un collègue.
               </div>
             ) : (
@@ -597,14 +610,15 @@ function MessagerieInterne() {
                       <button
                         type="button"
                         onClick={() => handleSelectConversation(c.peerId)}
-                        className={`flex w-full items-start gap-3 px-3 py-3 text-left transition-colors ${
-                          selected ? 'bg-accent/10' : 'hover:bg-bg-overlay'
+                        aria-current={selected ? 'true' : undefined}
+                        className={`flex w-full items-start gap-3 border-l-2 px-3 py-3 text-left transition-colors duration-150 ${
+                          selected ? 'border-l-accent bg-accent-soft' : 'border-l-transparent hover:bg-bg-overlay'
                         }`}
                       >
                         <div
                           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
                             selected
-                              ? 'bg-accent text-bg-raised'
+                              ? 'bg-accent text-accent-fg'
                               : 'bg-bg-overlay text-fg-muted'
                           }`}
                         >
@@ -615,12 +629,12 @@ function MessagerieInterne() {
                             <span className="truncate text-sm font-medium text-fg">
                               {peerLabel(c.peerId)}
                             </span>
-                            <span className="shrink-0 text-[10px] text-fg-subtle">
+                            <span className="shrink-0 text-xs text-fg-subtle">
                               {formatDate(c.lastMessageAt)}
                             </span>
                           </div>
                           <div className="flex items-center justify-between gap-2">
-                            <span className="truncate text-xs text-fg-subtle">
+                            <span className="truncate text-xs text-fg-muted">
                               {c.lastMessage ?? 'Pas encore de message'}
                             </span>
                             {(c.unreadCount ?? 0) > 0 && (
@@ -643,11 +657,11 @@ function MessagerieInterne() {
         <Card className="flex min-h-0 flex-col overflow-hidden">
           {!activePeer ? (
             <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-fg-subtle">
-              <MessageSquarePlus className="mb-3 h-10 w-10 text-fg-subtle" />
-              <p className="text-sm font-medium text-fg-muted">
+              <MessageSquarePlus className="mb-3 h-10 w-10 text-fg-subtle" aria-hidden="true" />
+              <p className="text-sm font-medium text-fg">
                 Sélectionnez une conversation.
               </p>
-              <p className="mt-1 text-xs text-fg-subtle">
+              <p className="mt-1 text-xs text-fg-muted">
                 Ou démarrez-en une nouvelle avec « Nouvelle conversation », dans la colonne de gauche.
               </p>
             </div>
@@ -655,23 +669,23 @@ function MessagerieInterne() {
             <>
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
                 <div>
-                  <p className="text-sm font-semibold text-fg">
+                  <p className="text-sm font-semibold text-heading">
                     {activeConversationLabel}
                   </p>
-                  <p className="text-xs text-fg-subtle">{activeConversationSubtitle}</p>
+                  <p className="text-xs text-fg-muted">{activeConversationSubtitle}</p>
                 </div>
                 {typingFrom === activePeer && (
-                  <span className="text-xs italic text-accent">est en train d’écrire…</span>
+                  <span className="text-xs italic text-fg-muted" aria-live="polite">est en train d’écrire…</span>
                 )}
               </div>
 
-              <div className="flex-1 space-y-2 overflow-y-auto bg-bg-overlay px-4 py-4">
+              <div role="log" aria-label="Messages de la conversation" className="max-h-[60dvh] min-h-[16rem] flex-1 space-y-2 overflow-y-auto bg-bg-overlay px-4 py-4 md:max-h-none md:min-h-0">
                 {loadingMessages && activeMessages.length === 0 ? (
                   <div className="flex h-24 items-center justify-center">
-                    <Loader2 className="h-5 w-5 animate-spin text-fg-subtle" />
+                    <Loader2 className="h-5 w-5 animate-spin text-fg-subtle" aria-label="Chargement" />
                   </div>
                 ) : activeMessages.length === 0 ? (
-                  <p className="mt-8 text-center text-sm text-fg-subtle">
+                  <p className="mt-8 text-center text-sm text-fg-muted">
                     Aucun message échangé. Écrivez le premier ci-dessous.
                   </p>
                 ) : (
@@ -683,16 +697,16 @@ function MessagerieInterne() {
                         className={`flex ${mine ? 'justify-end' : 'justify-start'}`}
                       >
                         <div
-                          className={`max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${
+                          className={`max-w-[75%] rounded-2xl px-3 py-2 shadow-card ${
                             mine
-                              ? 'bg-accent text-bg-raised'
-                              : 'bg-bg-raised text-fg ring-1 ring-slate-200'
+                              ? 'bg-marine text-nav-fg-hi'
+                              : 'bg-bg-raised text-fg ring-1 ring-border'
                           } ${m.pending ? 'opacity-60' : ''}`}
                         >
                           <p className="whitespace-pre-wrap text-sm">{m.body}</p>
                           <p
                             className={`mt-1 text-right text-[10px] ${
-                              mine ? 'text-bg' : 'text-fg-subtle'
+                              mine ? 'text-nav-fg-hi' : 'text-fg-subtle'
                             }`}
                           >
                             {formatTime(m.createdAt)}
@@ -707,8 +721,8 @@ function MessagerieInterne() {
               </div>
 
               {error && (
-                <div className="flex items-center gap-2 border-t border-rose-100 bg-danger/10 px-4 py-2 text-xs text-danger">
-                  <AlertCircle className="h-3.5 w-3.5" />
+                <div role="alert" className="flex items-center gap-2 border-t border-danger/30 bg-danger-soft px-4 py-2 text-xs text-danger">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   {error}
                 </div>
               )}
@@ -718,12 +732,13 @@ function MessagerieInterne() {
                   ref={inputRef}
                   data-testid="chat-message-input"
                   placeholder="Écrire un message…"
+                  aria-label="Message"
                   value={draftBody}
                   onChange={(e) => setDraftBody(e.target.value)}
                   onInput={(e) => autoGrow(e.currentTarget)}
                   onKeyDown={handleKeyDown}
                   rows={1}
-                  className="max-h-40 min-h-[3rem] flex-1 resize-none rounded-lg border border-border bg-bg-raised px-3 py-2 text-sm text-fg placeholder:text-fg-subtle transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  className="max-h-40 min-h-[3rem] flex-1 resize-none rounded-lg border border-border-input bg-bg-raised px-3 py-2 text-sm text-fg placeholder:text-fg-subtle transition-colors duration-150 focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/40"
                 />
                 <Button
                   onClick={() => void handleSend()}
@@ -731,13 +746,13 @@ function MessagerieInterne() {
                   loading={sending}
                   size="sm"
                 >
-                  <Send className="mr-1 h-4 w-4" /> Envoyer
+                  <Send className="h-4 w-4" aria-hidden="true" /> Envoyer
                 </Button>
               </div>
             </>
           )}
         </Card>
       </div>
-    </div>
+    </Page>
   );
 }

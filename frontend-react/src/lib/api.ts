@@ -315,6 +315,21 @@ export function redirigerSiArchive(error: unknown): boolean {
   return true;
 }
 
+/**
+ * Lot L6b (E13) : de nombreux ecrans affichent `err.message`. Pour une erreur axios, ce texte
+ * etait "Request failed with status code 400" (anglais, sans le champ a corriger). Il est
+ * remplace par le message francais de {@link extractError} : message du serveur, champs
+ * refuses, ou repli selon le statut. Le reste de l'erreur (response, code, config) est intact.
+ */
+function lisible(error: AxiosError<ApiError>): AxiosError<ApiError> {
+  try {
+    error.message = extractError(error).message;
+  } catch {
+    // message en lecture seule (objet gele) : l'erreur d'origine est rendue telle quelle.
+  }
+  return error;
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiError>) => {
@@ -324,7 +339,7 @@ api.interceptors.response.use(
     // de refresh ni de fin de session : un 401/403 y est soit attendu, soit sans
     // rapport avec une session utilisateur. (Corrige la redirection depuis /signup.)
     const skipSessionHandling = isPublicApiPath(original?.url ?? '');
-    if (redirigerSiArchive(error)) return Promise.reject(error);
+    if (redirigerSiArchive(error)) return Promise.reject(lisible(error));
 
     // Lot L7 (E6, RG-CTR-03) : la passerelle refuse les routes du cabinet tant que son contrat
     // d'abonnement attend l'acceptation du superviseur ; la garde de l'ecran (GardeContrat)
@@ -361,11 +376,11 @@ api.interceptors.response.use(
         if (isAuthRejection(refreshError)) {
           handleSessionEnd(refreshError);
         }
-        return Promise.reject(error);
+        return Promise.reject(lisible(error));
       }
     }
 
-    return Promise.reject(error);
+    return Promise.reject(lisible(error));
   },
 );
 
@@ -390,6 +405,25 @@ function messageParStatut(status: number | undefined): string {
   return MESSAGE_ERREUR_INCONNUE;
 }
 
+/**
+ * Lot L6b (E13) : un refus de validation nomme le champ a corriger. Si le message du serveur
+ * ne cite pas l'un des champs refuses (ancien message "Donnees invalides", service qui ne
+ * nomme rien), le champ et son motif sont ajoutes : jamais un refus muet.
+ */
+function avecChamps(message: string, errors: ApiError['errors']): string {
+  if (!Array.isArray(errors) || errors.length === 0) return message;
+  const bas = message.toLowerCase();
+  const absents = errors.filter((e) => {
+    const motif = (e?.message ?? '').trim().toLowerCase().replace(/\.$/, '');
+    return !(motif !== '' && bas.includes(motif)) && !(e?.field && bas.includes(e.field.toLowerCase()));
+  });
+  if (absents.length === 0) return message;
+  const liste = absents
+    .map((e) => (e.message ? `« ${e.field} » (${e.message})` : `« ${e.field} »`))
+    .join(' ; ');
+  return `${message.replace(/[.\s]+$/, '')}. Champs à corriger : ${liste}.`;
+}
+
 export function extractError(error: unknown): ApiError {
   if (axios.isAxiosError(error) && error.response?.data) {
     const data = error.response.data as ApiError;
@@ -398,7 +432,7 @@ export function extractError(error: unknown): ApiError {
       : messageParStatut(error.response.status);
     return {
       code: data.code ?? 'UNKNOWN',
-      message,
+      message: avecChamps(message, data.errors),
       errors: data.errors,
     };
   }

@@ -53,7 +53,13 @@ import { buildLiquidateurOptions, emptyLiquidateur } from '../../components/work
 import { champsPersonneMorale, estPersonneMorale, identiteLiquidateur } from '../../lib/liquidateur';
 import { champsMandatLiquidateur, type MentionsPv } from '../../lib/liquidationPv';
 import { RapportLiquidateurPanel } from '../../components/workflow/RapportLiquidateurPanel';
-import { rapportPayload, type RapportLiquidateur } from '../../lib/rapportLiquidateur';
+import {
+  calculer,
+  formatDh,
+  rapportPayload,
+  type ContexteRapport,
+  type RapportLiquidateur,
+} from '../../lib/rapportLiquidateur';
 import {
   PiecesJointesPanel,
   type PieceJointeEntry,
@@ -73,6 +79,8 @@ import type { DossierLiquidateur } from '../../services/workflow.service';
 import type { TemplateInfo } from '../../services/workflowDocumentService';
 import type { AssocieInput, GerantInput } from '../../components/workflow/SeanceForm';
 import type { DossierBrief } from '../../types/dataroom';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
+import { BandeauFinParcours } from '../../components/workflow/BandeauFinParcours';
 
 const STEPS: RoadmapStep[] = etapesRoadmap(ETAPES_LIQUIDATION);
 
@@ -175,6 +183,11 @@ function personneMoraleBd(bd: Record<string, unknown>): Partial<LiquidateurState
  * reponse du serveur et tous les champs restent vides apres un rechargement
  * (F5, deconnexion/reconnexion), meme sur une etape deja validee.
  */
+/** L6b : date du formulaire (AAAA-MM-JJ) affichee JJ/MM/AAAA a la synthese ; tout autre texte tel quel. */
+function dateAffichee(d: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d.split('-').reverse().join('/') : d;
+}
+
 export function LiquidationWorkflowPage() {
   return (
     <WorkflowBoot>
@@ -390,6 +403,17 @@ function LiquidationWorkflowPageBody() {
   }, [totalActif, totalPassif]);
   const resultatType: 'boni' | 'mali' | null =
     boniMali === null ? null : boniMali < 0 ? 'mali' : 'boni';
+  // L6b : contexte du rapport final, partage par son panneau et la synthese (le resultat de la
+  // liquidation affiche est celui du rapport et du PV, frais et capital compris).
+  const contexteRapport: ContexteRapport = {
+    capital: dossierParties?.capitalSocial ?? null,
+    remuneration: liquidateur.remunerationApplicable === 'oui' ? liquidateur.remunerationMontant ?? null : 0,
+    impot: mentionsPv.isMontant ?? null,
+    fraisPv: mentionsPv.frais ?? null,
+    totalActif,
+    totalPassif,
+  };
+  const resultatFinal = calculer(rapportLiquidateur, contexteRapport).resultat;
 
   // ---- RG-LI03 : règle DURE des 15 jours (miroir exact du backend) ----
   const delaiError = useMemo(
@@ -488,6 +512,9 @@ function LiquidationWorkflowPageBody() {
           ? 'féminin'
           : 'masculin') as 'masculin' | 'féminin',
         remuneration: liquidateur.remuneration,
+        // L6b (E15) : mandat fixe a la dissolution (date d'entree en fonctions, duree...),
+        // enregistre avec le liquidateur : le rapport final l'imprime, aucun champ ne le redemande.
+        ...mandatConserve(liquidateurBd as Record<string, unknown> | null),
         ...champsPersonneMorale(liquidateur), // L4d (E5)
         ...champsMandatLiquidateur(liquidateur), // L4d (E11d)
         siegeIdentique: liquidateur.siegeIdentique,
@@ -506,7 +533,7 @@ function LiquidationWorkflowPageBody() {
       // L5 (E4) : operations de liquidation saisies pour le rapport du liquidateur.
       rapportLiquidateur: rapportPayload(rapportLiquidateur),
     }),
-    [liquidateur, siegeLiquidation, resultatType, boniMali, dateCloture,
+    [liquidateur, liquidateurBd, siegeLiquidation, resultatType, boniMali, dateCloture,
       totalActif, totalPassif, dateDissolution, avisCloture, rapportLiquidateur],
   );
 
@@ -553,9 +580,9 @@ function LiquidationWorkflowPageBody() {
   if (loading) return <Loader />;
   if (!ticket || !progress)
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+      <ErreurParcours>
         {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
-      </div>
+      </ErreurParcours>
     );
 
   const step = viewStep;
@@ -735,7 +762,7 @@ function LiquidationWorkflowPageBody() {
             </div>
 
             {dossierId && (
-              <div className="rounded-lg border border-indigo-200 bg-accent/10 p-3 text-xs text-fg-muted" role="status">
+              <div className="rounded-lg border border-info/30 bg-info-soft p-3 text-xs text-fg-muted" role="status">
                 Organe compétent : <strong>{decisionLabel}</strong>. Actes produits : procès-verbal
                 de clôture de liquidation{isAU ? ' (SARL à associé unique)' : ' (SARL)'}, rapport du
                 liquidateur et annonce légale de clôture.
@@ -747,7 +774,7 @@ function LiquidationWorkflowPageBody() {
                 tant qu'il en reste une ouverte — autant l'annoncer des l'etape 1. */}
             {dossierId && succursalesOuvertes.length > 0 && (
               <div
-                className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-fg-muted"
+                className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning-soft p-3 text-xs text-fg-muted"
                 role="alert"
                 data-testid="liquidation-succursales-ouvertes"
               >
@@ -776,7 +803,7 @@ function LiquidationWorkflowPageBody() {
                 data-testid="liquidation-faits-bd"
               >
                 <div className="flex items-center gap-2">
-                  <Lock className="h-4 w-4 text-accent" />
+                  <Lock className="h-4 w-4 text-fg-muted" />
                   <h4 className="text-sm font-semibold text-fg">Repris du dossier (lecture seule)</h4>
                 </div>
                 {partiesLoading && (
@@ -855,7 +882,7 @@ function LiquidationWorkflowPageBody() {
                 {!hasLiquidateurBd && (
                   <div
                     role="status"
-                    className="flex items-start gap-2 rounded-lg border-l-4 border-amber-400 bg-warning/10 p-3 text-xs text-warning"
+                    className="flex items-start gap-2 rounded-lg border-l-4 border-warning/40 bg-warning-soft p-3 text-xs text-warning"
                   >
                     <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>
@@ -868,9 +895,9 @@ function LiquidationWorkflowPageBody() {
                 {hasLiquidateurBd && (
                   <div
                     role="status"
-                    className="flex items-start gap-2 rounded-lg border-l-4 border-accent bg-accent/10 p-3 text-xs text-fg-muted"
+                    className="flex items-start gap-2 rounded-lg border-l-4 border-info bg-info-soft p-3 text-xs text-fg-muted"
                   >
-                    <Lock className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
+                    <Lock className="mt-0.5 h-4 w-4 flex-shrink-0 text-fg-muted" />
                     <span>
                       Liquidateur <strong>repris de la dissolution</strong> : les champs sont
                       déjà remplis, rien n’est à ressaisir. Complétez seulement ce qui manque —
@@ -912,7 +939,7 @@ function LiquidationWorkflowPageBody() {
               <div
                 role="alert"
                 data-testid="liquidation-delai-15j-error"
-                className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-3 text-xs text-danger"
+                className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-soft p-3 text-xs text-danger"
               >
                 <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                 <div>
@@ -925,7 +952,7 @@ function LiquidationWorkflowPageBody() {
                 <div
                   role="status"
                   data-testid="liquidation-delai-15j-ok"
-                  className="flex items-center gap-2 rounded-lg border-l-4 border-emerald-400 bg-emerald-50 p-3 text-xs text-emerald-800"
+                  className="flex items-center gap-2 rounded-lg border-l-4 border-success/40 bg-success-soft p-3 text-xs text-success"
                 >
                   <CheckCircle className="h-4 w-4" />
                   <span>
@@ -968,20 +995,21 @@ function LiquidationWorkflowPageBody() {
                   onBlur={() => setRevealErrors(true)}
                 />
                 <div className="rounded-lg border border-border bg-bg-overlay p-3">
-                  <p className="text-xs text-fg-subtle">Boni / mali de liquidation</p>
+                  {/* L6b : ce solde n'est pas le resultat de la liquidation (frais, impot et
+                      remboursement du capital viennent ensuite, au rapport final) : il
+                      s'affichait "100 000 MAD (boni)" pour un mali de 5 000 au rapport et au PV. */}
+                  <p className="text-xs text-fg-subtle">Solde actif − passif</p>
                   <p
-                    className={`mt-1 text-lg font-bold ${
-                      boniMali === null
-                        ? 'text-fg-subtle'
-                        : resultatType === 'boni'
-                          ? 'text-emerald-700'
-                          : 'text-rose-700'
-                    }`}
+                    className={`mt-1 text-lg font-bold ${boniMali === null ? 'text-fg-subtle' : 'text-fg'}`}
                     data-testid="liquidation-boni-mali"
                   >
                     {boniMali === null
                       ? '—'
-                      : `${Math.abs(boniMali).toLocaleString('fr-FR')} MAD (${resultatType})`}
+                      : `${boniMali < 0 ? '−' : ''}${Math.abs(boniMali).toLocaleString('fr-FR')} MAD`}
+                  </p>
+                  <p className="mt-1 text-xs text-fg-subtle">
+                    Le boni ou le mali de la liquidation est calculé au rapport final du liquidateur,
+                    après les frais, l’impôt et le remboursement du capital.
                   </p>
                 </div>
               </div>
@@ -1000,7 +1028,7 @@ function LiquidationWorkflowPageBody() {
             {/* ---- Convocation OPTIONNELLE — règle des 16 jours ---- */}
             <section className="space-y-3 rounded-xl border border-border bg-bg-raised p-4" data-testid="liquidation-convocation">
               <div className="flex items-center gap-2">
-                <Megaphone className="h-4 w-4 text-accent" />
+                <Megaphone className="h-4 w-4 text-fg-muted" />
                 <h4 className="text-sm font-semibold text-fg">Convocation (facultative)</h4>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
@@ -1033,7 +1061,7 @@ function LiquidationWorkflowPageBody() {
                 <div
                   role="alert"
                   data-testid="liquidation-convocation-16j-error"
-                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-2 text-xs text-danger"
+                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-soft p-2 text-xs text-danger"
                 >
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                   <span>{convocationError}</span>
@@ -1074,7 +1102,7 @@ function LiquidationWorkflowPageBody() {
           <div className="space-y-4" data-testid="liquidation-step2">
             <header>
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-violet-600" />
+                <Sparkles className="h-5 w-5 text-info" />
                 <h2 className="text-lg font-semibold text-fg">Étape 2 — Génération des actes</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -1090,14 +1118,7 @@ function LiquidationWorkflowPageBody() {
               isAU={isAU}
               valeurs={rapportLiquidateur}
               onChange={changerRapport}
-              contexte={{
-                capital: dossierParties?.capitalSocial ?? null,
-                remuneration: liquidateur.remunerationApplicable === 'oui' ? liquidateur.remunerationMontant ?? null : 0,
-                impot: mentionsPv.isMontant ?? null,
-                fraisPv: mentionsPv.frais ?? null,
-                totalActif,
-                totalPassif,
-              }}
+              contexte={contexteRapport}
             />
 
             <SeanceOperationForm
@@ -1107,6 +1128,9 @@ function LiquidationWorkflowPageBody() {
               formeJuridique={isAU ? 'SARL_AU' : 'SARL'}
               societe={societeInput}
               defaultDate={dateCloture}
+              defaultConvocation={
+                convocationDate ? { date: convocationDate, heure: convocationHeure || undefined } : undefined
+              }
               operation={operationInput}
               initialAssocies={bdAssocies}
               initialGerants={bdGerants}
@@ -1166,6 +1190,7 @@ function LiquidationWorkflowPageBody() {
                 hideSeanceDate
                 hideConvDate
                 initialAssocies={bdAssocies}
+                initialOrdreDuJour={ORDRE_DU_JOUR_CLOTURE_LIQUIDATION}
                 initialGerants={bdGerants}
               />
             )}
@@ -1201,7 +1226,7 @@ function LiquidationWorkflowPageBody() {
           <div className="space-y-4" data-testid="liquidation-step3-pieces">
             <header>
               <div className="flex items-center gap-2">
-                <Paperclip className="h-5 w-5 text-accent" />
+                <Paperclip className="h-5 w-5 text-fg-muted" />
                 <h2 className="text-lg font-semibold text-fg">Étape 3 — Pièces jointes (facultative)</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -1237,7 +1262,7 @@ function LiquidationWorkflowPageBody() {
           <div className="space-y-4" data-testid="liquidation-synthese">
             {succursalesOuvertes.length > 0 ? (
               <div
-                className="rounded-xl border border-danger/40 bg-danger/10 p-6"
+                className="rounded-xl border border-danger/40 bg-danger-soft p-6"
                 role="alert"
                 data-testid="liquidation-blocage-succursales"
               >
@@ -1265,15 +1290,11 @@ function LiquidationWorkflowPageBody() {
                 </ul>
               </div>
             ) : (
-              <div className="rounded-xl bg-gradient-to-r from-violet-600 to-violet-700 p-6 text-bg-raised">
-                <CheckCircle className="mb-2 h-8 w-8" />
-                <h2 className="text-2xl font-bold">Liquidation finalisée</h2>
-                <p className="text-sm text-violet-100">
+              <BandeauFinParcours titre="Liquidation finalisée">
                   Le procès-verbal de clôture, le rapport de liquidation et l’annonce légale ont été
                   produits, validés et déposés dans la Data Room. La société est désormais{' '}
                   <strong>liquidée</strong>.
-                </p>
-              </div>
+                </BandeauFinParcours>
             )}
 
             <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-societe">
@@ -1289,13 +1310,13 @@ function LiquidationWorkflowPageBody() {
                 </div>
                 <div>
                   <p className="text-xs text-fg-subtle">Date de dissolution</p>
-                  <p className="text-sm font-medium text-fg">{dateDissolution || '—'}</p>
+                  <p className="text-sm font-medium text-fg">{dateDissolution ? dateAffichee(dateDissolution) : '—'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-fg-subtle">
                     Date {isAU ? 'de la décision' : 'de l’AGE'} de clôture
                   </p>
-                  <p className="text-sm font-medium text-fg">{dateCloture || '—'}</p>
+                  <p className="text-sm font-medium text-fg">{dateCloture ? dateAffichee(dateCloture) : '—'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-fg-subtle">Liquidateur</p>
@@ -1310,7 +1331,7 @@ function LiquidationWorkflowPageBody() {
                   <p className="text-xs text-fg-subtle">Convocation</p>
                   <p className="text-sm font-medium text-fg">
                     {convocationDate
-                      ? `${convocationDate}${convocationHeure ? ` à ${convocationHeure}` : ''}`
+                      ? `${dateAffichee(convocationDate)}${convocationHeure ? ` à ${convocationHeure}` : ''}`
                       : 'Aucune'}
                   </p>
                 </div>
@@ -1333,11 +1354,13 @@ function LiquidationWorkflowPageBody() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-fg-subtle">Résultat</p>
-                  <p className="text-sm font-medium text-fg">
-                    {boniMali === null
-                      ? '—'
-                      : `${Math.abs(boniMali).toLocaleString('fr-FR')} MAD (${resultatType})`}
+                  <p className="text-xs text-fg-subtle">Résultat de la liquidation</p>
+                  <p className="text-sm font-medium text-fg" data-testid="synthese-resultat">
+                    {resultatFinal
+                      ? resultatFinal.sens === 'nul'
+                        ? 'Ni boni ni mali'
+                        : `${resultatFinal.sens === 'boni' ? 'Boni' : 'Mali'} de ${formatDh(resultatFinal.montant)} MAD`
+                      : '—'}
                   </p>
                 </div>
               </div>
@@ -1405,9 +1428,5 @@ function LiquidationWorkflowPageBody() {
 }
 
 function Loader() {
-  return (
-    <div className="flex h-64 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-    </div>
-  );
+  return <SqueletteParcours />;
 }

@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { Role } from '../../../types/auth';
 import type { ChatbotConversationDetail, ChatbotConversationResume, ChatbotEchange } from '../../../types/chat';
 
@@ -72,9 +72,11 @@ function connecter(role: Role) {
   etat.user = { role, userId: `u-${role}`, email: `${role}@cabinet.ma`, workspaceId: 'ws-1' };
 }
 
+// Lot L6b (E11) : la bulle est remplacee par JURI, qui ouvre le panneau par le magasin
+// partage (comme la palette et l'adresse /chatbot) ; JURI a ses propres tests.
 function ouvrirPanneau() {
   render(<AssistantJuridique />);
-  fireEvent.click(screen.getByTestId('assistant-bulle'));
+  act(() => useAssistantStore.getState().ouvrir());
 }
 
 function saisir(texte: string) {
@@ -89,19 +91,41 @@ describe('AssistantJuridique', () => {
     useAssistantStore.setState({ ouvert: false });
   });
 
-  it.each<Role>(['EMPLOYE', 'SUPERVISEUR', 'SUPER_ADMIN'])('bulle presente pour %s', (role) => {
+  it.each<Role>(['EMPLOYE', 'SUPERVISEUR', 'SUPER_ADMIN'])('le panneau s ouvre pour %s, et rien n est affiche tant qu il est ferme', (role) => {
     connecter(role);
     render(<AssistantJuridique />);
-    expect(screen.getByTestId('assistant-bulle')).toBeInTheDocument();
+    expect(screen.queryByTestId('assistant-panneau')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('assistant-bulle')).not.toBeInTheDocument();
+    act(() => useAssistantStore.getState().ouvrir());
+    expect(screen.getByTestId('assistant-panneau')).toBeInTheDocument();
   });
 
-  it('aucune bulle pour le client', () => {
+  it('aucun panneau pour le client, meme demande', () => {
     connecter('CLIENT');
     render(<AssistantJuridique />);
-    expect(screen.queryByTestId('assistant-bulle')).not.toBeInTheDocument();
+    act(() => useAssistantStore.getState().ouvrir());
+    expect(screen.queryByTestId('assistant-panneau')).not.toBeInTheDocument();
+    expect(svc.listerConversations).not.toHaveBeenCalled();
   });
 
-  it('la bulle ouvre le panneau lateral avec son avertissement permanent', async () => {
+  it('Echap ferme le panneau ; Echap pendant un renommage l annule sans fermer', async () => {
+    connecter('EMPLOYE');
+    const r = resume('c-1', 'Cession de parts');
+    svc.listerConversations.mockResolvedValue([r]);
+    svc.lireConversation.mockResolvedValue(detail(r, []));
+    ouvrirPanneau();
+    await waitFor(() => expect(screen.getByLabelText('Renommer la conversation')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Renommer la conversation'));
+    const champ = await screen.findByDisplayValue('Cession de parts');
+    fireEvent.keyDown(champ, { key: 'Escape' });
+    expect(screen.getByTestId('assistant-panneau')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Cession de parts')).not.toBeInTheDocument();
+    fireEvent.keyDown(screen.getByLabelText('Votre question juridique'), { key: 'Escape' });
+    expect(screen.queryByTestId('assistant-panneau')).not.toBeInTheDocument();
+    expect(useAssistantStore.getState().ouvert).toBe(false);
+  });
+
+  it('le panneau lateral porte son avertissement permanent', async () => {
     connecter('EMPLOYE');
     ouvrirPanneau();
     expect(screen.getByRole('dialog', { name: 'Chatbot juridique' })).toBeInTheDocument();

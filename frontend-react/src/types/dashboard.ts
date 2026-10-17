@@ -33,6 +33,8 @@ export interface WorkspaceUsage {
 export interface AuditEventSummary {
   id: string;
   action: string;
+  /** Lot L6b (E9) : libelle francais du code, calcule par le serveur ; affiche tel quel. */
+  actionLabel: string;
   userId: string | null;
   workspaceId: string | null;
   entityType: string | null;

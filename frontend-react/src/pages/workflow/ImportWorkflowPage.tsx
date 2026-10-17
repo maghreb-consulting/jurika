@@ -2,7 +2,17 @@ import { useNavigate } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Save, X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
+import { Message } from '../../components/ui/Message';
+import { Page } from '../../components/layout/Page';
+import { useAuthStore } from '../../store/authStore';
+import { filDuParcours } from '../../components/workflow/etatsEtapes';
+import {
+  EtatTicketParcours,
+  MessageConsultationSuperviseur,
+  MetaTicketParcours,
+} from '../../components/workflow/EnTeteParcours';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
+import { SqueletteTexte, SqueletteZone } from '../../components/ui/LoadingSkeleton';
 import { ticketService } from '../../services/ticket.service';
 import { workflowService } from '../../services/workflow.service';
 import { dataroomService } from '../../services/dataroom.service';
@@ -99,6 +109,8 @@ export function ImportWorkflowPage() {
 
 function ImportWorkflowPageBody() {
   const navigate = useNavigate();
+  // Lot L6b (E5) : le superviseur consulte ; le serveur lui refuse toute ecriture.
+  const superviseur = useAuthStore((s) => s.user?.role === 'SUPERVISEUR');
   const {
     ticket,
     progress,
@@ -118,6 +130,9 @@ function ImportWorkflowPageBody() {
   } = useWorkflow();
   const [showCancel, setShowCancel] = useState(false);
   const [ticketForme, setTicketForme] = useState<SarlForm | null>(null);
+  // Lot L6b (E15) : raison sociale saisie a l'ouverture du ticket (celle du dossier cree
+  // avec lui), proposee a l'etape 1. `undefined` tant que le dossier n'est pas lu.
+  const [raisonSocialeDossier, setRaisonSocialeDossier] = useState<string | null | undefined>(undefined);
   const [datasetWarnings, setDatasetWarnings] = useState<string[]>([]);
   const [finalizing, setFinalizing] = useState(false);
 
@@ -129,12 +144,14 @@ function ImportWorkflowPageBody() {
       .then((list) => {
         if (cancelled) return;
         const d = list.find((x) => x.id === ticket.dossierId);
+        setRaisonSocialeDossier(d?.raisonSociale?.trim() || null);
         const forme = (d?.formeJuridique ?? '').toString().toUpperCase();
         if (forme === 'SARL_AU' || forme === 'SARL') {
           setTicketForme(forme as SarlForm);
         }
       })
       .catch(() => {
+        setRaisonSocialeDossier(null);
         /* best-effort : fallback lecture depuis stepData.step1. */
       });
     return () => { cancelled = true; };
@@ -264,18 +281,14 @@ function ImportWorkflowPageBody() {
   }, [stepData]);
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-      </div>
-    );
+    return <SqueletteParcours />;
   }
 
   if (!ticket || !progress) {
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+      <ErreurParcours>
         {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
-      </div>
+      </ErreurParcours>
     );
   }
 
@@ -316,25 +329,31 @@ function ImportWorkflowPageBody() {
   };
 
   return (
+    <Page
+      titre={ticket.titre}
+      fil={filDuParcours(ticket)}
+      etat={<EtatTicketParcours ticket={ticket} forme={formeLabel} />}
+      description={<MetaTicketParcours ticket={ticket} />}
+      actions={
+        superviseur ? (
+          <Button type="button" variant="secondary" icon={<ChevronLeft />} onClick={() => navigate(-1)}>
+            Quitter
+          </Button>
+        ) : (
+          <>
+            <IndicateurEnregistrement />
+            <Button type="button" variant="secondary" icon={<Save />} onClick={() => navigate(-1)}>
+              Enregistrer et quitter
+            </Button>
+            <Button type="button" variant="danger" icon={<X />} onClick={() => setShowCancel(true)}>
+              Annuler le ticket
+            </Button>
+          </>
+        )
+      }
+    >
     <div className="space-y-5">
-      <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="font-mono text-xs text-fg-subtle">{ticket.reference}</p>
-          <h1 className="text-2xl font-bold text-fg">{ticket.titre}</h1>
-          <div className="mt-1">
-            <Badge variant={formeJuridique === 'SARL_AU' ? 'info' : 'default'}>{formeLabel}</Badge>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <IndicateurEnregistrement />
-          <Button variant="secondary" onClick={() => navigate(-1)}>
-            <Save className="mr-1 h-4 w-4" /> Enregistrer et quitter
-          </Button>
-          <Button variant="danger" onClick={() => setShowCancel(true)}>
-            <X className="mr-1 h-4 w-4" /> Annuler le ticket
-          </Button>
-        </div>
-      </header>
+      {superviseur && <MessageConsultationSuperviseur />}
 
       <WorkflowRoadmap
         currentStep={maxStep}
@@ -345,46 +364,48 @@ function ImportWorkflowPageBody() {
       />
 
       {step < maxStep && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <Message ton="attention">
           Vous consultez l’étape {step}/{progress.totalSteps} (étape la plus avancée
-          atteinte : {maxStep}). Vous pouvez modifier les valeurs puis revalider.
-        </div>
+          atteinte : {maxStep}).{!superviseur && ' Vous pouvez modifier les valeurs puis revalider.'}
+        </Message>
       )}
 
-      {error && (
-        <div className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
-          {error}
-        </div>
-      )}
+      {error && <Message ton="erreur">{error}</Message>}
 
       {datasetWarnings.length > 0 && (
-        <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
-          <p className="font-semibold">Avertissements de la Data Room (la saisie n’est pas bloquée) :</p>
+        <Message
+          ton="attention"
+          titre="Avertissements de la Data Room (la saisie n’est pas bloquée)"
+          action={
+            <Button type="button" variant="secondary" size="sm" onClick={() => setDatasetWarnings([])}>
+              Effacer
+            </Button>
+          }
+        >
           <ul className="ml-4 list-disc">
             {datasetWarnings.slice(-3).map((w, i) => (
               <li key={i}>{w}</li>
             ))}
           </ul>
-          <button
-            type="button"
-            onClick={() => setDatasetWarnings([])}
-            className="mt-1 text-[11px] underline"
-          >
-            Effacer
-          </button>
-        </div>
+        </Message>
       )}
 
-      {progress.statut !== 'TERMINE' && (
+      {progress.statut !== 'TERMINE' && !superviseur && (
         <AideEtape parcours="import" etapes={ETAPES_IMPORT} etape={step} />
       )}
 
-      <div className="rounded-2xl border border-border bg-bg-raised p-6">
-        {step === 1 && (
+      <section aria-label="Contenu de l’étape" className="rounded-xl border border-border bg-bg-raised p-6 shadow-card">
+        <fieldset disabled={superviseur} className="m-0 min-w-0 border-0 p-0">
+        {step === 1 && ticket?.dossierId && raisonSocialeDossier === undefined && (
+          <SqueletteZone libelle="Chargement de l’étape…">
+            <SqueletteTexte lignes={4} />
+          </SqueletteZone>
+        )}
+        {step === 1 && (!ticket?.dossierId || raisonSocialeDossier !== undefined) && (
           <Step1Denomination
             existing={stepData.step1}
             lockedFormeJuridique={ticketForme}
-            defaultDenomination={ticket?.titre}
+            defaultDenomination={raisonSocialeDossier}
             importMode
             saving={saving}
             onSubmit={(p) => submit(1, p)}
@@ -488,24 +509,31 @@ function ImportWorkflowPageBody() {
           />
         )}
 
-        {progress.statut === 'TERMINE' && (
-          <div className="mt-6 rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-800">
-            <p className="font-semibold">Reprise terminée</p>
-            <p className="mt-1">Le dossier {ticket.reference} a été consolidé.</p>
-            <Button className="mt-3" onClick={() => navigate('/tickets')}>
-              Retour aux tickets
-            </Button>
-          </div>
-        )}
-      </div>
+        </fieldset>
 
-      <footer className="flex flex-wrap items-center justify-between gap-2 pt-1">
-        <Button variant="secondary" onClick={goPrev} disabled={step <= 1 || saving}>
-          <ChevronLeft className="mr-1 h-4 w-4" /> Étape précédente
+        {progress.statut === 'TERMINE' && (
+          <Message
+            ton="succes"
+            titre="Reprise terminée"
+            className="mt-6"
+            action={
+              <Button type="button" onClick={() => navigate('/tickets')}>
+                Retour aux tickets
+              </Button>
+            }
+          >
+            Le dossier {ticket.reference} a été consolidé.
+          </Message>
+        )}
+      </section>
+
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
+        <Button type="button" variant="secondary" icon={<ChevronLeft />} onClick={goPrev} disabled={step <= 1 || saving}>
+          Étape précédente
         </Button>
         {step < maxStep && (
-          <Button variant="secondary" onClick={goNext} disabled={saving}>
-            Étape suivante (sans modifier) <ChevronRight className="ml-1 h-4 w-4" />
+          <Button type="button" variant="secondary" iconEnd={<ChevronRight />} onClick={goNext} disabled={saving}>
+            Étape suivante (sans modifier)
           </Button>
         )}
       </footer>
@@ -521,5 +549,6 @@ function ImportWorkflowPageBody() {
         />
       )}
     </div>
+    </Page>
   );
 }

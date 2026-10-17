@@ -155,9 +155,64 @@ describe('extractError (messages en francais correct)', () => {
     expect(extractError(axiosLikeError(400)).message).toBe(MESSAGE_ERREUR_INCONNUE);
   });
 
+  // Lot L6b (E13) : un 400 dit quel champ corriger, jamais seulement "Données invalides".
+  it('400 de validation sans champ nommé dans le message : les champs du serveur sont ajoutés', () => {
+    const err = Object.assign(new Error('http'), {
+      isAxiosError: true,
+      response: { status: 400, data: { code: 'VALIDATION_ERROR', message: 'Données invalides',
+        errors: [{ field: 'email', message: 'must not be blank' }, { field: 'workspaceCode', message: 'Ce champ est obligatoire.' }] } },
+    });
+    const m = extractError(err).message;
+    expect(m).toMatch(/^Données invalides/);
+    expect(m).toContain('« email » (must not be blank)');
+    expect(m).toContain('« workspaceCode » (Ce champ est obligatoire.)');
+  });
+
+  it('400 dont le message nomme déjà chaque champ : rien n’est répété', () => {
+    const message = 'Données invalides. Corrigez le champ « code du cabinet » : ce champ est obligatoire.';
+    const err = Object.assign(new Error('http'), {
+      isAxiosError: true,
+      response: { status: 400, data: { code: 'VALIDATION_ERROR', message,
+        errors: [{ field: 'workspaceCode', message: 'Ce champ est obligatoire.' }] } },
+    });
+    expect(extractError(err).message).toBe(message);
+  });
+
   it('sans reponse du serveur : message de connexion', () => {
     expect(extractError(axiosLikeError(undefined))).toEqual({ code: 'NETWORK', message: MESSAGE_ERREUR_RESEAU });
     expect(extractError(new Error('boom')).message).toBe(MESSAGE_ERREUR_RESEAU);
     expect(MESSAGE_ERREUR_RESEAU).not.toMatch(/reseau/);
+  });
+});
+
+// Lot L6b (E13) : de nombreux ecrans affichent `err.message`. Pour une erreur axios, c'etait
+// "Request failed with status code 400" : anglais, sans le champ a corriger. L'intercepteur
+// remplace ce texte par le message francais du serveur (ou le repli selon le statut).
+describe('intercepteur de reponse : message lisible sur l erreur', () => {
+  it('err.message porte le message du serveur, champs compris', async () => {
+    const { api } = await import('../api');
+    const { AxiosError } = await import('axios');
+    const adapter = async (config: Parameters<typeof api.request>[0]) => {
+      throw new AxiosError('Request failed with status code 400', 'ERR_BAD_REQUEST', config as never, null, {
+        status: 400, statusText: 'Bad Request', headers: {}, config: config as never,
+        data: { code: 'VALIDATION_ERROR', message: 'Données invalides', errors: [{ field: 'denomination', message: 'Ce champ est obligatoire.' }] },
+      });
+    };
+    const err = await api.post('/workflows/x/execute-step', {}, { adapter: adapter as never }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).not.toMatch(/status code/);
+    expect((err as Error).message).toContain('« denomination »');
+  });
+
+  it('sans corps : repli francais selon le statut', async () => {
+    const { api } = await import('../api');
+    const { AxiosError } = await import('axios');
+    const adapter = async (config: Parameters<typeof api.request>[0]) => {
+      throw new AxiosError('Request failed with status code 404', 'ERR_BAD_REQUEST', config as never, null, {
+        status: 404, statusText: 'Not Found', headers: {}, config: config as never, data: '',
+      });
+    };
+    const err = await api.get('/inconnu', { adapter: adapter as never }).catch((e: unknown) => e);
+    expect((err as Error).message).toMatch(/^L’élément demandé est introuvable/);
   });
 });

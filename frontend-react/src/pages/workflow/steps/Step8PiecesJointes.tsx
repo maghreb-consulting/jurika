@@ -11,7 +11,10 @@ import {
   X,
 } from 'lucide-react';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
+import { classesBouton } from '../../../components/ui/boutonClasses';
 import { useStepAutosave, type RegisterDirty } from '../useStepAutosave';
+import { TextField } from '../../../components/ui/TextField';
+import { Button } from '../../../components/ui/Button';
 
 interface Props {
   existing?: Record<string, unknown>;
@@ -380,7 +383,7 @@ export function Step8PiecesJointes({
       <div
         key={piece.code}
         className={`rounded-lg border-2 p-4 transition ${
-          done ? 'border-success bg-success/10' : 'border-border bg-bg-raised'
+          done ? 'border-success bg-success-soft' : 'border-border bg-bg-raised'
         }`}
       >
         <div className="flex items-start gap-3">
@@ -395,7 +398,7 @@ export function Step8PiecesJointes({
             <div className="mb-0.5 flex flex-wrap items-center gap-2">
               <p className="text-sm font-semibold text-fg">{piece.label}</p>
               {piece.obligatoire && (
-                <span className="rounded bg-danger/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-danger">
+                <span className="rounded bg-danger-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-danger">
                   Obligatoire
                 </span>
               )}
@@ -405,7 +408,7 @@ export function Step8PiecesJointes({
                 </span>
               )}
               {piece.fromRegistry && done && (
-                <span className="rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
+                <span className="rounded bg-info-soft px-1.5 py-0.5 text-[10px] font-semibold uppercase text-info">
                   Déjà déposée
                 </span>
               )}
@@ -418,35 +421,37 @@ export function Step8PiecesJointes({
                 <span className="flex-1 truncate text-xs text-fg">
                   {piece.fileName}
                 </span>
-                <label className="cursor-pointer text-[11px] text-accent hover:underline">
+                <label className={classesBouton('secondary', 'sm', 'cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus')}>
                   Remplacer
                   <input
                     type="file"
                     accept="application/pdf,image/*"
-                    className="hidden"
+                    className="sr-only"
                     onChange={(e) =>
                       e.target.files?.[0] &&
                       uploadFor(piece.code, e.target.files[0], piece.label)
                     }
                   />
                 </label>
-                <button
+                <Button
                   type="button"
                   onClick={() => removeFor(piece.code)}
-                  className="rounded p-1 text-danger hover:bg-danger/10"
                   aria-label={`Retirer : ${piece.label}`}
                   title="Retirer la pièce"
-                >
-                  <X className="h-3 w-3" />
-                </button>
+                  variant="ghost"
+                  size="sm"
+                  icon={<X />}
+                  iconOnly
+                  className="text-danger"
+                />
               </div>
             ) : (
-              <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border px-3 py-2 text-xs text-accent transition hover:border-accent hover:bg-accent/10">
+              <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border px-3 py-2 text-xs text-fg-muted transition hover:border-focus hover:bg-bg-overlay hover:text-fg has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus">
                 <Upload className="h-3.5 w-3.5" /> Importer le document
                 <input
                   type="file"
                   accept="application/pdf,image/*"
-                  className="hidden"
+                  className="sr-only"
                   onChange={(e) =>
                     e.target.files?.[0] &&
                     uploadFor(piece.code, e.target.files[0], piece.label)
@@ -466,7 +471,7 @@ export function Step8PiecesJointes({
       <div
         key={p.code}
         className={`flex items-start gap-3 rounded-lg border-2 p-3 ${
-          done ? 'border-success bg-success/10' : 'border-danger/30 bg-danger/5'
+          done ? 'border-success bg-success-soft' : 'border-danger/30 bg-danger-soft'
         }`}
       >
         <IdCard
@@ -480,7 +485,7 @@ export function Step8PiecesJointes({
             <span
               className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
                 p.role === 'DIRIGEANT'
-                  ? 'bg-accent/10 text-accent'
+                  ? 'bg-info-soft text-info'
                   : 'bg-warning/15 text-warning'
               }`}
             >
@@ -496,12 +501,12 @@ export function Step8PiecesJointes({
               <span className="flex-1 truncate text-xs text-fg">
                 {p.fileName}
               </span>
-              <label className="cursor-pointer text-[11px] text-accent hover:underline">
+              <label className={classesBouton('secondary', 'sm', 'cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus')}>
                 Remplacer
                 <input
                   type="file"
                   accept="application/pdf,image/*"
-                  className="hidden"
+                  className="sr-only"
                   onChange={(e) =>
                     e.target.files?.[0] &&
                     onPieceUploaded?.(p.code, p.label, e.target.files[0])
@@ -510,12 +515,12 @@ export function Step8PiecesJointes({
               </label>
             </div>
           ) : (
-            <label className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-danger/40 px-3 py-2 text-xs text-danger transition hover:bg-danger/10">
+            <label className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-danger/40 px-3 py-2 text-xs text-danger transition hover:bg-danger/10 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus">
               <Upload className="h-3.5 w-3.5" /> CIN non encore importée : importer
               <input
                 type="file"
                 accept="application/pdf,image/*"
-                className="hidden"
+                className="sr-only"
                 onChange={(e) =>
                   e.target.files?.[0] &&
                   onPieceUploaded?.(p.code, p.label, e.target.files[0])
@@ -537,8 +542,8 @@ export function Step8PiecesJointes({
       }}
       className="mx-auto max-w-[860px] space-y-6"
     >
-      <div className="flex items-start gap-3 rounded-lg border border-accent/20 bg-accent/10 p-4">
-        <Info className="h-5 w-5 flex-shrink-0 text-accent" />
+      <div className="flex items-start gap-3 rounded-lg border border-info/30 bg-info-soft p-4">
+        <Info className="h-5 w-5 flex-shrink-0 text-fg-muted" />
         <div>
           <h3 className="text-sm font-semibold text-fg">
             Pièces jointes pour l’immatriculation
@@ -563,7 +568,7 @@ export function Step8PiecesJointes({
       {cinPersonnes.length > 0 && (
         <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
           <h3 className="mb-1 flex items-center gap-2 text-base font-bold text-fg">
-            <IdCard className="h-4 w-4 text-accent" /> CIN — {cinPersonnes.length}{' '}
+            <IdCard className="h-4 w-4 text-fg-muted" /> CIN — {cinPersonnes.length}{' '}
             personne(s)
           </h3>
           <p className="mb-4 text-xs text-fg-subtle">
@@ -606,26 +611,17 @@ export function Step8PiecesJointes({
         <div className="space-y-3">{optionnelles.map(renderPiece)}</div>
 
         <div className="mt-4 flex items-center gap-2">
-          <input
+          <TextField
             type="text"
             aria-label="Libellé d’une pièce complémentaire"
             value={extraLabel}
             onChange={(e) => setExtraLabel(e.target.value)}
             placeholder="Libellé d’une pièce complémentaire"
-            className="h-10 flex-1 rounded-lg border border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
+            containerClassName="flex-1"
           />
-          <button
-            type="button"
-            onClick={addExtra}
-            disabled={!extraLabel.trim()}
-            className={`flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium transition ${
-              extraLabel.trim()
-                ? 'bg-accent text-bg-raised hover:bg-accent-hover'
-                : 'cursor-not-allowed bg-border text-fg-subtle'
-            }`}
-          >
-            <Plus className="h-4 w-4" /> Ajouter la pièce
-          </button>
+          <Button type="button" variant="secondary" icon={<Plus />} onClick={addExtra} disabled={!extraLabel.trim()}>
+            Ajouter la pièce
+          </Button>
           <InfoBulle
             libelle="Ajouter une pièce complémentaire"
             texte="Saisissez le libellé de la pièce (par exemple « Attestation bancaire »), cliquez sur « Ajouter la pièce », puis importez le fichier dans la ligne qui apparaît."
@@ -638,7 +634,7 @@ export function Step8PiecesJointes({
           <span className="text-sm font-bold text-fg">
             Progression des pièces jointes
           </span>
-          <span className="text-sm font-bold text-accent">
+          <span className="text-sm font-bold text-heading">
             {totalUploaded} / {totalCount} importées
           </span>
         </div>
@@ -651,7 +647,7 @@ export function Step8PiecesJointes({
       </div>
 
       {!requiredOk && (
-        <div className="flex items-start gap-3 rounded-lg border-l-4 border-danger bg-danger/10 p-4">
+        <div className="flex items-start gap-3 rounded-lg border-l-4 border-danger bg-danger-soft p-4">
           <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-danger" />
           <div>
             <p className="text-sm font-semibold text-danger">
@@ -674,18 +670,14 @@ export function Step8PiecesJointes({
       )}
 
       <div className="flex items-center justify-end pt-2">
-        <button
+        <Button
           type="submit"
           disabled={!requiredOk || saving}
-          className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
-            requiredOk && !saving
-              ? 'bg-accent text-bg-raised hover:bg-accent-hover'
-              : 'cursor-not-allowed bg-border text-fg-subtle'
-          }`}
+          size="lg"
+          iconEnd={<ChevronRight />}
         >
           {saving ? 'Enregistrement…' : 'Valider et continuer'}
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </form>
   );

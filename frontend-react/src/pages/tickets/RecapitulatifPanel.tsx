@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle, EyeOff, FileText, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle, EyeOff, FileText } from 'lucide-react';
+import { Message } from '../../components/ui/Message';
+import { CardSkeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { demarcheService } from '../../services/demarche.service';
@@ -54,18 +56,16 @@ export function RecapitulatifPanel({ ticketId }: { ticketId: string }) {
 
   if (chargement) {
     return (
-      <Card className="p-5">
-        <div className="flex items-center gap-2 text-sm text-fg-subtle">
-          <Loader2 className="h-4 w-4 animate-spin" /> Récapitulatif du ticket…
-        </div>
-      </Card>
+      <SqueletteZone libelle="Récapitulatif du ticket…">
+        <CardSkeleton />
+      </SqueletteZone>
     );
   }
   if (erreur) {
     return (
-      <Card className="p-5">
-        <p className="text-sm text-warning">{erreur}</p>
-      </Card>
+      <Message ton="attention" titre="Récapitulatif indisponible">
+        {erreur}
+      </Message>
     );
   }
   // Un workflow sans référentiel chargé — les huit autres — ne rend rien.
@@ -84,8 +84,8 @@ export function RecapitulatifPanel({ ticketId }: { ticketId: string }) {
   return (
     <Card className="overflow-hidden" data-testid="recapitulatif-ticket">
       <div className="border-b border-border px-5 py-3">
-        <h3 className="text-sm font-semibold text-fg">Récapitulatif du ticket</h3>
-        <p className="mt-0.5 text-xs text-fg-subtle">
+        <h3 className="text-base font-semibold text-heading">Récapitulatif du ticket</h3>
+        <p className="mt-0.5 text-sm text-fg-muted">
           Consultation seule. La clôture se décide depuis le bandeau du ticket.
         </p>
       </div>
@@ -94,13 +94,13 @@ export function RecapitulatifPanel({ ticketId }: { ticketId: string }) {
       <section className="px-5 py-4">
         {recap.manquants.length === 0 ? (
           <p className="flex items-center gap-2 text-sm text-success">
-            <CheckCircle className="h-4 w-4" />
+            <CheckCircle className="h-4 w-4" aria-hidden="true" />
             Tous les justificatifs attendus sont archivés.
           </p>
         ) : (
-          <div className="rounded-lg border-l-4 border-warning bg-warning/10 p-3">
+          <div className="rounded-lg border border-border border-l-4 border-l-warning bg-warning-soft p-3">
             <p className="flex items-center gap-2 text-sm font-semibold text-warning">
-              <AlertTriangle className="h-4 w-4" />
+              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
               {recap.manquants.length} justificatif(s) manquant(s)
             </p>
             <ul className="mt-2 space-y-1 text-xs text-fg" data-testid="justificatifs-manquants">

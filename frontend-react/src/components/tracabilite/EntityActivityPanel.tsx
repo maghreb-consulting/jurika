@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { History, Loader2 } from 'lucide-react';
+import { History } from 'lucide-react';
+import { Message } from '../ui/Message';
+import { Skeleton, SqueletteZone } from '../ui/LoadingSkeleton';
 import { tracabiliteService } from '../../services/tracabilite.service';
 import { extractError } from '../../lib/api';
 import { useUserNames } from './useUserNames';
+import { libelleAction } from '../../lib/libelleAction';
 import type { TracabiliteEntry } from '../../types/tracabilite';
 
 interface Props {
@@ -43,22 +46,27 @@ export function EntityActivityPanel({ entityType, entityId, title = 'Activité' 
   return (
     <section>
       <div className="mb-2 flex items-center gap-2">
-        <History className="h-4 w-4 text-accent" />
-        <h3 className="text-sm font-semibold text-fg">{title}</h3>
+        <History className="h-4 w-4 text-fg-subtle" aria-hidden="true" />
+        <h3 className="text-sm font-semibold text-heading">{title}</h3>
       </div>
 
       {error && (
-        <div className="mb-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+        <Message ton="erreur" className="mb-2">
           {error}
-        </div>
+        </Message>
       )}
 
       {loading ? (
-        <div className="flex justify-center py-6">
-          <Loader2 className="h-5 w-5 animate-spin text-accent" />
-        </div>
+        <SqueletteZone libelle="Chargement de l’activité…" className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="space-y-1.5 border-l-2 border-border pl-3">
+              <Skeleton className="h-3.5 w-2/3" />
+              <Skeleton className="h-3 w-1/3" />
+            </div>
+          ))}
+        </SqueletteZone>
       ) : items.length === 0 ? (
-        <p className="py-4 text-center text-xs text-fg-subtle">Aucune activité enregistrée.</p>
+        error ? null : <p className="py-4 text-center text-sm text-fg-muted">Aucune activité enregistrée.</p>
       ) : (
         <ul className="space-y-2">
           {items.map((e) => (
@@ -66,9 +74,9 @@ export function EntityActivityPanel({ entityType, entityId, title = 'Activité' 
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-fg">
                   <span className="font-medium">{nameOf(e.userId)}</span>{' '}
-                  <span className="text-fg-muted">— {e.actionLabel}</span>
+                  <span className="text-fg-muted">— {libelleAction(e.actionLabel, e.action)}</span>
                 </p>
-                <p className="text-xs text-fg-subtle">
+                <p className="text-xs tabular-nums text-fg-subtle">
                   {new Date(e.createdAt).toLocaleString('fr-FR')}
                 </p>
               </div>

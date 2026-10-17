@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
 import { extractError } from '../../lib/api';
 import { ticketService } from '../../services/ticket.service';
 import type { Ticket } from '../../types/ticket';
@@ -40,23 +41,14 @@ export function WorkflowPage() {
   }, [ticketId]);
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-      </div>
-    );
+    return <SqueletteParcours />;
   }
 
   if (!ticket) {
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
-        <p>
-          {error ?? 'Ticket introuvable : il a peut-être été supprimé, ou vous n’y avez pas accès.'}
-        </p>
-        <Link to="/tickets" className="mt-2 inline-block font-medium underline">
-          Revenir à la liste des tickets
-        </Link>
-      </div>
+      <ErreurParcours>
+        {error ?? 'Ticket introuvable : il a peut-être été supprimé, ou vous n’y avez pas accès.'}
+      </ErreurParcours>
     );
   }
 

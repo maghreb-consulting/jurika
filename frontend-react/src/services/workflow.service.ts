@@ -145,6 +145,8 @@ export const workflowService = {
    */
   async donneesAttendues(ticketId: string): Promise<DonneeAttendue[]> {
     const { data } = await api.get<DonneeAttendue[]>(`/workflows/${ticketId}/donnees-attendues`);
+    // Lot L6b : une reponse qui n'est pas une liste devient une erreur nommee (jamais un .map plante).
+    if (!Array.isArray(data)) throw new Error('Les données attendues du ticket n’ont pas pu être lues.');
     return data;
   },
 

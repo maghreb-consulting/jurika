@@ -20,14 +20,13 @@ import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   AlertTriangle,
-  CheckCircle,
   Megaphone,
   Paperclip,
   Sparkles,
   Store,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { TextField } from '../../components/ui/TextField';
+import { TextField, ZoneTexte } from '../../components/ui/TextField';
 import { Select } from '../../components/ui/Select';
 import { WorkflowShell } from '../../components/workflow/WorkflowShell';
 import type { RoadmapStep } from '../../components/workflow/WorkflowRoadmap';
@@ -59,6 +58,8 @@ import { buildDocFilename, formeLabel } from '../../components/workflow/workflow
 import type { TemplateInfo } from '../../services/workflowDocumentService';
 import type { AssocieInput, GerantInput } from '../../components/workflow/SeanceForm';
 import type { DossierBrief } from '../../types/dataroom';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
+import { BandeauFinParcours } from '../../components/workflow/BandeauFinParcours';
 
 const STEPS: RoadmapStep[] = etapesRoadmap(ETAPES_FERMETURE_SUCCURSALE);
 
@@ -444,9 +445,9 @@ function FermetureSuccursaleWorkflowPageBody() {
   if (loading) return <Loader />;
   if (!ticket || !progress)
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+      <ErreurParcours>
         {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
-      </div>
+      </ErreurParcours>
     );
 
   const step = viewStep;
@@ -569,7 +570,7 @@ function FermetureSuccursaleWorkflowPageBody() {
           <div className="space-y-5" data-testid="fermeture-step1">
             <header>
               <div className="flex items-center gap-2">
-                <Store className="h-5 w-5 text-accent" />
+                <Store className="h-5 w-5 text-fg-muted" />
                 <h2 className="text-lg font-semibold text-fg">Étape 1 — Succursale à fermer</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -631,7 +632,7 @@ function FermetureSuccursaleWorkflowPageBody() {
                 )}
                 {!loadingSucc && succursales.length === 0 && (
                   <div
-                    className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-fg-muted"
+                    className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning-soft p-3 text-xs text-fg-muted"
                     role="status"
                     data-testid="fermeture-aucune-succursale"
                   >
@@ -645,9 +646,11 @@ function FermetureSuccursaleWorkflowPageBody() {
                   </div>
                 )}
                 {!loadingSucc && succursales.length > 0 && !saisieManuelle && (
-                  <button
+                  <Button
                     type="button"
-                    className="text-xs text-accent underline underline-offset-2"
+                    variant="ghost"
+                    size="sm"
+                    className="self-start"
                     data-testid="fermeture-basculer-manuel"
                     onClick={() => {
                       setSaisieManuelle(true);
@@ -655,16 +658,12 @@ function FermetureSuccursaleWorkflowPageBody() {
                     }}
                   >
                     La succursale ne figure pas dans la liste : la saisir manuellement
-                  </button>
+                  </Button>
                 )}
                 {!loadingSucc && succursales.length > 0 && saisieManuelle && (
-                  <button
-                    type="button"
-                    className="text-xs text-accent underline underline-offset-2"
-                    onClick={() => setSaisieManuelle(false)}
-                  >
+                  <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => setSaisieManuelle(false)}>
                     Revenir à la sélection dans la liste
-                  </button>
+                  </Button>
                 )}
 
                 {saisieManuelle ? (
@@ -780,27 +779,22 @@ function FermetureSuccursaleWorkflowPageBody() {
             </div>
 
             <div>
-              <label htmlFor="fermeture-motif" className="mb-1 block text-sm font-medium text-fg-muted">
-                Motif de la fermeture *
-              </label>
-              <textarea
+              <ZoneTexte
                 id="fermeture-motif"
+                label="Motif de la fermeture *"
                 rows={3}
                 value={motif}
                 data-testid="fermeture-motif"
                 onChange={(e) => setMotif(e.target.value)}
                 onBlur={() => setRevealErrors(true)}
                 placeholder="Cessation de l’activité exercée dans la succursale, réorganisation, transfert de l’activité au siège…"
-                className={`w-full rounded-lg border bg-bg-raised px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-                  showErr1('motif')
-                    ? 'border-danger focus:border-danger focus:ring-danger/30'
-                    : 'border-border-hi focus:border-indigo-500 focus:ring-indigo-200'
-                }`}
                 aria-invalid={!!showErr1('motif')}
+                aria-describedby="fermeture-motif-compte"
               />
               <p
+                id="fermeture-motif-compte"
                 className={`mt-1 text-xs ${
-                  motif.trim().length < MOTIF_MIN_LENGTH ? 'text-danger' : 'text-emerald-600'
+                  motif.trim().length < MOTIF_MIN_LENGTH ? 'text-danger' : 'text-success'
                 }`}
               >
                 {motif.trim().length} / {MOTIF_MIN_LENGTH} caractères minimum
@@ -823,7 +817,7 @@ function FermetureSuccursaleWorkflowPageBody() {
               data-testid="fermeture-convocation"
             >
               <div className="flex items-center gap-2">
-                <Megaphone className="h-4 w-4 text-accent" />
+                <Megaphone className="h-4 w-4 text-fg-muted" />
                 <h4 className="text-sm font-semibold text-fg">Convocation (facultative)</h4>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
@@ -854,7 +848,7 @@ function FermetureSuccursaleWorkflowPageBody() {
                 <div
                   role="alert"
                   data-testid="fermeture-convocation-16j-error"
-                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-2 text-xs text-danger"
+                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-soft p-2 text-xs text-danger"
                 >
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                   <span>{convocationError}</span>
@@ -890,7 +884,7 @@ function FermetureSuccursaleWorkflowPageBody() {
 
             <section className="space-y-3 rounded-xl border border-border bg-bg-raised p-4">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-violet-600" />
+                <Sparkles className="h-4 w-4 text-info" />
                 <h4 className="text-sm font-semibold text-fg">Formalités</h4>
               </div>
               <TextField
@@ -907,7 +901,7 @@ function FermetureSuccursaleWorkflowPageBody() {
           <div className="space-y-4" data-testid="fermeture-step2">
             <header>
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-violet-600" />
+                <Sparkles className="h-5 w-5 text-info" />
                 <h2 className="text-lg font-semibold text-fg">Étape 2 — Génération des actes</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -924,6 +918,9 @@ function FermetureSuccursaleWorkflowPageBody() {
               formeJuridique={formeJuridique}
               societe={societeInput}
               defaultDate={dateAG}
+              defaultConvocation={
+                convocationDate ? { date: convocationDate, heure: convocationHeure || undefined } : undefined
+              }
               succursaleSeed={succursaleSeed}
               denominationForFilename={targetDenomination}
               locked
@@ -978,6 +975,7 @@ function FermetureSuccursaleWorkflowPageBody() {
                 hideSeanceDate
                 hideConvDate
                 initialAssocies={bdAssocies}
+                initialOrdreDuJour={ORDRE_DU_JOUR_FERMETURE_SUCCURSALE}
                 initialGerants={bdGerants}
               />
             )}
@@ -1013,7 +1011,7 @@ function FermetureSuccursaleWorkflowPageBody() {
           <div className="space-y-4" data-testid="fermeture-step3-pieces">
             <header>
               <div className="flex items-center gap-2">
-                <Paperclip className="h-5 w-5 text-accent" />
+                <Paperclip className="h-5 w-5 text-fg-muted" />
                 <h2 className="text-lg font-semibold text-fg">
                   Étape 3 — Pièces jointes (facultative)
                 </h2>
@@ -1047,14 +1045,10 @@ function FermetureSuccursaleWorkflowPageBody() {
 
         {step === 4 && (
           <div className="space-y-4" data-testid="fermeture-synthese">
-            <div className="rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 p-6 text-bg-raised">
-              <CheckCircle className="mb-2 h-8 w-8" />
-              <h2 className="text-2xl font-bold">Succursale fermée</h2>
-              <p className="text-sm text-amber-50">
+            <BandeauFinParcours titre="Succursale fermée">
                 Le procès-verbal de fermeture et l’annonce légale ont été produits, validés et
                 déposés dans la Data Room. La succursale est enregistrée comme <strong>fermée</strong>.
-              </p>
-            </div>
+              </BandeauFinParcours>
 
             <div className="rounded-xl border border-border bg-bg-raised p-4">
               <p className="mb-3 text-sm font-semibold text-fg">Succursale fermée</p>
@@ -1149,9 +1143,5 @@ function Recap({
 }
 
 function Loader() {
-  return (
-    <div className="flex h-64 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-    </div>
-  );
+  return <SqueletteParcours />;
 }

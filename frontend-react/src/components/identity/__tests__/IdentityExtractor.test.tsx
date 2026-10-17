@@ -109,8 +109,8 @@ describe('<IdentityExtractor> mode="cin"', () => {
     expect((screen.getByTestId('id-field-nom') as HTMLInputElement).value).toBe('BENATIK');
     expect((screen.getByTestId('id-field-cin') as HTMLInputElement).value).toBe('AB123456');
 
-    // Source merged -> badge "fusion" + archive visible.
-    expect(screen.getByText(/fusion/i)).toBeInTheDocument();
+    // Source merged -> badge "document et bande MRZ" + archive visible.
+    expect(screen.getByText(/bande de lecture automatique \(MRZ\)/i)).toBeInTheDocument();
     expect(screen.getByTestId('id-archived')).toBeInTheDocument();
 
     // Edition human-in-the-loop avant Appliquer.
@@ -258,6 +258,27 @@ describe('<IdentityExtractor> degradation gracieuse', () => {
     const alert = await screen.findByTestId('id-error');
     expect(alert.textContent).toMatch(/indisponible/i);
     expect(screen.queryByTestId('id-extracted-panel')).not.toBeInTheDocument();
+  });
+});
+
+// Lot L6b (E13) : le 400 du serveur porte son motif dans `message` (ErrorResponse {code, message}) ;
+// le composant lisait `detail`, toujours absent, et affichait « Requête invalide. » sans dire quoi corriger.
+describe('<IdentityExtractor> refus 400 du serveur', () => {
+  it('affiche le message du serveur, qui dit quoi corriger', async () => {
+    const motif = 'Format d’image non pris en charge pour le recto de la pièce : envoyez une photo au format JPG ou PNG.';
+    const extractFn = vi.fn().mockRejectedValue({ response: { status: 400, data: { code: 'BAD_REQUEST', message: motif } } });
+    render(<IdentityExtractor mode="cin" onApply={vi.fn()} extractFn={extractFn as never} />);
+    fireEvent.change(document.getElementById('id-recto-input') as HTMLInputElement, {
+      target: { files: [pngFile('r.png')] },
+    });
+    fireEvent.click(screen.getByTestId('id-extract-btn'));
+    const alert = await screen.findByTestId('id-error');
+    expect(alert.textContent).toContain(motif);
+  });
+
+  it('le sélecteur ne propose que les formats lus par le serveur (JPG, PNG)', () => {
+    render(<IdentityExtractor mode="cin" onApply={vi.fn()} extractFn={vi.fn() as never} />);
+    expect(document.getElementById('id-recto-input')).toHaveAttribute('accept', 'image/jpeg,image/png');
   });
 });
 

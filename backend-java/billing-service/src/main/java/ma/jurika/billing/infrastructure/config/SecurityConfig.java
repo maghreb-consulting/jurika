@@ -67,6 +67,9 @@ public class SecurityConfig {
                                 // (present seulement si CMI_SIMULATEUR_ACTIF=true).
                                 new AntPathRequestMatcher("/api/v1/billing/cmi/**"),
                                 new AntPathRequestMatcher("/api/v1/billing/cmi-simulateur/**"),
+                                // Lot L6b (E2) : mentions legales publiques de l'editeur (vitrine),
+                                // lecture seule ; chemin exact, GET seulement.
+                                new AntPathRequestMatcher("/api/v1/public/editeur/mentions-legales", "GET"),
                                 new AntPathRequestMatcher("/actuator/**"),
                                 new AntPathRequestMatcher("/v3/api-docs/**"),
                                 new AntPathRequestMatcher("/swagger-ui.html"),

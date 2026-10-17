@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { CheckCircle2, KeyRound } from 'lucide-react';
-import { BrandLogo } from '../../components/ui/BrandLogo';
-import { InfoBulle } from '../../components/ui/Aide';
+import { PageAccueil, TitreAccueil } from '../../components/auth/PageAccueil';
 import { Button } from '../../components/ui/Button';
+import { Lien } from '../../components/ui/Lien';
+import { Message } from '../../components/ui/Message';
 import { TextField } from '../../components/ui/TextField';
-import { Card } from '../../components/ui/Card';
 import { authService } from '../../services/auth.service';
 import { extractError } from '../../lib/api';
 import {
@@ -93,142 +93,125 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-bg to-accent/10 px-4 py-12">
-      <div className="w-full max-w-md">
-        <Link to="/" className="mb-8 flex items-center justify-center" aria-label="JURIKA, retour à l’accueil">
-          <BrandLogo variant="full" size={48} />
-        </Link>
-        <Card className="space-y-5 p-8">
-          {confirmed ? (
-            <div className="space-y-4 text-center">
-              <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
-              <h1 className="font-heading text-xl font-semibold text-fg">Mot de passe modifié</h1>
-              <p className="text-sm text-fg-muted">
-                Connectez-vous avec votre nouveau mot de passe.
-              </p>
-              <Link to="/login" className="block">
-                <Button className="w-full">Aller à la connexion</Button>
-              </Link>
-            </div>
-          ) : tokenFromUrl || token ? (
-            <>
-              <div className="text-center">
-                <KeyRound className="mx-auto h-10 w-10 text-accent" />
-                <h1 className="mt-3 font-heading text-xl font-semibold text-fg">Nouveau mot de passe</h1>
-                <p className="mt-1 text-sm text-fg-muted">
-                  Choisissez votre nouveau mot de passe. Le lien reçu par courriel ne sert qu’une fois.
-                </p>
-              </div>
-              <form onSubmit={confirm} className="space-y-4" noValidate>
-                {!tokenFromUrl && (
-                  <TextField
-                    label="Code reçu par courriel"
-                    name="token"
-                    value={token}
-                    onChange={(e) => {
-                      setToken(e.target.value);
-                      setFieldErrors((f) => ({ ...f, token: undefined }));
-                    }}
-                    required
-                    error={fieldErrors.token}
-                  />
-                )}
-                <TextField
-                  label="Nouveau mot de passe"
-                  name="newPassword"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => {
-                    setNewPassword(e.target.value);
-                    setFieldErrors((f) => ({ ...f, newPassword: undefined }));
-                  }}
-                  hint="Au moins 12 caractères, dont une majuscule, une minuscule, un chiffre et un caractère spécial."
-                  required
-                  minLength={12}
-                  error={fieldErrors.newPassword}
-                />
-                {error && (
-                  <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-                    {error}
-                  </div>
-                )}
-                <Button type="submit" className="w-full" loading={loading}>
-                  Enregistrer le nouveau mot de passe
-                </Button>
-              </form>
-            </>
-          ) : requested ? (
-            <div className="space-y-4 text-center">
-              <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
-              <h1 className="font-heading text-xl font-semibold text-fg">Courriel envoyé</h1>
-              <p className="text-sm text-fg-muted">
-                Si cette adresse correspond à un compte du workspace, un lien de réinitialisation
-                vient de lui être envoyé. Ouvrez-le pour choisir votre nouveau mot de passe ; pensez
-                à vérifier les courriers indésirables.
-              </p>
-              <Link to="/login" className="block">
-                <Button variant="secondary" className="w-full">Retour à la connexion</Button>
-              </Link>
-            </div>
-          ) : (
-            <>
-              <div className="text-center">
-                <KeyRound className="mx-auto h-10 w-10 text-accent" />
-                <h1 className="mt-3 flex items-center justify-center gap-1 font-heading text-xl font-semibold text-fg">
-                  Mot de passe oublié
-                  <InfoBulle
-                    libelle="Aide sur la réinitialisation du mot de passe"
-                    texte="Indiquez le code de votre workspace (JUR- suivi de 5 lettres ou chiffres) et l’adresse électronique de votre compte. Vous recevrez un lien, valable pour une durée limitée indiquée dans le courriel, pour choisir un nouveau mot de passe."
-                  />
-                </h1>
-                <p className="mt-1 text-sm text-fg-muted">
-                  Saisissez le code de votre workspace et votre adresse électronique : nous vous
-                  enverrons un lien de réinitialisation.
-                </p>
-              </div>
-              <form onSubmit={request} className="space-y-4" noValidate>
-                <TextField
-                  label="Code du cabinet"
-                  name="workspaceCode"
-                  value={workspaceCode}
-                  onChange={(e) => {
-                    setWorkspaceCode(e.target.value.toUpperCase());
-                    setFieldErrors((f) => ({ ...f, workspaceCode: undefined }));
-                  }}
-                  pattern="^JUR-[A-Z0-9]{5}$"
-                  maxLength={9}
-                  placeholder="JUR-AB123"
-                  required
-                  error={fieldErrors.workspaceCode}
-                />
-                <TextField
-                  label="Adresse électronique"
-                  name="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setFieldErrors((f) => ({ ...f, email: undefined }));
-                  }}
-                  required
-                  error={fieldErrors.email}
-                />
-                {error && (
-                  <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-                    {error}
-                  </div>
-                )}
-                <Button type="submit" className="w-full" loading={loading}>
-                  Envoyer le lien
-                </Button>
-                <Link to="/login" className="block text-center text-sm text-fg-subtle hover:text-fg">
-                  Retour à la connexion
-                </Link>
-              </form>
-            </>
-          )}
-        </Card>
-      </div>
-    </div>
+    <PageAccueil
+      titre="Mot de passe oublié"
+      largeur="etroite"
+      enTete={<Lien to="/login">Se connecter</Lien>}
+    >
+      {confirmed ? (
+        <div className="space-y-5">
+          <TitreAccueil icone={<CheckCircle2 />} ton="succes" titre="Mot de passe modifié">
+            Connectez-vous avec votre nouveau mot de passe.
+          </TitreAccueil>
+          <Lien to="/login" commeBouton={{ variant: 'primary', size: 'lg' }} className="w-full">
+            Aller à la connexion
+          </Lien>
+        </div>
+      ) : tokenFromUrl || token ? (
+        <>
+          <TitreAccueil icone={<KeyRound />} titre="Nouveau mot de passe">
+            Choisissez votre nouveau mot de passe. Le lien reçu par courriel ne sert qu’une fois.
+          </TitreAccueil>
+          <form onSubmit={confirm} className="space-y-4" noValidate>
+            {!tokenFromUrl && (
+              <TextField
+                label="Code reçu par courriel"
+                name="token"
+                value={token}
+                onChange={(e) => {
+                  setToken(e.target.value);
+                  setFieldErrors((f) => ({ ...f, token: undefined }));
+                }}
+                required
+                mono
+                error={fieldErrors.token}
+              />
+            )}
+            <TextField
+              label="Nouveau mot de passe"
+              name="newPassword"
+              type="password"
+              value={newPassword}
+              onChange={(e) => {
+                setNewPassword(e.target.value);
+                setFieldErrors((f) => ({ ...f, newPassword: undefined }));
+              }}
+              hint="Au moins 12 caractères, dont une majuscule, une minuscule, un chiffre et un caractère spécial."
+              autoComplete="new-password"
+              required
+              minLength={12}
+              error={fieldErrors.newPassword}
+            />
+            {error && <Message ton="erreur">{error}</Message>}
+            <Button type="submit" size="lg" fullWidth loading={loading}>
+              Enregistrer le nouveau mot de passe
+            </Button>
+          </form>
+        </>
+      ) : requested ? (
+        <div className="space-y-5">
+          <TitreAccueil icone={<CheckCircle2 />} ton="succes" titre="Courriel envoyé">
+            Si cette adresse correspond à un compte du cabinet, un lien de réinitialisation vient de lui être
+            envoyé. Ouvrez-le pour choisir votre nouveau mot de passe ; pensez à vérifier les courriers
+            indésirables.
+          </TitreAccueil>
+          <Lien to="/login" commeBouton={{ variant: 'secondary', size: 'lg' }} className="w-full">
+            Retour à la connexion
+          </Lien>
+        </div>
+      ) : (
+        <>
+          <TitreAccueil
+            icone={<KeyRound />}
+            titre="Mot de passe oublié"
+            libelleInfoBulle="Aide sur la réinitialisation du mot de passe"
+            infoBulle="Indiquez le code de votre cabinet (JUR- suivi de 5 lettres ou chiffres) et l’adresse électronique de votre compte. Vous recevrez un lien, valable pour une durée limitée indiquée dans le courriel, pour choisir un nouveau mot de passe."
+          >
+            Saisissez le code de votre cabinet et votre adresse électronique : nous vous enverrons un lien de
+            réinitialisation.
+          </TitreAccueil>
+          <form onSubmit={request} className="space-y-4" noValidate>
+            <TextField
+              label="Code du cabinet"
+              name="workspaceCode"
+              value={workspaceCode}
+              onChange={(e) => {
+                setWorkspaceCode(e.target.value.toUpperCase());
+                setFieldErrors((f) => ({ ...f, workspaceCode: undefined }));
+              }}
+              pattern="^JUR-[A-Z0-9]{5}$"
+              maxLength={9}
+              placeholder="JUR-AB123"
+              autoComplete="organization"
+              mono
+              required
+              error={fieldErrors.workspaceCode}
+            />
+            <TextField
+              label="Adresse électronique"
+              name="email"
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setFieldErrors((f) => ({ ...f, email: undefined }));
+              }}
+              autoComplete="email"
+              required
+              error={fieldErrors.email}
+            />
+            {error && <Message ton="erreur">{error}</Message>}
+            <Button type="submit" size="lg" fullWidth loading={loading}>
+              Envoyer le lien
+            </Button>
+            <p className="text-center text-sm">
+              <Lien to="/login" variante="discret">
+                Retour à la connexion
+              </Lien>
+            </p>
+          </form>
+        </>
+      )}
+    </PageAccueil>
   );
 }

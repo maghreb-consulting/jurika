@@ -318,7 +318,9 @@ describe('Étape 7 — la charge utile est construite par le serveur (lot L3, P2
     expect(donnees.step7.complements).toMatchObject({
       tpCommune: 'Casablanca-Anfa', lieuSignature: 'Rabat', dateSignature: '2026-10-01',
     });
-  });
+    // Lot L6b (E5) : les attentes de ce test vont jusqu'a DELAI (10 s) ; la limite par
+    // defaut du test (5 s) le coupait avant elles sur une machine chargee (rouge du harnais).
+  }, 30_000);
 
   it('sans ticket, ne génère rien et le dit', async () => {
     const { generateDocument } = await import('../../../../services/workflowDocumentService');

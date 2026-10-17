@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { ZoneTexte } from '../../components/ui/TextField';
 import { WorkflowShell } from '../../components/workflow/WorkflowShell';
 import type { RoadmapStep } from '../../components/workflow/WorkflowRoadmap';
 import { ticketService } from '../../services/ticket.service';
@@ -14,6 +15,7 @@ import { TICKET_TYPE_LABELS } from '../../types/ticket';
 import { AIDE_PARCOURS_GENERIQUE } from './aidesParcours';
 import { useEtatReinitialise } from './parcoursHooks';
 import { useStepAutosave } from './useStepAutosave';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
 
 /**
  * Monte {@link AutreWorkflowPageBody} SOUS {@link WorkflowBoot} : les champs de chaque
@@ -53,9 +55,9 @@ function AutreWorkflowPageBody() {
   if (loading) return <Loader />;
   if (!ticket || !progress)
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+      <ErreurParcours>
         {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
-      </div>
+      </ErreurParcours>
     );
 
   const step = viewStep;
@@ -148,16 +150,16 @@ function AutreWorkflowPageBody() {
                 texte="Saisissez un objet entre accolades, par exemple { &quot;motif&quot;: &quot;…&quot; }. Les données déjà enregistrées pour cette étape sont reprises ; chaque contenu JSON valide est enregistré automatiquement en brouillon, sans valider l’étape."
               />
             </label>
-            <textarea
+            <ZoneTexte
               id="parcours-autre-donnees"
               rows={12}
               value={rawJson}
               onChange={(e) => setRawJson(e.target.value)}
-              className="w-full rounded-lg border border-border-hi px-3 py-2 font-mono text-xs focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              className="font-mono text-xs"
             />
           </div>
           {isTerminated && (
-            <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800">
+            <div className="rounded-lg border border-success/40 bg-success-soft p-3 text-sm text-success">
               <CheckCircle className="mr-2 inline h-4 w-4" /> Parcours terminé.
               <Button className="ml-3" onClick={() => navigate('/tickets')}>
                 Retour aux tickets
@@ -199,9 +201,5 @@ function objetJson(texte: string): Record<string, unknown> | null {
 }
 
 function Loader() {
-  return (
-    <div className="flex h-64 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-    </div>
-  );
+  return <SqueletteParcours />;
 }

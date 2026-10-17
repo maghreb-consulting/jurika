@@ -17,7 +17,7 @@ test.describe('Dashboards -- KPI par role', () => {
     await page.goto('/dashboard');
 
     // Le DashboardRouter regarde le role et monte EmployeeDashboard pour EMPLOYE.
-    // Sprint10EmployePanel affiche au moins "Mes tickets ouverts" / "Charge".
+    // L6b (E17) : la section "Mes tickets en cours" (le panneau Sprint10EmployePanel est retire).
     const empKpi = page.locator('text=/(mes.*tickets|tickets.*ouverts|charge.*semaine)/i');
     await expect(empKpi.first()).toBeVisible({ timeout: 15_000 });
   });

@@ -16,7 +16,7 @@ import { InfoBulle } from '../../components/ui/Aide';
  */
 function AFixer({ children }: { children: string }) {
   return (
-    <mark data-a-completer="" title="Mention encore à compléter" className="rounded bg-warning/15 px-0.5 text-fg">
+    <mark data-a-completer="" title="Mention encore à compléter" className="rounded bg-warning-soft px-0.5 text-fg">
       {children}
     </mark>
   );

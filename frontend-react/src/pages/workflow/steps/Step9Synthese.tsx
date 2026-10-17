@@ -8,6 +8,9 @@ import { useStepAutosave } from '../useStepAutosave';
 import type { DirtyGetter } from '../useWorkflow';
 import { DOCUMENTS_PARCOURS } from './documents-creation';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
+import { Button } from '../../../components/ui/Button';
+import { BandeauFinParcours } from '../../../components/workflow/BandeauFinParcours';
+import { TextField, ZoneTexte } from '../../../components/ui/TextField';
 
 interface Props {
   data: Record<string, Record<string, unknown>>;
@@ -220,7 +223,7 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
   if (success) {
     return (
       <div className="mx-auto max-w-[640px] space-y-6 text-center">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-success text-bg-raised animate-bounce">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-success text-success-fg animate-bounce">
           <CheckCircle className="h-12 w-12" />
         </div>
         <h2 className="text-2xl font-black text-success">
@@ -230,7 +233,7 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
           La création de <strong>{denomination}</strong> a été finalisée. Les
           documents validés sont disponibles dans la Data Room du dossier.
         </p>
-        <div className="rounded-xl border border-success/20 bg-success/10 p-5 text-left text-sm">
+        <div className="rounded-xl border border-success/20 bg-success-soft p-5 text-left text-sm">
           <p className="mb-2 font-semibold text-success">Prochaines étapes</p>
           <ul className="list-disc space-y-1 pl-5 text-fg-muted">
             <li>Dépôt des documents au greffe du tribunal de commerce</li>
@@ -244,18 +247,10 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
 
   return (
     <form noValidate onSubmit={handleSubmit} className="mx-auto max-w-[860px] space-y-6">
-      <div className="rounded-xl bg-gradient-to-r from-[#10B981] to-[#059669] p-6 text-bg-raised">
-        <div className="mb-2 flex items-center gap-3">
-          <CheckCircle className="h-8 w-8" />
-          <h2 className="text-2xl font-black">
-            {/* Fix B2 — titre aligné sur la forme réelle du dossier. */}
-            Synthèse — Création {formeLabel}
-          </h2>
-        </div>
-        <p className="text-green-100">
-          Toutes les étapes sont complétées. Voici le récapitulatif du dossier.
-        </p>
-      </div>
+      {/* Fix B2 -- titre aligne sur la forme reelle du dossier. */}
+      <BandeauFinParcours titre={<>Synthèse — Création {formeLabel}</>}>
+        Toutes les étapes sont complétées. Voici le récapitulatif du dossier.
+      </BandeauFinParcours>
       <TexteAide cle="creation-etape-9" titre="Ce qu’il faut faire">
         Relisez le récapitulatif ; une erreur se corrige à l’étape concernée (cliquez sur
         son numéro). Complétez au besoin les paramètres de l’acte, puis cliquez sur
@@ -275,15 +270,13 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
         </div>
         <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Clôture du premier exercice (facultatif)
-            </label>
-            <input aria-label="Clôture du premier exercice (facultatif)"
+            <TextField
+              label="Clôture du premier exercice (facultatif)"
+              aria-label="Clôture du premier exercice (facultatif)"
               type="text"
               value={premierExerciceCloture}
               onChange={(e) => setPremierExerciceCloture(e.target.value)}
               placeholder="Ex. : 31 décembre 2026"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
             />
           </div>
           <div className="md:col-span-2">
@@ -312,31 +305,31 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
             </p>
           </div>
           <div className="md:col-span-2">
-            <label className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
+            <label htmlFor="creation-article-designation" className="mb-1.5 flex items-center gap-1 text-sm font-medium text-fg">
               Article de désignation des statuts (facultatif)
               <InfoBulle
                 libelle="Qu’est-ce que l’article de désignation ?"
                 texte="L’article des statuts qui désigne les premiers gérants (par exemple « Article 14 ») ; il est cité dans l’acte. Laissez vide s’il n’y a pas lieu de le citer."
               />
             </label>
-            <input aria-label="Article de désignation des statuts (facultatif)"
+            <TextField
+              id="creation-article-designation"
+              aria-label="Article de désignation des statuts (facultatif)"
               type="text"
               value={articleDesignationStatuts}
               onChange={(e) => setArticleDesignationStatuts(e.target.value)}
               placeholder="Ex. : Article 14"
-              className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm focus:border-accent focus:outline-none"
             />
           </div>
           <div className="md:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-fg">
-              Engagements repris au titre du mandat (facultatif)
-            </label>
-            <textarea aria-label="Engagements repris au titre du mandat (facultatif)"
+            <ZoneTexte
+              label="Engagements repris au titre du mandat (facultatif)"
+              aria-label="Engagements repris au titre du mandat (facultatif)"
               rows={2}
               value={engagementsMandat}
               onChange={(e) => setEngagementsMandat(e.target.value)}
               placeholder="Actes accomplis pour le compte de la société en formation…"
-              className="w-full resize-none rounded-lg border-2 border-border bg-bg-overlay px-3 py-2 text-sm focus:border-accent focus:outline-none"
+              className="resize-none"
             />
           </div>
         </div>
@@ -390,26 +383,13 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
       {/* Actions finales */}
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
         <div className="mb-4">
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-border text-sm font-medium text-fg transition hover:border-accent"
-          >
-            <Printer className="h-4 w-4" /> Imprimer la synthèse (ou l’enregistrer en PDF)
-          </button>
+          <Button type="button" variant="secondary" size="lg" fullWidth icon={<Printer />} onClick={() => window.print()}>
+            Imprimer la synthèse (ou l’enregistrer en PDF)
+          </Button>
         </div>
-        <button
-          type="submit"
-          disabled={saving}
-          className={`flex h-14 w-full items-center justify-center gap-3 rounded-xl font-bold transition ${
-            !saving
-              ? 'bg-success text-bg-raised shadow-lg shadow-[#10B981]/20 hover:bg-success/85'
-              : 'cursor-not-allowed bg-border text-fg-subtle'
-          }`}
-        >
-          <CheckCircle className="h-6 w-6" />
+        <Button type="submit" size="lg" fullWidth icon={<CheckCircle />} loading={saving}>
           {saving ? 'Finalisation en cours…' : 'Finaliser le dossier'}
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -417,7 +397,7 @@ export function Step9Synthese({ data, saving, onSubmit, onSave, registerDirty }:
 
 function DocLine({ name }: { name: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-success/20 bg-success/10 p-3">
+    <div className="flex items-center gap-3 rounded-lg border border-success/20 bg-success-soft p-3">
       <FileText className="h-5 w-5 text-danger" />
       <span className="flex-1 text-sm font-medium text-fg">{name}</span>
       <CheckCircle className="h-4 w-4 text-success" />

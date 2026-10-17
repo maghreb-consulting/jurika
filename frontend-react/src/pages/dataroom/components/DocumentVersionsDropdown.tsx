@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react';
-import { AlertCircle, ChevronDown, ChevronRight, Download, Eye, History, Loader2, RotateCcw } from 'lucide-react';
+import { AlertCircle, ChevronDown, ChevronRight, Download, Eye, History, RotateCcw } from 'lucide-react';
+import { Button } from '../../../components/ui/Button';
+import { Skeleton } from '../../../components/ui/LoadingSkeleton';
 import { dataroomService } from '../../../services/dataroom.service';
 import { PdfPreviewModal } from '../../../components/ui/PdfPreviewModal';
 import { PromptDialog } from '../../../components/ui/PromptDialog';
@@ -110,31 +112,32 @@ export function DocumentVersionsDropdown({
         onClick={toggle}
         aria-expanded={open}
         data-testid="versions-toggle"
-        className="flex items-center gap-1 rounded px-2 py-1 text-xs text-fg-subtle hover:bg-bg-overlay"
+        className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-fg-muted transition-colors duration-150 hover:bg-bg-overlay hover:text-fg"
       >
         {open ? (
-          <ChevronDown className="h-3.5 w-3.5" />
+          <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />
         ) : (
-          <ChevronRight className="h-3.5 w-3.5" />
+          <ChevronRight aria-hidden="true" className="h-3.5 w-3.5" />
         )}
-        <History className="h-3.5 w-3.5" />
+        <History aria-hidden="true" className="h-3.5 w-3.5" />
         Anciennes versions
       </button>
 
       {open && (
         <div className="ml-5 mt-1 rounded-lg border border-border bg-bg-overlay p-2">
           {loading && (
-            <p className="flex items-center gap-2 text-xs text-fg-subtle">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Chargement…
-            </p>
+            <div className="space-y-1.5" aria-busy="true" aria-label="Chargement des versions">
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-6 w-2/3" />
+            </div>
           )}
           {error && (
             <p role="alert" className="flex items-start gap-1 text-xs text-danger">
-              <AlertCircle className="mt-0.5 h-3 w-3 flex-shrink-0" /> {error}
+              <AlertCircle aria-hidden="true" className="mt-0.5 h-3 w-3 flex-shrink-0" /> {error}
             </p>
           )}
           {!loading && !error && history.length === 0 && (
-            <p className="text-xs text-fg-subtle" data-testid="versions-empty">
+            <p className="text-xs text-fg-muted" data-testid="versions-empty">
               Aucune ancienne version pour ce document.
             </p>
           )}
@@ -144,65 +147,63 @@ export function DocumentVersionsDropdown({
                 <li
                   key={v.id}
                   data-testid={`version-row-${v.id}`}
-                  className="flex items-center justify-between gap-2 py-2"
+                  className="flex items-center justify-between gap-2 py-1.5"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-2 text-xs font-medium text-fg">
-                      v{v.version}
-                      <span className="text-[10px] font-normal text-fg-subtle">
+                    <p className="flex flex-wrap items-center gap-2 text-xs font-medium text-fg">
+                      Version {v.version}
+                      <span className="font-normal text-fg-muted">
                         {v.replacedAt
                           ? new Date(v.replacedAt).toLocaleString('fr-FR')
                           : new Date(v.createdAt).toLocaleString('fr-FR')}
                       </span>
                     </p>
                     {v.motif && (
-                      <p className="mt-0.5 truncate text-[11px] text-fg-muted" title={v.motif}>
+                      <p className="mt-0.5 truncate text-xs text-fg-muted" title={v.motif}>
                         {v.motif}
                       </p>
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
+                      iconOnly
+                      icon={<Eye />}
                       onClick={() => setPreviewTarget(v)}
                       data-testid={`preview-version-${v.id}`}
                       title="Aperçu de cette version"
-                      className="rounded p-1 text-fg-subtle hover:bg-bg-raised hover:text-fg"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                    </button>
+                      aria-label={`Aperçu de la version ${v.version}`}
+                    />
                     {enEssai !== false ? (
                       <InfoBulle libelle="Téléchargement indisponible" texte="Téléchargement indisponible pendant l’essai gratuit : le document se consulte en aperçu, avec la mention d’évaluation. Il sera téléchargeable après la souscription d’un forfait." />
                     ) : (
-                    <button
-                      type="button"
-                      onClick={() => download(v)}
-                      data-testid={`download-version-${v.id}`}
-                      title="Télécharger cette version"
-                      className="rounded p-1 text-fg-subtle hover:bg-bg-raised hover:text-fg"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                    </button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        icon={<Download />}
+                        onClick={() => download(v)}
+                        data-testid={`download-version-${v.id}`}
+                        title="Télécharger cette version"
+                        aria-label={`Télécharger la version ${v.version}`}
+                      />
                     )}
                     {canRestore && (
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        icon={<RotateCcw />}
+                        loading={restoringId === v.id}
                         onClick={() => restore(v)}
-                        disabled={restoringId === v.id}
                         data-testid={`restore-version-${v.id}`}
                         title="Restaurer comme version active"
-                        className={`rounded p-1 ${
-                          restoringId === v.id
-                            ? 'cursor-wait text-fg-subtle'
-                            : 'text-accent hover:bg-bg-raised'
-                        }`}
-                      >
-                        {restoringId === v.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <RotateCcw className="h-3.5 w-3.5" />
-                        )}
-                      </button>
+                        aria-label={`Restaurer la version ${v.version}`}
+                      />
                     )}
                   </div>
                 </li>
@@ -232,7 +233,7 @@ export function DocumentVersionsDropdown({
           onOpenChange={(o) => {
             if (!o) setRestoreTarget(null);
           }}
-          title={`Restaurer la version v${restoreTarget.version} ?`}
+          title={`Restaurer la version ${restoreTarget.version} ?`}
           label="Motif (facultatif) :"
           defaultValue={`Restauration de la version ${restoreTarget.version}`}
           multiline

@@ -34,9 +34,11 @@ describe('ChatbotSourcesPage', () => {
 
   function afficher() {
     render(
-      <ToastProvider>
-        <ChatbotSourcesPage />
-      </ToastProvider>,
+      <MemoryRouter>
+        <ToastProvider>
+          <ChatbotSourcesPage />
+        </ToastProvider>
+      </MemoryRouter>,
     );
   }
 

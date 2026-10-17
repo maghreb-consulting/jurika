@@ -124,6 +124,9 @@ export function LiquidateurPicker({
       cin: opt.cin,
       // L'adresse connue est pré-remplie ; sinon l'employé la saisit (publiée au JAL).
       adresse: opt.adresse || value.adresse,
+      // L6b (E15) : nationalite et date de naissance connues du dossier, sans re-saisie.
+      nationalite: opt.nationalite ?? value.nationalite,
+      dateNaissance: opt.dateNaissance ?? value.dateNaissance,
     });
   };
 
@@ -136,7 +139,7 @@ export function LiquidateurPicker({
   return (
     <section className="space-y-4 rounded-xl border border-border bg-bg-raised p-4" data-testid="liquidateur-picker">
       <div className="flex items-center gap-2">
-        <UserCheck className="h-4 w-4 text-accent" />
+        <UserCheck className="h-4 w-4 text-fg-muted" />
         <h4 className="text-sm font-semibold text-fg">Liquidateur *</h4>
       </div>
       <p className="text-xs text-fg-subtle">

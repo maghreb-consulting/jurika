@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom';
 import { Lock } from 'lucide-react';
+import { useCurrentUser } from '../../store/authStore';
+import { Lien } from '../ui/Lien';
 
 /**
  * Lot L7 (E5), CDC 4.5 : explication affichee a la place d'une fonction que le forfait du cabinet
@@ -10,19 +11,28 @@ export function FonctionHorsForfait({ fonction, disponibleDes, compact = false }
   disponibleDes: string | null;
   compact?: boolean;
 }) {
+  // L6b (E8) : seul le superviseur change de forfait (le serveur le refuse aux autres) ;
+  // le lien vers le changement ne s'affiche qu'a lui.
+  const superviseur = useCurrentUser()?.role === 'SUPERVISEUR';
   return (
     <div role="note" data-testid="fonction-hors-forfait"
-      className={['rounded-lg border border-border bg-bg-overlay text-sm text-fg-muted', compact ? 'p-3' : 'p-6'].join(' ')}>
+      className={['rounded-xl border border-border bg-bg-raised text-sm text-fg-muted', compact ? 'p-3' : 'p-6'].join(' ')}>
       <p className="flex items-start gap-2 font-medium text-fg">
-        <Lock className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" aria-hidden="true" />
+        <Lock className="mt-0.5 h-4 w-4 flex-shrink-0 text-fg-subtle" aria-hidden="true" />
         {fonction} : fonction non comprise dans votre forfait.
       </p>
       <p className="mt-1">
         {disponibleDes
           ? `Elle est incluse dès le forfait ${disponibleDes}.`
           : 'Elle est incluse dans un forfait supérieur.'}{' '}
-        Le superviseur du cabinet peut changer de forfait depuis{' '}
-        <Link to="/app/billing/change-plan" className="text-accent underline">Facturation, Changer de forfait</Link>.
+        {superviseur ? (
+          <>
+            Vous pouvez changer de forfait depuis{' '}
+            <Lien to="/app/billing/change-plan">Facturation, Changer de forfait</Lien>.
+          </>
+        ) : (
+          'Le superviseur du cabinet peut changer de forfait depuis Facturation, Changer de forfait.'
+        )}
       </p>
     </div>
   );

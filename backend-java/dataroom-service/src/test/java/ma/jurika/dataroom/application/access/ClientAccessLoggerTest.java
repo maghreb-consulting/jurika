@@ -35,6 +35,8 @@ class ClientAccessLoggerTest {
 
     @Mock private ClientAccessLogDispatcher dispatcher;
     @Mock private ClientAccessLogWriter writer;
+    private final io.micrometer.core.instrument.simple.SimpleMeterRegistry metriques =
+            new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
 
     @AfterEach
     void clearTenant() {
@@ -108,7 +110,7 @@ class ClientAccessLoggerTest {
             return null;
         }).when(writer).persist(any());
 
-        ClientAccessLogDispatcher d = new ClientAccessLogDispatcher(writer);
+        ClientAccessLogDispatcher d = new ClientAccessLogDispatcher(writer, metriques);
         d.persistAsync(e);
 
         verify(writer, times(1)).persist(e);
@@ -125,10 +127,59 @@ class ClientAccessLoggerTest {
         doAnswer(inv -> { throw new RuntimeException("boom RLS"); })
                 .when(writer).persist(any());
 
-        ClientAccessLogDispatcher d = new ClientAccessLogDispatcher(writer);
+        ClientAccessLogDispatcher d = new ClientAccessLogDispatcher(writer, metriques);
         // Best-effort : ne propage jamais.
         d.persistAsync(e);
 
         verify(writer, times(1)).persist(e);
+    }
+
+    /**
+     * Lot L6b (E13) : une trace perdue n'est plus silencieuse. ERROR avec la cause
+     * (pile complete) et compteur expose (jurika.dataroom.journal_acces.echecs).
+     */
+    @Test
+    void dispatcher_echec_journalise_en_error_avec_la_cause_et_compte() {
+        ClientAccessLogEntity e = new ClientAccessLogEntity();
+        e.setWorkspaceId(UUID.randomUUID());
+        e.setDossierId(UUID.randomUUID());
+        e.setAction("VIEW_DOSSIER");
+        RuntimeException cause = new RuntimeException("column ip_address is of type inet");
+        doAnswer(inv -> { throw cause; }).when(writer).persist(any());
+
+        ch.qos.logback.classic.Logger journal = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(ClientAccessLogDispatcher.class);
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> capture =
+                new ch.qos.logback.core.read.ListAppender<>();
+        capture.start();
+        journal.addAppender(capture);
+        try {
+            new ClientAccessLogDispatcher(writer, metriques).persistAsync(e);
+        } finally {
+            journal.detachAppender(capture);
+        }
+
+        assertThat(capture.list).hasSize(1);
+        ch.qos.logback.classic.spi.ILoggingEvent ev = capture.list.get(0);
+        assertThat(ev.getLevel()).isEqualTo(ch.qos.logback.classic.Level.ERROR);
+        assertThat(ev.getThrowableProxy()).isNotNull();
+        assertThat(ev.getThrowableProxy().getMessage()).contains("inet");
+        assertThat(metriques.counter(ClientAccessLogDispatcher.METRIQUE_ECHECS, "action", "VIEW_DOSSIER").count())
+                .isEqualTo(1.0);
+    }
+
+    /** Lot L6b (E13) : adresse valide normalisee, adresse absente ou illisible -> NULL. */
+    @Test
+    void adresse_ip_valide_conservee_illisible_ecartee() {
+        assertThat(ClientAccessLogger.adresseIp("203.0.113.7")).isEqualTo("203.0.113.7");
+        assertThat(ClientAccessLogger.adresseIp(" 203.0.113.7 ")).isEqualTo("203.0.113.7");
+        assertThat(ClientAccessLogger.adresseIp("2001:db8::1")).isNotNull();
+        assertThat(ClientAccessLogger.adresseIp(null)).isNull();
+        assertThat(ClientAccessLogger.adresseIp("")).isNull();
+        assertThat(ClientAccessLogger.adresseIp("unknown")).isNull();
+        assertThat(ClientAccessLogger.adresseIp("300.1.1.1")).isNull();
+        assertThat(ClientAccessLogger.adresseIp("1.2.3")).isNull();
+        assertThat(ClientAccessLogger.adresseIp("exemple.ma")).as("jamais de resolution DNS").isNull();
+        assertThat(ClientAccessLogger.adresseIp("2001:db8::zz")).isNull();
     }
 }

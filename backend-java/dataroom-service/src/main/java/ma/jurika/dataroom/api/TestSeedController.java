@@ -56,6 +56,9 @@ public class TestSeedController {
 
     private static final Logger log = LoggerFactory.getLogger(TestSeedController.class);
     private static final String DEFAULT_PASSWORD = "DemoPwd2026!";
+    /** Tables de traces a cles etrangeres RESTRICT, videes par le nettoyage (noms fixes). */
+    private static final java.util.List<String> TRACES_RESTRICT = java.util.List.of(
+            "dataroom_acces_client_historique", "dossier_reaffectations", "ticket_notes", "dossier_tp_versions");
 
     private final JdbcTemplate jdbc;
     private final BCryptPasswordEncoder bcrypt = new BCryptPasswordEncoder();
@@ -76,7 +79,17 @@ public class TestSeedController {
             // creer un SUPERVISEUR (admin cabinet : acces dashboard + billing) au lieu
             // du EMPLOYE par defaut conserve pour la compat tests Playwright.
             // Valeurs : EMPLOYE | SUPERVISEUR | SUPER_ADMIN | CLIENT.
-            @org.springframework.web.bind.annotation.RequestParam(required = false) String role) {
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String role,
+            // Lot L6b (E16) : employes de plus (0 a 3), actifs, mot de passe du seed, pour les
+            // parcours a plusieurs (transfert, messagerie) ; l'invitation reelle remet le mot de
+            // passe temporaire par courriel, illisible par un test sans boite de capture.
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer employes) {
+        int nbEmployes = employes == null ? 0 : employes;
+        if (nbEmployes < 0 || nbEmployes > 3) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "code", "BAD_REQUEST",
+                    "message", "employes invalide : " + employes + " (attendu 0 a 3)"));
+        }
         String adminRole = (role == null || role.isBlank()) ? "EMPLOYE" : role.trim().toUpperCase();
         if (!java.util.Set.of("EMPLOYE", "SUPERVISEUR", "SUPER_ADMIN", "CLIENT").contains(adminRole)) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -141,6 +154,23 @@ public class TestSeedController {
                 """,
                 clientId, workspaceId, clientEmail, clientEmail, clientEmail,
                 passwordHash, "Demo", "Client");
+
+        // 3 bis. Employes de plus (lot L6b, E16).
+        java.util.List<Map<String, Object>> autres = new java.util.ArrayList<>();
+        String[][] noms = {{"Salma", "Benali"}, {"Karim", "Tazi"}, {"Nadia", "Idrissi"}};
+        for (int i = 0; i < nbEmployes; i++) {
+            UUID id = UUID.randomUUID();
+            String mail = "demo-emp" + (i + 1) + "-" + code.toLowerCase().replace("-", "") + "@jurika.test";
+            jdbc.update("""
+                    INSERT INTO users(id, workspace_id, email, login_email, contact_email,
+                                       password_hash, first_name, last_name,
+                                       role, totp_enabled, twofa_method, email_verified_at,
+                                       must_change_password, is_active, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'EMPLOYE', FALSE, 'TOTP', NOW(), FALSE, TRUE, NOW(), NOW())
+                    """,
+                    id, workspaceId, mail, mail, mail, passwordHash, noms[i][0], noms[i][1]);
+            autres.add(Map.of("userId", id, "email", mail, "prenom", noms[i][0], "nom", noms[i][1]));
+        }
 
         // 4. Dossier entreprise.
         // Lot Q (scoping EMPLOYE) : on renseigne responsable_id = employeId (le
@@ -227,6 +257,7 @@ public class TestSeedController {
         out.put("clientEmail", clientEmail);
         out.put("password", DEFAULT_PASSWORD);
         out.put("dossierId", dossierId);
+        out.put("employes", autres);
         return ResponseEntity.ok(out);
     }
 
@@ -240,6 +271,15 @@ public class TestSeedController {
         // Lot L0 (E15, W5) : comme seedWorkspace, sans JWT ; sans ce reglage la
         // RLS ne laisserait voir aucune ligne a supprimer.
         poserWorkspace(workspaceId);
+        // Lot L6b (E16) : traces dont les cles etrangeres sont ON DELETE RESTRICT (voulu : une
+        // trace ne disparait pas avec son auteur). Route de test seulement : le cabinet de test
+        // les emporte, sinon la suppression du workspace echoue (500) et le cabinet reste.
+        for (String table : TRACES_RESTRICT) {
+            Boolean existe = jdbc.queryForObject("SELECT to_regclass(?) IS NOT NULL", Boolean.class, table);
+            if (Boolean.TRUE.equals(existe)) {
+                jdbc.update("DELETE FROM " + table + " WHERE workspace_id = ?", workspaceId);
+            }
+        }
         int ws = jdbc.update("DELETE FROM workspaces WHERE id = ?", workspaceId);
         log.info("TestSeed cleanup workspace={} workspaces={}", workspaceId, ws);
         return ResponseEntity.ok(Map.of(

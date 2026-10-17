@@ -16,6 +16,9 @@ import {
   X,
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
+import { Message } from '../../components/ui/Message';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Skeleton } from '../../components/ui/LoadingSkeleton';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -256,19 +259,42 @@ export function DossierJuridiqueTab({
   // les documents se consultent en apercu (pages filigranees).
   const enEssai = useEnEssai();
 
+  // Archive ZIP : POST .../export-zip, refuse au super-administrateur par le serveur ; jamais
+  // pendant l'essai (RG-ESS-05). La selection n'apparait que si une action groupee existe.
+  const peutZip = enEssai === false && role !== 'SUPER_ADMIN' && role !== null;
+  const selectionPossible = peutZip || canRemove;
+
   if (loading && !view) {
     return (
-      <Card className="flex h-48 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-      </Card>
+      <div className="space-y-4" aria-busy="true" aria-label="Chargement du dossier juridique">
+        <Card className="p-4">
+          <Skeleton className="h-9 w-full" />
+        </Card>
+        <Card className="p-5">
+          <div className="space-y-3">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        </Card>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Card className="p-4">
-        <p className="text-sm text-danger">{error}</p>
-      </Card>
+      <Message
+        ton="erreur"
+        titre="Le dossier juridique n’a pas pu être chargé."
+        action={
+          <Button type="button" size="sm" variant="secondary" onClick={() => void load()}>
+            Réessayer
+          </Button>
+        }
+      >
+        {error}
+      </Message>
     );
   }
 
@@ -278,52 +304,50 @@ export function DossierJuridiqueTab({
     <SocieteDuDossier.Provider value={view.raisonSociale ?? ''}>
     <div className="space-y-4">
       {enEssai && <AideApercuEssai />}
-      <Card className="space-y-3 p-4">
-        <JuridiqueSearchBar
-          filters={filters}
-          onChange={setFilters}
-          totalResults={searchTotal}
-          loading={searching}
-        />
+      <Card className="p-4">
+        <div className="space-y-2">
+          <JuridiqueSearchBar
+            filters={filters}
+            onChange={setFilters}
+            totalResults={searchTotal}
+            loading={searching}
+          />
+        </div>
       </Card>
 
-      {/* Sprint 7 / TASK 4 -- toolbar contextuelle bulk actions */}
-      {selectedIds.size > 0 && (
-        <div className="sticky top-0 z-10 flex items-center justify-between rounded-xl border-2 border-accent/40 bg-accent/10 px-4 py-2.5 shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-full bg-accent px-1.5 text-xs font-bold text-bg-raised">
-              {selectedIds.size}
-            </span>
-            <span className="text-sm font-medium text-accent">
-              document{selectedIds.size > 1 ? 's' : ''} sélectionné{selectedIds.size > 1 ? 's' : ''}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {enEssai === false && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={bulkExportZip}
-              loading={bulkBusy}
-            >
-              <Download className="mr-1 h-4 w-4" />
-              Télécharger (ZIP)
-            </Button>
+      {/* Sprint 7 / TASK 4 -- barre contextuelle des actions groupees */}
+      {selectionPossible && selectedIds.size > 0 && (
+        <div className="sticky top-[calc(var(--hauteur-entete)+0.5rem)] z-30 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-bg-raised px-4 py-2.5 shadow-card-lifted">
+          <p className="flex items-center gap-2 text-sm font-medium text-fg">
+            <Badge variant="default">{selectedIds.size}</Badge>
+            document{selectedIds.size > 1 ? 's' : ''} sélectionné{selectedIds.size > 1 ? 's' : ''}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {peutZip && (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                icon={<Download />}
+                onClick={bulkExportZip}
+                loading={bulkBusy}
+              >
+                Télécharger (ZIP)
+              </Button>
             )}
             {canRemove && (
               <Button
+                type="button"
                 size="sm"
-                variant="secondary"
+                variant="danger"
+                icon={<Trash2 />}
                 onClick={() => setBulkDeleteOpen(true)}
                 loading={bulkBusy}
-                className="border-danger/40 text-danger hover:bg-danger/10"
               >
-                <Trash2 className="mr-1 h-4 w-4" />
                 Supprimer
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={clearSelection}>
-              <X className="mr-1 h-4 w-4" />
+            <Button type="button" size="sm" variant="ghost" icon={<X />} onClick={clearSelection}>
               Tout désélectionner
             </Button>
           </div>
@@ -331,29 +355,32 @@ export function DossierJuridiqueTab({
       )}
 
       {isSearchActive && (
-        <Card>
-          <header className="flex items-center justify-between border-b border-border px-5 py-3">
-            <div className="flex items-center gap-2">
-              <Search className="h-4 w-4 text-accent" />
-              <h3 className="text-sm font-semibold text-fg">
-                Résultats de la recherche
-              </h3>
+        <Card
+          padding={false}
+          titleAs="h3"
+          title={
+            <span className="flex items-center gap-2">
+              <Search aria-hidden="true" className="h-4 w-4 text-fg-muted" />
+              Résultats de la recherche
               <Badge variant="neutral">{searchTotal}</Badge>
+            </span>
+          }
+        >
+          {searching ? (
+            <div className="space-y-3 px-5 py-4" aria-busy="true" aria-label="Recherche en cours">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
             </div>
-          </header>
-          <ul className="divide-y divide-border">
-            {searching && (
-              <li className="px-5 py-8 text-center text-sm text-fg-subtle">
-                Recherche en cours…
-              </li>
-            )}
-            {!searching && (searchResults?.length ?? 0) === 0 && (
-              <li className="px-5 py-8 text-center text-sm text-fg-subtle">
-                Aucun document ne correspond à la recherche. Essayez un autre mot, ou retirez des filtres.
-              </li>
-            )}
-            {!searching &&
-              searchResults?.map((doc) => (
+          ) : (searchResults?.length ?? 0) === 0 ? (
+            <EmptyState
+              compact
+              icon={<Search />}
+              title="Aucun document ne correspond à la recherche"
+              description="Essayez un autre mot, ou retirez des filtres."
+            />
+          ) : (
+            <ul className="divide-y divide-border">
+              {searchResults?.map((doc) => (
                 <DocumentRow
                   key={doc.id}
                   doc={doc}
@@ -361,31 +388,32 @@ export function DossierJuridiqueTab({
                   canRemove={canRemove}
                   onDeleted={load}
                   highlightQuery={filters.q}
-                  selectable
+                  selectable={selectionPossible}
                   selected={selectedIds.has(doc.id)}
                   onToggleSelect={() => toggleSelect(doc.id)}
                 />
               ))}
-          </ul>
+            </ul>
+          )}
         </Card>
       )}
 
       {/* Lot L1 (RG-DR-06) : sans le droit, le bouton est masque et l'ecran dit pourquoi. */}
       {canUpload && droits && !droits.peutSupprimerDocuments && (
-        <p role="status" className="rounded-lg border border-border bg-bg-overlay px-3 py-2 text-sm text-fg-muted">
+        <p role="status" className="rounded-lg border border-border bg-bg-overlay px-4 py-2.5 text-sm text-fg-muted">
           Vous pouvez ajouter des documents à ce dossier, mais pas en supprimer.{' '}
           {droits.motif ?? 'Demandez le droit de suppression à votre superviseur.'}
         </p>
       )}
 
       {!isSearchActive && (
-        <Card>
-          <header className="flex items-center justify-between border-b border-border px-5 py-3">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-accent" />
-              <h3 className="text-sm font-semibold text-fg">
-                Documents en vigueur
-              </h3>
+        <Card
+          padding={false}
+          titleAs="h3"
+          title={
+            <span className="flex items-center gap-2">
+              <FileText aria-hidden="true" className="h-4 w-4 text-fg-muted" />
+              Documents en vigueur
               <Badge variant="neutral">{view.documentsEnVigueur.length}</Badge>
               {canUpload && droits && (
                 <InfoBulle
@@ -393,56 +421,56 @@ export function DossierJuridiqueTab({
                   texte="L’employé responsable du dossier, si le superviseur lui en a accordé le droit. Un document supprimé reste en archive et la suppression est tracée."
                 />
               )}
-            </div>
-            <div className="flex items-center gap-2">
+            </span>
+          }
+          actions={
+            <div className="flex flex-wrap items-center justify-end gap-2">
               {/*
                 Identifiants post-immatriculation (RC, IF, patente, CNSS…) : ils sont
                 obtenus APRES la creation de la societe, donc jamais saisissables dans le
-                workflow de Creation. Le formulaire existait deja mais n'etait atteignable
-                que via le pre-vol de la Fiche client : en pratique introuvable. Ce bouton
-                lui donne un acces direct. Lecture seule hors EMPLOYE responsable (le
+                workflow de Creation. Lecture seule hors EMPLOYE responsable (le
                 backend re-verrouille — RG-U02-04).
               */}
               {canFiche && (
                 <Button
+                  type="button"
                   size="sm"
                   variant="secondary"
+                  icon={<IdCard />}
                   onClick={() => setIdentifiantsOpen(true)}
                   data-testid="open-identifiants"
                   title="Saisir les identifiants obtenus après l’immatriculation (RC, IF, taxe professionnelle, CNSS)"
                 >
-                  <IdCard className="mr-1 h-4 w-4" />
                   Identifiants
                   {missingIdentity.length > 0 && role === 'EMPLOYE' && (
-                    <span
-                      className="ml-1.5 rounded-full bg-warning/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700"
-                      title={`${missingIdentity.length} identifiant(s) à compléter`}
-                    >
+                    <Badge variant="warning" title={`${missingIdentity.length} identifiant(s) à compléter`}>
                       {missingIdentity.length}
-                    </span>
+                    </Badge>
                   )}
                 </Button>
               )}
               {canFiche && (
                 <>
                   <Button
+                    type="button"
                     size="sm"
                     variant="secondary"
+                    icon={<FileDown />}
                     onClick={() => setFicheOuverte('client')}
                     data-testid="open-fiche-client"
                     title="Fiche client : identifiants de la société, à consulter, corriger et télécharger en PDF"
                   >
-                    <FileDown className="mr-1 h-4 w-4" />
                     Fiche client
                   </Button>
                   <Button
+                    type="button"
                     size="sm"
                     variant="secondary"
+                    icon={<FileDown />}
                     onClick={() => setFicheOuverte('dossier')}
                     data-testid="open-fiche-dossier"
                     title="Fiche dossier : identifiants et opérations juridiques du dossier, à télécharger en PDF"
                   >
-                    <FileDown className="mr-1 h-4 w-4" />
                     Fiche dossier
                   </Button>
                   <InfoBulle
@@ -453,17 +481,17 @@ export function DossierJuridiqueTab({
               )}
               {canUpload && (
                 <>
+                  <Button type="button" size="sm" variant="secondary" icon={<Upload />} onClick={() => setUploadOpen(true)}>
+                    Ajouter plusieurs documents
+                  </Button>
                   <Button
+                    type="button"
                     size="sm"
+                    icon={<Upload />}
                     onClick={() => setVersionedDialogOpen(true)}
                     data-testid="open-versioned-upload"
                   >
-                    <Upload className="mr-1 h-4 w-4" />
                     Ajouter un document
-                  </Button>
-                  <Button size="sm" variant="secondary" onClick={() => setUploadOpen(true)}>
-                    <Upload className="mr-1 h-4 w-4" />
-                    Ajouter plusieurs documents
                   </Button>
                 </>
               )}
@@ -471,16 +499,17 @@ export function DossierJuridiqueTab({
                   cherche l'action manquante. */}
               {readOnly && role === 'EMPLOYE' && (
                 <span
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-warning/40 bg-warning/10 px-2.5 py-1.5 text-xs text-fg-subtle"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-warning/40 bg-warning-soft px-2.5 py-1.5 text-xs text-fg"
                   title={dataroomReadOnlyReason(readOnlyStatut)}
                   data-testid="juridique-readonly-hint"
                 >
-                  <Lock className="h-3.5 w-3.5 text-warning" />
+                  <Lock aria-hidden="true" className="h-3.5 w-3.5 text-warning" />
                   {archivedStatutLabel(readOnlyStatut)} — lecture seule
                 </span>
               )}
             </div>
-          </header>
+          }
+        >
           {/*
             Lot 1 (2026-09-04) — LE DOSSIER JURIDIQUE S'ORGANISE PAR TICKET.
 
@@ -499,11 +528,16 @@ export function DossierJuridiqueTab({
             question ponctuelle, pas à un besoin de classement.
           */}
           {view.dossiersParTicket.length === 0 ? (
-            <ul className="divide-y divide-border">
-              <li className="px-5 py-8 text-center text-sm text-fg-subtle">
-                Aucun document dans le dossier juridique.
-              </li>
-            </ul>
+            <EmptyState
+              compact
+              icon={<FileText />}
+              title="Aucun document dans le dossier juridique"
+              description={
+                canUpload
+                  ? 'Les actes produits par les parcours s’y rangent seuls. Pour verser une pièce reçue, cliquez sur « Ajouter un document ».'
+                  : 'Les actes produits par les parcours du dossier s’y rangeront, opération par opération.'
+              }
+            />
           ) : (
             view.dossiersParTicket.map((dossier) => (
               <DossierDeTicket
@@ -512,6 +546,7 @@ export function DossierJuridiqueTab({
                 canDelete={canUpload}
                 canRemove={canRemove}
                 onDeleted={load}
+                selectable={selectionPossible}
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelect}
               />
@@ -520,42 +555,43 @@ export function DossierJuridiqueTab({
         </Card>
       )}
 
-      <Card>
-        <header className="flex items-center justify-between border-b border-border px-5 py-3">
-          <div className="flex items-center gap-2">
-            <History className="h-4 w-4 text-accent" />
-            <h3 className="text-sm font-semibold text-fg">
-              Historique des opérations
-            </h3>
+      <Card
+        padding={false}
+        titleAs="h3"
+        title={
+          <span className="flex items-center gap-2">
+            <History aria-hidden="true" className="h-4 w-4 text-fg-muted" />
+            Historique des opérations
             <Badge variant="neutral">{view.historiqueOperations.length}</Badge>
-          </div>
+          </span>
+        }
+        actions={
           <div className="flex items-center gap-2">
             <Button
+              type="button"
               variant="secondary"
               size="sm"
+              icon={<Filter />}
               onClick={() => setTimelineFiltersOpen(true)}
-              className="relative"
             >
-              <Filter className="mr-1 h-4 w-4" />
               Filtres
-              {timelineFiltersCount > 0 && (
-                <span className="ml-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-bold text-bg-raised">
-                  {timelineFiltersCount}
-                </span>
-              )}
+              {timelineFiltersCount > 0 && <Badge variant="default">{timelineFiltersCount}</Badge>}
             </Button>
             {timelineFiltersCount > 0 && (
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
+                iconOnly
+                icon={<X />}
                 onClick={() => setTimelineFilters(DEFAULT_TIMELINE_FILTERS)}
-                title="Réinitialiser les filtres" aria-label="Réinitialiser les filtres"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+                title="Réinitialiser les filtres"
+                aria-label="Réinitialiser les filtres"
+              />
             )}
           </div>
-        </header>
+        }
+      >
         <OperationsTimeline
           entries={view.historiqueOperations}
           renderDocumentRow={(doc) => <DocumentRow key={doc.id} doc={doc} />}
@@ -650,6 +686,7 @@ function DossierDeTicket({
   canDelete,
   canRemove,
   onDeleted,
+  selectable,
   selectedIds,
   onToggleSelect,
 }: {
@@ -658,6 +695,8 @@ function DossierDeTicket({
   /** Lot L1 : bouton de suppression (droit accorde par le superviseur). */
   canRemove: boolean;
   onDeleted: () => void;
+  /** Lot L6b : cases de selection seulement si une action groupee existe. */
+  selectable: boolean;
   selectedIds: Set<string>;
   onToggleSelect: (id: string) => void;
 }) {
@@ -665,19 +704,19 @@ function DossierDeTicket({
   const horsTicket = dossier.ticketId === null;
 
   return (
-    <section data-testid={`dossier-ticket-${dossier.ticketId ?? 'hors-ticket'}`}>
+    <section data-testid={`dossier-ticket-${dossier.ticketId ?? 'hors-ticket'}`} className="border-b border-border last:border-b-0">
       <button
         type="button"
         onClick={() => setOuvert((v) => !v)}
         aria-expanded={ouvert}
-        className="flex w-full items-center gap-2 border-b border-border bg-bg-overlay/60 px-5 py-2 text-left transition hover:bg-bg-overlay"
+        className="flex w-full items-center gap-2 bg-bg-overlay px-5 py-2.5 text-left transition-colors duration-150 hover:bg-border/40"
       >
         {ouvert ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-fg-subtle" />
+          <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-fg-subtle" />
         ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-fg-subtle" />
+          <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-fg-subtle" />
         )}
-        <span className={`text-sm font-semibold ${horsTicket ? 'text-fg-subtle' : 'text-fg'}`}>
+        <span className={`min-w-0 truncate text-sm font-semibold ${horsTicket ? 'text-fg-muted' : 'text-fg'}`}>
           {dossier.libelle}
         </span>
         {dossier.statut && (
@@ -685,13 +724,13 @@ function DossierDeTicket({
             {STATUT_LABELS_COURTS[dossier.statut as TicketStatut] ?? dossier.statut}
           </Badge>
         )}
-        <span className="ml-auto rounded-full bg-bg-raised px-2 py-0.5 text-[11px] font-bold text-fg-subtle">
+        <Badge variant="neutral" className="ml-auto" title="Nombre de documents">
           {dossier.totalDocuments}
-        </span>
+        </Badge>
       </button>
 
       {ouvert && horsTicket && (
-        <p className="border-b border-border bg-bg-overlay/30 px-5 py-2 text-xs text-fg-subtle">
+        <p className="border-t border-border px-5 py-2 text-xs text-fg-muted">
           Documents antérieurs au classement par ticket, ou déposés en dehors d’un parcours.
           Ils restent consultables et téléchargeables.
         </p>
@@ -699,12 +738,10 @@ function DossierDeTicket({
 
       {ouvert &&
         dossier.groupes.map((groupe: GroupeDocuments) => (
-          <div key={groupe.code} data-testid={`groupe-${groupe.code}`}>
-            <h4 className="flex items-center gap-2 border-b border-border px-8 py-1.5 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
+          <div key={groupe.code} data-testid={`groupe-${groupe.code}`} className="border-t border-border">
+            <h4 className="flex items-center gap-2 px-5 pb-1 pt-3 text-xs font-semibold text-fg-muted">
               {groupe.libelle}
-              <span className="rounded-full bg-bg-raised px-1.5 text-[10px] font-bold text-fg-subtle">
-                {groupe.documents.length}
-              </span>
+              <span className="tabular-nums text-fg-subtle">({groupe.documents.length})</span>
             </h4>
             <ul className="divide-y divide-border">
               {groupe.documents.map((doc: DocumentSummary) => (
@@ -714,7 +751,7 @@ function DossierDeTicket({
                   canDelete={canDelete}
                   canRemove={canRemove}
                   onDeleted={onDeleted}
-                  selectable
+                  selectable={selectable}
                   selected={selectedIds.has(doc.id)}
                   onToggleSelect={() => onToggleSelect(doc.id)}
                 />
@@ -813,76 +850,61 @@ function DocumentRow({
     );
 
   return (
-    <li
-      className={`flex flex-col gap-1 px-5 py-3 ${
-        selected ? 'bg-accent/10/40' : ''
-      }`}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+    <li className={`flex flex-col gap-1 px-5 py-3 transition-colors duration-150 ${selected ? 'bg-accent-soft' : ''}`}>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <div className="flex min-w-0 items-center gap-3">
           {selectable && (
             <input
               type="checkbox"
               checked={selected}
               onChange={onToggleSelect}
               onClick={(e) => e.stopPropagation()}
-              className="h-4 w-4 cursor-pointer accent-indigo-600"
+              className="h-4 w-4 shrink-0 cursor-pointer rounded-sm accent-[var(--color-accent)]"
               aria-label={`Sélectionner ${doc.title}`}
             />
           )}
-          <div className="rounded-lg bg-bg-overlay p-2">
-            <FileText className="h-4 w-4 text-fg-subtle" />
+          <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-bg-overlay">
+            <FileText className="h-4 w-4 text-fg-muted" />
           </div>
-          <div>
-            <p className="text-sm font-medium text-fg">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-fg">
               <Highlight text={doc.title} query={highlightQuery} />
             </p>
-            <p className="text-xs text-fg-subtle">
-              <span data-testid="reference-document">{reference}</span> •{' '}
+            <p className="text-xs text-fg-muted">
+              <span data-testid="reference-document">{reference}</span> ·{' '}
               {new Date(doc.createdAt).toLocaleDateString('fr-FR')}
               {highlightQuery && doc.filename && doc.filename !== doc.title && (
                 <>
-                  {' • '}
+                  {' · '}
                   <Highlight text={doc.filename} query={highlightQuery} />
                 </>
               )}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           {isPreviewable && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setPreviewOpen(true)}
-              title="Aperçu"
-            >
-              <Eye className="mr-1 h-3.5 w-3.5" />
+            <Button type="button" size="sm" variant="ghost" icon={<Eye />} onClick={() => setPreviewOpen(true)}>
               Aperçu
             </Button>
           )}
           {peutTelecharger && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={download}
-              loading={downloading}
-            >
-              <Download className="mr-1 h-3.5 w-3.5" />
+            <Button type="button" size="sm" variant="secondary" icon={<Download />} onClick={download} loading={downloading}>
               Télécharger
             </Button>
           )}
           {canDelete && canRemove && (
-            <button
+            <Button
               type="button"
+              size="sm"
+              variant="ghost"
+              iconOnly
+              icon={<Trash2 className="text-danger" />}
               onClick={() => setConfirmDeleteOpen(true)}
               disabled={deleting}
-              className="rounded-lg p-2 text-danger hover:bg-danger/10 hover:text-danger disabled:opacity-50"
               aria-label="Supprimer le document"
               title="Supprimer le document"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
+            />
           )}
         </div>
       </div>

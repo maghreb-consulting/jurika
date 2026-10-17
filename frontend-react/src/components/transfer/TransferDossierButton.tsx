@@ -29,12 +29,14 @@ export function TransferDossierButton({ dossierId, raisonSociale, className, onD
   return (
     <>
       <Button
+        type="button"
         variant="secondary"
+        icon={<ArrowRightLeft />}
         onClick={() => setOpen(true)}
         className={className}
         title="Transférer ce dossier à un collègue"
       >
-        <ArrowRightLeft className="mr-2 h-4 w-4" /> Transférer à un collègue
+        Transférer à un collègue
       </Button>
       <TransferDossierDrawer
         open={open}

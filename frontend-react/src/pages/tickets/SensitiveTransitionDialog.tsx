@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { Modal } from '../../components/ui/Modal';
+import { Message } from '../../components/ui/Message';
+import { ZoneTexte } from '../../components/ui/TextField';
 
 interface Props {
   /** Titre du dialog (ex : "Annuler le ticket", "Reprendre le ticket"). */
@@ -65,84 +68,87 @@ export function SensitiveTransitionDialog({
     }
   }
 
+  const pied =
+    step === 'confirm' ? (
+      <>
+        <Button type="button" variant="secondary" onClick={onClose}>
+          Revenir
+        </Button>
+        <Button type="button" variant={variant} onClick={() => setStep('comment')}>
+          Continuer
+        </Button>
+      </>
+    ) : step === 'comment' ? (
+      <>
+        <Button type="button" variant="secondary" onClick={() => setStep('confirm')}>
+          Retour
+        </Button>
+        <Button type="button" variant={variant} onClick={() => setStep('final')} disabled={!commentValid}>
+          Suivant
+        </Button>
+      </>
+    ) : (
+      <>
+        <Button type="button" variant="secondary" onClick={() => setStep('comment')}>
+          Modifier
+        </Button>
+        <Button type="button" variant={variant} onClick={handleConfirm} loading={loading}>
+          {confirmLabel}
+        </Button>
+      </>
+    );
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-fg/40 px-4">
-      <div className="w-full max-w-md rounded-2xl bg-bg-raised p-6 shadow-2xl">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="rounded-full bg-rose-100 p-2">
-            <AlertTriangle className="h-5 w-5 text-rose-600" />
-          </div>
-          <h2 className="text-lg font-semibold text-fg">{title}</h2>
+    <Modal
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={
+        <span className="flex items-center gap-2">
+          <AlertTriangle className={variant === 'danger' ? 'h-5 w-5 text-danger' : 'h-5 w-5 text-warning'} aria-hidden="true" />
+          {title}
+        </span>
+      }
+      size="md"
+      closeOnBackdrop={false}
+      footer={<div className="flex justify-end gap-2">{pied}</div>}
+    >
+      {step === 'confirm' && (
+        <p className="text-sm text-fg-muted">
+          {intro}
+          {reference && (
+            <>
+              {' '}
+              <span className="font-mono">{reference}</span>.
+            </>
+          )}
+        </p>
+      )}
+
+      {step === 'comment' && (
+        <ZoneTexte
+          label={`Motif${minLength > 1 ? ` (${minLength} caractères au minimum)` : ''}`}
+          value={comment}
+          onChange={(e) => {
+            setComment(e.target.value);
+            setError(null);
+          }}
+          rows={4}
+          autoFocus
+          placeholder="Exemple : reprise demandée par le client à la suite de…"
+          hint={helper}
+          error={error ?? undefined}
+        />
+      )}
+
+      {step === 'final' && (
+        <div className="space-y-3">
+          <p className="text-sm text-fg-muted">Confirmer définitivement cette action ?</p>
+          <blockquote className="rounded-lg border border-border bg-bg-overlay p-3 text-sm italic text-fg-muted">
+            « {comment} »
+          </blockquote>
+          {error && <Message ton="erreur">{error}</Message>}
         </div>
-
-        {step === 'confirm' && (
-          <>
-            <p className="text-sm text-fg-muted">
-              {intro}
-              {reference && (
-                <>
-                  {' '}
-                  <span className="font-mono">{reference}</span>.
-                </>
-              )}
-            </p>
-            <div className="mt-6 flex justify-end gap-2">
-              <Button variant="secondary" onClick={onClose}>
-                Revenir
-              </Button>
-              <Button variant={variant} onClick={() => setStep('comment')}>
-                Continuer
-              </Button>
-            </div>
-          </>
-        )}
-
-        {step === 'comment' && (
-          <>
-            <p className="text-sm text-fg-muted">
-              Indiquez le motif{minLength > 1 ? ` (${minLength} caracteres min)` : ''} :
-            </p>
-            <textarea
-              value={comment}
-              onChange={(e) => {
-                setComment(e.target.value);
-                setError(null);
-              }}
-              rows={4}
-              className="mt-3 w-full rounded-lg border border-border-hi px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              placeholder="Exemple : reprise demandée par le client à la suite de…"
-            />
-            <p className="mt-1 text-xs text-fg-subtle">{helper}</p>
-            {error && <p className="mt-1 text-xs text-rose-600">{error}</p>}
-            <div className="mt-6 flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setStep('confirm')}>
-                Retour
-              </Button>
-              <Button variant={variant} onClick={() => setStep('final')} disabled={!commentValid}>
-                Suivant
-              </Button>
-            </div>
-          </>
-        )}
-
-        {step === 'final' && (
-          <>
-            <p className="text-sm text-fg-muted">Confirmer définitivement cette action ?</p>
-            <div className="mt-3 rounded-lg border border-border bg-bg-overlay p-3 text-xs italic text-fg-muted">
-              "{comment}"
-            </div>
-            {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
-            <div className="mt-6 flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setStep('comment')}>
-                Modifier
-              </Button>
-              <Button variant={variant} onClick={handleConfirm} loading={loading}>
-                {confirmLabel}
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+      )}
+    </Modal>
   );
 }

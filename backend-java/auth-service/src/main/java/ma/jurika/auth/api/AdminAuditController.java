@@ -1,5 +1,6 @@
 package ma.jurika.auth.api;
 
+import ma.jurika.common.audit.AuditActionLabels;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
@@ -87,6 +88,7 @@ public class AdminAuditController {
                         (UUID) rs.getObject("workspace_id"),
                         (UUID) rs.getObject("user_id"),
                         rs.getString("action"),
+                        AuditActionLabels.label(rs.getString("action")),
                         rs.getString("entity_type"),
                         (UUID) rs.getObject("entity_id"),
                         rs.getString("source_service"),
@@ -123,16 +125,21 @@ public class AdminAuditController {
                 "SELECT DISTINCT source_service FROM audit_log "
                         + "WHERE source_service IS NOT NULL ORDER BY source_service",
                 String.class);
-        return new Facets(actions, sourceServices);
+        // Lot L6b (E9) : libelle de chaque action, calcule ici (source unique), jamais par l'ecran.
+        Map<String, String> actionLabels = new java.util.LinkedHashMap<>();
+        actions.forEach(a -> actionLabels.put(a, AuditActionLabels.label(a)));
+        return new Facets(actions, actionLabels, sourceServices);
     }
 
-    public record Facets(List<String> actions, List<String> sourceServices) {}
+    public record Facets(List<String> actions, Map<String, String> actionLabels, List<String> sourceServices) {}
 
     public record AuditEntry(
             long id,
             UUID workspaceId,
             UUID userId,
             String action,
+            /** Lot L6b (E9) : libelle francais du code (AuditActionLabels). */
+            String actionLabel,
             String entityType,
             UUID entityId,
             String sourceService,

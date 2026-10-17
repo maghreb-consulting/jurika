@@ -27,7 +27,7 @@ export function BlocageValidation({ raisons, testId }: BlocageValidationProps) {
     <div
       role="status"
       data-testid={testId ?? 'blocage-validation'}
-      className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+      className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning-soft px-3 py-2 text-xs text-warning"
     >
       <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" aria-hidden />
       <div>

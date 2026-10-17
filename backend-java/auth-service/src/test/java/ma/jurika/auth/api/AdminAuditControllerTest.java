@@ -159,5 +159,23 @@ class AdminAuditControllerTest {
         assertThat(entry.sourceService()).isEqualTo("auth-service");
         assertThat(entry.correlationId()).isEqualTo("corr-abc");
         assertThat(entry.workspaceId()).isEqualTo(ws);
+        // Lot L6b (E9) : le libelle vient du serveur (source unique), jamais le code brut.
+        assertThat(entry.actionLabel()).isEqualTo("Connexion r\u00e9ussie");
+    }
+
+    @Test
+    void facettes_donnent_le_libelle_de_chaque_action_et_nomment_un_code_inconnu() {
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("DISTINCT action"), eq(String.class)))
+                .thenReturn(List.of("BILLING_PAIEMENT_VALIDE", "CODE_SANS_LIBELLE"));
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("DISTINCT source_service"), eq(String.class)))
+                .thenReturn(List.of("billing-service"));
+
+        AdminAuditController.Facets f = controller.facets();
+
+        assertThat(f.actions()).containsExactly("BILLING_PAIEMENT_VALIDE", "CODE_SANS_LIBELLE");
+        assertThat(f.actionLabels())
+                .containsEntry("BILLING_PAIEMENT_VALIDE", "R\u00e9ception du paiement confirm\u00e9e")
+                .containsEntry("CODE_SANS_LIBELLE", "Action enregistr\u00e9e (code CODE_SANS_LIBELLE)");
+        assertThat(f.sourceServices()).containsExactly("billing-service");
     }
 }

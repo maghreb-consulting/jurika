@@ -56,27 +56,13 @@ export const chartCategoricalPalette = [
  * Couleurs semantiques par statut de ticket (donut employe/superviseur).
  * Cle = statut backend ; valeur = hex charte.
  */
+// Lot L6b (E17) : les cles etaient NOUVEAU / EN_COURS / CLOTURE, statuts que le serveur n'emet
+// plus depuis le lot 1 : aucune tranche ne prenait sa couleur (motif 9). Cles des cinq statuts
+// du guide ; couleurs lues dans les jetons (clair et sombre).
 export const statutTicketColors: Record<string, string> = {
-  NOUVEAU: '#1c3461', // navy — en attente
-  EN_COURS: '#a8853d', // or — en production
-  CLOTURE: '#10b981', // emeraude — termine
-  ANNULE: '#94a3b8', // slate clair — abandonne
-};
-
-/** Couleurs par statut de demande client. */
-export const statutDemandeColors: Record<string, string> = {
-  NON_TRAITEE: '#ef4444', // rouge — a traiter
-  EN_COURS: '#a8853d', // or — en cours
-  TRAITEE: '#10b981', // emeraude — traitee
-};
-
-/**
- * Couleurs par groupe de requete « conseiller -> client » (donut CLIENT).
- * Cle = groupe agrege (A_FAIRE / ATTENTE / TERMINE), alignee sur les accents
- * des colonnes de la page « Demandes de mon conseiller ».
- */
-export const statutRequeteColors: Record<string, string> = {
-  A_FAIRE: '#f59e0b', // ambre — action attendue du client
-  ATTENTE: '#a8853d', // or — en attente de validation cabinet
-  TERMINE: '#10b981', // emeraude — cloture
+  CREATION_TICKET: 'var(--color-info)', // ouverture, collecte
+  GENERATION_DOCUMENTS: 'var(--color-accent)', // redaction des actes
+  DEROULEMENT_DEMARCHE: 'var(--color-warning)', // demarches administratives
+  CLOTURE_DOSSIER: 'var(--color-success)', // termine
+  ANNULE: 'var(--color-fg-subtle)', // abandonne
 };

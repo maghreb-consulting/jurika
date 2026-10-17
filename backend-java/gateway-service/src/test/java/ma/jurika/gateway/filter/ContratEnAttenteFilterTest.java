@@ -57,6 +57,14 @@ class ContratEnAttenteFilterTest {
         assertThat(passe(f, requete("/api/v1/auth/refresh", "EMPLOYE"))).isTrue();
         assertThat(passe(f, requete("/api/v1/auth/logout", "EMPLOYE"))).isTrue();
         assertThat(passe(f, requete("/api/v1/workspace/profile", "SUPERVISEUR"))).isTrue();
+        // Lot L6b (E2) : preferences d'affichage du compte et mentions legales publiques de l'editeur.
+        for (String role : new String[]{"SUPERVISEUR", "EMPLOYE"}) {
+            assertThat(passe(f, requete("/api/v1/users/me/preferences", role))).as(role).isTrue();
+            assertThat(passe(f, MockServerWebExchange.from(MockServerHttpRequest.put("/api/v1/users/me/preferences")
+                    .header(HeaderConstants.HEADER_ROLE, role)
+                    .header(HeaderConstants.HEADER_WORKSPACE_ID, WS.toString())))).as(role).isTrue();
+            assertThat(passe(f, requete("/api/v1/public/editeur/mentions-legales", role))).as(role).isTrue();
+        }
     }
 
     @Test

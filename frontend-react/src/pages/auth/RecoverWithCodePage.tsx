@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail } from 'lucide-react';
-import { BrandLogo } from '../../components/ui/BrandLogo';
-import { InfoBulle } from '../../components/ui/Aide';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { PageAccueil, TitreAccueil } from '../../components/auth/PageAccueil';
 import { RecoveryCodeForm } from '../../components/auth/RecoveryCodeForm';
 import { Button } from '../../components/ui/Button';
+import { Lien } from '../../components/ui/Lien';
+import { Message } from '../../components/ui/Message';
+import { TextField } from '../../components/ui/TextField';
 import { authService } from '../../services/auth.service';
 import { useAuthStore } from '../../store/authStore';
 import { extractError } from '../../lib/api';
@@ -81,116 +83,84 @@ export function RecoverWithCodePage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-bg-raised">
-      {/* Lot L6 (E6) : l'ancien panneau de gauche (temoignages de cabinets inventes)
-          est retire, comme sur la page de connexion. */}
-      <div className="relative flex w-full flex-col items-center justify-center bg-bg-raised p-8 lg:p-12">
-        <Link to="/" className="absolute top-6 left-6 flex items-center" aria-label="JURIKA, retour à l’accueil">
-          <BrandLogo variant="full" size={44} />
-        </Link>
+    <PageAccueil titre="Code de récupération" enTete={<Lien to="/login">Se connecter</Lien>}>
+      {step === 'identify' && (
+        <form onSubmit={handleIdentify} data-testid="recovery-identify-form" noValidate className="space-y-4">
+          <TitreAccueil
+            titre="Connexion avec un code de récupération"
+            libelleInfoBulle="Aide sur les codes de récupération"
+            infoBulle="À l’activation de la double authentification, JURIKA vous a remis 10 codes de récupération (fichier téléchargé ou copié). Chaque code ne sert qu’une fois. Après la connexion, pensez à régénérer vos codes depuis la page Sécurité de votre compte."
+          >
+            Vous n’avez plus accès à votre application d’authentification ni au numéro enregistré&nbsp;? Indiquez
+            d’abord le code de votre cabinet et votre adresse, puis l’un de vos 10 codes de récupération.
+          </TitreAccueil>
 
-        <div className="w-full max-w-[480px]">
-          {step === 'identify' && (
-            <form onSubmit={handleIdentify} data-testid="recovery-identify-form" noValidate>
-              <div className="mb-8">
-                <h1 className="mb-2 flex items-center gap-1 font-heading text-3xl font-semibold text-fg">
-                  Connexion avec un code de récupération
-                  <InfoBulle
-                    libelle="Aide sur les codes de récupération"
-                    texte="À l’activation de la double authentification, JURIKA vous a remis 10 codes de récupération (fichier téléchargé ou copié). Chaque code ne sert qu’une fois. Après la connexion, pensez à régénérer vos codes depuis la page Sécurité de votre compte."
-                  />
-                </h1>
-                <p className="text-sm text-fg-subtle">
-                  Vous n’avez plus accès à votre application d’authentification ni au numéro
-                  enregistré&nbsp;? Indiquez d’abord votre workspace et votre adresse, puis l’un de
-                  vos 10 codes de récupération.
-                </p>
-              </div>
+          <TextField
+            id="ws-code"
+            label="Code du cabinet"
+            name="workspaceCode"
+            type="text"
+            value={workspaceCode}
+            onChange={(e) => setWorkspaceCode(e.target.value.toUpperCase())}
+            placeholder="JUR-XXXXX"
+            pattern="^JUR-[A-Z0-9]{5}$"
+            maxLength={9}
+            autoComplete="organization"
+            mono
+            required
+          />
 
-              <div className="mb-4">
-                <label htmlFor="ws-code" className="mb-2 block text-sm font-medium text-fg">
-                  Code du cabinet
-                </label>
-                <input
-                  id="ws-code"
-                  name="workspaceCode"
-                  type="text"
-                  value={workspaceCode}
-                  onChange={(e) => setWorkspaceCode(e.target.value.toUpperCase())}
-                  placeholder="JUR-XXXXX"
-                  pattern="^JUR-[A-Z0-9]{5}$"
-                  maxLength={9}
-                  autoComplete="organization"
-                  required
-                  className="h-12 w-full rounded-lg border-2 border-border bg-bg-overlay px-4 text-center font-mono text-lg font-bold tracking-wider outline-none focus:border-accent"
-                />
-              </div>
+          <TextField
+            id="email"
+            label="Adresse électronique du compte"
+            name="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="nom@cabinet.ma"
+            autoComplete="email"
+            required
+          />
 
-              <div className="mb-4">
-                <label htmlFor="email" className="mb-2 block text-sm font-medium text-fg">
-                  Adresse électronique du compte
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-fg-subtle" />
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="nom@cabinet.ma"
-                    autoComplete="email"
-                    required
-                    className="h-12 w-full rounded-lg border-2 border-border bg-bg-overlay pl-12 pr-4 outline-none focus:border-accent"
-                  />
-                </div>
-              </div>
+          {error && <Message ton="erreur">{error}</Message>}
 
-              {error && (
-                <div
-                  role="alert"
-                  className="mb-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger"
-                >
-                  {error}
-                </div>
-              )}
+          <Button type="submit" size="lg" fullWidth iconEnd={<ArrowRight />}>
+            Continuer
+          </Button>
 
-              <Button type="submit" className="h-12 w-full">
-                Continuer →
-              </Button>
+          <p className="pt-2 text-center text-sm">
+            <Lien to="/login" variante="discret">
+              Retour à la connexion
+            </Lien>
+          </p>
+        </form>
+      )}
 
-              <Link
-                to="/login"
-                className="mt-6 flex w-full items-center justify-center gap-1 text-sm text-fg-subtle hover:text-fg"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" /> Retour à la connexion
-              </Link>
-            </form>
-          )}
-
-          {step === 'code' && (
-            <>
-              <RecoveryCodeForm
-                workspaceCode={workspaceCode}
-                email={email}
-                loading={loading}
-                error={error}
-                onSubmit={handleVerify}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  setStep('identify');
-                  setError(null);
-                }}
-                className="mt-6 flex w-full items-center justify-center gap-1 text-sm text-fg-subtle hover:text-fg"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" /> Modifier le workspace ou l’adresse
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+      {step === 'code' && (
+        <>
+          <RecoveryCodeForm
+            workspaceCode={workspaceCode}
+            email={email}
+            loading={loading}
+            error={error}
+            onSubmit={handleVerify}
+          />
+          <div className="mt-6 flex justify-center">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              icon={<ArrowLeft />}
+              onClick={() => {
+                setStep('identify');
+                setError(null);
+              }}
+            >
+              Modifier le cabinet ou l’adresse
+            </Button>
+          </div>
+        </>
+      )}
+    </PageAccueil>
   );
 }

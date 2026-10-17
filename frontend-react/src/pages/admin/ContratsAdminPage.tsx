@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Download, FileSignature, Loader2 } from 'lucide-react';
+import { Download } from 'lucide-react';
+import { Page } from '../../components/layout/Page';
+import { Lien } from '../../components/ui/Lien';
+import { Message } from '../../components/ui/Message';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { CLASSES_CHAMP } from '../../components/ui/TextField';
+import { SqueletteTexte, SqueletteZone, TableSkeleton } from '../../components/ui/LoadingSkeleton';
+import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -30,6 +37,9 @@ const GRILLE: Record<Exclude<Forfait, 'SUR_DEVIS'>, Record<Rythme, number>> = {
   PROFESSIONNEL: { ANNUEL: 7500, MENSUEL: 750 },
   MAX: { ANNUEL: 15000, MENSUEL: 1500 },
 };
+
+/** Lot L6b (E9) : champs natifs aux classes des champs de la bibliotheque (libelles inchanges). */
+const CHAMP = cn(CLASSES_CHAMP, 'h-9');
 
 function aujourdhui(): string {
   const d = new Date();
@@ -92,15 +102,15 @@ export function ContratsAdminPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-4">
-      <header className="flex flex-wrap items-center gap-3">
-        <FileSignature className="h-6 w-6 text-accent" aria-hidden="true" />
-        <div className="flex-1">
-          <h1 className="font-heading text-2xl font-semibold text-fg">Contrats d’abonnement</h1>
-          <p className="text-sm text-fg-subtle">État du contrat de chaque cabinet, activation, résiliation, versions.</p>
-        </div>
-      </header>
-
+    <Page
+      titre="Contrats d’abonnement"
+      description="État du contrat de chaque cabinet, activation, résiliation, versions."
+      actions={
+        <Lien to="/admin/editeur" commeBouton={{ variant: 'secondary' }}>
+          Paramètres de l’éditeur
+        </Lien>
+      }
+      aide={
       <TexteAide cle="admin-contrats" titre="Activer un abonnement et suivre les contrats">
         <p>
           Pour activer l’abonnement d’un cabinet, saisissez ses conditions particulières (forfait, rythme de paiement,
@@ -113,25 +123,23 @@ export function ContratsAdminPage() {
           vaut résiliation à l’échéance).
         </p>
       </TexteAide>
-
-      {erreur && (
-        <p role="alert" className="flex items-start gap-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{erreur}</span>
-        </p>
-      )}
+      }
+    >
+    <div className="flex flex-col gap-4">
+      {erreur && <Message ton="erreur">{erreur}</Message>}
 
       {chargement ? (
-        <p className="flex items-center gap-2 text-sm text-fg-subtle" role="status">
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Chargement…
-        </p>
+        <SqueletteZone libelle="Chargement des contrats…">
+          <TableSkeleton rows={5} cols={5} />
+        </SqueletteZone>
       ) : cabinets.length === 0 ? (
-        <Card className="p-4 text-sm text-fg-muted">Aucun cabinet sur la plateforme.</Card>
+        <EmptyState title="Aucun cabinet sur la plateforme" description="Les contrats s’ouvrent ici dès qu’un cabinet est inscrit." />
       ) : (
-        <Card className="overflow-x-auto p-0">
+        <Card className="overflow-x-auto" padding={false}>
           <table className="w-full text-sm">
+            <caption className="sr-only">Contrats d’abonnement des cabinets</caption>
             <thead>
-              <tr className="text-left text-fg-subtle">
+              <tr className="border-b border-border bg-bg-overlay text-left text-xs font-semibold uppercase tracking-wide text-fg-muted">
                 <th scope="col" className="px-3 py-2">Cabinet</th>
                 <th scope="col" className="px-3 py-2">Contrat</th>
                 <th scope="col" className="px-3 py-2">Conditions</th>
@@ -174,7 +182,7 @@ export function ContratsAdminPage() {
                           <p>{cp.forfaitLibelle} — {prix(cp)}</p>
                           <p className="text-xs text-fg-subtle">{cp.reference}</p>
                         </>
-                      ) : '—'}
+                      ) : '--'}
                     </td>
                     <td className="px-3 py-2">
                       {l?.courant ? (
@@ -184,7 +192,7 @@ export function ContratsAdminPage() {
                             <p className="text-xs text-warning">dans {l.joursAvantEcheance} jour{l.joursAvantEcheance > 1 ? 's' : ''}</p>
                           )}
                         </>
-                      ) : '—'}
+                      ) : '--'}
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-1">
@@ -224,6 +232,7 @@ export function ContratsAdminPage() {
 
       <Versions versions={versions} onPubliee={() => apres('Nouvelle version publiée et notifiée aux cabinets.')} />
     </div>
+    </Page>
   );
 }
 
@@ -266,9 +275,9 @@ function FormulaireConditions({ cabinet, ligne, onAnnuler, onFait }: {
 
   return (
     <Card className="flex flex-col gap-3 p-4" aria-label={`Conditions particulières de ${cabinet.name}`}>
-      <h2 className="text-lg font-semibold text-fg">Conditions particulières — {cabinet.name}</h2>
+      <h2 className="text-lg font-semibold text-heading">Conditions particulières — {cabinet.name}</h2>
       {ligne?.enAttente && (
-        <p className="rounded-md bg-warning/10 px-3 py-2 text-sm">
+        <p className="rounded-md border-l-4 border-l-warning bg-warning-soft px-3 py-2 text-sm text-fg">
           Des conditions ({ligne.enAttente.reference}) attendent déjà l’acceptation : les nouvelles les remplaceront.
         </p>
       )}
@@ -288,7 +297,7 @@ function FormulaireConditions({ cabinet, ligne, onAnnuler, onFait }: {
               setForfait(f);
               proposer(f, rythme);
             }}
-            className="rounded-md border border-border bg-bg px-2 py-1.5"
+            className={CHAMP}
           >
             <option value="ESSENTIEL">Essentiel</option>
             <option value="PROFESSIONNEL">Professionnel</option>
@@ -305,7 +314,7 @@ function FormulaireConditions({ cabinet, ligne, onAnnuler, onFait }: {
               setRythme(r);
               proposer(forfait, r);
             }}
-            className="rounded-md border border-border bg-bg px-2 py-1.5"
+            className={CHAMP}
           >
             <option value="ANNUEL">Annuel (un règlement par an)</option>
             <option value="MENSUEL">Mensuel (douze mensualités)</option>
@@ -324,7 +333,7 @@ function FormulaireConditions({ cabinet, ligne, onAnnuler, onFait }: {
             value={prixHt}
             onChange={(e) => setPrixHt(e.target.value)}
             inputMode="decimal"
-            className="rounded-md border border-border bg-bg px-2 py-1.5"
+            className={CHAMP}
           />
         </div>
         <label className="flex flex-col gap-1 text-sm">
@@ -333,7 +342,7 @@ function FormulaireConditions({ cabinet, ligne, onAnnuler, onFait }: {
             type="date"
             value={dateDebut}
             onChange={(e) => setDateDebut(e.target.value)}
-            className="rounded-md border border-border bg-bg px-2 py-1.5"
+            className={CHAMP}
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
@@ -341,7 +350,7 @@ function FormulaireConditions({ cabinet, ligne, onAnnuler, onFait }: {
           <select
             value={modePaiement}
             onChange={(e) => setModePaiement(e.target.value as ModePaiement | '')}
-            className="rounded-md border border-border bg-bg px-2 py-1.5"
+            className={CHAMP}
           >
             <option value="">Non précisé (« non renseigné » au contrat)</option>
             <option value="CARTE">Carte bancaire en ligne</option>
@@ -355,7 +364,7 @@ function FormulaireConditions({ cabinet, ligne, onAnnuler, onFait }: {
         Durée : un an à compter de la date de début (article 5 des conditions générales) ; la première échéance en
         découle. Le superviseur du cabinet devra accepter ces conditions en ligne avant d’accéder à la plateforme.
       </p>
-      {erreur && <p role="alert" className="text-sm text-danger">{erreur}</p>}
+      {erreur && <Message ton="erreur">{erreur}</Message>}
       <div className="flex gap-2">
         <Button onClick={enregistrer} loading={envoi} disabled={envoi || prixHt.trim() === '' || dateDebut === ''}>
           Enregistrer les conditions
@@ -394,7 +403,7 @@ function FormulaireResiliation({ cabinet, onAnnuler, onFait }: {
 
   return (
     <Card className="flex flex-col gap-3 p-4">
-      <h2 className="text-lg font-semibold text-fg">Résilier le contrat — {cabinet.name}</h2>
+      <h2 className="text-lg font-semibold text-heading">Résilier le contrat — {cabinet.name}</h2>
       <p className="text-sm text-fg-muted">
         À la date d’effet, le forfait s’arrête et le cabinet est archivé, jamais supprimé : son superviseur peut encore
         se connecter pour exporter ses données et télécharger son contrat.
@@ -403,15 +412,15 @@ function FormulaireResiliation({ cabinet, onAnnuler, onFait }: {
         <label className="flex flex-col gap-1 text-sm">
           <span>Date d’effet *</span>
           <input type="date" value={dateEffet} min={aujourdhui()} onChange={(e) => setDateEffet(e.target.value)}
-            className="rounded-md border border-border bg-bg px-2 py-1.5" />
+            className={CHAMP} />
         </label>
         <label className="flex flex-col gap-1 text-sm sm:col-span-2">
           <span>Motif *</span>
           <textarea value={motif} onChange={(e) => setMotif(e.target.value)} rows={2}
-            className="rounded-md border border-border bg-bg px-2 py-1.5" />
+            className={CHAMP} />
         </label>
       </div>
-      {erreur && <p role="alert" className="text-sm text-danger">{erreur}</p>}
+      {erreur && <Message ton="erreur">{erreur}</Message>}
       <div className="flex gap-2">
         <Button variant="danger" onClick={() => setConfirmer(true)} disabled={motif.trim() === '' || dateEffet === ''}>
           Enregistrer la résiliation
@@ -455,11 +464,15 @@ function HistoriqueCabinet({ cabinet, onFermer }: { cabinet: AdminWorkspaceRow; 
   return (
     <Card className="flex flex-col gap-2 p-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-fg">Historique du contrat — {cabinet.name}</h2>
+        <h2 className="text-lg font-semibold text-heading">Historique du contrat — {cabinet.name}</h2>
         <Button size="sm" variant="ghost" onClick={onFermer}>Fermer</Button>
       </div>
-      {erreur && <p role="alert" className="text-sm text-danger">{erreur}</p>}
-      {!h && !erreur && <p className="text-sm text-fg-subtle">Chargement…</p>}
+      {erreur && <Message ton="erreur">{erreur}</Message>}
+      {!h && !erreur && (
+        <SqueletteZone libelle="Chargement de l’historique…">
+          <SqueletteTexte lignes={3} />
+        </SqueletteZone>
+      )}
       {h && (
         <>
           <ul className="flex flex-col gap-1 text-sm">
@@ -534,7 +547,7 @@ function Versions({ versions, onPubliee }: { versions: VersionVue[]; onPubliee: 
 
   return (
     <Card className="flex flex-col gap-3 p-4">
-      <h2 className="text-lg font-semibold text-fg">
+      <h2 className="text-lg font-semibold text-heading">
         Versions du contrat{' '}
         <InfoBulle
           libelle="Versions"
@@ -559,25 +572,25 @@ function Versions({ versions, onPubliee }: { versions: VersionVue[]; onPubliee: 
         <label className="flex flex-col gap-1 text-sm">
           <span>Code de la nouvelle version *</span>
           <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="2027-01-15"
-            className="rounded-md border border-border bg-bg px-2 py-1.5" />
+            className={CHAMP} />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span>Entrée en vigueur * (30 jours au moins)</span>
           <input type="date" value={entree} min={dansJours(30)} onChange={(e) => setEntree(e.target.value)}
-            className="rounded-md border border-border bg-bg px-2 py-1.5" />
+            className={CHAMP} />
         </label>
       </div>
       <label className="flex flex-col gap-1 text-sm">
         <span>Texte complet du contrat (pièces A, B et C, avec leurs variables $MAJUSCULES ; une pièce D et la ligne de version en tête sont retirées) *</span>
         <textarea value={texte} onChange={(e) => setTexte(e.target.value)} rows={8}
-          className="rounded-md border border-border bg-bg px-2 py-1.5 font-mono text-xs" />
+          className={cn(CLASSES_CHAMP, 'py-2 font-mono text-xs')} />
       </label>
       <p className="text-xs text-fg-subtle">
         Le texte doit être validé par la direction avant sa publication. Il est contrôlé (pièces A, B, C, paragraphe
         d’acceptation, variables connues, aucune mention entre crochets restant à compléter) ; une publication ne se
         modifie plus.
       </p>
-      {erreur && <p role="alert" className="text-sm text-danger">{erreur}</p>}
+      {erreur && <Message ton="erreur">{erreur}</Message>}
       <div>
         <Button onClick={publier} loading={envoi} disabled={envoi || code.trim() === '' || texte.trim() === ''}>
           Publier et notifier les cabinets

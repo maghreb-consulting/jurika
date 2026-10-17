@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { SignupStep0Plan, type PlanCode } from '../../components/signup/SignupStep0Plan';
 import { lireRythmeInscription } from '../../lib/forfaits';
 import { SignupStep1Cabinet, type SignupProfileData } from '../../components/signup/SignupStep1Cabinet';
@@ -9,7 +9,8 @@ import { SignupStep5Recap } from '../../components/signup/SignupStep5Recap';
 import { SignupStepPayment, type SignupPaymentDraft } from '../../components/signup/SignupStepPayment';
 import { SignupSuccess } from '../../components/signup/SignupSuccess';
 import { SignupStepper } from '../../components/signup/SignupStepper';
-import { BrandLogo } from '../../components/ui/BrandLogo';
+import { PageAccueil } from '../../components/auth/PageAccueil';
+import { Lien } from '../../components/ui/Lien';
 import { InfoBulle } from '../../components/ui/Aide';
 import { authService, type SignupCabinetPayload, type SignupCabinetResponse } from '../../services/auth.service';
 import { extractError, tokenStorage } from '../../lib/api';
@@ -274,24 +275,18 @@ export function SignupPage() {
   })();
 
   return (
-    <div className="relative min-h-screen">
-      <header className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-6 py-4 sm:px-10">
-        <Link
-          to="/"
-          className="flex items-center gap-2 transition-opacity hover:opacity-80"
-          aria-label="JURIKA, retour à l’accueil"
-        >
-          <BrandLogo variant="full" size={44} />
-        </Link>
-        {step !== 6 && (
-          <p className="text-sm text-fg-muted">
-            Déjà un compte ?{' '}
-            <Link to="/login" className="font-medium text-accent hover:underline">
-              Se connecter
-            </Link>
-          </p>
-        )}
-      </header>
+    <PageAccueil
+      titre="Inscription du cabinet"
+      carte={false}
+      largeur={step === 0 ? 'pleine' : 'large'}
+      enTete={
+        step !== 6 ? (
+          <>
+            Déjà un compte ? <Lien to="/login">Se connecter</Lien>
+          </>
+        ) : undefined
+      }
+    >
       {/*
         Roadmap hissee dans l'orchestrateur (2026-07-27) : rendue UNE SEULE fois
         pour toutes les etapes (0 -> 6), au-dessus du contenu, avec l'etape
@@ -299,11 +294,12 @@ export function SignupPage() {
         d'etape ont ete retires. Garantit une roadmap toujours visible et
         coherente (7 etapes en permanence).
       */}
-      <div className="px-4 pt-20 sm:pt-24">
+      <div className="mb-2 text-center">
+        <h1 className="mb-4 text-xl font-semibold tracking-tight text-heading">Créer l’espace de votre cabinet</h1>
         <SignupStepper currentStep={step} />
         {step !== 6 && (
-          <p className="mx-auto mt-2 flex max-w-2xl items-center justify-center gap-1 text-center text-xs text-fg-muted">
-            Création de l’espace de votre cabinet : vos saisies sont conservées si vous rechargez la page.
+          <p className="mx-auto mt-1 flex max-w-2xl flex-wrap items-center justify-center gap-1 text-center text-xs text-fg-muted">
+            Vos saisies sont conservées si vous rechargez la page.
             <InfoBulle
               libelle="Aide sur l’inscription"
               texte="Choisissez d’abord un forfait, puis renseignez votre profil et celui du cabinet. Vous choisissez ensuite la méthode de double authentification, vérifiez le récapitulatif et réglez l’abonnement. Vos identifiants de connexion vous sont envoyés par courriel après la validation du paiement."
@@ -312,6 +308,6 @@ export function SignupPage() {
         )}
       </div>
       {content}
-    </div>
+    </PageAccueil>
   );
 }

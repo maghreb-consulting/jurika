@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { FileText, Upload, X, CheckCircle } from 'lucide-react';
 import { InfoBulle } from '../ui/Aide';
+import { Button } from '../ui/Button';
+import { classesBouton } from '../ui/boutonClasses';
 import { workflowService } from '../../services/workflow.service';
 import type { WorkflowProgress } from '../../types/workflow';
 
@@ -113,7 +115,7 @@ export function WorkflowPiecesPanel({
       </header>
 
       {error && (
-        <div className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-1.5 text-xs text-danger">
+        <div className="mb-3 rounded-md border border-danger/30 bg-danger-soft px-3 py-1.5 text-xs text-danger">
           {error}
         </div>
       )}
@@ -126,9 +128,9 @@ export function WorkflowPiecesPanel({
         {registered.map((p) => (
           <li
             key={p.code}
-            className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2"
+            className="flex items-center gap-2 rounded-lg border border-success/40 bg-success-soft px-3 py-2"
           >
-            <CheckCircle className="h-4 w-4 flex-shrink-0 text-emerald-700" />
+            <CheckCircle className="h-4 w-4 flex-shrink-0 text-success" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-fg">{p.label}</p>
               <p className="truncate text-xs text-fg-subtle">
@@ -137,16 +139,18 @@ export function WorkflowPiecesPanel({
                 {p.uploadedAtStep ? ` · étape ${p.uploadedAtStep}` : ''}
               </p>
             </div>
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
+              iconOnly
+              icon={<X />}
               onClick={() => handleRemove(p.code)}
               disabled={busy === p.code}
-              className="rounded p-1 text-fg-subtle hover:bg-danger/10 hover:text-danger disabled:opacity-50"
+              className="text-fg-subtle hover:text-danger"
               aria-label={`Retirer ${p.label}`}
               title="Retirer cette pièce"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+            />
           </li>
         ))}
         {missingKnown.map((k) => (
@@ -159,20 +163,20 @@ export function WorkflowPiecesPanel({
               <p className="truncate text-sm text-fg">
                 {k.label}
                 {k.obligatoire && (
-                  <span className="ml-2 rounded bg-danger/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-danger">
+                  <span className="ml-2 rounded bg-danger-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-danger">
                     obligatoire
                   </span>
                 )}
               </p>
               <p className="text-xs text-fg-subtle">À déposer</p>
             </div>
-            <label className="flex cursor-pointer items-center gap-1 rounded-md border border-accent/40 bg-accent/10 px-2 py-1 text-xs text-accent hover:bg-accent/20">
-              <Upload className="h-3 w-3" />
+            <label className={classesBouton('secondary', 'sm', 'cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus')}>
+              <Upload className="h-4 w-4" aria-hidden="true" />
               {busy === k.code ? 'Envoi…' : 'Importer'}
               <input
                 type="file"
                 accept="application/pdf,image/*"
-                className="hidden"
+                className="sr-only"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   if (f) void handleUpload(k.code, k.label, f);

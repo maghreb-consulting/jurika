@@ -12,6 +12,12 @@ export interface TracabiliteEntry {
   createdAt: string;
 }
 
+/** Lot L6b (E9) : une action presente dans le journal du cabinet et son libelle (filtre). */
+export interface ActionTracee {
+  code: string;
+  label: string;
+}
+
 export interface TracabilitePage {
   items: TracabiliteEntry[];
   total: number;

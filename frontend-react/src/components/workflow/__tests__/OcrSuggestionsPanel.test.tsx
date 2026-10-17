@@ -20,7 +20,7 @@ describe('OcrSuggestionsPanel', () => {
         onApplyAllEmpty={onApplyAll}
       />,
     );
-    expect(screen.getByText(/Extraction IA en cours/i)).toBeDefined();
+    expect(screen.getByText(/Lecture automatique en cours/i)).toBeDefined();
     expect(screen.queryByText(/Appliquer/i)).toBeNull();
   });
 

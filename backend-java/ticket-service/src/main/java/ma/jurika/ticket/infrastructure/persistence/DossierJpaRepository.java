@@ -106,4 +106,16 @@ public interface DossierJpaRepository extends JpaRepository<DossierEntity, UUID>
     int updateResponsable(@Param("ws") UUID ws,
                           @Param("dossierId") UUID dossierId,
                           @Param("responsableId") UUID responsableId);
+
+    /**
+     * Lot L6b (E14) : raison sociale d'un AUTRE dossier du cabinet qui porte deja cet ICE (compare
+     * sur ses seuls chiffres). Sert au refus nomme d'un doublon d'ICE (fiche du dossier).
+     */
+    @Query(value = """
+            SELECT raison_sociale FROM entreprise_dossiers
+             WHERE workspace_id = :ws AND id <> :id
+               AND regexp_replace(coalesce(ice, ''), '[^0-9]', '', 'g') = :ice
+             LIMIT 1
+            """, nativeQuery = true)
+    List<String> raisonSocialeAutreDossierAvecIce(@Param("ws") UUID ws, @Param("id") UUID id, @Param("ice") String ice);
 }

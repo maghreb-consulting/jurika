@@ -35,6 +35,12 @@ public class DynamicCorsConfigurationSource implements CorsConfigurationSource {
 
     private static final Logger log = LoggerFactory.getLogger(DynamicCorsConfigurationSource.class);
 
+    /** Chemins exacts des retours du navigateur depuis la page de paiement (hors CORS). */
+    private static final Set<String> RETOURS_NAVIGATEUR = Set.of(
+            "/api/v1/billing/cmi/retour/ok",
+            "/api/v1/billing/cmi/retour/echec",
+            "/api/v1/billing/cmi-simulateur/decision");
+
     private final WebClient.Builder webClientBuilder;
     private final String authServiceBaseUrl;
     private final AtomicReference<Set<String>> cache = new AtomicReference<>(Set.of());
@@ -52,6 +58,13 @@ public class DynamicCorsConfigurationSource implements CorsConfigurationSource {
     @Override
     public CorsConfiguration getCorsConfiguration(org.springframework.web.server.ServerWebExchange exchange) {
         ServerHttpRequest request = exchange.getRequest();
+        // Lot L6b (E16) : retours du navigateur depuis la page de paiement (formulaire POST du
+        // CMI vers okUrl / failUrl, origine du CMI ; decision du simulateur, origine "null").
+        // Navigations sans lecture de reponse par script : hors CORS. Sans cela, le filtre les
+        // refusait par un 403 et le paiement accepte ne revenait jamais sur JURIKA.
+        if (RETOURS_NAVIGATEUR.contains(request.getPath().value())) {
+            return null;
+        }
         String origin = request.getHeaders().getOrigin();
         CorsConfiguration cfg = baseConfig();
         if (origin != null && cache.get().contains(origin)) {
@@ -105,7 +118,10 @@ public class DynamicCorsConfigurationSource implements CorsConfigurationSource {
                 HttpHeaders.AUTHORIZATION,
                 HttpHeaders.CONTENT_TYPE,
                 HttpHeaders.ACCEPT,
-                "X-Requested-With"
+                "X-Requested-With",
+                // Lot L6b (E16) : empreinte de l'appareil envoyee par la demande d'essai gratuit
+                // (PublicEssaiController, anti-abus) ; sans elle, le navigateur bloquait la demande.
+                "X-Jurika-Appareil"
         ));
         cfg.setExposedHeaders(List.of(HttpHeaders.AUTHORIZATION));
         cfg.setMaxAge(3600L);

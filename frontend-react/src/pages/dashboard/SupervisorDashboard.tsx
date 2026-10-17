@@ -1,46 +1,89 @@
 import { useEffect, useState } from 'react';
-import {
-  AlertTriangle,
-  Ban,
-  CheckCircle,
-  FolderOpen,
-  TrendingUp,
-  Users,
-} from 'lucide-react';
-import {
-  supervisionService,
-  type TicketsDaily,
-  type TicketsPerEmploye,
-  type TicketsPerType,
-  type WorkspaceKpis,
-} from '../../services/supervision.service';
-import { Sprint10SupervisorPanel } from '../../components/dashboard/Sprint10SupervisorPanel';
-import { InfoBulle, TexteAide } from '../../components/ui/Aide';
+import { AlarmClock, BarChart3, CalendarClock, Inbox, PieChart, Ticket as TicketIcon, Users } from 'lucide-react';
+import { supervisionService, type TicketsPerEmploye, type WorkspaceKpis } from '../../services/supervision.service';
+import { dashboardService } from '../../services/dashboard.service';
+import { dataroomService } from '../../services/dataroom.service';
+import { ticketService } from '../../services/ticket.service';
+import { Page } from '../../components/layout/Page';
+import { TexteAide } from '../../components/ui/Aide';
+import { Lien } from '../../components/ui/Lien';
+import { Message } from '../../components/ui/Message';
+import { CardSkeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
+import { FonctionHorsForfait } from '../../components/billing/FonctionHorsForfait';
 import { SupervisionDemandesPanel } from '../../components/dashboard/SupervisionDemandesPanel';
-import { EvolutionChart } from '../../components/dashboard/EvolutionChart';
-import { DistributionChart } from '../../components/dashboard/DistributionChart';
-import { TYPE_TICKET_LABELS, labelOf } from '../../lib/dashboardLabels';
+import { DelaisCabinetCarte } from '../../components/dashboard/DelaisCabinetCarte';
+import { SectionTableauDeBord } from '../../components/dashboard/SectionTableauDeBord';
+import { ChartCard } from '../../components/dashboard/charts/ChartCard';
+import { ColonnesChart } from '../../components/dashboard/charts/ColonnesChart';
+import { DonutChart } from '../../components/dashboard/charts/DonutChart';
+import { ChargeEquipe } from '../../components/dashboard/ChargeEquipe';
+import { estOuvert, ticketsParType } from '../../components/dashboard/series';
+import { KpiCard } from '../../components/dashboard/KpiCard';
+import { joursRestants } from '../../components/dashboard/delais';
+import { dureeCloture } from '../../components/dashboard/valeurs';
+import { formatMonth } from '../../lib/dashboardLabels';
+import type { Ticket } from '../../types/ticket';
+import type { SuperviseurDashboardDto } from '../../types/dashboard';
+import type { DossierBrief } from '../../types/dataroom';
 
+const HORIZON_JOURS = 7;
+
+function pluriel(n: number, singulier: string, plurielTexte: string): string {
+  return `${n} ${n > 1 ? plurielTexte : singulier}`;
+}
+
+/**
+ * Tableau de bord du superviseur (lot L6b, E17 : refonte du 2026-10-16).
+ *
+ * Le superviseur supervise et ne fait pas avancer les tickets (CDC : lecture seule sur les
+ * parcours) ; ses actions sont la reaffectation, l'equipe, le suivi des delais et des dossiers
+ * en retard. Hierarchie :
+ * 1. Quatre indicateurs : tickets ouverts, dossiers en retard, delais sous 7 jours, demandes des
+ *    clients non traitees.
+ * 2. "Delais a surveiller" : dossiers en retard puis delais legaux des 30 prochains jours.
+ * 3. L'equipe : charge de chaque employe empilee par etape (noms, jamais un identifiant), et
+ *    les tickets ouverts par type d'operation (anneau avec total).
+ * 4. Demandes et requetes (lecture seule).
+ * 5. Activite : crees et clotures par mois (productivite, forfaits Max et Sur Devis), avec la
+ *    duree moyenne de cloture.
+ * Lot L6b (E18, demande du 2026-10-17 : des diagrammes propres a chaque role) : frise des
+ * delais du cabinet, charge empilee par etape, anneau des types d'operation ; les tickets
+ * ouverts viennent de la liste des tickets (500 au plus, le total du serveur dit si elle est
+ * complete).
+ * Retires (doublons ou sans question claire) : total des dossiers, nombre d'employes, clotures
+ * depuis toujours, courbes "Activite 14 jours" et "Evolution 30 jours" (lissees, en dents de
+ * scie sur des comptages journaliers), "Tickets par type" (tous les tickets depuis toujours),
+ * "Score" (part des clotures, sans lien avec la charge), anneaux des statuts et des demandes
+ * (sans chiffres ; les demandes ont leur tableau), graphique de charge (identifiants a la place
+ * des noms, doublon du tableau de l'equipe), trois tranches de delais qui se recouvraient.
+ *
+ * Une source en echec rend null : ses indicateurs affichent "--" et sa zone le dit (motif 9).
+ */
 export function SupervisorDashboard() {
   const [kpis, setKpis] = useState<WorkspaceKpis | null>(null);
-  const [perType, setPerType] = useState<TicketsPerType[]>([]);
-  const [perEmploye, setPerEmploye] = useState<TicketsPerEmploye[]>([]);
-  const [daily, setDaily] = useState<TicketsDaily[]>([]);
+  const [equipe, setEquipe] = useState<TicketsPerEmploye[] | null>(null);
+  const [suivi, setSuivi] = useState<Partial<SuperviseurDashboardDto> | null>(null);
+  const [dossiers, setDossiers] = useState<DossierBrief[] | null>(null);
+  const [tickets, setTickets] = useState<Ticket[] | null>(null);
+  const [totalTickets, setTotalTickets] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     Promise.all([
       supervisionService.kpis().catch(() => null),
-      supervisionService.ticketsPerType().catch(() => [] as TicketsPerType[]),
-      supervisionService.ticketsPerEmploye().catch(() => [] as TicketsPerEmploye[]),
-      supervisionService.ticketsLast30Days().catch(() => [] as TicketsDaily[]),
-    ]).then(([k, t, e, d]) => {
+      supervisionService.ticketsPerEmploye().catch(() => null),
+      dashboardService.getSuperviseur().catch(() => null),
+      dataroomService.listDossiers().catch(() => null),
+      ticketService.list({ limit: 500 }).catch(() => null),
+    ]).then(([k, e, s, d, t]) => {
       if (!mounted) return;
-      setKpis(k);
-      setPerType(t);
-      setPerEmploye(e);
-      setDaily(d.slice(-14));
+      setKpis(k ?? null);
+      setEquipe(Array.isArray(e) ? e : null);
+      setSuivi(s ?? null);
+      setDossiers(Array.isArray(d) ? d : null);
+      setTickets(t ? (t.items ?? []) : null);
+      setTotalTickets(t && typeof t.total === 'number' ? t.total : null);
       setLoading(false);
     });
     return () => {
@@ -48,180 +91,172 @@ export function SupervisorDashboard() {
     };
   }, []);
 
-  // Series pretes pour Recharts (donnees reelles supervision-service).
-  const dailySeries = daily.map((d) => ({ day: d.date, count: d.count }));
-  const typeSeries = perType.map((t) => ({
-    label: labelOf(TYPE_TICKET_LABELS, t.type),
-    count: t.count,
-  }));
+  const nombre = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  const nouveaux = nombre(kpis?.ticketsNouveaux);
+  const enProduction = nombre(kpis?.ticketsEnCours);
+  const ouverts = nouveaux !== null && enProduction !== null ? nouveaux + enProduction : null;
+
+  const risques = suivi ? (suivi.dossiersARisque ?? []) : null;
+  const tranche30 = suivi ? (suivi.echeancesJ30J15J3 ?? []).find((b) => b.label === 'J-30') : undefined;
+  const aVenir = suivi ? (tranche30?.items ?? []) : null;
+  const aujourdHui = new Date();
+  const sousHorizon = aVenir
+    ? aVenir.filter((e) => e.dateEcheance && joursRestants(e.dateEcheance, aujourdHui) <= HORIZON_JOURS).length
+    : null;
+
+  const noms = new Map((dossiers ?? []).map((d) => [d.id, d.raisonSociale]));
+
+  const productivite = suivi ? suivi.productiviteIncluse !== false : true;
+  const ticketsOuverts = (tickets ?? []).filter(estOuvert);
+  const parType = ticketsParType(ticketsOuverts);
+  const listePartielle = totalTickets !== null && tickets !== null && totalTickets > tickets.length;
+  const mensuel = (suivi?.evolutionMensuelle ?? []).map((m) => ({ mois: formatMonth(m.month), crees: m.crees, clotures: m.clotures }));
+  const clos30 = nombre(suivi?.ticketsClos30d);
+  const moyenne = nombre(suivi?.tempsMoyenClotureHeures);
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h2 className="font-heading text-2xl font-semibold text-fg">Tableau de bord — Superviseur</h2>
-        <p className="text-sm text-fg-subtle">Vue d’ensemble et performances du cabinet</p>
-      </div>
-
-      <div className="mb-6">
+    <Page
+      titre="Tableau de bord"
+      description="Le cabinet en un coup d’œil : les délais à surveiller, la charge de l’équipe et l’activité des tickets."
+      aide={
         <TexteAide cle="tableau-de-bord-superviseur" titre="Que suivre ici ?">
           <p>
-            Les chiffres du cabinet (dossiers, employés, tickets en cours et clôturés), l’activité des
-            quatorze derniers jours et la charge de chaque employé. Vous consultez : seul l’employé
-            responsable d’un dossier fait avancer ses tickets. Pour confier un dossier à un autre
-            employé, ouvrez sa Data Room et utilisez « Réaffecter le dossier ».
+            Commencez par « Délais à surveiller » : les dossiers en retard, puis les délais légaux des démarches des
+            30 prochains jours. Vous consultez sans faire avancer les tickets : c’est l’employé responsable du dossier
+            qui agit. Si un employé est surchargé ou absent, ouvrez la Data Room du dossier et utilisez « Réaffecter le
+            dossier » ; la charge de chacun, étape par étape, figure dans « Équipe ». La frise colore les jours où tombent
+            des délais : choisissez un jour pour lire lesquels. Un indicateur « -- » signale une donnée qui n’a pas pu
+            être chargée.
           </p>
         </TexteAide>
+      }
+    >
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard
+          icon={<TicketIcon />}
+          label="Tickets ouverts"
+          value={ouverts}
+          hint={nouveaux !== null ? (nouveaux > 0 ? `dont ${nouveaux} à la création` : 'aucun à la création') : undefined}
+          loading={loading}
+          to="/tickets"
+          aide="Tickets du cabinet à la création, à la génération des documents ou au déroulement des démarches. Les tickets clôturés ou annulés ne comptent pas."
+        />
+        <KpiCard
+          icon={<AlarmClock />}
+          label="Dossiers en retard"
+          value={risques ? risques.length : null}
+          variant={risques && risques.length > 0 ? 'danger' : 'default'}
+          hint={risques ? (risques.length > 0 ? 'délai légal dépassé' : 'aucun délai dépassé') : undefined}
+          loading={loading}
+          aide="Dossiers dont au moins une démarche restant à accomplir a dépassé son délai légal."
+        />
+        <KpiCard
+          icon={<CalendarClock />}
+          label={`Délais sous ${HORIZON_JOURS} jours`}
+          value={sousHorizon}
+          variant={sousHorizon ? 'warning' : 'default'}
+          hint={sousHorizon !== null ? 'démarches dont le délai légal tombe cette semaine' : undefined}
+          loading={loading}
+          aide={`Délais légaux des démarches qui tombent aujourd’hui ou dans les ${HORIZON_JOURS} prochains jours, tous dossiers du cabinet.`}
+        />
+        <KpiCard
+          icon={<Inbox />}
+          label="Demandes non traitées"
+          value={kpis?.demandesNonTraitees}
+          variant={kpis?.demandesNonTraitees ? 'warning' : 'default'}
+          hint={typeof kpis?.demandesNonTraitees === 'number' ? 'demandes de clients sans prise en charge' : undefined}
+          loading={loading}
+          to="/data-rooms"
+          aide="Demandes envoyées par les clients que l’employé responsable du dossier n’a pas encore prises en charge."
+        />
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard
-          icon={FolderOpen} bg="bg-accent/10" color="text-accent"
-          label="Total dossiers" value={kpis?.dossiers ?? 0}
-          tag={`${kpis?.dossiersActifs ?? 0} actifs`} tagColor="text-fg-subtle" loading={loading}
-        />
-        <KpiCard
-          icon={Users} bg="bg-accent/10" color="text-accent"
-          label="Employés" value={perEmploye.length}
-          tag="Actifs" tagColor="text-warning" loading={loading}
-        />
-        <KpiCard
-          icon={Ban} bg="bg-rose-50" color="text-rose-600"
-          label="Tickets en cours" value={kpis?.ticketsEnCours ?? 0}
-          tag={`${kpis?.ticketsNouveaux ?? 0} nouveau${(kpis?.ticketsNouveaux ?? 0) > 1 ? 'x' : ''}`} tagColor="text-rose-600" loading={loading}
-        />
-        <KpiCard
-          icon={CheckCircle} bg="bg-emerald-50" color="text-success"
-          label="Clôturés" value={kpis?.ticketsClotures ?? 0}
-          tag={`${kpis?.ticketsAnnules ?? 0} annulé${(kpis?.ticketsAnnules ?? 0) > 1 ? 's' : ''}`} tagColor="text-fg-subtle" loading={loading}
-        />
-      </div>
+      <DelaisCabinetCarte risques={risques} aVenir={aVenir} nomDossier={(id) => noms.get(id)} loading={loading} />
 
-      <div className="mb-6 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
-          <div className="mb-5 flex items-center justify-between">
-            <h3 className="text-base font-semibold text-fg">Activité (14 derniers jours)</h3>
-            <TrendingUp className="h-5 w-5 text-emerald-500" />
+      <SectionTableauDeBord titre="Équipe" icone={<Users />} lien={<Lien to="/app/team">Gérer l’équipe</Lien>}>
+        {loading ? (
+          <SqueletteZone libelle="Chargement de l’équipe…" className="grid gap-4 lg:grid-cols-5">
+            <CardSkeleton className="h-72 lg:col-span-3" />
+            <CardSkeleton className="h-72 lg:col-span-2" />
+          </SqueletteZone>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-5">
+            <ChartCard
+              className="lg:col-span-3"
+              title="Charge de l’équipe, par étape"
+              icon={<Users />}
+              description={
+                listePartielle
+                  ? `Tickets ouverts confiés à chaque employé, par étape du parcours (calculé sur les ${tickets!.length} tickets les plus récents, ${totalTickets} au total).`
+                  : 'Tickets ouverts confiés à chaque employé, par étape du parcours : de quoi décider d’une réaffectation.'
+              }
+              empty={tickets === null || (ticketsOuverts.length === 0 && (equipe ?? []).length === 0)}
+              emptyLabel={tickets === null ? 'La charge de l’équipe n’a pas pu être chargée. Rechargez la page dans quelques instants.' : 'Aucun employé ni ticket ouvert. Invitez vos employés depuis la page « Équipe ».'}
+            >
+              <ChargeEquipe tickets={tickets ?? []} equipe={equipe} />
+            </ChartCard>
+            <ChartCard
+              className="lg:col-span-2"
+              title="Tickets ouverts par type d’opération"
+              icon={<PieChart />}
+              description="Sur quelles opérations le cabinet travaille en ce moment."
+              empty={parType.length === 0}
+              emptyLabel={tickets === null ? 'Les tickets n’ont pas pu être chargés.' : 'Aucun ticket ouvert.'}
+            >
+              <DonutChart data={parType} height={260} legende="Tickets ouverts par type d’opération" />
+            </ChartCard>
           </div>
-          {dailySeries.length === 0 ? (
-            <p className="py-12 text-center text-sm text-fg-subtle">Aucune donnée sur la période.</p>
-          ) : (
-            <EvolutionChart data={dailySeries} height={200} />
-          )}
-        </div>
+        )}
+      </SectionTableauDeBord>
 
-        <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
-          <h3 className="mb-5 text-base font-semibold text-fg">Tickets par type</h3>
-          {typeSeries.length === 0 ? (
-            <p className="py-12 text-center text-sm text-fg-subtle">Aucune donnée sur la période.</p>
-          ) : (
-            <DistributionChart data={typeSeries} height={200} />
-          )}
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-border bg-bg-raised shadow-sm">
-        <div className="border-b border-border px-6 py-4">
-          <h3 className="text-base font-semibold text-fg">Performances par employé</h3>
-        </div>
-        <table className="w-full">
-          <thead className="bg-bg-overlay">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-fg-subtle">Employé</th>
-              <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-fg-subtle">En cours</th>
-              <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-fg-subtle">Clôturés</th>
-              <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-fg-subtle">Annulés</th>
-              <th className="px-6 py-3 text-center text-xs font-semibold uppercase text-fg-subtle">
-                <span className="inline-flex items-center gap-1">Score <InfoBulle libelle="Comment le score est-il calculé ?" texte="Part des tickets clôturés parmi les tickets de l’employé (en cours, clôturés et annulés), en pourcentage." /></span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {perEmploye.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-sm text-fg-subtle">
-                  Aucun employé actif. Invitez vos employés depuis la page « Équipe ».
-                </td>
-              </tr>
-            )}
-            {perEmploye.map((e) => {
-              const total = e.clotures + e.enCours + e.annules;
-              const score = total > 0 ? Math.round((e.clotures / total) * 100) : 0;
-              return (
-                <tr key={e.userId} className="hover:bg-bg-overlay">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-xs font-bold text-bg-raised">
-                        {(e.firstName?.[0] ?? '') + (e.lastName?.[0] ?? '')}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-fg">
-                          {e.firstName} {e.lastName}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-center text-sm text-fg">{e.enCours}</td>
-                  <td className="px-6 py-4 text-center text-sm text-success">{e.clotures}</td>
-                  <td className="px-6 py-4 text-center text-sm text-rose-600">{e.annules}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
-                        score >= 80
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : score >= 50
-                            ? 'bg-warning/10 text-amber-700'
-                            : 'bg-rose-50 text-rose-700'
-                      }`}
-                    >
-                      {score >= 80 && <CheckCircle className="h-3 w-3" />}
-                      {score < 50 && <AlertTriangle className="h-3 w-3" />}
-                      {score}%
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Demandes des clients + Requetes aux clients (workspace-wide, avec nom du
-          dataroom et employe responsable resolus par jointure) */}
+      {/* Demandes des clients + requetes aux clients (lecture seule, noms resolus par le serveur) */}
       <SupervisionDemandesPanel />
 
-      {/* Sprint 10 -- echeances DGI + dossiers a risque + temps moyen cloture */}
-      <Sprint10SupervisorPanel />
-    </div>
-  );
-}
-
-function KpiCard({
-  icon: Icon,
-  bg,
-  color,
-  label,
-  value,
-  tag,
-  tagColor,
-  loading,
-}: {
-  icon: typeof FolderOpen;
-  bg: string;
-  color: string;
-  label: string;
-  value: number;
-  tag: string;
-  tagColor: string;
-  loading: boolean;
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-bg-raised p-5 shadow-sm">
-      <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-lg ${bg}`}>
-        <Icon className={`h-6 w-6 ${color}`} />
-      </div>
-      <p className="mb-1 text-sm text-fg-subtle">{label}</p>
-      <p className="mb-2 text-3xl font-bold text-fg">{loading ? '—' : value}</p>
-      <p className={`text-xs ${tagColor}`}>{tag}</p>
-    </div>
+      <SectionTableauDeBord titre="Activité des tickets" icone={<BarChart3 />} className="mt-8">
+        {loading ? (
+          <SqueletteZone libelle="Chargement de l’activité…" className="grid gap-4 lg:grid-cols-2">
+            <CardSkeleton className="h-64 lg:col-span-2" />
+          </SqueletteZone>
+        ) : suivi === null ? (
+          <Message ton="attention" titre="Activité indisponible">
+            Les chiffres d’activité n’ont pas pu être chargés. Rechargez la page dans quelques instants.
+          </Message>
+        ) : (
+          <div>
+            {productivite ? (
+              <ChartCard
+                title="Tickets créés et clôturés par mois"
+                icon={<BarChart3 />}
+                description="Six derniers mois : le cabinet ouvre-t-il plus de dossiers qu’il n’en termine ?"
+                empty={mensuel.length === 0 || mensuel.every((m) => m.crees === 0 && m.clotures === 0)}
+                emptyLabel="Aucun ticket créé ni clôturé sur les six derniers mois."
+              >
+                <ColonnesChart
+                  donnees={mensuel}
+                  cleX="mois"
+                  legende="Tickets créés et clôturés par mois, six derniers mois"
+                  series={[
+                    { cle: 'crees', nom: 'Créés', ton: 'info' },
+                    { cle: 'clotures', nom: 'Clôturés', ton: 'succes' },
+                  ]}
+                />
+                <p className="mt-3 border-t border-border pt-3 text-sm text-fg-muted">
+                  Durée moyenne de clôture sur 30 jours :{' '}
+                  <span className="font-semibold text-heading">
+                    {clos30 === null || moyenne === null
+                      ? '--'
+                      : clos30 === 0
+                        ? 'aucun ticket clôturé'
+                        : `${dureeCloture(moyenne)} (${pluriel(clos30, 'ticket clôturé', 'tickets clôturés')})`}
+                  </span>
+                </p>
+              </ChartCard>
+            ) : (
+              <FonctionHorsForfait fonction="Tableaux de bord de productivité" disponibleDes="Max" />
+            )}
+          </div>
+        )}
+      </SectionTableauDeBord>
+    </Page>
   );
 }

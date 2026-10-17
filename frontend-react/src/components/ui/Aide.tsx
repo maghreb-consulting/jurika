@@ -12,13 +12,16 @@ import { useAideMasquee, useAidesStore } from '../../store/aidesStore';
  *   memorise cote serveur, par utilisateur (lot L6, `store/aidesStore`). Le rendu
  *   lit le magasin, hydrate une fois a la connexion : aucun appel reseau ; sans
  *   serveur, l'aide s'affiche.
+ *
+ * Lot L6b (E11) : attributs `data-aide` (ajout, API inchangee) lus par JURI pour lister les
+ * aides de l'ecran en cours (components/assistant/aidesEcran.ts).
  */
 
 export function InfoBulle({ texte, libelle = 'Aide' }: { texte: string; libelle?: string }) {
   const id = useId();
   const [ouverte, setOuverte] = useState(false);
   return (
-    <span className="relative inline-flex align-middle">
+    <span className="relative inline-flex align-middle" data-aide="infobulle" data-aide-libelle={libelle} data-aide-texte={texte}>
       <button
         type="button"
         aria-label={libelle}
@@ -29,7 +32,7 @@ export function InfoBulle({ texte, libelle = 'Aide' }: { texte: string; libelle?
         onFocus={() => setOuverte(true)}
         onBlur={() => setOuverte(false)}
         onClick={() => setOuverte((o) => !o)}
-        className="rounded-full p-0.5 text-fg-subtle hover:text-fg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-fg-subtle transition-colors duration-150 hover:bg-bg-overlay hover:text-info"
       >
         <Info className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -37,7 +40,7 @@ export function InfoBulle({ texte, libelle = 'Aide' }: { texte: string; libelle?
         <span
           role="tooltip"
           id={id}
-          className="absolute left-6 top-0 z-30 w-72 rounded-md border border-border bg-bg-raised p-2 text-xs font-normal leading-relaxed text-fg shadow-lg"
+          className="absolute left-7 top-0 z-30 w-72 max-w-[calc(100vw-3rem)] rounded-lg border border-border bg-bg-raised px-3 py-2 text-xs font-normal normal-case leading-relaxed tracking-normal text-fg shadow-card-lifted"
         >
           {texte}
         </span>
@@ -55,8 +58,11 @@ export function TexteAide({ cle, titre, children }: { cle: string; titre: string
     return (
       <button
         type="button"
+        data-aide="texte-masque"
+        data-aide-cle={cle}
+        data-aide-titre={titre}
         onClick={() => reafficher(cle)}
-        className="inline-flex items-center gap-1 text-xs text-fg-subtle underline hover:text-fg"
+        className="inline-flex items-center gap-1 rounded-sm text-xs text-fg-subtle underline underline-offset-2 hover:text-fg"
       >
         <Info className="h-3.5 w-3.5" aria-hidden="true" />
         Afficher l’aide
@@ -65,9 +71,16 @@ export function TexteAide({ cle, titre, children }: { cle: string; titre: string
   }
 
   return (
-    <div role="note" aria-label={titre} className="relative rounded-md border border-border bg-bg-overlay p-3 pr-8 text-xs leading-relaxed text-fg-muted">
-      <p className="mb-1 flex items-center gap-1 font-medium text-fg">
-        <Info className="h-3.5 w-3.5" aria-hidden="true" />
+    <div
+      role="note"
+      aria-label={titre}
+      data-aide="texte"
+      data-aide-cle={cle}
+      data-aide-titre={titre}
+      className="relative rounded-lg border border-border border-l-4 border-l-info bg-info-soft py-3 pl-4 pr-10 text-sm leading-relaxed text-fg"
+    >
+      <p className="mb-1 flex items-center gap-1.5 font-semibold text-fg">
+        <Info className="h-4 w-4 text-info" aria-hidden="true" />
         {titre}
       </p>
       {children}
@@ -76,9 +89,9 @@ export function TexteAide({ cle, titre, children }: { cle: string; titre: string
         aria-label="Masquer l’aide"
         title="Masquer l’aide"
         onClick={() => masquer(cle)}
-        className="absolute right-2 top-2 rounded p-0.5 text-fg-subtle hover:text-fg"
+        className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-fg-muted hover:bg-bg-raised hover:text-fg"
       >
-        <X className="h-3.5 w-3.5" aria-hidden="true" />
+        <X className="h-4 w-4" aria-hidden="true" />
       </button>
     </div>
   );

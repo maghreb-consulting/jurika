@@ -1,4 +1,7 @@
 import { Search, X } from 'lucide-react';
+import { TextField } from '../ui/TextField';
+import { Select } from '../ui/Select';
+import { Button } from '../ui/Button';
 import {
   PRIORITE_LABELS,
   STATUT_LABELS,
@@ -21,9 +24,18 @@ interface Props {
   onFilterStatutChange: (s: TicketStatut | '') => void;
 }
 
+const options = <K extends string>(libelles: Record<K, string>, tous: string) => [
+  { value: '', label: tous },
+  ...(Object.entries(libelles) as [K, string][]).map(([value, label]) => ({ value, label })),
+];
+
+const OPTIONS_TYPE = options(TICKET_TYPE_LABELS, 'Tous les types');
+const OPTIONS_PRIORITE = options(PRIORITE_LABELS, 'Toutes les priorités');
+const OPTIONS_STATUT = options(STATUT_LABELS, 'Tous les statuts');
+
 /**
- * Barre de filtres tickets : recherche + type + priorite + statut.
- * Affiche un bouton "Reinitialiser" si au moins un filtre est actif.
+ * Barre de filtres des tickets : recherche, type, priorite, statut (lot L6b : champs de
+ * la bibliotheque). "Reinitialiser" n'apparait que si un filtre est actif, avec leur nombre.
  */
 export function TicketsFilters({
   query,
@@ -49,80 +61,44 @@ export function TicketsFilters({
   }
 
   return (
-    <div className="bg-bg-raised rounded-xl p-3 md:p-4 border border-border shadow-sm">
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg-subtle" />
-          <input
-            type="text"
+    <div role="search" aria-label="Filtrer les tickets" className="@container mb-5 rounded-xl border border-border bg-bg-raised p-3 shadow-card">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[14rem] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
+          <TextField
+            type="search"
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="Rechercher par référence, titre ou description…"
-            className="h-9 pl-9 pr-4 w-full bg-bg-overlay border border-border rounded-lg text-sm focus:border-accent focus:outline-none"
+            placeholder="Référence, titre, description…"
+            aria-label="Rechercher un ticket"
+            className="pl-9"
           />
         </div>
-
-        <select
+        <Select
+          aria-label="Filtrer par type"
           value={filterType}
           onChange={(e) => onFilterTypeChange(e.target.value as TicketType | '')}
-          className="h-9 px-3 bg-bg-overlay border border-border rounded-lg text-xs hover:border-accent transition"
-          aria-label="Filtrer par type"
-        >
-          <option value="">Tous les types</option>
-          {(Object.entries(TICKET_TYPE_LABELS) as [TicketType, string][]).map(
-            ([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ),
-          )}
-        </select>
-
-        <select
-          value={filterPriorite}
-          onChange={(e) =>
-            onFilterPrioriteChange(e.target.value as TicketPriorite | '')
-          }
-          className="h-9 px-3 bg-bg-overlay border border-border rounded-lg text-xs hover:border-accent transition"
+          options={OPTIONS_TYPE}
+          containerClassName="w-full @md:w-auto"
+        />
+        <Select
           aria-label="Filtrer par priorité"
-        >
-          <option value="">Toutes les priorités</option>
-          {(Object.entries(PRIORITE_LABELS) as [TicketPriorite, string][]).map(
-            ([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ),
-          )}
-        </select>
-
-        <select
-          value={filterStatut}
-          onChange={(e) =>
-            onFilterStatutChange(e.target.value as TicketStatut | '')
-          }
-          className="h-9 px-3 bg-bg-overlay border border-border rounded-lg text-xs hover:border-accent transition"
+          value={filterPriorite}
+          onChange={(e) => onFilterPrioriteChange(e.target.value as TicketPriorite | '')}
+          options={OPTIONS_PRIORITE}
+          containerClassName="w-full @md:w-auto"
+        />
+        <Select
           aria-label="Filtrer par statut"
-        >
-          <option value="">Tous les statuts</option>
-          {(Object.entries(STATUT_LABELS) as [TicketStatut, string][]).map(
-            ([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ),
-          )}
-        </select>
-
+          value={filterStatut}
+          onChange={(e) => onFilterStatutChange(e.target.value as TicketStatut | '')}
+          options={OPTIONS_STATUT}
+          containerClassName="w-full @md:w-auto"
+        />
         {activeCount > 0 && (
-          <button
-            type="button"
-            onClick={reset}
-            className="h-9 px-3 text-xs text-danger hover:bg-danger/10 rounded-lg transition flex items-center gap-1"
-          >
-            <X className="w-3 h-3" />
-            Reinitialiser ({activeCount})
-          </button>
+          <Button type="button" variant="ghost" size="md" icon={<X className="h-4 w-4" aria-hidden="true" />} onClick={reset}>
+            Réinitialiser ({activeCount})
+          </Button>
         )}
       </div>
     </div>

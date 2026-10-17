@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ticketService } from '../../services/ticket.service';
 import { extractError } from '../../lib/api';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
+import { CLASSES_CHAMP } from '../../components/ui/TextField';
+import { cn } from '../../lib/utils';
 import type { TicketStatut } from '../../types/ticket';
 
 /**
@@ -85,8 +87,8 @@ export function NoteTicketPanel({ ticketId, statut, role }: Props) {
   if (role === 'CLIENT') return null;
 
   return (
-    <section aria-labelledby="note-ticket-titre" className="space-y-2">
-      <h3 id="note-ticket-titre" className="flex items-center gap-1 text-sm font-semibold text-fg">
+    <section aria-labelledby="note-ticket-titre" className="space-y-2 rounded-xl border border-border bg-bg-raised p-5 shadow-card">
+      <h3 id="note-ticket-titre" className="flex items-center gap-1 text-base font-semibold text-heading">
         Note du ticket
         <InfoBulle
           libelle="À quoi sert la note du ticket ?"
@@ -114,7 +116,7 @@ export function NoteTicketPanel({ ticketId, statut, role }: Props) {
         rows={5}
         maxLength={20000}
         placeholder={lectureSeule ? 'Aucune note.' : 'Vos notes sur ce ticket : démarches à suivre, points à vérifier, rappels…'}
-        className="w-full rounded-md border border-border bg-bg-raised p-2 text-sm text-fg read-only:bg-bg-overlay"
+        className={cn(CLASSES_CHAMP, "min-h-[7.5rem] py-2 read-only:bg-bg-overlay")}
       />
       <p className="text-xs text-fg-subtle" aria-live="polite">
         {messageEtat(etat, lectureSeule, statut, role)}

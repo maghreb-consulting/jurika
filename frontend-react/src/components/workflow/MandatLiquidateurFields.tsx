@@ -4,7 +4,7 @@
  * (duree, comptes rendus, pouvoirs). Rien n'est propose par defaut : le cabinet n'a pas
  * d'usage decide pour ces donnees.
  */
-import { TextField } from '../ui/TextField';
+import { TextField, ZoneTexte } from '../ui/TextField';
 import { TexteAide } from '../ui/Aide';
 import type { DetailPvDissolution } from '../../lib/liquidationPv';
 
@@ -20,12 +20,8 @@ function Zone({ id, label, value, onChange, hint, error }: {
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium text-fg-muted">{label}</label>
-      <textarea id={id} data-testid={id} rows={3} value={value} onChange={(e) => onChange(e.target.value)}
-        aria-invalid={error ? true : undefined}
-        className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm" />
-      {hint && <p className="mt-1 text-[11px] text-fg-subtle">{hint}</p>}
-      {error && <p className="mt-1 text-xs text-danger" role="alert">{error}</p>}
+      <ZoneTexte id={id} label={label} hint={hint} error={error} data-testid={id} rows={3} value={value}
+        onChange={(e) => onChange(e.target.value)} />
     </div>
   );
 }

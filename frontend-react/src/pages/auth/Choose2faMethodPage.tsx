@@ -4,16 +4,19 @@ import {
   CheckCircle2,
   ChevronRight,
   Copy,
-  Loader2,
+  Download,
   Lock,
   MessageSquare,
   ShieldCheck,
   Smartphone,
 } from 'lucide-react';
-import { BrandLogo } from '../../components/ui/BrandLogo';
-import { InfoBulle } from '../../components/ui/Aide';
-import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
+import { PageAccueil, TitreAccueil } from '../../components/auth/PageAccueil';
+import { Badge } from '../../components/ui/Badge';
+import { copierTexte } from '../../lib/pressePapiers';
+import { Button, Spinner } from '../../components/ui/Button';
+import { Case } from '../../components/ui/Choix';
+import { Skeleton } from '../../components/ui/LoadingSkeleton';
+import { Message } from '../../components/ui/Message';
 import { TextField } from '../../components/ui/TextField';
 import { authService } from '../../services/auth.service';
 import { extractError, tokenStorage } from '../../lib/api';
@@ -162,7 +165,8 @@ export function Choose2faMethodPage() {
   }
 
   function copyRecoveryCodes() {
-    navigator.clipboard.writeText(recoveryCodes.join('\n')).catch(() => {});
+    // Lot L6b (E13) : copie aussi en HTTP (navigator.clipboard absent hors contexte securise).
+    void copierTexte(recoveryCodes.join('\n'));
   }
 
   function finalize() {
@@ -180,282 +184,238 @@ export function Choose2faMethodPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-bg via-bg-raised to-accent/10 px-4 py-12">
-      <div className="w-full max-w-lg">
-        <div className="mb-8 flex items-center justify-center">
-          <BrandLogo variant="full" size={48} />
+    <PageAccueil titre="Double authentification" retourAccueil={false}>
+      {step === 'choose' && (
+        <div className="space-y-4">
+          <TitreAccueil
+            icone={<ShieldCheck />}
+            titre="Activez la double authentification"
+            libelleInfoBulle="Aide sur la double authentification"
+            infoBulle="À chaque connexion, en plus du mot de passe, JURIKA vous demandera un code à 6 chiffres : celui de votre application d’authentification, ou celui reçu par SMS. Après l’activation, vous recevrez 10 codes de récupération à conserver, utiles si vous perdez votre téléphone."
+          >
+            Pour protéger les dossiers de votre cabinet, la double authentification est obligatoire avant
+            d’accéder à la plateforme. Choisissez une méthode.
+          </TitreAccueil>
+
+          {/* Choix de methode : de vrais boutons (bordure, survol, focus), une carte par methode. */}
+          <button
+            type="button"
+            onClick={pickTotp}
+            disabled={loading}
+            className="flex w-full items-center gap-4 rounded-xl border border-border-input bg-bg-raised p-4 text-left shadow-card transition-[border-color,box-shadow] duration-150 hover:border-accent hover:shadow-card-lifted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
+              <Smartphone className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold text-fg">Application d’authentification (QR code)</span>
+                <Badge variant="default">Recommandée</Badge>
+              </span>
+              <span className="mt-0.5 block text-xs text-fg-muted">
+                Aucun numéro de téléphone requis. Scannez un QR code avec une application d’authentification
+                (Google Authenticator, Microsoft Authenticator, Authy, 1Password…), sur téléphone, tablette ou
+                ordinateur.
+              </span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-fg-subtle" aria-hidden="true" />
+          </button>
+
+          {!SMS_2FA_ENABLED ? (
+            // SMS " Hors service " : aucun fournisseur SMS reel n'est branche
+            // (flag SMS_2FA_ENABLED=false). Carte grisee, non selectionnable.
+            <div
+              aria-disabled="true"
+              data-testid="2fa-sms-out-of-service"
+              className="flex w-full items-start gap-4 rounded-xl border border-dashed border-border bg-bg-overlay p-4 text-left"
+            >
+              <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-bg-raised text-fg-subtle">
+                <MessageSquare className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="flex flex-wrap items-center gap-2 font-semibold text-fg-muted">
+                  SMS
+                  <Badge variant="neutral">Hors service</Badge>
+                </p>
+                <p className="text-xs text-fg-muted">
+                  La vérification par SMS n’est pas encore disponible. Utilisez l’application d’authentification
+                  ci-dessus.
+                </p>
+              </div>
+            </div>
+          ) : smsAvailable ? (
+            <button
+              type="button"
+              onClick={pickSms}
+              disabled={loading}
+              className="flex w-full items-center gap-4 rounded-xl border border-border-input bg-bg-raised p-4 text-left shadow-card transition-[border-color,box-shadow] duration-150 hover:border-accent hover:shadow-card-lifted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success-soft text-success">
+                <MessageSquare className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold text-fg">SMS</span>
+                <span className="block text-xs text-fg-muted">
+                  Code à 6 chiffres envoyé au{' '}
+                  {phoneHint ? <span className="font-mono">{phoneHint}</span> : 'numéro déclaré à l’inscription'}.
+                  Nécessite un téléphone avec une carte SIM active.
+                </span>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-fg-subtle" aria-hidden="true" />
+            </button>
+          ) : optionsLoaded ? (
+            <div className="flex w-full items-start gap-4 rounded-xl border border-dashed border-border bg-bg-overlay p-4 text-left">
+              <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-bg-raised text-fg-subtle">
+                <MessageSquare className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-fg-muted">SMS indisponible</p>
+                <p className="text-xs text-fg-muted">
+                  Aucun numéro de téléphone n’a été renseigné lors de l’inscription. Utilisez l’application
+                  d’authentification ci-dessus, ou faites ajouter votre numéro par votre cabinet pour activer cette
+                  méthode.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <Skeleton className="h-[5.5rem] w-full rounded-xl" />
+          )}
+
+          <p className="text-center text-xs text-fg-muted">
+            Pas de téléphone ? Choisissez l’<strong className="text-fg">application d’authentification</strong> :
+            elle fonctionne aussi sur ordinateur, sans carte SIM.
+          </p>
+
+          {loading && (
+            <p role="status" className="flex items-center justify-center gap-2 text-sm text-fg-muted">
+              <Spinner className="h-3.5 w-3.5" /> Patientez…
+            </p>
+          )}
+          {error && <Message ton="erreur">{error}</Message>}
         </div>
+      )}
 
-        <Card className="p-8">
-          {step === 'choose' && (
-            <div className="space-y-5">
-              <div className="text-center">
-                <ShieldCheck className="mx-auto h-12 w-12 text-accent" />
-                <h1 className="mt-3 flex items-center justify-center gap-1 font-heading text-xl font-semibold text-fg">
-                  Activez la double authentification
-                  <InfoBulle
-                    libelle="Aide sur la double authentification"
-                    texte="À chaque connexion, en plus du mot de passe, JURIKA vous demandera un code à 6 chiffres : celui de votre application d’authentification, ou celui reçu par SMS. Après l’activation, vous recevrez 10 codes de récupération à conserver, utiles si vous perdez votre téléphone."
-                  />
-                </h1>
-                <p className="mt-1 text-sm text-fg-muted">
-                  Pour protéger les dossiers de votre cabinet, la double authentification est
-                  obligatoire avant d’accéder à la plateforme. Choisissez une méthode.
-                </p>
-              </div>
+      {step === 'totp-setup' && (
+        <form onSubmit={confirmTotp} className="space-y-5" noValidate>
+          <TitreAccueil icone={<Smartphone />} titre="Scannez le QR code">
+            Avec votre application d’authentification, puis saisissez le code à 6 chiffres qu’elle affiche.
+          </TitreAccueil>
 
-              <button
-                type="button"
-                onClick={pickTotp}
-                disabled={loading}
-                className="flex w-full items-center gap-4 rounded-xl border-2 border-accent/40 bg-accent/5 p-4 text-left transition-colors hover:border-accent hover:bg-accent/10"
-              >
-                <div className="rounded-lg bg-accent/20 p-2">
-                  <Smartphone className="h-6 w-6 text-accent" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-fg">Application d’authentification (QR code)</p>
-                    <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold text-bg-raised">
-                      Recommandée
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-xs text-fg-subtle">
-                    Aucun numéro de téléphone requis. Scannez un QR code avec une application
-                    d’authentification (Google Authenticator, Microsoft Authenticator, Authy,
-                    1Password…), sur téléphone, tablette ou ordinateur.
-                  </p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-fg-subtle" />
-              </button>
-
-              {!SMS_2FA_ENABLED ? (
-                // SMS « Hors service » : aucun fournisseur SMS reel n'est branche
-                // (flag SMS_2FA_ENABLED=false). Carte grisee, non selectionnable.
-                <div
-                  aria-disabled="true"
-                  data-testid="2fa-sms-out-of-service"
-                  className="flex w-full items-start gap-4 rounded-xl border border-dashed border-border bg-bg-overlay p-4 text-left opacity-70"
-                >
-                  <div className="rounded-lg bg-bg-raised p-2">
-                    <MessageSquare className="h-6 w-6 text-fg-subtle" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="flex items-center gap-2 font-semibold text-fg-muted">
-                      SMS
-                      <span className="rounded-full bg-fg-subtle/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-fg-muted">
-                        Hors service
-                      </span>
-                    </p>
-                    <p className="text-xs text-fg-subtle">
-                      La vérification par SMS n’est pas encore disponible. Utilisez
-                      l’application d’authentification ci-dessus.
-                    </p>
-                  </div>
-                </div>
-              ) : smsAvailable ? (
-                <button
-                  type="button"
-                  onClick={pickSms}
-                  disabled={loading}
-                  className="flex w-full items-center gap-4 rounded-xl border border-border bg-bg-raised p-4 text-left transition-colors hover:border-success hover:bg-success/5"
-                >
-                  <div className="rounded-lg bg-success/10 p-2">
-                    <MessageSquare className="h-6 w-6 text-success" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-fg">SMS</p>
-                    <p className="text-xs text-fg-subtle">
-                      Code à 6 chiffres envoyé au{' '}
-                      {phoneHint ? (
-                        <span className="font-mono">{phoneHint}</span>
-                      ) : (
-                        'numéro déclaré à l’inscription'
-                      )}
-                      . Nécessite un téléphone avec une carte SIM active.
-                    </p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-fg-subtle" />
-                </button>
-              ) : optionsLoaded ? (
-                <div className="flex w-full items-start gap-3 rounded-xl border border-dashed border-border bg-bg-overlay p-4 text-left">
-                  <div className="rounded-lg bg-bg-raised p-2">
-                    <MessageSquare className="h-6 w-6 text-fg-subtle" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-fg-muted">SMS indisponible</p>
-                    <p className="text-xs text-fg-subtle">
-                      Aucun numéro de téléphone n’a été renseigné lors de l’inscription.
-                      Utilisez l’application d’authentification ci-dessus, ou faites ajouter
-                      votre numéro par votre cabinet pour activer cette méthode.
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-
-              <p className="text-center text-xs text-fg-subtle">
-                Pas de téléphone ? Choisissez l’<strong className="text-fg-muted">application d’authentification</strong> :
-                elle fonctionne aussi sur ordinateur, sans carte SIM.
-              </p>
-
-              {loading && (
-                <p className="flex items-center justify-center gap-2 text-sm text-fg-subtle">
-                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Patientez…
-                </p>
-              )}
-              {error && (
-                <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-                  {error}
-                </div>
-              )}
+          {qrCode && (
+            <div className="flex justify-center">
+              <img
+                src={`data:image/png;base64,${qrCode}`}
+                alt="QR code à scanner avec votre application d’authentification"
+                width={192}
+                height={192}
+                className="h-48 w-48 rounded-lg border border-border bg-bg-raised p-2"
+              />
             </div>
           )}
 
-          {step === 'totp-setup' && (
-            <form onSubmit={confirmTotp} className="space-y-5" noValidate>
-              <div className="text-center">
-                <Smartphone className="mx-auto h-10 w-10 text-accent" />
-                <h1 className="mt-3 font-heading text-xl font-semibold text-fg">Scannez le QR code</h1>
-                <p className="mt-1 text-sm text-fg-muted">
-                  Avec votre application d’authentification, puis saisissez le code à 6 chiffres
-                  qu’elle affiche.
-                </p>
-              </div>
+          <div className="space-y-1 rounded-lg border border-border bg-bg-overlay p-3">
+            <p className="text-xs font-medium text-fg-muted">Clé secrète (si vous ne pouvez pas scanner) :</p>
+            <code className="break-all font-mono text-xs text-fg">{secret}</code>
+          </div>
 
-              {qrCode && (
-                <div className="flex justify-center">
-                  <img
-                    src={`data:image/png;base64,${qrCode}`}
-                    alt="QR code à scanner avec votre application d’authentification"
-                    className="h-48 w-48 rounded-lg border-2 border-border bg-bg-raised p-2"
-                  />
-                </div>
-              )}
+          <TextField
+            label="Code à 6 chiffres affiché par l’application"
+            name="totpCode"
+            inputMode="numeric"
+            pattern="[0-9]{6}"
+            maxLength={6}
+            value={totpCode}
+            onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
+            placeholder="123456"
+            autoComplete="one-time-code"
+            className="h-11 text-center text-lg tracking-[0.5em]"
+            mono
+            required
+          />
 
-              <div className="space-y-1 rounded-lg border border-border bg-bg-overlay p-3">
-                <p className="text-xs font-medium text-fg-muted">
-                  Clé secrète (si vous ne pouvez pas scanner) :
-                </p>
-                <code className="break-all text-xs font-mono text-fg">{secret}</code>
-              </div>
+          {error && <Message ton="erreur">{error}</Message>}
 
-              <TextField
-                label="Code à 6 chiffres affiché par l’application"
-                name="totpCode"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                value={totpCode}
-                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="123456"
-                className="text-center text-lg tracking-[0.5em]"
-                required
-              />
+          <Button type="submit" size="lg" fullWidth loading={loading} disabled={totpCode.length !== 6}>
+            Activer la double authentification
+          </Button>
+        </form>
+      )}
 
-              {error && (
-                <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-                  {error}
-                </div>
-              )}
+      {step === 'sms-setup' && (
+        <form onSubmit={confirmSms} className="space-y-5" noValidate>
+          <TitreAccueil icone={<MessageSquare />} ton="succes" titre="Vérification par SMS">
+            Un code à 6 chiffres a été envoyé au <span className="font-mono">{maskedPhone}</span>. Il n’est valable
+            que quelques minutes.
+          </TitreAccueil>
 
-              <Button type="submit" className="w-full" loading={loading} disabled={totpCode.length !== 6}>
-                Activer la double authentification
-              </Button>
-            </form>
-          )}
+          <TextField
+            label="Code reçu par SMS"
+            name="smsCode"
+            inputMode="numeric"
+            pattern="[0-9]{6}"
+            maxLength={6}
+            value={smsCode}
+            onChange={(e) => setSmsCode(e.target.value.replace(/\D/g, ''))}
+            placeholder="123456"
+            autoComplete="one-time-code"
+            className="h-11 text-center text-lg tracking-[0.5em]"
+            mono
+            required
+          />
 
-          {step === 'sms-setup' && (
-            <form onSubmit={confirmSms} className="space-y-5" noValidate>
-              <div className="text-center">
-                <MessageSquare className="mx-auto h-10 w-10 text-success" />
-                <h1 className="mt-3 font-heading text-xl font-semibold text-fg">Vérification par SMS</h1>
-                <p className="mt-1 text-sm text-fg-muted">
-                  Un code à 6 chiffres a été envoyé au <span className="font-mono">{maskedPhone}</span>.
-                  Il n’est valable que quelques minutes.
-                </p>
-              </div>
+          {error && <Message ton="erreur">{error}</Message>}
 
-              <TextField
-                label="Code reçu par SMS"
-                name="smsCode"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                value={smsCode}
-                onChange={(e) => setSmsCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="123456"
-                className="text-center text-lg tracking-[0.5em]"
-                required
-              />
+          <Button type="submit" size="lg" fullWidth loading={loading} disabled={smsCode.length !== 6}>
+            Activer la double authentification
+          </Button>
+          <div className="flex justify-center">
+            <Button type="button" variant="ghost" size="sm" onClick={() => pickSms()}>
+              Renvoyer un code
+            </Button>
+          </div>
+        </form>
+      )}
 
-              {error && (
-                <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-                  {error}
-                </div>
-              )}
+      {step === 'recovery-codes' && (
+        <div className="space-y-5">
+          <TitreAccueil icone={<Lock />} ton="attention" titre="Codes de récupération">
+            Conservez ces 10 codes en lieu sûr : ils ne seront plus jamais affichés. Chaque code ne sert qu’une
+            fois, si vous perdez l’accès à votre méthode de double authentification.
+          </TitreAccueil>
 
-              <Button type="submit" className="w-full" loading={loading} disabled={smsCode.length !== 6}>
-                Activer la double authentification
-              </Button>
-              <button
-                type="button"
-                className="block w-full text-center text-xs font-medium text-accent hover:text-accent"
-                onClick={() => pickSms()}
+          <div className="grid gap-2 rounded-lg border border-border bg-bg-overlay p-3 sm:grid-cols-2">
+            {recoveryCodes.map((c) => (
+              <code
+                key={c}
+                className="rounded-md bg-bg-raised px-2 py-1.5 text-center font-mono text-sm tracking-wider text-fg ring-1 ring-border"
               >
-                Renvoyer un code
-              </button>
-            </form>
-          )}
+                {c}
+              </code>
+            ))}
+          </div>
 
-          {step === 'recovery-codes' && (
-            <div className="space-y-5">
-              <div className="text-center">
-                <Lock className="mx-auto h-10 w-10 text-warning" />
-                <h1 className="mt-3 font-heading text-xl font-semibold text-fg">Codes de récupération</h1>
-                <p className="mt-1 text-sm text-fg-muted">
-                  Conservez ces 10 codes en lieu sûr : ils ne seront plus jamais affichés. Chaque
-                  code ne sert qu’une fois, si vous perdez l’accès à votre méthode de double
-                  authentification.
-                </p>
-              </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" size="sm" icon={<Copy />} onClick={copyRecoveryCodes}>
+              Copier
+            </Button>
+            <Button type="button" variant="secondary" size="sm" icon={<Download />} onClick={downloadRecoveryCodes}>
+              Télécharger (.txt)
+            </Button>
+          </div>
 
-              <div className="grid grid-cols-2 gap-2 rounded-lg border border-warning/40 bg-warning/10 p-4">
-                {recoveryCodes.map((c) => (
-                  <code
-                    key={c}
-                    className="rounded bg-bg-raised px-2 py-1 text-center text-sm font-mono text-fg"
-                  >
-                    {c}
-                  </code>
-                ))}
-              </div>
+          <div className="rounded-lg border border-border bg-bg-raised p-3">
+            <Case
+              label="J’ai mis mes codes de récupération en lieu sûr."
+              checked={acknowledged}
+              onChange={(e) => setAcknowledged(e.target.checked)}
+            />
+          </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="secondary" onClick={copyRecoveryCodes}>
-                  <Copy className="mr-2 h-4 w-4" /> Copier
-                </Button>
-                <Button variant="secondary" onClick={downloadRecoveryCodes}>
-                  Télécharger (.txt)
-                </Button>
-              </div>
-
-              <label className="flex items-start gap-2 text-sm text-fg-muted">
-                <input
-                  type="checkbox"
-                  checked={acknowledged}
-                  onChange={(e) => setAcknowledged(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-border-hi text-accent"
-                />
-                J’ai mis mes codes de récupération en lieu sûr.
-              </label>
-
-              <Button onClick={finalize} disabled={!acknowledged} className="w-full">
-                <CheckCircle2 className="mr-2 h-4 w-4" /> Terminer
-              </Button>
-            </div>
-          )}
-        </Card>
-      </div>
-    </div>
+          <Button type="button" size="lg" fullWidth onClick={finalize} disabled={!acknowledged} icon={<CheckCircle2 />}>
+            Terminer
+          </Button>
+        </div>
+      )}
+    </PageAccueil>
   );
 }

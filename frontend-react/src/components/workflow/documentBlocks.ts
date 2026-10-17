@@ -43,6 +43,15 @@ export interface DocState {
   attendues?: DonneeAttendue[];
 }
 
+/**
+ * Lot L6b (E15) : vrai si le document a ete travaille dans cet ecran (genere, en cours,
+ * valide, apercu present). Un bloc frais (montage, rechargement) ne doit rien remonter :
+ * son "non valide" ecrasait l'etat persiste de la page (PV deja valide et depose).
+ */
+export function documentTravaille(st: DocState | undefined): boolean {
+  return !!st && (st.generated || st.generating || st.validated || !!st.blob || !!st.apercu);
+}
+
 export function freshDocState(): DocState {
   return {
     generating: false,

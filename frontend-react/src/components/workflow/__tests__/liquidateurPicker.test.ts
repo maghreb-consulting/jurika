@@ -46,6 +46,25 @@ describe('buildLiquidateurOptions', () => {
     expect(opts[1]).toMatchObject({ civilite: 'Mme', adresse: 'RABAT' });
   });
 
+  // Lot L6b (E15, parcours " succursale ") : " Sara Bennani - associe " affiche pour une
+  // associee ; le role s'accorde a la civilite (ou au genre) de la personne.
+  it('accorde le rôle au féminin pour une associée ou une gérante', () => {
+    const opts = buildLiquidateurOptions({
+      gerants: [{ civilite: 'Mme', prenom: 'Nadia', nom: 'IDRISSI' }],
+      associes: [
+        { civilite: 'Mme', prenom: 'Salma', nom: 'TAZI', nombreParts: 400 },
+        { genre: 'féminin', prenom: 'Sara', nom: 'BENNANI', nombreParts: 100 },
+        { civilite: 'M', prenom: 'Mehdi', nom: 'ALAOUI', nombreParts: 500 },
+      ],
+    });
+    expect(opts.map((o) => o.label)).toEqual([
+      'Nadia IDRISSI — gérante',
+      'Salma TAZI — associée',
+      'Sara BENNANI — associée',
+      'Mehdi ALAOUI — associé',
+    ]);
+  });
+
   it('renvoie une liste vide sans parties connues (la saisie externe reste possible)', () => {
     expect(buildLiquidateurOptions(null)).toEqual([]);
     expect(buildLiquidateurOptions({ gerants: [], associes: [] })).toEqual([]);

@@ -28,7 +28,7 @@ import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
 import { TypePieceProposee, ValeurProposee } from './ValeurProposee';
 import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
-import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
+import { freshDocState, useDocumentBlocks, type DocState, documentTravaille } from './documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
@@ -98,6 +98,11 @@ export interface SuccursaleOperationFormProps {
   /** Identité société marocaine (AG) — pré-remplie BD via dossierId (MA / fermeture). */
   societe: SeanceSocieteInput;
   defaultDate?: string;
+  /**
+   * Lot L6b (E15) : date et heure de convocation saisies a l'etape 1 de la page hote.
+   * Fournies, le proces-verbal les reprend et ne les redemande pas ; absentes, il les demande.
+   */
+  defaultConvocation?: { date: string; heure?: string };
   /** Pré-remplissage des blocs succursale depuis les étapes hôtes. */
   succursaleSeed?: SuccursaleSeed;
   /** Pré-remplissage société mère (ETR). */
@@ -199,6 +204,7 @@ export function SuccursaleOperationForm({
   formeJuridique,
   societe,
   defaultDate,
+  defaultConvocation,
   succursaleSeed,
   mereSeed,
   denominationForFilename,
@@ -226,6 +232,9 @@ export function SuccursaleOperationForm({
     defaults: {
       type: 'extraordinaire',
       date: defaultDate,
+      ...(defaultConvocation?.date
+        ? { convDate: defaultConvocation.date, convHeure: defaultConvocation.heure ?? '' }
+        : {}),
       // Fix D1/ETR — la séance est la décision de l'organe compétent de la mère
       // étrangère, pas une AG d'associés marocains : la qualité par défaut
       // « Gérant » y était juridiquement fausse.
@@ -486,7 +495,7 @@ export function SuccursaleOperationForm({
   }, [workflowCode, pvCode, templates.length]);
 
   useEffect(() => {
-    onReady?.(!!docs[pvCode]?.validated);
+    if (documentTravaille(docs[pvCode])) onReady?.(!!docs[pvCode]?.validated);
   }, [docs, pvCode, onReady]);
 
   return (
@@ -528,7 +537,11 @@ export function SuccursaleOperationForm({
       )}
 
       {/* Noyau séance (AG des associés pour MA/fermeture ; bureau seul pour ETR). */}
-      <SeanceFormFields form={form} sections={isEtr ? ETR_SECTIONS : AG_SECTIONS} />
+      <SeanceFormFields
+        form={form}
+        sections={isEtr ? ETR_SECTIONS : AG_SECTIONS}
+        hideConvDate={!!defaultConvocation?.date}
+      />
 
       {/* Bloc succursale — RÉCAPITULATIF non éditable quand la saisie a déjà eu
           lieu à l'étape dédiée (anti-duplication : une donnée, un seul champ). */}
@@ -680,14 +693,14 @@ export function SuccursaleOperationForm({
       {/* Génération du PV */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-violet-600" />
+          <Sparkles className="h-4 w-4 text-info" />
           <h4 className="text-sm font-semibold text-fg">
             {isFermeture ? 'Générer le PV de fermeture' : 'Générer le PV de création de succursale'}
           </h4>
         </div>
         {loadingTemplates && <p className="text-sm text-fg-subtle">Chargement du modèle…</p>}
         {loadTemplatesError && (
-          <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger" role="alert">
+          <div className="rounded-lg border border-danger/30 bg-danger-soft p-3 text-sm text-danger" role="alert">
             {loadTemplatesError}
           </div>
         )}
@@ -695,7 +708,7 @@ export function SuccursaleOperationForm({
           <div
             role="alert"
             data-testid="succursale-etr-bureau-requis"
-            className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger"
+            className="rounded-lg border border-danger/40 bg-danger-soft p-3 text-sm text-danger"
           >
             Renseignez le <strong>président de séance</strong> (bloc « Séance ») avant de
             générer le PV : la société mère étrangère n'est pas décrite en base, ce nom ne
@@ -745,7 +758,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <section className="space-y-4 rounded-xl border border-border bg-bg-raised p-4">
       <div className="flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-violet-600" />
+        <Sparkles className="h-4 w-4 text-info" />
         <h4 className="text-sm font-semibold text-fg">{title}</h4>
       </div>
       {children}

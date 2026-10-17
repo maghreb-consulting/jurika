@@ -280,6 +280,85 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **Note interne `NOTE_DEFAUT_DECISION_ASSOCIE_UNIQUE_SARL_AU`** du corpus non branchee (constat de
   defaut de decision de l'associe unique).
 
+### Lot L6b (refonte de l'interface, 2026-10-15) -- dette relevee
+
+- **Police servie en `application/octet-stream`** par nginx (`/fonts/Inter-*.ttf`) : a declarer
+  `font/ttf` (types nginx du front).
+- **Code mort du front** : `components/billing/PlanUsageBadge.tsx` (importe nulle part) ;
+  dependances `lenis`, `gsap`, `@gsap/react` encore dans package.json (`gsap` importe par
+  `lib/motion.ts`) ; `scripts/check-pricing-purge.mjs` (lit l'ancienne vitrine) ;
+  `e2e/signup-funnel.spec.ts` et `e2e/billing-*.spec.ts` perimes.
+- **Harnais visuel** : donnees simulees en ASCII (texte non accentue sur les captures, pas dans
+  l'application) ; route `GET /ai/workflows/*/templates` de la modification non simulee ; contraste
+  calcule par le harnais (axe-core absent hors ligne : fonds en image ou degrade non evalues) ;
+  job CI `frontend-visuel` bloquant (duree en CI non mesuree, delai 30 min).
+- **Tests sensibles a la charge** : `step7-documents-conditionnels` (delai porte a 30 s),
+  `debours-panel`, `TracabilitePage` depassent 5 s quand le Z440 est tres charge (sous-agents en
+  parallele) ; verts a charge normale.
+- **Ecrans** : `ClientDataroomView` garde un avis fixe (z-50) de repli sans fournisseur de toasts
+  (tests seulement) ; reference du ticket affichee deux fois dans l'en-tete du parcours ; Inter
+  seule (Playfair et JetBrains Mono abandonnes, aucun fichier libre hors ligne) ; rendu d'Inter
+  verifie sous chromium Linux seulement.
+- **LCP de la vitrine sur reseau lent** : 3,4 s en "Fast 3G" avec CPU x4 (540 ms sans limitation),
+  deja avant les animations : paquet JavaScript de l'application charge par la vitrine (decoupage du
+  code a faire, chunk principal > 500 ko).
+- **Course a l'archivage d'une piece d'identite** (`DataroomIdentityArchiver` : lecture de la version courante puis insertion) : deux archivages simultanes de la meme piece pourraient heurter l'index unique "un seul courant" (rare, releve par le lot L6b).
+- **Type d'element en code brut** ("USER", "TICKET", "PIECE_IDENTITE") sur la fiche d'un cabinet
+  (super-admin) et dans les colonnes "Element" de la tracabilite ; panneau d'activite du tiroir du
+  ticket non couvert par le harnais.
+- **Demonstration JUR-DEMO2** : description des tickets du seed technique et non accentuee ("Ticket de demonstration seede par scripts/seed-...", visible dans la video de la vitrine) ; ticket T-2026-00002 "Constitution Atlas Demo SARL" cree pour la video (etape 1) ; aucune demarche avec echeance ni acte genere ; un document "TEST"
+  ("Les 28 types de modifications statutaires") dont l'origine est a verifier ; second facteur TOTP de
+  `employe2` configure pour les captures (secret dans `~/.jurika-test/employe2-totp.txt`).
+- **Copilote retire du tableau de bord employe** (demande du 2026-10-16 ; panneau, service et types du
+  front supprimes, la carte "Prochaine action" prend sa place). Cote serveur, dashboard-service garde
+  `AgentCopiloteScheduler` (tous les jours a 8 h, Africa/Casablanca), `AgentCopiloteService`,
+  `AgentBriefingController` (`/api/v1/agent/briefing/**`) et l'appel au raisonnement d'ai-service :
+  des briefings sont encore generes sans aucun lecteur (motif 9, cout du modele). A retirer (test
+  d'abord ; la table des briefings reste, migration intouchable) ou a desactiver.
+- **Tableaux de bord (refonte L6b E17) : donnees absentes du serveur**, rien invente cote front :
+  delais du superviseur sans nom du dossier (rejoint par la liste des dossiers) ; motif de risque
+  non accentue ("Delai legal depasse", traduit par le front) ; dossiers a risque sans date ni
+  demarche ; delais en retard absents des tranches J-30 ; sante des services sans billing,
+  dashboard, gateway, kie, ocr ; aucun prenom de l'utilisateur connecte (accueil sur le debut du
+  courriel) ; page Tickets sans filtre lu dans l'URL (les indicateurs menent a la liste complete) ;
+  temps moyen de cloture a 0 quand rien n'est clos (COALESCE, masque par le front) ; colonne "En
+  production" de la supervision sans les tickets a la creation ; affichage sous 768 px non verifie
+  a l'ecran (harnais en 1366 et 1920 seulement).
+- **Diagrammes par role (L6b E18)** : sans agregat serveur, la charge par employe et par etape est
+  calculee sur la liste des tickets (500 au plus) et le rythme de l'employe sur ses tickets (200 au
+  plus), avec mention a l'ecran si la liste est partielle ; alertes de securite limitees a 24 h et
+  20 lignes (pas de serie par jour) ; billing n'expose aucun agregat de paiements ou de chiffre
+  d'affaires ; documents recus par le client limites aux 10 derniers.
+- **Liste CORS de la passerelle jamais rafraichie** (motif 9) : `DynamicCorsConfigurationSource`
+  appelle `GET /api/v1/admin/cors-origins` d'auth sans jeton et recoit 403 a chaque sondage (5 min,
+  WARN seulement) ; seule l'amorce `CORS_ALLOWED_ORIGINS` s'applique, les origines saisies par le
+  super-admin (`workspace_allowed_origins`) ne servent jamais. Releve par le lot L6b.
+- **kie-service "sain" sans modele** (motif 9) : sans `models/donut-jurika-final` (777 Mo, hors du
+  depot), kie passe son controle de sante puis repond 500 a toute extraction. En CI, le parcours de
+  creation (lecture des CIN, etiquette `@modele-kie`) est donc exclu du job e2e-parcours et ne tourne
+  que sur le Z440. A faire : controle de sante qui exige le modele, ou modele de test publiable.
+- **Audit de billing jamais ecrit** (motif 9) : `JdbcAuditEventEmitter` de billing ecrit dans
+  `audit_log` de `jurika_billing`, qui n'a pas cette table ("bad SQL grammar", journalise en WARN
+  seulement, ex. `BILLING_PAIEMENT_VALIDE`) : les traces de paiement sont perdues sans bruit.
+  Releve par le lot L6b (parcours du paiement), anterieur au lot.
+- **Liquidation : "boni" calcule sur actif - passif cote serveur** (`LiquidationWorkflow`,
+  `comptesFinaux.resultatType`, et `cloture.resultatSens` envoye par le front) : ni frais, ni impot,
+  ni remboursement du capital. Les actes impriment le resultat du rapport final (juste) ; l'ecran
+  est corrige en L6b ; la donnee stockee reste trompeuse (motif 9). Releve par le lot L6b.
+- **Liquidation, etape 2** : organe, date et motif de la decision de dissolution, journal
+  d'annonces et siege de la liquidation redemandes alors qu'ils sont connus depuis la dissolution ;
+  libelle du corpus "Lieu de conservation des documents de l'etablissement ferme" pour une
+  liquidation. Annonce d'ouverture de succursale : "... SARL SARL" quand la denomination contient
+  deja la forme (ecart du modele, A_DECIDER cabinet).
+- **Nettoyage du seed de test** : les donnees de `jurika_billing` (abonnements, paiements,
+  factures) des cabinets de test ne sont pas supprimees ; des cabinets de test anterieurs au
+  correctif du nettoyage restent sur le Z440. Factures de test avec l'identite fictive de l'editeur.
+- **API `PATCH /dossiers/{id}/identifiants`** : efface tout champ non envoye (l'ecran envoie tout).
+  Le serveur accepte un PV d'incident de seance a ordre du jour vide (le front le remplit).
+- **Controle silencieux du capital** (ai-service, `CreationDirecteurVarsBuilder`) : `toLong` d'un
+  montant decimal ("10000.0") rend null et la variable est ecartee ; corrige a la source en L6b
+  (le projecteur de workflow pose des entiers), le constructeur reste a durcir.
+
 ### Lot L7 (offre et facturation, 2026-10-14) -- dette relevee
 
 - **Supprimer `superadmin.test@jurika.invalid` avant la mise en production** : compte
@@ -331,14 +410,11 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 
 - **Messages par defaut de Bean Validation** (`@NotBlank` sans `message`) : en anglais si la JVM
   n'est pas en francais ; aucun `ValidationMessages_fr` (jurika-common/config).
-- **Theme** : envoye au serveur (`UpdateThemeUseCase`) mais jamais relu par le front (motif 9) ;
-  l'ecran dit desormais "memorise dans ce navigateur".
 - **Recuperation par code** : le compte est cherche sur la colonne `email` et non sur
   `login_email` ; un utilisateur qui ne connait que son identifiant pourrait echouer (a verifier).
-- **Ecrans** : `TicketPage` affiche les noms techniques des variables (ProvenanceDonnees sans
-  dictionnaire de libelles) ; `OcrSuggestionsPanel` affiche la source "tesseract / llm" ;
-  activite du client : colonne "Utilisateur" = 8 caracteres d'identifiant ; champ "Ticket lie"
-  d'une demande saisi a la main.
+- **Libelles des donnees hors creation** (`TicketPage`) : seul le catalogue de la creation
+  (`CHAMPS_CREATION`) donne des libelles ; les variables des autres parcours restent sous leur nom
+  technique faute de dictionnaire expose par le serveur (L6b).
 - **Valeurs par defaut de liste encore transmises aux actes** (creation) : etape 3
   `modeLiberation` ("integrale"), `modeSignature` ("separee") ; etape 5 `formeJuridiqueEntite`
   ("SARL"), `repCivilite` ("M"), `repQualite` ("Gerant") du representant d'un associe personne
@@ -407,8 +483,9 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
 - **`AuditLogJpaRepository` (auth)** inutilise depuis E10b : code mort a retirer (test d'abord).
 - **Objets MinIO orphelins** quand l'ecriture en base echoue, et suppression de l'ancien objet
   avant validation (dataroom).
-- **Front : boutons d'action encore visibles au superviseur** alors que le serveur les refuse
-  (E5, E5b, E6) ; 46 fichiers du front citent `SUPERVISEUR`.
+- **Front : boutons refuses par le serveur** : revus ecran par ecran en L6b (parcours en lecture
+  seule pour le superviseur, requetes, echeances, nouveau ticket, forfait) ; a reverifier a chaque
+  nouvel ecran.
 - **Exemple d'environnement serveur** : `.env.local.server.example` n'active pas le profil
   compose `mailhog` (`COMPOSE_PROFILES`) alors que `start-local.sh` attend `jurika-mailhog` :
   une installation faite depuis l'exemple n'atteint jamais 18/18.

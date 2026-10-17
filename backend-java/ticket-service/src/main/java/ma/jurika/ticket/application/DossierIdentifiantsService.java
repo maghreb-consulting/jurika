@@ -130,7 +130,12 @@ public class DossierIdentifiantsService {
             versionsTp.completerDateEffet(workspaceId, dossierId, tpApres, req.taxeProfessionnelleDateEffet());
         }
 
-        d.setIce(norm(req.ice()));
+        // Lot L6b (E14) : ICE reduit a ses chiffres ; un ICE deja porte par un autre dossier du
+        // cabinet est refuse nommement (avant : index unique viole, HTTP 500 ; ou, saisi avec des
+        // espaces, doublon enregistre sans controle).
+        String ice = iceChiffres(req.ice());
+        refuserIceDejaPris(workspaceId, dossierId, ice);
+        d.setIce(ice);
         d.setRcNumero(norm(req.rcNumero()));
         d.setRcTribunal(norm(req.rcTribunal()));
         d.setIdentifiantFiscal(norm(req.identifiantFiscal()));
@@ -151,6 +156,24 @@ public class DossierIdentifiantsService {
 
         log.info("Identifiants du dossier {} mis a jour par {} ({})", dossierId, userId, role);
         return view(saved);
+    }
+
+    /** ICE reduit a ses chiffres (saisie formatee "001 234 567 000 089") ; null si vide. */
+    static String iceChiffres(String ice) {
+        if (ice == null) return null;
+        String c = ice.replaceAll("\\D", "");
+        return c.isEmpty() ? null : c;
+    }
+
+    /** Refus nomme d'un ICE deja porte par un AUTRE dossier du cabinet. */
+    private void refuserIceDejaPris(UUID workspaceId, UUID dossierId, String ice) {
+        if (ice == null) return;
+        List<String> autres = dossiers.raisonSocialeAutreDossierAvecIce(workspaceId, dossierId, ice);
+        if (!autres.isEmpty()) {
+            throw new ValidationException("ICE : " + ice + " est d\u00e9j\u00e0 l\u2019ICE du dossier \u00ab "
+                    + autres.get(0) + " \u00bb de votre cabinet ; un ICE d\u00e9signe une seule soci\u00e9t\u00e9. "
+                    + "Corrigez l\u2019ICE, ou travaillez sur le dossier existant.");
+        }
     }
 
     /**

@@ -101,6 +101,30 @@ public class EditeurParametresService {
         return vue(ligne());
     }
 
+    /**
+     * Lot L6b (E2) : mentions legales PUBLIQUES de l'editeur (pied de page de la vitrine), telles
+     * que saisies par le super-admin. Une mention absente ou blanche est nulle (l'ecran dit "non
+     * renseigne") ; jamais de valeur inventee. Ni identifiant, ni auteur, ni date, ni TVA.
+     */
+    public record MentionsLegales(String raisonSociale, String formeJuridique, String capitalSocial,
+                                  String siegeSocial, String ville, String rcNumero, String rcTribunal,
+                                  String ice, String identifiantFiscal, String taxeProfessionnelle,
+                                  String representantNom, String representantQualite) {}
+
+    @Transactional(readOnly = true)
+    public MentionsLegales mentionsLegales() {
+        EditeurParametresEntity e = ligne();
+        return new MentionsLegales(renseigne(e.getRaisonSociale()), renseigne(e.getFormeJuridique()),
+                renseigne(e.getCapitalSocial()), renseigne(e.getSiegeSocial()), renseigne(e.getVille()),
+                renseigne(e.getRcNumero()), renseigne(e.getRcTribunal()), renseigne(e.getIce()),
+                renseigne(e.getIdentifiantFiscal()), renseigne(e.getTaxeProfessionnelle()),
+                renseigne(e.getRepresentantNom()), renseigne(e.getRepresentantQualite()));
+    }
+
+    private static String renseigne(String s) {
+        return s == null || s.isBlank() ? null : s;
+    }
+
     /** Identite courante (lecture seule) pour les documents (contrat, factures). */
     @Transactional(readOnly = true)
     public EditeurParametresEntity identite() {

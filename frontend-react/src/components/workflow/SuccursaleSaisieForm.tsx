@@ -19,6 +19,7 @@ import { useMemo } from 'react';
 import { Building2, Coins, UserCheck } from 'lucide-react';
 import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
+import { Case } from '../ui/Choix';
 import { IdentityExtractor } from '../identity/IdentityExtractor';
 import { TypePieceProposee, ValeurProposee } from './ValeurProposee';
 import { TexteAide } from '../ui/Aide';
@@ -82,7 +83,7 @@ export function SuccursaleSaisieForm({
       {/* ---------------- Localisation ---------------- */}
       <section className="space-y-4 rounded-xl border border-border bg-bg-raised p-4">
         <div className="flex items-center gap-2">
-          <Building2 className="h-4 w-4 text-accent" />
+          <Building2 className="h-4 w-4 text-fg-muted" />
           <h4 className="text-sm font-semibold text-fg">Identification et localisation</h4>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
@@ -147,16 +148,12 @@ export function SuccursaleSaisieForm({
           <Coins className="h-4 w-4 text-warning" />
           <h4 className="text-sm font-semibold text-fg">Dotation (facultative)</h4>
         </div>
-        <label className="flex items-center gap-2 text-sm text-fg-muted">
-          <input
-            type="checkbox"
-            checked={value.dotationPresente}
-            data-testid="succ-dotation-presente"
-            onChange={(e) => set({ dotationPresente: e.target.checked })}
-            className="h-4 w-4 rounded border-border-hi"
-          />
-          Une dotation est affectée à la succursale
-        </label>
+        <Case
+          label="Une dotation est affectée à la succursale"
+          checked={value.dotationPresente}
+          data-testid="succ-dotation-presente"
+          onChange={(e) => set({ dotationPresente: e.target.checked })}
+        />
         {value.dotationPresente && (
           <div className="grid gap-3 md:grid-cols-2">
             <TextField
@@ -175,19 +172,15 @@ export function SuccursaleSaisieForm({
       {/* ---------------- Responsable ---------------- */}
       <section className="space-y-4 rounded-xl border border-border bg-bg-raised p-4">
         <div className="flex items-center gap-2">
-          <UserCheck className="h-4 w-4 text-accent" />
+          <UserCheck className="h-4 w-4 text-fg-muted" />
           <h4 className="text-sm font-semibold text-fg">{roleLabel} (facultatif)</h4>
         </div>
-        <label className="flex items-center gap-2 text-sm text-fg-muted">
-          <input
-            type="checkbox"
-            checked={r.present}
-            data-testid="succ-responsable-present"
-            onChange={(e) => setResp({ present: e.target.checked })}
-            className="h-4 w-4 rounded border-border-hi"
-          />
-          Un {roleLabel.toLowerCase()} est désigné
-        </label>
+        <Case
+          label={`Un ${roleLabel.toLowerCase()} est désigné`}
+          checked={r.present}
+          data-testid="succ-responsable-present"
+          onChange={(e) => setResp({ present: e.target.checked })}
+        />
 
         {r.present && (
           <div className="space-y-4">

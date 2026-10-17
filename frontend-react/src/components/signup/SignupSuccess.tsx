@@ -1,6 +1,10 @@
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle, Copy } from 'lucide-react';
+import { ArrowRight, CheckCircle, Copy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '../ui/Button';
+import { Lien } from '../ui/Lien';
+import { Message } from '../ui/Message';
+import { copierTexte } from '../../lib/pressePapiers';
 
 interface SignupSuccessProps {
   workspaceCode: string;
@@ -28,114 +32,93 @@ export function SignupSuccess({ workspaceCode, email, contactEmail, selectedPlan
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
-    navigator.clipboard.writeText(workspaceCode).then(() => {
+    // Lot L6b (E13) : copie aussi en HTTP (navigator.clipboard absent hors contexte securise).
+    void copierTexte(workspaceCode).then((ok) => {
+      if (!ok) return;
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
   }
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center bg-bg-overlay p-8">
-      <div className="w-full max-w-[560px] rounded-2xl bg-bg-raised p-10 shadow-xl" data-testid="signup-success">
+    <div className="mx-auto max-w-xl py-4">
+      <div
+        className="rounded-xl border border-border border-t-2 border-t-accent bg-bg-raised p-6 shadow-card sm:p-8"
+        data-testid="signup-success"
+      >
         <div className="text-center">
-          <div className="mb-6 flex justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-success">
-              <CheckCircle className="h-8 w-8 text-bg" />
-            </div>
+          <div
+            aria-hidden="true"
+            className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-success"
+          >
+            <CheckCircle className="h-6 w-6" />
           </div>
 
-          <h2 className="mb-3 font-heading text-3xl font-semibold text-fg">
-            Votre espace est prêt !
-          </h2>
-          <p className="mb-8 text-fg-subtle">Bienvenue dans la plateforme JURIKA.</p>
+          <h2 className="mb-2 text-2xl font-semibold tracking-tight text-heading">Votre espace est prêt !</h2>
+          <p className="mb-6 text-sm text-fg-muted">Bienvenue dans la plateforme JURIKA.</p>
 
-          <div className="mb-8 rounded-xl bg-accent/10 p-6">
-            <p className="mb-2 text-sm text-fg-subtle">Code de votre cabinet :</p>
+          <div className="mb-6 rounded-lg border border-border bg-bg-overlay p-5">
+            <p className="mb-2 text-sm text-fg-muted">Code de votre cabinet :</p>
 
-            <div className="mb-4 flex items-center justify-center gap-3">
-              <span className="font-mono text-3xl font-bold text-accent">
-                {workspaceCode}
-              </span>
-              <button
+            <div className="mb-3 flex items-center justify-center gap-2">
+              <span className="font-mono text-3xl font-bold tracking-wider text-heading">{workspaceCode}</span>
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
+                iconOnly
                 onClick={handleCopy}
-                className="rounded-lg p-2 transition hover:bg-accent/20"
+                aria-label={copied ? 'Code copié' : 'Copier le code'}
                 title="Copier le code"
-              >
-                {copied ? (
-                  <CheckCircle className="h-5 w-5 text-success" />
-                ) : (
-                  <Copy className="h-5 w-5 text-accent" />
-                )}
-              </button>
+                icon={copied ? <CheckCircle className="text-success" /> : <Copy />}
+              />
             </div>
 
-            <p className="text-xs text-fg-subtle">
+            <p className="text-xs text-fg-muted">
               Conservez précieusement ce code : il vous sera demandé à chaque connexion.
             </p>
           </div>
+        </div>
 
+        <div className="space-y-4">
           {planLabel && (
-            <div
-              className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-center text-sm text-blue-900"
-              data-testid="signup-selected-plan"
-            >
+            <p className="text-center text-sm text-fg" data-testid="signup-selected-plan">
               Forfait choisi : <strong>{planLabel}</strong>
-            </div>
+            </p>
           )}
 
           {!emailDelivered && (
-            <div
-              className="mb-4 rounded-lg border-2 border-red-300 bg-red-50 p-4 text-left"
-              data-testid="signup-email-failed"
-            >
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 flex-shrink-0 text-red-600 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-red-900">Courriel d’activation non envoyé</p>
-                  <p className="mt-1 text-xs text-red-800">
-                    Une erreur technique a empêché l’envoi de votre mot de passe temporaire.
-                    Notez bien le code du cabinet ci-dessus et contactez{' '}
-                    <a href="mailto:support@jurika.ma" className="font-semibold underline">
-                      support@jurika.ma
-                    </a>{' '}
-                    en mentionnant ce code pour débloquer votre compte.
-                  </p>
-                </div>
-              </div>
+            <div data-testid="signup-email-failed">
+              <Message ton="erreur" titre="Courriel d’activation non envoyé">
+                Une erreur technique a empêché l’envoi de votre mot de passe temporaire. Notez bien le code du cabinet
+                ci-dessus et contactez <Lien href="mailto:support@jurika.ma">support@jurika.ma</Lien> en mentionnant
+                ce code pour débloquer votre compte.
+              </Message>
             </div>
           )}
 
-          <div className="mb-8 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-left">
-            <p className="text-sm font-semibold text-emerald-800">
-              Comment vous connecter ?
-            </p>
-            <ul className="mt-2 space-y-1 text-xs text-emerald-700">
+          <Message ton="succes" titre="Comment vous connecter ?">
+            <ol className="mt-1 space-y-1 text-sm">
               <li>
                 1. Saisissez le code <span className="font-mono font-bold">{workspaceCode}</span>
               </li>
               <li>
-                2. Connectez-vous avec votre identifiant{' '}
-                <span className="font-mono font-bold">{email}</span> et le mot de passe temporaire reçu par courriel
+                2. Connectez-vous avec votre identifiant <span className="font-mono font-bold">{email}</span> et le
+                mot de passe temporaire reçu par courriel
               </li>
               <li>3. Configurez votre double authentification à la première connexion</li>
-            </ul>
+            </ol>
             {/* BUG 7 (2026-06-08) — distinction identifiant vs notifications */}
             {contactEmail && contactEmail !== email && (
-              <p className="mt-3 rounded border border-emerald-200 bg-emerald-100 px-2 py-1 text-[11px] text-emerald-800">
-                Vos notifications continuent d’arriver sur{' '}
-                <span className="font-mono font-semibold">{contactEmail}</span>.
+              <p className="mt-2 text-xs text-fg-muted">
+                Vos notifications continuent d’arriver sur <span className="font-mono font-semibold">{contactEmail}</span>.
               </p>
             )}
-          </div>
+          </Message>
 
-          <button
-            type="button"
-            onClick={() => navigate('/login')}
-            className="h-12 w-full rounded-lg bg-accent font-semibold text-bg transition hover:bg-accent-hover"
-          >
-            Aller à la connexion →
-          </button>
+          <Button type="button" size="lg" fullWidth onClick={() => navigate('/login')} iconEnd={<ArrowRight />}>
+            Aller à la connexion
+          </Button>
         </div>
       </div>
     </div>

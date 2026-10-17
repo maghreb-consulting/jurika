@@ -3,6 +3,7 @@ import { ArrowRightLeft, Check, X } from 'lucide-react';
 import { InfoBulle } from '../ui/Aide';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
+import { Message } from '../ui/Message';
 import { transferService } from '../../services/transfer.service';
 import { extractError } from '../../lib/api';
 import { getSocket } from '../../lib/realtimeSocket';
@@ -70,8 +71,8 @@ export function PendingTransfersPanel() {
   return (
     <Card className="mb-6 p-4">
       <div className="mb-3 flex items-center gap-2">
-        <ArrowRightLeft className="h-4 w-4 text-accent" />
-        <h3 className="text-sm font-semibold text-fg">Transferts en attente</h3>
+        <ArrowRightLeft className="h-4 w-4 text-info" aria-hidden="true" />
+        <h3 className="text-base font-semibold text-heading">Transferts en attente</h3>
         <InfoBulle
           libelle="Que faire d’un transfert reçu ?"
           texte="Un collègue vous propose de reprendre un de ses dossiers. Acceptez : le dossier et ses tickets en cours passent sous votre responsabilité. Refusez : il reste à votre collègue. Les demandes que vous avez envoyées attendent la réponse de leur destinataire."
@@ -79,24 +80,26 @@ export function PendingTransfersPanel() {
       </div>
 
       {error && (
-        <div className="mb-3 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+        <Message ton="erreur" className="mb-3" onFermer={() => setError(null)}>
           {error}
-        </div>
+        </Message>
       )}
 
       {inbox.length > 0 && (
         <div className="mb-3">
-          <p className="mb-1 text-xs uppercase tracking-wide text-fg-subtle">Reçus</p>
+          <h4 className="mb-1 text-xs font-semibold text-fg-muted">Reçus</h4>
           <ul className="divide-y divide-border rounded-lg border border-border">
             {inbox.map((t) => (
               <li key={t.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-fg">{t.raisonSociale ?? t.dossierId.slice(0, 8)}</p>
-                  {t.motif && <p className="truncate text-xs text-fg-subtle">{t.motif}</p>}
+                  <p className="truncate font-medium text-fg">{t.raisonSociale ?? 'Dossier sans raison sociale'}</p>
+                  {t.motif && <p className="truncate text-xs text-fg-muted">{t.motif}</p>}
                 </div>
                 <div className="flex flex-shrink-0 items-center gap-2">
                   <Button
+                    type="button"
                     size="sm"
+                    icon={<Check />}
                     loading={busyId === t.id}
                     onClick={() =>
                       // Le dossier vient de m'etre reassigne : signaler a la page
@@ -104,15 +107,17 @@ export function PendingTransfersPanel() {
                       act(() => transferService.accept(t.id), t.id, emitTicketsChanged)
                     }
                   >
-                    <Check className="mr-1 h-3.5 w-3.5" /> Accepter
+                    Accepter
                   </Button>
                   <Button
+                    type="button"
                     size="sm"
                     variant="secondary"
+                    icon={<X />}
                     disabled={busyId === t.id}
                     onClick={() => act(() => transferService.reject(t.id), t.id)}
                   >
-                    <X className="mr-1 h-3.5 w-3.5" /> Refuser
+                    Refuser
                   </Button>
                 </div>
               </li>
@@ -123,15 +128,16 @@ export function PendingTransfersPanel() {
 
       {outbox.length > 0 && (
         <div>
-          <p className="mb-1 text-xs uppercase tracking-wide text-fg-subtle">Envoyés</p>
+          <h4 className="mb-1 text-xs font-semibold text-fg-muted">Envoyés</h4>
           <ul className="divide-y divide-border rounded-lg border border-border">
             {outbox.map((t) => (
               <li key={t.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-fg">{t.raisonSociale ?? t.dossierId.slice(0, 8)}</p>
-                  <p className="text-xs text-fg-subtle">En attente d’acceptation</p>
+                  <p className="truncate font-medium text-fg">{t.raisonSociale ?? 'Dossier sans raison sociale'}</p>
+                  <p className="text-xs text-fg-muted">En attente d’acceptation</p>
                 </div>
                 <Button
+                  type="button"
                   size="sm"
                   variant="secondary"
                   disabled={busyId === t.id}

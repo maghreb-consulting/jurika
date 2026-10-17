@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { Button } from '../../../components/ui/Button';
+import { Case } from '../../../components/ui/Choix';
 import { useStepAutosave, type RegisterDirty } from '../useStepAutosave';
 import {
   Check,
@@ -154,7 +156,7 @@ export function Step5Validation({
           exploitable par une future Modification). */}
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
         <h3 className="mb-3 flex items-center gap-2 text-base font-bold text-fg">
-          <Users className="h-5 w-5 text-accent" />
+          <Users className="h-5 w-5 text-fg-muted" />
           Associés et gérants
         </h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -221,36 +223,20 @@ export function Step5Validation({
       </div>
 
       <div className="rounded-xl border border-border bg-bg-raised p-6 shadow-sm">
-        <label className="flex items-start gap-2 text-sm text-fg">
-          <input
-            type="checkbox"
-            checked={validated}
-            onChange={(ev) => setValidated(ev.target.checked)}
-            className="mt-1 h-4 w-4 rounded"
-          />
-          <span>
-            Je certifie que les informations et documents repris sont exacts
-            et conformes à la réalité de la société.
-          </span>
-        </label>
+        <Case
+          checked={validated}
+          onChange={(ev) => setValidated(ev.target.checked)}
+          label="Je certifie que les informations et documents repris sont exacts et conformes à la réalité de la société."
+        />
       </div>
 
       <div className="flex items-center justify-end gap-3 pt-2">
         {!validated && (
           <p className="text-xs text-fg-subtle">Cochez la case de certification pour finaliser.</p>
         )}
-        <button
-          type="submit"
-          disabled={!validated || saving}
-          className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
-            validated && !saving
-              ? 'bg-success text-bg-raised hover:bg-success/85'
-              : 'cursor-not-allowed bg-border text-fg-subtle'
-          }`}
-        >
+        <Button type="submit" size="lg" disabled={!validated || saving} iconEnd={<ChevronRight />}>
           {saving ? 'Validation en cours…' : 'Finaliser'}
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -283,7 +269,7 @@ function CompletenessPanel({
     >
       <p className="mb-1 flex items-center justify-between text-xs font-semibold text-fg">
         {title}
-        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
+        <span className="rounded-full bg-info-soft px-2 py-0.5 text-[10px] font-medium text-info">
           {done} / {items.length}
         </span>
       </p>

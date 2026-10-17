@@ -4,9 +4,7 @@ import {
   AlertCircle,
   AlertTriangle,
   CheckCircle,
-  ChevronDown,
   ChevronRight,
-  ChevronUp,
   Download,
   Eye,
   FileText,
@@ -56,6 +54,11 @@ import { buildDocFilename } from '../../../components/workflow/workflowFilename'
 import { cleDeBoucle, codesRetenus } from './step7Codes';
 import type { DocumentType } from '../../../types/dataroom';
 import { USAGES_CABINET } from '../../../lib/usagesCabinet';
+import { TextField, ZoneTexte } from '../../../components/ui/TextField';
+import { Select } from '../../../components/ui/Select';
+import { Button } from '../../../components/ui/Button';
+import { EnTeteDepliant } from '../../../components/ui/Depliant';
+import { Case } from '../../../components/ui/Choix';
 
 /**
  * 2026-06-09 (fix LLM-off) — Plus AUCUN passage par LLM (Groq / Ollama / autre)
@@ -105,6 +108,13 @@ interface Props {
    * génération (y compris le fallback de ré-hydratation), aucun dépôt.
    */
   readOnly?: boolean;
+  /**
+   * Lot L6b (E14) : parcours TERMINE, ticket encore en cours (deroulement de la demarche). Les
+   * donnees attendues d'un organisme (date du depot legal...) arrivent apres la fin du parcours :
+   * en lecture seule, l'etape 7 les fait saisir et, quand tout est arrive, regenere l'acte et le
+   * depose en Data Room. Sans ce drapeau (ticket clos ou annule, superviseur), rien ne s'ecrit.
+   */
+  completerDonneesAttendues?: boolean;
   /** Lot L7 (E2) : enregistrement automatique de la saisie (voir useStepAutosave). */
   registerDirty?: RegisterDirty;
 }
@@ -272,16 +282,17 @@ function BoucleSaisie({
   return (
     <div className="rounded-lg border border-border p-4" data-testid={`boucle-${boucle.nom}`}>
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+        <p className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
           {boucle.label}
         </p>
-        <button
+        <Button
           type="button"
           onClick={() => onChange([...occurrences, {}])}
-          className="rounded-md border border-border px-2 py-0.5 text-xs text-fg hover:bg-bg-overlay"
+          variant="secondary"
+          size="sm"
         >
           Ajouter
-        </button>
+        </Button>
       </div>
 
       {occurrences.length === 0 && (
@@ -297,29 +308,30 @@ function BoucleSaisie({
             <p className="text-xs font-medium text-fg">
               {boucle.label} n&deg; {index + 1}
             </p>
-            <button
+            <Button
               type="button"
               onClick={() => onChange(occurrences.filter((_, i) => i !== index))}
-              className="text-xs text-danger hover:underline"
+              variant="ghost"
+              size="sm"
+              className="text-danger"
             >
               Retirer
-            </button>
+            </Button>
           </div>
           <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {champs.map((champ) => (
               <div key={champ.cle}>
                 <label
                   htmlFor={`boucle-${boucle.nom}-${index}-${champ.cle}`}
-                  className="mb-1 block text-xs font-medium text-fg"
+                  className="mb-1.5 block text-sm font-medium text-fg"
                 >
                   {champ.label}
                 </label>
                 {champ.type === 'select' ? (
-                  <select
+                  <Select
                     id={`boucle-${boucle.nom}-${index}-${champ.cle}`}
                     value={occurrence[champ.cle] ?? ''}
                     onChange={(e) => modifier(index, champ.cle, e.target.value)}
-                    className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg"
                   >
                     <option value="">&mdash; non renseigné &mdash;</option>
                     {(champ.options ?? []).map((o) => (
@@ -327,22 +339,20 @@ function BoucleSaisie({
                         {o}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 ) : champ.type === 'textarea' ? (
-                  <textarea
+                  <ZoneTexte
                     id={`boucle-${boucle.nom}-${index}-${champ.cle}`}
                     rows={2}
                     value={occurrence[champ.cle] ?? ''}
                     onChange={(e) => modifier(index, champ.cle, e.target.value)}
-                    className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg"
                   />
                 ) : (
-                  <input
+                  <TextField
                     id={`boucle-${boucle.nom}-${index}-${champ.cle}`}
                     type={champ.type === 'date' ? 'date' : champ.type === 'number' ? 'number' : 'text'}
                     value={occurrence[champ.cle] ?? ''}
                     onChange={(e) => modifier(index, champ.cle, e.target.value)}
-                    className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg"
                   />
                 )}
               </div>
@@ -443,8 +453,11 @@ export function Step7Generation({
   dossierId,
   ticketId,
   readOnly = false,
+  completerDonneesAttendues = false,
   registerDirty,
 }: Props) {
+  /** Lot L6b (E14) : lecture seule, mais les donnees attendues se completent encore. */
+  const completer = readOnly && completerDonneesAttendues;
   // Lot L7 (E5), CDC 4.5 : edition integree des actes, forfaits Max et Sur Devis (le serveur refuse
   // aussi l'ouverture de la seance : FONCTION_HORS_FORFAIT). Hors forfait, le bouton l'explique.
   const forfait = useForfait();
@@ -541,7 +554,7 @@ export function Step7Generation({
   /** Lot L3 : donnees externes reclamees pour les documents du ticket (regle des variables). */
   const [attendues, setAttendues] = useState<DonneeAttendue[]>([]);
   useEffect(() => {
-    if (!ticketId || readOnly) return undefined;
+    if (!ticketId || (readOnly && !completer)) return undefined;
     let actif = true;
     workflowService
       .donneesAttendues(ticketId)
@@ -550,7 +563,7 @@ export function Step7Generation({
     return () => {
       actif = false;
     };
-  }, [ticketId, readOnly]);
+  }, [ticketId, readOnly, completer]);
   // L6 : resultat du dernier chargement de la liste, avec la cle de la demande ; le
   // chargement « en cours » et l'erreur se DEDUISENT de la cle courante (plus de mise a
   // jour synchrone d'etat au debut de l'effet).
@@ -1054,6 +1067,48 @@ export function Step7Generation({
   }
 
   /**
+   * Lot L6b (E14) : regeneration d'un acte sur un parcours termine, quand les donnees attendues
+   * d'un organisme sont toutes arrivees. Aucun brouillon ni aucune saisie d'etape (lecture
+   * seule) : l'acte regenere est depose directement en Data Room, en nouvelle version.
+   */
+  async function regenererApresTerminaison(tpl: TemplateInfo) {
+    if (!dossierId || !ticketId) return;
+    const prev = docs[tpl.code];
+    const nextVersion = (prev?.version ?? 1) + 1;
+    updateDoc(tpl.code, { generating: true, error: null, refus: [] });
+    try {
+      const { blob, filename, donneesAObtenir } = await generateDocument(
+        'CREATION_SARL',
+        tpl.code,
+        await chargeServeur(false),
+      );
+      const nom = cleanDocFilename(tpl, denomination, forme, nextVersion);
+      await dataroomService.uploadJuridique(dossierId, {
+        file: new File([blob], nom, { type: blob.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }),
+        documentType: TEMPLATE_TO_DOCTYPE[tpl.code] ?? 'AUTRE',
+        title: docLabel(tpl),
+        ticketId,
+      });
+      updateDoc(tpl.code, {
+        generating: false,
+        generated: true,
+        validated: true,
+        blob,
+        filename,
+        version: nextVersion,
+        aObtenir: donneesAObtenir,
+      });
+      setAttendues(await workflowService.donneesAttendues(ticketId));
+    } catch (err) {
+      updateDoc(tpl.code, {
+        generating: false,
+        error: err instanceof Error ? err.message : 'Régénération impossible.',
+        refus: err instanceof GenerationRefuseeError ? err.donneesManquantes : [],
+      });
+    }
+  }
+
+  /**
    * Decision du 2026-10-14 (RG-ESS-05, RG-ESS-06) : generation pendant l'essai. Le serveur genere
    * l'acte et l'enregistre en BROUILLON dans la Data Room (aucun fichier recu) ; l'apercu est celui
    * du brouillon enregistre, en pages filigranees. Sans dossier ni ticket : apercu seul.
@@ -1298,20 +1353,22 @@ export function Step7Generation({
       }}
       className="space-y-6"
     >
-      <div className="rounded-xl border border-accent/20 bg-accent/10 p-4 text-sm text-fg">
+      <div className="rounded-xl border border-info/30 bg-info-soft p-4 text-sm text-fg">
         <div className="flex items-start gap-3">
           {readOnly ? (
-            <Eye className="mt-0.5 h-5 w-5 flex-shrink-0 text-accent" />
+            <Eye className="mt-0.5 h-5 w-5 flex-shrink-0 text-fg-muted" />
           ) : (
-            <Sparkles className="mt-0.5 h-5 w-5 flex-shrink-0 text-accent" />
+            <Sparkles className="mt-0.5 h-5 w-5 flex-shrink-0 text-fg-muted" />
           )}
           <div>
-            <p className="font-semibold text-accent">
+            <p className="font-semibold text-heading">
               {readOnly ? 'Documents générés' : 'Génération des documents'} —{' '}
               {String(den.denomination ?? 'votre société')}
             </p>
             <p className="text-xs text-fg-subtle">
-              {readOnly
+              {completer
+                ? 'Parcours terminé : les documents générés sont consultables (aperçu) et téléchargeables. Une donnée attendue d’un organisme (date du dépôt légal, numéro du registre du commerce…) se saisit encore sur le document qui la réclame ; quand toutes sont arrivées, le document est régénéré et déposé dans la Data Room.'
+                : readOnly
                 ? 'Consultation (lecture seule) : les documents générés sont consultables (aperçu) et téléchargeables. Aucune génération, modification ni validation n’est possible sur un ticket clôturé.'
                 : 'Chaque document peut être généré indépendamment. Une fois généré : aperçu, téléchargement, modification et validation. Mise en page conforme, génération automatique sans IA. Les documents validés sont automatiquement déposés dans la Data Room du dossier.'}
             </p>
@@ -1340,7 +1397,7 @@ export function Step7Generation({
       )}
 
       {loadError && !loadingTemplates && (
-        <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+        <div className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm text-warning">
           <AlertTriangle className="mr-2 inline h-4 w-4" />
           {loadError}
         </div>
@@ -1362,7 +1419,7 @@ export function Step7Generation({
       )}
 
       {!readOnly && preflightBlocked && (
-        <div className="rounded-xl border-l-4 border-danger bg-danger/10 p-4">
+        <div className="rounded-xl border-l-4 border-danger bg-danger-soft p-4">
           <p className="flex items-center gap-2 text-sm font-bold text-danger">
             <AlertCircle className="h-5 w-5" />
             Informations obligatoires manquantes : à compléter avant de générer
@@ -1379,13 +1436,15 @@ export function Step7Generation({
               >
                 <span>• {m.label}</span>
                 {onNavigate && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => onNavigate(m.step)}
-                    className="rounded-md border border-danger/40 px-2 py-0.5 text-xs font-medium text-danger hover:bg-danger/10"
+                    variant="secondary"
+                    size="sm"
+                    className="text-danger"
                   >
                     Aller à l’étape {m.step}
-                  </button>
+                  </Button>
                 )}
               </li>
             ))}
@@ -1408,16 +1467,14 @@ export function Step7Generation({
             {CHOIX_STATUT_2.map((choix) => {
               const retenu = lignesRetenues.has(choix.ligne);
               return (
-                <label
+                <div
                   key={choix.ligne}
                   data-testid={`choix-document-${choix.ligne}`}
-                  className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${
-                    retenu ? 'border-accent/40 bg-accent/5' : 'border-border'
-                  }`}
+                  className="rounded-lg border border-border bg-bg-raised p-3"
                 >
-                  <input
-                    type="checkbox"
-                    className="mt-0.5"
+                  <Case
+                    label={<span className="font-medium">{choix.libelle}</span>}
+                    description={choix.condition || undefined}
                     checked={retenu}
                     disabled={readOnly}
                     onChange={() =>
@@ -1429,15 +1486,7 @@ export function Step7Generation({
                       })
                     }
                   />
-                  <span className="min-w-0">
-                    <span className="block font-medium text-fg">{choix.libelle}</span>
-                    {choix.condition && (
-                      <span className="mt-0.5 block text-[11px] text-fg-subtle">
-                        {choix.condition}
-                      </span>
-                    )}
-                  </span>
-                </label>
+                </div>
               );
             })}
           </div>
@@ -1464,27 +1513,25 @@ export function Step7Generation({
           </TexteAide>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="complement-lieuSignature" className="mb-1 block text-xs font-medium text-fg">
+              <label htmlFor="complement-lieuSignature" className="mb-1.5 block text-sm font-medium text-fg">
                 Lieu de signature (ville)
               </label>
-              <input
+              <TextField
                 id="complement-lieuSignature"
                 type="text"
                 value={complements.lieuSignature ?? ''}
                 onChange={(e) => setComplements((prev) => ({ ...prev, lieuSignature: e.target.value }))}
-                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm text-fg"
               />
             </div>
             <div>
-              <label htmlFor="complement-dateSignature" className="mb-1 block text-xs font-medium text-fg">
+              <label htmlFor="complement-dateSignature" className="mb-1.5 block text-sm font-medium text-fg">
                 Date de signature
               </label>
-              <input
+              <TextField
                 id="complement-dateSignature"
                 type="date"
                 value={complements.dateSignature ?? ''}
                 onChange={(e) => setComplements((prev) => ({ ...prev, dateSignature: e.target.value }))}
-                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm text-fg"
               />
             </div>
             {/* Lot L3 (D6), L4d (E4) : usages du cabinet (directeur, 2026-10-11), PROPOSES puis confirmes. */}
@@ -1527,15 +1574,14 @@ export function Step7Generation({
               </div>
             ) : (
             <div>
-              <label htmlFor="complement-commissaireComptesNom" className="mb-1 block text-xs font-medium text-fg">
+              <label htmlFor="complement-commissaireComptesNom" className="mb-1.5 block text-sm font-medium text-fg">
                 Commissaire aux comptes (s’il en est désigné)
               </label>
-              <input
+              <TextField
                 id="complement-commissaireComptesNom"
                 type="text"
                 value={complements.commissaireComptesNom ?? ''}
                 onChange={(e) => setComplements((prev) => ({ ...prev, commissaireComptesNom: e.target.value }))}
-                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm text-fg"
               />
             </div>
             )}
@@ -1570,7 +1616,7 @@ export function Step7Generation({
           </p>
           {groupesChamps.map((groupe) => (
             <div key={groupe.code} className="mt-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+              <p className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
                 {libelleDocument(groupe.code)}
               </p>
               <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1580,7 +1626,7 @@ export function Step7Generation({
                   <div key={champ.cle}>
                     <label
                       htmlFor={`complement-${champ.cle}`}
-                      className="mb-1 block text-xs font-medium text-fg"
+                      className="mb-1.5 block text-sm font-medium text-fg"
                     >
                       {champ.label}
                       {champ.documents.length > 1 && (
@@ -1594,7 +1640,7 @@ export function Step7Generation({
                       )}
                     </label>
                     {champ.type === 'select' ? (
-                      <select
+                      <Select
                         id={`complement-${champ.cle}`}
                         value={complements[champ.cle] ?? ''}
                         onChange={(e) =>
@@ -1603,7 +1649,6 @@ export function Step7Generation({
                             [champ.cle]: e.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg"
                       >
                         <option value="">&mdash; non renseigné &mdash;</option>
                         {(champ.options ?? []).map((o) => (
@@ -1611,9 +1656,9 @@ export function Step7Generation({
                             {o}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     ) : champ.type === 'textarea' ? (
-                      <textarea
+                      <ZoneTexte
                         id={`complement-${champ.cle}`}
                         rows={2}
                         value={complements[champ.cle] ?? ''}
@@ -1623,10 +1668,9 @@ export function Step7Generation({
                             [champ.cle]: e.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg"
                       />
                     ) : (
-                      <input
+                      <TextField
                         id={`complement-${champ.cle}`}
                         type={champ.type === 'date' ? 'date' : 'text'}
                         value={complements[champ.cle] ?? ''}
@@ -1636,7 +1680,6 @@ export function Step7Generation({
                             [champ.cle]: e.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg"
                       />
                     )}
                     {champ.aide && (
@@ -1696,7 +1739,7 @@ export function Step7Generation({
               <div className="flex items-start justify-between gap-2 border-b border-border bg-bg-overlay px-5 py-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 flex-shrink-0 text-accent" />
+                    <FileText className="h-4 w-4 flex-shrink-0 text-fg-muted" />
                     <h4
                       className="truncate text-sm font-semibold text-fg"
                       title={docLabel(tpl)}
@@ -1704,7 +1747,7 @@ export function Step7Generation({
                       {docLabel(tpl)}
                     </h4>
                     {isStatuts && (
-                      <span className="rounded bg-danger/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-danger">
+                      <span className="rounded bg-danger-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-danger">
                         Principal
                       </span>
                     )}
@@ -1719,11 +1762,11 @@ export function Step7Generation({
 
               <div className="space-y-3 p-5">
                 <RetourGeneration erreur={st.error} refus={st.refus} aObtenir={st.aObtenir} />
-                {!readOnly && (
+                {(!readOnly || completer) && (
                   <DonneesAttendues
                     attendues={attendues.filter((a) => a.templateCode === tpl.code)}
                     enCours={st.generating}
-                    onRegenerer={() => generateOne(tpl)}
+                    onRegenerer={() => (readOnly ? regenererApresTerminaison(tpl) : generateOne(tpl))}
                     ticketId={ticketId}
                   />
                 )}
@@ -1739,31 +1782,21 @@ export function Step7Generation({
                 )}
 
                 {!st.generated && !readOnly && (
-                  <button
+                  <Button
                     type="button"
+                    fullWidth
                     onClick={() => generateOne(tpl)}
                     disabled={st.generating || preflightBlocked}
-                    className={`flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium transition ${
-                      st.generating
-                        ? 'cursor-wait bg-border text-fg-subtle'
-                        : 'bg-accent text-bg-raised hover:bg-accent-hover'
-                    }`}
+                    loading={st.generating}
+                    icon={<Sparkles />}
                   >
-                    {st.generating ? (
-                      <>
-                        <Loader className="h-4 w-4 animate-spin" /> Génération…
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4" /> Générer
-                      </>
-                    )}
-                  </button>
+                    {st.generating ? 'Génération…' : 'Générer'}
+                  </Button>
                 )}
 
                 {st.generated && (
                   <>
-                    <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 p-2 text-xs">
+                    <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft p-2 text-xs">
                       <CheckCircle className="h-4 w-4 text-success" />
                       <span className="flex-1 truncate text-fg" title={fileFor(tpl)}>
                         {baseNameFor(tpl)} — généré
@@ -1804,26 +1837,19 @@ export function Step7Generation({
                         document n'est plus rendu deux fois simultanement). */}
                     {st.blob && editingTplCode !== tpl.code && (
                       <div className="rounded-lg border border-border bg-bg-overlay">
-                        <button
-                          type="button"
+                        <EnTeteDepliant
+                          ouvert={!previewCollapsed[tpl.code]}
+                          icone={<Eye />}
+                          className="rounded-lg px-3 py-2"
                           onClick={() =>
                             setPreviewCollapsed((prev) => ({
                               ...prev,
                               [tpl.code]: !prev[tpl.code],
                             }))
                           }
-                          className="flex w-full items-center justify-between gap-2 px-3 py-2 text-[11px] font-medium text-fg-subtle hover:text-fg"
-                          aria-expanded={!previewCollapsed[tpl.code]}
                         >
-                          <span className="inline-flex items-center gap-1.5">
-                            <Eye className="h-3.5 w-3.5" /> Aperçu du document
-                          </span>
-                          {previewCollapsed[tpl.code] ? (
-                            <ChevronDown className="h-3.5 w-3.5" />
-                          ) : (
-                            <ChevronUp className="h-3.5 w-3.5" />
-                          )}
-                        </button>
+                          <span className="text-xs font-medium text-fg-muted">Aperçu du document</span>
+                        </EnTeteDepliant>
                         {!previewCollapsed[tpl.code] && (
                           <div className="max-h-[460px] overflow-auto border-t border-border">
                             <DocumentEditor
@@ -1842,24 +1868,28 @@ export function Step7Generation({
                         seulement Aperçu + Télécharger ; ni Régénérer, ni Éditer,
                         ni Valider. */}
                     <div className="grid grid-cols-2 gap-2">
-                      <button
+                      <Button
                         type="button"
                         onClick={() => setPreviewingTplCode(tpl.code)}
                         disabled={(!st.blob && !st.apercu) || restoring[tpl.code]}
                         title="Aperçu plein écran du document"
-                        className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent disabled:opacity-60"
+                        variant="secondary"
+                        size="sm"
+                        icon={<Maximize2 />}
                       >
-                        <Maximize2 className="h-3.5 w-3.5" /> Plein écran
-                      </button>
+                        Plein écran
+                      </Button>
                       {enEssai === false ? (
-                      <button
+                      <Button
                         type="button"
                         onClick={() => void downloadDocx(tpl)}
                         disabled={st.generating || restoring[tpl.code] || (readOnly ? !st.blob : preflightBlocked)}
-                        className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent disabled:opacity-60"
+                        variant="secondary"
+                        size="sm"
+                        icon={<Download />}
                       >
-                        <Download className="h-3.5 w-3.5" /> Télécharger (Word)
-                      </button>
+                        Télécharger (Word)
+                      </Button>
                       ) : (
                         <span className="flex h-9 items-center justify-center gap-1 rounded-lg border border-dashed border-border px-2 text-center text-[11px] text-fg-subtle">
                           Aperçu seulement (essai gratuit)
@@ -1867,7 +1897,7 @@ export function Step7Generation({
                       )}
                       {!readOnly && (
                         <>
-                          <button
+                          <Button
                             type="button"
                             onClick={() => {
                               // Régénérer repart des VARIABLES : les retouches
@@ -1880,43 +1910,51 @@ export function Step7Generation({
                               void generateOne(tpl);
                             }}
                             disabled={st.generating || restoring[tpl.code] || preflightBlocked}
-                            className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent disabled:opacity-60"
+                            variant="secondary"
+                            size="sm"
+                            icon={<RefreshCcw />}
                           >
-                            <RefreshCcw className="h-3.5 w-3.5" />
                             Régénérer
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
                             onClick={() => setEditingTplCode(tpl.code)}
                             disabled={st.generating || restoring[tpl.code] || !st.blob || !editionIncluse || enEssai !== false}
-                            className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-accent/30 bg-accent/5 text-xs font-medium text-accent hover:bg-accent/10 disabled:opacity-60"
                             title={editionIncluse
                               ? 'Éditer le document (style Word)'
                               : `Édition des actes intégrée à la plateforme : incluse dès le forfait ${editionDes}. Téléchargez le document pour le modifier dans Word.`}
+                            variant="secondary"
+                            size="sm"
+                            icon={<Pencil />}
                           >
-                            <Pencil className="h-3.5 w-3.5" /> {editionIncluse ? 'Éditer' : `Éditer (forfait ${editionDes})`}
-                          </button>
+                            {editionIncluse ? 'Éditer' : `Éditer (forfait ${editionDes})`}
+                          </Button>
                           {/* 2026-06-22 — Bouton .pdf retiré (conversion LibreOffice
                               jugée non fiable). Export PDF depuis Word si besoin. */}
                           {!st.validated ? (
-                            <button
+                            <Button
                               type="button"
                               onClick={() => void validateOne(tpl)}
                               disabled={st.generating || preflightBlocked}
-                              className="col-span-2 flex h-9 items-center justify-center gap-1.5 rounded-lg bg-success text-xs font-semibold text-bg-raised transition hover:bg-success/85 disabled:cursor-wait disabled:opacity-60"
+                              size="sm"
+                              icon={<CheckCircle />}
+                              className="col-span-2"
                             >
-                              <CheckCircle className="h-3.5 w-3.5" /> Valider et déposer en Data Room
-                            </button>
+                              Valider et déposer en Data Room
+                            </Button>
                           ) : (
-                            <button
+                            <Button
                               type="button"
                               onClick={() =>
                                 updateDoc(tpl.code, { validated: false })
                               }
-                              className="col-span-2 flex h-9 items-center justify-center gap-1.5 rounded-lg border border-success bg-success/10 text-xs text-success"
+                              variant="secondary"
+                              size="sm"
+                              icon={<RefreshCcw />}
+                              className="col-span-2 border-success text-success"
                             >
-                              <RefreshCcw className="h-3.5 w-3.5" /> Document validé : annuler la validation pour le modifier
-                            </button>
+                              Document validé : annuler la validation pour le modifier
+                            </Button>
                           )}
                         </>
                       )}
@@ -1930,7 +1968,7 @@ export function Step7Generation({
       </div>
 
       {nonStatutaires.length > 0 && (
-        <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4">
+        <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning-soft p-4">
           <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
           <div className="text-xs">
             <p className="font-semibold text-warning">
@@ -1946,7 +1984,7 @@ export function Step7Generation({
       )}
 
       {statutaires.length === 0 && (
-        <div className="flex items-start gap-3 rounded-xl border border-danger/30 bg-danger/10 p-4">
+        <div className="flex items-start gap-3 rounded-xl border border-danger/30 bg-danger-soft p-4">
           <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-danger" />
           <p className="text-xs text-danger">
             Aucun gérant statutaire. Retournez à l’étape 5 pour en
@@ -1968,23 +2006,19 @@ export function Step7Generation({
       )}
       {!readOnly && (
         <div className="flex items-center justify-end pt-2">
-          <button
+          <Button
             type="submit"
             disabled={!canSubmit || saving}
-            className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
-              canSubmit && !saving
-                ? 'bg-accent text-bg-raised hover:bg-accent-hover'
-                : 'cursor-not-allowed bg-border text-fg-subtle'
-            }`}
             title={
               canSubmit
                 ? undefined
                 : 'Les statuts (document principal) doivent être générés et validés.'
             }
+            size="lg"
+            iconEnd={<ChevronRight />}
           >
             {saving ? 'Enregistrement…' : 'Valider et continuer'}
-            <ChevronRight className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       )}
 
@@ -2000,7 +2034,7 @@ export function Step7Generation({
           <div
             role="dialog"
             aria-modal="true"
-            className="fixed inset-0 z-50 flex flex-col bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex flex-col bg-scrim/60 backdrop-blur-sm"
             onClick={(e) => {
               if (e.target === e.currentTarget) setPreviewingTplCode(null);
             }}
@@ -2008,19 +2042,21 @@ export function Step7Generation({
             <div className="m-auto flex h-[90vh] w-[min(1200px,95vw)] flex-col overflow-hidden rounded-xl bg-bg-raised shadow-xl">
               <div className="flex items-center justify-between border-b border-border bg-bg-overlay px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <Eye className="h-4 w-4 text-accent" />
+                  <Eye className="h-4 w-4 text-fg-muted" />
                   <h3 className="text-sm font-semibold text-fg">
                     Aperçu — {docLabel(tpl)}
                   </h3>
                 </div>
-                <button
+                <Button
                   type="button"
                   onClick={() => setPreviewingTplCode(null)}
-                  className="rounded p-1 text-fg-subtle hover:bg-border"
                   aria-label="Fermer"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                  variant="ghost"
+                  size="sm"
+                  icon={<X />}
+                  iconOnly
+                  className="text-fg-subtle"
+                />
               </div>
               <div className="flex-1 overflow-auto p-4">
                 {st.blob ? (
@@ -2073,7 +2109,7 @@ export function Step7Generation({
             role="dialog"
             aria-modal="true"
             data-testid="confirmation-regeneration"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/60 p-6 backdrop-blur-sm"
             onClick={(e) => {
               if (e.target === e.currentTarget) setRegenerationAConfirmer(null);
             }}
@@ -2096,24 +2132,26 @@ export function Step7Generation({
                 «&nbsp;Anciennes versions&nbsp;» du document, et peut être restaurée.
               </p>
               <div className="flex items-center justify-end gap-2">
-                <button
+                <Button
                   type="button"
                   onClick={() => setRegenerationAConfirmer(null)}
-                  className="rounded-lg border border-border bg-bg-raised px-3 py-2 text-xs font-semibold text-fg"
+                  variant="secondary"
+                  size="sm"
                 >
                   Conserver mes modifications
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   data-testid="confirmer-regeneration"
                   onClick={() => {
                     setRegenerationAConfirmer(null);
                     void generateOne(tpl);
                   }}
-                  className="rounded-lg bg-warning px-3 py-2 text-xs font-semibold text-bg-raised"
+                  variant="danger"
+                  size="sm"
                 >
                   Régénérer et remplacer
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -2131,7 +2169,7 @@ export function Step7Generation({
             <div
               role="dialog"
               aria-modal="true"
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/60 p-6 backdrop-blur-sm"
               onClick={() => setEditingTplCode(null)}
             >
               <div className="max-w-md rounded-xl bg-bg-raised p-5 text-sm text-fg shadow-xl">
@@ -2144,7 +2182,7 @@ export function Step7Generation({
           <div
             role="dialog"
             aria-modal="true"
-            className="fixed inset-0 z-50 flex flex-col bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex flex-col bg-scrim/60 backdrop-blur-sm"
             onClick={(e) => {
               if (e.target === e.currentTarget) setEditingTplCode(null);
             }}
@@ -2152,19 +2190,21 @@ export function Step7Generation({
             <div className="m-auto flex h-[92vh] w-[min(1400px,97vw)] flex-col overflow-hidden rounded-xl bg-bg-raised shadow-xl">
               <div className="flex items-center justify-between border-b border-border bg-bg-overlay px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <Pencil className="h-4 w-4 text-accent" />
+                  <Pencil className="h-4 w-4 text-fg-muted" />
                   <h3 className="text-sm font-semibold text-fg">
                     Édition — {docLabel(tpl)}
                   </h3>
                 </div>
-                <button
+                <Button
                   type="button"
                   onClick={() => setEditingTplCode(null)}
-                  className="rounded p-1 text-fg-subtle hover:bg-border"
                   aria-label="Fermer"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                  variant="ghost"
+                  size="sm"
+                  icon={<X />}
+                  iconOnly
+                  className="text-fg-subtle"
+                />
               </div>
               <div className="min-h-0 flex-1">
                 <CollaboraEditor

@@ -11,7 +11,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { TextField } from '../../components/ui/TextField';
+import { TextField, ZoneTexte } from '../../components/ui/TextField';
 import { Select } from '../../components/ui/Select';
 import { ValeurProposee } from '../../components/workflow/ValeurProposee';
 import { InfoBulle } from '../../components/ui/Aide';
@@ -56,6 +56,8 @@ import {
   rapportGestionPayload,
   type RapportGestionSaisie,
 } from '../../components/workflow/rapportGestion';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
+import { BandeauFinParcours } from '../../components/workflow/BandeauFinParcours';
 
 /**
  * Workflow PV AGO — approbation des comptes, en 5 étapes (spec directeur, lot DIVERS §E,
@@ -286,7 +288,12 @@ function PvAgoWorkflowPageBody() {
   const seance = useSeanceForm({
     formeJuridique: isAU ? 'SARL_AU' : 'SARL',
     societe: societeInput,
-    defaults: { type: 'ordinaire', date: dateAgo },
+    // L6b (E15) : la convocation de l'etape 1 arrive au PV (date et heure), sans etre redemandee.
+    defaults: {
+      type: 'ordinaire',
+      date: dateAgo,
+      ...(convocationDate ? { convDate: convocationDate, convHeure: convocationHeure || '' } : {}),
+    },
     // Fix D1/PV AGO — sans eux la présence du PV AGO repartait d'un associé vierge.
     initialAssocies: bdAssocies,
     initialGerants: bdGerants,
@@ -694,9 +701,9 @@ function PvAgoWorkflowPageBody() {
   if (loading) return <Loader />;
   if (!ticket || !progress)
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+      <ErreurParcours>
         {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
-      </div>
+      </ErreurParcours>
     );
 
   const step = viewStep;
@@ -941,7 +948,7 @@ function PvAgoWorkflowPageBody() {
               data-testid="pvago-convocation"
             >
               <div className="flex items-center gap-2">
-                <Megaphone className="h-4 w-4 text-accent" />
+                <Megaphone className="h-4 w-4 text-fg-muted" />
                 <h4 className="text-sm font-semibold text-fg">Convocation (facultative)</h4>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
@@ -972,7 +979,7 @@ function PvAgoWorkflowPageBody() {
                 <div
                   role="alert"
                   data-testid="pvago-convocation-16j-error"
-                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-2 text-xs text-danger"
+                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-soft p-2 text-xs text-danger"
                 >
                   <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                   <span>{convocationError}</span>
@@ -980,9 +987,9 @@ function PvAgoWorkflowPageBody() {
               )}
             </section>
 
-            <div className="rounded-lg border border-accent/40 bg-accent/10 p-3 text-xs text-fg-muted">
+            <div className="rounded-lg border border-info/30 bg-info-soft p-3 text-xs text-fg-muted">
               <div className="flex items-center gap-2">
-                <Info className="h-4 w-4 text-accent" />
+                <Info className="h-4 w-4 text-fg-muted" />
                 <span>
                   Acte produit : procès-verbal d’approbation des comptes
                   {isAU ? ' (SARL à associé unique)' : ' (SARL)'} — <strong>aucune annonce légale</strong> :
@@ -1010,7 +1017,7 @@ function PvAgoWorkflowPageBody() {
             </header>
 
             {/* Sous-formulaire de séance PARTAGÉ (réutilisé par les documents de séance). */}
-            <SeanceFormFields form={seance} sections={SEANCE_SECTIONS} />
+            <SeanceFormFields form={seance} sections={SEANCE_SECTIONS} hideConvDate={!!convocationDate} />
 
             {/* Bloc approbation des comptes. */}
             <div className="rounded-xl border border-border bg-bg-raised p-4">
@@ -1108,19 +1115,23 @@ function PvAgoWorkflowPageBody() {
                     texte="Répartissez le résultat net entre les postes (réserve légale, report à nouveau…). La ligne « Dividendes » est ajoutée automatiquement à partir du bloc « Dividendes » : ne la saisissez pas ici. Le total affecté doit être égal au résultat net."
                   />
                 </h3>
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
+                  icon={<Plus />}
                   onClick={() => setAffectations((p) => [...p, { libelle: '', montant: '' }])}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-bg-raised px-2.5 py-1 text-xs font-medium text-fg hover:border-accent"
                 >
-                  <Plus className="h-3.5 w-3.5" /> Ajouter un poste
-                </button>
+                  Ajouter un poste
+                </Button>
               </div>
               <div className="space-y-2">
                 {affectations.map((a, i) => (
                   <div key={i} className="grid items-end gap-2 md:grid-cols-[1fr_10rem_auto]">
                     <TextField
                       label={i === 0 ? 'Poste d’affectation' : undefined}
+                      // L6b (E15) : les lignes suivantes, sans libelle visible, gardent un nom.
+                      aria-label={i === 0 ? undefined : `Poste d’affectation ${i + 1}`}
                       value={a.libelle}
                       onChange={(e) =>
                         setAffectations((p) => p.map((x, j) => (j === i ? { ...x, libelle: e.target.value } : x)))
@@ -1129,27 +1140,29 @@ function PvAgoWorkflowPageBody() {
                     />
                     <TextField
                       label={i === 0 ? 'Montant (MAD)' : undefined}
+                      aria-label={i === 0 ? undefined : `Montant du poste ${i + 1} (MAD)`}
                       type="number"
                       value={a.montant}
                       onChange={(e) =>
                         setAffectations((p) => p.map((x, j) => (j === i ? { ...x, montant: e.target.value } : x)))
                       }
                     />
-                    <button
+                    <Button
                       type="button"
+                      variant="secondary"
+                      iconOnly
+                      icon={<Trash2 />}
                       onClick={() => setAffectations((p) => p.filter((_, j) => j !== i))}
                       disabled={affectations.length <= 1}
-                      className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-bg-raised text-fg-subtle transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
+                      className="shrink-0 text-fg-subtle hover:border-danger hover:text-danger"
                       aria-label="Supprimer ce poste"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    />
                   </div>
                 ))}
               </div>
               <div
                 className={`mt-3 rounded-lg p-2 text-xs ${
-                  affectationOk ? 'bg-emerald-50 text-emerald-700' : 'bg-danger/10 text-danger'
+                  affectationOk ? 'bg-success-soft text-success' : 'bg-danger-soft text-danger'
                 }`}
               >
                 Total affecté : <strong>{sumAffectations.toLocaleString('fr-FR')} MAD</strong>{' '}
@@ -1234,10 +1247,8 @@ function PvAgoWorkflowPageBody() {
                 />
                 {conventionsReglementees === 'oui' && (
                   <div className="md:col-span-2">
-                    <label className="mb-1 block text-sm font-medium text-fg-muted">
-                      Description des conventions *
-                    </label>
-                    <textarea
+                    <ZoneTexte
+                      label="Description des conventions *"
                       aria-label="Description des conventions réglementées"
                       rows={3}
                       value={conventionsDetail}
@@ -1245,11 +1256,8 @@ function PvAgoWorkflowPageBody() {
                       onChange={(e) => setConventionsDetail(e.target.value)}
                       onBlur={() => setRevealErrors(true)}
                       placeholder="Ex. : convention de compte courant d’associé conclue le …, bail consenti par le gérant…"
-                      className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                      error={showErr('conventionsDetail') || undefined}
                     />
-                    {showErr('conventionsDetail') && (
-                      <FieldError msg={showErr('conventionsDetail')!} />
-                    )}
                   </div>
                 )}
               </div>
@@ -1280,7 +1288,7 @@ function PvAgoWorkflowPageBody() {
           <div className="space-y-4">
             <header>
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-violet-600" />
+                <Sparkles className="h-5 w-5 text-info" />
                 <h2 className="text-lg font-semibold text-fg">
                   Étape 3 — Génération du procès-verbal d’approbation et du rapport de gestion
                 </h2>
@@ -1294,12 +1302,12 @@ function PvAgoWorkflowPageBody() {
 
             {loadingTemplates && <p className="text-sm text-fg-subtle">Chargement des modèles…</p>}
             {loadTplErr && (
-              <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger" role="alert">
+              <div className="rounded-lg border border-danger/30 bg-danger-soft p-3 text-sm text-danger" role="alert">
                 {loadTplErr}
               </div>
             )}
             {!loadingTemplates && templates.length === 0 && !loadTplErr && (
-              <div className="rounded-lg border border-amber-200 bg-warning/10 p-3 text-sm text-amber-800">
+              <div className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm text-warning">
                 Aucun modèle compatible n’a été trouvé pour ce dossier : vérifiez la forme juridique à l’étape 1, puis rechargez la page.
               </div>
             )}
@@ -1417,7 +1425,7 @@ function PvAgoWorkflowPageBody() {
           <div className="space-y-4" data-testid="pvago-step4-pieces">
             <header>
               <div className="flex items-center gap-2">
-                <Paperclip className="h-5 w-5 text-accent" />
+                <Paperclip className="h-5 w-5 text-fg-muted" />
                 <h2 className="text-lg font-semibold text-fg">
                   Étape 4 — Pièces jointes (facultative)
                 </h2>
@@ -1453,13 +1461,9 @@ function PvAgoWorkflowPageBody() {
 
         {step === 5 && (
           <div className="space-y-4" data-testid="pvago-synthese">
-            <div className="rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 p-6 text-bg-raised">
-              <CheckCircle className="mb-2 h-8 w-8" />
-              <h2 className="text-2xl font-bold">Procès-verbal d’approbation {exercice} finalisé</h2>
-              <p className="text-sm text-amber-100">
+            <BandeauFinParcours titre={<>Procès-verbal d’approbation {exercice} finalisé</>}>
                 Exercice {exercice} : les documents validés sont déposés dans la Data Room.
-              </p>
-            </div>
+              </BandeauFinParcours>
             <div className="rounded-xl border border-border bg-bg-raised p-4 text-sm">
               <p className="mb-3 font-semibold text-fg">Récapitulatif</p>
               <ul className="space-y-1 text-fg-muted">
@@ -1546,9 +1550,5 @@ function FieldError({ msg }: { msg: string }) {
 }
 
 function Loader() {
-  return (
-    <div className="flex h-64 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-    </div>
-  );
+  return <SqueletteParcours />;
 }

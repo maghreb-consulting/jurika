@@ -15,12 +15,15 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
+import { Button } from '../ui/Button';
+import { Case } from '../ui/Choix';
 import { InfoBulle, TexteAide } from '../ui/Aide';
 import { TypePieceProposee, ValeurProposee } from './ValeurProposee';
 import {
   emptyAssocie,
   emptyGerant,
   emptyResolution,
+  nomAvecCivilite,
   type AssocieInput,
   type GerantInput,
   type ResolutionInput,
@@ -92,9 +95,7 @@ export function SeanceFormFields({
   // L4d (E11b) : la lettre est signee par son auteur (nom), sa qualite en dessous : le premier
   // gerant est propose, jamais transmis sans confirmation.
   const premierGerant = f.gerants.find((g) => g?.nom?.trim() || g?.prenom?.trim());
-  const auteurPropose = premierGerant
-    ? [premierGerant.civilite, premierGerant.prenom, premierGerant.nom].filter(Boolean).join(' ').trim()
-    : '';
+  const auteurPropose = premierGerant ? nomAvecCivilite(premierGerant) : '';
   return (
     <div className="space-y-5">
       {sections.seance && (
@@ -327,7 +328,7 @@ export function SeanceFormFields({
                       key={`${i}-${pt}`}
                       className="flex items-start gap-2 rounded-lg bg-bg-overlay px-3 py-2 text-sm text-fg"
                     >
-                      <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-accent text-[10px] font-bold text-bg-raised">
+                      <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-info text-[10px] font-bold text-info-fg">
                         {i + 1}
                       </span>
                       <span className="flex-1">{pt}</span>
@@ -777,15 +778,12 @@ export function AssocieFields({
       )}
       {/* Désignation #5 : cocher un associé comme gérant depuis la liste des associés. */}
       {value.typePersonne === 'PHYSIQUE' && (
-        <label className="flex items-center gap-2 self-end pb-2 text-xs font-medium text-fg">
-          <input
-            type="checkbox"
-            checked={!!value.estGerant}
-            onChange={(e) => onChange({ ...value, estGerant: e.target.checked })}
-            className="h-4 w-4 rounded border-border-hi text-accent focus:ring-accent"
-          />
-          Également gérant
-        </label>
+        <Case
+          containerClassName="self-end pb-2"
+          label="Également gérant"
+          checked={!!value.estGerant}
+          onChange={(e) => onChange({ ...value, estGerant: e.target.checked })}
+        />
       )}
     </div>
   );
@@ -793,26 +791,23 @@ export function AssocieFields({
 
 export function SmallAddButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center gap-1 rounded-lg border border-border bg-bg-raised px-2.5 py-1 text-xs font-medium text-fg hover:border-accent"
-    >
-      <Plus className="h-3.5 w-3.5" /> {label}
-    </button>
+    <Button type="button" variant="secondary" size="sm" icon={<Plus />} onClick={onClick}>
+      {label}
+    </Button>
   );
 }
 
 export function RemoveButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="secondary"
+      iconOnly
+      icon={<Trash2 />}
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-bg-raised text-fg-subtle transition hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
+      className="shrink-0 text-fg-subtle hover:border-danger hover:text-danger"
       aria-label="Supprimer"
-    >
-      <Trash2 className="h-3.5 w-3.5" />
-    </button>
+    />
   );
 }

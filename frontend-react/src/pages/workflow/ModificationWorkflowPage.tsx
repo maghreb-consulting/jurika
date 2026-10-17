@@ -23,7 +23,8 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { PdfPreviewModal } from '../../components/ui/PdfPreviewModal';
-import { TextField } from '../../components/ui/TextField';
+import { TextField, ZoneTexte } from '../../components/ui/TextField';
+import { Case, Radio } from '../../components/ui/Choix';
 import { Select } from '../../components/ui/Select';
 import { TexteAide } from '../../components/ui/Aide';
 import { ValeurProposee } from '../../components/workflow/ValeurProposee';
@@ -87,12 +88,15 @@ import {
   computePreflight,
   computeRefonteMissing,
   decisionTypeFor,
+  lieuSignatureDuPv,
   formatMad,
   isBlankValue,
   validateStep1Inputs,
   type AssembleeNature,
   type PreflightEntry,
 } from './modificationLogique';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
+import { BandeauFinParcours } from '../../components/workflow/BandeauFinParcours';
 
 // Phase 1 (2026-08-10) — voie directeur : déclencheurs basés sur le `resolutionType`
 // (snake_case) du catalogue officiel. Miroir de ModificationWorkflow.*_TRIGGERS_RT (backend).
@@ -533,12 +537,12 @@ function ModificationWorkflowPageBody() {
   const workflowFilenameFor = useCallback(
     (tpl: TemplateInfo, opts?: { version?: number }): string =>
       buildDocFilename(
-        docTypeForTemplateCode(tpl.code),
+        docTypeForTemplateCode(tpl.code, assembleeNature),
         targetDenomination,
         formeLabel(formeJuridique),
         opts?.version,
       ),
-    [targetDenomination, formeJuridique],
+    [targetDenomination, formeJuridique, assembleeNature],
   );
 
   // Le statut refondu n'est exigé que si un template REFONDUS est disponible.
@@ -885,9 +889,9 @@ function ModificationWorkflowPageBody() {
   if (loading) return <Loader2 />;
   if (!ticket || !progress)
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+      <ErreurParcours>
         {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
-      </div>
+      </ErreurParcours>
     );
 
   async function generateOne(tpl: TemplateInfo) {
@@ -1149,6 +1153,9 @@ function ModificationWorkflowPageBody() {
       ficheStructuree: fiche,
       // L3 (D6) : valeurs confirmees a l'ecran (bloc "Statuts mis a jour").
       statutsRefondus,
+      // L6b (E15) : " Fait a ..., le ... " des statuts refondus : le lieu de signature saisi
+      // dans la seance du PV (aucun champ a cote des statuts ; il n'etait pas transmis).
+      lieuSignature: lieuSignatureDuPv(pvSnapshot),
     };
   }
 
@@ -1238,7 +1245,7 @@ function ModificationWorkflowPageBody() {
               <div
                 role="alert"
                 data-testid="mod-step1-error"
-                className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger"
+                className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-soft p-3 text-sm text-danger"
               >
                 <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                 <span>{error}</span>
@@ -1259,13 +1266,12 @@ function ModificationWorkflowPageBody() {
               <p className="mb-2 text-xs text-fg-subtle">
                 Les documents produits seront déposés (et versionnés) dans la Data Room de cette société.
               </p>
-              <select
+              <Select
                 id="step1-societe-select"
                 data-testid="step1-societe-select"
                 value={selectedDossierId}
                 onChange={(e) => setSelectedDossierId(e.target.value)}
                 disabled={dossiersLoading}
-                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               >
                 <option value="">
                   {dossiersLoading ? 'Chargement…' : 'Sélectionnez une société…'}
@@ -1277,7 +1283,7 @@ function ModificationWorkflowPageBody() {
                     {d.ice ? ` (ICE ${d.ice})` : ''}
                   </option>
                 ))}
-              </select>
+              </Select>
               {!selectedDossierId && !dossiersLoading && (
                 <p className="mt-1 text-xs text-fg-subtle">
                   Choisissez la société pour pouvoir continuer.
@@ -1299,14 +1305,15 @@ function ModificationWorkflowPageBody() {
                     </p>
                   </div>
                   <div className="relative">
-                    <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-fg-subtle" />
-                    <input
+                    <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
+                    <TextField
                       type="text"
+                      className="pl-9"
+                      aria-label="Rechercher une modification"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="Rechercher une modification…"
                       data-testid="mod-search-input"
-                      className="w-full rounded-lg border border-border-hi bg-bg-raised py-1.5 pl-8 pr-3 text-xs focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                     />
                   </div>
                 </div>
@@ -1317,50 +1324,43 @@ function ModificationWorkflowPageBody() {
                   {visibleDecisions.map((it) => {
                     const checked = selected.includes(it.id);
                     return (
-                      <button
+                      <Case
                         key={it.id}
-                        type="button"
-                        onClick={() => (checked ? remove(it.id) : add(it.id))}
+                        checked={checked}
+                        onChange={() => (checked ? remove(it.id) : add(it.id))}
                         data-testid={`mod-decision-${it.id}`}
-                        aria-pressed={checked}
-                        className={`group flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition ${
-                          checked ? 'bg-accent/10' : 'hover:bg-accent/5'
+                        containerClassName={`rounded-lg px-2 py-1.5 transition-colors duration-150 ${
+                          checked ? 'bg-accent-soft' : 'hover:bg-bg-overlay'
                         }`}
-                      >
-                        <span
-                          className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border ${
-                            checked ? 'border-accent bg-accent text-bg-raised' : 'border-border-hi'
-                          }`}
-                        >
-                          {checked && <CheckCircle className="h-3 w-3" />}
-                        </span>
-                        <span className="flex-1 text-fg">
-                          {it.label}
-                          {it.newAssocie && (
-                            <span className="ml-1 rounded bg-emerald-50 px-1 py-0.5 text-[9px] font-semibold text-emerald-700">
-                              nouvel associé (OCR)
-                            </span>
-                          )}
-                          {it.generic && (
-                            <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold text-amber-700">
-                              type générique
-                            </span>
-                          )}
-                        </span>
-                      </button>
+                        label={
+                          <span className="text-fg">
+                            {it.label}
+                            {it.newAssocie && (
+                              <span className="ml-1.5 inline-block whitespace-nowrap rounded bg-success-soft px-1.5 py-0.5 align-middle text-[11px] font-semibold leading-none text-success">
+                                nouvel associé (lecture de la CIN)
+                              </span>
+                            )}
+                            {it.generic && (
+                              <span className="ml-1.5 inline-block whitespace-nowrap rounded bg-warning-soft px-1.5 py-0.5 align-middle text-[11px] font-semibold leading-none text-warning">
+                                type générique
+                              </span>
+                            )}
+                          </span>
+                          }
+                      />
                     );
                   })}
                 </div>
               </div>
 
               {/* DROITE : sélectionnées. */}
-              <div className="flex flex-col rounded-xl border-2 border-accent/40 bg-bg-raised">
-                <div className="border-b border-indigo-100 bg-accent/10 p-3">
+              <div className="flex flex-col rounded-xl border border-border bg-bg-raised">
+                <div className="border-b border-info/30 bg-info-soft p-3">
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-accent" />
+                    <CheckCircle className="h-4 w-4 text-fg-muted" />
                     <p className="text-sm font-semibold text-fg">Modifications sélectionnées</p>
                     <span
-                      className="ml-auto rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-bg-raised"
+                      className="ml-auto rounded-full bg-info px-2 py-0.5 text-[10px] font-bold text-info-fg"
                       data-testid="mod-selected-count"
                     >
                       {selected.length}
@@ -1379,35 +1379,37 @@ function ModificationWorkflowPageBody() {
                           key={it.id}
                           className="group flex items-start gap-2 rounded-lg border border-border bg-bg-overlay p-2"
                         >
-                          <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-accent text-[10px] font-bold text-bg-raised">
+                          <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-info text-[10px] font-bold text-info-fg">
                             {i + 1}
                           </span>
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-semibold text-fg">{it.label}</p>
                             <p className="mt-0.5 flex flex-wrap items-center gap-1 text-[10px] text-fg-subtle">
-                              <span className="rounded bg-violet-50 px-1 py-0.5 font-medium text-violet-700">
+                              <span className="rounded bg-info-soft px-1 py-0.5 font-medium text-info">
                                 {GROUP_LABELS[it.group]}
                               </span>
                               {it.newAssocie && (
-                                <span className="rounded bg-emerald-50 px-1 py-0.5 font-medium text-emerald-700">
-                                  nouvel associé (OCR)
+                                <span className="rounded bg-success-soft px-1 py-0.5 font-medium text-success">
+                                  nouvel associé (lecture de la CIN)
                                 </span>
                               )}
                               {it.generic && (
-                                <span className="rounded bg-amber-100 px-1 py-0.5 font-medium text-amber-700">
+                                <span className="rounded bg-warning-soft px-1 py-0.5 font-medium text-warning">
                                   type générique
                                 </span>
                               )}
                             </p>
                           </div>
-                          <button
+                          <Button
                             type="button"
                             onClick={() => remove(it.id)}
-                            className="rounded p-1 text-fg-subtle hover:bg-danger/10 hover:text-danger"
                             aria-label={`Retirer ${it.label}`}
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
+                            variant="ghost"
+                            size="sm"
+                            icon={<X />}
+                            iconOnly
+                            className="text-fg-subtle hover:text-danger"
+                          />
                         </li>
                       ))}
                     </ul>
@@ -1462,7 +1464,7 @@ function ModificationWorkflowPageBody() {
                 <div
                   role="alert"
                   data-testid="mod-convocation-16j-error"
-                  className="mt-2 flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-2 text-xs text-danger"
+                  className="mt-2 flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-soft p-2 text-xs text-danger"
                 >
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                   <span>{convocationError}</span>
@@ -1479,17 +1481,17 @@ function ModificationWorkflowPageBody() {
               {(jalRequis || cacRequis || formeChangeRequis) && (
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {jalRequis && (
-                    <span className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                    <span className="flex items-center gap-2 rounded-lg bg-warning-soft px-3 py-2 text-xs font-medium text-warning">
                       <Megaphone className="h-4 w-4" /> Publication d’une annonce légale obligatoire
                     </span>
                   )}
                   {cacRequis && (
-                    <span className="flex items-center gap-2 rounded-lg bg-violet-50 px-3 py-2 text-xs font-medium text-violet-800">
+                    <span className="flex items-center gap-2 rounded-lg bg-info-soft px-3 py-2 text-xs font-medium text-info">
                       <Gavel className="h-4 w-4" /> Commissaire aux apports obligatoire
                     </span>
                   )}
                   {formeChangeRequis && (
-                    <span className="flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-800 sm:col-span-2">
+                    <span className="flex items-center gap-2 rounded-lg bg-danger-soft px-3 py-2 text-xs font-medium text-danger sm:col-span-2">
                       <AlertTriangle className="h-4 w-4" /> Cette cession entraînera l’adaptation
                       automatique des statuts en SARL à plusieurs associés
                     </span>
@@ -1502,7 +1504,7 @@ function ModificationWorkflowPageBody() {
             <details className="rounded-xl border border-border bg-bg-raised" data-testid="mod-convocation-step1">
               <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-sm font-semibold text-fg">
                 <ChevronRight className="h-4 w-4 transition group-open:rotate-90" />
-                <Megaphone className="h-4 w-4 text-accent" />
+                <Megaphone className="h-4 w-4 text-fg-muted" />
                 Convocation à l’assemblée (facultative)
                 <span className="ml-auto text-xs font-normal text-fg-subtle">Cliquez pour ouvrir — facultatif</span>
               </summary>
@@ -1571,7 +1573,7 @@ function ModificationWorkflowPageBody() {
               data-testid="mod-step2-reference"
             >
               <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-fg">
-                <Building2 className="h-4 w-4 text-accent" /> Société (référence — non modifiable ici)
+                <Building2 className="h-4 w-4 text-fg-muted" /> Société (référence — non modifiable ici)
               </p>
               <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
                 {[
@@ -1601,7 +1603,7 @@ function ModificationWorkflowPageBody() {
             </div>
 
             {resolutions.length === 0 && (
-              <p className="rounded-lg border border-amber-200 bg-warning/10 p-3 text-xs text-amber-700">
+              <p className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-xs text-warning">
                 Aucune décision sélectionnée : revenez à l’étape 1 pour cocher les modifications.
               </p>
             )}
@@ -1618,24 +1620,24 @@ function ModificationWorkflowPageBody() {
                   data-testid={`mod-res-${r.id}`}
                 >
                   <div className="mb-3 flex items-start gap-2">
-                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-violet-600 text-[11px] font-bold text-white">
+                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-info text-[11px] font-bold text-info-fg">
                       {i + 1}
                     </span>
                     <div className="min-w-0 flex-1">
                       <h3 className="text-sm font-semibold text-fg">{decision?.label ?? spec?.label ?? r.type}</h3>
                       <p className="mt-0.5 flex flex-wrap items-center gap-1 text-[10px] text-fg-subtle">
                         {decision && (
-                          <span className="rounded bg-violet-50 px-1 py-0.5 font-medium text-violet-700">
+                          <span className="rounded bg-info-soft px-1 py-0.5 font-medium text-info">
                             {GROUP_LABELS[decision.group]}
                           </span>
                         )}
                         {decision?.newAssocie && (
-                          <span className="rounded bg-emerald-50 px-1 py-0.5 font-medium text-emerald-700">
-                            nouvel associé (OCR)
+                          <span className="rounded bg-success-soft px-1 py-0.5 font-medium text-success">
+                            nouvel associé (lecture de la CIN)
                           </span>
                         )}
                         {decision?.generic && (
-                          <span className="rounded bg-amber-100 px-1 py-0.5 font-medium text-amber-700">
+                          <span className="rounded bg-warning-soft px-1 py-0.5 font-medium text-warning">
                             type générique
                           </span>
                         )}
@@ -1692,33 +1694,32 @@ function ModificationWorkflowPageBody() {
                       }
                     };
                     return (
-                      <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3" data-testid={`mod-newassocie-form-${r.id}`}>
-                        <p className="mb-1 text-xs font-semibold text-emerald-800">
+                      <div className="mt-4 rounded-lg border border-success/40 bg-success-soft p-3" data-testid={`mod-newassocie-form-${r.id}`}>
+                        <p className="mb-1 text-xs font-semibold text-success">
                           Nouvel associé entrant — saisie de la personne (comme à la création)
                         </p>
-                        <p className="mb-3 text-[11px] text-emerald-700">
+                        <p className="mb-3 text-[11px] text-success">
                           La lecture automatique de la CIN est <strong>facultative</strong> : elle pré-remplit les champs.
                           Vous pouvez aussi tout saisir manuellement.
                         </p>
 
                         {/* Type de personne */}
-                        <div className="mb-3 flex gap-2">
-                          {(['PHYSIQUE', 'MORALE'] as const).map((tp) => (
-                            <button
-                              key={tp}
-                              type="button"
-                              onClick={() => setNa('typePersonne', tp)}
-                              data-testid={`mod-newassocie-type-${tp}-${r.id}`}
-                              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                                (na.typePersonne ?? 'PHYSIQUE') === tp
-                                  ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
-                                  : 'border-border-hi text-fg hover:border-emerald-400'
-                              }`}
-                            >
-                              {tp === 'PHYSIQUE' ? 'Personne physique' : 'Personne morale'}
-                            </button>
-                          ))}
-                        </div>
+                        <fieldset className="mb-3">
+                          <legend className="mb-2 text-xs font-medium text-fg">Nature de l’associé entrant</legend>
+                          <div className="flex flex-wrap gap-x-6 gap-y-2">
+                            {(['PHYSIQUE', 'MORALE'] as const).map((tp) => (
+                              <Radio
+                                key={tp}
+                                name={`mod-newassocie-type-${r.id}`}
+                                value={tp}
+                                checked={(na.typePersonne ?? 'PHYSIQUE') === tp}
+                                onChange={() => setNa('typePersonne', tp)}
+                                data-testid={`mod-newassocie-type-${tp}-${r.id}`}
+                                label={tp === 'PHYSIQUE' ? 'Personne physique' : 'Personne morale'}
+                              />
+                            ))}
+                          </div>
+                        </fieldset>
 
                         {!isMorale ? (
                           <>
@@ -1806,7 +1807,7 @@ function ModificationWorkflowPageBody() {
           <div className="space-y-4">
             <header className="mb-2">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-violet-600" />
+                <Sparkles className="h-5 w-5 text-info" />
                 <h2 className="text-lg font-semibold text-fg">Étape 3 — Génération des actes</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -1815,7 +1816,7 @@ function ModificationWorkflowPageBody() {
                 actions Télécharger, Éditer et Valider. Le document validé est automatiquement
                 déposé dans la Data Room du dossier.
                 {jalRequis && (
-                  <span className="ml-1 font-medium text-amber-700">
+                  <span className="ml-1 font-medium text-warning">
                     L’annonce légale est obligatoire pour cette modification.
                   </span>
                 )}
@@ -1828,10 +1829,10 @@ function ModificationWorkflowPageBody() {
                 ci-dessous (statuts refondus / JAL) restent disponibles (retrait au lot E2). */}
             <section
               data-testid="modification-directeur-voie"
-              className="rounded-2xl border border-violet-200 bg-violet-50/40 p-4"
+              className="rounded-2xl border border-info/30 bg-info-soft p-4"
             >
               <div className="mb-3 flex items-center gap-2">
-                <Gavel className="h-5 w-5 text-violet-600" />
+                <Gavel className="h-5 w-5 text-info" />
                 <h3 className="text-base font-semibold text-fg">
                   Procès-verbal de modification — résolutions saisies à l’étape 2
                 </h3>
@@ -1873,6 +1874,9 @@ function ModificationWorkflowPageBody() {
                 resolutions={resolutions}
                 defaultDate={datePV || undefined}
                 defaultType={assembleeNature}
+                defaultConvocation={
+                  convocationDate ? { date: convocationDate, heure: convocationHeure || undefined } : undefined
+                }
                 initialAssocies={bdAssocies}
                 initialGerants={bdGerants}
                 initialOrdreDuJour={ordreDuJourFromMods}
@@ -1893,7 +1897,7 @@ function ModificationWorkflowPageBody() {
               <div
                 role="alert"
                 data-testid="preflight-blocking"
-                className="rounded-xl border-2 border-danger/40 bg-danger/5 p-4"
+                className="rounded-xl border-2 border-danger/40 bg-danger-soft p-4"
               >
                 <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-danger">
                   <AlertCircle className="h-4 w-4" />
@@ -1913,14 +1917,16 @@ function ModificationWorkflowPageBody() {
                             ))}
                           </ul>
                         </div>
-                        <button
+                        <Button
                           type="button"
                           onClick={() => navigateToStep(2)}
                           data-testid={`preflight-goto-step2-${b.typeId}`}
-                          className="flex-shrink-0 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-bg-raised hover:bg-accent-hover"
+                          variant="secondary"
+                          size="sm"
+                          className="flex-shrink-0"
                         >
                           Aller à l’étape 2
-                        </button>
+                        </Button>
                       </div>
                     </li>
                   ))}
@@ -1931,7 +1937,7 @@ function ModificationWorkflowPageBody() {
               <div
                 role="status"
                 data-testid="preflight-warnings"
-                className="rounded-xl border border-warning/40 bg-warning/5 p-4"
+                className="rounded-xl border border-warning/40 bg-warning-soft p-4"
               >
                 <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-warning">
                   <AlertTriangle className="h-4 w-4" />
@@ -1954,7 +1960,7 @@ function ModificationWorkflowPageBody() {
               </div>
             )}
             {loadTemplatesError && !loadingTemplates && (
-              <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+              <div className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm text-warning">
                 <AlertTriangle className="mr-2 inline h-4 w-4" />
                 {loadTemplatesError}
               </div>
@@ -1972,28 +1978,30 @@ function ModificationWorkflowPageBody() {
               <div
                 role="alert"
                 data-testid="refonte-preflight"
-                className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4"
+                className="rounded-xl border-2 border-warning/40 bg-warning-soft p-4"
               >
-                <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-amber-800">
+                <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-warning">
                   <AlertTriangle className="h-4 w-4" />
                   Statuts mis à jour : complétez les données de la société
                 </div>
-                <p className="mb-3 text-xs text-amber-700">
+                <p className="mb-3 text-xs text-warning">
                   Les statuts complets sont produits à partir des données saisies (jamais à partir
                   du document numérisé). Renseignez les champs manquants ci-dessous ; affichez les
                   statuts d’origine pour les lire. La génération des statuts mis à jour reste
                   bloquée tant que ces champs ne sont pas saisis.
                 </p>
-                <button
+                <Button
                   type="button"
                   onClick={openOriginalStatutsScan}
                   disabled={scanLoading}
                   data-testid="refonte-open-scan"
-                  className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-amber-400 bg-bg-raised px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+                  variant="secondary"
+                  size="sm"
+                  icon={<Eye />}
+                  className="mb-3"
                 >
-                  <Eye className="h-3.5 w-3.5" />
                   {scanLoading ? 'Chargement…' : 'Afficher les statuts d’origine (document numérisé)'}
-                </button>
+                </Button>
                 {scanError && (
                   <p className="mb-2 text-xs text-danger" role="alert">{scanError}</p>
                 )}
@@ -2002,27 +2010,25 @@ function ModificationWorkflowPageBody() {
                     <div key={fld.key} className={fld.type === 'textarea' ? 'md:col-span-2' : ''}>
                       <label
                         htmlFor={`refonte-${fld.key}`}
-                        className="mb-1 block text-xs font-medium text-amber-900"
+                        className="mb-1 block text-xs font-medium text-warning"
                       >
                         {fld.label} <span className="text-danger">*</span>
                       </label>
                       {fld.type === 'textarea' ? (
-                        <textarea
+                        <ZoneTexte
                           id={`refonte-${fld.key}`}
                           data-testid={`refonte-field-${fld.key}`}
                           rows={3}
                           value={ficheOverrides[fld.key] ?? ''}
                           onChange={(e) => setFicheOverride(fld.key, e.target.value)}
-                          className="w-full rounded-lg border border-amber-300 bg-bg-raised px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
                         />
                       ) : (
-                        <input
+                        <TextField
                           id={`refonte-${fld.key}`}
                           data-testid={`refonte-field-${fld.key}`}
                           type={fld.type}
                           value={ficheOverrides[fld.key] ?? ''}
                           onChange={(e) => setFicheOverride(fld.key, e.target.value)}
-                          className="w-full rounded-lg border border-amber-300 bg-bg-raised px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
                         />
                       )}
                     </div>
@@ -2083,7 +2089,7 @@ function ModificationWorkflowPageBody() {
                 data-testid="mod-depot-legal"
               >
                 <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-fg">
-                  <Megaphone className="h-4 w-4 text-accent" /> Dépôt légal de l’annonce (facultatif)
+                  <Megaphone className="h-4 w-4 text-fg-muted" /> Dépôt légal de l’annonce (facultatif)
                 </p>
                 <p className="mb-3 text-xs text-fg-subtle">
                   Le numéro et la date de dépôt sont attribués par le greffe <strong>après</strong> le
@@ -2171,6 +2177,7 @@ function ModificationWorkflowPageBody() {
                 hideSeanceDate
                 hideConvDate
                 initialAssocies={bdAssocies}
+                initialOrdreDuJour={ordreDuJourFromMods}
                 initialGerants={bdGerants}
                 versioned
                 motif={depositMotif}
@@ -2254,18 +2261,14 @@ function ModificationWorkflowPageBody() {
 
         {step === 5 && (
           <div className="space-y-4" data-testid="mod-synthese">
-            <div className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-bg-raised">
-              <CheckCircle className="mb-2 h-8 w-8" />
-              <h2 className="text-2xl font-bold">Synthèse de la modification</h2>
-              <p className="text-bg text-sm">
+            <BandeauFinParcours titre="Synthèse de la modification">
                 {selected.length} modification{selected.length > 1 ? 's' : ''} enregistrée{selected.length > 1 ? 's' : ''} pour {dossier?.denomination || ticket.titre}.
-              </p>
-            </div>
+              </BandeauFinParcours>
 
             {/* 1) IDENTITE SOCIETE ─────────────────────────────────────── */}
             <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-societe">
               <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-fg">
-                <Building2 className="h-4 w-4 text-accent" /> Société concernée
+                <Building2 className="h-4 w-4 text-fg-muted" /> Société concernée
               </p>
               <div className="grid gap-4 rounded-lg bg-bg-overlay p-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
@@ -2304,7 +2307,7 @@ function ModificationWorkflowPageBody() {
             {/* 2) DÉTAIL DES MODIFICATIONS (avant → après, par résolution) ── */}
             <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-changements">
               <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-fg">
-                <ArrowRight className="h-4 w-4 text-accent" /> Détail des modifications retenues
+                <ArrowRight className="h-4 w-4 text-fg-muted" /> Détail des modifications retenues
               </p>
               {resolutionRecap.length === 0 ? (
                 <p className="rounded-lg bg-bg-overlay p-3 text-xs text-fg-subtle">
@@ -2327,7 +2330,7 @@ function ModificationWorkflowPageBody() {
                           {r.newVals.map((v) => (
                             <span
                               key={v.label}
-                              className="rounded bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent"
+                              className="rounded bg-info-soft px-2 py-0.5 text-xs font-medium text-info"
                             >
                               {v.label} : {v.value}
                             </span>
@@ -2337,7 +2340,7 @@ function ModificationWorkflowPageBody() {
                         <p className="mt-1 text-xs text-fg-subtle">Aucune valeur saisie.</p>
                       )}
                       {r.newAssocie && (r.newAssocie.nom || r.newAssocie.prenom) && (
-                        <p className="mt-1 text-xs text-emerald-700">
+                        <p className="mt-1 text-xs text-success">
                           Nouvel associé : {[r.newAssocie.prenom, r.newAssocie.nom].filter(Boolean).join(' ')}
                           {r.newAssocie.cin ? ` (CIN ${r.newAssocie.cin})` : ''}
                         </p>
@@ -2352,14 +2355,14 @@ function ModificationWorkflowPageBody() {
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-articles">
                 <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-fg">
-                  <FileText className="h-4 w-4 text-accent" /> Articles des statuts concernés
+                  <FileText className="h-4 w-4 text-fg-muted" /> Articles des statuts concernés
                 </p>
                 {articlesImpactes.length === 0 ? (
                   <p className="text-xs text-fg-subtle">Aucun article particulier détecté.</p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {articlesImpactes.map((a) => (
-                      <span key={a} className="rounded-lg bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700">
+                      <span key={a} className="rounded-lg bg-info-soft px-2 py-1 text-xs font-medium text-info">
                         {a}
                       </span>
                     ))}
@@ -2369,24 +2372,24 @@ function ModificationWorkflowPageBody() {
 
               <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-exigences">
                 <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-fg">
-                  <AlertTriangle className="h-4 w-4 text-accent" /> Exigences détectées
+                  <AlertTriangle className="h-4 w-4 text-fg-muted" /> Exigences détectées
                 </p>
                 {!jalRequis && !cacRequis && !formeChangeRequis ? (
                   <p className="text-xs text-fg-subtle">Aucune exigence particulière.</p>
                 ) : (
                   <div className="flex flex-col gap-2">
                     {jalRequis && (
-                      <span className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                      <span className="flex items-center gap-2 rounded-lg bg-warning-soft px-3 py-2 text-xs font-medium text-warning">
                         <Megaphone className="h-4 w-4" /> Publication d’une annonce légale obligatoire
                       </span>
                     )}
                     {cacRequis && (
-                      <span className="flex items-center gap-2 rounded-lg bg-violet-50 px-3 py-2 text-xs font-medium text-violet-800">
+                      <span className="flex items-center gap-2 rounded-lg bg-info-soft px-3 py-2 text-xs font-medium text-info">
                         <Gavel className="h-4 w-4" /> Commissaire aux apports obligatoire
                       </span>
                     )}
                     {formeChangeRequis && (
-                      <span className="flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-800">
+                      <span className="flex items-center gap-2 rounded-lg bg-danger-soft px-3 py-2 text-xs font-medium text-danger">
                         <AlertTriangle className="h-4 w-4" /> Passage de la SARL à associé unique à la SARL
                       </span>
                     )}
@@ -2399,16 +2402,18 @@ function ModificationWorkflowPageBody() {
             <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-documents">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="flex items-center gap-2 text-sm font-semibold text-fg">
-                  <FileText className="h-4 w-4 text-accent" /> Documents produits
+                  <FileText className="h-4 w-4 text-fg-muted" /> Documents produits
                 </p>
-                <button
+                <Button
                   type="button"
                   onClick={() => navigate('/data-rooms')}
-                  className="flex items-center gap-1.5 rounded-lg border border-border bg-bg-raised px-3 py-1.5 text-xs font-medium text-fg hover:border-accent"
                   data-testid="synthese-dataroom-link"
+                  variant="secondary"
+                  size="sm"
+                  icon={<ExternalLink />}
                 >
-                  <ExternalLink className="h-3.5 w-3.5" /> Ouvrir la Data Room
-                </button>
+                  Ouvrir la Data Room
+                </Button>
               </div>
               {synthesisDocs.length === 0 ? (
                 <p className="rounded-lg bg-bg-overlay p-3 text-xs text-fg-subtle">
@@ -2423,7 +2428,7 @@ function ModificationWorkflowPageBody() {
                       data-testid={`synthese-doc-${d.code}`}
                     >
                       <div className="flex min-w-0 items-center gap-2">
-                        <FileText className="h-4 w-4 flex-shrink-0 text-accent" />
+                        <FileText className="h-4 w-4 flex-shrink-0 text-fg-muted" />
                         <span className="truncate text-sm font-medium text-fg">{d.label}</span>
                       </div>
                       <div className="flex flex-shrink-0 items-center gap-2">
@@ -2437,7 +2442,7 @@ function ModificationWorkflowPageBody() {
                           </span>
                         )}
                         {d.deposited && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-accent">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-info-soft px-2 py-0.5 text-[10px] font-semibold uppercase text-info">
                             Data Room
                           </span>
                         )}
@@ -2451,7 +2456,7 @@ function ModificationWorkflowPageBody() {
             {/* 5 bis) PIÈCES JOINTES DÉPOSÉES ───────────────────────────── */}
             <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-pieces">
               <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-fg">
-                <FileText className="h-4 w-4 text-accent" /> Pièces jointes déposées
+                <FileText className="h-4 w-4 text-fg-muted" /> Pièces jointes déposées
               </p>
               {piecesJointes.length === 0 ? (
                 <p className="rounded-lg bg-bg-overlay p-3 text-xs text-fg-subtle">
@@ -2467,7 +2472,7 @@ function ModificationWorkflowPageBody() {
                       <span className="min-w-0 truncate text-sm font-medium text-fg">
                         {p.label} <span className="text-xs text-fg-subtle">— {p.filename}</span>
                       </span>
-                      <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-accent">
+                      <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-info-soft px-2 py-0.5 text-[10px] font-semibold uppercase text-info">
                         Data Room{p.version ? ` · v${p.version}` : ''}
                       </span>
                     </li>
@@ -2483,7 +2488,7 @@ function ModificationWorkflowPageBody() {
               </div>
             )}
             {isTerminated && (
-              <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-800">
+              <div className="rounded-lg border border-success/40 bg-success-soft p-4 text-sm text-success">
                 Parcours terminé.
                 <Button className="ml-3" onClick={() => navigate('/tickets')}>
                   Retour aux tickets
@@ -2525,11 +2530,7 @@ function ModificationWorkflowPageBody() {
 }
 
 function Loader2() {
-  return (
-    <div className="flex h-64 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-    </div>
-  );
+  return <SqueletteParcours />;
 }
 
 // ============================================================================
@@ -2563,7 +2564,7 @@ function DocumentBlock({ tpl, state, canGenerate, onGenerate, onDownload, onRege
       <div className="flex items-start justify-between gap-2 border-b border-border bg-bg-overlay px-5 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 flex-shrink-0 text-accent" />
+            <FileText className="h-4 w-4 flex-shrink-0 text-fg-muted" />
             <h4 className="truncate text-sm font-semibold text-fg" title={title}>
               {title}
             </h4>
@@ -2579,38 +2580,28 @@ function DocumentBlock({ tpl, state, canGenerate, onGenerate, onDownload, onRege
 
       <div className="space-y-3 p-5">
         {state.error && (
-          <div className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger/10 p-2 text-xs text-danger" role="alert">
+          <div className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger-soft p-2 text-xs text-danger" role="alert">
             <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
             <span className="flex-1">{state.error}</span>
           </div>
         )}
 
         {!state.generated ? (
-          <button
+          <Button
             type="button"
+            fullWidth
             onClick={onGenerate}
             disabled={state.generating || !canGenerate}
+            loading={state.generating}
+            icon={<Sparkles />}
             data-testid={`generate-btn-${tpl.code}`}
             title={!canGenerate ? 'Complétez d’abord les champs obligatoires signalés ci-dessus' : undefined}
-            className={`flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium transition ${
-              state.generating || !canGenerate
-                ? 'cursor-not-allowed bg-border text-fg-subtle'
-                : 'bg-accent text-bg-raised hover:bg-accent-hover'
-            }`}
           >
-            {state.generating ? (
-              <>
-                <Loader className="h-4 w-4 animate-spin" /> Génération…
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" /> Générer
-              </>
-            )}
-          </button>
+            {state.generating ? 'Génération…' : 'Générer'}
+          </Button>
         ) : (
           <>
-            <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 p-2 text-xs">
+            <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft p-2 text-xs">
               <CheckCircle className="h-4 w-4 text-success" />
               <span className="flex-1 truncate text-fg">{state.filename ?? 'Document produit'}</span>
             </div>
@@ -2641,59 +2632,71 @@ function DocumentBlock({ tpl, state, canGenerate, onGenerate, onDownload, onRege
             {/* 2026-08-12 — Jeu de boutons aligné sur Step7 Création :
                 Aperçu / Régénérer / Éditer / .docx / Valider. */}
             <div className="grid grid-cols-2 gap-2">
-              <button
+              <Button
                 type="button"
                 onClick={onTogglePreview}
-                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent"
+                variant="secondary"
+                size="sm"
+                icon={<Eye />}
               >
-                <Eye className="h-3.5 w-3.5" />
                 {state.previewOpen ? 'Masquer l’aperçu' : 'Aperçu'}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={onRegenerate}
-                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent"
                 title="Régénérer le document après mise à jour des valeurs amont"
+                variant="secondary"
+                size="sm"
+                icon={<RefreshCcw />}
               >
-                <RefreshCcw className="h-3.5 w-3.5" /> Régénérer
-              </button>
+                Régénérer
+              </Button>
               {enEssai === false && (
               <>
-              <button
+              <Button
                 type="button"
                 onClick={() => setEditing(true)}
                 disabled={!state.blob}
-                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-accent/30 bg-accent/5 text-xs font-medium text-accent hover:bg-accent/10 disabled:opacity-60"
                 title="Éditer le document (style Word)"
+                variant="secondary"
+                size="sm"
+                icon={<Pencil />}
               >
-                <Pencil className="h-3.5 w-3.5" /> Éditer
-              </button>
-              <button
+                Éditer
+              </Button>
+              <Button
                 type="button"
                 onClick={onDownload}
-                className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-raised text-xs text-fg hover:border-accent"
+                variant="secondary"
+                size="sm"
+                icon={<Download />}
               >
-                <Download className="h-3.5 w-3.5" /> .docx
-              </button>
+                .docx
+              </Button>
               </>
               )}
               {!state.validated ? (
-                <button
+                <Button
                   type="button"
                   onClick={onValidate}
                   data-testid={`validate-btn-${tpl.code}`}
-                  className="col-span-2 flex h-9 items-center justify-center gap-1.5 rounded-lg bg-success text-xs font-semibold text-bg-raised transition hover:bg-success/85"
+                  size="sm"
+                  icon={<CheckCircle />}
+                  className="col-span-2"
                 >
-                  <CheckCircle className="h-3.5 w-3.5" /> Valider
-                </button>
+                  Valider
+                </Button>
               ) : (
-                <button
+                <Button
                   type="button"
                   onClick={onRegenerate}
-                  className="col-span-2 flex h-9 items-center justify-center gap-1.5 rounded-lg border border-success bg-success/10 text-xs text-success"
+                  variant="secondary"
+                  size="sm"
+                  icon={<RefreshCcw />}
+                  className="col-span-2 border-success text-success"
                 >
-                  <RefreshCcw className="h-3.5 w-3.5" /> Régénérer
-                </button>
+                  Régénérer
+                </Button>
               )}
             </div>
 

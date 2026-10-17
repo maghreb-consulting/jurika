@@ -4,10 +4,12 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ClientDashboard } from '../ClientDashboard';
 
 /**
- * Dashboard CLIENT enrichi (2026-07-20) — met en avant l'ACTION attendue du
- * client (requetes du conseiller a traiter) + graphiques + depots, sur donnees
- * REELLES agregees par dossier. Couvre : compteurs, donuts, liste « A faire »
- * en tete avec lien /mes-requetes, et etats vides propres.
+ * Tableau de bord CLIENT : l'ACTION attendue du client (requetes du conseiller a traiter),
+ * l'avancement de ses operations, puis ses echanges, sur donnees REELLES agregees par dossier.
+ *
+ * Lot L6b (E17) : les deux anneaux (sans chiffres) sont retires ; "Operations en cours" et la
+ * frise des etapes les remplacent. Couvre : compteurs, liste « A faire » en tete avec lien
+ * /mes-requetes, avancement, etats vides propres, echec dit.
  */
 
 const listDossiers = vi.fn();
@@ -27,17 +29,14 @@ vi.mock('../../../services/dataroom.service', () => ({
 vi.mock('../../../services/dashboard.service', () => ({
   dashboardService: { getClient: (...a: unknown[]) => getClient(...a) },
 }));
-vi.mock('../../../store/authStore', () => ({
-  useCurrentUser: () => ({ userId: 'c1', workspaceId: 'w1', email: 'client@acme.ma', role: 'CLIENT' }),
-}));
-
-// Recharts SVG non mesurable en jsdom : on neutralise le donut pour tester la
-// serie derivee (nombre de tranches) sans bare-render du SVG.
-vi.mock('../../../components/dashboard/charts/DonutChart', () => ({
-  DonutChart: ({ data }: { data: unknown[] }) => (
-    <div data-testid="donut">{`donut:${data.length}`}</div>
-  ),
-}));
+vi.mock('../../../store/authStore', () => {
+  const user = { userId: 'c1', workspaceId: 'w1', email: 'client@acme.ma', role: 'CLIENT' };
+  return {
+    useCurrentUser: () => user,
+    // Page (fil d'Ariane par defaut) lit le role dans le magasin.
+    useAuthStore: (sel: (s: { user: typeof user }) => unknown) => sel({ user }),
+  };
+});
 
 function demande(id: string, statut: string, sujet: string, createdAt: string) {
   return {
@@ -62,6 +61,8 @@ function depot(id: string, title: string, createdAt: string) {
   };
 }
 
+const carte = (libelle: string) => screen.getByText(libelle, { selector: 'p, p > a' }).closest('p')?.parentElement?.parentElement as HTMLElement;
+
 describe('ClientDashboard', () => {
   beforeEach(() => {
     listDossiers.mockReset();
@@ -71,7 +72,7 @@ describe('ClientDashboard', () => {
     getClient.mockReset();
   });
 
-  it('agrege demandes + requetes + depots par dossier et affiche compteurs, donuts et « A faire »', async () => {
+  it('agrege demandes + requetes + depots par dossier : compteurs, « A faire », avancement', async () => {
     listDossiers.mockResolvedValue([{ id: 'dos-1', raisonSociale: 'ACME SARL' }]);
     listDemandesByDossier.mockResolvedValue([
       demande('d1', 'NON_TRAITEE', 'Demande A', '2026-06-01T10:00:00Z'),
@@ -89,7 +90,10 @@ describe('ClientDashboard', () => {
       depot('p2', 'RIB', '2026-06-10T10:00:00Z'),
     ]);
     getClient.mockResolvedValue({
-      mesDossiers: [], mesTicketsEnCours: [],
+      mesDossiers: [],
+      mesTicketsEnCours: [
+        { id: 't1', reference: 'TK-1', titre: 'Création ACME SARL', statut: 'GENERATION_DOCUMENTS', priorite: 'NORMALE', createdAt: '2026-06-01T00:00:00Z' },
+      ],
       mesDocumentsRecents: [
         { id: 'doc-1', title: 'Statuts ACME', filename: 'statuts.pdf', createdAt: '2026-06-10T09:00:00Z' },
       ],
@@ -107,40 +111,48 @@ describe('ClientDashboard', () => {
     expect(listDemandesByDossier).toHaveBeenCalledWith('dos-1');
     expect(listDepots).toHaveBeenCalledWith('dos-1');
 
-    // KPIs.
-    expect(screen.getByText('Requêtes à traiter')).toBeInTheDocument();
-    expect(screen.getByText('Mes demandes en cours')).toBeInTheDocument();
-    expect(screen.getByText('Documents disponibles')).toBeInTheDocument();
-    expect(screen.getByText('Dépôts effectués')).toBeInTheDocument();
-
-    // Requetes a traiter = OUVERTE + A_COMPLETER = 2 (KPI + badge liste).
-    expect(screen.getAllByText('2').length).toBeGreaterThanOrEqual(2);
-
-    // Donuts : requetes = 3 groupes (A_FAIRE/ATTENTE/TERMINE), demandes = 3 statuts.
-    const donuts = screen.getAllByTestId('donut');
-    expect(donuts).toHaveLength(2);
-    expect(donuts[0]).toHaveTextContent('donut:3'); // requetes
-    expect(donuts[1]).toHaveTextContent('donut:3'); // demandes
+    // Indicateurs : a faire = OUVERTE + A_COMPLETER = 2 ; demandes en cours = 2 ; operations = 1.
+    expect(await screen.findByText('À faire pour mon conseiller', { selector: 'p > a' })).toBeInTheDocument();
+    expect(carte('À faire pour mon conseiller')).toHaveTextContent('2');
+    expect(carte('Mes demandes en cours')).toHaveTextContent('2');
+    expect(carte('Opérations en cours')).toHaveTextContent('1');
+    // Retires : anneaux, compteurs "Documents disponibles" et "Depots effectues".
+    expect(screen.queryByText('Requêtes du cabinet par statut')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mes demandes par statut')).not.toBeInTheDocument();
+    expect(screen.queryByText('Documents disponibles')).not.toBeInTheDocument();
 
     // Liste « A faire » : les 2 requetes actionnables sont listees.
     expect(screen.getByText('Fournir le RIB')).toBeInTheDocument();
     expect(screen.getByText('CIN illisible')).toBeInTheDocument();
-
-    // Lien vers la page d'action.
     const lien = screen.getByRole('link', { name: /Répondre aux requêtes du cabinet/i });
     expect(lien).toHaveAttribute('href', '/mes-requetes');
+
+    // Avancement : l'etape en cours de l'operation est mise en avant.
+    const etapes = screen.getByRole('list', { name: 'Étapes de l’opération' });
+    const courante = within(etapes).getAllByRole('listitem').find((li) => li.getAttribute('aria-current') === 'step');
+    expect(courante).toHaveTextContent('Préparation des actes');
+    // L6b (E18) : jauge de progression de chaque operation.
+    expect(screen.getByRole('img', { name: 'Création ACME SARL : étape 2 sur 4, Préparation des actes' })).toHaveTextContent('2/4');
+
+    // L6b (E18) : echanges par etat (barres empilees) : requetes 2 en attente, 1 en cours, 1 terminee ;
+    // demandes 1 / 1 / 1.
+    const echanges = within(screen.getByRole('table', { name: 'Mes échanges avec le cabinet, par état' })).getAllByRole('row');
+    expect(echanges[1]).toHaveTextContent('Requêtes de mon conseiller2114');
+    expect(echanges[2]).toHaveTextContent('Mes demandes au cabinet1113');
+    // Depots par mois : graphique rendu avec son tableau equivalent.
+    expect(screen.getByRole('table', { name: 'Mes dépôts par mois' })).toBeInTheDocument();
 
     // Documents + depots recents.
     expect(screen.getByText('Statuts ACME')).toBeInTheDocument();
     expect(screen.getByText('Contrat de bail')).toBeInTheDocument();
   });
 
-  it('etats vides propres quand le client n a rien (compteurs 0, donuts « Aucune donnee »)', async () => {
+  it('etats vides propres quand le client n a rien', async () => {
     listDossiers.mockResolvedValue([{ id: 'dos-1', raisonSociale: 'ACME SARL' }]);
     listDemandesByDossier.mockResolvedValue([]);
     listRequetesByDossier.mockResolvedValue([]);
     listDepots.mockResolvedValue([]);
-    getClient.mockResolvedValue(null);
+    getClient.mockResolvedValue({ mesDossiers: [], mesTicketsEnCours: [], mesDocumentsRecents: [], mesEcheancesAVenir: [], generatedAt: '' });
 
     render(
       <MemoryRouter>
@@ -148,18 +160,28 @@ describe('ClientDashboard', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() =>
-      expect(screen.getByText(/Rien à faire pour le moment/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/Rien à faire pour le moment/i)).toBeInTheDocument());
     expect(screen.getByText(/^Aucune demande envoyée\./)).toBeInTheDocument();
     expect(screen.getByText(/^Aucun document ni dépôt récent\./)).toBeInTheDocument();
+    expect(screen.getByText(/^Aucune opération en cours\./)).toBeInTheDocument();
+    expect(carte('À faire pour mon conseiller')).toHaveTextContent('0');
+  });
 
-    // Aucun donut rendu : les deux ChartCard affichent « Aucune donnée ».
-    expect(screen.queryByTestId('donut')).not.toBeInTheDocument();
-    expect(screen.getAllByText(/Aucune donnée/i)).toHaveLength(2);
+  it('service du tableau de bord indisponible : le dit, sans compter zero operation', async () => {
+    listDossiers.mockResolvedValue([{ id: 'dos-1', raisonSociale: 'ACME SARL' }]);
+    listDemandesByDossier.mockResolvedValue([]);
+    listRequetesByDossier.mockRejectedValue(new Error('503'));
+    listDepots.mockResolvedValue([]);
+    getClient.mockRejectedValue(new Error('503'));
 
-    // Le KPI « Requetes a traiter » est bien present a 0.
-    const kpi = screen.getByText('Requêtes à traiter').closest('div');
-    expect(kpi && within(kpi).getByText('0')).toBeTruthy();
+    render(
+      <MemoryRouter>
+        <ClientDashboard />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Certaines informations n’ont pas pu être chargées')).toBeInTheDocument();
+    expect(carte('Opérations en cours')).toHaveTextContent('--');
+    expect(screen.getByText(/L’avancement de vos opérations n’a pas pu être chargé/)).toBeInTheDocument();
   });
 });

@@ -19,7 +19,7 @@ import { Megaphone } from 'lucide-react';
 import { TextField } from '../ui/TextField';
 import { TexteAide } from '../ui/Aide';
 import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
-import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
+import { freshDocState, useDocumentBlocks, type DocState, documentTravaille } from './documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
@@ -239,9 +239,10 @@ export function SuccursaleAnnoncePanel({
 
   const state = docs[code] ?? freshDocState();
   const ready = useMemo(() => !!docs[code]?.validated, [docs, code]);
+  const travaille = documentTravaille(docs[code]);
   useEffect(() => {
-    onReady?.(ready);
-  }, [ready, onReady]);
+    if (travaille) onReady?.(ready);
+  }, [ready, travaille, onReady]);
 
   const titre =
     mode === 'fermeture'
@@ -256,7 +257,7 @@ export function SuccursaleAnnoncePanel({
       data-testid={`succursale-annonce-${mode}`}
     >
       <div className="flex items-center gap-2">
-        <Megaphone className="h-4 w-4 text-accent" />
+        <Megaphone className="h-4 w-4 text-fg-muted" />
         <h4 className="text-sm font-semibold text-fg">{titre}</h4>
       </div>
       <p className="text-xs text-fg-subtle">

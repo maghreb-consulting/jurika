@@ -5,6 +5,8 @@ export interface AuditEntry {
   workspaceId: string | null;
   userId: string | null;
   action: string;
+  /** Lot L6b (E9) : libelle francais du code, calcule par le serveur ; affiche tel quel. */
+  actionLabel: string;
   entityType: string | null;
   entityId: string | null;
   sourceService: string | null;
@@ -37,6 +39,8 @@ export interface AuditFilters {
 /** Valeurs distinctes du journal pour alimenter les listes deroulantes. */
 export interface AuditFacets {
   actions: string[];
+  /** Lot L6b (E9) : libelle de chaque action, calcule par le serveur. */
+  actionLabels?: Record<string, string>;
   sourceServices: string[];
 }
 

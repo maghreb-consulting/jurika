@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { Button } from '../../../components/ui/Button';
+import { Message } from '../../../components/ui/Message';
+import { Select } from '../../../components/ui/Select';
+import { TextField } from '../../../components/ui/TextField';
 import type { WorkspaceUser } from '../../../types/auth';
 
 /**
@@ -28,47 +31,39 @@ export function ReaffectationForm({
   const choix = employes.filter((e) => e.userId !== responsableActuelId);
 
   return (
-    <section aria-labelledby="reaffecter-titre" className="space-y-3 rounded-lg border border-border bg-bg-raised p-4">
-      <h2 id="reaffecter-titre" className="text-sm font-semibold text-fg">
+    <section aria-labelledby="reaffecter-titre" className="space-y-3 rounded-lg border border-border bg-bg-overlay p-4">
+      <h2 id="reaffecter-titre" className="text-sm font-semibold text-heading">
         Réaffecter « {raisonSociale} »
       </h2>
-      <p className="text-xs text-fg-subtle">
+      <p className="text-sm text-fg-muted">
         Le dossier et tous ses tickets passent au nouvel employé, qui est prévenu, ainsi que l’ancien.
       </p>
       {choix.length === 0 && (
-        <p className="text-xs text-fg-muted">
+        <Message ton="attention">
           Aucun autre employé actif dans le cabinet : invitez ou réactivez un employé depuis la page « Équipe ».
-        </p>
+        </Message>
       )}
-      <label className="block text-sm text-fg-muted">
-        Nouvel employé responsable
-        <select
-          className="mt-1 block w-full rounded-md border border-border bg-bg-raised p-2 text-sm text-fg"
-          value={employe}
-          onChange={(e) => setEmploye(e.target.value)}
-        >
-          <option value="">Choisir un employé…</option>
-          {choix.map((e) => (
-            <option key={e.userId} value={e.userId}>
-              {e.firstName} {e.lastName}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="block text-sm text-fg-muted">
-        Motif (obligatoire)
-        <input
-          className="mt-1 block w-full rounded-md border border-border bg-bg-raised p-2 text-sm text-fg"
-          value={motif}
-          onChange={(e) => setMotif(e.target.value)}
-          placeholder="Par exemple : absence prolongée de l’employé responsable"
-        />
-      </label>
+      <Select
+        label="Nouvel employé responsable"
+        value={employe}
+        onChange={(e) => setEmploye(e.target.value)}
+        options={[
+          { value: '', label: 'Choisir un employé…' },
+          ...choix.map((e) => ({ value: e.userId, label: `${e.firstName} ${e.lastName}` })),
+        ]}
+      />
+      <TextField
+        label="Motif (obligatoire)"
+        value={motif}
+        onChange={(e) => setMotif(e.target.value)}
+        placeholder="Par exemple : absence prolongée de l’employé responsable"
+      />
       <div className="flex justify-end gap-2">
-        <Button size="sm" variant="ghost" onClick={onAnnuler}>
+        <Button type="button" size="sm" variant="ghost" onClick={onAnnuler}>
           Annuler
         </Button>
         <Button
+          type="button"
           size="sm"
           onClick={() => onValider(employe, motif.trim())}
           disabled={!employe || !motif.trim()}

@@ -24,7 +24,7 @@ import { extractError } from '../../lib/api';
 import { detecterDonneesPersonnelles, messageReformulation } from '../../lib/donneesPersonnelles';
 import { useAuthStore } from '../../store/authStore';
 import { useAssistantStore } from '../../store/assistantStore';
-import type { Role } from '../../types/auth';
+import { peutUtiliserChatbot } from './rolesChatbot';
 import type { ChatbotConversationResume, ChatbotEchange, ChatbotEntry } from '../../types/chat';
 
 /**
@@ -43,9 +43,13 @@ import type { ChatbotConversationResume, ChatbotEchange, ChatbotEntry } from '..
  * l'utilisateur connecte : nouvelle conversation, reprise d'une ancienne (liste par date de
  * derniere activite), renommage, archivage (une conversation archivee reste consultable ; on la
  * desarchive pour y poser une question). Plus aucun echange n'est garde dans le navigateur.
+ *
+ * Lot L6b (E11) : la bulle flottante est remplacee par JURI (components/assistant/Juri), qui
+ * ouvre ce panneau ("Poser une question au chatbot juridique"), comme la palette de
+ * commandes et l'adresse /chatbot (store/assistantStore). Roles : chatbot/rolesChatbot.
+ * Echap ferme le panneau. Logique, conversations, filtre des donnees personnelles et quota
+ * de l'essai (serveur) inchanges.
  */
-const ROLES_ASSISTANT: Role[] = ['EMPLOYE', 'SUPERVISEUR', 'SUPER_ADMIN'];
-
 function identifiant(): string {
   return `qa-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -65,30 +69,12 @@ function versEntree(e: ChatbotEchange): ChatbotEntry {
 }
 
 export function AssistantJuridique() {
-  const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.user?.role);
   const ouvert = useAssistantStore((s) => s.ouvert);
-  const basculer = useAssistantStore((s) => s.basculer);
   const fermer = useAssistantStore((s) => s.fermer);
 
-  if (!user || !ROLES_ASSISTANT.includes(user.role)) return null;
-
-  return (
-    <>
-      {!ouvert && (
-        <button
-          type="button"
-          onClick={basculer}
-          aria-label="Ouvrir le chatbot juridique"
-          title="Chatbot juridique : une question de droit des sociétés ?"
-          data-testid="assistant-bulle"
-          className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-bg shadow-lg transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
-        >
-          <Bot className="h-6 w-6" aria-hidden="true" />
-        </button>
-      )}
-      {ouvert && <PanneauAssistant onFermer={fermer} />}
-    </>
-  );
+  if (!peutUtiliserChatbot(role) || !ouvert) return null;
+  return <PanneauAssistant onFermer={fermer} />;
 }
 
 type Vue = 'conversation' | 'liste';
@@ -229,6 +215,12 @@ function PanneauAssistant({ onFermer }: { onFermer: () => void }) {
       role="dialog"
       aria-label="Chatbot juridique"
       data-testid="assistant-panneau"
+      onKeyDown={(ev) => {
+        if (ev.key === 'Escape' && !ev.defaultPrevented) {
+          ev.stopPropagation();
+          onFermer();
+        }
+      }}
       className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-border bg-bg-raised shadow-2xl sm:w-[420px]"
     >
       <header className="flex items-center gap-2 border-b border-border px-4 py-3">

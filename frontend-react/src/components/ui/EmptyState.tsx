@@ -1,38 +1,42 @@
-import type { ReactNode } from "react";
-import { cn } from "../../lib/utils";
+import type { ReactNode } from 'react';
+import { cn } from '../../lib/utils';
 
-interface EmptyStateProps {
+/**
+ * Etat vide (lot L6b, E1) : il explique ce qui manque et QUOI FAIRE. Fournir un `title`
+ * qui constate ("Aucun ticket pour le moment"), une `description` qui dit la marche a
+ * suivre, et si possible l'action (`cta`, un bouton principal) ; `secondary` : action
+ * annexe (lien d'aide...). `icon` : decorative.
+ *
+ * `compact` : version reduite (dans une carte, une cellule de tableau).
+ */
+export interface EmptyStateProps {
   icon?: ReactNode;
   title: string;
-  description?: string;
+  description?: ReactNode;
   cta?: ReactNode;
   secondary?: ReactNode;
   className?: string;
+  compact?: boolean;
 }
 
-/**
- * Smart Empty State (Killer Feature §4.8).
- * Toujours fournir un icon, une description claire, et un CTA primaire.
- */
-export function EmptyState({ icon, title, description, cta, secondary, className }: EmptyStateProps) {
+export function EmptyState({ icon, title, description, cta, secondary, className, compact = false }: EmptyStateProps) {
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center justify-center px-6 py-12 text-center",
-        className,
-      )}
-    >
+    <div className={cn('flex flex-col items-center justify-center text-center', compact ? 'px-4 py-6' : 'px-6 py-12', className)}>
       {icon && (
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-bg-overlay)] text-[var(--color-fg-muted)]">
+        <div
+          aria-hidden="true"
+          className={cn(
+            'mb-4 flex items-center justify-center rounded-full bg-bg-overlay text-fg-muted [&>svg]:h-6 [&>svg]:w-6',
+            compact ? 'h-10 w-10' : 'h-12 w-12',
+          )}
+        >
           {icon}
         </div>
       )}
-      <h3 className="text-base font-semibold text-[var(--color-fg)]">{title}</h3>
-      {description && (
-        <p className="mt-1.5 max-w-sm text-sm text-[var(--color-fg-muted)]">{description}</p>
-      )}
+      <h3 className="text-base font-semibold text-heading">{title}</h3>
+      {description && <div className="mt-1.5 max-w-md text-sm leading-relaxed text-fg-muted">{description}</div>}
       {(cta || secondary) && (
-        <div className="mt-5 flex items-center gap-2">
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
           {cta}
           {secondary}
         </div>
@@ -40,3 +44,6 @@ export function EmptyState({ icon, title, description, cta, secondary, className
     </div>
   );
 }
+
+/** Nom francais du meme composant. */
+export const EtatVide = EmptyState;

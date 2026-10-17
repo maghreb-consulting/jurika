@@ -18,7 +18,7 @@ import { Sparkles } from 'lucide-react';
 import { TextField } from '../ui/TextField';
 import { Select } from '../ui/Select';
 import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
-import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
+import { freshDocState, useDocumentBlocks, type DocState, documentTravaille } from './documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
@@ -76,6 +76,12 @@ export interface ModificationOperationFormProps {
   defaultDate?: string;
   /** Nature d'assemblée choisie à l'étape 1 (ordinaire/extraordinaire) — évite le doublon. */
   defaultType?: 'ordinaire' | 'extraordinaire' | 'mixte';
+  /**
+   * Lot L6b (E15) : date et heure de convocation saisies a l'etape 1. Fournies, le
+   * proces-verbal les reprend et ne les redemande pas (comme les panneaux de convocation
+   * et de presence) ; absentes, il les demande.
+   */
+  defaultConvocation?: { date: string; heure?: string };
   /** Associés / gérants pré-remplis depuis la BD (fiche société) — zéro re-saisie. */
   initialAssocies?: AssocieInput[];
   initialGerants?: GerantInput[];
@@ -123,6 +129,7 @@ export function ModificationOperationForm({
   resolutions,
   defaultDate,
   defaultType,
+  defaultConvocation,
   initialAssocies,
   initialGerants,
   initialOrdreDuJour,
@@ -143,7 +150,13 @@ export function ModificationOperationForm({
   const form = useSeanceForm({
     formeJuridique,
     societe,
-    defaults: { type: defaultType ?? 'extraordinaire', date: defaultDate },
+    defaults: {
+      type: defaultType ?? 'extraordinaire',
+      date: defaultDate,
+      ...(defaultConvocation?.date
+        ? { convDate: defaultConvocation.date, convHeure: defaultConvocation.heure ?? '' }
+        : {}),
+    },
     initialAssocies,
     initialGerants,
     initialOrdreDuJour,
@@ -230,7 +243,7 @@ export function ModificationOperationForm({
   }, [pvCode, templates.length]);
 
   useEffect(() => {
-    onReady?.(!!docs[pvCode]?.validated);
+    if (documentTravaille(docs[pvCode])) onReady?.(!!docs[pvCode]?.validated);
   }, [docs, pvCode, onReady]);
 
   return (
@@ -241,6 +254,7 @@ export function ModificationOperationForm({
         sections={isAU ? AU_SECTIONS : AG_SECTIONS}
         lockType={lockType}
         hideSeanceDate={hideSeanceDate}
+        hideConvDate={!!defaultConvocation?.date}
         lockOrdreDuJour={lockOrdreDuJour}
       />
 
@@ -331,7 +345,7 @@ export function ModificationOperationForm({
                 key={r.id}
                 className="flex items-start gap-2 rounded-lg border border-border bg-bg p-2 text-sm"
               >
-                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-violet-600 text-[10px] font-bold text-white">
+                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-info text-[10px] font-bold text-info-fg">
                   {i + 1}
                 </span>
                 <span className="text-fg">{r.objet.trim() || RES_SPECS[r.type]?.label || 'Résolution'}</span>
@@ -344,12 +358,12 @@ export function ModificationOperationForm({
       {/* Génération du PV. */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-violet-600" />
+          <Sparkles className="h-4 w-4 text-info" />
           <h4 className="text-sm font-semibold text-fg">Générer le procès-verbal de modification</h4>
         </div>
         {loadingTemplates && <p className="text-sm text-fg-subtle">Chargement du modèle…</p>}
         {loadTemplatesError && (
-          <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger" role="alert">
+          <div className="rounded-lg border border-danger/30 bg-danger-soft p-3 text-sm text-danger" role="alert">
             {loadTemplatesError}
           </div>
         )}
@@ -379,7 +393,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <section className="space-y-4 rounded-xl border border-border bg-bg-raised p-4">
       <div className="flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-violet-600" />
+        <Sparkles className="h-4 w-4 text-info" />
         <h4 className="text-sm font-semibold text-fg">{title}</h4>
       </div>
       {children}

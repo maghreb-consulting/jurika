@@ -70,6 +70,16 @@ public class GuideTransitionChecks implements TransitionChecks {
                     "$IDENTIFIANT_TP", EntrepriseDossier::taxeProfessionnelle,
                     "$CNSS_NUMERO", EntrepriseDossier::cnss);
 
+    /**
+     * Lot L6b (E14) : identifiants de la SOCIETE TRAITEE attendus d'un organisme (regle des
+     * variables d'un acte, CLAUDE.md, decision D2 du 2026-10-10). En creation, ils s'obtiennent
+     * pendant le deroulement de la demarche (immatriculation, ICE, fiscalite, CNSS) : les exiger
+     * au passage de la generation au deroulement bloquait toute creation. L'acte porte
+     * "A OBTENIR" et la plateforme les reclame.
+     */
+    private static final java.util.Set<String> EXTERNES_EN_CREATION = java.util.Set.of(
+            "$ICE", "$RC_NUMERO", "$IDENTIFIANT_FISCAL", "$IDENTIFIANT_TP", "$CNSS_NUMERO");
+
     private final DemarcheReferentielRepository referentiel;
     private final DemarchesDuTicket corpus;
     private final LignesDuTicket lignes;
@@ -147,10 +157,12 @@ public class GuideTransitionChecks implements TransitionChecks {
         if (dossier.isEmpty()) return List.of();
 
         Map<String, Boolean> aVerifier = new LinkedHashMap<>();
+        boolean creation = ticket.type() == ma.jurika.ticket.domain.model.TicketType.CREATION;
         for (Demarche d : duStatut) {
             TicketDemarche etat = parDemarche.get(d.id());
             if (etat == null || etat.etat() != DemarcheEtat.COCHEE) continue;
             for (String variable : variablesDe(d)) {
+                if (creation && EXTERNES_EN_CREATION.contains(variable)) continue;
                 if (RESOLVEURS.containsKey(variable)) aVerifier.put(variable, true);
             }
         }

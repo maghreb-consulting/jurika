@@ -106,7 +106,10 @@ describe('Démarches du corpus', () => {
     fireEvent.change(within(delai).getByLabelText('Point de départ du délai'), { target: { value: '2026-10-01' } });
     fireEvent.click(within(delai).getByRole('button', { name: 'Enregistrer la date' }));
     await waitFor(() => expect(put).toHaveBeenCalledWith('/tickets/t1/demarches/30012/delai', { depart: '2026-10-01' }));
-    expect(await screen.findByText(/31\/10\/2026/)).toBeInTheDocument();
+    // L6b : la date figure aussi sur la frise des demarches ; on la lit sur la ligne du delai.
+    await waitFor(() => expect(screen.getByTestId('delai-30012')).toHaveTextContent('31/10/2026'));
     expect(screen.getByTestId('delai-30012')).toHaveTextContent('point de départ le 01/10/2026');
+    // L6b (point 8) : la frise reprend l'echeance du serveur ; sans point d'attention, dans les temps.
+    expect(screen.getByTestId('frise-30012')).toHaveAttribute('data-ton', 'vert');
   });
 });

@@ -151,7 +151,7 @@ export function NotificationBell() {
     <div className="relative" ref={panelRef}>
       <button
         type="button"
-        className="relative p-2 text-fg-subtle transition hover:text-fg"
+        className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-fg-muted transition-colors hover:bg-bg-overlay hover:text-fg"
         aria-label={`Notifications${unread > 0 ? ` (${unread} non lues)` : ''}`}
         title="Notifications"
         aria-expanded={open}
@@ -165,7 +165,7 @@ export function NotificationBell() {
         {unread > 0 && (
           <span
             data-testid="notification-badge"
-            className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[9px] font-bold text-fg"
+            className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-danger-fg"
           >
             {unread > 99 ? '99+' : unread}
           </span>
@@ -173,7 +173,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-96 overflow-hidden rounded-lg border border-border-hi bg-bg-overlay shadow-card-lifted">
+        <div className="absolute right-0 top-full z-50 mt-2 w-96 max-w-[calc(100vw-1rem)] overflow-hidden rounded-lg border border-border bg-bg-raised shadow-card-lifted">
           <div className="flex items-center justify-between border-b border-border-hi px-4 py-3">
             <div>
               <p className="flex items-center gap-1 text-sm font-semibold text-fg">

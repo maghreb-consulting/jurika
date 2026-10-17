@@ -1,13 +1,16 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, ChevronLeft, FolderOpen, Save, X } from 'lucide-react';
+import { ChevronLeft, Save, X } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
+import { Message } from '../ui/Message';
 import type { Ticket } from '../../types/ticket';
-import { TICKET_TYPE_LABELS } from '../../types/ticket';
 import { InfoBulle, TexteAide } from '../ui/Aide';
+import { Page } from '../layout/Page';
+import { useAuthStore } from '../../store/authStore';
+import { filDuParcours } from './etatsEtapes';
 import { WorkflowRoadmap, type RoadmapStep } from './WorkflowRoadmap';
 import { IndicateurEnregistrement } from './IndicateurEnregistrement';
+import { EtatTicketParcours, MessageConsultationSuperviseur, MetaTicketParcours } from './EnTeteParcours';
 
 interface FooterButtons {
   showPrev?: boolean;
@@ -24,7 +27,7 @@ interface Props {
   currentStep: number;
   /** Etape affichee par l'UI (peut differer de currentStep si nav arriere). */
   viewStep?: number;
-  /** Callback de navigation arriere via la roadmap. */
+  /** Callback de navigation arriere via la frise. */
   onNavigate?: (step: number) => void;
   blocked?: boolean;
   blockedReason?: string;
@@ -38,6 +41,14 @@ interface Props {
   children: ReactNode;
 }
 
+/**
+ * Coquille commune des parcours (lot L6b, E5) : en-tete de page standard (fil d'Ariane,
+ * titre, etat, actions), aide, frise des etapes, contenu de l'etape, boutons de l'etape.
+ *
+ * Le superviseur suit le parcours sans le modifier (le serveur lui refuse l'enregistrement,
+ * la validation des etapes, le depot des pieces et l'annulation) : ces boutons ne lui sont
+ * pas montres et les champs sont en lecture seule.
+ */
 export function WorkflowShell({
   ticket,
   steps,
@@ -56,6 +67,7 @@ export function WorkflowShell({
   children,
 }: Props) {
   const navigate = useNavigate();
+  const superviseur = useAuthStore((s) => s.user?.role === 'SUPERVISEUR');
   const f: FooterButtons = {
     showPrev: true,
     showSaveDraft: true,
@@ -63,104 +75,92 @@ export function WorkflowShell({
     validateLabel: 'Valider et continuer',
     ...footer,
   };
+  const brouillon = !superviseur && f.showSaveDraft && onSaveDraft;
+  const valider = !superviseur && f.showValidate && onValidate;
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-start gap-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-bg-raised text-fg-muted hover:bg-bg-overlay"
-            aria-label="Retour"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="font-mono text-xs text-fg-subtle">{ticket.reference}</p>
-              <Badge>{TICKET_TYPE_LABELS[ticket.type]}</Badge>
-            </div>
-            <h1 className="text-2xl font-bold text-fg">{ticket.titre}</h1>
-            <div className="mt-1 flex flex-wrap gap-3 text-xs text-fg-subtle">
-              {ticket.dossierId && (
-                <span className="inline-flex items-center gap-1">
-                  <FolderOpen className="h-3 w-3" /> Rattaché à un dossier
-                </span>
-              )}
-              {ticket.deadline && (
-                <span className="inline-flex items-center gap-1">
-                  <Calendar className="h-3 w-3" /> Échéance : {new Date(ticket.deadline).toLocaleDateString('fr-FR')}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <IndicateurEnregistrement />
-          <Button variant="secondary" onClick={() => navigate(-1)}>
-            <ChevronLeft className="mr-1 h-4 w-4" /> Quitter
+    <Page
+      titre={ticket.titre}
+      fil={filDuParcours(ticket)}
+      etat={<EtatTicketParcours ticket={ticket} />}
+      description={<MetaTicketParcours ticket={ticket} />}
+      actions={
+        <>
+          {!superviseur && <IndicateurEnregistrement />}
+          <Button type="button" variant="secondary" icon={<ChevronLeft />} onClick={() => navigate(-1)}>
+            Quitter
           </Button>
-          <InfoBulle
-            libelle="Que conserve « Quitter » ?"
-            texte="Rien n’est perdu : les étapes validées sont conservées, et la saisie en cours de l’étape affichée est enregistrée automatiquement en brouillon au moment où vous quittez. Vous reprendrez le parcours là où vous l’avez laissé, depuis la page du ticket."
-          />
-          {onCancel && (
-            <Button variant="danger" onClick={onCancel}>
-              <X className="mr-1 h-4 w-4" /> Annuler le ticket
+          {!superviseur && (
+            <InfoBulle
+              libelle="Que conserve « Quitter » ?"
+              texte="Rien n’est perdu : les étapes validées sont conservées, et la saisie en cours de l’étape affichée est enregistrée automatiquement en brouillon au moment où vous quittez. Vous reprendrez le parcours là où vous l’avez laissé, depuis la page du ticket."
+            />
+          )}
+          {onCancel && !superviseur && (
+            <Button type="button" variant="danger" icon={<X />} onClick={onCancel}>
+              Annuler le ticket
             </Button>
           )}
-        </div>
-      </header>
+        </>
+      }
+      aide={
+        superviseur ? undefined : (
+          <TexteAide cle="parcours-etapes" titre="Comment avancer dans le parcours">
+            Remplissez l’étape affichée, puis cliquez sur « {f.validateLabel} » : l’étape suivante
+            s’ouvre une fois celle-ci validée. Ce qui manque est signalé à côté du bouton de
+            validation. Vous pouvez revenir à une étape déjà validée en cliquant sur son numéro dans
+            la frise.{' '}Votre saisie est enregistrée automatiquement en brouillon (l’heure du dernier
+            enregistrement s’affiche en haut de la page) : changer d’étape, quitter ou fermer la page
+            ne perd rien.
+          </TexteAide>
+        )
+      }
+    >
+      <div className="space-y-5">
+        {superviseur && <MessageConsultationSuperviseur />}
 
-      {blocked && (
-        <div className="rounded-2xl border-2 border-rose-300 bg-danger/10 p-4">
-          <p className="text-sm font-bold text-danger">Étape bloquante</p>
-          {blockedReason && (
-            <p className="mt-1 text-xs text-danger">{blockedReason}</p>
+        <WorkflowRoadmap currentStep={currentStep} steps={steps} blocked={blocked} viewStep={viewStep} onNavigate={onNavigate} />
+
+        {blocked && (
+          <Message ton="erreur" titre="Étape bloquante">
+            {blockedReason}
+          </Message>
+        )}
+
+        {error && <Message ton="erreur">{error}</Message>}
+
+        <section aria-label="Contenu de l’étape" className="rounded-xl border border-border bg-bg-raised p-6 shadow-card">
+          {superviseur ? (
+            <fieldset disabled className="m-0 min-w-0 border-0 p-0">
+              {children}
+            </fieldset>
+          ) : (
+            children
           )}
-        </div>
-      )}
+        </section>
 
-      <TexteAide cle="parcours-etapes" titre="Comment avancer dans le parcours">
-        Remplissez l’étape affichée, puis cliquez sur « {f.validateLabel} » : l’étape suivante
-        s’ouvre une fois celle-ci validée. Ce qui manque est signalé à côté du bouton de
-        validation. Vous pouvez revenir à une étape déjà validée en cliquant sur son numéro.
-        {' '}Votre saisie est enregistrée automatiquement en brouillon (l’heure du dernier
-        enregistrement s’affiche en haut de la page) : changer d’étape, quitter ou fermer la page
-        ne perd rien.
-      </TexteAide>
-
-      <WorkflowRoadmap currentStep={currentStep} steps={steps} blocked={blocked} viewStep={viewStep} onNavigate={onNavigate} />
-
-      {error && (
-        <div className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
-          {error}
-        </div>
-      )}
-
-      <div className="rounded-2xl border border-border bg-bg-raised p-6">{children}</div>
-
-      <footer className="flex flex-wrap items-center justify-between gap-2 pt-1">
-        <div>
-          {f.showPrev && onPrev && (
-            <Button variant="secondary" onClick={onPrev} disabled={f.prevDisabled || saving}>
-              <ChevronLeft className="mr-1 h-4 w-4" /> Étape précédente
-            </Button>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {f.showSaveDraft && onSaveDraft && (
-            <Button variant="ghost" onClick={onSaveDraft} disabled={saving}>
-              <Save className="mr-1 h-4 w-4" /> Sauvegarder le brouillon
-            </Button>
-          )}
-          {f.showValidate && onValidate && (
-            <Button onClick={onValidate} loading={saving} disabled={f.validateDisabled || saving}>
-              {saving ? 'Validation en cours…' : f.validateLabel}
-            </Button>
-          )}
-        </div>
-      </footer>
-    </div>
+        <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
+          <div>
+            {f.showPrev && onPrev && (
+              <Button type="button" variant="secondary" icon={<ChevronLeft />} onClick={onPrev} disabled={f.prevDisabled || saving}>
+                Étape précédente
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {brouillon && (
+              <Button type="button" variant="ghost" icon={<Save />} onClick={onSaveDraft} disabled={saving}>
+                Sauvegarder le brouillon
+              </Button>
+            )}
+            {valider && (
+              <Button type="button" onClick={onValidate} loading={saving} disabled={f.validateDisabled || saving}>
+                {saving ? 'Validation en cours…' : f.validateLabel}
+              </Button>
+            )}
+          </div>
+        </footer>
+      </div>
+    </Page>
   );
 }

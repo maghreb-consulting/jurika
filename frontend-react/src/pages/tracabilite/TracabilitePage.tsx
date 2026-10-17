@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronDown, History, Loader2, RotateCcw } from 'lucide-react';
+import { ChevronDown, Filter, History, RotateCcw } from 'lucide-react';
+import { Page } from '../../components/layout/Page';
 import { Card } from '../../components/ui/Card';
+import { Badge } from '../../components/ui/Badge';
+import { Message } from '../../components/ui/Message';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Tableau, type ColonneTableau } from '../../components/ui/Tableau';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { Select } from '../../components/ui/Select';
@@ -8,26 +13,18 @@ import { tracabiliteService } from '../../services/tracabilite.service';
 import { extractError } from '../../lib/api';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { formatDateTime } from '../../lib/date';
+import { libelleAction } from '../../lib/libelleAction';
 import { useWorkspaceDirectory } from '../../components/tracabilite/useWorkspaceDirectory';
 import { useEntityNames } from '../../components/tracabilite/useEntityNames';
-import type { TracabiliteEntry, TracabiliteFilters } from '../../types/tracabilite';
+import type { ActionTracee, TracabiliteEntry, TracabiliteFilters } from '../../types/tracabilite';
 
 const PAGE_SIZE = 50;
 
-// Actions metier les plus utiles en filtre rapide (le backend accepte tout code).
-const ACTION_OPTIONS = [
-  { value: '', label: 'Toutes les actions' },
-  { value: 'TICKET_CREATED', label: 'Ticket créé' },
-  { value: 'TICKET_TRANSITIONED', label: 'Statut du ticket modifié' },
-  { value: 'TICKET_ASSIGNED', label: 'Ticket réattribué' },
-  { value: 'DOSSIER_TRANSFERE', label: 'Dossier transféré' },
-  { value: 'DOCUMENT_UPLOADED', label: 'Document juridique déposé' },
-  { value: 'COMPTABLE_UPLOADED', label: 'Document comptable déposé' },
-  { value: 'FISCAL_UPLOADED', label: 'Document fiscal déposé' },
-  { value: 'EXERCICE_OPENED', label: 'Exercice ouvert' },
-  { value: 'DATAROOM_DELETED', label: 'Data Room supprimée' },
-  { value: 'PERMISSIONS_CHANGED', label: 'Droits d’accès modifiés' },
-];
+// Lot L6b (E9) : la liste du filtre "Action" vient du serveur (actions reellement
+// presentes dans le journal du cabinet, avec leur libelle). L'ancienne liste fixe de
+// l'ecran citait des codes que plus rien n'ecrit (filtre qui ne trouvait rien) et
+// des libelles qui divergeaient de ceux du tableau.
+const TOUTES_LES_ACTIONS = { value: '', label: 'Toutes les actions' };
 
 const ENTITY_OPTIONS = [
   { value: '', label: 'Tous les éléments' },
@@ -45,7 +42,7 @@ const ACTOR_STATUS_OPTIONS = [
 
 /** Libelle d'un type d'element trace (ticket, dossier, document). */
 function libelleTypeElement(type: string | null | undefined): string {
-  if (!type) return '—';
+  if (!type) return '--';
   return ENTITY_OPTIONS.find((o) => o.value === type)?.label ?? type;
 }
 
@@ -57,6 +54,9 @@ export function TracabilitePage() {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<TracabiliteFilters>({});
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  // null : liste non chargee (chargement ou echec) ; [] : journal sans action.
+  const [actions, setActions] = useState<ActionTracee[] | null>(null);
+  const [actionsEnEchec, setActionsEnEchec] = useState(false);
   const { nameOf, isRetired, users: directory } = useWorkspaceDirectory();
   const { dossiers, tickets, entityLabelOf } = useEntityNames();
 
@@ -129,6 +129,26 @@ export function TracabilitePage() {
     void recuperer(0, {});
   }, [recuperer]);
 
+  useEffect(() => {
+    let actif = true;
+    tracabiliteService
+      .actions()
+      .then((a) => {
+        if (actif) setActions(a);
+      })
+      .catch(() => {
+        if (actif) setActionsEnEchec(true);
+      });
+    return () => {
+      actif = false;
+    };
+  }, []);
+
+  const actionOptions = useMemo(
+    () => [TOUTES_LES_ACTIONS, ...(actions ?? []).map((a) => ({ value: a.code, label: a.label }))],
+    [actions],
+  );
+
   const load = useCallback(
     (off: number, f: TracabiliteFilters) => {
       setLoading(true);
@@ -147,39 +167,76 @@ export function TracabilitePage() {
     load(0, {});
   }
 
+  const colonnes: ColonneTableau<TracabiliteEntry>[] = [
+    { cle: 'quand', titre: 'Quand', rendu: (e) => <span className="whitespace-nowrap tabular-nums text-fg-muted">{formatDateTime(e.createdAt)}</span> },
+    {
+      cle: 'qui',
+      titre: 'Qui',
+      rendu: (e) => (
+        <span className="inline-flex items-center gap-1.5 font-medium text-fg">
+          <span>{nameOf(e.userId)}</span>
+          {isRetired(e.userId) && (
+            <Badge variant="neutral" title="Compte désactivé ou supprimé">
+              retiré
+            </Badge>
+          )}
+        </span>
+      ),
+    },
+    { cle: 'action', titre: 'Action', rendu: (e) => <span className="text-fg">{libelleAction(e.actionLabel, e.action)}</span> },
+    {
+      cle: 'element',
+      titre: 'Élément',
+      rendu: (e) => (
+        <span className="text-fg-muted">
+          {libelleTypeElement(e.entityType)}
+          {e.entityId ? ` · ${entityLabelOf(e.entityType, e.entityId)}` : ''}
+        </span>
+      ),
+    },
+    { cle: 'service', titre: 'Service', masquerSous: 'lg', rendu: (e) => <span className="text-xs text-fg-subtle">{e.sourceService ?? '--'}</span> },
+  ];
+
   const from = total === 0 ? 0 : offset + 1;
   const to = Math.min(offset + PAGE_SIZE, total);
 
   return (
-    <div className="space-y-5 p-2 md:p-4">
-      <header className="flex items-center gap-3">
-        <div className="rounded-xl bg-accent/10 p-2.5 text-accent">
-          <History className="h-6 w-6" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-fg">Traçabilité</h1>
-          <p className="text-sm text-fg-subtle">
-            Journal d’activité du cabinet : qui a fait quoi, et quand.
+    <Page
+      titre="Traçabilité"
+      description="Journal d’activité du cabinet : qui a fait quoi, et quand."
+      aide={
+        <TexteAide cle="tracabilite" titre="Retrouver une action">
+          <p>
+            Choisissez une action, un dossier ou un ticket, une personne ou une période, puis cliquez sur
+            « Filtrer ». « Réinitialiser » affiche de nouveau toute l’activité. Le journal se consulte
+            seulement : aucune ligne ne peut être modifiée ni supprimée.
           </p>
-        </div>
-      </header>
-
-      <TexteAide cle="tracabilite" titre="Retrouver une action">
-        <p>
-          Choisissez une action, un dossier ou un ticket, une personne ou une période, puis cliquez sur
-          « Filtrer ». « Réinitialiser » affiche de nouveau toute l’activité. Le journal se consulte
-          seulement : aucune ligne ne peut être modifiée ni supprimée.
-        </p>
-      </TexteAide>
-
+        </TexteAide>
+      }
+    >
+      <div className="space-y-5">
       <Card className="p-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            applyFilters();
+          }}
+          aria-label="Filtres du journal"
+        >
         <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
           <Select
             name="filter-action"
             label="Action"
             value={filters.action ?? ''}
             onChange={(e) => setFilters((f) => ({ ...f, action: e.target.value || undefined }))}
-            options={ACTION_OPTIONS}
+            options={actionOptions}
+            hint={
+              actionsEnEchec
+                ? 'La liste des actions n’a pas pu être chargée : seules « Toutes les actions » sont proposées.'
+                : actions !== null && actions.length === 0
+                  ? 'Aucune action n’est encore enregistrée dans le journal du cabinet.'
+                  : 'Seules les actions déjà enregistrées dans le journal du cabinet sont proposées.'
+            }
           />
           <Select
             name="filter-entity-type"
@@ -236,11 +293,11 @@ export function TracabilitePage() {
             }
           />
           <div className="flex items-end gap-2">
-            <Button onClick={applyFilters} loading={loading}>
+            <Button type="submit" loading={loading} icon={<Filter />}>
               Filtrer
             </Button>
-            <Button variant="secondary" onClick={reset}>
-              <RotateCcw className="mr-1 h-4 w-4" /> Réinitialiser
+            <Button type="button" variant="secondary" onClick={reset} icon={<RotateCcw />}>
+              Réinitialiser
             </Button>
           </div>
         </div>
@@ -248,14 +305,16 @@ export function TracabilitePage() {
         {/* Recherche avancee par UUID — pour les cas hors liste (ex. documents) */}
         <div className="mt-3 border-t border-border pt-3">
           <div className="flex items-center gap-1">
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
+            aria-expanded={advancedOpen}
             onClick={() => setAdvancedOpen((v) => !v)}
-            className="flex items-center gap-1 text-xs font-medium text-fg-subtle transition hover:text-fg"
+            icon={<ChevronDown className={`transition-transform duration-150 motion-reduce:transition-none ${advancedOpen ? 'rotate-180' : ''}`} />}
           >
-            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
             Recherche avancée par identifiant technique
-          </button>
+          </Button>
           <InfoBulle
             libelle="Aide : recherche par identifiant"
             texte="Pour un élément absent des listes (un document, par exemple) : collez son identifiant technique exact, tel qu’il figure dans un rapport ou un message d’erreur."
@@ -278,72 +337,39 @@ export function TracabilitePage() {
             </div>
           )}
         </div>
+        </form>
       </Card>
 
       {error && (
-        <div role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+        <Message ton="erreur" titre="Le journal n’a pas pu être chargé">
           {error}
-        </div>
+        </Message>
       )}
 
-      <Card className="overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-accent" />
-          </div>
-        ) : items.length === 0 ? (
-          <p className="py-12 text-center text-sm text-fg-subtle">
-            Aucune activité pour ces critères. Élargissez la période ou cliquez sur « Réinitialiser ».
-          </p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-subtle">
-                <th className="px-4 py-2 font-medium">Quand</th>
-                <th className="px-4 py-2 font-medium">Qui</th>
-                <th className="px-4 py-2 font-medium">Action</th>
-                <th className="px-4 py-2 font-medium">Élément</th>
-                <th className="px-4 py-2 font-medium">Service</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((e) => (
-                <tr key={e.id} className="border-b border-border/60 last:border-0 hover:bg-bg-overlay">
-                  <td className="whitespace-nowrap px-4 py-2 text-fg-subtle">
-                    {formatDateTime(e.createdAt)}
-                  </td>
-                  <td className="px-4 py-2 font-medium text-fg">
-                    <span className="inline-flex items-center gap-1.5">
-                      <span>{nameOf(e.userId)}</span>
-                      {isRetired(e.userId) && (
-                        <span
-                          className="rounded-full border border-border bg-bg-overlay px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-fg-subtle"
-                          title="Compte désactivé ou supprimé"
-                        >
-                          retiré
-                        </span>
-                      )}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 text-fg">{e.actionLabel}</td>
-                  <td className="px-4 py-2 text-fg-subtle">
-                    {libelleTypeElement(e.entityType)}
-                    {e.entityId ? ` · ${entityLabelOf(e.entityType, e.entityId)}` : ''}
-                  </td>
-                  <td className="px-4 py-2 text-xs text-fg-subtle">{e.sourceService ?? '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
+      <Tableau
+        legende="Journal d’activité du cabinet"
+        colonnes={colonnes}
+        lignes={items}
+        cleLigne={(e) => String(e.id)}
+        chargement={loading}
+        lignesChargement={8}
+        vide={
+          <EmptyState
+            compact
+            icon={<History />}
+            title="Aucune activité pour ces critères"
+            description="Élargissez la période ou cliquez sur « Réinitialiser » pour afficher de nouveau toute l’activité."
+          />
+        }
+      />
 
-      <div className="flex items-center justify-between text-sm text-fg-subtle">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-fg-muted">
         <span>
           {from}–{to} sur {total}
         </span>
         <div className="flex gap-2">
           <Button
+            type="button"
             variant="secondary"
             size="sm"
             disabled={offset === 0 || loading}
@@ -352,6 +378,7 @@ export function TracabilitePage() {
             Précédent
           </Button>
           <Button
+            type="button"
             variant="secondary"
             size="sm"
             disabled={to >= total || loading}
@@ -361,6 +388,7 @@ export function TracabilitePage() {
           </Button>
         </div>
       </div>
-    </div>
+      </div>
+    </Page>
   );
 }

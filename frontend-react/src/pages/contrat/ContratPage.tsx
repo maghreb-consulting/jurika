@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { AlertCircle, AlertTriangle, Download, FileSignature, Loader2, Mail } from 'lucide-react';
+import { ChevronDown, Download, FileSignature, Mail } from 'lucide-react';
+import { Page } from '../../components/layout/Page';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import { Case } from '../../components/ui/Choix';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
+import { Lien } from '../../components/ui/Lien';
+import { CardSkeleton, SqueletteTexte, SqueletteZone } from '../../components/ui/LoadingSkeleton';
+import { Message } from '../../components/ui/Message';
+import { Select } from '../../components/ui/Select';
+import { Tableau } from '../../components/ui/Tableau';
+import { TextField, ZoneTexte } from '../../components/ui/TextField';
 import { useToast } from '../../components/ui/useToast';
 import { TexteContrat } from '../../components/contrat/TexteContrat';
 import {
@@ -35,6 +42,9 @@ import type {
  * - RG-CTR-03 : tant que des conditions particulieres attendent, seul cet ecran est accessible ;
  * - RG-CTR-04 : exemplaire PDF telechargeable a tout moment, copie par courriel ;
  * - RG-CTR-06 a 09 : echeance, nouvelle version, resiliation en ligne, historique, versions.
+ *
+ * Lot L6b (E8) : structure unique <Page>, cartes, champs et messages de la bibliotheque.
+ * Logique (apercu, empreinte, acceptation, refus, resiliation) inchangee.
  */
 export function ContratPage() {
   const toast = useToast();
@@ -71,111 +81,109 @@ export function ContratPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-4">
-      <header className="flex flex-wrap items-center gap-3">
-        <FileSignature className="h-6 w-6 text-accent" aria-hidden="true" />
-        <div className="flex-1">
-          <h1 className="font-heading text-2xl font-semibold text-fg">
-            Contrat d’abonnement{' '}
-            <InfoBulle
-              libelle="À propos du contrat"
-              texte="Le contrat qui lie votre cabinet à Maghreb Consulting, éditeur de JURIKA : conditions particulières (forfait, prix, dates), conditions générales d’abonnement et accord de traitement des données personnelles."
-            />
-          </h1>
-          <p className="text-sm text-fg-subtle">Acceptation en ligne, exemplaire, échéance, résiliation et historique.</p>
-        </div>
-      </header>
+    <Page
+      titre="Contrat d’abonnement"
+      largeur="etroite"
+      infoBulle="Le contrat qui lie votre cabinet à Maghreb Consulting, éditeur de JURIKA : conditions particulières (forfait, prix, dates), conditions générales d’abonnement et accord de traitement des données personnelles."
+      description="Acceptation en ligne, exemplaire, échéance, résiliation et historique."
+      aide={
+        <TexteAide cle="contrat-abonnement" titre="Votre contrat d’abonnement">
+          <p>
+            Quand JURIKA met en place ou modifie votre abonnement, de nouvelles conditions particulières vous sont
+            présentées ici : lisez le contrat complet, cochez la case d’acceptation, puis confirmez. Tant qu’elles ne
+            sont pas acceptées, vous et vos employés n’accédez qu’à cet écran. Une fois le contrat accepté,
+            l’exemplaire complet (PDF) reste téléchargeable à tout moment et une copie est envoyée à l’adresse
+            électronique du cabinet. Quand une nouvelle version des conditions générales entre en vigueur, elle vous
+            est présentée ici à chaque connexion jusqu’à votre réponse : « Accepter » ou « Refuser » (un refus vaut
+            résiliation sans frais à l’échéance).
+          </p>
+        </TexteAide>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        {erreur && <Message ton="erreur">{erreur}</Message>}
 
-      <TexteAide cle="contrat-abonnement" titre="Votre contrat d’abonnement">
-        <p>
-          Quand JURIKA met en place ou modifie votre abonnement, de nouvelles conditions particulières vous sont
-          présentées ici : lisez le contrat complet, cochez la case d’acceptation, puis confirmez. Tant qu’elles ne
-          sont pas acceptées, vous et vos employés n’accédez qu’à cet écran. Une fois le contrat accepté,
-          l’exemplaire complet (PDF) reste téléchargeable à tout moment et une copie est envoyée à l’adresse
-          électronique du cabinet. Quand une nouvelle version des conditions générales entre en vigueur, elle vous
-          est présentée ici à chaque connexion jusqu’à votre réponse : « Accepter » ou « Refuser » (un refus vaut
-          résiliation sans frais à l’échéance).
-        </p>
-      </TexteAide>
-
-      {erreur && (
-        <p role="alert" className="flex items-start gap-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{erreur}</span>
-        </p>
-      )}
-
-      {chargement ? (
-        <p className="flex items-center gap-2 text-sm text-fg-subtle" role="status">
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Chargement du contrat…
-        </p>
-      ) : etat ? (
-        <>
-          {etat.acceptationRequise && (
-            <BlocAcceptation
-              etat={etat}
-              onAccepte={() => apresChangement('Contrat accepté. Une copie est envoyée par courriel.')}
-              onRefuse={() =>
-                apresChangement('Refus enregistré : votre contrat sera résilié sans frais à l’échéance.')
-              }
-            />
-          )}
-          {etat.statut === 'AUCUN' && !etat.acceptationRequise && (
-            <Card className="p-4 text-sm text-fg-muted">
-              Aucun contrat d’abonnement n’est encore enregistré pour votre cabinet. Il apparaîtra ici dès que JURIKA
-              aura saisi vos conditions particulières (forfait, prix, dates), ou à votre souscription d’un forfait.
-            </Card>
-          )}
-          {etat.versionAVenir && (
-            <Card className="p-4 text-sm text-fg-muted">
-              <p className="font-medium text-fg">
-                Nouvelle version des conditions générales : version {etat.versionAVenir.code}, en vigueur le{' '}
-                {dateLongue(etat.versionAVenir.entreeEnVigueur)}.
-              </p>
-              <p className="mt-1">
+        {chargement ? (
+          <SqueletteZone libelle="Chargement du contrat…">
+            <div className="flex flex-col gap-4">
+              <CardSkeleton className="h-56" />
+              <CardSkeleton className="h-40" />
+            </div>
+          </SqueletteZone>
+        ) : etat ? (
+          <>
+            {etat.acceptationRequise && (
+              <BlocAcceptation
+                etat={etat}
+                onAccepte={() => apresChangement('Contrat accepté. Une copie est envoyée par courriel.')}
+                onRefuse={() =>
+                  apresChangement('Refus enregistré : votre contrat sera résilié sans frais à l’échéance.')
+                }
+              />
+            )}
+            {etat.statut === 'AUCUN' && !etat.acceptationRequise && (
+              <Card className="p-5">
+                <div className="flex items-start gap-3 text-sm text-fg-muted">
+                  <FileSignature className="mt-0.5 h-5 w-5 shrink-0 text-fg-subtle" aria-hidden="true" />
+                  <p>
+                    Aucun contrat d’abonnement n’est encore enregistré pour votre cabinet. Il apparaîtra ici dès que
+                    JURIKA aura saisi vos conditions particulières (forfait, prix, dates), ou à votre souscription d’un
+                    forfait.
+                  </p>
+                </div>
+              </Card>
+            )}
+            {etat.versionAVenir && (
+              <Message
+                ton="info"
+                titre={`Nouvelle version des conditions générales : version ${etat.versionAVenir.code}, en vigueur le ${dateLongue(etat.versionAVenir.entreeEnVigueur)}.`}
+              >
                 Elle vous sera présentée à votre première connexion après cette date : vous pourrez l’accepter ou la
                 refuser. Un refus vaut résiliation sans frais à l’échéance ; jusque-là, la version actuelle continue de
                 s’appliquer (article 16). Son texte est consultable plus bas, dans « Versions du contrat ».
-              </p>
-            </Card>
-          )}
-          {etat.courant && <BlocContratCourant etat={etat} conditions={etat.courant} />}
-          {etat.resiliation && (
-            <Card className="p-4 text-sm">
-              <p className="font-medium text-fg">
-                Résiliation enregistrée : le forfait s’arrête le {dateLongue(etat.resiliation.dateEffet)}.
-              </p>
-              <p className="mt-1 text-fg-muted">
+              </Message>
+            )}
+            {etat.courant && <BlocContratCourant etat={etat} conditions={etat.courant} />}
+            {etat.resiliation && (
+              <Message
+                ton="attention"
+                titre={`Résiliation enregistrée : le forfait s’arrête le ${dateLongue(etat.resiliation.dateEffet)}.`}
+              >
                 Motif : {etat.resiliation.motif}. À cette date, l’accès est fermé et tout le travail du cabinet est
                 archivé, jamais supprimé : vous pourrez toujours vous connecter pour exporter vos données ou télécharger
                 votre contrat, et réactiver le cabinet en souscrivant de nouveau.
-              </p>
-            </Card>
-          )}
-          {etat.courant && !etat.acceptationRequise && (
-            <BlocResiliation conditions={etat.courant} onResilie={() => apresChangement('Résiliation enregistrée.')} />
-          )}
-          {historique && <BlocHistorique historique={historique} />}
-          <BlocVersions versions={versions} />
-        </>
-      ) : null}
-    </div>
+              </Message>
+            )}
+            {etat.courant && !etat.acceptationRequise && (
+              <BlocResiliation conditions={etat.courant} onResilie={() => apresChangement('Résiliation enregistrée.')} />
+            )}
+            {historique && <BlocHistorique historique={historique} />}
+            <BlocVersions versions={versions} />
+          </>
+        ) : null}
+      </div>
+    </Page>
   );
 }
 
 function ResumeConditions({ c }: { c: ConditionsVue }) {
+  const lignes: [string, string][] = [
+    ['Référence', c.reference],
+    ['Forfait', c.forfaitLibelle],
+    ['Rythme de paiement', LIBELLE_RYTHME[c.rythmePaiement]],
+    ['Prix', prix(c)],
+    ['Début', dateLongue(c.dateDebut)],
+    ['Échéance', dateLongue(c.echeanceCourante)],
+    ['Mode de paiement', c.modePaiement ? LIBELLE_MODE[c.modePaiement] : 'non renseigné'],
+  ];
   return (
-    <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-      <div><dt className="inline text-fg-subtle">Référence : </dt><dd className="inline text-fg">{c.reference}</dd></div>
-      <div><dt className="inline text-fg-subtle">Forfait : </dt><dd className="inline text-fg">{c.forfaitLibelle}</dd></div>
-      <div><dt className="inline text-fg-subtle">Rythme de paiement : </dt><dd className="inline text-fg">{LIBELLE_RYTHME[c.rythmePaiement]}</dd></div>
-      <div><dt className="inline text-fg-subtle">Prix : </dt><dd className="inline text-fg">{prix(c)}</dd></div>
-      <div><dt className="inline text-fg-subtle">Début : </dt><dd className="inline text-fg">{dateLongue(c.dateDebut)}</dd></div>
-      <div><dt className="inline text-fg-subtle">Échéance : </dt><dd className="inline text-fg">{dateLongue(c.echeanceCourante)}</dd></div>
-      <div>
-        <dt className="inline text-fg-subtle">Mode de paiement : </dt>
-        <dd className="inline text-fg">{c.modePaiement ? LIBELLE_MODE[c.modePaiement] : 'non renseigné'}</dd>
-      </div>
+    <dl className="grid grid-cols-1 gap-x-6 gap-y-2 rounded-lg border border-border bg-bg-overlay p-3 text-sm sm:grid-cols-2">
+      {lignes.map(([libelle, valeur]) => (
+        <div key={libelle}>
+          <dt className="inline text-fg-muted">{libelle} : </dt>
+          <dd className="inline text-fg">{valeur}</dd>
+        </div>
+      ))}
     </dl>
   );
 }
@@ -272,152 +280,143 @@ function BlocAcceptation({
   }
 
   return (
-    <Card className="flex flex-col gap-3 border-accent p-4" aria-labelledby="titre-acceptation">
-      <h2 id="titre-acceptation" className="flex items-center gap-2 text-lg font-semibold text-fg">
-        <AlertTriangle className="h-5 w-5 text-accent" aria-hidden="true" />
-        {nouvelleVersion
+    <Card
+      accent
+      aria-label={nouvelleVersion ? 'Nouvelle version à accepter ou refuser' : 'Contrat à accepter'}
+      title={
+        nouvelleVersion
           ? `Nouvelle version des conditions générales : votre réponse est attendue (version ${versionNouvelle})`
-          : 'Contrat d’abonnement à accepter'}
-      </h2>
-      <p className="text-sm text-fg-muted">
-        {nouvelleVersion
+          : 'Contrat d’abonnement à accepter'
+      }
+      description={
+        nouvelleVersion
           ? `Cette version est en vigueur${etat.versionEnVigueur ? ` depuis le ${dateLongue(etat.versionEnVigueur.entreeEnVigueur)}` : ''}. Lisez-la, puis acceptez-la ou refusez-la. Vous pouvez continuer à utiliser la plateforme en attendant : cette demande vous sera présentée à chaque connexion tant que vous n’aurez pas répondu.`
-          : 'JURIKA a saisi les conditions particulières de votre abonnement. Tant que vous ne les avez pas acceptées, l’accès à la plateforme est limité à cet écran, pour vous et pour vos employés.'}
-      </p>
-      {nouvelleVersion && (
-        <TexteAide cle="contrat-nouvelle-version" titre="Accepter ou refuser la nouvelle version (article 16)">
-          <p>
-            <strong>Accepter</strong> : affichez le contrat, lisez-le, cochez la case puis confirmez ; la nouvelle
-            version s’applique dès votre acceptation. <strong>Refuser</strong> : votre contrat est résilié sans frais à
-            l’échéance{echeance ? `, le ${echeance}` : ''} ; jusque-là, la version antérieure
-            {versionAnterieure ? ` (version ${versionAnterieure})` : ''} continue de s’appliquer. Votre réponse est
-            définitive et enregistrée sans possibilité de modification.
-          </p>
-        </TexteAide>
-      )}
-      {conditions && <ResumeConditions c={conditions} />}
+          : 'JURIKA a saisi les conditions particulières de votre abonnement. Tant que vous ne les avez pas acceptées, l’accès à la plateforme est limité à cet écran, pour vous et pour vos employés.'
+      }
+    >
+      <div className="flex flex-col gap-4">
+        {nouvelleVersion && (
+          <TexteAide cle="contrat-nouvelle-version" titre="Accepter ou refuser la nouvelle version (article 16)">
+            <p>
+              <strong>Accepter</strong> : affichez le contrat, lisez-le, cochez la case puis confirmez ; la nouvelle
+              version s’applique dès votre acceptation. <strong>Refuser</strong> : votre contrat est résilié sans frais à
+              l’échéance{echeance ? `, le ${echeance}` : ''} ; jusque-là, la version antérieure
+              {versionAnterieure ? ` (version ${versionAnterieure})` : ''} continue de s’appliquer. Votre réponse est
+              définitive et enregistrée sans possibilité de modification.
+            </p>
+          </TexteAide>
+        )}
+        {conditions && <ResumeConditions c={conditions} />}
 
-      <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <legend className="mb-1 text-sm font-medium text-fg">
-          Vos mentions de signataire{' '}
-          <InfoBulle
-            libelle="Mentions du signataire"
-            texte="Ces mentions sont imprimées dans le contrat. Votre nom, votre prénom et votre compte viennent de votre profil ; la dénomination, l’adresse, le numéro de RC, l’ICE et l’adresse électronique du cabinet viennent de Paramètres › Cabinet."
-          />
-        </legend>
-        <label className="flex flex-col gap-1 text-sm">
-          <span>Civilité *</span>
-          <select
+        <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <legend className="mb-2 flex items-center gap-1 text-sm font-medium text-fg">
+            Vos mentions de signataire
+            <InfoBulle
+              libelle="Mentions du signataire"
+              texte="Ces mentions sont imprimées dans le contrat. Votre nom, votre prénom et votre compte viennent de votre profil ; la dénomination, l’adresse, le numéro de RC, l’ICE et l’adresse électronique du cabinet viennent de Paramètres › Cabinet."
+            />
+          </legend>
+          <Select
+            label="Civilité *"
             value={signataire.civilite}
             onChange={(e) => changer('civilite', e.target.value)}
-            className="rounded-md border border-border bg-bg px-2 py-1.5"
-          >
-            <option value="">— Choisir —</option>
-            <option value="M.">M.</option>
-            <option value="Mme">Mme</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span>Qualité au sein du cabinet *</span>
-          <input
+            options={[
+              { value: '', label: '— Choisir —' },
+              { value: 'M.', label: 'M.' },
+              { value: 'Mme', label: 'Mme' },
+            ]}
+          />
+          <TextField
+            label="Qualité au sein du cabinet *"
             value={signataire.qualite}
             onChange={(e) => changer('qualite', e.target.value)}
             placeholder="gérant, associé, directeur…"
-            className="rounded-md border border-border bg-bg px-2 py-1.5"
           />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span>Forme juridique du cabinet</span>
-          <input
+          <TextField
+            label="Forme juridique du cabinet"
             value={signataire.formeCabinet}
             onChange={(e) => changer('formeCabinet', e.target.value)}
             placeholder="SARL, société civile professionnelle…"
-            className="rounded-md border border-border bg-bg px-2 py-1.5"
           />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span>Ville du registre du commerce du cabinet</span>
-          <input
+          <TextField
+            label="Ville du registre du commerce du cabinet"
             value={signataire.rcVilleCabinet}
             onChange={(e) => changer('rcVilleCabinet', e.target.value)}
             placeholder="Casablanca, Rabat…"
-            className="rounded-md border border-border bg-bg px-2 py-1.5"
           />
-        </label>
-      </fieldset>
-      <p className="text-xs text-fg-subtle">
-        Une mention laissée vide figure dans le contrat sous la forme « [non renseigné : …] ». Pour compléter
-        l’identité du cabinet, ouvrez{' '}
-        <Link to="/settings/cabinet" className="underline">Paramètres › Cabinet</Link>, puis revenez ici.
-      </p>
-
-      {erreur && (
-        <p role="alert" className="flex items-start gap-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{erreur}</span>
+        </fieldset>
+        <p className="text-xs text-fg-muted">
+          Une mention laissée vide figure dans le contrat sous la forme « [non renseigné : …] ». Pour compléter
+          l’identité du cabinet, ouvrez <Lien to="/settings/cabinet">Paramètres › Cabinet</Lien>, puis revenez ici.
         </p>
-      )}
 
-      {!apercu ? (
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={afficher} loading={envoi} disabled={envoi}>
-            {nouvelleVersion ? 'Afficher la nouvelle version pour l’accepter' : 'Afficher le contrat à accepter'}
-          </Button>
-          {nouvelleVersion && (
-            <Button variant="danger" onClick={() => setConfirmerRefus(true)} disabled={envoi || versionNouvelle === ''}>
-              Refuser
-            </Button>
-          )}
-        </div>
-      ) : (
-        <>
-          {apercu.manquants.length > 0 && (
-            <div role="note" className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-fg">
-              <p className="font-medium">Mentions non renseignées dans ce contrat :</p>
-              <ul className="ml-5 list-disc">
-                {apercu.manquants.map((m) => <li key={m}>{m}</li>)}
-              </ul>
-              <p className="mt-1 text-xs text-fg-muted">
-                Vous pouvez accepter en l’état : le contrat et son exemplaire les signaleront. Les mentions du cabinet
-                se complètent dans Paramètres › Cabinet ; celles de l’Éditeur relèvent de JURIKA.
-              </p>
-            </div>
-          )}
-          <div
-            className="max-h-[32rem] overflow-y-auto rounded-md border border-border bg-bg p-4"
-            tabIndex={0}
-            aria-label="Texte du contrat d’abonnement"
-          >
-            <TexteContrat texte={apercu.texte} />
-          </div>
-          <p className="break-all text-xs text-fg-subtle">
-            Empreinte du texte (SHA-256) : <code>{apercu.empreinte}</code>
-          </p>
-          <label className="flex items-start gap-2 text-sm text-fg">
-            <input
-              type="checkbox"
-              checked={caseCochee}
-              onChange={(e) => setCaseCochee(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>
-              {nouvelleVersion
-                ? `J’ai lu et j’accepte le contrat d’abonnement JURIKA, conditions générales version ${versionNouvelle}`
-                : 'J’ai lu et j’accepte le contrat d’abonnement JURIKA'}
-            </span>
-          </label>
+        {erreur && <Message ton="erreur">{erreur}</Message>}
+
+        {!apercu ? (
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => setConfirmer(true)} disabled={!caseCochee || envoi}>
-              {nouvelleVersion ? 'Accepter' : 'Accepter le contrat'}
+            <Button type="button" onClick={afficher} loading={envoi}>
+              {nouvelleVersion ? 'Afficher la nouvelle version pour l’accepter' : 'Afficher le contrat à accepter'}
             </Button>
             {nouvelleVersion && (
-              <Button variant="danger" onClick={() => setConfirmerRefus(true)} disabled={envoi}>
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => setConfirmerRefus(true)}
+                disabled={envoi || versionNouvelle === ''}
+              >
                 Refuser
               </Button>
             )}
           </div>
-        </>
-      )}
+        ) : (
+          <>
+            {apercu.manquants.length > 0 && (
+              <div role="note" className="rounded-lg border border-border border-l-4 border-l-warning bg-warning-soft p-3 text-sm text-fg">
+                <p className="font-medium">Mentions non renseignées dans ce contrat :</p>
+                <ul className="ml-5 list-disc">
+                  {apercu.manquants.map((m) => (
+                    <li key={m}>{m}</li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-xs text-fg-muted">
+                  Vous pouvez accepter en l’état : le contrat et son exemplaire les signaleront. Les mentions du cabinet
+                  se complètent dans Paramètres › Cabinet ; celles de l’Éditeur relèvent de JURIKA.
+                </p>
+              </div>
+            )}
+            {/* Texte long : defilement interne de l'encadre, la page defile autour. */}
+            <div
+              className="max-h-[32rem] overflow-y-auto rounded-lg border border-border bg-bg p-4 focus-visible:outline-2 focus-visible:outline-focus"
+              tabIndex={0}
+              aria-label="Texte du contrat d’abonnement"
+            >
+              <TexteContrat texte={apercu.texte} />
+            </div>
+            <p className="break-all text-xs text-fg-muted">
+              Empreinte du texte (SHA-256) : <code className="font-mono">{apercu.empreinte}</code>
+            </p>
+            <Case
+              checked={caseCochee}
+              onChange={(e) => setCaseCochee(e.target.checked)}
+              label={
+                nouvelleVersion
+                  ? `J’ai lu et j’accepte le contrat d’abonnement JURIKA, conditions générales version ${versionNouvelle}`
+                  : 'J’ai lu et j’accepte le contrat d’abonnement JURIKA'
+              }
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" onClick={() => setConfirmer(true)} disabled={!caseCochee || envoi}>
+                {nouvelleVersion ? 'Accepter' : 'Accepter le contrat'}
+              </Button>
+              {nouvelleVersion && (
+                <Button type="button" variant="danger" onClick={() => setConfirmerRefus(true)} disabled={envoi}>
+                  Refuser
+                </Button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
 
       {nouvelleVersion && (
         <ConfirmDialog
@@ -477,33 +476,34 @@ function BlocContratCourant({ etat, conditions }: { etat: EtatContrat; condition
   }
 
   return (
-    <Card className="flex flex-col gap-3 p-4">
-      <h2 className="text-lg font-semibold text-fg">Contrat en cours</h2>
-      <ResumeConditions c={conditions} />
-      {etat.avertissementEcheance && etat.joursAvantEcheance !== null && (
-        <p role="status" className="rounded-md bg-warning/10 px-3 py-2 text-sm text-fg">
-          Échéance dans {etat.joursAvantEcheance} jour{etat.joursAvantEcheance > 1 ? 's' : ''}, le{' '}
-          {dateLongue(conditions.echeanceCourante)} : sauf résiliation, l’abonnement se renouvelle pour un an aux
-          conditions en vigueur (article 5 des conditions générales).
-        </p>
-      )}
-      {a && (
-        <div className="text-sm text-fg-muted">
-          <p>
-            Accepté le {horodatageCasablanca(a.accepteLeCasablanca)} par {a.signataire} ({a.signataireQualite}),
-            depuis le compte {a.signataireCompte}. Conditions générales : version {a.versionCode}.
-          </p>
-          <p className="break-all text-xs text-fg-subtle">Empreinte : {a.empreinteContrat}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => telecharger(a)} disabled={travail}>
-              <Download className="mr-1 h-4 w-4" aria-hidden="true" /> Télécharger l’exemplaire (PDF)
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => renvoyer(a)} disabled={travail}>
-              <Mail className="mr-1 h-4 w-4" aria-hidden="true" /> Renvoyer la copie par courriel
-            </Button>
+    <Card title="Contrat en cours">
+      <div className="flex flex-col gap-3">
+        <ResumeConditions c={conditions} />
+        {etat.avertissementEcheance && etat.joursAvantEcheance !== null && (
+          <Message ton="attention">
+            Échéance dans {etat.joursAvantEcheance} jour{etat.joursAvantEcheance > 1 ? 's' : ''}, le{' '}
+            {dateLongue(conditions.echeanceCourante)} : sauf résiliation, l’abonnement se renouvelle pour un an aux
+            conditions en vigueur (article 5 des conditions générales).
+          </Message>
+        )}
+        {a && (
+          <div className="text-sm text-fg-muted">
+            <p>
+              Accepté le {horodatageCasablanca(a.accepteLeCasablanca)} par {a.signataire} ({a.signataireQualite}),
+              depuis le compte {a.signataireCompte}. Conditions générales : version {a.versionCode}.
+            </p>
+            <p className="break-all text-xs text-fg-muted">Empreinte : {a.empreinteContrat}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button type="button" size="sm" variant="secondary" onClick={() => telecharger(a)} disabled={travail} icon={<Download />}>
+                Télécharger l’exemplaire (PDF)
+              </Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => renvoyer(a)} disabled={travail} icon={<Mail />}>
+                Renvoyer la copie par courriel
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </Card>
   );
 }
@@ -530,31 +530,32 @@ function BlocResiliation({ conditions, onResilie }: { conditions: ConditionsVue;
   }
 
   return (
-    <Card className="flex flex-col gap-2 p-4">
-      <h2 className="text-lg font-semibold text-fg">
-        Résilier le contrat{' '}
-        <InfoBulle
-          libelle="Effets de la résiliation"
-          texte="La résiliation prend effet à l’échéance du contrat. À cette date, le forfait s’arrête, les accès sont fermés (y compris ceux de vos clients à leur Data Room) et tout le travail du cabinet est archivé, jamais supprimé."
-        />
-      </h2>
-      <p className="text-sm text-fg-muted">
-        Date d’effet : à l’échéance, le {dateLongue(conditions.echeanceCourante)}. Indiquez le motif de votre décision.
-      </p>
-      <label className="flex flex-col gap-1 text-sm">
-        <span>Motif de la résiliation *</span>
-        <textarea
-          value={motif}
-          onChange={(e) => setMotif(e.target.value)}
-          rows={2}
-          className="rounded-md border border-border bg-bg px-2 py-1.5"
-        />
-      </label>
-      {erreur && <p role="alert" className="text-sm text-danger">{erreur}</p>}
-      <div>
-        <Button variant="danger" size="sm" onClick={() => setConfirmer(true)} disabled={motif.trim() === '' || envoi}>
-          Demander la résiliation
-        </Button>
+    <Card
+      title={
+        <span className="flex items-center gap-1">
+          Résilier le contrat
+          <InfoBulle
+            libelle="Effets de la résiliation"
+            texte="La résiliation prend effet à l’échéance du contrat. À cette date, le forfait s’arrête, les accès sont fermés (y compris ceux de vos clients à leur Data Room) et tout le travail du cabinet est archivé, jamais supprimé."
+          />
+        </span>
+      }
+      description={`Date d’effet : à l’échéance, le ${dateLongue(conditions.echeanceCourante)}. Indiquez le motif de votre décision.`}
+    >
+      <div className="flex flex-col gap-3">
+        <ZoneTexte label="Motif de la résiliation *" value={motif} onChange={(e) => setMotif(e.target.value)} rows={2} />
+        {erreur && <Message ton="erreur">{erreur}</Message>}
+        <div>
+          <Button
+            type="button"
+            variant="danger"
+            size="sm"
+            onClick={() => setConfirmer(true)}
+            disabled={motif.trim() === '' || envoi}
+          >
+            Demander la résiliation
+          </Button>
+        </div>
       </div>
       <ConfirmDialog
         open={confirmer}
@@ -581,85 +582,79 @@ function BlocHistorique({ historique }: { historique: HistoriqueContrat }) {
   }
   const echecs = historique.avis.filter((a) => a.statut === 'ECHEC');
   return (
-    <Card className="flex flex-col gap-3 p-4">
-      <h2 className="text-lg font-semibold text-fg">
-        Historique du contrat{' '}
-        <InfoBulle
-          libelle="Conservation"
-          texte="Conditions particulières successives, acceptations, réponses aux nouvelles versions, renouvellements et résiliation : rien n’est supprimé, l’historique est conservé au moins dix ans."
-        />
-      </h2>
-      {historique.conditions.length === 0 ? (
-        <p className="text-sm text-fg-subtle">Aucune condition particulière enregistrée.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-fg-subtle">
-                <th scope="col" className="py-1 pr-3">Référence</th>
-                <th scope="col" className="py-1 pr-3">Forfait</th>
-                <th scope="col" className="py-1 pr-3">Prix</th>
-                <th scope="col" className="py-1 pr-3">Début</th>
-                <th scope="col" className="py-1">État</th>
-              </tr>
-            </thead>
-            <tbody>
-              {historique.conditions.map((c) => (
-                <tr key={c.id} className="border-t border-border">
-                  <td className="py-1 pr-3">{c.reference}</td>
-                  <td className="py-1 pr-3">{c.forfaitLibelle}</td>
-                  <td className="py-1 pr-3">{prix(c)}</td>
-                  <td className="py-1 pr-3">{dateLongue(c.dateDebut)}</td>
-                  <td className="py-1">{LIBELLE_STATUT[c.statut] ?? c.statut}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      {historique.acceptations.length > 0 && (
-        <ul className="flex flex-col gap-1 text-sm">
-          {historique.acceptations.map((a) => (
-            <li key={a.id} className="flex flex-wrap items-center gap-2">
-              <span>
-                {a.objet === 'NOUVELLE_VERSION' ? 'Nouvelle version acceptée' : 'Conditions acceptées'} le{' '}
-                {horodatageCasablanca(a.accepteLeCasablanca)} par {a.signataire} (version {a.versionCode})
-              </span>
-              <Button size="sm" variant="ghost" onClick={() => telecharger(a)}>
-                <Download className="mr-1 h-4 w-4" aria-hidden="true" /> Exemplaire
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {historique.reponses.length > 0 && (
-        <ul className="flex flex-col gap-1 text-sm" aria-label="Réponses aux nouvelles versions">
-          {historique.reponses.map((r) => (
-            <li key={r.id}>
-              Conditions générales, version {r.versionCode}, {r.reponse === 'ACCEPTEE' ? 'acceptées' : 'refusées'} le{' '}
-              {horodatageCasablanca(r.reponduLeCasablanca)} depuis le compte {r.signataireCompte} (adresse IP{' '}
-              {r.adresseIp})
-            </li>
-          ))}
-        </ul>
-      )}
-      {historique.renouvellements.map((r) => (
-        <p key={r.id} className="text-sm text-fg-muted">
-          Renouvelé : échéance du {dateLongue(r.ancienneEcheance)} reportée au {dateLongue(r.nouvelleEcheance)}.
-        </p>
-      ))}
-      {historique.resiliations.map((r) => (
-        <p key={r.conditionsId} className="text-sm text-fg-muted">
-          Résiliation {r.demandeurRole === 'SUPER_ADMIN' ? 'enregistrée par JURIKA' : 'demandée en ligne'}, effet le{' '}
-          {dateLongue(r.dateEffet)} — motif : {r.motif}
-        </p>
-      ))}
-      {echecs.length > 0 && (
-        <p role="alert" className="text-sm text-danger">
-          {echecs.length} courriel{echecs.length > 1 ? 's' : ''} du contrat n’a pas pu être envoyé (dernier motif :{' '}
-          {echecs[0].erreur ?? 'inconnu'}). Utilisez « Renvoyer la copie par courriel » ou contactez JURIKA.
-        </p>
-      )}
+    <Card
+      title={
+        <span className="flex items-center gap-1">
+          Historique du contrat
+          <InfoBulle
+            libelle="Conservation"
+            texte="Conditions particulières successives, acceptations, réponses aux nouvelles versions, renouvellements et résiliation : rien n’est supprimé, l’historique est conservé au moins dix ans."
+          />
+        </span>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        {historique.conditions.length === 0 ? (
+          <p className="text-sm text-fg-muted">Aucune condition particulière enregistrée.</p>
+        ) : (
+          <Tableau
+            legende="Conditions particulières successives"
+            enTeteCollant={false}
+            lignes={historique.conditions}
+            cleLigne={(c) => c.id}
+            colonnes={[
+              { cle: 'reference', titre: 'Référence', rendu: (c) => c.reference },
+              { cle: 'forfait', titre: 'Forfait', rendu: (c) => c.forfaitLibelle },
+              { cle: 'prix', titre: 'Prix', rendu: (c) => prix(c) },
+              { cle: 'debut', titre: 'Début', rendu: (c) => dateLongue(c.dateDebut), masquerSous: 'md' },
+              { cle: 'etat', titre: 'État', rendu: (c) => LIBELLE_STATUT[c.statut] ?? c.statut },
+            ]}
+          />
+        )}
+        {historique.acceptations.length > 0 && (
+          <ul className="flex flex-col gap-2 text-sm">
+            {historique.acceptations.map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center gap-2">
+                <span className="text-fg">
+                  {a.objet === 'NOUVELLE_VERSION' ? 'Nouvelle version acceptée' : 'Conditions acceptées'} le{' '}
+                  {horodatageCasablanca(a.accepteLeCasablanca)} par {a.signataire} (version {a.versionCode})
+                </span>
+                <Button type="button" size="sm" variant="secondary" onClick={() => telecharger(a)} icon={<Download />}>
+                  Exemplaire
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {historique.reponses.length > 0 && (
+          <ul className="flex flex-col gap-1 text-sm text-fg" aria-label="Réponses aux nouvelles versions">
+            {historique.reponses.map((r) => (
+              <li key={r.id}>
+                Conditions générales, version {r.versionCode}, {r.reponse === 'ACCEPTEE' ? 'acceptées' : 'refusées'} le{' '}
+                {horodatageCasablanca(r.reponduLeCasablanca)} depuis le compte {r.signataireCompte} (adresse IP{' '}
+                {r.adresseIp})
+              </li>
+            ))}
+          </ul>
+        )}
+        {historique.renouvellements.map((r) => (
+          <p key={r.id} className="text-sm text-fg-muted">
+            Renouvelé : échéance du {dateLongue(r.ancienneEcheance)} reportée au {dateLongue(r.nouvelleEcheance)}.
+          </p>
+        ))}
+        {historique.resiliations.map((r) => (
+          <p key={r.conditionsId} className="text-sm text-fg-muted">
+            Résiliation {r.demandeurRole === 'SUPER_ADMIN' ? 'enregistrée par JURIKA' : 'demandée en ligne'}, effet le{' '}
+            {dateLongue(r.dateEffet)} — motif : {r.motif}
+          </p>
+        ))}
+        {echecs.length > 0 && (
+          <Message ton="erreur">
+            {echecs.length} courriel{echecs.length > 1 ? 's' : ''} du contrat n’a pas pu être envoyé (dernier motif :{' '}
+            {echecs[0].erreur ?? 'inconnu'}). Utilisez « Renvoyer la copie par courriel » ou contactez JURIKA.
+          </Message>
+        )}
+      </div>
     </Card>
   );
 }
@@ -685,26 +680,39 @@ function BlocVersions({ versions }: { versions: VersionVue[] }) {
   }
 
   return (
-    <Card className="flex flex-col gap-2 p-4">
-      <h2 className="text-lg font-semibold text-fg">Versions du contrat</h2>
-      <p className="text-sm text-fg-muted">
-        Toutes les versions des conditions générales et de l’accord de traitement des données sont conservées et
-        consultables (modèle, sans vos conditions particulières).
-      </p>
+    <Card
+      title="Versions du contrat"
+      description="Toutes les versions des conditions générales et de l’accord de traitement des données sont conservées et consultables (modèle, sans vos conditions particulières)."
+    >
       {versions.length === 0 ? (
-        <p className="text-sm text-fg-subtle">Aucune version publiée.</p>
+        <p className="text-sm text-fg-muted">Aucune version publiée.</p>
       ) : (
-        <ul className="flex flex-col gap-1 text-sm">
+        <ul className="flex flex-col gap-2 text-sm">
           {versions.map((v) => (
             <li key={v.id}>
-              <button type="button" className="underline" onClick={() => lire(v.code)} aria-expanded={ouverte === v.code}>
-                Version {v.code}
-              </button>{' '}
-              — en vigueur le {dateLongue(v.entreeEnVigueur)}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => lire(v.code)}
+                  aria-expanded={ouverte === v.code}
+                  iconEnd={<ChevronDown className={ouverte === v.code ? 'rotate-180' : undefined} />}
+                >
+                  Version {v.code}
+                </Button>
+                <span className="text-fg-muted">en vigueur le {dateLongue(v.entreeEnVigueur)}</span>
+              </div>
               {ouverte === v.code && (
-                <div className="mt-2 max-h-96 overflow-y-auto rounded-md border border-border p-3">
-                  {erreur && <p role="alert" className="text-danger">{erreur}</p>}
-                  {texte === null && !erreur ? <p>Chargement…</p> : texte && <TexteContrat texte={texte} />}
+                <div className="mt-2 max-h-96 overflow-y-auto rounded-lg border border-border bg-bg p-3">
+                  {erreur && <Message ton="erreur">{erreur}</Message>}
+                  {texte === null && !erreur ? (
+                    <SqueletteZone libelle="Chargement de la version…">
+                      <SqueletteTexte lignes={6} />
+                    </SqueletteZone>
+                  ) : (
+                    texte && <TexteContrat texte={texte} />
+                  )}
                 </div>
               )}
             </li>

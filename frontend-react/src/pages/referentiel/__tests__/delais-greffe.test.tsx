@@ -1,13 +1,18 @@
 import '@testing-library/jest-dom/vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
 const { svc, role } = vi.hoisted(() => ({
   svc: { lister: vi.fn(), ajuster: vi.fn(async () => undefined), retirer: vi.fn(async () => undefined) },
   role: { value: 'SUPERVISEUR' },
 }));
 vi.mock('../../../services/delaisGreffe.service', () => ({ delaisGreffeService: svc }));
-vi.mock('../../../store/authStore', () => ({ useCurrentUser: () => ({ role: role.value }) }));
+vi.mock('../../../store/authStore', () => ({
+  useCurrentUser: () => ({ role: role.value }),
+  // L6b : Page (fil d'Ariane par defaut) lit le role dans le magasin.
+  useAuthStore: (sel: (s: { user: { role: string } }) => unknown) => sel({ user: { role: role.value } }),
+}));
 
 import { DelaisGreffePage } from '../DelaisGreffePage';
 
@@ -33,7 +38,7 @@ describe('Délais de dépôt au greffe', () => {
 
   it('affiche l’article cité et signale le délai à confirmer', async () => {
     role.value = 'EMPLOYE';
-    render(<DelaisGreffePage />);
+    render(<DelaisGreffePage />, { wrapper: MemoryRouter });
     const cite = await screen.findByTestId('delai-transfert_siege');
     expect(cite).toHaveTextContent('art. 75 du code de commerce (loi n° 15-95)');
     expect(cite).toHaveTextContent('cité par le corpus');
@@ -45,7 +50,7 @@ describe('Délais de dépôt au greffe', () => {
 
   it('le superviseur ajuste un délai pour le cabinet', async () => {
     role.value = 'SUPERVISEUR';
-    render(<DelaisGreffePage />);
+    render(<DelaisGreffePage />, { wrapper: MemoryRouter });
     await screen.findByTestId('delai-nomination_gerant');
     fireEvent.click(screen.getAllByRole('button', { name: 'Ajuster' })[1]);
     fireEvent.change(screen.getByLabelText('Délai'), { target: { value: '30' } });
@@ -58,7 +63,7 @@ describe('Délais de dépôt au greffe', () => {
 
   it('refuse un délai vide, avec un message', async () => {
     role.value = 'SUPERVISEUR';
-    render(<DelaisGreffePage />);
+    render(<DelaisGreffePage />, { wrapper: MemoryRouter });
     await screen.findByTestId('delai-nomination_gerant');
     fireEvent.click(screen.getAllByRole('button', { name: 'Ajuster' })[0]);
     fireEvent.change(screen.getByLabelText('Délai'), { target: { value: '' } });

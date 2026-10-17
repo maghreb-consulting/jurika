@@ -10,6 +10,8 @@ import type { Role } from '../../../types/auth';
  * Lot L6 (E6) : le super-admin s'affiche "JURIKA" (CDC 3.1) ; le compteur
  * d'echeances (calendrier du cabinet) n'est montre qu'au cabinet.
  * (Les tests de l'ancienne Sidebar, jamais montee, sont retires avec elle.)
+ * Lot L6b (E3) : l'ancienne barre AppTopNav est scindee en en-tete (AppEnTete) et menu
+ * lateral (MenuLateral) ; les memes donnees sont attendues dans la coquille rendue.
  */
 
 const stateRef: {
@@ -24,7 +26,7 @@ const stateRef: {
   },
 };
 
-// AppTopNav consomme useAuthStore via selecteur : (s) => s.user.
+// L'en-tete consomme useAuthStore via selecteur : (s) => s.user.
 vi.mock('../../../store/authStore', () => ({
   useAuthStore: <T,>(selector: (s: typeof stateRef.current) => T) => selector(stateRef.current),
 }));
@@ -34,7 +36,8 @@ vi.mock('../DeadlineCountWidget', () => ({ DeadlineCountWidget: () => <span data
 vi.mock('../NotificationBell', () => ({ NotificationBell: () => <span data-testid="cloche" /> }));
 vi.mock('../ThemeToggle', () => ({ ThemeToggle: () => null }));
 
-import { AppTopNav } from '../AppTopNav';
+import { AppEnTete } from '../AppEnTete';
+import { MenuLateral } from '../MenuLateral';
 import { useAidesStore } from '../../../store/aidesStore';
 
 function setRole(role: Role) {
@@ -48,14 +51,16 @@ function setRole(role: Role) {
 }
 
 function renderTopNav() {
+  const role = stateRef.current.user!.role;
   return render(
     <MemoryRouter>
-      <AppTopNav />
+      <AppEnTete />
+      <MenuLateral role={role} replie={false} onBasculer={() => undefined} />
     </MemoryRouter>,
   );
 }
 
-describe('AppTopNav', () => {
+describe('Coquille : en-tete et menu lateral', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -70,12 +75,22 @@ describe('AppTopNav', () => {
     expect(screen.getByText('Mon espace')).toBeInTheDocument();
   });
 
-  it('EMPLOYE : changement de forfait, Chat et échéances présents (non-régression)', () => {
+  // L6b (E8) : le changement de forfait est une operation du SUPERVISEUR (billing-service,
+  // BillingController : apercu et changement en hasRole('SUPERVISEUR')). L'employe ne voit
+  // plus un bouton que le serveur lui refuse (backlog L0).
+  it('EMPLOYE : Chat et échéances présents, pas de changement de forfait (refusé par le serveur)', () => {
     setRole('EMPLOYE');
     renderTopNav();
-    expect(screen.getByTestId('topnav-upgrade-cta')).toHaveTextContent('Changer de forfait');
+    expect(screen.queryByTestId('topnav-upgrade-cta')).not.toBeInTheDocument();
     expect(screen.getByText('Messagerie')).toBeInTheDocument();
     expect(screen.getByTestId('echeances')).toBeInTheDocument();
+  });
+
+  it('SUPERVISEUR : changement de forfait présent dans l’en-tête', () => {
+    setRole('SUPERVISEUR');
+    renderTopNav();
+    expect(screen.getByTestId('topnav-upgrade-cta')).toHaveTextContent('Changer de forfait');
+    expect(screen.getByTestId('topnav-upgrade-cta')).toHaveAttribute('href', '/app/billing/change-plan');
   });
 
   it('SUPER_ADMIN : présenté sous le nom JURIKA, sans le code du workspace qui l’héberge', () => {

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { dataroomService } from '../../../services/dataroom.service';
 import { authService } from '../../../services/auth.service';
 import { Button } from '../../../components/ui/Button';
+import { Message } from '../../../components/ui/Message';
+import { Skeleton } from '../../../components/ui/LoadingSkeleton';
 import type { WorkspaceUser } from '../../../types/auth';
 import { ReaffectationForm } from './ReaffectationForm';
 import { extractError } from '../../../lib/api';
@@ -17,7 +19,7 @@ import { LIBELLES_NATURE, dateFr } from './responsables';
  * obligatoire ; le changement apparait aussitot dans l'historique.
  */
 
-const nom = (n: string | null | undefined) => n ?? 'compte inconnu';
+const nom = (n: string | null | undefined) => n ?? 'Compte inconnu';
 
 export function HistoriqueResponsablesPanel({
   dossierId,
@@ -81,8 +83,8 @@ export function HistoriqueResponsablesPanel({
   const responsableActuel = lignes && lignes.length > 0 ? lignes[0] : null;
 
   return (
-    <section aria-labelledby="historique-responsables" className="space-y-2">
-      <h2 id="historique-responsables" className="flex items-center gap-1 text-sm font-semibold text-fg">
+    <section aria-labelledby="historique-responsables" className="space-y-3">
+      <h2 id="historique-responsables" className="flex items-center gap-1 text-base font-semibold text-heading">
         Historique des responsables
         <InfoBulle
           libelle="Que montre l’historique des responsables ?"
@@ -98,16 +100,18 @@ export function HistoriqueResponsablesPanel({
             ' Pour réaffecter ce dossier, cliquez sur « Réaffecter le dossier », choisissez un employé actif et indiquez le motif : les deux employés sont prévenus et le changement s’ajoute à cet historique.'}
         </p>
       </TexteAide>
-      {responsableActuel && (
-        <p className="text-sm text-fg">
-          Responsable actuel : <strong>{nom(responsableActuel.responsableActuelNom)}</strong>
-        </p>
-      )}
-      {peutReaffecter && !formulaire && (
-        <Button size="sm" variant="secondary" onClick={() => { setSucces(null); setFormulaire(true); }}>
-          Réaffecter le dossier
-        </Button>
-      )}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {responsableActuel && (
+          <p className="text-sm text-fg">
+            Responsable actuel : <strong>{nom(responsableActuel.responsableActuelNom)}</strong>
+          </p>
+        )}
+        {peutReaffecter && !formulaire && (
+          <Button type="button" size="sm" variant="secondary" onClick={() => { setSucces(null); setFormulaire(true); }}>
+            Réaffecter le dossier
+          </Button>
+        )}
+      </div>
       {peutReaffecter && formulaire && (
         <ReaffectationForm
           raisonSociale={raisonSociale}
@@ -118,15 +122,21 @@ export function HistoriqueResponsablesPanel({
           onAnnuler={() => setFormulaire(false)}
         />
       )}
-      {succes && <p role="status" className="text-sm text-success">{succes}</p>}
-      {erreur && <p role="alert" className="text-sm text-danger">{erreur}</p>}
+      {succes && <Message ton="succes">{succes}</Message>}
+      {erreur && <Message ton="erreur">{erreur}</Message>}
+      {lignes === null && !erreur && (
+        <div className="space-y-2" aria-busy="true" aria-label="Chargement de l’historique des responsables">
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      )}
       {lignes && lignes.length === 0 && (
-        <p className="text-sm text-fg-subtle">
+        <p className="text-sm text-fg-muted">
           Aucun changement de responsable : le dossier est suivi par l’employé qui l’a créé.
         </p>
       )}
       {lignes && lignes.length > 0 && (
-        <ol className="divide-y divide-border rounded-md border border-border">
+        <ol className="divide-y divide-border rounded-lg border border-border">
           {lignes.map((l) => (
             <li key={l.id} className="space-y-0.5 px-3 py-2 text-sm">
               <p className="font-medium text-fg">
@@ -137,9 +147,9 @@ export function HistoriqueResponsablesPanel({
                 {nom(l.nouveauResponsableNom)}
                 {l.auteurNom ? ` · par ${l.auteurNom}` : ''}
               </p>
-              {l.motif && <p className="text-xs text-fg-subtle">Motif : {l.motif}</p>}
+              {l.motif && <p className="text-xs text-fg-muted">Motif : {l.motif}</p>}
               {l.nature === 'RATTRAPAGE' && (
-                <p className="text-xs text-fg-subtle">
+                <p className="text-xs text-fg-muted">
                   {l.verifieLe
                     ? `Vérifié par ${nom(l.verifieParNom)} le ${dateFr(l.verifieLe)}.`
                     : 'À vérifier par le superviseur.'}

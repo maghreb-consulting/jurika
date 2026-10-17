@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Button, Spinner } from '../ui/Button';
 import type { CmiFormulaireVue } from '../../types/billing';
 
 /**
@@ -19,21 +19,21 @@ export function FormulaireCmi({ cmi, autoSoumettre = true }: { cmi: CmiFormulair
 
   return (
     <form ref={ref} method="POST" action={cmi.url} data-testid="formulaire-cmi"
-      className="rounded-lg border border-border bg-bg-overlay p-4 text-sm text-fg">
+      className="rounded-xl border border-border bg-bg-raised p-4 text-sm text-fg shadow-card">
       {Object.entries(cmi.champs).map(([nom, valeur]) => (
         <input key={nom} type="hidden" name={nom} value={valeur} />
       ))}
       <p className="flex items-center gap-2">
-        <Loader2 className="h-4 w-4 animate-spin text-accent" aria-hidden="true" />
+        <Spinner className="text-fg-muted" />
         Redirection vers la page de paiement sécurisée du CMI…
       </p>
-      <p className="mt-2 text-xs text-fg-subtle">
+      <p className="mt-2 text-xs text-fg-muted">
         Votre carte est saisie sur la page du CMI, jamais sur JURIKA. Le paiement est acquis à la
         confirmation du CMI ; vous reviendrez ensuite sur JURIKA pour en suivre l’état.
       </p>
-      <button type="submit" className="mt-3 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg hover:bg-accent-hover">
+      <Button type="submit" className="mt-3">
         Continuer vers la page du CMI
-      </button>
+      </Button>
     </form>
   );
 }

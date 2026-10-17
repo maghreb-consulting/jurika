@@ -134,6 +134,29 @@ describe('agrégation des mandats vers les variables racine', () => {
     ).toBe(0);
   });
 
+  // Lot L6b (E13) : deux gérants aux modes de rémunération différents. L'agrégat
+  // rendait '' : l'étape partait avec gerance.remunerationMode vide et le serveur la
+  // refusait (400 « Mode de rémunération de la gérance requis. ») alors que chaque
+  // gérant avait son mode. La phrase doit énumérer les modes, nommément.
+  it('rémunération : modes différents, phrase NOMINATIVE jamais vide', () => {
+    const a = agregerGerance([
+      dirigeant({ remunerationMode: 'non_remunere' }),
+      dirigeant({ civilite: 'Mme', prenom: 'Salma', nom: 'BENJELLOUN', remunerationMode: 'decision_collective' }),
+    ]);
+    expect(a.remunerationMode).toBe('');
+    expect(a.remunerationPhrase).toContain('non rémunéré pour ');
+    expect(a.remunerationPhrase).toContain('fixée par décision collective des associés pour Mme Salma BENJELLOUN');
+  });
+
+  it('rémunération : mode commun, sa phrase (rendu inchangé)', () => {
+    const a = agregerGerance([
+      dirigeant({ remunerationMode: 'decision_collective' }),
+      dirigeant({ nom: 'BENJELLOUN', remunerationMode: 'decision_collective' }),
+    ]);
+    expect(a.remunerationMode).toBe('decision_collective');
+    expect(a.remunerationPhrase).toBe('fixée par décision collective des associés');
+  });
+
   it("la limitation des pouvoirs ne fait PAS partie de l'agrégat", () => {
     /*
      * Décision du 2026-08-18 : la limitation des pouvoirs reste saisie UNE SEULE

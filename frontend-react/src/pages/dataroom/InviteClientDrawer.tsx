@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { CheckCircle, Copy, Mail, UserPlus, X } from 'lucide-react';
+import { Copy, UserPlus } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { Modal } from '../../components/ui/Modal';
+import { Message } from '../../components/ui/Message';
 import { TextField } from '../../components/ui/TextField';
 import { PhoneNumberInput } from '../../components/ui/PhoneNumberInput';
 import { isValidPhone } from '../../components/ui/phoneNumber';
 import { authService } from '../../services/auth.service';
 import { extractError } from '../../lib/api';
+import { copierTexte } from '../../lib/pressePapiers';
 import { firstError, requiredMsg, emailMsg } from '../../lib/formValidation';
 import { useCurrentUser } from '../../store/authStore';
 
@@ -96,7 +99,8 @@ export function InviteClientDrawer({ open, dossierId, raisonSociale, onClose }: 
       `Mot de passe temporaire : ${result.temporaryPassword}`,
     ];
     const creds = lignes.join('\n');
-    navigator.clipboard.writeText(creds).catch(() => {});
+    // Lot L6b (E13) : copie aussi en HTTP (navigator.clipboard absent hors contexte securise).
+    void copierTexte(creds);
   }
 
   function reset() {
@@ -108,152 +112,119 @@ export function InviteClientDrawer({ open, dossierId, raisonSociale, onClose }: 
     setResult(null);
   }
 
+  function fermer() {
+    onClose();
+    reset();
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-bg-raised shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <h3 className="flex items-center gap-2 text-base font-semibold text-fg">
-            <UserPlus className="h-4 w-4 text-accent" />
-            Inviter le client
-          </h3>
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              reset();
-            }}
-            className="rounded-lg p-1 text-fg-subtle hover:bg-bg-overlay"
-            aria-label="Fermer"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <Modal
+      open
+      onOpenChange={(o) => {
+        if (!o) fermer();
+      }}
+      title="Inviter le client"
+      description={
+        <>
+          Créez le compte du client de <strong className="text-fg">{raisonSociale}</strong> : il pourra
+          consulter sa Data Room selon les permissions réglées dans « Accès du client ». Un courriel
+          avec ses identifiants temporaires lui est envoyé automatiquement.
+        </>
+      }
+      closeOnBackdrop={false}
+    >
+      {result ? (
+        <div className="space-y-4">
+          <Message ton="succes" titre={result.message}>
+            Le client se connectera depuis la page de connexion avec son identifiant et le mot de
+            passe temporaire, qu’il devra changer à sa première connexion.
+          </Message>
 
-        <div className="p-5">
-          <p className="mb-4 text-xs text-fg-muted">
-            Créez le compte du client de <strong>{raisonSociale}</strong> : il pourra consulter sa
-            Data Room selon les permissions réglées dans « Accès du client ». Un courriel avec ses
-            identifiants temporaires lui est envoyé automatiquement.
-          </p>
-
-          {result ? (
-            <div className="space-y-4">
-              <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-success" />
-                <div className="text-sm text-emerald-800">
-                  <p className="font-semibold">{result.message}</p>
-                  <p className="mt-1 text-xs">
-                    Le client se connectera depuis la page de connexion avec son identifiant et le
-                    mot de passe temporaire, qu’il devra changer à sa première connexion.
-                  </p>
-                </div>
-              </div>
-
-              {/* BUG 7 (2026-06-08) — identifiant @jurika.ma genere */}
-              {result.loginEmail && (
-                <div className="rounded-lg border border-accent/40 bg-accent/10 p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-accent">
-                    Identifiant de connexion attribué
-                  </p>
-                  <code className="mt-1 block break-all rounded bg-bg-raised px-2 py-1 font-mono text-sm text-fg">
-                    {result.loginEmail}
-                  </code>
-                  {result.contactEmail && result.contactEmail !== result.loginEmail && (
-                    <p className="mt-2 text-[11px] text-fg-muted">
-                      Notifications envoyées à <span className="font-mono">{result.contactEmail}</span>.
-                    </p>
-                  )}
-                </div>
+          {/* BUG 7 (2026-06-08) -- identifiant @jurika.ma genere */}
+          {result.loginEmail && (
+            <div className="rounded-lg border border-border bg-bg-overlay p-3">
+              <p className="text-xs font-semibold text-fg-muted">Identifiant de connexion attribué</p>
+              <code className="mt-1 block break-all rounded-md bg-bg-raised px-2 py-1 font-mono text-sm text-fg">
+                {result.loginEmail}
+              </code>
+              {result.contactEmail && result.contactEmail !== result.loginEmail && (
+                <p className="mt-2 text-xs text-fg-muted">
+                  Notifications envoyées à <span className="font-mono">{result.contactEmail}</span>.
+                </p>
               )}
-
-              {result.temporaryPassword && (
-                <div className="rounded-lg border border-amber-200 bg-warning/10 p-3">
-                  <p className="mb-2 text-xs font-bold text-amber-900">
-                    Mot de passe temporaire (à noter ou à copier)
-                  </p>
-                  <div className="flex items-center justify-between gap-2">
-                    <code className="break-all rounded bg-bg-raised px-2 py-1 font-mono text-sm">
-                      {result.temporaryPassword}
-                    </code>
-                    <Button size="sm" variant="secondary" onClick={copyCreds}>
-                      <Copy className="mr-1 h-3.5 w-3.5" /> Copier
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              <Button
-                onClick={() => {
-                  onClose();
-                  reset();
-                }}
-                className="w-full"
-              >
-                Terminer
-              </Button>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} noValidate className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <TextField
-                  label="Prénom"
-                  name="firstName"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  required
-                />
-                <TextField
-                  label="Nom"
-                  name="lastName"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  required
-                />
-              </div>
-              <TextField
-                label="Adresse électronique"
-                name="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="client@exemple.ma"
-                required
-              />
-              <PhoneNumberInput
-                label="Téléphone (facultatif)"
-                name="phone"
-                value={phone}
-                onChange={setPhone}
-                defaultCountry="MA"
-              />
-
-              {error && (
-                <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-                  {error}
-                </div>
-              )}
-
-              <div className="flex items-center gap-2 rounded-lg bg-accent/10 p-3 text-xs text-accent">
-                <Mail className="h-4 w-4 flex-shrink-0" />
-                <span>
-                  Le client recevra par courriel le code du cabinet, son identifiant, un mot de passe
-                  temporaire et le lien de connexion.
-                </span>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="secondary" onClick={() => onClose()}>
-                  Annuler
-                </Button>
-                <Button type="submit" loading={loading}>
-                  <UserPlus className="mr-1 h-3.5 w-3.5" />
-                  Inviter
-                </Button>
-              </div>
-            </form>
           )}
+
+          {result.temporaryPassword && (
+            <div className="rounded-lg border border-warning/40 bg-warning-soft p-3">
+              <p className="mb-2 text-xs font-semibold text-fg">Mot de passe temporaire (à noter ou à copier)</p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <code className="break-all rounded-md bg-bg-raised px-2 py-1 font-mono text-sm text-fg">
+                  {result.temporaryPassword}
+                </code>
+                <Button type="button" size="sm" variant="secondary" icon={<Copy />} onClick={copyCreds}>
+                  Copier
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <Button type="button" onClick={fermer} fullWidth>
+            Terminer
+          </Button>
         </div>
-      </div>
-    </div>
+      ) : (
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <TextField
+              label="Prénom"
+              name="firstName"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+            />
+            <TextField
+              label="Nom"
+              name="lastName"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+            />
+          </div>
+          <TextField
+            label="Adresse électronique"
+            name="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="client@exemple.ma"
+            required
+          />
+          <PhoneNumberInput
+            label="Téléphone (facultatif)"
+            name="phone"
+            value={phone}
+            onChange={setPhone}
+            defaultCountry="MA"
+          />
+
+          {error && <Message ton="erreur">{error}</Message>}
+
+          <Message ton="info">
+            Le client recevra par courriel le code du cabinet, son identifiant, un mot de passe
+            temporaire et le lien de connexion.
+          </Message>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={fermer}>
+              Annuler
+            </Button>
+            <Button type="submit" loading={loading} icon={<UserPlus />}>
+              Inviter
+            </Button>
+          </div>
+        </form>
+      )}
+    </Modal>
   );
 }

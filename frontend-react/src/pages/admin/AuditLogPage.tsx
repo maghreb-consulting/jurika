@@ -9,10 +9,20 @@ import {
 import { adminService } from '../../services/admin.service';
 import type { AdminUserRow, AdminWorkspaceRow } from '../../types/admin';
 import { extractError } from '../../lib/api';
-import { libelleActionAudit } from '../../lib/adminLabels';
+import { libelleAction } from '../../lib/libelleAction';
+import { Download, RotateCcw, ScrollText } from 'lucide-react';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
+import { Page } from '../../components/layout/Page';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Message } from '../../components/ui/Message';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { TextField } from '../../components/ui/TextField';
+import { Select } from '../../components/ui/Select';
+import { Tableau, type ColonneTableau } from '../../components/ui/Tableau';
 
-const humanizeAction = libelleActionAudit;
+// Lot L6b (E9) : le libelle d'une action vient du serveur (actionLabel, facettes) ; plus de
+// table de libelles propre a l'ecran (elle ignorait la plupart des codes et montrait le code brut).
 
 export default function AuditLogPage() {
   const [page, setPage] = useState<AuditPage | null>(null);
@@ -99,236 +109,173 @@ export default function AuditLogPage() {
   const offset = filters.offset ?? 0;
   const limit = filters.limit ?? 50;
 
-  const selectClass =
-    'rounded-lg border border-border bg-bg-raised px-3 py-2 text-sm text-fg focus:border-accent focus:outline-none';
   const hasActiveFilter =
     filters.workspaceId || filters.userId || filters.role || filters.action ||
     filters.sourceService || filters.fromDate || filters.toDate;
 
-  return (
-    <div className="space-y-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-2xl font-semibold text-fg">Journal d’audit</h1>
-          <p className="mt-1 text-sm text-fg-subtle">
-            Toutes les actions tracées sur la plateforme, filtrables par cabinet, utilisateur, action et service.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="rounded-lg border border-border-hi bg-bg-raised px-3 py-1.5 text-sm text-fg transition hover:border-accent hover:text-accent disabled:opacity-50"
-          onClick={exportCsv}
-          disabled={!items.length}
-        >
-          Exporter en CSV
-        </button>
-      </header>
-
-      <TexteAide cle="admin-journal-audit" titre="Comment lire le journal">
-        <p>
-          Choisissez un cabinet, un utilisateur, une action ou une période pour retrouver un événement
-          (connexion, changement de mot de passe, suspension d’un cabinet…). L’export CSV reprend la
-          page affichée ; affinez les filtres avant d’exporter. Le journal se consulte : il ne se
-          modifie pas.
-        </p>
-      </TexteAide>
-
-      {/* Filtres — listes deroulantes sur donnees reelles */}
-      <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-bg-raised p-4 sm:grid-cols-2 lg:grid-cols-3">
-        <label className="flex flex-col gap-1 text-xs text-fg-subtle">
-          Cabinet
-          <select
-            className={selectClass}
-            value={filters.workspaceId ?? ''}
-            onChange={(e) => updateWorkspace(e.target.value || undefined)}
-          >
-            <option value="">Tous les cabinets</option>
-            {workspaces.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.code} — {w.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs text-fg-subtle">
-          Type d’utilisateur
-          <select
-            className={selectClass}
-            value={filters.role ?? ''}
-            onChange={(e) => updateRole(e.target.value || undefined)}
-          >
-            <option value="">Tous les types</option>
-            <option value="CLIENT">Client</option>
-            <option value="SUPERVISEUR">Superviseur</option>
-            <option value="EMPLOYE">Employé</option>
-            <option value="SUPER_ADMIN">Super-administrateur</option>
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs text-fg-subtle">
-          Utilisateur
-          <select
-            className={selectClass}
-            value={filters.userId ?? ''}
-            onChange={(e) => update('userId', e.target.value || undefined)}
-          >
-            <option value="">Tous les utilisateurs</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.firstName} {u.lastName}
-                {u.workspaceCode ? ` — ${u.workspaceCode}` : ''}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs text-fg-subtle">
-          Action
-          <select
-            className={selectClass}
-            value={filters.action ?? ''}
-            onChange={(e) => update('action', e.target.value || undefined)}
-          >
-            <option value="">Toutes les actions</option>
-            {facets.actions.map((a) => (
-              <option key={a} value={a}>
-                {humanizeAction(a)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs text-fg-subtle">
-          <span className="inline-flex items-center gap-1">
-            Service d’origine
-            <InfoBulle
-              libelle="Aide : service d’origine"
-              texte="Composant de la plateforme qui a enregistré l’événement (authentification, Data Room, documents…). Utile pour un diagnostic technique."
-            />
-          </span>
-          <select
-            className={selectClass}
-            value={filters.sourceService ?? ''}
-            onChange={(e) => update('sourceService', e.target.value || undefined)}
-          >
-            <option value="">Tous les services</option>
-            {facets.sourceServices.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs text-fg-subtle">
-          Du
-          <input
-            type="datetime-local"
-            className={selectClass}
-            value={filters.fromDate?.slice(0, 16) ?? ''}
-            onChange={(e) => update('fromDate', e.target.value ? new Date(e.target.value).toISOString() : undefined)}
-          />
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs text-fg-subtle">
-          Au
-          <input
-            type="datetime-local"
-            className={selectClass}
-            value={filters.toDate?.slice(0, 16) ?? ''}
-            onChange={(e) => update('toDate', e.target.value ? new Date(e.target.value).toISOString() : undefined)}
-          />
-        </label>
-
-        {hasActiveFilter && (
-          <div className="sm:col-span-2 lg:col-span-3">
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="text-xs font-medium text-accent hover:underline"
-            >
-              Réinitialiser les filtres
-            </button>
-          </div>
-        )}
-      </div>
-
-      {loading && <p className="text-sm text-fg-subtle">Chargement…</p>}
-      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
-
-      <div className="overflow-x-auto rounded-xl border border-border">
-        <table className="min-w-full text-sm">
-          <thead className="bg-bg-overlay text-left text-xs uppercase tracking-wide text-fg-subtle">
-            <tr>
-              <th className="px-3 py-2 font-medium">Date</th>
-              <th className="px-3 py-2 font-medium">Service</th>
-              <th className="px-3 py-2 font-medium">Action</th>
-              <th className="px-3 py-2 font-medium">Cabinet</th>
-              <th className="px-3 py-2 font-medium">Auteur</th>
-              <th className="px-3 py-2 font-medium">Élément concerné</th>
-              <th className="px-3 py-2 font-medium" title="Identifiant qui relie les événements d’une même opération">Corrélation</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {items.map((e) => (
-              <tr key={e.id} className="hover:bg-bg-overlay/50">
-                <td className="whitespace-nowrap px-3 py-1.5 text-fg-muted">
-                  {new Date(e.createdAt).toLocaleString('fr-FR')}
-                </td>
-                <td className="px-3 py-1.5 text-fg-muted">{e.sourceService ?? '—'}</td>
-                <td className="px-3 py-1.5 font-medium text-fg">{humanizeAction(e.action)}</td>
-                <td className="px-3 py-1.5 font-mono text-xs text-fg-subtle">
-                  {workspaceLabel(e.workspaceId, workspaces)}
-                </td>
-                <td className="px-3 py-1.5 font-mono text-xs text-fg-subtle">
-                  {userLabel(e.userId, users)}
-                </td>
-                <td className="px-3 py-1.5 font-mono text-xs text-fg-subtle">
-                  {e.entityType ? `${e.entityType}#${shortId(e.entityId)}` : '—'}
-                </td>
-                <td className="px-3 py-1.5 font-mono text-xs text-fg-subtle">
-                  {e.correlationId ?? '—'}
-                </td>
-              </tr>
-            ))}
-            {!loading && !items.length && (
-              <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-fg-subtle">
-                  {hasActiveFilter
-                    ? 'Aucun événement ne correspond à ces filtres. Élargissez la période ou réinitialisez les filtres.'
-                    : 'Aucun événement enregistré pour le moment.'}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <footer className="flex items-center justify-between text-sm text-fg-subtle">
-        <span>
-          {total === 0 ? 0 : offset + 1}–{Math.min(offset + items.length, total)} / {total}
+  const colonnes: ColonneTableau<AuditEntry>[] = [
+    { cle: 'date', titre: 'Date', rendu: (e) => <span className="whitespace-nowrap tabular-nums text-fg-muted">{new Date(e.createdAt).toLocaleString('fr-FR')}</span> },
+    { cle: 'service', titre: 'Service', masquerSous: 'lg', rendu: (e) => <span className="text-fg-muted">{e.sourceService ?? '--'}</span> },
+    { cle: 'action', titre: 'Action', rendu: (e) => <span className="font-medium text-fg">{libelleAction(e.actionLabel, e.action)}</span> },
+    { cle: 'cabinet', titre: 'Cabinet', rendu: (e) => <span className="font-mono text-xs text-fg-muted">{workspaceLabel(e.workspaceId, workspaces)}</span> },
+    { cle: 'auteur', titre: 'Auteur', rendu: (e) => <span className="text-fg-muted">{userLabel(e.userId, users)}</span> },
+    {
+      cle: 'element',
+      titre: 'Élément concerné',
+      masquerSous: 'md',
+      rendu: (e) => <span className="font-mono text-xs text-fg-muted">{e.entityType ? `${e.entityType}#${shortId(e.entityId)}` : '--'}</span>,
+    },
+    {
+      cle: 'correlation',
+      titre: (
+        <span className="inline-flex items-center gap-1">
+          Corrélation
+          <InfoBulle libelle="Aide : corrélation" texte="Identifiant qui relie les événements d’une même opération." />
         </span>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className="rounded-lg border border-border px-3 py-1 disabled:opacity-40"
-            disabled={offset === 0}
-            onClick={() => setFilters((p) => ({ ...p, offset: Math.max(0, (p.offset ?? 0) - limit) }))}
-          >
-            Précédent
-          </button>
-          <button
-            type="button"
-            className="rounded-lg border border-border px-3 py-1 disabled:opacity-40"
-            disabled={offset + limit >= total}
-            onClick={() => setFilters((p) => ({ ...p, offset: (p.offset ?? 0) + limit }))}
-          >
-            Suivant
-          </button>
+      ),
+      masquerSous: 'lg',
+      rendu: (e) => <span className="font-mono text-xs text-fg-subtle">{e.correlationId ?? '--'}</span>,
+    },
+  ];
+
+  return (
+    <Page
+      titre="Journal d’audit"
+      description="Toutes les actions tracées sur la plateforme, filtrables par cabinet, utilisateur, action et service."
+      actions={
+        <Button type="button" variant="secondary" icon={<Download />} onClick={exportCsv} disabled={!items.length}>
+          Exporter en CSV
+        </Button>
+      }
+      aide={
+        <TexteAide cle="admin-journal-audit" titre="Comment lire le journal">
+          <p>
+            Choisissez un cabinet, un utilisateur, une action ou une période pour retrouver un événement
+            (connexion, changement de mot de passe, suspension d’un cabinet…). L’export CSV reprend la
+            page affichée ; affinez les filtres avant d’exporter. Le journal se consulte : il ne se
+            modifie pas.
+          </p>
+        </TexteAide>
+      }
+    >
+      <div className="space-y-4">
+        {/* Filtres -- listes deroulantes sur donnees reelles */}
+        <Card className="p-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Select
+              label="Cabinet"
+              value={filters.workspaceId ?? ''}
+              onChange={(e) => updateWorkspace(e.target.value || undefined)}
+              options={[{ value: '', label: 'Tous les cabinets' }, ...workspaces.map((w) => ({ value: w.id, label: `${w.code} — ${w.name}` }))]}
+            />
+            <Select
+              label="Type d’utilisateur"
+              value={filters.role ?? ''}
+              onChange={(e) => updateRole(e.target.value || undefined)}
+              options={[
+                { value: '', label: 'Tous les types' },
+                { value: 'CLIENT', label: 'Client' },
+                { value: 'SUPERVISEUR', label: 'Superviseur' },
+                { value: 'EMPLOYE', label: 'Employé' },
+                { value: 'SUPER_ADMIN', label: 'Super-administrateur' },
+              ]}
+            />
+            <Select
+              label="Utilisateur"
+              value={filters.userId ?? ''}
+              onChange={(e) => update('userId', e.target.value || undefined)}
+              options={[
+                { value: '', label: 'Tous les utilisateurs' },
+                ...users.map((u) => ({ value: u.id, label: `${u.firstName} ${u.lastName}${u.workspaceCode ? ` — ${u.workspaceCode}` : ''}` })),
+              ]}
+            />
+            <Select
+              label="Action"
+              value={filters.action ?? ''}
+              onChange={(e) => update('action', e.target.value || undefined)}
+              options={[{ value: '', label: 'Toutes les actions' }, ...(facets.actions ?? []).map((a) => ({ value: a, label: libelleAction(facets.actionLabels?.[a], a) }))]}
+            />
+            <Select
+              label="Service d’origine"
+              hint="Composant de la plateforme qui a enregistré l’événement (authentification, Data Room, documents…). Utile pour un diagnostic technique."
+              value={filters.sourceService ?? ''}
+              onChange={(e) => update('sourceService', e.target.value || undefined)}
+              options={[{ value: '', label: 'Tous les services' }, ...(facets.sourceServices ?? []).map((s) => ({ value: s, label: s }))]}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <TextField
+                label="Du"
+                type="datetime-local"
+                value={filters.fromDate?.slice(0, 16) ?? ''}
+                onChange={(e) => update('fromDate', e.target.value ? new Date(e.target.value).toISOString() : undefined)}
+              />
+              <TextField
+                label="Au"
+                type="datetime-local"
+                value={filters.toDate?.slice(0, 16) ?? ''}
+                onChange={(e) => update('toDate', e.target.value ? new Date(e.target.value).toISOString() : undefined)}
+              />
+            </div>
+          </div>
+          {hasActiveFilter && (
+            <div className="mt-3 border-t border-border pt-3">
+              <Button type="button" variant="ghost" size="sm" icon={<RotateCcw />} onClick={resetFilters}>
+                Réinitialiser les filtres
+              </Button>
+            </div>
+          )}
+        </Card>
+
+        {error && <Message ton="erreur">{error}</Message>}
+
+        <Tableau
+          legende="Journal d’audit de la plateforme"
+          colonnes={colonnes}
+          lignes={items}
+          cleLigne={(e) => String(e.id)}
+          chargement={loading}
+          lignesChargement={10}
+          vide={
+            <EmptyState
+              compact
+              icon={<ScrollText />}
+              title={hasActiveFilter ? 'Aucun événement pour ces filtres' : 'Aucun événement enregistré'}
+              description={
+                hasActiveFilter
+                  ? 'Aucun événement ne correspond à ces filtres. Élargissez la période ou réinitialisez les filtres.'
+                  : 'Aucun événement enregistré pour le moment.'
+              }
+            />
+          }
+        />
+
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-fg-muted">
+          <span className="tabular-nums">
+            {total === 0 ? 0 : offset + 1}–{Math.min(offset + items.length, total)} / {total}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={offset === 0}
+              onClick={() => setFilters((p) => ({ ...p, offset: Math.max(0, (p.offset ?? 0) - limit) }))}
+            >
+              Précédent
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={offset + limit >= total}
+              onClick={() => setFilters((p) => ({ ...p, offset: (p.offset ?? 0) + limit }))}
+            >
+              Suivant
+            </Button>
+          </div>
         </div>
-      </footer>
-    </div>
+      </div>
+    </Page>
   );
 }
 
@@ -337,13 +284,13 @@ function shortId(id: string | null): string {
 }
 
 function workspaceLabel(id: string | null, workspaces: AdminWorkspaceRow[]): string {
-  if (!id) return '—';
+  if (!id) return '--';
   const ws = workspaces.find((w) => w.id === id);
   return ws ? ws.code : shortId(id);
 }
 
 function userLabel(id: string | null, users: AdminUserRow[]): string {
-  if (!id) return '—';
+  if (!id) return '--';
   const u = users.find((x) => x.id === id);
   return u ? `${u.firstName} ${u.lastName}` : shortId(id);
 }

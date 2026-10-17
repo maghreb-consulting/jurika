@@ -355,7 +355,8 @@ public class PaiementService {
         p.setFactureRefus(em.manquants().isEmpty() ? null : String.join(" ; ", em.manquants()));
         paiements.save(p);
         if (!"ECHEANCE".equals(p.getObjet()) || s.getEngagementDebut().equals(p.getPeriodeDebut())) {
-            abonnement.ouvrirConditions(s, p.getPeriodeDebut() != null ? p.getPeriodeDebut() : jour, p.getEnregistrePar());
+            abonnement.ouvrirConditions(s, p.getPeriodeDebut() != null ? p.getPeriodeDebut() : jour, p.getEnregistrePar(),
+                    p.getMethod());
         }
         Long pid = p.getId();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

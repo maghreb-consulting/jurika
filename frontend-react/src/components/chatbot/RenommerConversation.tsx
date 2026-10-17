@@ -66,7 +66,11 @@ export function RenommerConversation({
             setErreur(null);
           }}
           onKeyDown={(ev) => {
-            if (ev.key === 'Escape') onAnnuler();
+            if (ev.key === 'Escape') {
+              // Lot L6b (E11) : Echap annule le renommage sans fermer le panneau.
+              ev.preventDefault();
+              onAnnuler();
+            }
           }}
           className="min-w-0 flex-1 rounded-md border border-border bg-bg px-2 py-1 text-sm text-fg focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
         />

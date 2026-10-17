@@ -1,79 +1,92 @@
+import { SearchX } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
-import { Card } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Tableau, type ColonneTableau } from '../../components/ui/Tableau';
 import { PRIORITE_LABELS, STATUT_LABELS, TICKET_TYPE_LABELS, responsableLabel } from '../../types/ticket';
 import type { Ticket, TicketStatut } from '../../types/ticket';
 
 interface Props {
   tickets: Ticket[];
   onSelect: (id: string) => void;
+  /** Premier chargement : lignes squelettes aux dimensions du tableau. */
+  chargement?: boolean;
 }
 
-export function TableView({ tickets, onSelect }: Props) {
-  // Sprint 12.5 T7 -- zebra navy alterne + headers font-heading + hover bg-overlay
+/**
+ * Vue Tableau des tickets (lot L6b : Tableau de la bibliotheque). La ligne est cliquable ;
+ * pour le clavier, la reference est un bouton qui ouvre la meme fiche.
+ */
+export function TableView({ tickets, onSelect, chargement = false }: Props) {
+  const colonnes: ColonneTableau<Ticket>[] = [
+    {
+      cle: 'reference',
+      titre: 'Référence',
+      rendu: (t) => (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(t.id);
+          }}
+          className="rounded font-mono text-xs text-fg-muted underline-offset-2 hover:text-fg hover:underline"
+          aria-label={`Ouvrir le ticket ${t.reference}`}
+        >
+          {t.reference}
+        </button>
+      ),
+    },
+    { cle: 'titre', titre: 'Titre', rendu: (t) => <span className="text-fg">{t.titre}</span> },
+    { cle: 'type', titre: 'Type', rendu: (t) => <span className="text-fg-muted">{TICKET_TYPE_LABELS[t.type]}</span>, masquerSous: 'md' },
+    { cle: 'responsable', titre: 'Responsable', rendu: (t) => <ResponsableCell t={t} /> },
+    { cle: 'statut', titre: 'Statut', rendu: (t) => <StatutBadge s={t.statut} /> },
+    { cle: 'priorite', titre: 'Priorité', rendu: (t) => <span className="text-fg-muted">{PRIORITE_LABELS[t.priorite]}</span>, masquerSous: 'lg' },
+    {
+      cle: 'echeance',
+      titre: 'Échéance',
+      rendu: (t) => (
+        <span className="whitespace-nowrap text-fg-muted">
+          {t.deadline ? new Date(t.deadline).toLocaleDateString('fr-FR') : '—'}
+        </span>
+      ),
+    },
+  ];
+
   return (
-    <Card className="overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-bg-overlay font-heading text-xs uppercase tracking-wider text-fg-muted">
-          <tr>
-            <th className="px-4 py-3 text-left">Référence</th>
-            <th className="px-4 py-3 text-left">Titre</th>
-            <th className="px-4 py-3 text-left">Type</th>
-            <th className="px-4 py-3 text-left">Responsable</th>
-            <th className="px-4 py-3 text-left">Statut</th>
-            <th className="px-4 py-3 text-left">Priorité</th>
-            <th className="px-4 py-3 text-left">Échéance</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {tickets.map((t) => (
-            <tr
-              key={t.id}
-              className="cursor-pointer transition-colors odd:bg-bg-raised even:bg-bg-overlay/30 hover:bg-bg-overlay"
-              onClick={() => onSelect(t.id)}
-            >
-              <td className="px-4 py-3 font-mono text-xs text-fg-muted">{t.reference}</td>
-              <td className="px-4 py-3 text-fg">{t.titre}</td>
-              <td className="px-4 py-3 text-fg-muted">{TICKET_TYPE_LABELS[t.type]}</td>
-              <td className="px-4 py-3">
-                <ResponsableCell t={t} />
-              </td>
-              <td className="px-4 py-3">
-                <StatutBadge s={t.statut} />
-              </td>
-              <td className="px-4 py-3 text-fg-muted">{PRIORITE_LABELS[t.priorite]}</td>
-              <td className="px-4 py-3 text-fg-subtle">
-                {t.deadline ? new Date(t.deadline).toLocaleDateString('fr-FR') : '—'}
-              </td>
-            </tr>
-          ))}
-          {tickets.length === 0 && (
-            <tr>
-              <td colSpan={7} className="px-4 py-12 text-center text-sm text-fg-subtle">
-                Aucun ticket ne correspond à la recherche ou aux filtres.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </Card>
+    <Tableau
+      colonnes={colonnes}
+      lignes={tickets}
+      cleLigne={(t) => t.id}
+      legende="Tickets"
+      chargement={chargement}
+      onLigne={(t) => onSelect(t.id)}
+      vide={
+        <EmptyState
+          compact
+          icon={<SearchX />}
+          title="Aucun ticket à afficher"
+          description="Aucun ticket ne correspond à la recherche ou aux filtres."
+        />
+      }
+    />
   );
 }
 
 function ResponsableCell({ t }: { t: Ticket }) {
   const label = responsableLabel(t);
   if (label === 'Non assigné') {
-    return <span className="text-fg-subtle italic">Non assigné</span>;
+    return <span className="italic text-fg-subtle">Non assigné</span>;
   }
   return <span className="text-fg">{label}</span>;
 }
 
-function StatutBadge({ s }: { s: TicketStatut }) {
-  const variant = {
-    CREATION_TICKET: 'info',
-    GENERATION_DOCUMENTS: 'warning',
-    DEROULEMENT_DEMARCHE: 'warning',
-    CLOTURE_DOSSIER: 'success',
-    ANNULE: 'danger',
-  }[s] as 'info' | 'warning' | 'success' | 'danger';
-  return <Badge variant={variant}>{STATUT_LABELS[s]}</Badge>;
+const VARIANTE_STATUT: Record<TicketStatut, 'info' | 'warning' | 'success' | 'danger' | 'neutral'> = {
+  CREATION_TICKET: 'info',
+  GENERATION_DOCUMENTS: 'warning',
+  DEROULEMENT_DEMARCHE: 'warning',
+  CLOTURE_DOSSIER: 'success',
+  ANNULE: 'danger',
+};
+
+export function StatutBadge({ s }: { s: TicketStatut }) {
+  return <Badge variant={VARIANTE_STATUT[s]}>{STATUT_LABELS[s]}</Badge>;
 }

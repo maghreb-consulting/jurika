@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 
 /**
  * Lot L5 (E10) : ecran "Mon compte" (RG-CPT-01, RG-CPT-02).
@@ -52,7 +53,7 @@ describe('ProfilePage (Mon compte)', { timeout: 20000 }, () => {
       adresse: { nouvelleValeur: 'nouvelle@cabinet.ma', expireLe: '2026-10-13T10:00:00Z' },
       identifiant: null,
     });
-    render(<ProfilePage />);
+    render(<ProfilePage />, { wrapper: MemoryRouter });
 
     const attente = await screen.findByTestId('attente-adresse');
     expect(attente).toHaveTextContent('En attente de confirmation : nouvelle@cabinet.ma');
@@ -72,7 +73,7 @@ describe('ProfilePage (Mon compte)', { timeout: 20000 }, () => {
       nouvelleValeur: 'perso@exemple.ma',
       expireLe: '2026-10-13T10:00:00Z',
     });
-    render(<ProfilePage />);
+    render(<ProfilePage />, { wrapper: MemoryRouter });
 
     await saisir(await screen.findByLabelText('Nouvelle adresse électronique'), 'perso@exemple.ma');
     const boutons = screen.getAllByRole('button', { name: 'Recevoir le lien de confirmation' });
@@ -90,7 +91,7 @@ describe('ProfilePage (Mon compte)', { timeout: 20000 }, () => {
       isAxiosError: true,
       response: { status: 409, data: { code: 'CONFLICT', message: 'IDENTIFIANT_DEJA_UTILISE' } },
     });
-    render(<ProfilePage />);
+    render(<ProfilePage />, { wrapper: MemoryRouter });
 
     await saisir(await screen.findByLabelText('Nouvel identifiant de connexion'), 'salma@jurika.ma');
     const boutons = screen.getAllByRole('button', { name: 'Recevoir le lien de confirmation' });
@@ -106,7 +107,7 @@ describe('ProfilePage (Mon compte)', { timeout: 20000 }, () => {
       isAxiosError: true,
       response: { status: 401, data: { code: 'UNAUTHORIZED', message: 'Ancien mot de passe incorrect' } },
     });
-    render(<ProfilePage />);
+    render(<ProfilePage />, { wrapper: MemoryRouter });
 
     await saisir(await screen.findByLabelText('Mot de passe actuel'), 'Faux@Passe2026!');
     await saisir(screen.getByLabelText('Nouveau mot de passe'), 'Autre@Passe2026!');
@@ -120,7 +121,7 @@ describe('ProfilePage (Mon compte)', { timeout: 20000 }, () => {
   it('client : consultation seule, sans formulaire de changement d’adresse ni d’identifiant', async () => {
     svc.getMe.mockResolvedValue(me('CLIENT'));
     svc.getDemandesCompte.mockResolvedValue({ adresse: null, identifiant: null });
-    render(<ProfilePage />);
+    render(<ProfilePage />, { wrapper: MemoryRouter });
 
     expect(await screen.findByTestId('profile-contact-email')).toHaveTextContent('karim@cabinet.ma');
     expect(screen.queryByRole('button', { name: 'Recevoir le lien de confirmation' })).not.toBeInTheDocument();

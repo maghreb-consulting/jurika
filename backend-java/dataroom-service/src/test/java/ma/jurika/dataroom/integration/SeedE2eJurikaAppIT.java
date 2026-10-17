@@ -89,6 +89,7 @@ class SeedE2eJurikaAppIT {
         jdbc.execute("SELECT set_config('app.current_workspace_id', '', false)");
         jdbc.execute("ALTER TABLE dataroom_documents DISABLE ROW LEVEL SECURITY");
         jdbc.execute("DELETE FROM dataroom_visibilite_evenements");
+        jdbc.execute("DELETE FROM dataroom_acces_client_historique");
         jdbc.execute("DELETE FROM dataroom_documents");
         jdbc.execute("DELETE FROM tickets");
         jdbc.execute("DELETE FROM entreprise_dossiers");
@@ -127,7 +128,7 @@ class SeedE2eJurikaAppIT {
     @Test
     void le_seed_cree_puis_nettoie_un_workspace_sous_jurika_app() {
         TenantContext.clear();
-        var reponse = seed.seedWorkspace(null, null, null, "SUPERVISEUR");
+        var reponse = seed.seedWorkspace(null, null, null, "SUPERVISEUR", null);
 
         assertThat(reponse.getStatusCode().is2xxSuccessful()).isTrue();
         UUID cree = (UUID) reponse.getBody().get("workspaceId");
@@ -144,5 +145,51 @@ class SeedE2eJurikaAppIT {
         assertThat(nettoyage.getBody()).containsEntry("deleted", 1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM workspaces WHERE id = ?", Integer.class, cree))
                 .isZero();
+    }
+
+    /**
+     * Lot L6b (E16) : un parcours qui regle l'acces du client laisse une trace
+     * (dataroom_acces_client_historique, cles etrangeres ON DELETE RESTRICT, voulues pour la
+     * trace) ; le nettoyage du seed repondait alors 500 et le cabinet de test restait en base.
+     */
+    @Test
+    void le_nettoyage_supprime_aussi_un_cabinet_dont_l_acces_client_a_ete_regle() {
+        TenantContext.clear();
+        var reponse = seed.seedWorkspace(null, null, null, "EMPLOYE", null);
+        UUID cree = (UUID) reponse.getBody().get("workspaceId");
+        UUID dossier = (UUID) reponse.getBody().get("dossierId");
+        UUID employe = (UUID) reponse.getBody().get("employeUserId");
+        jdbc.update("""
+                INSERT INTO dataroom_acces_client_historique(workspace_id, dossier_id, acteur_id, nature, avant, apres)
+                VALUES (?, ?, ?, 'PERMISSIONS', '{"telechargement": true}'::jsonb, '{"telechargement": false}'::jsonb)
+                """, cree, dossier, employe);
+
+        var nettoyage = seed.cleanup(cree);
+
+        assertThat(nettoyage.getBody()).containsEntry("deleted", 1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM workspaces WHERE id = ?", Integer.class, cree))
+                .isZero();
+    }
+
+    /**
+     * Lot L6b (E16) : un parcours a plusieurs (transfert entre deux employes, messagerie entre le
+     * superviseur et un employe) a besoin d'employes dans le cabinet du superviseur. L'invitation
+     * reelle remet le mot de passe temporaire par courriel (illisible par un test sans boite de
+     * capture) : le seed cree, sur demande, des employes de plus, actifs, avec le mot de passe du seed.
+     */
+    @Test
+    void le_seed_cree_sur_demande_des_employes_de_plus_dans_le_cabinet() {
+        TenantContext.clear();
+        var reponse = seed.seedWorkspace(null, null, null, "SUPERVISEUR", 2);
+
+        UUID cree = (UUID) reponse.getBody().get("workspaceId");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE workspace_id = ? AND role = 'EMPLOYE' AND is_active",
+                Integer.class, cree)).isEqualTo(2);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> employes = (List<Map<String, Object>>) reponse.getBody().get("employes");
+        assertThat(employes).hasSize(2);
+        assertThat(employes).allSatisfy(e -> assertThat((String) e.get("email")).endsWith("@jurika.test"));
+        assertThat(seed.seedWorkspace(null, null, null, "SUPERVISEUR", 9).getStatusCode().is4xxClientError()).isTrue();
+        seed.cleanup(cree);
     }
 }

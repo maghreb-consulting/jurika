@@ -75,6 +75,22 @@ class JwtAuthFilterSuspensionTest {
     }
 
     @Test
+    void workspace_suspendu_ou_archive_les_preferences_d_affichage_du_compte_restent_ouvertes() throws Exception {
+        // Lot L6b (E2) : le superviseur qui se connecte pour payer garde son theme.
+        AtomicBoolean passe = new AtomicBoolean(false);
+        MockHttpServletResponse res = appeler("/api/v1/users/me/preferences", true, passe);
+        assertThat(passe).isTrue();
+        assertThat(res.getStatus()).isEqualTo(200);
+        assertThat(AccesArchive.cheminPermis("/api/v1/users/me/preferences")).isTrue();
+        // Les autres chemins /api/v1/users/** restent fermes.
+        AtomicBoolean ancien = new AtomicBoolean(false);
+        assertThat(appeler("/api/v1/users/me/theme", true, ancien).getStatus()).isEqualTo(403);
+        assertThat(ancien).isFalse();
+        assertThat(AccesArchive.cheminPermis("/api/v1/users/me/preferences-autres")).isFalse();
+        assertThat(AccesArchive.cheminPermis("/api/v1/users/me/preferences/x")).isFalse();
+    }
+
+    @Test
     void workspace_non_suspendu_rien_n_est_restreint() throws Exception {
         AtomicBoolean passe = new AtomicBoolean(false);
         appeler("/api/v1/tickets", false, passe);

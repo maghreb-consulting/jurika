@@ -108,6 +108,12 @@ export interface GeranceAgregee {
   dureeGerance: string;
   remunerationMode: '' | 'non_remunere' | 'decision_collective' | 'montant_fixe';
   remunerationMontant: number;
+  /**
+   * Lot L6b (E13) : phrase de la rémunération, prête pour les actes (gerance.remunerationMode).
+   * Mode commun : son libellé ; modes différents : énumération nominative, jamais vide
+   * (une chaîne vide faisait refuser l'étape par le serveur, en 400).
+   */
+  remunerationPhrase: string;
 }
 
 /**
@@ -156,11 +162,15 @@ export function agregerGerance(dirigeants: Dirigeant[]): GeranceAgregee {
   };
 
   const dureeCommune = commun((d) => dureeMandatLabel(d));
+  const modeCommun = commun((d) => d.remunerationMode);
 
   return {
     dureeGerance: dureeCommune ?? enumerer(source, (d) => dureeMandatLabel(d)),
-    remunerationMode: commun((d) => d.remunerationMode) ?? '',
+    remunerationMode: modeCommun ?? '',
     remunerationMontant: commun((d) => d.remunerationMontant) ?? 0,
+    remunerationPhrase: modeCommun !== null
+      ? REMUNERATION_LABELS[modeCommun] ?? ''
+      : enumerer(source, (d) => REMUNERATION_LABELS[d.remunerationMode] ?? ''),
   };
 }
 

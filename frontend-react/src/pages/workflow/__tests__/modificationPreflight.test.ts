@@ -7,6 +7,7 @@ import {
   computeRefonteMissing,
   convocationDelaiError,
   decisionTypeFor,
+  lieuSignatureDuPv,
   validateModification,
   validateStep1Inputs,
 } from '../modificationLogique';
@@ -233,5 +234,21 @@ describe('Modification — convocation, regle DURE des 16 jours', () => {
   it('addDaysIso vide/invalide → ""', () => {
     expect(addDaysIso('', 16)).toBe('');
     expect(addDaysIso('pas-une-date', 16)).toBe('');
+  });
+});
+
+/**
+ * Lot L6b (E15, parcours " nomination du gerant ") : les statuts refondus et l'annonce sont
+ * generes depuis la grille des documents, dont la charge ne portait pas le lieu de signature
+ * saisi dans la seance du PV : statuts refuses (LIEU_SIGNATURE, " Fait a , le ... "), sans
+ * aucun champ pour le saisir a cote.
+ */
+describe('Modification — lieu de signature des documents de la grille', () => {
+  it('reprend le lieu de signature saisi dans la séance du procès-verbal', () => {
+    expect(lieuSignatureDuPv({ lieuSignature: ' Casablanca ' })).toBe('Casablanca');
+  });
+  it('absent du PV : rien n’est deviné (la génération le nomme)', () => {
+    expect(lieuSignatureDuPv(null)).toBeNull();
+    expect(lieuSignatureDuPv({ lieuSignature: '' })).toBeNull();
   });
 });

@@ -183,6 +183,40 @@ class GuideTransitionChecksTest {
     }
 
     @Test
+    @DisplayName("L6b E14 : en creation, les identifiants attendus d'un organisme (RC, ICE, IF, TP, CNSS) ne bloquent pas le passage au deroulement")
+    void creationIdentifiantsExternesNonExiges() {
+        // Constate sur la pile : apres les dix documents generes et coches, le ticket de creation
+        // ne pouvait pas passer au deroulement de la demarche : $RC_NUMERO, $IDENTIFIANT_FISCAL,
+        // $IDENTIFIANT_TP non renseignes. Ils s'obtiennent PENDANT le deroulement (immatriculation,
+        // demarches 27 a 33) ; regle des variables (CLAUDE.md, D2) : seule une variable externe
+        // peut manquer, l'acte porte "A OBTENIR".
+        demarche(11, TicketStatut.GENERATION_DOCUMENTS, true,
+                "$DENOMINATION, $RC_NUMERO, $ICE, $IDENTIFIANT_FISCAL, $IDENTIFIANT_TP, $CNSS_NUMERO");
+        marquer(11, DemarcheEtat.COCHEE);
+
+        List<String> obstacles = checks.obstacles(
+                ticket(TicketStatut.GENERATION_DOCUMENTS), TicketStatut.DEROULEMENT_DEMARCHE);
+
+        assertThat(obstacles).isEmpty();
+    }
+
+    @Test
+    @DisplayName("L6b E14 : en creation, une variable interne vide (capital) bloque toujours")
+    void creationVariableInterneExigee() {
+        demarche(11, TicketStatut.GENERATION_DOCUMENTS, true, "$CAPITAL_CHIFFRES, $RC_NUMERO");
+        marquer(11, DemarcheEtat.COCHEE);
+        dossier = new EntrepriseDossier(DOSSIER, WS, "ATLAS TRADING", FormeJuridique.SARL,
+                null, null, null, null, null, null, "12 rue Demo", "Casablanca",
+                null, null, DossierStatut.EN_CONSTITUTION, null, null,
+                Instant.now(), Instant.now());
+
+        List<String> obstacles = checks.obstacles(
+                ticket(TicketStatut.GENERATION_DOCUMENTS), TicketStatut.DEROULEMENT_DEMARCHE);
+
+        assertThat(obstacles).singleElement().asString().contains("$CAPITAL_CHIFFRES");
+    }
+
+    @Test
     @DisplayName("Les variables d'une etape NON cochee ne sont pas exigees")
     void variablesDUneEtapeNonFaiteNonExigees() {
         demarche(4, TicketStatut.GENERATION_DOCUMENTS, false, "$ICE");

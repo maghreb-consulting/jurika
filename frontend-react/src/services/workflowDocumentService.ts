@@ -42,6 +42,8 @@ export async function listTemplatesForWorkflow(
   const { data } = await api.get<TemplateInfo[]>(
     `/ai/workflows/${encodeURIComponent(workflowCode)}/templates`,
   );
+  // Lot L6b : une reponse qui n'est pas une liste devient une erreur nommee (jamais un .map plante).
+  if (!Array.isArray(data)) throw new Error(`Les modèles du parcours ${workflowCode} n’ont pas pu être lus.`);
   return data;
 }
 

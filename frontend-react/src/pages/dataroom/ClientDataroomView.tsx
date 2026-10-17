@@ -1,27 +1,33 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   CheckCircle,
-  Clock,
   Download,
   Eye,
   FileText,
-  Loader2,
   Lock,
   MessageSquare,
   Plus,
   Printer,
   Receipt,
   Send,
-  Shield,
   Trash2,
   Upload,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Page } from '../../components/layout/Page';
 import { Button } from '../../components/ui/Button';
-import { TexteAide } from '../../components/ui/Aide';
+import { Badge, type BadgeVariant } from '../../components/ui/Badge';
+import { Card } from '../../components/ui/Card';
+import { Lien } from '../../components/ui/Lien';
+import { Message } from '../../components/ui/Message';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Onglets } from '../../components/ui/Onglets';
+import { Skeleton } from '../../components/ui/LoadingSkeleton';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { TextField, ZoneTexte } from '../../components/ui/TextField';
+import { ToastContext } from '../../components/ui/useToast';
+import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { PdfPreviewModal } from '../../components/ui/PdfPreviewModal';
 import { useEnEssai } from '../../store/essaiStore';
-import { InfoBulle } from '../../components/ui/Aide';
 import { dataroomService } from '../../services/dataroom.service';
 import { extractError } from '../../lib/api';
 import { isDossierArchived } from '../../lib/dossierArchive';
@@ -49,21 +55,25 @@ const STATUT_LABEL: Record<DemandeStatut, string> = {
   TRAITEE: 'Traitée',
 };
 
-const STATUT_PILL: Record<DemandeStatut, { bg: string; text: string }> = {
-  NON_TRAITEE: { bg: 'bg-danger', text: 'text-bg-raised' },
-  EN_COURS: { bg: 'bg-accent', text: 'text-bg-raised' },
-  TRAITEE: { bg: 'bg-success', text: 'text-bg-raised' },
+const STATUT_VARIANTE: Record<DemandeStatut, BadgeVariant> = {
+  NON_TRAITEE: 'warning',
+  EN_COURS: 'info',
+  TRAITEE: 'success',
 };
+
+const ESSAI_TELECHARGEMENT =
+  'Téléchargement indisponible pendant l’essai gratuit : le document se consulte en aperçu, avec la mention d’évaluation. Il sera téléchargeable après la souscription d’un forfait.';
 
 /**
  * Portail client — version simplifiee de la Data Room pour les utilisateurs CLIENT.
- * - Hero : nom de la societe + cabinet gestionnaire + permissions.
- * - Encart violet "Vos demandes" avec compteurs et CTA.
- * - 3 onglets : Dossier Juridique (lecture seule, versions courantes uniquement),
- *   Dossier Comptable (uploadable par le client — V2 spec),
- *   Mes Demandes (CRUD limite : creation + lecture).
+ * - En-tete commun (Page) : nom de la societe, derniere mise a jour, action principale
+ *   " Faire une demande ".
+ * - Permissions rappelees en clair ; onglets : Dossier juridique (versions courantes
+ *   uniquement), Depots du client, Debours, Demandes du client ; lien vers les requetes
+ *   du cabinet (page dediee).
  *
  * Le client ne voit PAS l'historique des tickets clotures (volontairement).
+ * Lot L6b (E6) : coquille et bibliotheque communes ; l'espace reste simple.
  */
 export function ClientDataroomView() {
   const [dossier, setDossier] = useState<DossierBrief | null>(null);
@@ -79,6 +89,8 @@ export function ClientDataroomView() {
     const allowed: Tab[] = ['juridique', 'depots', 'demandes'];
     return (allowed as string[]).includes(t ?? '') ? (t as Tab) : 'juridique';
   });
+  // " Faire une demande " (en-tete) : ouvre l'onglet et son formulaire.
+  const [signalDemande, setSignalDemande] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -113,10 +125,8 @@ export function ClientDataroomView() {
   // Sprint 7 / TASK 5.3 -- WebSocket : reload du juridique + toast quand
   // l'employe upload/delete un document cote cabinet. Le payload arrive
   // via realtime-service (Socket.io room "dataroom:{dossierId}").
-  const [realtimeToast, setRealtimeToast] = useState<{
-    text: string;
-    until: number;
-  } | null>(null);
+  const toast = useContext(ToastContext);
+  const [realtimeToast, setRealtimeToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleDataroomEvent = useCallback(
@@ -128,9 +138,14 @@ export function ClientDataroomView() {
             ? 'Document retiré'
             : 'Document mis à jour';
       const label = event.title ?? event.documentType ?? 'Document';
-      setRealtimeToast({ text: `${verb} : ${label}`, until: Date.now() + 4000 });
-      if (toastTimer.current) clearTimeout(toastTimer.current);
-      toastTimer.current = setTimeout(() => setRealtimeToast(null), 4000);
+      const texte = `${verb} : ${label}`;
+      if (toast) {
+        toast.info(texte, 4000);
+      } else {
+        setRealtimeToast(texte);
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        toastTimer.current = setTimeout(() => setRealtimeToast(null), 4000);
+      }
       // reload du juridique (sans bloquer le reste)
       if (dossier) {
         dataroomService
@@ -139,7 +154,7 @@ export function ClientDataroomView() {
           .catch(() => {/* silent : best-effort refresh */});
       }
     },
-    [dossier],
+    [dossier, toast],
   );
 
   useDataroomSocket(dossier?.id, handleDataroomEvent);
@@ -157,6 +172,11 @@ export function ClientDataroomView() {
    */
   const archived = isDossierArchived(dossier?.statut);
   const canDepot = (settings?.permDepot ?? false) && !archived;
+  // Lot L6b (E16) : consultation et demandes, reglees par le cabinet (RG-CLI-01). Le serveur refuse
+  // (403) ce que la permission ferme : l'ecran ne l'offre pas et le dit. Reglages illisibles :
+  // la consultation n'est pas declaree fermee (le serveur reste juge), les demandes ne s'offrent pas.
+  const consultationOuverte = settings?.permConsultation !== false;
+  const canDemander = (settings?.permDemandes ?? false) && !archived;
 
   const counts = useMemo(() => {
     return demandes.reduce(
@@ -168,131 +188,90 @@ export function ClientDataroomView() {
     );
   }, [demandes]);
 
-  if (loading) {
+  // Lot L6b (E16) : squelette au premier chargement seulement ; un rechargement (apres l'envoi
+  // d'une demande, par exemple) garde l'ecran, et la confirmation affichee.
+  if (loading && !dossier) {
     return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
+      <Page titre="Mon espace" fil={false}>
+        <div className="space-y-4" aria-busy="true" aria-label="Chargement de votre espace">
+          <Card className="p-5">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-64" />
+              <Skeleton className="h-4 w-40" />
+            </div>
+          </Card>
+          <Card className="p-5">
+            <div className="space-y-3">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+            </div>
+          </Card>
+        </div>
+      </Page>
     );
   }
 
   if (error || !dossier) {
     return (
-      <div className="rounded-2xl border border-danger/40 bg-danger/10 p-6 text-center">
-        <p className="text-sm text-danger">
-          {error ?? "Aucune Data Room n’est associée à votre compte. Si votre cabinet vous a invité, contactez votre conseiller."}
-        </p>
-      </div>
+      <Page titre="Mon espace">
+        {error ? (
+          <Message
+            ton="erreur"
+            titre="Votre espace n’a pas pu être chargé."
+            action={
+              <Button type="button" size="sm" variant="secondary" onClick={() => void load()}>
+                Réessayer
+              </Button>
+            }
+          >
+            {error}
+          </Message>
+        ) : (
+          <Card>
+            <EmptyState
+              icon={<Lock />}
+              title="Aucune Data Room associée à votre compte"
+              description="Si votre cabinet vous a invité, contactez votre conseiller : il rattache votre compte au dossier de votre société."
+            />
+          </Card>
+        )}
+      </Page>
     );
   }
 
   const lastUpdate = juridique?.documentsEnVigueur
     .map((d) => new Date(d.createdAt).getTime())
     .reduce((acc, v) => (v > acc ? v : acc), 0);
+  const demandesOuvertes = counts.NON_TRAITEE + counts.EN_COURS;
 
   return (
-    <div className="min-h-full bg-bg-overlay -m-4 md:-m-6 p-4 md:p-8">
-      <div className="max-w-[1100px] mx-auto space-y-6">
-        {/* Sprint 7 / TASK 5.3 -- toast realtime quand le cabinet upload/delete */}
-        {realtimeToast && (
-          <div
-            className="fixed bottom-4 right-4 z-50 max-w-sm rounded-lg border border-accent/40 bg-bg-raised px-4 py-3 shadow-lg"
-            role="status"
-            aria-live="polite"
+    <Page
+      titre={dossier.raisonSociale}
+      description={
+        <>
+          Dossier géré par votre cabinet juridique ·{' '}
+          {lastUpdate
+            ? `dernière mise à jour le ${new Date(lastUpdate).toLocaleDateString('fr-FR')}`
+            : 'aucun document publié pour le moment'}
+        </>
+      }
+      action={
+        !canDemander ? undefined : (
+          <Button
+            type="button"
+            icon={<Send />}
+            onClick={() => {
+              setTab('demandes');
+              setSignalDemande((n) => n + 1);
+            }}
           >
-            <div className="flex items-start gap-2">
-              <div className="mt-0.5 h-2 w-2 rounded-full bg-accent animate-pulse" />
-              <p className="text-sm text-fg">{realtimeToast.text}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Hero */}
-        <div className="bg-bg-raised rounded-xl p-6 shadow-sm border border-border">
-          <div className="bg-accent/10 rounded-lg p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-accent rounded-lg flex items-center justify-center text-bg-raised flex-shrink-0">
-                <Lock className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-xl md:text-2xl font-bold text-fg mb-1">
-                  {dossier.raisonSociale}
-                </h2>
-                <p className="text-sm text-fg-subtle">
-                  Dossier géré par votre cabinet juridique
-                </p>
-                {lastUpdate ? (
-                  <p className="text-xs text-fg-subtle mt-1">
-                    Dernière mise à jour :{' '}
-                    {new Date(lastUpdate).toLocaleDateString('fr-FR')}
-                  </p>
-                ) : (
-                  <p className="text-xs text-fg-subtle mt-1">
-                    Aucun document publié pour le moment
-                  </p>
-                )}
-              </div>
-            </div>
-            {/* Lot L6 : les boutons « Tout télécharger » et « Imprimer » n'avaient aucune action
-                (contrôles inopérants) ; retirés. Chaque document se télécharge depuis sa ligne,
-                selon les permissions rappelées ci-dessous. */}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 md:gap-4 mt-4 pt-4 border-t border-border text-xs text-fg-subtle">
-            <span className="font-medium text-fg">Vos permissions :</span>
-            <span className="flex items-center gap-1">
-              <Eye className="w-3 h-3 text-success" /> Visualiser
-            </span>
-            <span
-              className={`flex items-center gap-1 ${
-                canDownload ? 'text-success' : 'text-danger'
-              }`}
-            >
-              {canDownload ? (
-                <Download className="w-3 h-3" />
-              ) : (
-                <Lock className="w-3 h-3" />
-              )}{' '}
-              Télécharger {canDownload ? '' : enEssai !== false ? '(indisponible pendant l’essai gratuit)' : '(non autorisé)'}
-            </span>
-            <span
-              className={`flex items-center gap-1 ${
-                canPrint ? 'text-success' : 'text-danger'
-              }`}
-            >
-              {canPrint ? (
-                <Printer className="w-3 h-3" />
-              ) : (
-                <Lock className="w-3 h-3" />
-              )}{' '}
-              Imprimer {canPrint ? '' : enEssai !== false ? '(indisponible pendant l’essai gratuit)' : '(non autorisé)'}
-            </span>
-            <span
-              className={`flex items-center gap-1 ${
-                canDepot ? 'text-success' : 'text-danger'
-              }`}
-            >
-              {canDepot ? (
-                <Upload className="w-3 h-3" />
-              ) : (
-                <Lock className="w-3 h-3" />
-              )}{' '}
-              Déposer {canDepot ? '' : '(non autorisé)'}
-            </span>
-          </div>
-
-          {/* §A — bandeau archive legale, cote client. */}
-          {archived && (
-            <div className="mt-4">
-              <DataroomReadOnlyHint
-                statut={dossier.statut}
-                testId="client-dataroom-readonly-banner"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Lot L6 (E9, CDC 15.4) : objet de l'espace et aide. */}
+            Faire une demande
+          </Button>
+        )
+      }
+      aide={
+        /* Lot L6 (E9, CDC 15.4) : objet de l'espace et aide. */
         <TexteAide cle="espace-client-dataroom" titre="Votre espace documentaire">
           <p>
             Votre Data Room réunit les documents de votre société. « Dossier juridique » : les
@@ -302,115 +281,89 @@ export function ClientDataroomView() {
             réponses que votre conseiller attend de vous ; répondez-y en priorité.
           </p>
         </TexteAide>
-
-        {/* Encart violet — Vos demandes */}
-        <div className="bg-gradient-to-r from-[#F5F3FF] to-[#EFF6FF] rounded-xl p-4 md:p-5 shadow-sm border border-accent/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-accent rounded-xl flex items-center justify-center flex-shrink-0">
-              <MessageSquare className="w-6 h-6 text-bg-raised" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-fg">
-                Vos demandes
-              </h3>
-              <p className="text-xs text-fg-subtle">
-                {counts.NON_TRAITEE > 0 ? (
-                  <>
-                    <span className="font-bold text-danger">
-                      {counts.NON_TRAITEE} non traitée
-                      {counts.NON_TRAITEE > 1 ? 's' : ''}
-                    </span>{' '}
-                    · {counts.EN_COURS} en cours · {counts.TRAITEE} traitée
-                    {counts.TRAITEE > 1 ? 's' : ''}
-                  </>
-                ) : (
-                  <>
-                    {counts.EN_COURS} en cours · {counts.TRAITEE} traitée
-                    {counts.TRAITEE > 1 ? 's' : ''}
-                  </>
-                )}
-              </p>
-            </div>
+      }
+    >
+      <div className="space-y-5">
+        {/* Sprint 7 / TASK 5.3 -- avis temps reel (repli sans fournisseur de toasts) */}
+        {realtimeToast && (
+          <div
+            className="fixed bottom-4 right-4 z-50 max-w-sm rounded-lg border border-border bg-bg-raised px-4 py-3 text-sm text-fg shadow-card-lifted"
+            role="status"
+            aria-live="polite"
+          >
+            {realtimeToast}
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              {counts.NON_TRAITEE > 0 && (
-                <span className="px-2.5 py-1 bg-danger/10 text-danger rounded-full text-[10px] font-bold flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> {counts.NON_TRAITEE}
-                </span>
-              )}
-              {counts.EN_COURS > 0 && (
-                <span className="px-2.5 py-1 bg-accent/10 text-accent rounded-full text-[10px] font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />{' '}
-                  {counts.EN_COURS}
-                </span>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => setTab('demandes')}
-              className="flex items-center gap-2 px-4 md:px-5 h-10 bg-accent text-bg-raised rounded-lg hover:bg-accent-hover transition font-medium text-sm"
-            >
-              <Send className="w-4 h-4" /> Faire une demande
-            </button>
-          </div>
-        </div>
+        )}
 
-        {/* Tabs */}
-        <div className="bg-bg-raised rounded-xl shadow-sm border border-border overflow-hidden">
-          <div className="border-b border-border px-3 md:px-6">
-            <div className="flex gap-0 overflow-x-auto">
-              <TabButton
-                active={tab === 'juridique'}
-                onClick={() => setTab('juridique')}
-                color="#2563EB"
-                icon={<FileText className="w-4 h-4" />}
-                label="Dossier juridique"
-              />
-              <TabButton
-                active={tab === 'depots'}
-                onClick={() => setTab('depots')}
-                color="#F59E0B"
-                icon={<Upload className="w-4 h-4" />}
-                label="Dépôts du client"
-              />
-              <TabButton
-                active={tab === 'debours'}
-                onClick={() => setTab('debours')}
-                color="#059669"
-                icon={<Receipt className="w-4 h-4" />}
-                label="Débours"
-              />
-              <TabButton
-                active={tab === 'demandes'}
-                onClick={() => setTab('demandes')}
-                color="#7C3AED"
-                icon={<MessageSquare className="w-4 h-4" />}
-                label="Demandes du client"
-                badge={counts.NON_TRAITEE + counts.EN_COURS}
-              />
-              {/* RG-DR-01 : quatrieme section, les requetes du cabinet ont leur page. */}
-              <Link
-                to="/mes-requetes"
-                className="flex items-center gap-2 whitespace-nowrap px-3 py-3 text-sm font-medium text-fg-subtle hover:text-fg md:px-4"
-                data-testid="lien-requetes-cabinet"
-              >
-                <Send className="w-4 h-4" /> Requêtes du cabinet
-              </Link>
-            </div>
+        {/* A -- bandeau archive legale, cote client. */}
+        {archived && (
+          <DataroomReadOnlyHint
+            statut={dossier.statut}
+            testId="client-dataroom-readonly-banner"
+          />
+        )}
+
+        <Card padding={false} className="flex flex-wrap items-center gap-2 px-5 py-3">
+          <span className="mr-1 text-sm font-medium text-fg">Vos permissions :</span>
+          <Badge variant={consultationOuverte ? 'success' : 'neutral'}>
+            {consultationOuverte ? <Eye aria-hidden="true" className="h-3 w-3" /> : <Lock aria-hidden="true" className="h-3 w-3" />}
+            Visualiser{consultationOuverte ? '' : ' (non autorisé)'}
+          </Badge>
+          <Badge variant={canDownload ? 'success' : 'neutral'}>
+            {canDownload ? <Download aria-hidden="true" className="h-3 w-3" /> : <Lock aria-hidden="true" className="h-3 w-3" />}
+            Télécharger{canDownload ? '' : enEssai !== false ? ' (indisponible pendant l’essai gratuit)' : ' (non autorisé)'}
+          </Badge>
+          <Badge variant={canPrint ? 'success' : 'neutral'}>
+            {canPrint ? <Printer aria-hidden="true" className="h-3 w-3" /> : <Lock aria-hidden="true" className="h-3 w-3" />}
+            Imprimer{canPrint ? '' : enEssai !== false ? ' (indisponible pendant l’essai gratuit)' : ' (non autorisé)'}
+          </Badge>
+          <Badge variant={canDepot ? 'success' : 'neutral'}>
+            {canDepot ? <Upload aria-hidden="true" className="h-3 w-3" /> : <Lock aria-hidden="true" className="h-3 w-3" />}
+            Déposer{canDepot ? '' : ' (non autorisé)'}
+          </Badge>
+          {!archived && (
+            <Badge variant={canDemander ? 'success' : 'neutral'}>
+              {canDemander ? <Send aria-hidden="true" className="h-3 w-3" /> : <Lock aria-hidden="true" className="h-3 w-3" />}
+              Envoyer des demandes{canDemander ? '' : ' (non autorisé)'}
+            </Badge>
+          )}
+        </Card>
+
+        <div>
+          <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+            <Onglets
+              libelle="Sections de votre espace"
+              actif={tab}
+              onChange={(id) => setTab(id as Tab)}
+              className="min-w-0"
+              onglets={[
+                { id: 'juridique', libelle: <><FileText aria-hidden="true" className="h-4 w-4" />Dossier juridique</> },
+                { id: 'depots', libelle: <><Upload aria-hidden="true" className="h-4 w-4" />Dépôts du client</> },
+                { id: 'debours', libelle: <><Receipt aria-hidden="true" className="h-4 w-4" />Débours</> },
+                {
+                  id: 'demandes',
+                  libelle: <><MessageSquare aria-hidden="true" className="h-4 w-4" />Demandes du client</>,
+                  badge: demandesOuvertes > 0 ? <Badge variant="warning">{demandesOuvertes}</Badge> : undefined,
+                },
+              ]}
+            />
+            {/* RG-DR-01 : quatrieme section, les requetes du cabinet ont leur page. */}
+            <Lien to="/mes-requetes" className="mb-2.5 inline-flex items-center gap-1.5 text-sm" data-testid="lien-requetes-cabinet">
+              <Send aria-hidden="true" className="h-4 w-4" /> Requêtes du cabinet
+            </Lien>
           </div>
 
-          <div className="p-4 md:p-6">
+          <div role="tabpanel" aria-label="Contenu de la section" className="pt-4">
             {tab === 'juridique' && (
               <ClientJuridique
+                consultationOuverte={consultationOuverte}
                 docs={juridique?.documentsEnVigueur ?? []}
                 canDownload={canDownload}
                 canPrint={canPrint}
+                enEssai={enEssai !== false}
               />
             )}
-            {tab === 'depots' && (
-              <ClientDepots dossierId={dossier.id} canDepot={canDepot} />
-            )}
+            {tab === 'depots' && <ClientDepots dossierId={dossier.id} canDepot={canDepot} />}
             {tab === 'debours' && (
               <ClientDebours operations={juridique?.dossiersParTicket ?? []} canDownload={canDownload} />
             )}
@@ -418,61 +371,23 @@ export function ClientDataroomView() {
               <ClientDemandes
                 dossierId={dossier.id}
                 demandes={demandes}
+                counts={counts}
                 onChanged={load}
                 readOnly={archived}
                 readOnlyStatut={dossier.statut}
+                peutDemander={canDemander}
+                signalOuverture={signalDemande}
               />
             )}
           </div>
         </div>
 
-        <div className="text-center mt-2 text-xs text-fg-subtle">
-          <p>
-            Espace sécurisé propulsé par{' '}
-            <strong className="text-fg-subtle">JURIKA</strong> — Plateforme de
-            gestion juridique
-          </p>
-        </div>
+        <p className="text-center text-xs text-fg-muted">
+          Espace sécurisé propulsé par <strong className="font-semibold text-fg">JURIKA</strong> — plateforme de
+          gestion juridique
+        </p>
       </div>
-    </div>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  color,
-  icon,
-  label,
-  badge,
-}: {
-  active: boolean;
-  onClick: () => void;
-  color: string;
-  icon: React.ReactNode;
-  label: string;
-  badge?: number;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="px-4 md:px-6 py-3 md:py-4 text-sm font-medium transition relative flex items-center gap-2 whitespace-nowrap"
-      style={{ color: active ? color : '#64748B' }}
-    >
-      {icon} {label}
-      {badge !== undefined && badge > 0 && (
-        <span className="px-1.5 py-0.5 text-[10px] font-bold bg-danger text-bg-raised rounded-full">
-          {badge}
-        </span>
-      )}
-      {active && (
-        <span
-          className="absolute bottom-0 left-0 right-0 h-0.5"
-          style={{ backgroundColor: color }}
-        />
-      )}
-    </button>
+    </Page>
   );
 }
 
@@ -481,52 +396,54 @@ function TabButton({
 // ============================================================
 
 function ClientJuridique({
+  consultationOuverte = true,
   docs,
   canDownload,
   canPrint,
+  enEssai,
 }: {
+  /** Lot L6b (E16) : faux si le cabinet n'a pas ouvert la consultation (le serveur refuse). */
+  consultationOuverte?: boolean;
   docs: DocumentSummary[];
   canDownload: boolean;
   canPrint: boolean;
+  enEssai: boolean;
 }) {
+  if (!consultationOuverte) {
+    return (
+      <Message ton="attention" titre="Consultation des documents non ouverte">
+        Votre cabinet n’a pas ouvert la consultation des documents sur cet espace. Vous pouvez toujours lui
+        transmettre vos pièces ; pour consulter vos documents, contactez votre conseiller.
+      </Message>
+    );
+  }
   return (
-    <>
-      <div className="bg-success/10 border-l-4 border-success rounded-lg p-3 mb-5 flex items-center gap-2">
-        <Shield className="w-4 h-4 text-success flex-shrink-0" />
-        <p className="text-xs text-success">
-          Vous consultez les{' '}
-          <strong>dernières versions</strong> de vos documents juridiques. Les
-          anciennes versions ne sont pas accessibles depuis cet espace.
-        </p>
-      </div>
+    <Card padding={false}>
+      <p className="border-b border-border px-5 py-3 text-sm text-fg-muted">
+        Vous consultez les <strong className="text-fg">dernières versions</strong> de vos documents juridiques. Les
+        anciennes versions ne sont pas accessibles depuis cet espace.
+      </p>
 
       {docs.length === 0 ? (
-        <div className="text-center py-12">
-          <FileText className="w-10 h-10 text-fg-subtle mx-auto mb-3" />
-          <p className="text-sm text-fg-subtle">
-            Aucun document juridique disponible pour le moment.
-          </p>
-        </div>
+        <EmptyState
+          compact
+          icon={<FileText />}
+          title="Aucun document juridique pour le moment"
+          description="Les documents que votre cabinet publie pour votre société apparaîtront ici, dans leur dernière version."
+        />
       ) : (
-        <div className="space-y-3">
+        <ul className="divide-y divide-border">
           {docs.map((doc) => (
-            <ClientDocRow
-              key={doc.id}
-              doc={doc}
-              canDownload={canDownload}
-              canPrint={canPrint}
-            />
+            <ClientDocRow key={doc.id} doc={doc} canDownload={canDownload} canPrint={canPrint} enEssai={enEssai} />
           ))}
-        </div>
+        </ul>
       )}
 
-      <div className="text-center mt-6 pt-5 border-t border-border">
-        <p className="text-xs text-fg-subtle">
-          {docs.length} document{docs.length > 1 ? 's' : ''} juridique
-          {docs.length > 1 ? 's' : ''} — versions actuelles uniquement
-        </p>
-      </div>
-    </>
+      <p className="border-t border-border px-5 py-3 text-center text-xs text-fg-muted">
+        {docs.length} document{docs.length > 1 ? 's' : ''} juridique
+        {docs.length > 1 ? 's' : ''} — versions actuelles uniquement
+      </p>
+    </Card>
   );
 }
 
@@ -534,10 +451,12 @@ function ClientDocRow({
   doc,
   canDownload,
   canPrint,
+  enEssai,
 }: {
   doc: DocumentSummary;
   canDownload: boolean;
   canPrint: boolean;
+  enEssai: boolean;
 }) {
   const [downloading, setDownloading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -555,54 +474,35 @@ function ClientDocRow({
   }
 
   return (
-    <div className="flex items-center gap-4 p-3 md:p-4 bg-bg-overlay rounded-lg hover:bg-bg-overlay transition">
-      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-        <FileText className="w-6 h-6 text-danger" />
+    <li className="flex flex-wrap items-center gap-3 px-5 py-3">
+      <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-bg-overlay">
+        <FileText className="h-4 w-4 text-fg-muted" />
       </div>
-      <div className="flex-1 min-w-0">
-        <h4 className="text-sm font-bold text-fg truncate">
-          {doc.title}
-        </h4>
-        <p className="text-xs text-fg-subtle">{label} • v{doc.version}</p>
-        <p className="text-[10px] text-fg-subtle mt-0.5">
-          {new Date(doc.createdAt).toLocaleDateString('fr-FR')}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-fg">{doc.title}</p>
+        <p className="text-xs text-fg-muted">
+          {label} · version {doc.version} · {new Date(doc.createdAt).toLocaleDateString('fr-FR')}
         </p>
       </div>
-      <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-success/10 rounded-full flex-shrink-0">
-        <Shield className="w-3 h-3 text-success" />
-        <span className="text-[10px] font-medium text-success">
-          Version actuelle
-        </span>
-      </div>
-      <div className="flex items-center gap-1 flex-shrink-0">
+      <Badge variant="success" className="hidden @md:inline-flex">
+        Version actuelle
+      </Badge>
+      <div className="ml-auto flex shrink-0 items-center gap-1">
         {/* Lot preview client : le visionnage est un droit inconditionnel
             (backend /preview autorise ROLE_CLIENT, stream inline, hors dossier
             SUSPENDED). Toujours actif, independamment de perm_download. */}
-        <button
-          type="button"
-          onClick={() => setPreviewOpen(true)}
-          className="px-3 h-8 text-xs border rounded transition flex items-center gap-1 border-border text-fg hover:border-accent bg-bg-raised"
-          title="Voir le document"
-        >
-          <Eye className="w-3.5 h-3.5" /> Voir
-        </button>
-        <button
-          type="button"
-          onClick={download}
-          disabled={!canDownload || downloading}
-          className={`px-3 h-8 text-xs border rounded transition flex items-center gap-1 ${
-            canDownload
-              ? 'border-border text-fg hover:border-accent bg-bg-raised'
-              : 'border-border text-fg-subtle cursor-not-allowed opacity-50 bg-bg-raised'
-          }`}
-        >
-          {canDownload ? (
-            <Download className="w-3.5 h-3.5" />
-          ) : (
-            <Lock className="w-3.5 h-3.5" />
-          )}{' '}
-          {downloading ? '…' : 'Télécharger'}
-        </button>
+        <Button type="button" size="sm" variant="ghost" icon={<Eye />} onClick={() => setPreviewOpen(true)} title="Voir le document">
+          Voir
+        </Button>
+        {/* Lot L6b : un bouton que le serveur refuserait n'est pas affiche (essai : apercu
+            seulement ; sans permission : les permissions ci-dessus le disent). */}
+        {canDownload ? (
+          <Button type="button" size="sm" variant="secondary" icon={<Download />} onClick={download} loading={downloading}>
+            Télécharger
+          </Button>
+        ) : (
+          enEssai && <InfoBulle libelle="Téléchargement indisponible" texte={ESSAI_TELECHARGEMENT} />
+        )}
       </div>
       <PdfPreviewModal
         open={previewOpen}
@@ -613,7 +513,7 @@ function ClientDocRow({
         onClose={() => setPreviewOpen(false)}
         onDownload={download}
       />
-    </div>
+    </li>
   );
 }
 
@@ -624,23 +524,39 @@ function ClientDocRow({
 function ClientDemandes({
   dossierId,
   demandes,
+  counts,
   onChanged,
   readOnly = false,
   readOnlyStatut = null,
+  peutDemander = true,
+  signalOuverture = 0,
 }: {
   dossierId: string;
   demandes: DemandeSummary[];
+  counts: Record<DemandeStatut, number>;
   onChanged: () => Promise<void> | void;
   /** §A — societe archivee : plus de nouvelle demande (lecture de l'historique OK). */
   readOnly?: boolean;
   readOnlyStatut?: string | null;
+  /** Lot L6b (E16) : faux si le cabinet n'a pas ouvert l'envoi de demandes (le serveur refuse). */
+  peutDemander?: boolean;
+  /** Change a chaque " Faire une demande " de l'en-tete : le formulaire s'ouvre. */
+  signalOuverture?: number;
 }) {
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(signalOuverture > 0);
+  const [signalVu, setSignalVu] = useState(signalOuverture);
   const [sujet, setSujet] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Ouverture demandee par l'en-tete, ajustee pendant le rendu (pas d'etat pose dans un effet).
+  if (signalVu !== signalOuverture) {
+    setSignalVu(signalOuverture);
+    setShowForm(true);
+    setSent(false);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -678,193 +594,113 @@ function ClientDemandes({
   }
 
   return (
-    <>
+    <div className="space-y-4">
       {/* §A — societe archivee : l'historique reste lisible, la creation part. */}
       {readOnly ? (
-        <DataroomReadOnlyHint
-          statut={readOnlyStatut}
-          testId="client-demandes-readonly-hint"
-          className="mb-5"
-        />
-      ) : (
-        <div className="bg-accent/10 border-l-4 border-accent rounded-lg p-3 mb-5 flex items-center gap-2">
-          <MessageSquare className="w-4 h-4 text-accent flex-shrink-0" />
-          <p className="text-xs text-accent">
-            Envoyez vos <strong>demandes juridiques</strong> directement depuis
-            cet espace. Votre conseiller les traitera dans les meilleurs délais.
+        <DataroomReadOnlyHint statut={readOnlyStatut} testId="client-demandes-readonly-hint" />
+      ) : !peutDemander ? (
+        <Message ton="attention" titre="Envoi de demandes non ouvert">
+          Votre cabinet n’a pas ouvert l’envoi de demandes sur cet espace. Vos demandes passées restent consultables
+          ci-dessous ; pour une nouvelle demande, contactez votre conseiller.
+        </Message>
+      ) : !showForm ? (
+        <Card padding={false} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+          <p className="text-sm text-fg-muted">
+            Envoyez vos <strong className="text-fg">demandes juridiques</strong> depuis cet espace : votre conseiller les
+            traite et vous êtes averti par courriel.
           </p>
-        </div>
-      )}
-
-      {readOnly ? null : !showForm ? (
-        <Button
-          variant="primary"
-          onClick={() => setShowForm(true)}
-          className="w-full bg-accent hover:bg-accent-hover h-11 mb-6"
-        >
-          <Plus className="w-4 h-4 mr-2" /> Nouvelle demande
-        </Button>
+          <Button type="button" variant="secondary" icon={<Plus />} onClick={() => setShowForm(true)}>
+            Nouvelle demande
+          </Button>
+        </Card>
       ) : (
-        <div className="bg-bg-raised border-2 border-accent/30 rounded-xl p-5 mb-6">
+        <Card accent title={sent ? undefined : 'Nouvelle demande'}>
           {sent ? (
-            <div className="text-center py-6">
-              <div className="w-14 h-14 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                <CheckCircle className="w-7 h-7 text-success" />
-              </div>
-              <h4 className="text-base font-bold text-fg mb-1">
-                Demande envoyée
-              </h4>
-              <p className="text-xs text-fg-subtle mb-4">
-                Votre conseiller juridique a été prévenu et traitera votre
-                demande dans les meilleurs délais.
+            <div className="flex flex-col items-center py-4 text-center">
+              <CheckCircle aria-hidden="true" className="mb-2 h-8 w-8 text-success" />
+              <h3 className="text-base font-semibold text-heading">Demande envoyée</h3>
+              <p className="mb-4 mt-1 text-sm text-fg-muted">
+                Votre conseiller juridique a été prévenu et traitera votre demande dans les meilleurs délais.
               </p>
-              <button
-                type="button"
-                onClick={close}
-                className="px-4 h-9 text-sm text-accent hover:bg-accent/10 rounded-lg transition"
-              >
+              <Button type="button" variant="secondary" onClick={close}>
                 Fermer
-              </button>
+              </Button>
             </div>
           ) : (
             <form onSubmit={submit} noValidate className="space-y-4">
-              <h4 className="text-sm font-bold text-fg flex items-center gap-2">
-                <Plus className="w-4 h-4 text-accent" /> Nouvelle demande
-              </h4>
-              <div>
-                <label className="text-xs font-medium text-fg mb-1.5 block">
-                  Sujet
-                </label>
-                <input
-                  type="text"
-                  value={sujet}
-                  onChange={(e) => setSujet(e.target.value)}
-                  placeholder="Exemple : modification de l’objet social"
-                  className="w-full h-10 border border-border rounded-lg px-3 text-sm text-fg bg-bg-raised focus:border-accent focus:ring-1 focus:ring-[#7C3AED] outline-none"
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-fg mb-1.5 block">
-                  Description <span className="font-normal text-fg-subtle">(facultatif)</span>
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                  placeholder="Décrivez votre demande en détail (facultatif)…"
-                  className="w-full border border-border rounded-lg px-3 py-2.5 text-sm text-fg resize-none focus:border-accent focus:ring-1 focus:ring-[#7C3AED] outline-none"
-                />
-              </div>
-              {error && (
-                <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-                  {error}
-                </div>
-              )}
-              <div className="flex items-center gap-3">
-                <button
-                  type="submit"
-                  disabled={!sujet.trim() || submitting}
-                  className={`flex items-center gap-2 px-6 h-10 rounded-lg text-sm font-medium transition ${
-                    sujet.trim() && !submitting
-                      ? 'bg-accent text-bg-raised hover:bg-accent-hover'
-                      : 'bg-border text-fg-subtle cursor-not-allowed'
-                  }`}
-                >
-                  <Send className="w-3.5 h-3.5" /> Envoyer
-                </button>
-                <button
-                  type="button"
-                  onClick={close}
-                  className="px-4 h-10 text-sm text-fg-subtle hover:text-fg transition"
-                >
+              <TextField
+                label="Sujet"
+                value={sujet}
+                onChange={(e) => setSujet(e.target.value)}
+                placeholder="Exemple : modification de l’objet social"
+                required
+              />
+              <ZoneTexte
+                label="Description (facultatif)"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                placeholder="Décrivez votre demande en détail (facultatif)…"
+              />
+              {error && <Message ton="erreur">{error}</Message>}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="submit" icon={<Send />} loading={submitting} disabled={!sujet.trim()}>
+                  Envoyer
+                </Button>
+                <Button type="button" variant="ghost" onClick={close}>
                   Annuler
-                </button>
+                </Button>
               </div>
             </form>
           )}
-        </div>
+        </Card>
       )}
 
-      <h4 className="text-sm font-bold text-fg mb-3">
-        Historique des demandes
-      </h4>
-      {demandes.length === 0 ? (
-        <div className="text-center py-12">
-          <MessageSquare className="w-10 h-10 text-fg-subtle mx-auto mb-3" />
-          <p className="text-sm text-fg-subtle">
-            Vous n’avez pas encore envoyé de demande. Cliquez sur « Nouvelle demande » pour en adresser une à votre conseiller.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {demandes.map((dem) => {
-            const st = STATUT_PILL[dem.statut];
-            return (
-              <div
-                key={dem.id}
-                className="flex items-start gap-4 p-3 md:p-4 bg-bg-overlay rounded-lg hover:bg-bg-overlay transition border border-border"
-              >
-                <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                  {dem.statut === 'NON_TRAITEE' && (
-                    <Clock className="w-6 h-6 text-danger" />
-                  )}
-                  {dem.statut === 'EN_COURS' && (
-                    <MessageSquare className="w-6 h-6 text-accent" />
-                  )}
-                  {dem.statut === 'TRAITEE' && (
-                    <CheckCircle className="w-6 h-6 text-success" />
-                  )}
+      <Card
+        padding={false}
+        titleAs="h3"
+        title="Historique des demandes"
+        actions={
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge variant="warning">{counts.NON_TRAITEE} non traitée{counts.NON_TRAITEE > 1 ? 's' : ''}</Badge>
+            <Badge variant="info">{counts.EN_COURS} en cours</Badge>
+            <Badge variant="success">{counts.TRAITEE} traitée{counts.TRAITEE > 1 ? 's' : ''}</Badge>
+          </div>
+        }
+      >
+        {demandes.length === 0 ? (
+          <EmptyState
+            compact
+            icon={<MessageSquare />}
+            title="Vous n’avez pas encore envoyé de demande"
+            description="Cliquez sur « Nouvelle demande » pour en adresser une à votre conseiller."
+          />
+        ) : (
+          <ul className="divide-y divide-border">
+            {demandes.map((dem) => (
+              <li key={dem.id} className="px-5 py-3">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium text-fg">{dem.sujet}</p>
+                  <Badge variant={STATUT_VARIANTE[dem.statut]} dot>
+                    {STATUT_LABEL[dem.statut]}
+                  </Badge>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${st.bg} ${st.text}`}
-                    >
-                      {STATUT_LABEL[dem.statut]}
-                    </span>
-                    <span className="text-[10px] font-mono text-fg-subtle">
-                      {dem.id.slice(0, 8)}
-                    </span>
-                  </div>
-                  <h4 className="text-sm font-bold text-fg mb-0.5">
-                    {dem.sujet}
-                  </h4>
-                  {dem.description && (
-                    <p className="text-xs text-fg-subtle whitespace-pre-wrap">
-                      {dem.description}
-                    </p>
-                  )}
-                  <p className="text-[10px] text-fg-subtle mt-1">
-                    Envoyée le{' '}
-                    {new Date(dem.createdAt).toLocaleDateString('fr-FR')}
-                    {dem.traiteAt
-                      ? ` • Traitée le ${new Date(
-                          dem.traiteAt,
-                        ).toLocaleDateString('fr-FR')}`
-                      : ''}
-                  </p>
-                </div>
-                {dem.statut === 'EN_COURS' && (
-                  <div className="hidden md:flex items-center gap-1 px-3 py-1.5 bg-accent/10 rounded-full flex-shrink-0">
-                    <span className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
-                    <span className="text-[10px] font-medium text-accent">
-                      En traitement
-                    </span>
-                  </div>
+                {dem.description && (
+                  <p className="whitespace-pre-wrap text-sm text-fg-muted">{dem.description}</p>
                 )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <div className="text-center mt-6 pt-5 border-t border-border">
-        <p className="text-xs text-fg-subtle">
+                <p className="mt-1 text-xs text-fg-muted">
+                  Envoyée le {new Date(dem.createdAt).toLocaleDateString('fr-FR')}
+                  {dem.traiteAt ? ` · traitée le ${new Date(dem.traiteAt).toLocaleDateString('fr-FR')}` : ''}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="border-t border-border px-5 py-3 text-center text-xs text-fg-muted">
           {demandes.length} demande{demandes.length > 1 ? 's' : ''} au total
         </p>
-      </div>
-    </>
+      </Card>
+    </div>
   );
 }
 
@@ -891,8 +727,11 @@ function ClientDepots({
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [avis, setAvis] = useState<string | null>(null);
+  const [aSupprimer, setASupprimer] = useState<DepotSummary | null>(null);
+  const [suppression, setSuppression] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const toast = useContext(ToastContext);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -921,12 +760,12 @@ function ClientDepots({
         for (const f of list) {
           await dataroomService.uploadDepot(dossierId, f);
         }
-        setToast(
-          list.length > 1
-            ? `${list.length} fichiers déposés`
-            : 'Fichier déposé',
-        );
-        setTimeout(() => setToast(null), 3000);
+        const texte = list.length > 1 ? `${list.length} fichiers déposés` : 'Fichier déposé';
+        if (toast) toast.enregistre(texte);
+        else {
+          setAvis(texte);
+          setTimeout(() => setAvis(null), 3000);
+        }
         await reload();
       } catch (err) {
         setError(extractError(err).message);
@@ -934,26 +773,26 @@ function ClientDepots({
         setUploading(false);
       }
     },
-    [canDepot, dossierId, reload],
+    [canDepot, dossierId, reload, toast],
   );
 
   async function remove(id: string) {
+    setSuppression(true);
     try {
       await dataroomService.deleteDepot(id);
+      setASupprimer(null);
       await reload();
     } catch (err) {
+      setASupprimer(null);
       setError(extractError(err).message);
+    } finally {
+      setSuppression(false);
     }
   }
 
   return (
-    <>
-      {toast && (
-        <div className="bg-success/10 border-l-4 border-success rounded-lg p-3 mb-5 flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 text-success flex-shrink-0" />
-          <p className="text-xs text-success">{toast}</p>
-        </div>
-      )}
+    <div className="space-y-4">
+      {avis && <Message ton="succes">{avis}</Message>}
 
       {canDepot ? (
         <div
@@ -965,19 +804,15 @@ function ClientDepots({
           onDrop={(e) => {
             e.preventDefault();
             setDragOver(false);
-            if (e.dataTransfer.files?.length) uploadFiles(e.dataTransfer.files);
+            if (e.dataTransfer.files?.length) void uploadFiles(e.dataTransfer.files);
           }}
-          className={`rounded-xl border-2 border-dashed p-6 mb-6 text-center transition ${
-            dragOver
-              ? 'border-warning bg-warning/10'
-              : 'border-border bg-bg-overlay'
+          className={`rounded-xl border-2 border-dashed p-6 text-center transition-colors duration-150 ${
+            dragOver ? 'border-accent bg-accent-soft' : 'border-border-input bg-bg-raised'
           }`}
         >
-          <Upload className="w-8 h-8 text-warning mx-auto mb-2" />
-          <p className="text-sm font-medium text-fg mb-1">
-            Déposez vos fichiers ici
-          </p>
-          <p className="text-xs text-fg-subtle mb-3">
+          <Upload aria-hidden="true" className="mx-auto mb-2 h-7 w-7 text-fg-muted" />
+          <p className="mb-1 text-sm font-medium text-fg">Déposez vos fichiers ici</p>
+          <p className="mb-3 text-xs text-fg-muted">
             PDF, image ou tout autre document (10 Mo au maximum par fichier)
           </p>
           <input
@@ -986,64 +821,73 @@ function ClientDepots({
             multiple
             className="hidden"
             onChange={(e) => {
-              if (e.target.files?.length) uploadFiles(e.target.files);
+              if (e.target.files?.length) void uploadFiles(e.target.files);
               e.target.value = '';
             }}
           />
           <Button
-            variant="primary"
+            type="button"
+            variant="secondary"
+            icon={<Upload />}
             onClick={() => inputRef.current?.click()}
-            disabled={uploading}
-            className="bg-warning hover:opacity-90"
+            loading={uploading}
           >
-            {uploading ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Upload className="w-4 h-4 mr-2" />
-            )}
             {uploading ? 'Dépôt en cours…' : 'Choisir des fichiers'}
           </Button>
         </div>
       ) : (
-        <div className="bg-warning/10 border-l-4 border-warning rounded-lg p-3 mb-5 flex items-center gap-2">
-          <Lock className="w-4 h-4 text-warning flex-shrink-0" />
-          <p className="text-xs text-warning">
-            Votre cabinet n’a pas ouvert le dépôt de documents sur cet espace. Pour lui transmettre une pièce, contactez votre conseiller.
-          </p>
-        </div>
+        <Message ton="attention">
+          Votre cabinet n’a pas ouvert le dépôt de documents sur cet espace. Pour lui transmettre une pièce,
+          contactez votre conseiller.
+        </Message>
       )}
 
-      {error && (
-        <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger mb-4">
-          {error}
-        </div>
-      )}
+      {error && <Message ton="erreur">{error}</Message>}
 
-      {loading ? (
-        <div className="flex justify-center py-10">
-          <Loader2 className="h-6 w-6 animate-spin text-warning" />
-        </div>
-      ) : depots.length === 0 ? (
-        <div className="text-center py-12">
-          <Upload className="w-10 h-10 text-fg-subtle mx-auto mb-3" />
-          <p className="text-sm text-fg-subtle">
-            Vous n’avez encore rien déposé. Glissez vos fichiers dans le cadre ci-dessus, ou cliquez sur « Choisir des fichiers ».
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {depots.map((dep) => (
-            <ClientDepotRow key={dep.id} depot={dep} onDelete={remove} />
-          ))}
-        </div>
-      )}
-
-      <div className="text-center mt-6 pt-5 border-t border-border">
-        <p className="text-xs text-fg-subtle">
+      <Card padding={false} titleAs="h3" title="Vos dépôts">
+        {loading ? (
+          <div className="space-y-2 px-5 py-4" aria-busy="true" aria-label="Chargement de vos dépôts">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : depots.length === 0 ? (
+          <EmptyState
+            compact
+            icon={<Upload />}
+            title="Vous n’avez encore rien déposé"
+            description={
+              canDepot
+                ? 'Glissez vos fichiers dans le cadre ci-dessus, ou cliquez sur « Choisir des fichiers ».'
+                : 'Les pièces que vous déposerez apparaîtront ici.'
+            }
+          />
+        ) : (
+          <ul className="divide-y divide-border">
+            {depots.map((dep) => (
+              <ClientDepotRow key={dep.id} depot={dep} onDelete={() => setASupprimer(dep)} />
+            ))}
+          </ul>
+        )}
+        <p className="border-t border-border px-5 py-3 text-center text-xs text-fg-muted">
           {depots.length} dépôt{depots.length > 1 ? 's' : ''}
         </p>
-      </div>
-    </>
+      </Card>
+
+      <ConfirmDialog
+        open={aSupprimer !== null}
+        onOpenChange={(o) => {
+          if (!o) setASupprimer(null);
+        }}
+        title="Supprimer ce dépôt"
+        description={aSupprimer ? `Supprimer « ${aSupprimer.title} » ? Votre cabinet ne le verra plus.` : ''}
+        variant="danger"
+        confirmLabel="Supprimer"
+        loading={suppression}
+        onConfirm={() => {
+          if (aSupprimer) void remove(aSupprimer.id);
+        }}
+      />
+    </div>
   );
 }
 
@@ -1052,7 +896,7 @@ function ClientDepotRow({
   onDelete,
 }: {
   depot: DepotSummary;
-  onDelete: (id: string) => void;
+  onDelete: () => void;
 }) {
   const [downloading, setDownloading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -1069,47 +913,38 @@ function ClientDepotRow({
   }
 
   return (
-    <div className="flex items-center gap-4 p-3 md:p-4 bg-bg-overlay rounded-lg transition">
-      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-        <FileText className="w-6 h-6 text-warning" />
+    <li className="flex flex-wrap items-center gap-3 px-5 py-3">
+      <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-bg-overlay">
+        <FileText className="h-4 w-4 text-fg-muted" />
       </div>
-      <div className="flex-1 min-w-0">
-        <h4 className="text-sm font-bold text-fg truncate">{depot.title}</h4>
-        <p className="text-[10px] text-fg-subtle mt-0.5">
-          {formatBytes(depot.sizeBytes)} •{' '}
-          {new Date(depot.createdAt).toLocaleDateString('fr-FR')}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-fg">{depot.title}</p>
+        <p className="mt-0.5 text-xs text-fg-muted">
+          {formatBytes(depot.sizeBytes)} · {new Date(depot.createdAt).toLocaleDateString('fr-FR')}
         </p>
       </div>
-      <div className="flex items-center gap-1 flex-shrink-0">
-        {/* Voir + Telecharger : inconditionnels (c'est le fichier du client). */}
-        <button
-          type="button"
-          onClick={() => setPreviewOpen(true)}
-          className="px-3 h-8 text-xs border rounded transition flex items-center gap-1 border-border text-fg hover:border-accent bg-bg-raised"
-          title="Voir le document"
-        >
-          <Eye className="w-3.5 h-3.5" /> Voir
-        </button>
+      <div className="ml-auto flex shrink-0 items-center gap-1">
+        {/* Voir + Telecharger : inconditionnels (c'est le fichier du client), hors essai. */}
+        <Button type="button" size="sm" variant="ghost" icon={<Eye />} onClick={() => setPreviewOpen(true)} title="Voir le document">
+          Voir
+        </Button>
         {enEssai !== false ? (
-          <InfoBulle libelle="Téléchargement indisponible" texte="Téléchargement indisponible pendant l’essai gratuit : le document se consulte en aperçu, avec la mention d’évaluation. Il sera téléchargeable après la souscription d’un forfait." />
+          <InfoBulle libelle="Téléchargement indisponible" texte={ESSAI_TELECHARGEMENT} />
         ) : (
-        <button
-          type="button"
-          onClick={download}
-          disabled={downloading}
-          className="px-3 h-8 text-xs border rounded transition flex items-center gap-1 border-border text-fg hover:border-accent bg-bg-raised disabled:opacity-50"
-        >
-          <Download className="w-3.5 h-3.5" /> {downloading ? '…' : 'Télécharger'}
-        </button>
+          <Button type="button" size="sm" variant="secondary" icon={<Download />} onClick={download} loading={downloading}>
+            Télécharger
+          </Button>
         )}
-        <button
+        <Button
           type="button"
-          onClick={() => onDelete(depot.id)}
-          className="px-2 h-8 text-xs border rounded transition flex items-center gap-1 border-border text-danger hover:border-danger bg-bg-raised"
-          title="Supprimer ce dépôt" aria-label="Supprimer ce dépôt"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+          size="sm"
+          variant="ghost"
+          iconOnly
+          icon={<Trash2 className="text-danger" />}
+          onClick={onDelete}
+          title="Supprimer ce dépôt"
+          aria-label="Supprimer ce dépôt"
+        />
       </div>
       <PdfPreviewModal
         open={previewOpen}
@@ -1122,6 +957,6 @@ function ClientDepotRow({
         fetchPreview={dataroomService.previewDepot}
         fetchApercu={dataroomService.apercuDepot}
       />
-    </div>
+    </li>
   );
 }

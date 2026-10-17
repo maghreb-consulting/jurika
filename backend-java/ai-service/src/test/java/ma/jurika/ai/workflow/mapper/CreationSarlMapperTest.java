@@ -280,4 +280,137 @@ class CreationSarlMapperTest {
 
         assertThat(v).doesNotContainKey("ICE_NUMERO");
     }
+
+    // =================================================================
+    //  Lot L6b (E14) : defauts trouves en lisant les documents du parcours de creation
+    //  joue de bout en bout sur la pile (SARL a deux associes).
+    // =================================================================
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> boucle(Map<String, Object> v, String nom) {
+        return (List<Map<String, Object>>) v.get(nom);
+    }
+
+    @Test
+    @DisplayName("L6b E14 : la declaration d'immatriculation garde les associes de l'etape 6 (sans residence saisie)")
+    void declarationRcGardeLesAssocies() {
+        Map<String, Object> v = mapper.map("DECLARATION_IMMATRICULATION_RC", payload());
+
+        // Avant : la boucle ASSOCIES du catalogue (residence, etape 7) remplacait la liste par
+        // une liste VIDE quand rien n'etait saisi : la section 6 sortait sans associe.
+        assertThat(boucle(v, "ASSOCIES")).hasSize(2);
+        assertThat(boucle(v, "ASSOCIES").get(0).get("ASSOCIE_NOM")).isEqualTo("BENANI");
+        assertThat(boucle(v, "ASSOCIES").get(1).get("ASSOCIE_NOM")).isEqualTo("ALAMI");
+    }
+
+    @Test
+    @DisplayName("L6b E14 : la residence saisie a l'etape 7 complete chaque associe, sans le remplacer")
+    void residenceCompleteLesAssocies() {
+        Map<String, Object> p = payload();
+        p.put("creation", Map.of("associes", List.of(
+                Map.of("associeResidence", "r\u00e9sident"),
+                Map.of("associeResidence", "non-r\u00e9sident"))));
+
+        Map<String, Object> v = mapper.map("DECLARATION_IMMATRICULATION_RC", p);
+
+        // Avant : deux occurrences ne portant que la residence ; le moteur lisait le nom de
+        // l'associe en portee globale : le premier associe sortait deux fois, le second jamais.
+        List<Map<String, Object>> associes = boucle(v, "ASSOCIES");
+        assertThat(associes).hasSize(2);
+        assertThat(associes.get(0)).containsEntry("ASSOCIE_NOM", "BENANI")
+                .containsEntry("ASSOCIE_RESIDENCE", "r\u00e9sident");
+        assertThat(associes.get(1)).containsEntry("ASSOCIE_NOM", "ALAMI")
+                .containsEntry("ASSOCIE_RESIDENCE", "non-r\u00e9sident");
+    }
+
+    @Test
+    @DisplayName("L6b E14 : une date saisie a l'etape 7 s'imprime en jj/mm/aaaa, jamais en ISO")
+    void datesSaisiesImprimeesEnFrancais() {
+        Map<String, Object> p = payload();
+        p.put("creation", Map.of("dateDebutActivite", "2026-11-01", "bailDateEffet", "2026-10-01",
+                "bailDuree", "3", "actesEnFormation", List.of(Map.of("acteFormationDate", "2026-10-05",
+                        "acteFormationMontant", "8000"))));
+
+        // Avant : "Date de debut d'activite : 2026-11-01", "a compter du 2026-10-01".
+        assertThat(mapper.map("DECLARATION_EXISTENCE", p).get("DATE_DEBUT_ACTIVITE")).isEqualTo("01/11/2026");
+        assertThat(mapper.map("CONTRAT_BAIL", p).get("BAIL_DATE_EFFET")).isEqualTo("01/10/2026");
+        assertThat(boucle(mapper.map("ETAT_ACTES_SOCIETE_EN_FORMATION", p), "ACTES_EN_FORMATION").get(0)
+                .get("ACTE_FORMATION_DATE")).isEqualTo("05/10/2026");
+    }
+
+    @Test
+    @DisplayName("L6b E14 : une duree de bail saisie \"3 ans\" donne l'echeance (la phrase imprime la duree telle quelle)")
+    void dureeDeBailEnAnnees() {
+        Map<String, Object> p = payload();
+        p.put("creation", Map.of("bailDateEffet", "2026-10-01", "bailDuree", "3 ans"));
+
+        // Avant : "3 ans" n'etait pas un nombre : $BAIL_DATE_FIN restait vide et le bail etait
+        // refuse ("Bail date fin"), donnee qu'aucun champ ne permet de saisir.
+        assertThat(mapper.map("CONTRAT_BAIL", p).get("BAIL_DATE_FIN")).isEqualTo("01/10/2029");
+    }
+
+    @Test
+    @DisplayName("L6b E14 : la forme juridique coche sa case sur la declaration d'immatriculation au RC")
+    void formeJuridiqueCocheeSurLaDeclarationRc() {
+        Map<String, Object> v = mapper.map("DECLARATION_IMMATRICULATION_RC", payload());
+
+        // L'imprime pilote la case par le libelle complet ("Societe a responsabilite limitee") ;
+        // avec "SARL", aucune case n'etait cochee (deja corrige pour la declaration d'existence).
+        assertThat(v.get("FORME_JURIDIQUE")).isEqualTo("Soci\u00e9t\u00e9 \u00e0 responsabilit\u00e9 limit\u00e9e");
+    }
+
+    @Test
+    @DisplayName("L6b E14 : la piece du declarant (premier gerant) n'est pas redemandee aux formulaires")
+    void pieceDuDeclarantDeduiteDuPremierGerant() {
+        // Le declarant EST le premier gerant (art. 38 du code de commerce, deja applique a son nom
+        // et a son adresse) ; sa piece d'identite etait pourtant redemandee a l'etape 7, et la
+        // declaration d'existence, la taxe professionnelle et l'immatriculation etaient refusees
+        // sans elle ("Piece d'identite du declarant ...").
+        Map<String, Object> v = mapper.map("DECLARATION_EXISTENCE", payload());
+
+        assertThat(v.get("DECLARANT_PIECE_TYPE")).isEqualTo("CIN");
+        assertThat(v.get("DECLARANT_PIECE_NUMERO")).isEqualTo("BK188421");
+    }
+
+    @Test
+    @DisplayName("L6b E14 : une saisie de la piece du declarant a l'etape 7 l'emporte")
+    void pieceDuDeclarantSaisie() {
+        Map<String, Object> p = payload();
+        p.put("creation", Map.of("declarantPieceType", "passeport", "declarantPieceNumero", "P123"));
+
+        Map<String, Object> v = mapper.map("DECLARATION_EXISTENCE", p);
+
+        assertThat(v.get("DECLARANT_PIECE_TYPE")).isEqualTo("passeport");
+        assertThat(v.get("DECLARANT_PIECE_NUMERO")).isEqualTo("P123");
+    }
+
+    @Test
+    @DisplayName("L6b E14 : la qualite d'une gerante s'accorde (declaration d'immatriculation au RC)")
+    @SuppressWarnings("unchecked")
+    void qualiteDeLaGeranteAccordee() {
+        Map<String, Object> p = payload();
+        Map<String, Object> gerante = new LinkedHashMap<>((Map<String, Object>) ((List<?>) p.get("gerants")).get(0));
+        gerante.put("civilite", "Mme");
+        gerante.put("isStatutaire", true);
+        p.put("gerants", List.of(gerante));
+
+        Map<String, Object> v = mapper.map("DECLARATION_IMMATRICULATION_RC", p);
+
+        // Avant : "Qualite : gerant statutaire" sous "Mme Salma Tazi".
+        assertThat(boucle(v, "GERANTS").get(0).get("GERANT_QUALITE")).isEqualTo("g\u00e9rante statutaire");
+    }
+
+    @Test
+    @DisplayName("L6b E14 : un capital relu en decimal (100000.0) se lit comme 100000, jamais ecarte en silence")
+    @SuppressWarnings("unchecked")
+    void capitalDecimalLu() {
+        Map<String, Object> entier = mapper.map("STATUTS_SARL", payload());
+        Map<String, Object> p = payload();
+        ((Map<String, Object>) p.get("societe")).put("capitalChiffres", "100000.0");
+
+        Map<String, Object> v = mapper.map("STATUTS_SARL", p);
+
+        assertThat(v.get("CAPITAL_CHIFFRES")).isNotNull().isEqualTo(entier.get("CAPITAL_CHIFFRES"));
+        assertThat(String.valueOf(v.get("CAPITAL_CHIFFRES"))).isNotBlank();
+    }
 }

@@ -1,6 +1,8 @@
 package ma.jurika.dashboard.application;
 
+import ma.jurika.common.audit.AuditActionLabels;
 import ma.jurika.common.security.TenantContext;
+import ma.jurika.dashboard.api.dto.TracabiliteDtos.ActionTracee;
 import ma.jurika.dashboard.api.dto.TracabiliteDtos.TracabiliteEntry;
 import ma.jurika.dashboard.api.dto.TracabiliteDtos.TracabilitePage;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -116,6 +118,25 @@ public class TracabiliteQueryService {
                 pageArgs.toArray());
 
         return new TracabilitePage(items, total == null ? 0 : total, limit, offset);
+    }
+
+    /**
+     * Lot L6b (E9) : actions REELLEMENT presentes dans le journal du workspace, avec leur
+     * libelle, pour la liste du filtre "Action". Avant, l'ecran tenait sa propre liste de
+     * codes, dont plusieurs n'etaient plus jamais ecrits (filtre qui ne trouvait rien).
+     * Tri par libelle (ordre de lecture de l'utilisateur).
+     */
+    @Transactional(readOnly = true)
+    public List<ActionTracee> actionsPresentes() {
+        UUID workspaceId = TenantContext.get();
+        List<String> codes = jdbc.queryForList(
+                "SELECT DISTINCT action FROM audit_log WHERE workspace_id = ? AND action IS NOT NULL",
+                String.class, workspaceId);
+        return codes.stream()
+                .map(c -> new ActionTracee(c, AuditActionLabels.label(c)))
+                .sorted(java.util.Comparator.comparing(ActionTracee::label, java.text.Collator.getInstance(java.util.Locale.FRENCH))
+                        .thenComparing(ActionTracee::code))
+                .toList();
     }
 
     private static boolean notBlank(String s) {

@@ -60,4 +60,14 @@ describe('workflowFilename — helpers', () => {
       'PV — Irrégularité de convocation',
     );
   });
+
+  // Lot L6b (E15, parcours " nomination du gerant ") : le PV d'une assemblee ORDINAIRE
+  // s'appelait " PV - Modification (AGE) " ; celui de l'associe unique aussi.
+  it('le nom du PV de modification suit la nature de l’assemblée', () => {
+    expect(docTypeForTemplateCode('PV_MODIFICATION_SARL', 'ordinaire')).toBe('PV — Modification (AGO)');
+    expect(docTypeForTemplateCode('PV_MODIFICATION_SARL', 'extraordinaire')).toBe('PV — Modification (AGE)');
+    expect(docTypeForTemplateCode('PV_MODIFICATION_SARL_AU', 'ordinaire')).toBe(
+      'PV — Décisions de l’associé unique',
+    );
+  });
 });

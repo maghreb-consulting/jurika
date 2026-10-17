@@ -43,16 +43,16 @@ interface MergedTemplate extends TemplateInfo {
 
 function originBadgeClasses(origin: string, deprecated: boolean): string {
   if (deprecated) {
-    return 'bg-amber-100 text-amber-800 border border-amber-300';
+    return 'bg-warning-soft text-warning border border-warning/40';
   }
   const normalized = (origin ?? '').toLowerCase();
   if (normalized === 'directeur' || normalized === 'director') {
-    return 'bg-emerald-100 text-emerald-800 border border-emerald-300';
+    return 'bg-success-soft text-success border border-success/40';
   }
   if (normalized === 'herite' || normalized === 'hérité' || normalized === 'inherited') {
-    return 'bg-amber-100 text-amber-800 border border-amber-300';
+    return 'bg-warning-soft text-warning border border-warning/40';
   }
-  return 'bg-sky-100 text-sky-800 border border-sky-300';
+  return 'bg-info-soft text-info border border-info/30';
 }
 
 function triggerBrowserDownload(blob: Blob, filename: string): void {
@@ -288,7 +288,7 @@ export function GenerateDocumentPanel({
 
             {error ? (
               <div
-                className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-2 text-xs text-danger"
+                className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-soft p-2 text-xs text-danger"
                 role="alert"
               >
                 <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />

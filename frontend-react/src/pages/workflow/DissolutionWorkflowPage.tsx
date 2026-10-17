@@ -14,11 +14,11 @@
  */
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, AlertTriangle, CheckCircle, Megaphone, Paperclip, Sparkles } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Megaphone, Paperclip, Sparkles } from 'lucide-react';
 import { InfoBulle } from '../../components/ui/Aide';
 import { ValeurProposee } from '../../components/workflow/ValeurProposee';
 import { Button } from '../../components/ui/Button';
-import { TextField } from '../../components/ui/TextField';
+import { TextField, ZoneTexte } from '../../components/ui/TextField';
 import { WorkflowShell } from '../../components/workflow/WorkflowShell';
 import type { RoadmapStep } from '../../components/workflow/WorkflowRoadmap';
 import { ticketService } from '../../services/ticket.service';
@@ -64,6 +64,9 @@ import {
 import type { TemplateInfo } from '../../services/workflowDocumentService';
 import type { AssocieInput, GerantInput } from '../../components/workflow/SeanceForm';
 import type { DossierBrief } from '../../types/dataroom';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
+import { BandeauFinParcours } from '../../components/workflow/BandeauFinParcours';
+import { Select } from '../../components/ui/Select';
 
 const STEPS: RoadmapStep[] = etapesRoadmap(ETAPES_DISSOLUTION);
 
@@ -453,9 +456,9 @@ function DissolutionWorkflowPageBody() {
   if (loading) return <Loader />;
   if (!ticket || !progress)
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+      <ErreurParcours>
         {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
-      </div>
+      </ErreurParcours>
     );
 
   const step = viewStep;
@@ -622,7 +625,7 @@ function DissolutionWorkflowPageBody() {
             </div>
 
             {dossier && (
-              <div className="rounded-lg border border-indigo-200 bg-accent/10 p-3 text-xs text-fg-muted" role="status">
+              <div className="rounded-lg border border-info/30 bg-info-soft p-3 text-xs text-fg-muted" role="status">
                 Organe compétent : <strong>{decisionLabel}</strong>. Actes produits : procès-verbal
                 de dissolution anticipée{isAU ? ' (SARL à associé unique)' : ' (SARL)'} et annonce
                 légale de dissolution.
@@ -654,21 +657,18 @@ function DissolutionWorkflowPageBody() {
                   texte="Le procès-verbal ne rédige pas la même résolution selon la cause : décision anticipée des associés, capitaux propres devenus inférieurs au quart du capital (article 86 de la loi 5-96) ou arrivée du terme statutaire. Le motif détaillé ci-dessous complète ce choix."
                 />
               </label>
-              <select
+              <Select
                 id="dissolution-nature"
                 value={nature}
                 onChange={(e) => setNature(e.target.value)}
                 aria-invalid={!!showErr('nature')}
-                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
+                error={showErr('nature') || undefined}
               >
                 <option value="">Choisir…</option>
                 {NATURES_DISSOLUTION.map((n) => (
                   <option key={n.value} value={n.value}>{n.label}</option>
                 ))}
-              </select>
-              {showErr('nature') && (
-                <p className="mt-1 text-xs text-danger" role="alert">{showErr('nature')}</p>
-              )}
+              </Select>
             </div>
 
             {nature === 'terme_statutaire' && (
@@ -717,21 +717,16 @@ function DissolutionWorkflowPageBody() {
               >
                 Motif de la dissolution *
               </label>
-              <textarea
+              <ZoneTexte
                 id="dissolution-motif"
                 rows={4}
                 value={motif}
                 onChange={(e) => setMotif(e.target.value)}
                 onBlur={() => setRevealErrors(true)}
                 placeholder="Cessation d’activité, mésentente entre associés, perte d’agrément…"
-                className={`w-full rounded-lg border bg-bg-raised px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-                  showErr('motif')
-                    ? 'border-danger focus:border-danger focus:ring-danger/30'
-                    : 'border-border-hi focus:border-indigo-500 focus:ring-indigo-200'
-                }`}
                 aria-invalid={!!showErr('motif')}
               />
-              <p className={`mt-1 text-xs ${motif.trim().length < MOTIF_MIN_LENGTH ? 'text-danger' : 'text-emerald-600'}`}>
+              <p className={`mt-1 text-xs ${motif.trim().length < MOTIF_MIN_LENGTH ? 'text-danger' : 'text-success'}`}>
                 {motif.trim().length} / {MOTIF_MIN_LENGTH} caractères minimum
                 {motif.trim().length >= MOTIF_MIN_LENGTH && ' ✓'}
               </p>
@@ -786,19 +781,16 @@ function DissolutionWorkflowPageBody() {
                   texte="C’est l’adresse où la correspondance est adressée et où les actes de la liquidation sont notifiés ; l’avis légal la publie. Elle peut être le siège social ou une autre adresse."
                 />
               </label>
-              <select
+              <Select
                 id="dissolution-siege-identique"
                 value={siegeIdentique}
                 onChange={(e) => setSiegeIdentique(e.target.value)}
-                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
+                error={showErr('siegeIdentique') || undefined}
               >
                 <option value="">Choisir…</option>
                 <option value="oui">Au siège social</option>
                 <option value="non">À une autre adresse</option>
-              </select>
-              {showErr('siegeIdentique') && (
-                <p className="mt-1 text-xs text-danger" role="alert">{showErr('siegeIdentique')}</p>
-              )}
+              </Select>
             </div>
             {siegeIdentique === 'non' && (
               <TextField
@@ -814,7 +806,7 @@ function DissolutionWorkflowPageBody() {
 
             <section className="space-y-3 rounded-xl border border-border bg-bg-raised p-4" data-testid="dissolution-convocation">
               <div className="flex items-center gap-2">
-                <Megaphone className="h-4 w-4 text-accent" />
+                <Megaphone className="h-4 w-4 text-fg-muted" />
                 <h4 className="text-sm font-semibold text-fg">Convocation (facultative)</h4>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
@@ -846,7 +838,7 @@ function DissolutionWorkflowPageBody() {
                 <div
                   role="alert"
                   data-testid="dissolution-convocation-16j-error"
-                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-2 text-xs text-danger"
+                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-soft p-2 text-xs text-danger"
                 >
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                   <span>{convocationError}</span>
@@ -887,7 +879,7 @@ function DissolutionWorkflowPageBody() {
           <div className="space-y-4" data-testid="dissolution-step2">
             <header>
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-violet-600" />
+                <Sparkles className="h-5 w-5 text-info" />
                 <h2 className="text-lg font-semibold text-fg">Étape 2 — Génération des actes</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -905,6 +897,9 @@ function DissolutionWorkflowPageBody() {
               formeJuridique={isAU ? 'SARL_AU' : 'SARL'}
               societe={societeInput}
               defaultDate={dateAGE}
+              defaultConvocation={
+                convocationDate ? { date: convocationDate, heure: convocationHeure || undefined } : undefined
+              }
               motif={motif}
               nature={nature}
               operation={operationInput}
@@ -965,6 +960,7 @@ function DissolutionWorkflowPageBody() {
                 hideSeanceDate
                 hideConvDate
                 initialAssocies={bdAssocies}
+                initialOrdreDuJour={ORDRE_DU_JOUR_DISSOLUTION}
                 initialGerants={bdGerants}
               />
             )}
@@ -1000,7 +996,7 @@ function DissolutionWorkflowPageBody() {
           <div className="space-y-4" data-testid="dissolution-step3-pieces">
             <header>
               <div className="flex items-center gap-2">
-                <Paperclip className="h-5 w-5 text-accent" />
+                <Paperclip className="h-5 w-5 text-fg-muted" />
                 <h2 className="text-lg font-semibold text-fg">Étape 3 — Pièces jointes (facultative)</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -1034,14 +1030,10 @@ function DissolutionWorkflowPageBody() {
 
         {step === 4 && (
           <div className="space-y-4" data-testid="dissolution-synthese">
-            <div className="rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 p-6 text-bg-raised">
-              <CheckCircle className="mb-2 h-8 w-8" />
-              <h2 className="text-2xl font-bold">Dissolution finalisée</h2>
-              <p className="text-sm text-rose-100">
+            <BandeauFinParcours titre="Dissolution finalisée">
                 Le procès-verbal de dissolution et l’annonce légale ont été produits, validés et
                 déposés dans la Data Room. La société est désormais <strong>dissoute</strong>.
-              </p>
-            </div>
+              </BandeauFinParcours>
 
             <div className="rounded-xl border border-border bg-bg-raised p-4" data-testid="synthese-societe">
               <p className="mb-3 text-sm font-semibold text-fg">Société et décision</p>
@@ -1154,9 +1146,5 @@ function DissolutionWorkflowPageBody() {
 }
 
 function Loader() {
-  return (
-    <div className="flex h-64 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-    </div>
-  );
+  return <SqueletteParcours />;
 }

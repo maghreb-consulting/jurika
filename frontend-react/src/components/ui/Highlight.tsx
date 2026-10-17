@@ -55,7 +55,7 @@ export function Highlight({ text, query, className }: HighlightProps) {
         p.match ? (
           <mark
             key={i}
-            className="rounded bg-amber-100 px-0.5 text-amber-900"
+            className="rounded bg-warning-soft px-0.5 text-fg"
           >
             {p.text}
           </mark>

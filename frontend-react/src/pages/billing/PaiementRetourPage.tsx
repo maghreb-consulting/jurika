@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { billingService } from '../../services/billing.service';
+import { PageAccueil, TitreAccueil } from '../../components/auth/PageAccueil';
 import { TexteAide } from '../../components/ui/Aide';
+import { Lien } from '../../components/ui/Lien';
+import { Message } from '../../components/ui/Message';
 import { formatMadCents, type PaiementVue } from '../../types/billing';
 
 /** Intervalle d'interrogation du paiement et nombre maximal d'essais (2 minutes). */
@@ -38,64 +40,55 @@ export function PaiementRetourPage() {
   const statut = paiement?.statut ?? 'PENDING';
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5 p-6" data-testid="paiement-retour">
-      <h1 className="font-heading text-2xl font-semibold text-fg">Suivi du paiement</h1>
-      <TexteAide cle="paiement-retour" titre="Pourquoi attendre ?">
-        <p>
-          Le paiement par carte n’est acquis qu’à la confirmation envoyée par le CMI à JURIKA, pas au retour sur
-          cette page. Cette confirmation arrive en général en quelques secondes ; l’écran se met à jour seul.
-          Ensuite : votre abonnement est activé et la facture apparaît dans Facturation.
-        </p>
-      </TexteAide>
+    <PageAccueil titre="Suivi du paiement" largeur="normale">
+      <div className="space-y-5" data-testid="paiement-retour">
+        <TitreAccueil titre="Suivi du paiement" centre={false} />
+        <TexteAide cle="paiement-retour" titre="Pourquoi attendre ?">
+          <p>
+            Le paiement par carte n’est acquis qu’à la confirmation envoyée par le CMI à JURIKA, pas au retour sur
+            cette page. Cette confirmation arrive en général en quelques secondes ; l’écran se met à jour seul.
+            Ensuite : votre abonnement est activé et la facture apparaît dans Facturation.
+          </p>
+        </TexteAide>
 
-      {!id && (
-        <p className="rounded-lg border border-border bg-bg-overlay p-4 text-sm text-fg-muted">
-          Paiement non identifié. Consultez la liste de vos paiements dans Facturation.
-        </p>
-      )}
+        {!id && <Message ton="info">Paiement non identifié. Consultez la liste de vos paiements dans Facturation.</Message>}
 
-      {id > 0 && statut === 'PENDING' && (
-        <div className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm" data-testid="paiement-retour-attente">
-          <Clock className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" aria-hidden="true" />
-          <div>
-            <p className="font-medium text-fg">En attente de la confirmation du CMI.</p>
-            <p className="mt-1 text-fg-muted">
+        {id > 0 && statut === 'PENDING' && (
+          <div data-testid="paiement-retour-attente">
+            <Message ton="attention" titre="En attente de la confirmation du CMI.">
               {issueNavigateur === 'echec'
                 ? 'Le CMI a signalé un échec sur la page de paiement ; JURIKA attend sa confirmation pour clore ce paiement.'
                 : 'Votre paiement n’est pas encore confirmé par le CMI.'}
               {essais >= ESSAIS_MAX && ' La confirmation tarde : revenez plus tard dans Facturation ; aucun paiement n’est compté deux fois.'}
-            </p>
+            </Message>
           </div>
-        </div>
-      )}
+        )}
 
-      {statut === 'COMPLETED' && paiement && (
-        <div className="flex items-start gap-3 rounded-lg border border-success/40 bg-success/10 p-4 text-sm" data-testid="paiement-retour-acquis">
-          <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-success" aria-hidden="true" />
-          <div>
-            <p className="font-medium text-fg">Paiement acquis, confirmé par le CMI.</p>
-            <p className="mt-1 text-fg-muted">
+        {statut === 'COMPLETED' && paiement && (
+          <div data-testid="paiement-retour-acquis">
+            <Message ton="succes" titre="Paiement acquis, confirmé par le CMI.">
               {paiement.montants ? `${formatMadCents(paiement.montants.ttcCentimes)} TTC. ` : ''}
               {paiement.factureNumero
                 ? `Facture ${paiement.factureNumero} disponible dans Facturation.`
                 : 'La facture sera disponible dans Facturation dès qu’elle sera émise.'}
-            </p>
+            </Message>
           </div>
-        </div>
-      )}
+        )}
 
-      {(statut === 'FAILED' || statut === 'CANCELLED') && (
-        <div className="flex items-start gap-3 rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm" data-testid="paiement-retour-refuse">
-          <XCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-danger" aria-hidden="true" />
-          <p className="text-fg">Paiement refusé : aucun montant n’est dû. Vous pouvez réessayer, ou payer par virement, chèque ou espèces.</p>
-        </div>
-      )}
+        {(statut === 'FAILED' || statut === 'CANCELLED') && (
+          <div data-testid="paiement-retour-refuse">
+            <Message ton="erreur" titre="Paiement refusé">
+              Aucun montant n’est dû. Vous pouvez réessayer, ou payer par virement, chèque ou espèces.
+            </Message>
+          </div>
+        )}
 
-      {erreur && <p className="text-xs text-fg-subtle">{erreur}</p>}
+        {erreur && <p className="text-xs text-fg-muted">{erreur}</p>}
 
-      <Link to="/app/billing" className="inline-block rounded-lg border border-border px-4 py-2 text-sm font-medium text-fg hover:bg-bg-overlay">
-        Aller à la facturation
-      </Link>
-    </div>
+        <Lien to="/app/billing" commeBouton={{ variant: statut === 'PENDING' && id > 0 ? 'secondary' : 'primary' }}>
+          Aller à la facturation
+        </Lien>
+      </div>
+    </PageAccueil>
   );
 }

@@ -32,7 +32,16 @@ public interface ContratAbonnementPort {
      *
      * @return identifiant des conditions particulieres creees.
      */
-    UUID ouvrirConditionsParticulieres(ConditionsParticulieres conditions);
+    default UUID ouvrirConditionsParticulieres(ConditionsParticulieres conditions) {
+        return ouvrirConditionsParticulieres(conditions, null);
+    }
+
+    /**
+     * Meme chose, avec le mode de paiement imprime au contrat (CARTE, VIREMENT, CHEQUE, ESPECES ;
+     * null : non precise). Lot L6b (E16) : des conditions ouvertes par un paiement acquis portent le
+     * mode de ce paiement, connu ; sans lui, le contrat imprimait "[non renseigne : mode de paiement]".
+     */
+    UUID ouvrirConditionsParticulieres(ConditionsParticulieres conditions, String modePaiement);
 
     /** Vrai si le cabinet a un contrat en attente d'acceptation (porte d'entree de RG-CTR-03). */
     boolean acceptationEnAttente(UUID workspaceId);

@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../../../components/ui/Toast';
 
 /** Lot L7 (E6, RG-CTR-03) : etat des contrats et activation d'un abonnement par le super-admin. */
@@ -43,7 +44,7 @@ describe('ContratsAdminPage', () => {
   });
 
   it('affiche l’état du contrat de chaque cabinet et l’aide', async () => {
-    render(<ToastProvider><ContratsAdminPage /></ToastProvider>);
+    render(<MemoryRouter><ToastProvider><ContratsAdminPage /></ToastProvider></MemoryRouter>);
     const ligne = (await screen.findByText('Cabinet Atlas')).closest('tr') as HTMLElement;
     expect(within(ligne).getByText('Aucun contrat')).toBeInTheDocument();
     expect(screen.getByRole('note', { name: 'Activer un abonnement et suivre les contrats' })).toBeInTheDocument();
@@ -63,14 +64,14 @@ describe('ContratsAdminPage', () => {
         derniereReponse: { id: 'r1', conditionsId: 'cp2', versionCode: '2', reponse: 'REFUSEE', acceptationId: null,
           signataireCompte: 'sup@rif.ma', reponduLeCasablanca: '2026-11-21 09:00:00', adresseIp: '1.2.3.4' } },
     ]);
-    render(<ToastProvider><ContratsAdminPage /></ToastProvider>);
+    render(<MemoryRouter><ToastProvider><ContratsAdminPage /></ToastProvider></MemoryRouter>);
     expect(await screen.findByTestId('sans-reponse-ws1')).toHaveTextContent('Réponse attendue à la version 2');
     expect(screen.getByTestId('reponse-ws2')).toHaveTextContent(
       'Version 2 refusée le 21 novembre 2026 à 09:00 (heure de Casablanca) — résiliation à l’échéance');
   });
 
   it('saisit les conditions particulières : en attente d’acceptation du superviseur', async () => {
-    render(<ToastProvider><ContratsAdminPage /></ToastProvider>);
+    render(<MemoryRouter><ToastProvider><ContratsAdminPage /></ToastProvider></MemoryRouter>);
     fireEvent.click(await screen.findByRole('button', { name: 'Saisir des conditions' }));
     fireEvent.change(screen.getByLabelText('Forfait *'), { target: { value: 'PROFESSIONNEL' } });
     expect(screen.getByLabelText('Prix HT de l’échéance (DH) *')).toHaveValue('7500');
@@ -85,7 +86,7 @@ describe('ContratsAdminPage', () => {
   });
 
   it('forfait Sur Devis : aucun prix proposé, il faut saisir celui du devis', async () => {
-    render(<ToastProvider><ContratsAdminPage /></ToastProvider>);
+    render(<MemoryRouter><ToastProvider><ContratsAdminPage /></ToastProvider></MemoryRouter>);
     fireEvent.click(await screen.findByRole('button', { name: 'Saisir des conditions' }));
     fireEvent.change(screen.getByLabelText('Forfait *'), { target: { value: 'SUR_DEVIS' } });
     expect(screen.getByLabelText('Prix HT de l’échéance (DH) *')).toHaveValue('');

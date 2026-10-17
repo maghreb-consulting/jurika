@@ -1,0 +1,153 @@
+import '@testing-library/jest-dom/vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+
+/**
+ * Lot L6b (E6) : l'espace du client reste simple, sur la coquille commune.
+ *  - un seul titre (la societe), " Faire une demande " en action principale ;
+ *  - pendant l'essai gratuit : aucun bouton de telechargement (apercu seulement, RG-ESS-05) ;
+ *  - hors essai, sans permission de telecharger : pas de bouton refuse par le serveur ;
+ *  - les demandes ne montrent aucun identifiant tronque.
+ */
+
+const svc = {
+  listDossiers: vi.fn(),
+  getMyPermissions: vi.fn(),
+  getJuridique: vi.fn(),
+  listDemandesByDossier: vi.fn(),
+  createDemande: vi.fn(),
+};
+vi.mock('../../../services/dataroom.service', () => ({
+  dataroomService: new Proxy({}, {
+    get: (_t, p: string) => (...a: unknown[]) => {
+      const f = (svc as Record<string, (...x: unknown[]) => unknown>)[p];
+      return f ? f(...a) : Promise.resolve([]);
+    },
+  }),
+}));
+vi.mock('../../../lib/useDataroomSocket', () => ({ useDataroomSocket: () => undefined }));
+let enEssai: boolean | null = false;
+vi.mock('../../../store/essaiStore', () => ({ useEnEssai: () => enEssai }));
+
+import { useAuthStore } from '../../../store/authStore';
+import { DataroomPage } from '../DataroomPage';
+
+const doc = {
+  id: 'doc1', dossierId: 'd1', ticketId: 't1', documentType: 'STATUTS', title: 'Statuts de la société', version: 2,
+  current: true, filename: 'statuts.pdf', contentType: 'application/pdf', sizeBytes: 10, createdAt: '2026-09-01', replacedAt: null,
+};
+
+function afficher() {
+  return render(
+    <MemoryRouter initialEntries={['/data-rooms']}>
+      <DataroomPage />
+    </MemoryRouter>,
+  );
+}
+
+beforeEach(() => {
+  window.localStorage.clear();
+  Object.values(svc).forEach((f) => f.mockReset());
+  enEssai = false;
+  useAuthStore.setState({
+    user: { userId: 'c1', workspaceId: 'w1', email: 'client@x.ma', role: 'CLIENT' },
+    isAuthenticated: true,
+  } as never);
+  svc.listDossiers.mockResolvedValue([{ id: 'd1', raisonSociale: 'ATLAS SARL', formeJuridique: 'SARL', ice: null, ville: null, statut: 'ACTIVE' }]);
+  svc.getMyPermissions.mockResolvedValue({ permConsultation: true, permDownload: true, permPrint: true, permDepot: true, permDemandes: true });
+  svc.getJuridique.mockResolvedValue({ dossierId: 'd1', raisonSociale: 'ATLAS SARL', documentsEnVigueur: [doc], dossiersParTicket: [], historiqueOperations: [] });
+  svc.listDemandesByDossier.mockResolvedValue([
+    { id: 'dem-1234-5678-9abc', dossierId: 'd1', sujet: 'Transfert du siège', description: null, statut: 'EN_COURS', createdAt: '2026-10-01T10:00:00Z', traiteAt: null },
+  ]);
+  svc.createDemande.mockResolvedValue(undefined);
+});
+
+describe('Espace du client', () => {
+  it('titre de la societe, documents en derniere version, telechargement permis', async () => {
+    afficher();
+    expect(await screen.findByRole('heading', { level: 1, name: 'ATLAS SARL' })).toBeInTheDocument();
+    expect(screen.getByText('Statuts de la société')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Télécharger' })).toBeInTheDocument();
+    expect(screen.getByRole('note', { name: 'Votre espace documentaire' })).toBeInTheDocument();
+    expect(screen.getByTestId('lien-requetes-cabinet')).toHaveAttribute('href', '/mes-requetes');
+  }, 15000);
+
+  it('pendant l essai : apercu seulement, aucun bouton de telechargement', async () => {
+    enEssai = true;
+    afficher();
+    expect(await screen.findByText('Statuts de la société')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Voir' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Télécharger' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Téléchargement indisponible' })).toBeInTheDocument();
+    expect(screen.getByText(/Télécharger \(indisponible pendant l’essai gratuit\)/)).toBeInTheDocument();
+  }, 15000);
+
+  it('sans permission de telecharger : pas de bouton que le serveur refuserait', async () => {
+    svc.getMyPermissions.mockResolvedValue({ permConsultation: true, permDownload: false, permPrint: false, permDepot: false, permDemandes: true });
+    afficher();
+    expect(await screen.findByText('Statuts de la société')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Télécharger' })).not.toBeInTheDocument();
+    expect(screen.getByText(/Télécharger \(non autorisé\)/)).toBeInTheDocument();
+  }, 15000);
+
+  it('« Faire une demande » ouvre le formulaire ; l historique ne montre aucun identifiant', async () => {
+    afficher();
+    fireEvent.click(await screen.findByRole('button', { name: 'Faire une demande' }));
+    const historique = await screen.findByRole('heading', { name: 'Historique des demandes' });
+    expect(historique).toBeInTheDocument();
+    expect(screen.getByText('Transfert du siège')).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent('dem-1234');
+
+    fireEvent.change(screen.getByLabelText('Sujet'), { target: { value: 'Augmentation de capital' } });
+    const formulaire = screen.getByLabelText('Sujet').closest('form') as HTMLElement;
+    fireEvent.click(within(formulaire).getByRole('button', { name: 'Envoyer' }));
+    await waitFor(() => expect(svc.createDemande).toHaveBeenCalledWith(
+      expect.objectContaining({ dossierId: 'd1', sujet: 'Augmentation de capital' }),
+    ));
+    expect(await screen.findByText('Demande envoyée')).toBeInTheDocument();
+  }, 15000);
+
+  // Lot L6b (E16, parcours) : le rechargement qui suit l'envoi effacait la confirmation (tout
+  // l'ecran passait par le squelette de chargement, puis l'onglet se rouvrait a neuf).
+  it('apres l envoi depuis l onglet, la confirmation reste affichee', async () => {
+    // Un serveur reel repond apres un delai : le rechargement est visible a l'ecran.
+    const dossiers = [{ id: 'd1', raisonSociale: 'ATLAS SARL', formeJuridique: 'SARL', ice: null, ville: null, statut: 'ACTIVE' }];
+    svc.listDossiers.mockImplementation(() => new Promise((r) => setTimeout(() => r(dossiers), 30)));
+    afficher();
+    expect(await screen.findByText('Statuts de la société')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /Demandes du client/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Nouvelle demande' }));
+    fireEvent.change(screen.getByLabelText('Sujet'), { target: { value: 'Augmentation de capital' } });
+    const formulaire = screen.getByLabelText('Sujet').closest('form') as HTMLElement;
+    fireEvent.click(within(formulaire).getByRole('button', { name: 'Envoyer' }));
+    await waitFor(() => expect(svc.listDemandesByDossier).toHaveBeenCalledTimes(2));
+    await new Promise((r) => setTimeout(r, 100));
+    expect(screen.getByText('Demande envoyée')).toBeInTheDocument();
+  }, 15000);
+
+  // Lot L6b (E16, parcours des permissions du client) : la permission "Envoyer des demandes"
+  // etait ignoree par l'ecran : bouton et formulaire offerts, puis refus 403 du serveur.
+  it('sans permission d envoyer des demandes : ni bouton ni formulaire, l ecran le dit, l historique reste', async () => {
+    svc.getMyPermissions.mockResolvedValue({ permConsultation: true, permDownload: true, permPrint: true, permDepot: true, permDemandes: false });
+    afficher();
+    expect(await screen.findByText('Statuts de la société')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Faire une demande' })).not.toBeInTheDocument();
+    expect(screen.getByText(/Envoyer des demandes \(non autorisé\)/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /Demandes du client/ }));
+    expect(await screen.findByText(/n’a pas ouvert l’envoi de demandes/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Nouvelle demande' })).not.toBeInTheDocument();
+    expect(screen.getByText('Transfert du siège')).toBeInTheDocument();
+    expect(svc.createDemande).not.toHaveBeenCalled();
+  }, 15000);
+
+  // Meme defaut pour la consultation : le serveur refuse (403), l'ecran disait "Aucun document".
+  it('sans permission de consulter : l ecran le dit au lieu de "Aucun document"', async () => {
+    svc.getMyPermissions.mockResolvedValue({ permConsultation: false, permDownload: false, permPrint: false, permDepot: true, permDemandes: true });
+    svc.getJuridique.mockRejectedValue(new Error('403'));
+    afficher();
+    expect(await screen.findByText(/n’a pas ouvert la consultation des documents/)).toBeInTheDocument();
+    expect(screen.queryByText('Aucun document juridique pour le moment')).not.toBeInTheDocument();
+    expect(screen.getByText(/Visualiser \(non autorisé\)/)).toBeInTheDocument();
+  }, 15000);
+});

@@ -1,4 +1,6 @@
 import { Check, FileText, Sparkles, X } from 'lucide-react';
+import { Button } from '../ui/Button';
+import { libelleSourceLecture } from './sourceLecture';
 
 /**
  * Panneau de suggestions OCR — composant generique reutilisable par toutes
@@ -77,12 +79,12 @@ export function OcrSuggestionsPanel({
 }: OcrSuggestionsPanelProps) {
   if (loading) {
     return (
-      <div className="rounded-xl border-2 border-indigo-200 bg-indigo-50 p-4">
+      <div role="status" className="rounded-xl border border-info/30 bg-info-soft p-4">
         <div className="flex items-center gap-3">
-          <Sparkles className="h-5 w-5 animate-pulse text-indigo-600" />
+          <Sparkles className="h-5 w-5 text-info motion-safe:animate-pulse" aria-hidden="true" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-indigo-900">Extraction IA en cours…</p>
-            <p className="text-xs text-indigo-700">
+            <p className="text-sm font-semibold text-fg">Lecture automatique en cours…</p>
+            <p className="text-xs text-fg-muted">
               {filename ?? 'document'} — vous pouvez continuer la saisie manuelle pendant l’analyse.
             </p>
           </div>
@@ -94,24 +96,19 @@ export function OcrSuggestionsPanel({
   if (!suggestions || suggestions.length === 0) {
     if (manualFallback) {
       return (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+        <div className="rounded-xl border border-warning/40 bg-warning-soft p-4">
           <div className="flex items-start gap-3">
-            <FileText className="mt-0.5 h-5 w-5 text-amber-600" />
+            <FileText className="mt-0.5 h-5 w-5 text-warning" aria-hidden="true" />
             <div className="flex-1">
-              <p className="text-sm font-semibold text-amber-900">
-                Aucun champ extrait automatiquement
-              </p>
-              <p className="mt-1 text-xs text-amber-800">
+              <p className="text-sm font-semibold text-fg">Aucun champ extrait automatiquement</p>
+              <p className="mt-1 text-xs text-fg-muted">
                 Mode : {formatMode(extractionMode)}.{' '}
                 {warnings && warnings.length > 0 ? warnings[0] : 'Continuez en saisie manuelle.'}
               </p>
               {onDismiss && (
-                <button
-                  onClick={onDismiss}
-                  className="mt-2 text-xs text-amber-700 underline hover:text-amber-900"
-                >
+                <Button type="button" variant="secondary" size="sm" className="mt-2" onClick={onDismiss}>
                   Masquer
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -122,82 +119,73 @@ export function OcrSuggestionsPanel({
   }
 
   const confidencePercent = confidence != null ? Math.round(confidence * 100) : null;
-  const sourceLabel = source?.replace(/^OCR_/, '').replace(/_/g, ' ').toLowerCase() ?? 'inconnu';
+  // Lot L6b (E5, backlog L6) : la source se dit en francais, jamais par le nom du moteur.
+  const sourceLabel = libelleSourceLecture(source);
 
   return (
-    <div className="rounded-xl border-2 border-indigo-200 bg-indigo-50 p-4">
+    <section aria-label="Suggestions de la lecture automatique" className="rounded-xl border border-info/30 bg-info-soft p-4">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="flex items-start gap-2">
-          <Sparkles className="mt-0.5 h-5 w-5 text-indigo-600" />
+          <Sparkles className="mt-0.5 h-5 w-5 text-info" aria-hidden="true" />
           <div>
-            <p className="text-sm font-semibold text-indigo-900">
+            <p className="text-sm font-semibold text-fg">
               Suggestions extraites — {suggestions.length} champ
               {suggestions.length > 1 ? 's' : ''}
             </p>
-            <p className="text-xs text-indigo-700">
+            <p className="text-xs text-fg-muted">
               {filename ? `${filename} · ` : ''}
               {formatMode(extractionMode)}
               {confidencePercent != null && ` · confiance ${confidencePercent}%`}
-              {sourceLabel && ` · source ${sourceLabel}`}
+              {sourceLabel && ` · source : ${sourceLabel}`}
             </p>
           </div>
         </div>
         {onDismiss && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
+            iconOnly
+            icon={<X />}
             onClick={onDismiss}
-            className="rounded p-1 text-indigo-600 hover:bg-indigo-100"
             aria-label="Fermer les suggestions"
             title="Fermer (les valeurs déjà appliquées restent)"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          />
         )}
       </div>
 
       {warnings && warnings.length > 0 && (
-        <ul className="mb-3 ml-2 list-disc text-xs text-amber-800">
+        <ul className="mb-3 ml-5 list-disc text-xs text-fg">
           {warnings.map((w, i) => (
             <li key={i}>{w}</li>
           ))}
         </ul>
       )}
 
-      <div className="space-y-2">
+      <ul className="space-y-2">
         {suggestions.map((s) => (
-          <div
-            key={s.field}
-            className="flex items-center gap-2 rounded-lg border border-indigo-100 bg-bg-raised px-3 py-2"
-          >
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-indigo-900">{s.label}</p>
+          <li key={s.field} className="flex items-center gap-2 rounded-lg border border-border bg-bg-raised px-3 py-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-fg-muted">{s.label}</p>
               <p className="truncate text-sm text-fg" title={s.value}>
                 {s.value}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => onApplyOne(s.field, s.value)}
-              className="flex h-8 items-center gap-1 rounded-md border border-indigo-300 bg-indigo-100 px-2.5 text-xs font-medium text-indigo-800 hover:bg-indigo-200"
-            >
-              <Check className="h-3.5 w-3.5" /> Appliquer
-            </button>
-          </div>
+            <Button type="button" variant="secondary" size="sm" icon={<Check />} onClick={() => onApplyOne(s.field, s.value)}>
+              Appliquer
+            </Button>
+          </li>
         ))}
-      </div>
+      </ul>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-indigo-200 pt-3">
-        <p className="text-xs text-indigo-700">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-info/30 pt-3">
+        <p className="text-xs text-fg-muted">
           La lecture automatique ne remplit jamais un champ déjà saisi. Choisissez champ par champ.
         </p>
-        <button
-          type="button"
-          onClick={onApplyAllEmpty}
-          className="flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-bg-raised hover:bg-indigo-700"
-        >
-          <Check className="h-3.5 w-3.5" /> Appliquer aux champs vides uniquement
-        </button>
+        <Button type="button" variant="secondary" size="sm" icon={<Check />} onClick={onApplyAllEmpty}>
+          Appliquer aux champs vides uniquement
+        </Button>
       </div>
-    </div>
+    </section>
   );
 }

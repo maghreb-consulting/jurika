@@ -70,7 +70,7 @@ export function TexteContrat({ texte }: { texte: string }) {
             <thead>
               <tr>
                 {entete.map((c, j) => (
-                  <th key={j} scope="col" className="border border-border bg-bg-raised px-2 py-1 text-left font-semibold text-fg">
+                  <th key={j} scope="col" className="border border-border bg-bg-overlay px-2 py-1 text-left font-semibold text-fg">
                     {enLigne(c, `${k}h${j}`)}
                   </th>
                 ))}
@@ -95,14 +95,14 @@ export function TexteContrat({ texte }: { texte: string }) {
     if (l.startsWith('## ')) {
       vider();
       blocs.push(
-        <h3 key={`h${blocs.length}`} className="mb-2 mt-4 text-base font-semibold text-fg">
+        <h3 key={`h${blocs.length}`} className="mb-2 mt-4 text-base font-semibold text-heading">
           {enLigne(l.slice(3), `h${blocs.length}`)}
         </h3>,
       );
     } else if (l.startsWith('# ')) {
       vider();
       blocs.push(
-        <h2 key={`h${blocs.length}`} className="mb-3 mt-6 border-b border-border pb-1 text-lg font-semibold text-fg">
+        <h2 key={`h${blocs.length}`} className="mb-3 mt-6 border-b border-border pb-1 text-lg font-semibold text-heading">
           {enLigne(l.slice(2), `h${blocs.length}`)}
         </h2>,
       );
@@ -112,5 +112,5 @@ export function TexteContrat({ texte }: { texte: string }) {
     i += 1;
   }
   vider();
-  return <div className="text-sm text-fg-muted">{blocs}</div>;
+  return <div className="text-sm text-fg">{blocs}</div>;
 }

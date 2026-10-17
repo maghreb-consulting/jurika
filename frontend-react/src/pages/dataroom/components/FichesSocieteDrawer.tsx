@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { FileDown, Pencil } from 'lucide-react';
 import { Drawer } from '../../../components/ui/Drawer';
 import { Button } from '../../../components/ui/Button';
+import { Badge } from '../../../components/ui/Badge';
+import { Message } from '../../../components/ui/Message';
+import { Skeleton } from '../../../components/ui/LoadingSkeleton';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 import { dataroomService } from '../../../services/dataroom.service';
 import { extractError } from '../../../lib/api';
@@ -122,24 +125,24 @@ export function FicheSocieteDrawer({
       footer={
         <div className="flex flex-wrap items-center justify-end gap-2">
           {fiche?.modifiable && (
-            <Button variant="secondary" size="sm" onClick={onModifier} data-testid="fiche-modifier">
-              <Pencil className="mr-1 h-4 w-4" />
+            <Button type="button" variant="secondary" size="sm" icon={<Pencil />} onClick={onModifier} data-testid="fiche-modifier">
               Modifier les identifiants
             </Button>
           )}
           {enEssai === false ? (
           <Button
+            type="button"
             size="sm"
+            icon={<FileDown />}
             onClick={() => void telecharger()}
             loading={generation}
             disabled={!fiche}
             data-testid="fiche-generer"
           >
-            <FileDown className="mr-1 h-4 w-4" />
             {type === 'client' ? 'Télécharger la fiche client (PDF)' : 'Télécharger la fiche dossier (PDF)'}
           </Button>
           ) : (
-            <span className="text-xs text-fg-subtle" data-testid="fiche-essai">
+            <span className="text-xs text-fg-muted" data-testid="fiche-essai">
               Fiche consultable à l’écran ; PDF indisponible pendant l’essai gratuit.
             </span>
           )}
@@ -171,21 +174,28 @@ export function FicheSocieteDrawer({
       )}
 
       {erreur && (
-        <p role="alert" className="mt-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+        <Message ton="erreur" className="mt-4">
           {erreur}
-        </p>
+        </Message>
       )}
       {message && (
-        <p role="status" className="mt-4 rounded-lg border border-border bg-bg-overlay px-3 py-2 text-sm text-fg">
+        <Message ton="succes" className="mt-4">
           {message}
-        </p>
+        </Message>
       )}
-      {!fiche && !erreur && <p className="mt-4 text-sm text-fg-subtle">Chargement de la fiche…</p>}
+      {!fiche && !erreur && (
+        <div className="mt-4 space-y-2" aria-busy="true" aria-label="Chargement de la fiche">
+          <Skeleton className="h-5 w-56" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </div>
+      )}
 
       {fiche && (
         <div className="mt-4 space-y-6">
           {manquants.length > 0 && (
-            <p className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-fg" data-testid="fiche-manquants">
+            <p className="rounded-lg border border-border border-l-4 border-l-warning bg-warning-soft px-4 py-3 text-sm text-fg" data-testid="fiche-manquants">
               {manquants.length === 1 ? 'Une information manque' : `${manquants.length} informations manquent`}{' '}
               : {manquants.map((m) => m.libelle).join(', ')}.{' '}
               {fiche.modifiable
@@ -196,7 +206,7 @@ export function FicheSocieteDrawer({
           )}
 
           <section aria-labelledby="fiche-identifiants">
-            <h3 id="fiche-identifiants" className="mb-2 flex items-center gap-1 text-sm font-semibold text-fg">
+            <h3 id="fiche-identifiants" className="mb-2 flex items-center gap-1 text-sm font-semibold text-heading">
               Identifiants de la société
               <InfoBulle
                 libelle="D’où viennent ces informations ?"
@@ -207,7 +217,7 @@ export function FicheSocieteDrawer({
           </section>
 
           <section aria-labelledby="fiche-tp">
-            <h3 id="fiche-tp" className="mb-2 flex items-center gap-1 text-sm font-semibold text-fg">
+            <h3 id="fiche-tp" className="mb-2 flex items-center gap-1 text-sm font-semibold text-heading">
               Taxe professionnelle : versions successives
               <InfoBulle
                 libelle="Pourquoi plusieurs versions ?"
@@ -215,10 +225,10 @@ export function FicheSocieteDrawer({
               />
             </h3>
             {fiche.versionsTp.length === 0 ? (
-              <p className="text-sm text-fg-subtle">Aucune taxe professionnelle enregistrée.</p>
+              <p className="text-sm text-fg-muted">Aucune taxe professionnelle enregistrée.</p>
             ) : (
               <table className="w-full text-sm">
-                <thead className="text-left text-xs text-fg-subtle">
+                <thead className="border-b border-border text-left text-xs text-fg-muted">
                   <tr>
                     <th className="py-1 pr-2">Numéro</th>
                     <th className="py-1 pr-2">Date de prise d’effet</th>
@@ -231,13 +241,7 @@ export function FicheSocieteDrawer({
                       <td className="py-1 pr-2 font-mono">{v.numero}</td>
                       <td className="py-1 pr-2">{v.dateEffet ? formatDate(v.dateEffet) : 'Non renseignée'}</td>
                       <td className="py-1">
-                        {v.enVigueur ? (
-                          <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
-                            En vigueur
-                          </span>
-                        ) : (
-                          'Remplacée'
-                        )}
+                        {v.enVigueur ? <Badge variant="success">En vigueur</Badge> : 'Remplacée'}
                       </td>
                     </tr>
                   ))}
@@ -248,7 +252,7 @@ export function FicheSocieteDrawer({
 
           {type === 'client' && (
             <section aria-labelledby="fiche-modifications">
-              <h3 id="fiche-modifications" className="mb-2 flex items-center gap-1 text-sm font-semibold text-fg">
+              <h3 id="fiche-modifications" className="mb-2 flex items-center gap-1 text-sm font-semibold text-heading">
                 Modifications des identifiants
                 <InfoBulle
                   libelle="Qu’est-ce qui est tracé ?"
@@ -256,15 +260,15 @@ export function FicheSocieteDrawer({
                 />
               </h3>
               {fiche.modifications.length === 0 ? (
-                <p className="text-sm text-fg-subtle">Aucune modification tracée.</p>
+                <p className="text-sm text-fg-muted">Aucune modification tracée.</p>
               ) : (
-                <ol className="divide-y divide-border rounded-md border border-border" data-testid="fiche-trace">
+                <ol className="divide-y divide-border rounded-lg border border-border" data-testid="fiche-trace">
                   {fiche.modifications.map((m, i) => (
                     <li key={`${m.champ}-${m.date}-${i}`} className="px-3 py-2 text-sm">
                       <span className="font-medium text-fg">{m.libelle}</span> :{' '}
                       <span className="text-fg-muted">{m.ancienneValeur ?? 'non renseigné'}</span> →{' '}
                       <span className="text-fg">{m.nouvelleValeur ?? 'non renseigné'}</span>
-                      <span className="block text-xs text-fg-subtle">
+                      <span className="block text-xs text-fg-muted">
                         {formatDate(m.date)} · {m.provenance}
                         {m.auteur && m.auteur !== 'Non renseigné' ? ` · ${m.auteur}` : ''}
                       </span>
@@ -277,23 +281,23 @@ export function FicheSocieteDrawer({
 
           {type === 'dossier' && dossier && (
             <section aria-labelledby="fiche-operations">
-              <h3 id="fiche-operations" className="mb-2 flex items-center gap-1 text-sm font-semibold text-fg">
+              <h3 id="fiche-operations" className="mb-2 flex items-center gap-1 text-sm font-semibold text-heading">
                 Opérations juridiques du dossier
                 <InfoBulle
                   libelle="Quelles opérations ?"
                   texte="Chaque ticket du dossier est une opération : type, dates d’ouverture et de clôture ou d’annulation, statut et employé responsable. La fiche est relue à chaque ouverture : elle est à jour de la dernière clôture."
                 />
               </h3>
-              <p className="mb-2 text-xs text-fg-subtle">
+              <p className="mb-2 text-xs text-fg-muted">
                 {dossier.derniereCloture
                   ? `À jour de la dernière clôture, le ${formatDate(dossier.derniereCloture)}.`
                   : 'Aucune opération clôturée à ce jour.'}
               </p>
               {dossier.operations.length === 0 ? (
-                <p className="text-sm text-fg-subtle">Aucune opération enregistrée.</p>
+                <p className="text-sm text-fg-muted">Aucune opération enregistrée.</p>
               ) : (
                 <table className="w-full text-sm" data-testid="fiche-operations-table">
-                  <thead className="text-left text-xs text-fg-subtle">
+                  <thead className="border-b border-border text-left text-xs text-fg-muted">
                     <tr>
                       <th className="py-1 pr-2">Opération</th>
                       <th className="py-1 pr-2">Ticket</th>
@@ -327,7 +331,7 @@ export function FicheSocieteDrawer({
             </section>
           )}
 
-          <p className="text-xs text-fg-subtle">
+          <p className="text-xs text-fg-muted">
             Ensuite : téléchargez la {type === 'client' ? 'fiche client' : 'fiche dossier'} en PDF pour
             la transmettre ou l’archiver. Les fiches téléchargées par l’employé responsable se
             retrouvent dans les documents en vigueur du dossier, avec leurs versions précédentes.
@@ -341,7 +345,7 @@ export function FicheSocieteDrawer({
 function TableIdentifiants({ identifiants }: { identifiants: IdentifiantFiche[] }) {
   return (
     <table className="w-full text-sm" data-testid="fiche-identifiants-table">
-      <thead className="text-left text-xs text-fg-subtle">
+      <thead className="border-b border-border text-left text-xs text-fg-muted">
         <tr>
           <th className="py-1 pr-2">Information</th>
           <th className="py-1 pr-2">Valeur en vigueur</th>
@@ -351,11 +355,11 @@ function TableIdentifiants({ identifiants }: { identifiants: IdentifiantFiche[] 
       <tbody className="divide-y divide-border">
         {identifiants.map((i) => (
           <tr key={i.code}>
-            <td className="py-1 pr-2 text-fg-muted">{i.libelle}</td>
-            <td className="py-1 pr-2 text-fg">
-              {i.valeur ?? <span className="italic text-fg-subtle">Non renseigné</span>}
+            <td className="py-1.5 pr-2 text-fg-muted">{i.libelle}</td>
+            <td className="py-1.5 pr-2 text-fg">
+              {i.valeur ?? <span className="text-fg-muted">Non renseigné</span>}
             </td>
-            <td className="py-1 text-xs text-fg-subtle">{i.provenance}</td>
+            <td className="py-1.5 text-xs text-fg-muted">{i.provenance}</td>
           </tr>
         ))}
       </tbody>

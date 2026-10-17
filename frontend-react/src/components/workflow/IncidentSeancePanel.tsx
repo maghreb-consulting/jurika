@@ -13,7 +13,7 @@
  * documentaire commun (dépôt auto dataroom sur DocumentType PV_AGE).
  */
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
+import { AlertTriangle, Sparkles } from 'lucide-react';
 import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
 import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
 import {
@@ -22,6 +22,7 @@ import {
 } from '../../services/workflowDocumentService';
 import { SeanceFormFields } from './SeanceForm';
 import { TexteAide } from '../ui/Aide';
+import { EnTeteDepliant } from '../ui/Depliant';
 import { incidentPvFilename } from './incidentSeance';
 import {
   useSeanceForm,
@@ -65,6 +66,12 @@ export interface IncidentSeancePanelProps {
    */
   initialAssocies?: AssocieInput[];
   initialGerants?: GerantInput[];
+  /**
+   * Lot L6b (E15) : ordre du jour de l'assemblee (le PV d'incident le rappelle). Modifiable :
+   * l'incident peut ne porter que sur une partie. Sans lui, le PV imprimait " l'ordre du
+   * jour suivant : " suivi de rien.
+   */
+  initialOrdreDuJour?: string[];
   /** Phase 7 — dépôt Data Room versionné (opt-in). */
   versioned?: boolean;
   /** Motif tracé sur le dépôt versionné. */
@@ -103,6 +110,7 @@ export function IncidentSeancePanel({
   hideConvDate,
   initialAssocies,
   initialGerants,
+  initialOrdreDuJour,
   versioned,
   motif,
   filenameFor: filenameForProp,
@@ -116,6 +124,7 @@ export function IncidentSeancePanel({
     defaults: { type: 'extraordinaire', ...defaultSeance },
     initialAssocies,
     initialGerants,
+    initialOrdreDuJour,
   });
 
   const [docs, setDocs] = useState<Record<string, DocState>>({});
@@ -188,30 +197,21 @@ export function IncidentSeancePanel({
   }, [open, isAU, modelesCharges, cleModeles]);
 
   return (
-    <section className="rounded-xl border border-amber-300/60 bg-warning/5">
-      <button
-        type="button"
+    <section className="rounded-xl border border-warning/40 bg-warning-soft">
+      <EnTeteDepliant
+        ouvert={open}
+        icone={<AlertTriangle className="text-warning" />}
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
-        aria-expanded={open}
         data-testid="incident-seance-toggle"
       >
-        <span className="flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 flex-shrink-0 text-warning" />
-          <span className="text-sm font-semibold text-fg">Incident de séance (facultatif)</span>
-          <span className="hidden text-xs text-fg-subtle sm:inline">
-            — Constat de défaut de quorum / Irrégularité de convocation
-          </span>
+        <span className="text-sm font-semibold text-fg">Incident de séance (facultatif)</span>
+        <span className="hidden text-xs text-fg-subtle sm:inline">
+          — Constat de défaut de quorum / Irrégularité de convocation
         </span>
-        {open ? (
-          <ChevronDown className="h-4 w-4 flex-shrink-0 text-fg-subtle" />
-        ) : (
-          <ChevronRight className="h-4 w-4 flex-shrink-0 text-fg-subtle" />
-        )}
-      </button>
+      </EnTeteDepliant>
 
       {open && (
-        <div className="space-y-5 border-t border-amber-300/40 p-4">
+        <div className="space-y-5 border-t border-warning/40 p-4">
           <TexteAide cle="incident-seance" titre="Quand et comment l’utiliser ?">
             À n’utiliser que si l’assemblée n’a pas pu se tenir normalement (quorum non atteint,
             convocation irrégulière). Renseignez la séance, la convocation et, le cas échéant, la
@@ -229,18 +229,18 @@ export function IncidentSeancePanel({
 
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-violet-600" />
+              <Sparkles className="h-4 w-4 text-info" />
               <h4 className="text-sm font-semibold text-fg">Générer le procès-verbal d’incident</h4>
             </div>
 
             {loadingTemplates && <p className="text-sm text-fg-subtle">Chargement des modèles…</p>}
             {loadTemplatesError && (
-              <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger" role="alert">
+              <div className="rounded-lg border border-danger/30 bg-danger-soft p-3 text-sm text-danger" role="alert">
                 {loadTemplatesError}
               </div>
             )}
             {!loadingTemplates && templates.length === 0 && !loadTemplatesError && (
-              <div className="rounded-lg border border-amber-200 bg-warning/10 p-3 text-sm text-amber-800"
+              <div className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-sm text-warning"
                 data-testid="incident-seance-aucun">
                 {/* Lot L4d (E11) : variantes SARL AU retirees, sans objet. */}
                 {isAU

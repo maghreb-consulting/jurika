@@ -132,6 +132,16 @@ public final class CreationFormulairesVarsBuilder {
                 nomSignataire.isBlank() ? "" : nomSignataire + ", gérant");
         put(v, "CNI_CS_NUMERO", str(first0(signataire.get("cinNumero"), signataire.get("cin"),
                 signataire.get("pieceNumero"))));
+        // Lot L6b (E14) : la piece du declarant est celle du premier gerant, deja saisie a
+        // l'etape 5 ; elle etait redemandee a l'etape 7 et les trois formulaires etaient refuses
+        // sans elle. Une saisie de l'etape 7 l'emporte (fusion du catalogue, en aval).
+        String numeroDeclarant = str(first0(signataire.get("pieceNumero"), signataire.get("cinNumero"),
+                signataire.get("cin")));
+        if (!numeroDeclarant.isBlank()) {
+            String typeDeclarant = str(signataire.get("pieceType"));
+            put(v, "DECLARANT_PIECE_TYPE", typeDeclarant.isBlank() ? "CIN" : typeDeclarant);
+            put(v, "DECLARANT_PIECE_NUMERO", numeroDeclarant);
+        }
 
         // ---- Associé principal (art. 26 CGI) : le plus grand nombre de parts -------
         Map<String, Object> principal = associePrincipal(associes);
@@ -234,9 +244,17 @@ public final class CreationFormulairesVarsBuilder {
             if (!lieu.isBlank()) loop.get(i).put("GERANT_LIEU_NAISSANCE", lieu);
             String st = norm(first0(g.get("isStatutaire"), g.get("statutaire"),
                     g.get("designationMode")));
+            // Lot L6b (E14) : la qualite s'accorde a la civilite ("Mme ... Qualite : gerant" avant).
+            String gerant = feminin(g.get("civilite")) ? "g\u00e9rante" : "g\u00e9rant";
             loop.get(i).put("GERANT_QUALITE",
-                    ("true".equals(st) || st.startsWith("statut")) ? "gérant statutaire" : "gérant");
+                    ("true".equals(st) || st.startsWith("statut")) ? gerant + " statutaire" : gerant);
         }
+    }
+
+    /** Civilite feminine ("Mme", "Madame", "Mlle"). */
+    private static boolean feminin(Object civilite) {
+        String c = norm(civilite);
+        return c.startsWith("mme") || c.startsWith("madame") || c.startsWith("mlle");
     }
 
     private static List<Map<String, Object>> buildEtablissementsLoop(List<Map<String, Object>> src) {

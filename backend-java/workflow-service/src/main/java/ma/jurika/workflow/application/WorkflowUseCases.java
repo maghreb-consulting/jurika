@@ -329,6 +329,26 @@ public class WorkflowUseCases {
         if (step == 1 && p.type() == WorkflowType.FERMETURE_SUCCURSALE) {
             stepData = withSuccursaleCreeeSiSaisieManuelle(workspaceId, stepData);
         }
+        // Lot L6b (E15) : le ticket d'un parcours qui CHOISIT sa societe a l'etape 1
+        // (modification, PV AGO, dissolution, liquidation, succursale marocaine, fermeture)
+        // restait sans dossier : la fiche du ticket ne connaissait pas sa forme ("Forme
+        // juridique du dossier inconnue"), ne proposait ni decisions ni demarches, et le
+        // ticket ne pouvait jamais avancer jusqu'a sa cloture.
+        if (step == 1 && TYPES_SOCIETE_CHOISIE.contains(p.type())) {
+            UUID choisi = parseUuid(firstNonNull(strOrNull(stepData.get("dossierId")),
+                    payload == null ? null : strOrNull(payload.get("dossierId"))));
+            if (choisi != null) lierTicketAuDossierChoisi(workspaceId, ticketId, choisi);
+        }
+        // Lot L6b (E15) : une reprise dont l'ICE ou la denomination appartient deja a un
+        // autre dossier du cabinet est refusee des l'etape 1, nommement (avant : 500 a la
+        // finalisation, index unique viole).
+        // Lot L6b (E14) : la creation aussi (constate sur le Z440 : 500 au bouton Finaliser).
+        if (step == 1 && (p.type() == WorkflowType.IMPORT || p.type() == WorkflowType.CREATION)) {
+            Map<String, Object> den = pickStep(stepData, "denomination");
+            refuserDoublonDossier(workspaceId, fetchDossierId(workspaceId, ticketId),
+                    firstNonNull(pickString(den, "ice"), pickString(stepData, "ice")),
+                    den.get("denomination") instanceof String d ? d : null);
+        }
 
         Map<String, Object> merged = new HashMap<>(p.data());
         merged.put("step" + step, stepData);
@@ -431,8 +451,8 @@ public class WorkflowUseCases {
             try {
                 UUID dossierId = finalizationService != null
                         ? finalizationService.createEntrepriseDossierInNewTransaction(
-                                workspaceId, ticketId, userId, merged)
-                        : createEntrepriseDossier(workspaceId, ticketId, userId, merged);
+                                workspaceId, ticketId, userId, normaliserCreation(merged))
+                        : createEntrepriseDossier(workspaceId, ticketId, userId, normaliserCreation(merged));
                 if (dossierId != null) {
                     linkTicketToDossier(workspaceId, ticketId, dossierId);
                     log.info("CREATION workflow termine -- dossier {} cree/lie au ticket {}",
@@ -601,6 +621,28 @@ public class WorkflowUseCases {
      * authentifie pouvait corrompre le ticket d'un workspace tiers en l'aiguillant vers
      * un dossierId du sien (cross-tenant write).
      */
+    /** Parcours dont la societe est choisie a l'etape 1 (le ticket nait sans dossier). */
+    static final java.util.Set<WorkflowType> TYPES_SOCIETE_CHOISIE = java.util.EnumSet.of(
+            WorkflowType.MODIFICATION, WorkflowType.PV_AGO, WorkflowType.DISSOLUTION,
+            WorkflowType.LIQUIDATION, WorkflowType.SUCCURSALE_MA, WorkflowType.FERMETURE_SUCCURSALE);
+
+    /**
+     * Lot L6b (E15) : rattache le ticket au dossier choisi a l'etape 1, s'il n'en a aucun.
+     * Un ticket deja rattache n'est jamais deplace. Le dossier doit appartenir au workspace
+     * (sous-requete filtree) : aucun rattachement inter-cabinets.
+     */
+    int lierTicketAuDossierChoisi(UUID workspaceId, UUID ticketId, UUID dossierId) {
+        return em.createNativeQuery(
+                        "UPDATE tickets SET dossier_id = ?1"
+                                + " WHERE id = ?2 AND workspace_id = ?3 AND dossier_id IS NULL"
+                                + " AND EXISTS (SELECT 1 FROM entreprise_dossiers d"
+                                + " WHERE d.id = ?1 AND d.workspace_id = ?3)")
+                .setParameter(1, dossierId)
+                .setParameter(2, ticketId)
+                .setParameter(3, workspaceId)
+                .executeUpdate();
+    }
+
     private void linkTicketToDossier(UUID workspaceId, UUID ticketId, UUID dossierId) {
         em.createNativeQuery("UPDATE tickets SET dossier_id = ?1 WHERE id = ?2 AND workspace_id = ?3")
                 .setParameter(1, dossierId)
@@ -665,7 +707,7 @@ public class WorkflowUseCases {
             // les associes / gerants saisis dans le wizard n'atterrissaient JAMAIS en base
             // (=> pre-remplissage impossible dans MODIFICATION). On consolide donc ici,
             // comme l'IMPORT le fait deja.
-            case CREATION -> applyCreationConsolidation(workspaceId, dossierId, data);
+            case CREATION -> applyCreationConsolidation(workspaceId, dossierId, normaliserCreation(data));
             // Lot Liquidation 4 etapes (2026-08-13) : la dissolution persiste desormais
             // AUSSI le liquidateur qu'elle nomme (+ le siege de la liquidation). Sans
             // cela, le workflow LIQUIDATION devait le re-saisir integralement — ce qui
@@ -1199,12 +1241,17 @@ public class WorkflowUseCases {
             return;
         }
         String raisonSociale = pickString(denom, "denomination");
-        String ice = firstNonNull(pickString(denom, "ice"), pickString(denom, "icenumero"));
+        String ice = iceChiffres(firstNonNull(pickString(denom, "ice"), pickString(denom, "icenumero")));
         String rcNumero = pickString(denom, "rcNumero");
-        String ifNumero = pickString(denom, "ifNumero");
+        String ifNumero = firstNonNull(pickString(denom, "ifNumero"), pickString(denom, "ifFiscal"));
         String adresse = pickString(siege, "adresse");
         String ville = firstNonNull(pickString(siege, "commune"), pickString(siege, "ville"));
+        // Lot L6b (E15) : la ville du greffe saisie a l'etape 2 de la reprise n'arrivait
+        // jamais au dossier (rc_tribunal) : l'annonce legale de la modification qui suit
+        // etait refusee ("Immatriculation au registre du commerce").
+        String villeGreffe = blankToNull(pickString(siege, "villeGreffe"));
         BigDecimal capital = pickBigDecimal(capitalStep, "capitalSocialMad");
+        refuserDoublonDossier(workspaceId, dossierId, ice, raisonSociale);
 
         // Backbone refonte statuts : consolide l'état structuré importé COMPLET
         // (objet/duree/gérance/dirigeants/associés/parts inclus) dans
@@ -1221,6 +1268,7 @@ public class WorkflowUseCases {
                     adresse_siege      = COALESCE(?5, adresse_siege),
                     ville              = COALESCE(?6, ville),
                     capital_social_mad = COALESCE(?7, capital_social_mad),
+                    rc_tribunal        = COALESCE(?11, rc_tribunal),
                     fiche_structuree   = COALESCE(CAST(?10 AS jsonb), fiche_structuree),
                     statut             = 'ACTIVE',
                     updated_at         = NOW()
@@ -1236,6 +1284,7 @@ public class WorkflowUseCases {
                 .setParameter(8, dossierId)
                 .setParameter(9, workspaceId)
                 .setParameter(10, ficheJson)
+                .setParameter(11, villeGreffe)
                 .executeUpdate();
     }
 
@@ -1255,6 +1304,40 @@ public class WorkflowUseCases {
      * (comportement precedent conserve). Idempotent : re-soumettre la derniere etape
      * reecrit simplement les memes valeurs.
      */
+    /** Etapes de la creation et la cle sous laquelle la strategie range leur saisie. */
+    private static final String[][] ETAPES_CREATION = {
+            {"step1", "denomination"}, {"step2", "siege"}, {"step3", "capital"}, {"step4", "activite"},
+    };
+
+    /**
+     * Lot L6b (E14) : saisie de la creation relue sous les cles de la strategie.
+     *
+     * <p>La strategie range l'etape 1 sous {@code step1.denomination}, l'etape 2 sous
+     * {@code step2.siege}, l'etape 3 sous {@code step3.capital}. L'enregistrement automatique de
+     * l'ecran ({@code /save}) remplace ensuite {@code stepN} par la saisie A PLAT : ces cles
+     * disparaissent ({@code step1.denomination} redevient la chaine saisie). La consolidation du
+     * dossier ne trouvait plus rien : capital, ICE, adresse, ville et denomination de l'etape 1
+     * n'atteignaient jamais le dossier (constate sur la pile, parcours de creation), et le passage
+     * au deroulement de la demarche etait refuse ("$CAPITAL_CHIFFRES non renseignee").
+     *
+     * <p>Renvoie une COPIE ou chaque etape a plat recoit sa cle imbriquee (copie de la saisie a
+     * plat) ; une cle deja imbriquee (carte) est laissee telle quelle.
+     */
+    @SuppressWarnings("unchecked")
+    static Map<String, Object> normaliserCreation(Map<String, Object> data) {
+        if (data == null) return Map.of();
+        Map<String, Object> out = new HashMap<>(data);
+        for (String[] e : ETAPES_CREATION) {
+            if (!(data.get(e[0]) instanceof Map<?, ?> brut)) continue;
+            Map<String, Object> plat = (Map<String, Object>) brut;
+            if (plat.get(e[1]) instanceof Map<?, ?>) continue;
+            Map<String, Object> etape = new HashMap<>(plat);
+            etape.put(e[1], new HashMap<>(plat));
+            out.put(e[0], etape);
+        }
+        return out;
+    }
+
     private void applyCreationConsolidation(UUID workspaceId, UUID dossierId,
                                             Map<String, Object> data) {
         Map<String, Object> denom = pickStep(data, "denomination");
@@ -1262,10 +1345,14 @@ public class WorkflowUseCases {
         Map<String, Object> capitalStep = pickStep(data, "capital");
 
         String raisonSociale = pickString(denom, "denomination");
-        String ice = firstNonNull(pickString(denom, "ice"), pickString(denom, "icenumero"));
+        // Lot L6b (E14) : ICE reduit a ses chiffres (saisie formatee "001 234 ..."), et un ICE ou
+        // une denomination deja portes par un autre dossier du cabinet refuses nommement (avant :
+        // index unique viole, HTTP 500 a la finalisation de la creation).
+        String ice = iceChiffres(firstNonNull(pickString(denom, "ice"), pickString(denom, "icenumero")));
         String adresse = pickString(siege, "adresse");
         String ville = firstNonNull(pickString(siege, "commune"), pickString(siege, "ville"));
         BigDecimal capital = pickBigDecimal(capitalStep, "capitalSocialMad");
+        refuserDoublonDossier(workspaceId, dossierId, ice, raisonSociale);
 
         // La fiche n'est ecrite que si elle porte de VRAIES donnees (au-dela de la seule
         // cle technique "source") — sinon on laisse la fiche existante intacte (COALESCE).
@@ -1924,6 +2011,16 @@ public class WorkflowUseCases {
                 || forme.equals("SCS") || forme.equals("GIE");
     }
 
+    /**
+     * Lot L6b (E15) : sac d'etape a plat des parcours de creation et de reprise, quand la
+     * niche ecrite par le serveur a l'execution de l'etape (step1.denomination,
+     * step2.siege, step3.capital, step4.activite) a disparu : un brouillon enregistre
+     * APRES la validation remplace le sac entier (POST /save). La reprise finalisee
+     * laissait alors le siege et le capital du dossier vides, sans un mot (motif 9).
+     */
+    private static final Map<String, String> SAC_A_PLAT = Map.of(
+            "denomination", "step1", "siege", "step2", "capital", "step3", "activite", "step4");
+
     @SuppressWarnings("unchecked")
     private Map<String, Object> pickStep(Map<String, Object> data, String key) {
         Object v = data.get(key);
@@ -1935,7 +2032,59 @@ public class WorkflowUseCases {
                 if (inner instanceof Map<?, ?> im) return (Map<String, Object>) im;
             }
         }
+        String sac = SAC_A_PLAT.get(key);
+        if (sac != null && data.get(sac) instanceof Map<?, ?> plat && !plat.isEmpty()) {
+            return (Map<String, Object>) plat;
+        }
         return Map.of();
+    }
+
+    /** ICE reduit a ses chiffres (le sac a plat porte la saisie formatee "001 234 ..."). */
+    private static String iceChiffres(String ice) {
+        if (ice == null) return null;
+        String c = ice.replaceAll("\\D", "");
+        return c.isEmpty() ? null : c;
+    }
+
+    /**
+     * Lot L6b (E15) : refus NOMME d'une reprise dont l'ICE ou la denomination est deja
+     * celle d'un AUTRE dossier du cabinet (index uniques uq_dossier_workspace_ice_when_present
+     * et uq_dossier_workspace_raison_alive, ticket V6). Avant : HTTP 500 "Erreur interne du
+     * serveur" a la finalisation, la saisie de l'employe perdue sans explication.
+     * Appele a la validation de l'etape 1 et avant la consolidation.
+     */
+    void refuserDoublonDossier(UUID workspaceId, UUID dossierId, String ice, String raisonSociale) {
+        String chiffres = iceChiffres(ice);
+        if (chiffres != null) {
+            List<?> autres = em.createNativeQuery(
+                            "SELECT raison_sociale FROM entreprise_dossiers WHERE workspace_id = ?1 AND ice = ?2"
+                                    + (dossierId != null ? " AND id <> ?3" : "") + " LIMIT 1")
+                    .setParameter(1, workspaceId)
+                    .setParameter(2, chiffres)
+                    .setParameter(3, dossierId != null ? dossierId : workspaceId)
+                    .getResultList();
+            if (!autres.isEmpty()) {
+                throw new ValidationException("L\u2019ICE " + chiffres + " est d\u00e9j\u00e0 celui du dossier \u00ab "
+                        + autres.get(0) + " \u00bb de votre cabinet : un ICE d\u00e9signe une seule soci\u00e9t\u00e9. "
+                        + "Corrigez l\u2019ICE \u00e0 l\u2019\u00e9tape 1, ou travaillez sur le dossier existant.");
+            }
+        }
+        if (raisonSociale != null && !raisonSociale.isBlank()) {
+            List<?> autres = em.createNativeQuery(
+                            "SELECT raison_sociale FROM entreprise_dossiers WHERE workspace_id = ?1"
+                                    + " AND lower(raison_sociale) = lower(?2)"
+                                    + " AND statut IN ('EN_CONSTITUTION','ACTIVE','EN_LIQUIDATION')"
+                                    + (dossierId != null ? " AND id <> ?3" : "") + " LIMIT 1")
+                    .setParameter(1, workspaceId)
+                    .setParameter(2, raisonSociale.trim())
+                    .setParameter(3, dossierId != null ? dossierId : workspaceId)
+                    .getResultList();
+            if (!autres.isEmpty()) {
+                throw new ValidationException("La d\u00e9nomination \u00ab " + raisonSociale.trim()
+                        + " \u00bb est d\u00e9j\u00e0 celle d\u2019un dossier en cours de votre cabinet. "
+                        + "Corrigez la d\u00e9nomination \u00e0 l\u2019\u00e9tape 1, ou travaillez sur le dossier existant.");
+            }
+        }
     }
 
     private String pickString(Map<String, Object> m, String key) {

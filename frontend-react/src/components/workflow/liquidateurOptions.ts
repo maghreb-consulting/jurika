@@ -58,6 +58,9 @@ export interface LiquidateurOption {
   nom: string;
   cin: string;
   adresse: string;
+  /** Lot L6b (E15) : identite connue du dossier, reprise sans re-saisie. */
+  nationalite?: string;
+  dateNaissance?: string;
   /** Lot L4d (E5) : associé personne morale (désigné par sa dénomination). */
   morale?: boolean;
   denomination?: string;
@@ -133,11 +136,16 @@ export function buildLiquidateurOptions(
     const dedupe = full.toLowerCase();
     if (seen.has(dedupe)) return;
     seen.add(dedupe);
+    // Lot L6b (E15) : role accorde a la personne (" associee ", " gerante ").
+    const civ = str(p.civilite).toLowerCase();
+    const feminin = civ.startsWith('mme') || civ.startsWith('mlle') || str(p.genre).toLowerCase().startsWith('f');
+    const libelleRole = role === 'gerant' ? (feminin ? 'gérante' : 'gérant') : (feminin ? 'associée' : 'associé');
     out.push({
       key: `${role}:${dedupe}`,
-      label: `${full} — ${role === 'gerant' ? 'gérant' : 'associé'}`,
+      label: `${full} — ${libelleRole}`,
       role,
-      civilite: str(p.civilite) || 'M.',
+      // Lot L6b (E15) : civilite abregee (le code " M " des etapes de saisie devient " M. ").
+      civilite: str(p.civilite) === 'M' ? 'M.' : str(p.civilite) || 'M.',
       prenom,
       nom,
       // Fix D4 (2026-08-16) — la CIN du liquidateur n'était pas reprise de la base
@@ -147,6 +155,8 @@ export function buildLiquidateurOptions(
       // (dirigeants du wizard de création) ou `pieceNumero` (voie directeur).
       cin: str(p.cin) || str(p.cinNumero) || str(p.pieceNumero),
       adresse: str(p.adresse) || str(p.domicile),
+      nationalite: str(p.nationalite) || undefined,
+      dateNaissance: str(p.dateNaissance) || undefined,
     });
   };
   (parties?.gerants ?? []).forEach((g) => push(g, 'gerant'));

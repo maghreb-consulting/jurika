@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { BrandLogo } from '../../components/ui/BrandLogo';
+import { useSearchParams } from 'react-router-dom';
+import { PageAccueil, TitreAccueil } from '../../components/auth/PageAccueil';
+import { Lien } from '../../components/ui/Lien';
+import { Skeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
+import { Message } from '../../components/ui/Message';
 import { VerificationEssai } from '../../components/essai/VerificationEssai';
 import { extractError } from '../../lib/api';
 import { essaiService, type EtatDemandeEssai } from '../../services/essai.service';
@@ -26,26 +29,27 @@ export function EssaiConfirmerPage() {
   }, [jeton]);
 
   return (
-    <div className="min-h-screen bg-bg">
-      <header className="px-6 py-4 sm:px-10">
-        <Link to="/" aria-label="JURIKA, retour à l’accueil"><BrandLogo variant="full" size={44} /></Link>
-      </header>
-      <main className="mx-auto max-w-xl px-4 pb-16">
-        <h1 className="mt-4 text-2xl font-semibold text-fg">Confirmation de votre adresse</h1>
-        <section className="mt-6 rounded-lg border border-border bg-bg-raised p-6">
-          {erreur && (
-            <div className="space-y-2" role="alert">
-              <p className="text-sm text-danger">{erreur}</p>
-              <p className="text-sm text-fg-muted">
-                Vous pouvez <Link to="/essai" className="text-accent hover:underline">recommencer l’inscription à l’essai</Link>{' '}
-                ou <Link to="/login" className="text-accent hover:underline">vous connecter</Link>.
-              </p>
-            </div>
-          )}
-          {!erreur && !etat && <p className="text-sm text-fg-muted">Vérification du lien en cours…</p>}
-          {etat && <VerificationEssai etat={etat} onEtat={setEtat} />}
-        </section>
-      </main>
-    </div>
+    <PageAccueil titre="Confirmation de votre adresse" enTete={<Lien to="/login">Se connecter</Lien>}>
+      <TitreAccueil titre="Confirmation de votre adresse" centre={false} />
+      {erreur && (
+        <div className="space-y-3">
+          <Message ton="erreur">{erreur}</Message>
+          <p className="text-sm text-fg-muted">
+            Vous pouvez <Lien to="/essai">recommencer l’inscription à l’essai</Lien> ou{' '}
+            <Lien to="/login">vous connecter</Lien>.
+          </p>
+        </div>
+      )}
+      {!erreur && !etat && (
+        <SqueletteZone libelle="Vérification du lien en cours">
+          <p className="mb-3 text-sm text-fg-muted">Vérification du lien en cours…</p>
+          <div className="space-y-3">
+            <Skeleton className="h-24 w-full rounded-lg" />
+            <Skeleton className="h-20 w-full rounded-lg" />
+          </div>
+        </SqueletteZone>
+      )}
+      {etat && <VerificationEssai etat={etat} onEtat={setEtat} />}
+    </PageAccueil>
   );
 }

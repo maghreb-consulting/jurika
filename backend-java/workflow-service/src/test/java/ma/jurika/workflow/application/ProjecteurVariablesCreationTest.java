@@ -76,4 +76,57 @@ class ProjecteurVariablesCreationTest {
         }
         assertThat(fausses).isEmpty();
     }
+
+    // L6b E14 : la date de debut du contrat (etape 2, obligatoire) n'etait lue par personne :
+    // l'etape 7 la redemandait ("Bail date effet") et la taxe professionnelle, la declaration
+    // d'immatriculation et le bail etaient refuses sans elle.
+    private static Map<String, Object> lire(String justificatif, Map<String, Object> step7) {
+        MagasinVariables magasin = new MagasinVariables(ChaineEcranMagasinCreationTest.depotEnMemoire());
+        java.util.UUID ws = java.util.UUID.randomUUID();
+        java.util.UUID ticket = java.util.UUID.randomUUID();
+        Map<String, Object> data = new java.util.LinkedHashMap<>();
+        data.put("step2", Map.of("adresse", "12 rue Demo", "justificatifType", justificatif,
+                "dateDebut", "2026-10-01", "dateFin", "2029-09-30"));
+        if (step7 != null) data.put("step7", step7);
+        new ProjecteurVariablesCreation(magasin).projeter(ws, ticket, data, java.util.UUID.randomUUID());
+        return magasin.lirePourGeneration(ws, ticket);
+    }
+
+    @Test
+    @DisplayName("L6b E14 : la date de debut du bail saisie a l'etape 2 alimente BAIL_DATE_EFFET")
+    void dateDuBailDeLEtape2() {
+        assertThat(lire("BAIL", null)).containsEntry("BAIL_DATE_EFFET", "2026-10-01")
+                .doesNotContainKey("DOMICILIATION_DATE_EFFET");
+    }
+
+    @Test
+    @DisplayName("L6b E14 : la date de debut de la domiciliation saisie a l'etape 2 alimente DOMICILIATION_DATE_EFFET")
+    void dateDeLaDomiciliationDeLEtape2() {
+        assertThat(lire("DOMICILIATION", null)).containsEntry("DOMICILIATION_DATE_EFFET", "2026-10-01")
+                .doesNotContainKey("BAIL_DATE_EFFET");
+    }
+
+    @Test
+    @DisplayName("L6b E14 : l'etape 7 ne recouvre pas la date de l'etape 2 (RG-VAR-03 : elle s'y affiche en lecture)")
+    void lEtape7NeRecouvrePas() {
+        assertThat(lire("BAIL", Map.of("complements", Map.of("bailDateEffet", "2026-10-15"))))
+                .containsEntry("BAIL_DATE_EFFET", "2026-10-01");
+    }
+
+    @Test
+    @DisplayName("L6b E14 : un montant relu en decimal (10000.0) se pose en entier (10000) : les statuts le lisent")
+    void montantDecimalPoseEnEntier() {
+        // Constate sur la pile : apres la validation, l'ecran renvoie le sac de l'etape 3 fusionne
+        // avec celui du serveur ; le capital revient en decimal (10000.0), CAPITAL_CHIFFRES valait
+        // "10000.0" et les statuts etaient refuses ("Montant du capital" manquant).
+        MagasinVariables magasin = new MagasinVariables(ChaineEcranMagasinCreationTest.depotEnMemoire());
+        java.util.UUID ws = java.util.UUID.randomUUID();
+        java.util.UUID ticket = java.util.UUID.randomUUID();
+        Map<String, Object> data = Map.of("step3", Map.of("capitalSocialMad", 10000.0, "nombreParts", 100,
+                "valeurNominale", 100.0, "capital", Map.of("capitalSocialMad", 10000.0)));
+        new ProjecteurVariablesCreation(magasin).projeter(ws, ticket, data, java.util.UUID.randomUUID());
+        Map<String, Object> v = magasin.lirePourGeneration(ws, ticket);
+        assertThat(v).containsEntry("CAPITAL_CHIFFRES", "10000").containsEntry("NOMBRE_PARTS", "100")
+                .containsEntry("VALEUR_NOMINALE_PART", "100");
+    }
 }

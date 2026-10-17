@@ -43,7 +43,15 @@ public final class IdentityPdfBuilder {
     private static void addImagePage(PDDocument doc, byte[] imageBytes, String name) throws IOException {
         PDPage page = new PDPage(PDRectangle.A4);
         doc.addPage(page);
-        PDImageXObject image = PDImageXObject.createFromByteArray(doc, imageBytes, name);
+        PDImageXObject image;
+        try {
+            image = PDImageXObject.createFromByteArray(doc, imageBytes, name);
+        } catch (IllegalArgumentException ex) {
+            // Lot L6b (E13) : WebP, HEIC, AVIF... PDFBox repond "Image type ... not supported" (anglais,
+            // technique) ; le refus dit quelle face corriger et quels formats envoyer.
+            throw new IllegalArgumentException("Format d'image non pris en charge pour le " + name
+                    + " de la pi\u00e8ce : envoyez une photo au format JPG ou PNG.", ex);
+        }
 
         float maxWidth = PDRectangle.A4.getWidth() - 2 * MARGIN;
         float maxHeight = PDRectangle.A4.getHeight() - 2 * MARGIN;

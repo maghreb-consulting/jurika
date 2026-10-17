@@ -21,7 +21,6 @@ import {
   AlertCircle,
   AlertTriangle,
   Building2,
-  CheckCircle,
   Globe,
   Megaphone,
   Paperclip,
@@ -31,6 +30,7 @@ import {
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { Select } from '../../components/ui/Select';
+import { Case } from '../../components/ui/Choix';
 import { WorkflowShell } from '../../components/workflow/WorkflowShell';
 import type { RoadmapStep } from '../../components/workflow/WorkflowRoadmap';
 import { ticketService } from '../../services/ticket.service';
@@ -59,6 +59,8 @@ import {
 import { buildDocFilename } from '../../components/workflow/workflowFilename';
 import type { TemplateInfo } from '../../services/workflowDocumentService';
 import type { DossierBrief } from '../../types/dataroom';
+import { ErreurParcours, SqueletteParcours } from '../../components/workflow/EtatsParcours';
+import { BandeauFinParcours } from '../../components/workflow/BandeauFinParcours';
 
 const STEPS: RoadmapStep[] = etapesRoadmap(ETAPES_SUCCURSALE_ETR);
 
@@ -397,9 +399,9 @@ function SuccursaleEtrWorkflowPageBody() {
   if (loading) return <Loader />;
   if (!ticket || !progress)
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 p-6 text-sm text-danger" role="alert">
+      <ErreurParcours>
         {error ?? 'Parcours introuvable : rechargez la page ou revenez à la liste des tickets.'}
-      </div>
+      </ErreurParcours>
     );
 
   const step = viewStep;
@@ -525,7 +527,7 @@ function SuccursaleEtrWorkflowPageBody() {
           <div className="space-y-5" data-testid="succursale-etr-step1">
             <header>
               <div className="flex items-center gap-2">
-                <Globe className="h-5 w-5 text-accent" />
+                <Globe className="h-5 w-5 text-fg-muted" />
                 <h2 className="text-lg font-semibold text-fg">Étape 1 — Société mère étrangère</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -536,31 +538,25 @@ function SuccursaleEtrWorkflowPageBody() {
               </p>
             </header>
 
-            <div className="flex flex-wrap gap-2">
-              <button
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Société mère">
+              <Button
                 type="button"
+                variant={!reuseExisting ? 'primary' : 'secondary'}
+                aria-pressed={!reuseExisting}
                 onClick={() => setReuseExisting(false)}
                 data-testid="etr-mode-saisie"
-                className={`rounded-lg border px-3 py-2 text-sm ${
-                  !reuseExisting
-                    ? 'border-accent bg-accent/10 font-semibold text-accent'
-                    : 'border-border bg-bg-raised text-fg-muted'
-                }`}
               >
                 Nouvelle société mère
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant={reuseExisting ? 'primary' : 'secondary'}
+                aria-pressed={reuseExisting}
                 onClick={() => setReuseExisting(true)}
                 data-testid="etr-mode-selection"
-                className={`rounded-lg border px-3 py-2 text-sm ${
-                  reuseExisting
-                    ? 'border-accent bg-accent/10 font-semibold text-accent'
-                    : 'border-border bg-bg-raised text-fg-muted'
-                }`}
               >
                 Mère déjà enregistrée
-              </button>
+              </Button>
             </div>
 
             {reuseExisting ? (
@@ -678,7 +674,7 @@ function SuccursaleEtrWorkflowPageBody() {
                   { value: 'ordinaire', label: 'Ordinaire' },
                 ]}
               />
-              <div className="rounded-lg border border-indigo-200 bg-accent/10 p-3 text-xs text-fg-muted">
+              <div className="rounded-lg border border-info/30 bg-info-soft p-3 text-xs text-fg-muted">
                 Organe détecté : <strong>{isAU ? 'organe unipersonnel' : 'organe collégial'}</strong>.
                 Acte produit : procès-verbal de création de succursale par une société étrangère
                 {isAU ? ' (décision unipersonnelle)' : ' (décision collégiale)'}.
@@ -690,7 +686,7 @@ function SuccursaleEtrWorkflowPageBody() {
               data-testid="succursale-etr-convocation"
             >
               <div className="flex items-center gap-2">
-                <Megaphone className="h-4 w-4 text-accent" />
+                <Megaphone className="h-4 w-4 text-fg-muted" />
                 <h4 className="text-sm font-semibold text-fg">Convocation (facultative)</h4>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
@@ -721,7 +717,7 @@ function SuccursaleEtrWorkflowPageBody() {
                 <div
                   role="alert"
                   data-testid="succursale-etr-convocation-16j-error"
-                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-2 text-xs text-danger"
+                  className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger-soft p-2 text-xs text-danger"
                 >
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                   <span>{convocationError}</span>
@@ -748,7 +744,7 @@ function SuccursaleEtrWorkflowPageBody() {
                 <div
                   role="status"
                   data-testid="succursale-etr-convocation-sans-dossier"
-                  className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+                  className="rounded-lg border border-warning/40 bg-warning-soft px-3 py-2 text-xs text-warning"
                 >
                   Validez l'étape 1 avant de générer la convocation : le dossier de la
                   société mère est créé à ce moment-là, et c'est lui qui reçoit le
@@ -792,16 +788,13 @@ function SuccursaleEtrWorkflowPageBody() {
               </p>
               <div className="grid gap-2 md:grid-cols-2">
                 {CONTROLES.map((c) => (
-                  <label key={c.key} className="flex items-start gap-2 text-sm text-fg-muted">
-                    <input
-                      type="checkbox"
-                      checked={controles[c.key]}
-                      data-testid={`etr-${c.key}`}
-                      onChange={(e) => setControles({ ...controles, [c.key]: e.target.checked })}
-                      className="mt-0.5 h-4 w-4 rounded border-border-hi"
-                    />
-                    {c.label}
-                  </label>
+                  <Case
+                    key={c.key}
+                    label={c.label}
+                    checked={controles[c.key]}
+                    data-testid={`etr-${c.key}`}
+                    onChange={(e) => setControles({ ...controles, [c.key]: e.target.checked })}
+                  />
                 ))}
               </div>
               {showErr1('conformite') && (
@@ -818,7 +811,7 @@ function SuccursaleEtrWorkflowPageBody() {
           <div className="space-y-5" data-testid="succursale-etr-step2">
             <header>
               <div className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-accent" />
+                <Building2 className="h-5 w-5 text-fg-muted" />
                 <h2 className="text-lg font-semibold text-fg">Étape 2 — Données de la succursale</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -839,7 +832,7 @@ function SuccursaleEtrWorkflowPageBody() {
 
             <section className="space-y-3 rounded-xl border border-border bg-bg-raised p-4">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-violet-600" />
+                <Sparkles className="h-4 w-4 text-info" />
                 <h4 className="text-sm font-semibold text-fg">Formalités</h4>
               </div>
               <TextField
@@ -856,7 +849,7 @@ function SuccursaleEtrWorkflowPageBody() {
           <div className="space-y-4" data-testid="succursale-etr-step3">
             <header>
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-violet-600" />
+                <Sparkles className="h-5 w-5 text-info" />
                 <h2 className="text-lg font-semibold text-fg">Étape 3 — Génération des actes</h2>
               </div>
               <p className="text-sm text-fg-subtle">
@@ -866,7 +859,7 @@ function SuccursaleEtrWorkflowPageBody() {
             </header>
 
             <div
-              className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-fg-muted"
+              className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning-soft p-3 text-xs text-fg-muted"
               role="status"
               data-testid="etr-annonce-derive-warning"
             >
@@ -946,7 +939,7 @@ function SuccursaleEtrWorkflowPageBody() {
           <div className="space-y-4" data-testid="succursale-etr-step4-pieces">
             <header>
               <div className="flex items-center gap-2">
-                <Paperclip className="h-5 w-5 text-accent" />
+                <Paperclip className="h-5 w-5 text-fg-muted" />
                 <h2 className="text-lg font-semibold text-fg">
                   Étape 4 — Pièces jointes (facultative)
                 </h2>
@@ -978,7 +971,7 @@ function SuccursaleEtrWorkflowPageBody() {
                 l’étape 1.
               </p>
             ) : (
-              <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-fg-muted">
+              <p className="rounded-lg border border-warning/40 bg-warning-soft p-3 text-xs text-fg-muted">
                 Validez d’abord l’étape 1 : c’est elle qui crée (ou réutilise) la Data Room de la
                 société mère, destination de ces dépôts.
               </p>
@@ -993,13 +986,9 @@ function SuccursaleEtrWorkflowPageBody() {
 
         {step === 5 && (
           <div className="space-y-4" data-testid="succursale-etr-synthese">
-            <div className="rounded-xl bg-gradient-to-r from-accent to-indigo-600 p-6 text-bg-raised">
-              <CheckCircle className="mb-2 h-8 w-8" />
-              <h2 className="text-2xl font-bold">Succursale créée</h2>
-              <p className="text-sm text-indigo-100">
+            <BandeauFinParcours titre="Succursale créée">
                 Le procès-verbal de création et l’annonce légale d’ouverture ont été produits et validés.
-              </p>
-            </div>
+              </BandeauFinParcours>
 
             <div className="rounded-xl border border-border bg-bg-raised p-4">
               <p className="mb-3 text-sm font-semibold text-fg">Société mère étrangère</p>
@@ -1104,9 +1093,5 @@ function Field({
 }
 
 function Loader() {
-  return (
-    <div className="flex h-64 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-indigo-600" />
-    </div>
-  );
+  return <SqueletteParcours />;
 }

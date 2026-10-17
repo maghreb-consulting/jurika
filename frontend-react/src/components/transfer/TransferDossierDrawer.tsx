@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Drawer } from '../ui/Drawer';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
+import { Message } from '../ui/Message';
+import { ZoneTexte } from '../ui/TextField';
 import { authService } from '../../services/auth.service';
 import { transferService } from '../../services/transfer.service';
 import { extractError } from '../../lib/api';
@@ -91,11 +93,11 @@ export function TransferDossierDrawer({ open, dossierId, raisonSociale, onClose,
       width="md"
       footer={
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose}>
             {success ? 'Fermer' : 'Annuler'}
           </Button>
           {!success && (
-            <Button onClick={submit} loading={loading}>
+            <Button type="button" onClick={submit} loading={loading}>
               Envoyer la demande
             </Button>
           )}
@@ -103,18 +105,12 @@ export function TransferDossierDrawer({ open, dossierId, raisonSociale, onClose,
       }
     >
       <div className="space-y-4">
-        {error && (
-          <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-            {error}
-          </div>
-        )}
+        {error && <Message ton="erreur">{error}</Message>}
         {success ? (
-          <div className="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm text-success">
-            {success}
-          </div>
+          <Message ton="succes">{success}</Message>
         ) : (
           <>
-            <p className="text-sm text-fg-subtle">
+            <p className="text-sm text-fg-muted">
               Choisissez l’employé qui reprendra ce dossier. Une demande lui est envoyée : le transfert ne
               s’applique qu’après son acceptation, et vous restez responsable du dossier d’ici là.
             </p>
@@ -124,20 +120,15 @@ export function TransferDossierDrawer({ open, dossierId, raisonSociale, onClose,
               onChange={(e) => setToUserId(e.target.value)}
               options={options}
             />
-            <div className="flex flex-col gap-1">
-              <label htmlFor="transfer-motif" className="text-sm font-medium text-fg-muted">
-                Motif (facultatif)
-              </label>
-              <textarea
-                id="transfer-motif"
-                value={motif}
-                onChange={(e) => setMotif(e.target.value)}
-                rows={3}
-                maxLength={1000}
-                placeholder="Exemple : congé prolongé, répartition de la charge…"
-                className="w-full rounded-lg border border-border bg-bg-raised px-3 py-2 text-sm text-fg focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-              />
-            </div>
+            <ZoneTexte
+              id="transfer-motif"
+              label="Motif (facultatif)"
+              value={motif}
+              onChange={(e) => setMotif(e.target.value)}
+              rows={3}
+              maxLength={1000}
+              placeholder="Exemple : congé prolongé, répartition de la charge…"
+            />
           </>
         )}
       </div>

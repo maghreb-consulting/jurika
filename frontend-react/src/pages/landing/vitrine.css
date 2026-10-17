@@ -1,0 +1,599 @@
+/* =====================================================================
+ * Lot L6b (E10, V2 puis V3) : styles propres a la vitrine publique.
+ *
+ * Mise en page de l'ancienne vitrine (accroche centree, fonds decoratifs, cadres
+ * d'ecran, bandes marine) refaite sur les jetons du systeme de design : aucune
+ * couleur en dur (var(--jeton-*) et color-mix seulement), clair et sombre.
+ *
+ * V3 (demande du 2026-10-15) : vitrine animee. Regles du mouvement :
+ * - seules transform (et translate, scale, rotate) et opacity s'animent : le
+ *   navigateur compose ces changements sans recalculer la mise en page (60 images
+ *   par seconde). Seule exception : le trace de l'arc de l'embleme
+ *   (stroke-dashoffset, keyframes v-trace), sur une boite de 64 px, une fois ;
+ *   les boutons de la bibliotheque gardent leurs transitions de couleur ;
+ * - aucune propriete de boite (largeur, hauteur, marges, position) n'est animee :
+ *   aucun decalage au chargement ni au defilement ;
+ * - parallaxe des fonds : animations liees au defilement (animation-timeline),
+ *   seulement si le navigateur les connait (@supports) ; ailleurs, fonds fixes.
+ *   Aucun script de defilement : la molette reste native ;
+ * - "reduire les animations" : rien ne bouge (aucune transformation) ; V4
+ *   (demande du 2026-10-16) : les apparitions deviennent des fondus simples
+ *   (opacite seule) au lieu d'etre supprimees (bloc final) ; ni inclinaison, ni
+ *   bandeau defilant, ni lecture automatique des videos.
+ * ===================================================================== */
+
+.vitrine {
+  --v-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --v-ease-trace: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* ---- Fond decoratif de l'accroche ------------------------------------- */
+.v-fond-accroche {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(42rem 26rem at 88% 4%, color-mix(in srgb, var(--jeton-accent) 16%, transparent), transparent 70%),
+    radial-gradient(36rem 30rem at 6% 72%, color-mix(in srgb, var(--jeton-focus) 12%, transparent), transparent 70%);
+}
+.v-fond-accroche::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--jeton-border) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--jeton-border) 55%, transparent) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black, transparent 75%);
+}
+
+/* Pastille du surtitre de l'accroche. */
+.v-pastille {
+  border: 1px solid color-mix(in srgb, var(--jeton-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--jeton-accent-soft) 70%, transparent);
+}
+
+/* ---- Accroche animee --------------------------------------------------- */
+/* Elements de l'accroche : fondu et montee, chacun a son delai (--d). */
+.v-entree {
+  animation: v-monte 700ms var(--v-ease) both;
+  animation-delay: var(--d, 0ms);
+}
+@keyframes v-monte {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Titre mot par mot (--i : rang du mot). */
+.v-mot {
+  display: inline-block;
+  animation: v-mot 650ms var(--v-ease) both;
+  animation-delay: calc(60ms + var(--i, 0) * 55ms);
+}
+@keyframes v-mot {
+  from { opacity: 0; transform: translateY(0.5em) rotate(2deg); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Capture principale : entree en profondeur, transform seul (l'image reste opaque :
+ * son affichage, mesure du LCP, n'attend pas l'animation). */
+.v-profondeur {
+  transform-origin: 50% 0;
+  animation: v-profondeur 1100ms var(--v-ease) 450ms both;
+}
+/* Capture sous le pli au chargement : l'entree attend son arrivee a l'ecran (Sections.tsx). */
+.v-profondeur[data-attente] {
+  animation-play-state: paused;
+}
+@keyframes v-profondeur {
+  from { transform: perspective(1600px) rotateX(16deg) translateY(56px) scale(0.94); }
+  to { transform: perspective(1600px) rotateX(0deg) translateY(0) scale(1); }
+}
+
+/* Embleme Moucharabieh : tuile, trace de l'arc, socle, treillis d'or, puis le logo. */
+.v-embleme-tuile,
+.v-embleme-socle,
+.v-embleme-treillis {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.v-embleme-tuile {
+  animation: v-pose 500ms var(--v-ease) both;
+}
+@keyframes v-pose {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: none; }
+}
+.v-embleme-trace {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: v-trace 950ms var(--v-ease-trace) 250ms both;
+}
+@keyframes v-trace {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.v-embleme-socle {
+  animation: v-etire 700ms var(--v-ease) 450ms both;
+}
+@keyframes v-etire {
+  from { transform: scaleX(0); }
+  to { transform: none; }
+}
+.v-embleme-treillis {
+  transform-origin: 50% 100%;
+  animation: v-treillis 700ms var(--v-ease) 1000ms both;
+}
+@keyframes v-treillis {
+  from { opacity: 0; transform: scale(0.82); }
+  to { opacity: 1; transform: none; }
+}
+.v-embleme-logo {
+  animation: v-logo 500ms ease-out 1500ms both;
+}
+@keyframes v-logo {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---- Cadre d'ecran (capture) ------------------------------------------ */
+.v-cadre {
+  border: 1px solid var(--jeton-border);
+  background: var(--jeton-bg-raised);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--jeton-marine) 8%, transparent),
+    0 24px 48px -16px color-mix(in srgb, var(--jeton-marine) 28%, transparent);
+}
+[data-theme="dark"] .v-cadre {
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--jeton-scrim) 60%, transparent),
+    0 24px 48px -16px color-mix(in srgb, var(--jeton-scrim) 85%, transparent);
+}
+.v-cadre-barre {
+  border-bottom: 1px solid var(--jeton-border);
+  background: var(--jeton-bg-overlay);
+}
+.v-point {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 9999px;
+}
+.v-point-1 { background: color-mix(in srgb, var(--jeton-danger) 70%, transparent); }
+.v-point-2 { background: color-mix(in srgb, var(--jeton-warning) 70%, transparent); }
+.v-point-3 { background: color-mix(in srgb, var(--jeton-success) 70%, transparent); }
+
+/* Boite de l'image : ratio reserve avant le chargement (aucun decalage). */
+.v-capture {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: top left;
+  background: var(--jeton-bg-overlay);
+}
+
+/* ---- Videos en boucle (VideoBoucle.tsx, V4) ---------------------------- */
+/* Image fixe dans le flux (place reservee, ratio 16:10), video par-dessus, en fondu
+ * (opacite seule) quand sa lecture a commence. */
+.v-video-pile {
+  overflow: hidden;
+}
+.v-video-media {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: top left;
+  background: var(--jeton-bg-overlay);
+}
+.v-video-lecteur {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 400ms var(--v-ease);
+}
+.v-video-lecteur[data-actif] {
+  opacity: 1;
+}
+.v-video-bouton {
+  z-index: 1;
+  opacity: 0.92;
+  transition: opacity 200ms var(--v-ease);
+}
+.v-video-bouton:hover,
+.v-video-bouton:focus-visible,
+.v-video-bouton-lire {
+  opacity: 1;
+}
+
+/* ---- Captures vivantes (Vivante.tsx) ---------------------------------- */
+/* --rx, --ry : inclinaison ; --px, --py : position du pointeur (-0,5 a 0,5). */
+.v-vivante {
+  transform: perspective(1400px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 700ms var(--v-ease);
+}
+.v-vivante[data-survol] {
+  transition: transform 140ms linear;
+  will-change: transform;
+}
+.v-reflet {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 400ms var(--v-ease);
+}
+.v-vivante[data-survol] .v-reflet {
+  opacity: 1;
+}
+.v-reflet-tache {
+  position: absolute;
+  left: 15%;
+  top: -10%;
+  width: 70%;
+  aspect-ratio: 1;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--jeton-nav-fg-hi) 26%, transparent), transparent);
+  transform: translate(calc(var(--px, 0) * 130%), calc(var(--py, 0) * 80%));
+}
+.v-ombre {
+  position: absolute;
+  inset: 12% 8% -3% 8%;
+  z-index: -1;
+  border-radius: 2rem;
+  background: color-mix(in srgb, var(--jeton-marine) 42%, transparent);
+  filter: blur(32px);
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(calc(var(--px, 0) * -40px), calc(var(--py, 0) * -28px + 18px));
+  transition: opacity 400ms var(--v-ease), transform 700ms var(--v-ease);
+}
+[data-theme="dark"] .v-ombre {
+  background: color-mix(in srgb, var(--jeton-scrim) 85%, transparent);
+}
+.v-vivante-cadre[data-survol] .v-ombre {
+  opacity: 0.6;
+  transition: opacity 400ms var(--v-ease), transform 140ms linear;
+}
+
+/* ---- Pile d'ecrans du recit ------------------------------------------- */
+/* Ecrans superposes dans la meme case : la place est celle du plus grand. */
+.v-pile {
+  display: grid;
+}
+.v-pile > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+/* Recit au defilement : capture fixe (sticky, defilement natif), ecrans en fondu. */
+.v-recit-fixe {
+  position: sticky;
+  top: max(5.5rem, calc(50vh - 16rem));
+}
+.v-recit-ecran {
+  transition: opacity 500ms var(--v-ease), transform 650ms var(--v-ease);
+}
+.v-recit-ecran:not([data-actif]) {
+  opacity: 0;
+  transform: translateY(24px) scale(0.97);
+  pointer-events: none;
+}
+
+/* ---- Bandes marine (bandeau des parcours, appel final) ----------------- */
+/* Fond uni (le contraste du texte reste mesurable) ; lueur et motif sont des couches a part. */
+.v-marine-fond {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background-color: var(--jeton-nav-bg);
+}
+.v-marine-fond::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(40rem 22rem at 85% 0%, color-mix(in srgb, var(--jeton-nav-active) 12%, transparent), transparent 70%);
+}
+.v-carte-marine {
+  border: 1px solid var(--jeton-nav-border);
+  background: var(--jeton-nav-bg-hover);
+}
+.v-filet-or {
+  height: 1px;
+  background: linear-gradient(to right, transparent, color-mix(in srgb, var(--jeton-accent) 45%, transparent), transparent);
+}
+
+/* Motif de zellige (MotifZellige.tsx) : tres discret, glisse d'une tuile en 40 s. */
+.v-zellige {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.09;
+}
+.v-zellige-parallaxe {
+  position: absolute;
+  inset: -64px 0;
+}
+.v-zellige-couche {
+  position: absolute;
+  top: -48px;
+  left: -48px;
+  width: calc(100% + 96px);
+  height: calc(100% + 96px);
+  animation: v-zellige 40s linear infinite;
+  will-change: transform;
+}
+@keyframes v-zellige {
+  from { transform: translate(0, 0); }
+  to { transform: translate(48px, 48px); }
+}
+
+/* ---- Bandeau defilant des parcours ------------------------------------- */
+.v-defile {
+  overflow: hidden;
+}
+.v-defile[data-defile] {
+  mask-image: linear-gradient(to right, transparent, black 7%, black 93%, transparent);
+}
+.v-defile-rail {
+  display: flex;
+  width: max-content;
+}
+.v-defile[data-defile] .v-defile-rail {
+  animation: v-defile 55s linear infinite;
+  will-change: transform;
+}
+.v-defile:hover .v-defile-rail,
+.v-defile:focus-within .v-defile-rail {
+  animation-play-state: paused;
+}
+.v-defile-liste {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.625rem;
+  padding-right: 0.625rem;
+}
+.v-defile-element {
+  white-space: nowrap;
+}
+@keyframes v-defile {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+/* Immobile (animations reduites) : une seule liste, sur plusieurs lignes. */
+.v-defile:not([data-defile]) .v-defile-rail {
+  width: auto;
+  justify-content: center;
+}
+.v-defile:not([data-defile]) .v-defile-liste {
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 0 1rem;
+}
+.v-defile:not([data-defile]) .v-defile-element {
+  white-space: normal;
+}
+
+/* ---- Boutons : survol et pression -------------------------------------- */
+/* Les couleurs restent celles de la bibliotheque (memes transitions) ; s'y ajoutent
+ * une montee au survol et un enfoncement a la pression. */
+.vitrine .v-bouton {
+  transition-property: color, background-color, border-color, translate, scale;
+  transition-duration: 180ms;
+  transition-timing-function: var(--v-ease);
+}
+.v-bouton:hover {
+  translate: 0 -2px;
+}
+.v-bouton:active {
+  translate: 0 0;
+  scale: 0.97;
+}
+.v-bouton .v-fleche {
+  transition: translate 220ms var(--v-ease);
+}
+.v-bouton:hover .v-fleche {
+  translate: 3px 0;
+}
+
+/* ---- Cartes : elles se soulevent (ombre portee par une couche en fondu) - */
+.v-carte {
+  position: relative;
+  transition: transform 300ms var(--v-ease);
+}
+.v-carte::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: var(--jeton-ombre-card-lifted);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms var(--v-ease);
+}
+.v-carte:hover {
+  transform: translateY(-3px);
+}
+.v-carte:hover::after {
+  opacity: 1;
+}
+.v-carte-tarif:hover {
+  transform: translateY(-8px);
+}
+
+/* ---- Apparitions au defilement, en cascade ----------------------------- */
+/* Actives seulement quand le script a pose data-apparition (mouvement permis,
+ * IntersectionObserver present) ; sans lui, tout est visible d'emblee.
+ * data-visible="0" : deja a l'ecran au montage (aucune animation) ; "1" : entre a
+ * l'ecran (fondu et glissement, delai selon le rang --rang). Remplissage
+ * "backwards" : une fois finie, l'animation laisse la place aux survols. */
+.vitrine[data-apparition] [data-apparait]:not([data-visible]) {
+  opacity: 0;
+  transform: translateY(28px);
+}
+.vitrine[data-apparition] [data-apparait][data-visible="1"] {
+  animation: v-apparait 750ms var(--v-ease) backwards;
+  animation-delay: calc(var(--rang, 0) * 80ms);
+}
+@keyframes v-apparait {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---- Questions frequentes : chevron, reponse qui s'ouvre en douceur ----- */
+.v-chevron {
+  transition: transform 250ms var(--v-ease);
+}
+details[open] > summary .v-chevron {
+  transform: rotate(180deg);
+}
+details[open] > .v-reponse {
+  animation: v-ouverture 420ms var(--v-ease) both;
+}
+@keyframes v-ouverture {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---- Retour en haut ---------------------------------------------------- */
+.v-retour-haut {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 30;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(16px) scale(0.9);
+  transition: opacity 300ms var(--v-ease), transform 450ms var(--v-ease);
+}
+.v-retour-haut[data-visible] {
+  pointer-events: auto;
+  opacity: 1;
+  transform: none;
+}
+.v-retour-haut .v-retour-fleche {
+  transition: translate 220ms var(--v-ease);
+}
+.v-retour-haut button:hover .v-retour-fleche {
+  translate: 0 -2px;
+}
+
+/* ---- Transitions entre les pages de la vitrine (useTransitionsVitrine) -- */
+:root[data-transition-vitrine]::view-transition-old(root) {
+  animation: v-vt-sortie 260ms var(--v-ease-trace, ease-in) both;
+}
+:root[data-transition-vitrine]::view-transition-new(root) {
+  animation: v-vt-entree 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes v-vt-sortie {
+  to { opacity: 0; transform: translateY(-10px); }
+}
+@keyframes v-vt-entree {
+  from { opacity: 0; transform: translateY(14px); }
+}
+
+/* ---- Parallaxe des fonds (defilement natif, CSS seul) ------------------ */
+@supports (animation-timeline: scroll()) {
+  .v-fond-accroche {
+    animation: v-parallaxe-accroche linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0px 100vh;
+  }
+  @keyframes v-parallaxe-accroche {
+    from { transform: translateY(0); }
+    to { transform: translateY(24%); }
+  }
+}
+@supports (animation-timeline: view()) {
+  .v-zellige-parallaxe {
+    animation: v-parallaxe-motif linear both;
+    animation-timeline: view();
+  }
+  @keyframes v-parallaxe-motif {
+    from { transform: translateY(-48px); }
+    to { transform: translateY(48px); }
+  }
+}
+
+/* ---- Fondu simple (mouvement reduit) ------------------------------------ */
+@keyframes v-fondu {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---- Mouvement reduit : aucun mouvement, des fondus simples (V4) ------- */
+/* Demande du 2026-10-16 : sous "reduire les animations", rien ne se deplace, ne tourne
+ * ni ne change d'echelle ; les animations restent, en FONDUS SIMPLES (opacite seule,
+ * 300 ms) : entree de l'accroche (d'un seul tenant, sans cascade), reponses des
+ * questions, retour en haut, debut de lecture d'une video. Le contenu
+ * plus bas reste visible d'emblee (aucune apparition au defilement : rien n'est cache en
+ * attendant un defilement, ni a l'impression, ni aux controles du harnais). La regle
+ * globale (index.css) reduit toute duree a 0,01 ms : les fondus ci-dessous la
+ * surclassent (selecteurs plus precis, !important). Les videos montrent leur image fixe et un bouton "Lire la video"
+ * (VideoBoucle.tsx). */
+@media (prefers-reduced-motion: reduce) {
+  .vitrine *,
+  .vitrine *::before,
+  .vitrine *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .vitrine [data-apparait],
+  .vitrine[data-apparition] [data-apparait]:not([data-visible]) {
+    opacity: 1;
+    transform: none;
+  }
+  .vitrine .v-entree,
+  .vitrine .v-mot,
+  .vitrine .v-embleme-tuile,
+  .vitrine .v-embleme-treillis,
+  .vitrine .v-embleme-logo {
+    animation: v-fondu 300ms ease-out both !important;
+  }
+  .vitrine details[open] > .v-reponse {
+    animation: v-fondu 300ms ease-out both !important;
+  }
+  .vitrine .v-recit-ecran,
+  .vitrine .v-retour-haut,
+  .vitrine .v-video-lecteur,
+  .vitrine .v-video-bouton {
+    transition: opacity 300ms ease-out !important;
+  }
+  .v-vivante,
+  .v-vivante-cadre .v-ombre {
+    transform: none !important;
+  }
+  .v-reflet,
+  .v-ombre {
+    opacity: 0 !important;
+  }
+  .v-recit-ecran:not([data-actif]),
+  .v-retour-haut {
+    transform: none;
+  }
+  .v-bouton:hover,
+  .v-bouton:active,
+  .v-bouton:hover .v-fleche,
+  .v-retour-haut button:hover .v-retour-fleche {
+    translate: none;
+    scale: none;
+  }
+  .v-carte:hover,
+  .v-carte-tarif:hover {
+    transform: none;
+  }
+  details[open] > summary .v-chevron {
+    transform: rotate(180deg);
+  }
+}

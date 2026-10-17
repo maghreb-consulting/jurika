@@ -16,9 +16,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { TexteAide } from '../ui/Aide';
 import { TextField } from '../ui/TextField';
+import { Select } from '../ui/Select';
 import { TypePieceProposee, ValeurProposee } from './ValeurProposee';
 import { WorkflowDocumentBlock } from './WorkflowDocumentBlock';
-import { freshDocState, useDocumentBlocks, type DocState } from './documentBlocks';
+import { freshDocState, useDocumentBlocks, type DocState, documentTravaille } from './documentBlocks';
 import {
   listTemplatesForWorkflow,
   type TemplateInfo,
@@ -84,6 +85,11 @@ export interface SeanceOperationFormProps {
   formeJuridique: 'SARL' | 'SARL_AU';
   societe: SeanceSocieteInput;
   defaultDate?: string;
+  /**
+   * Lot L6b (E15) : date et heure de convocation saisies a l'etape 1 de la page hote.
+   * Fournies, le proces-verbal les reprend et ne les redemande pas ; absentes, il les demande.
+   */
+  defaultConvocation?: { date: string; heure?: string };
   /** Motif de dissolution saisi à l'étape 1 (mode dissolution). */
   motif?: string;
   /** L4a (E2) : nature de la dissolution (anticipee, article 86, arrivee du terme), saisie. */
@@ -167,6 +173,7 @@ export function SeanceOperationForm({
   formeJuridique,
   societe,
   defaultDate,
+  defaultConvocation,
   motif,
   nature,
   operation,
@@ -191,7 +198,13 @@ export function SeanceOperationForm({
   const form = useSeanceForm({
     formeJuridique,
     societe,
-    defaults: { type: 'extraordinaire', date: defaultDate },
+    defaults: {
+      type: 'extraordinaire',
+      date: defaultDate,
+      ...(defaultConvocation?.date
+        ? { convDate: defaultConvocation.date, convHeure: defaultConvocation.heure ?? '' }
+        : {}),
+    },
     initialAssocies,
     initialGerants,
     initialSnapshot,
@@ -364,7 +377,9 @@ export function SeanceOperationForm({
   }, [workflowCode, mode, pvCode, templates.length]);
 
   useEffect(() => {
-    onReady?.(requiredCodes.every((c) => !!docs[c]?.validated));
+    if (requiredCodes.some((c) => documentTravaille(docs[c]))) {
+      onReady?.(requiredCodes.every((c) => !!docs[c]?.validated));
+    }
   }, [docs, requiredCodes, onReady]);
 
   return (
@@ -375,7 +390,7 @@ export function SeanceOperationForm({
         déposé dans la Data Room du dossier. Une donnée manquante vous est nommée à la
         génération.
       </TexteAide>
-      <SeanceFormFields form={form} sections={SECTIONS} />
+      <SeanceFormFields form={form} sections={SECTIONS} hideConvDate={!!defaultConvocation?.date} />
 
       <section className="rounded-xl border border-border bg-bg-raised p-4">
         <div className="max-w-xs">
@@ -402,25 +417,23 @@ export function SeanceOperationForm({
       {mode === 'dissolution' && !operation && (
         <section className="space-y-4 rounded-xl border border-border bg-bg-raised p-4">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-violet-600" />
+            <Sparkles className="h-4 w-4 text-info" />
             <h4 className="text-sm font-semibold text-fg">Liquidateur et siège de la liquidation</h4>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-fg-muted">Civilité</label>
-              <select
-                value={liqCivilite}
-                onChange={(e) => {
-                  setLiqCivilite(e.target.value);
-                  setLiqGenre(e.target.value === 'Mme' || e.target.value === 'Mlle' ? 'féminin' : 'masculin');
-                }}
-                className="w-full rounded-lg border border-border-hi bg-bg-raised px-3 py-2 text-sm"
-              >
-                <option value="M.">M.</option>
-                <option value="Mme">Mme</option>
-                <option value="Mlle">Mlle</option>
-              </select>
-            </div>
+            <Select
+              label="Civilité"
+              value={liqCivilite}
+              onChange={(e) => {
+                setLiqCivilite(e.target.value);
+                setLiqGenre(e.target.value === 'Mme' || e.target.value === 'Mlle' ? 'féminin' : 'masculin');
+              }}
+              options={[
+                { value: 'M.', label: 'M.' },
+                { value: 'Mme', label: 'Mme' },
+                { value: 'Mlle', label: 'Mlle' },
+              ]}
+            />
             <TextField label="Prénom" value={liqPrenom} onChange={(e) => setLiqPrenom(e.target.value)} />
             <TextField label="Nom" value={liqNom} onChange={(e) => setLiqNom(e.target.value)} />
             <TextField label="Adresse" value={liqAdresse} onChange={(e) => setLiqAdresse(e.target.value)} />
@@ -435,14 +448,14 @@ export function SeanceOperationForm({
 
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-violet-600" />
+          <Sparkles className="h-4 w-4 text-info" />
           <h4 className="text-sm font-semibold text-fg">
             {mode === 'dissolution' ? 'Générer le PV de dissolution' : 'Générer le PV de clôture et le rapport'}
           </h4>
         </div>
         {loadingTemplates && <p className="text-sm text-fg-subtle">Chargement des modèles…</p>}
         {loadTemplatesError && (
-          <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger" role="alert">
+          <div className="rounded-lg border border-danger/30 bg-danger-soft p-3 text-sm text-danger" role="alert">
             {loadTemplatesError}
           </div>
         )}

@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, Bell, BellOff, CheckCircle, Loader2 } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
+import { BellOff } from 'lucide-react';
+import { Badge } from '../../components/ui/Badge';
+import { Interrupteur } from '../../components/ui/Choix';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Skeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
+import { Message } from '../../components/ui/Message';
+import { SectionOnglet } from './EcranOuOnglet';
 import { notificationService } from '../../services/notification.service';
 import {
   NOTIFICATION_TYPES,
@@ -67,84 +72,67 @@ export function NotificationPreferencesTab() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex h-32 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-accent" />
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-fg">
-          <Bell className="h-5 w-5 text-accent" /> Notifications
-        </h2>
-        <p className="mt-1 text-sm text-fg-muted">
-          Choisissez les notifications que vous souhaitez recevoir en temps réel. Chaque changement
-          est enregistré aussitôt.
-        </p>
-      </div>
-
-      <TexteAide cle="preferences-notifications" titre="Activer ou couper une notification">
-        <p>
-          Cliquez sur le bouton d’une ligne pour la faire passer de « Activée » à « Désactivée », ou
-          l’inverse. Une notification désactivée ne vous est plus signalée ; vous pouvez la réactiver à
-          tout moment.
-        </p>
-      </TexteAide>
-
-      {error && (
-        <div role="alert" className="flex items-center gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-          <AlertCircle className="h-4 w-4" /> {error}
-        </div>
-      )}
-      {feedback && (
-        <div role="status" className="flex items-center gap-2 rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm text-success">
-          <CheckCircle className="h-4 w-4" /> {feedback}
-        </div>
-      )}
-
-      {types.length === 0 ? (
-        <div
-          className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border bg-bg-raised px-4 py-10 text-center"
-          data-testid="notif-pref-empty"
-        >
-          <BellOff className="h-6 w-6 text-fg-subtle" />
-          <p className="text-sm font-medium text-fg">Aucune préférence disponible</p>
-          <p className="text-xs text-fg-subtle">
-            Aucun type de notification n’est réglable pour le moment : vous recevez toutes les
-            notifications prévues pour votre rôle.
+    <SectionOnglet
+      titre="Notifications"
+      description="Choisissez les notifications que vous souhaitez recevoir en temps réel. Chaque changement est enregistré aussitôt."
+      aide={
+        <TexteAide cle="preferences-notifications" titre="Activer ou couper une notification">
+          <p>
+            Cliquez sur l’interrupteur d’une ligne pour la faire passer de « Activée » à « Désactivée », ou
+            l’inverse. Une notification désactivée ne vous est plus signalée ; vous pouvez la réactiver à
+            tout moment.
           </p>
-        </div>
-      ) : (
-        <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-bg-raised">
-          {types.map((t) => {
-            const enabled = prefs[t] !== false;
-            return (
-              <li
-                key={t}
-                className="flex items-center justify-between gap-4 px-4 py-3"
-                data-testid={`notif-pref-${t}`}
-              >
-                <p className="text-sm font-medium text-fg">
-                  {NOTIFICATION_TYPE_LABELS[t] ?? t}
-                </p>
-                <Button
-                  size="sm"
-                  variant={enabled ? 'primary' : 'secondary'}
-                  onClick={() => toggle(t)}
-                  loading={busy === t}
-                  disabled={busy === t}
-                >
-                  {enabled ? 'Activée' : 'Désactivée'}
-                </Button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
+        </TexteAide>
+      }
+    >
+      <div className="space-y-4">
+        {error && <Message ton="erreur">{error}</Message>}
+        {feedback && <Message ton="succes">{feedback}</Message>}
+
+        {loading ? (
+          <SqueletteZone libelle="Chargement de vos préférences de notification">
+            <div className="divide-y divide-border rounded-xl border border-border bg-bg-raised">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between gap-4 px-4 py-3.5">
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-6 w-11 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </SqueletteZone>
+        ) : types.length === 0 ? (
+          <div data-testid="notif-pref-empty">
+            <EmptyState
+              icon={<BellOff />}
+              title="Aucune préférence disponible"
+              description="Aucun type de notification n’est réglable pour le moment : vous recevez toutes les notifications prévues pour votre rôle."
+              compact
+            />
+          </div>
+        ) : (
+          <ul className="divide-y divide-border rounded-xl border border-border bg-bg-raised" aria-label="Types de notification">
+            {types.map((t) => {
+              const enabled = prefs[t] !== false;
+              return (
+                <li key={t} className="px-4 py-3" data-testid={`notif-pref-${t}`}>
+                  <Interrupteur
+                    checked={enabled}
+                    disabled={busy === t}
+                    onChange={() => void toggle(t)}
+                    label={
+                      <span className="flex flex-wrap items-center gap-2 font-medium">
+                        {NOTIFICATION_TYPE_LABELS[t] ?? t}
+                        <Badge variant={enabled ? 'success' : 'neutral'}>{enabled ? 'Activée' : 'Désactivée'}</Badge>
+                      </span>
+                    }
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </SectionOnglet>
   );
 }

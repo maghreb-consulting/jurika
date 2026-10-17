@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, Power, RefreshCw, Trash2, UserPlus, Users } from 'lucide-react';
+import { Power, RefreshCw, Trash2, UserPlus, Users } from 'lucide-react';
+import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Lien } from '../../components/ui/Lien';
+import { Skeleton } from '../../components/ui/LoadingSkeleton';
+import { Message } from '../../components/ui/Message';
+import { Tableau, type ColonneTableau } from '../../components/ui/Tableau';
+import { EcranOuOnglet } from '../settings/EcranOuOnglet';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { authService } from '../../services/auth.service';
 import { billingService } from '../../services/billing.service';
@@ -9,7 +17,6 @@ import { useAuthStore } from '../../store/authStore';
 import type { WorkspaceUser, UserStatus } from '../../types/auth';
 import type { UsageSnapshot } from '../../types/billing';
 import { InviteEmployeeDrawer } from './InviteEmployeeDrawer';
-import { Link } from 'react-router-dom';
 
 /**
  * BUG 6 (2026-06-07) — Page Equipe (superviseur uniquement). Permet :
@@ -117,212 +124,186 @@ export function TeamPage() {
   const unlimited = usage?.usersUnlimited === true;
   const quotaFull = !unlimited && max !== null && employeUsage.active >= max;
 
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-accent" />
-      </div>
-    );
-  }
+  const colonnes: ColonneTableau<WorkspaceUser>[] = [
+    {
+      cle: 'membre',
+      titre: 'Membre',
+      rendu: (u) => (
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-fg">
+            {u.firstName} {u.lastName}
+            {u.userId === me?.userId && <Badge variant="default">Vous</Badge>}
+          </div>
+          <div className="break-all text-xs text-fg-muted">{u.email}</div>
+        </div>
+      ),
+    },
+    {
+      cle: 'role',
+      titre: 'Rôle',
+      rendu: (u) => <span className="text-sm text-fg-muted">{u.role === 'SUPERVISEUR' ? 'Superviseur' : 'Employé'}</span>,
+      masquerSous: 'md',
+    },
+    { cle: 'statut', titre: 'Statut', rendu: (u) => <StatusBadge status={u.status} /> },
+    {
+      cle: 'connexion',
+      titre: 'Dernière connexion',
+      rendu: (u) => (
+        <span className="text-xs text-fg-muted">
+          {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString('fr-FR') : 'Jamais'}
+        </span>
+      ),
+      masquerSous: 'lg',
+    },
+    {
+      cle: 'suppression',
+      titre: (
+        <span className="inline-flex items-center gap-1 normal-case">
+          Suppression en Data Room
+          <InfoBulle
+            libelle="Que permet le droit de suppression ?"
+            texte="L’employé qui a ce droit peut supprimer des documents dans la Data Room des dossiers dont il est responsable. Sans ce droit, il peut seulement en ajouter. Le superviseur l’accorde ou le retire à tout moment."
+          />
+        </span>
+      ),
+      rendu: (u) => {
+        if (u.role !== 'EMPLOYE') {
+          return (
+            <span className="text-xs text-fg-muted" title="Le superviseur ne supprime pas de documents.">
+              Sans objet
+            </span>
+          );
+        }
+        const aLeDroit = droitsSuppression.has(u.userId);
+        return (
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={aLeDroit ? 'success' : 'neutral'}>{aLeDroit ? 'Accordé' : 'Non accordé'}</Badge>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              loading={actingOn === `droit-${u.userId}`}
+              onClick={() => handleDroitSuppression(u, !aLeDroit)}
+              aria-label={`${aLeDroit ? 'Retirer' : 'Accorder'} le droit de suppression à ${u.firstName} ${u.lastName}`}
+              icon={<Trash2 />}
+            >
+              {aLeDroit ? 'Retirer' : 'Accorder'}
+            </Button>
+          </div>
+        );
+      },
+    },
+    {
+      cle: 'action',
+      titre: 'Action',
+      alignement: 'droite',
+      rendu: (u) => {
+        const isSelf = u.userId === me?.userId;
+        const isInactive = u.status === 'INACTIVE';
+        return (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={isSelf}
+            loading={actingOn === u.userId}
+            onClick={() => handleToggle(u)}
+            title={isSelf ? 'Vous ne pouvez pas modifier votre propre statut.' : undefined}
+            icon={<Power />}
+          >
+            {isInactive ? 'Réactiver' : 'Désactiver'}
+          </Button>
+        );
+      },
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 font-heading text-2xl font-semibold text-fg">
-            <Users className="h-6 w-6 text-accent" />
-            Équipe
-          </h1>
-          <p className="mt-1 text-sm text-fg-muted">
-            Gérez les membres internes de votre cabinet : inviter, activer, désactiver, et accorder le
-            droit de supprimer des documents en Data Room.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={reload}>
-            <RefreshCw className="mr-1 h-3.5 w-3.5" /> Actualiser
-          </Button>
-          <Button
-            onClick={() => setDrawerOpen(true)}
-            disabled={quotaFull}
-            title={quotaFull ? 'Quota d’employés atteint : passez à un forfait supérieur.' : undefined}
-          >
-            <UserPlus className="mr-1 h-3.5 w-3.5" /> Inviter un membre
-          </Button>
-        </div>
-      </div>
-
-      {/* Quota indicator */}
-      {usage && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-border bg-bg-raised p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-fg-subtle">
-              Forfait {usage.planLabel}
+    <EcranOuOnglet
+      titre="Équipe"
+      description="Gérez les membres internes de votre cabinet : inviter, activer, désactiver, et accorder le droit de supprimer des documents en Data Room."
+      actions={
+        <Button type="button" variant="secondary" onClick={reload} icon={<RefreshCw />} disabled={loading}>
+          Actualiser
+        </Button>
+      }
+      action={
+        <Button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          disabled={quotaFull || loading}
+          title={quotaFull ? 'Quota d’employés atteint : passez à un forfait supérieur.' : undefined}
+          icon={<UserPlus />}
+        >
+          Inviter un membre
+        </Button>
+      }
+      aide={
+        <div className="space-y-3">
+          <TexteAide cle="equipe-invitation" titre="Inviter et gérer les membres">
+            <p>
+              Cliquez sur « Inviter un membre » : il reçoit par courriel ses identifiants et un mot de
+              passe temporaire, et apparaît « En attente » jusqu’à sa première connexion. « Désactiver »
+              coupe son accès sans rien effacer ; « Réactiver » le lui rend. Les clients ne figurent pas
+              ici : ils se gèrent depuis la Data Room de leur dossier.
             </p>
-            <p className="mt-1 text-lg font-semibold text-fg">
-              {employeUsage.active}
-              <span className="text-fg-subtle"> / {unlimited ? '∞' : max} </span>
-              <span className="text-sm font-normal text-fg-muted">
-                employés actifs (superviseur hors quota)
-              </span>
+          </TexteAide>
+          <TexteAide cle="equipe-droit-suppression" titre="Le droit de supprimer des documents">
+            <p>
+              Par défaut, un employé ajoute des documents dans la Data Room de ses dossiers mais ne peut
+              pas en supprimer. Cliquez sur « Accorder » pour lui donner ce droit, ou sur « Retirer » pour
+              le lui reprendre : le changement vaut aussitôt pour tous ses dossiers et il est tracé. Un
+              document supprimé reste en archive.
             </p>
-          </div>
-          {quotaFull && (
-            <Link
-              to="/app/billing"
-              className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-bg hover:bg-accent-hover"
-            >
-              Quota atteint : changer de forfait
-            </Link>
-          )}
+          </TexteAide>
         </div>
-      )}
+      }
+    >
+      <div className="space-y-4">
+        {/* Quota du forfait (emplacement reserve pendant le chargement : aucun decalage). */}
+        {loading ? (
+          <Skeleton className="h-[4.5rem] w-full rounded-xl" />
+        ) : (
+          usage && (
+            <Card padding={false}>
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-fg-muted">Forfait {usage.planLabel}</p>
+                  <p className="mt-1 text-lg font-semibold text-fg">
+                    {employeUsage.active}
+                    <span className="text-fg-muted"> / {unlimited ? '∞' : max} </span>
+                    <span className="text-sm font-normal text-fg-muted">employés actifs (superviseur hors quota)</span>
+                  </p>
+                </div>
+                {quotaFull && (
+                  <Lien to="/app/billing/change-plan" commeBouton={{ variant: 'secondary', size: 'sm' }}>
+                    Quota atteint : changer de forfait
+                  </Lien>
+                )}
+              </div>
+            </Card>
+          )
+        )}
 
-      <TexteAide cle="equipe-invitation" titre="Inviter et gérer les membres">
-        <p>
-          Cliquez sur « Inviter un membre » : il reçoit par courriel ses identifiants et un mot de
-          passe temporaire, et apparaît « En attente » jusqu’à sa première connexion. « Désactiver »
-          coupe son accès sans rien effacer ; « Réactiver » le lui rend. Les clients ne figurent pas
-          ici : ils se gèrent depuis la Data Room de leur dossier.
-        </p>
-      </TexteAide>
+        {(error || actionError) && <Message ton="erreur">{actionError || error}</Message>}
 
-      <TexteAide cle="equipe-droit-suppression" titre="Le droit de supprimer des documents">
-        <p>
-          Par défaut, un employé ajoute des documents dans la Data Room de ses dossiers mais ne peut
-          pas en supprimer. Cliquez sur « Accorder » pour lui donner ce droit, ou sur « Retirer » pour
-          le lui reprendre : le changement vaut aussitôt pour tous ses dossiers et il est tracé. Un
-          document supprimé reste en archive.
-        </p>
-      </TexteAide>
-
-      {(error || actionError) && (
-        <div role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-          {actionError || error}
-        </div>
-      )}
-
-      {/* Members table */}
-      <div className="overflow-hidden rounded-2xl border border-border bg-bg-raised">
-        <table className="min-w-full divide-y divide-border">
-          <thead className="bg-bg-overlay">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-fg-subtle">
-                Membre
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-fg-subtle">
-                Rôle
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-fg-subtle">
-                Statut
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-fg-subtle">
-                Dernière connexion
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-fg-subtle">
-                <span className="inline-flex items-center gap-1">
-                  Suppression en Data Room
-                  <InfoBulle
-                    libelle="Que permet le droit de suppression ?"
-                    texte="L’employé qui a ce droit peut supprimer des documents dans la Data Room des dossiers dont il est responsable. Sans ce droit, il peut seulement en ajouter. Le superviseur l’accorde ou le retire à tout moment."
-                  />
-                </span>
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-fg-subtle">
-                Action
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {(users ?? []).length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-sm text-fg-muted">
-                  Aucun membre : invitez votre premier employé.
-                </td>
-              </tr>
-            ) : (
-              (users ?? []).map((u) => {
-                const isSelf = u.userId === me?.userId;
-                const isInactive = u.status === 'INACTIVE';
-                const aLeDroit = droitsSuppression.has(u.userId);
-                return (
-                  <tr key={u.userId} className="hover:bg-bg-overlay/50">
-                    <td className="px-4 py-3">
-                      <div className="text-sm font-medium text-fg">
-                        {u.firstName} {u.lastName}
-                        {isSelf && (
-                          <span className="ml-2 rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
-                            Vous
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-fg-muted">{u.email}</div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-fg-subtle">
-                      {u.role === 'SUPERVISEUR' ? 'Superviseur' : 'Employé'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={u.status} />
-                    </td>
-                    <td className="px-4 py-3 text-xs text-fg-muted">
-                      {u.lastLoginAt
-                        ? new Date(u.lastLoginAt).toLocaleString('fr-FR')
-                        : 'Jamais'}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {u.role === 'EMPLOYE' ? (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-                              aLeDroit
-                                ? 'border-success/30 bg-success/10 text-success'
-                                : 'border-border bg-bg-overlay text-fg-subtle'
-                            }`}
-                          >
-                            {aLeDroit ? 'Accordé' : 'Non accordé'}
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            disabled={actingOn === `droit-${u.userId}`}
-                            loading={actingOn === `droit-${u.userId}`}
-                            onClick={() => handleDroitSuppression(u, !aLeDroit)}
-                            aria-label={`${aLeDroit ? 'Retirer' : 'Accorder'} le droit de suppression à ${u.firstName} ${u.lastName}`}
-                          >
-                            <Trash2 className="mr-1 h-3.5 w-3.5" />
-                            {aLeDroit ? 'Retirer' : 'Accorder'}
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-fg-subtle" title="Le superviseur ne supprime pas de documents.">
-                          Sans objet
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Button
-                        size="sm"
-                        variant={isInactive ? 'primary' : 'secondary'}
-                        disabled={isSelf || actingOn === u.userId}
-                        loading={actingOn === u.userId}
-                        onClick={() => handleToggle(u)}
-                        title={
-                          isSelf
-                            ? 'Vous ne pouvez pas modifier votre propre statut.'
-                            : undefined
-                        }
-                      >
-                        <Power className="mr-1 h-3.5 w-3.5" />
-                        {isInactive ? 'Réactiver' : 'Désactiver'}
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+        <Tableau
+          legende="Membres internes du cabinet"
+          colonnes={colonnes}
+          lignes={users ?? []}
+          cleLigne={(u) => u.userId}
+          chargement={loading}
+          lignesChargement={3}
+          enTeteCollant={false}
+          vide={
+            <EmptyState
+              icon={<Users />}
+              title="Aucun membre pour le moment"
+              description="Invitez votre premier employé avec « Inviter un membre » : il reçoit ses identifiants par courriel."
+              compact
+            />
+          }
+        />
       </div>
 
       <InviteEmployeeDrawer
@@ -331,31 +312,20 @@ export function TeamPage() {
         onInvited={reload}
         supervisorTaken={supervisorTaken}
       />
-    </div>
+    </EcranOuOnglet>
   );
 }
 
 function StatusBadge({ status }: { status: UserStatus }) {
-  const config: Record<UserStatus, { label: string; cls: string }> = {
-    PENDING: {
-      label: 'En attente',
-      cls: 'border-amber-300 bg-warning/10 text-amber-800',
-    },
-    ACTIVE: {
-      label: 'Actif',
-      cls: 'border-emerald-300 bg-emerald-50 text-emerald-700',
-    },
-    INACTIVE: {
-      label: 'Désactivé',
-      cls: 'border-border bg-bg-overlay text-fg-subtle',
-    },
+  const config: Record<UserStatus, { label: string; variant: 'warning' | 'success' | 'neutral' }> = {
+    PENDING: { label: 'En attente', variant: 'warning' },
+    ACTIVE: { label: 'Actif', variant: 'success' },
+    INACTIVE: { label: 'Désactivé', variant: 'neutral' },
   };
   const c = config[status];
   return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${c.cls}`}
-    >
+    <Badge variant={c.variant} dot>
       {c.label}
-    </span>
+    </Badge>
   );
 }

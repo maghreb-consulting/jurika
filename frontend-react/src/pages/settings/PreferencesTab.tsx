@@ -1,86 +1,82 @@
-import { Globe, Moon, Sun } from 'lucide-react';
-import { useThemeStore } from '../../store/themeStore';
+import { Globe, Monitor, Moon, Sun } from 'lucide-react';
+import { LIBELLES_THEME, useThemeStore, type ChoixTheme } from '../../store/themeStore';
+import { usePreferencesStore } from '../../store/preferencesStore';
 import { Button } from '../../components/ui/Button';
 import { TexteAide } from '../../components/ui/Aide';
+import { Badge } from '../../components/ui/Badge';
+import { Card } from '../../components/ui/Card';
+import { SectionOnglet } from './EcranOuOnglet';
 
 /**
  * BUG 11 (2026-06-08) — Onglet Preferences dans /settings.
- *  - Theme : reutilise le themeStore (clair / sombre, persistance localStorage
- *    + sync DB via userService.setPreferredTheme dans la version branchee a
- *    AppTopNav.ThemeToggle).
- *  - Langue : FR uniquement en V1 (placeholder — la roadmap i18n est sprint 13).
- *
- * On evite de cloner ThemeToggle ici pour ne pas dupliquer la logique de sync :
- * on rend deux boutons explicites qui muent le store.
+ *  - Theme (lot L6b, E3) : selon l'ordinateur (defaut), clair ou sombre ; applique tout de
+ *    suite et memorise SUR LE COMPTE (store/preferencesStore, PUT /users/me/preferences).
+ *    Un echec d'enregistrement s'affiche dans la coquille (bandeau "Preferences d'affichage").
+ *  - Langue : FR uniquement en V1.
  */
+const CHOIX: { choix: ChoixTheme; icone: typeof Sun; testId: string }[] = [
+  { choix: 'SYSTEME', icone: Monitor, testId: 'pref-theme-systeme' },
+  { choix: 'CLAIR', icone: Sun, testId: 'pref-theme-light' },
+  { choix: 'SOMBRE', icone: Moon, testId: 'pref-theme-dark' },
+];
+
 export function PreferencesTab() {
-  const mode = useThemeStore((s) => s.mode);
-  const setMode = useThemeStore((s) => s.setMode);
+  const choix = useThemeStore((s) => s.choix);
+  const choisirTheme = usePreferencesStore((s) => s.choisirTheme);
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-fg">
-          <Globe className="h-5 w-5 text-accent" /> Préférences
-        </h2>
-        <p className="mt-1 text-sm text-fg-muted">
-          Personnalisez l’apparence et la langue de votre espace JURIKA.
-        </p>
+    <SectionOnglet
+      titre="Préférences"
+      description="Personnalisez l’apparence et la langue de votre espace JURIKA."
+      aide={
+        <TexteAide cle="preferences" titre="Apparence et langue">
+          <p>
+            Choisissez « Selon l’ordinateur » pour suivre le réglage clair ou sombre de votre
+            ordinateur, ou imposez « Clair » ou « Sombre ». Le changement est immédiat et suit
+            votre compte sur tous vos appareils ; rien d’autre à enregistrer.
+          </p>
+        </TexteAide>
+      }
+    >
+      <div className="space-y-4">
+        <Card title="Apparence" description="Le thème s’applique immédiatement et reste mémorisé sur votre compte.">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Thème">
+            {CHOIX.map(({ choix: c, icone: Icone, testId }) => (
+              <Button
+                key={c}
+                type="button"
+                variant={choix === c ? 'primary' : 'secondary'}
+                aria-pressed={choix === c}
+                onClick={() => void choisirTheme(c)}
+                data-testid={testId}
+                icon={<Icone />}
+              >
+                {LIBELLES_THEME[c]}
+              </Button>
+            ))}
+          </div>
+        </Card>
+
+        <Card title="Langue" description="L’interface est en français. L’arabe et l’anglais ne sont pas encore disponibles.">
+          <ul className="flex flex-wrap items-center gap-2" aria-label="Langues de l’interface">
+            <li>
+              <Badge variant="default" dot>
+                <Globe className="h-3.5 w-3.5" aria-hidden="true" /> Français (FR), en usage
+              </Badge>
+            </li>
+            <li>
+              <Badge variant="neutral" title="Pas encore disponible">
+                <span lang="ar">العربية</span> (AR), pas encore disponible
+              </Badge>
+            </li>
+            <li>
+              <Badge variant="neutral" title="Pas encore disponible">
+                English (EN), pas encore disponible
+              </Badge>
+            </li>
+          </ul>
+        </Card>
       </div>
-
-      <TexteAide cle="preferences" titre="Apparence et langue">
-        <p>
-          Cliquez sur « Mode clair » ou « Mode sombre » : le changement est immédiat, rien d’autre à
-          enregistrer.
-        </p>
-      </TexteAide>
-
-      {/* Theme */}
-      <section className="rounded-2xl border border-border bg-bg-raised p-5">
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-fg-subtle">
-          Apparence
-        </h3>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant={mode === 'light' ? 'primary' : 'secondary'}
-            onClick={() => setMode('light')}
-            data-testid="pref-theme-light"
-          >
-            <Sun className="mr-1.5 h-4 w-4" /> Mode clair
-          </Button>
-          <Button
-            variant={mode === 'dark' ? 'primary' : 'secondary'}
-            onClick={() => setMode('dark')}
-            data-testid="pref-theme-dark"
-          >
-            <Moon className="mr-1.5 h-4 w-4" /> Mode sombre
-          </Button>
-        </div>
-        <p className="mt-3 text-xs text-fg-muted">
-          Le mode s’applique immédiatement et reste mémorisé dans ce navigateur.
-        </p>
-      </section>
-
-      {/* Langue */}
-      <section className="rounded-2xl border border-border bg-bg-raised p-5">
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-fg-subtle">
-          Langue
-        </h3>
-        <div className="flex items-center gap-2">
-          <Button variant="primary" disabled>
-            Français (FR)
-          </Button>
-          <Button variant="secondary" disabled title="Pas encore disponible">
-            العربية (AR)
-          </Button>
-          <Button variant="secondary" disabled title="Pas encore disponible">
-            English (EN)
-          </Button>
-        </div>
-        <p className="mt-3 text-xs text-fg-muted">
-          L’interface est en français. L’arabe et l’anglais ne sont pas encore disponibles.
-        </p>
-      </section>
-    </div>
+    </SectionOnglet>
   );
 }

@@ -1,5 +1,6 @@
 package ma.jurika.dashboard.application.aggregator;
 
+import ma.jurika.common.audit.AuditActionLabels;
 import ma.jurika.dashboard.api.dto.DashboardDtos.*;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
@@ -68,16 +69,20 @@ public class SuperAdminDashboardAggregator {
                 """, (rs, rn) -> new WorkspaceUsage(
                         (UUID) rs.getObject(1), rs.getString(2), rs.getLong(3)));
 
+        // Lot L6b (E9) : 'RECOVERY_CODES_REGEN' n'etait jamais ecrit (le code est
+        // RECOVERY_CODES_REGENERATED) et '2FA_DISABLED' n'a aucun emetteur : filtre
+        // silencieusement inoperant, releve par AuditActionLabelsInventaireTest.
         List<AuditEventSummary> critiques = jdbc.query("""
                 SELECT id, action, user_id, workspace_id, entity_type, created_at
                 FROM audit_log
                 WHERE created_at >= NOW() - INTERVAL '24 hours'
-                  AND action IN ('LOGIN_FAILED','RECOVERY_CODES_REGEN','EXERCICE_UNLOCKED',
-                                 'PASSWORD_CHANGED','2FA_DISABLED')
+                  AND action IN ('LOGIN_FAILED','RECOVERY_CODES_REGENERATED','EXERCICE_UNLOCKED',
+                                 'PASSWORD_CHANGED')
                 ORDER BY created_at DESC LIMIT 20
                 """, (rs, rn) -> new AuditEventSummary(
                         rs.getObject(1) instanceof Number ? null : (UUID) rs.getObject(1),
                         rs.getString(2),
+                        AuditActionLabels.label(rs.getString(2)),
                         (UUID) rs.getObject(3),
                         (UUID) rs.getObject(4),
                         rs.getString(5),

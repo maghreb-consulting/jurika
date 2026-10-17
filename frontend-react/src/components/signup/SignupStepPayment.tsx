@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { Button } from '../ui/Button';
 import { billingService } from '../../services/billing.service';
 import { ChoixModePaiement } from '../billing/ChoixModePaiement';
 import { SuitePaiement } from '../billing/SuitePaiement';
@@ -88,7 +89,7 @@ export function SignupStepPayment({ draft, onBack, onPaid }: SignupStepPaymentPr
 
   if (preparation) {
     return (
-      <main className="px-6 pb-20 pt-8 sm:px-10" data-testid="signup-payment-suite">
+      <div className="py-4" data-testid="signup-payment-suite">
         <div className="mx-auto max-w-2xl space-y-4">
           <SuitePaiement preparation={preparation} />
           {!preparation.cmi && (
@@ -98,24 +99,23 @@ export function SignupStepPayment({ draft, onBack, onPaid }: SignupStepPaymentPr
                 (code du cabinet et mot de passe temporaire) seront envoyés par courriel au superviseur.
               </p>
               <div className="flex justify-end">
-                <button type="button" data-testid="signup-payment-pending-continue"
-                  onClick={() => onPaid(preparation.paiement.id, preparation.paiement.statut)}
-                  className="rounded-lg bg-accent px-5 py-2 text-sm font-bold text-bg hover:bg-accent-hover">
+                <Button type="button" data-testid="signup-payment-pending-continue"
+                  onClick={() => onPaid(preparation.paiement.id, preparation.paiement.statut)}>
                   J’ai compris
-                </button>
+                </Button>
               </div>
             </>
           )}
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="px-6 pb-20 pt-8 sm:px-10" data-testid="signup-step-payment">
+    <div className="py-4" data-testid="signup-step-payment">
       <div className="mx-auto max-w-3xl space-y-5">
         <header>
-          <h1 className="font-heading text-3xl font-semibold text-fg">Paiement</h1>
+          <h2 className="text-2xl font-semibold tracking-tight text-heading">Paiement</h2>
           <p className="mt-2 text-sm text-fg-muted">
             Forfait <strong>{libelleForfait(draft.planCode)}</strong>, {draft.billingPeriod === 'yearly' ? 'paiement annuel' : 'paiement mensuel'}
             {prixHt !== undefined && <> : <strong>{formatMad(prixHt)} HT</strong> {draft.billingPeriod === 'yearly' ? 'par an' : 'par mois'}</>}
@@ -130,22 +130,19 @@ export function SignupStepPayment({ draft, onBack, onPaid }: SignupStepPaymentPr
           </p>
         </TexteAide>
         <ErreurFacturationBloc erreur={erreur} />
-        <section className="rounded-2xl bg-bg-raised p-5 shadow-sm">
+        <section className="rounded-xl border border-border bg-bg-raised p-5 shadow-card">
           <ChoixModePaiement valeur={mode} onChange={setMode} carteDisponible={carte.dispo} carteMotif={carte.motif} />
           <div className="mt-5 flex flex-wrap justify-between gap-3">
-            <button type="button" onClick={onBack} disabled={envoi}
-              className="rounded-lg border border-border bg-bg-raised px-4 py-2 text-sm font-medium text-fg-muted hover:bg-bg-overlay disabled:opacity-50">
+            <Button type="button" variant="secondary" onClick={onBack} disabled={envoi} icon={<ArrowLeft />}>
               Étape précédente
-            </button>
-            <button type="button" onClick={() => void payer()} disabled={envoi || !mode}
-              data-testid="signup-payment-submit"
-              className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2 text-sm font-bold text-bg hover:bg-accent-hover disabled:opacity-50">
-              {envoi && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+            </Button>
+            <Button type="button" onClick={() => void payer()} disabled={!mode} loading={envoi}
+              data-testid="signup-payment-submit">
               {mode === 'CARD' ? 'Payer par carte' : 'Confirmer le mode de paiement'}
-            </button>
+            </Button>
           </div>
         </section>
       </div>
-    </main>
+    </div>
   );
 }

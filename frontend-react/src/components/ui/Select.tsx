@@ -1,9 +1,16 @@
-import { useId, type SelectHTMLAttributes } from 'react';
-import { twMerge } from 'tailwind-merge';
+import { forwardRef, useId, type SelectHTMLAttributes } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { cn } from '../../lib/utils';
+import { CadreChamp, CLASSES_CHAMP } from './TextField';
 
+/**
+ * Liste deroulante (lot L6b, E1) : <select> natif (accessible, clavier, mobile), fleche
+ * dessinee par la bibliotheque, memes libelle / aide / erreur que TextField.
+ */
 interface OptionItem {
   value: string;
   label: string;
+  disabled?: boolean;
 }
 
 interface OptionGroup {
@@ -11,80 +18,66 @@ interface OptionGroup {
   options: OptionItem[];
 }
 
-interface Props extends SelectHTMLAttributes<HTMLSelectElement> {
+export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   error?: string;
-  /**
-   * Aide contextuelle sous le champ (pendant de `TextField.hint`). Masquée quand une
-   * erreur est affichée : deux messages sous le même champ se concurrencent.
-   */
+  /** Aide sous le champ (masquee quand une erreur est affichee). */
   hint?: string;
-  /** Options "a plat" (rendues avant les groupes — ex. un placeholder). */
-  options: OptionItem[];
   /**
-   * Groupes optionnels rendus en <optgroup> apres {@link options}. Utile pour
-   * separer p.ex. "Employes" et "Clients" dans un meme <select>.
+   * Options "a plat" (rendues avant les groupes, ex. un choix vide). Ajout L6b E5 (W2) :
+   * facultatif ; des <option> passees en enfants sont rendues apres `options` et `groups`
+   * (listes construites par le JSX de l'appelant : conditions, regroupements).
    */
+  options?: OptionItem[];
+  /** Groupes rendus en <optgroup> apres `options`. */
   groups?: OptionGroup[];
+  containerClassName?: string;
 }
 
-/**
- * Sprint 12.5 T6 — Select primitive sur palette marketing.
- *
- * Pendant de TextField : navy bg, gold focus, danger error.
- * Note : <select> natif est volontairement conservé (a11y, mobile UX) ;
- * la flèche est laissée au browser. Si on veut un select custom avec
- * Radix Select en T12, on le crée à part (SelectCustom).
- */
-export function Select({ label, error, hint, options, groups, className, id, ...rest }: Props) {
-  // Meme correctif que TextField : sans `id` ni `name`, le `<label for>` pointait
-  // dans le vide. Voir la note detaillee dans TextField.tsx.
+export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
+  { label, error, hint, options = [], groups, className, containerClassName, id, 'aria-describedby': decritPar, children, ...rest },
+  ref,
+) {
   const autoId = useId();
   const selectId = id ?? rest.name ?? autoId;
-  // Un <select> sans libelle visible n'a pas de placeholder pour se rabattre :
-  // on n'invente rien, mais on laisse passer un `aria-label` explicite.
-  const ariaLabel = rest['aria-label'];
+  const idAide = `${selectId}-aide`;
+  const idErreur = `${selectId}-erreur`;
+  const decrit = [decritPar, hint && !error ? idAide : undefined, error ? idErreur : undefined].filter(Boolean).join(' ') || undefined;
   return (
-    <div className="flex flex-col gap-1">
-      {label && (
-        <label htmlFor={selectId} className="text-sm font-medium text-fg-muted">
-          {label}
-        </label>
-      )}
-      <select
-        id={selectId}
-        aria-label={ariaLabel}
-        aria-invalid={error ? true : undefined}
-        className={twMerge(
-          'w-full rounded-lg border border-border bg-bg-raised px-3 py-2 text-sm text-fg transition-colors',
-          'focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30',
-          error && 'border-danger focus:border-danger focus:ring-danger/30',
-          className,
-        )}
-        {...rest}
-      >
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value} className="bg-bg-raised text-fg">
-            {opt.label}
-          </option>
-        ))}
-        {groups?.map((group) => (
-          <optgroup key={group.label} label={group.label} className="bg-bg-raised text-fg">
-            {group.options.map((opt) => (
-              <option key={opt.value} value={opt.value} className="bg-bg-raised text-fg">
-                {opt.label}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
-      {error ? (
-        <p className="text-xs text-danger" role="alert">
-          {error}
-        </p>
-      ) : (
-        hint && <p className="text-xs text-fg-subtle">{hint}</p>
-      )}
-    </div>
+    <CadreChamp id={selectId} label={label} hint={hint} error={error} idAide={idAide} idErreur={idErreur} className={containerClassName}>
+      <div className="relative">
+        <select
+          ref={ref}
+          id={selectId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={decrit}
+          className={cn(CLASSES_CHAMP, 'h-9 cursor-pointer appearance-none pr-9', className)}
+          {...rest}
+        >
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value} disabled={opt.disabled}>
+              {opt.label}
+            </option>
+          ))}
+          {groups?.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.options.map((opt) => (
+                <option key={opt.value} value={opt.value} disabled={opt.disabled}>
+                  {opt.label}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+          {children}
+        </select>
+        <ChevronDown
+          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+          aria-hidden="true"
+        />
+      </div>
+    </CadreChamp>
   );
-}
+});
+
+/** Nom francais du meme composant. */
+export const ListeDeroulante = Select;

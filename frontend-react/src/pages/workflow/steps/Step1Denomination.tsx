@@ -13,6 +13,9 @@ import type { DirtyGetter } from '../useWorkflow';
 import { ajouterExtraits, retirerExtraits } from '../provenance';
 import { InfoBulle, TexteAide } from '../../../components/ui/Aide';
 import { BlocageValidation } from '../../../components/workflow/BlocageValidation';
+import { TextField } from '../../../components/ui/TextField';
+import { Button } from '../../../components/ui/Button';
+import { Radio } from '../../../components/ui/Choix';
 
 /**
  * UI Polish 2026-06-05 — Helper : formate ICE en groupes "XXX XXX XXX XXX XXX"
@@ -312,7 +315,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
             <div className="mb-1 flex items-center gap-2">
               <span className="text-lg">🏢</span>
               <h3 className="text-lg font-bold text-fg">Identité de la société</h3>
-              <span className="rounded bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+              <span className="rounded bg-info-soft px-2 py-0.5 text-xs font-medium text-info">
                 Reprise d’une société existante
               </span>
             </div>
@@ -334,7 +337,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
         <div className="mb-1 flex items-center gap-2">
           <span className="text-lg">📜</span>
           <h3 className="text-lg font-bold text-fg">Certificat négatif</h3>
-          <span className="rounded bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+          <span className="rounded bg-info-soft px-2 py-0.5 text-xs font-medium text-info">
             Lecture automatique proposée
           </span>
         </div>
@@ -369,7 +372,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
               qu'un extracteur vide qui laisse croire à une perte de données. Le
               bouton « Remplacer » rouvre l'extracteur sans re-forcer la saisie. */}
           {cnArchivedId && !replacingCn ? (
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-success/30 bg-success/5 p-3">
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-success/30 bg-success-soft p-3">
               <div className="flex min-w-0 items-center gap-2">
                 <CheckCircle className="h-4 w-4 flex-shrink-0 text-success" />
                 <div className="min-w-0">
@@ -381,13 +384,15 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
                   </p>
                 </div>
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={() => setReplacingCn(true)}
-                className="flex-shrink-0 text-[11px] font-medium text-accent hover:underline"
+                variant="ghost"
+                size="sm"
+                className="flex-shrink-0"
               >
                 Remplacer
-              </button>
+              </Button>
             </div>
           ) : (
             <>
@@ -397,13 +402,15 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
                 onApply={handleCnExtracted}
               />
               {cnArchivedId && replacingCn && (
-                <button
+                <Button
                   type="button"
                   onClick={() => setReplacingCn(false)}
-                  className="mt-2 text-[11px] text-fg-subtle hover:underline"
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2"
                 >
                   Annuler le remplacement : conserver le certificat déjà importé
-                </button>
+                </Button>
               )}
             </>
           )}
@@ -414,7 +421,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
         {/* Forme juridique : lecture seule si definie a la creation du ticket
             (BUG 3 fix 2026-06-07). Sinon, mode legacy radio. */}
         {lockedFormeJuridique ? (
-          <div className="mb-4 flex items-center gap-3 rounded-lg border border-success/30 bg-success/5 p-3">
+          <div className="mb-4 flex items-center gap-3 rounded-lg border border-success/30 bg-success-soft p-3">
             <CheckCircle className="h-4 w-4 text-success" />
             <div className="flex-1">
               <p className="text-xs font-semibold uppercase text-fg-subtle">
@@ -424,7 +431,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
                 {lockedFormeJuridique === 'SARL_AU' ? 'SARL AU (associé unique)' : 'SARL (deux associés ou plus)'}
               </p>
             </div>
-            <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-accent">
+            <span className="rounded-full bg-info-soft px-2 py-0.5 text-[10px] font-semibold uppercase text-info">
               Choisie à l’ouverture du ticket
             </span>
           </div>
@@ -434,28 +441,24 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
               Forme juridique
             </p>
             <div className="flex gap-3">
-              <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border-2 border-border bg-bg-raised px-3 py-2 text-sm hover:border-accent">
-                <input
-                  type="radio"
-                  name="formeJuridique"
-                  value="SARL"
-                  checked={formeJuridique === 'SARL'}
-                  onChange={() => setForm((p) => ({ ...p, formeJuridique: 'SARL' }))}
-                />
-                <span className="font-medium text-fg">SARL</span>
-                <span className="text-xs text-fg-subtle">(deux associés ou plus)</span>
-              </label>
-              <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border-2 border-border bg-bg-raised px-3 py-2 text-sm hover:border-accent">
-                <input
-                  type="radio"
-                  name="formeJuridique"
-                  value="SARL_AU"
-                  checked={formeJuridique === 'SARL_AU'}
-                  onChange={() => setForm((p) => ({ ...p, formeJuridique: 'SARL_AU' }))}
-                />
-                <span className="font-medium text-fg">SARL AU</span>
-                <span className="text-xs text-fg-subtle">(associé unique)</span>
-              </label>
+              <Radio
+                label={<span className="font-medium">SARL</span>}
+                description="(deux associés ou plus)"
+                name="formeJuridique"
+                value="SARL"
+                checked={formeJuridique === 'SARL'}
+                onChange={() => setForm((p) => ({ ...p, formeJuridique: 'SARL' }))}
+                containerClassName="flex-1"
+              />
+              <Radio
+                label={<span className="font-medium">SARL AU</span>}
+                description="(associé unique)"
+                name="formeJuridique"
+                value="SARL_AU"
+                checked={formeJuridique === 'SARL_AU'}
+                onChange={() => setForm((p) => ({ ...p, formeJuridique: 'SARL_AU' }))}
+                containerClassName="flex-1"
+              />
             </div>
           </div>
         )}
@@ -464,14 +467,16 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* 2026-08 — ICE requis a la creation (choix produit) : affiche dans tous les modes. */}
           <div>
-              <label className="mb-1 flex items-center gap-1 text-xs font-medium text-fg">
+              <label htmlFor="creation-ice" className="mb-1.5 flex items-center gap-1 text-sm font-medium text-fg">
                 ICE <span className="text-danger">*</span>
                 <InfoBulle
                   libelle="Qu’est-ce que l’ICE ?"
                   texte="L’identifiant commun de l’entreprise : 15 chiffres, portés sur le certificat négatif. Il est repris dans tous les actes de la société."
                 />
               </label>
-              <input aria-label="ICE"
+              <TextField
+                id="creation-ice"
+                aria-label="ICE"
                 type="text"
                 value={form.ice}
                 onChange={(e) =>
@@ -480,11 +485,6 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
                 placeholder="000 000 000 000 000"
                 inputMode="numeric"
                 aria-invalid={!!iceError}
-                className={`h-10 w-full rounded-lg border-2 bg-bg-overlay px-3 text-sm text-fg focus:outline-none ${
-                  iceError
-                    ? 'border-danger focus:border-danger'
-                    : 'border-border focus:border-accent'
-                }`}
               />
               {iceError ? (
                 <p className="mt-1 text-[11px] font-medium text-danger">
@@ -581,7 +581,7 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
         )}
 
         {!importMode && cnTooOld && (
-          <div className="mt-3 flex items-start gap-2 rounded-lg border-l-4 border-warning bg-warning/10 p-3 text-sm">
+          <div className="mt-3 flex items-start gap-2 rounded-lg border-l-4 border-warning bg-warning-soft p-3 text-sm">
             <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning" />
             <div>
               <p className="font-semibold text-warning">
@@ -599,18 +599,14 @@ export function Step1Denomination({ existing, lockedFormeJuridique, importMode =
       <BlocageValidation raisons={raisonsBlocage} testId="step1-blocage" />
 
       <div className="flex items-center justify-end pt-2">
-        <button
+        <Button
           type="submit"
           disabled={!allFilled || saving}
-          className={`flex items-center gap-2 rounded-lg px-8 h-12 font-medium transition ${
-            allFilled && !saving
-              ? 'bg-accent text-bg-raised hover:bg-accent-hover'
-              : 'cursor-not-allowed bg-border text-fg-subtle'
-          }`}
+          size="lg"
+          iconEnd={<ChevronRight />}
         >
           {saving ? 'Enregistrement…' : 'Valider et continuer'}
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -622,17 +618,11 @@ function Field({
   ...rest
 }: { label: string; required?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
-    <div>
-      <label className="mb-1 block text-xs font-medium text-fg">
-        {label} {required && <span className="text-danger">*</span>}
-      </label>
-      {/* `aria-label` derive du libelle : ce champ vit dans des listes (.map),
-          ou un `id` statique se dupliquerait et casserait l'association. */}
-      <input
-        aria-label={label}
-        {...rest}
-        className="h-10 w-full rounded-lg border-2 border-border bg-bg-overlay px-3 text-sm text-fg focus:border-accent focus:outline-none"
-      />
-    </div>
+    <TextField
+      label={required ? `${label} *` : label}
+      // `aria-label` : le nom accessible reste le libelle sans asterisque (requetes des tests).
+      aria-label={label}
+      {...rest}
+    />
   );
 }

@@ -210,8 +210,18 @@ class DashboardSprint10IT {
                 INSERT INTO audit_log(workspace_id,user_id,action,entity_type,created_at)
                 VALUES (?,?,?,?, NOW())
                 """, ws, employeUser, "LOGIN_FAILED", "auth");
+        // Lot L6b (E9) : le code reellement ecrit au renouvellement des codes de secours
+        // (le filtre cherchait 'RECOVERY_CODES_REGEN', jamais ecrit).
+        jdbc.update("""
+                INSERT INTO audit_log(workspace_id,user_id,action,entity_type,created_at)
+                VALUES (?,?,?,?, NOW())
+                """, ws, employeUser, "RECOVERY_CODES_REGENERATED", "user");
         var dto = superAdmin.aggregate();
-        assertThat(dto.criticalAuditEvents24h()).hasSizeGreaterThanOrEqualTo(1);
+        assertThat(dto.criticalAuditEvents24h()).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(dto.criticalAuditEvents24h())
+                .filteredOn(e -> ws.equals(e.workspaceId()))
+                .extracting(e -> e.actionLabel())
+                .contains("Connexion \u00e9chou\u00e9e", "Codes de secours renouvel\u00e9s");
         assertThat(dto.servicesHealth()).containsKeys("dataroom-service", "ticket-service");
         assertThat(dto.storage()).isNotNull();
     }

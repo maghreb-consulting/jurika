@@ -26,27 +26,27 @@ export function SignupStepper({ currentStep }: SignupStepperProps) {
   ];
 
   return (
-    <div className="mb-12 flex items-center justify-center overflow-x-auto px-2 pb-1" data-testid="signup-stepper">
+    <ol aria-label="Étapes de l’inscription" className="mb-6 flex items-start justify-center overflow-x-auto px-2 pb-1" data-testid="signup-stepper">
       {steps.map((step, index) => {
         const completed = step.number < currentStep;
         const active = step.number === currentStep;
         return (
-          <div key={step.number} className="flex items-center">
+          <li key={step.number} className="flex items-start" aria-current={active ? 'step' : undefined}>
             <div className="flex flex-col items-center">
               <div
                 className={[
-                  'mb-2 flex h-10 w-10 items-center justify-center rounded-full transition-all',
+                  'mb-1.5 flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-150',
                   completed ? 'bg-success' : '',
                   active ? 'bg-accent' : '',
-                  !completed && !active ? 'bg-border' : '',
+                  !completed && !active ? 'border border-border-input bg-bg-raised' : '',
                 ].join(' ')}
               >
                 {completed ? (
-                  <Check className="h-5 w-5 text-bg" />
+                  <Check className="h-4 w-4 text-success-fg" aria-label="faite" />
                 ) : (
                   <span
                     className={`text-sm font-bold ${
-                      active ? 'text-bg' : 'text-fg-subtle'
+                      active ? 'text-accent-fg' : 'text-fg-muted'
                     }`}
                   >
                     {step.number + 1}
@@ -54,8 +54,8 @@ export function SignupStepper({ currentStep }: SignupStepperProps) {
                 )}
               </div>
               <span
-                className={`whitespace-nowrap text-center text-xs sm:text-sm ${
-                  active ? 'font-semibold text-accent' : 'text-fg-subtle'
+                className={`whitespace-nowrap text-center text-xs ${
+                  active ? 'font-semibold text-heading' : 'text-fg-muted'
                 }`}
               >
                 {step.label}
@@ -64,14 +64,15 @@ export function SignupStepper({ currentStep }: SignupStepperProps) {
 
             {index < steps.length - 1 && (
               <div
-                className={`mx-2 sm:mx-3 mb-8 h-0.5 w-6 sm:w-10 ${
-                  completed ? 'bg-success' : 'bg-border'
+                aria-hidden="true"
+                className={`mx-1.5 mt-4 h-px w-5 sm:mx-2 sm:w-8 ${
+                  completed ? 'bg-success' : 'bg-border-input'
                 }`}
               />
             )}
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }

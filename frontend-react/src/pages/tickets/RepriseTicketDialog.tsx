@@ -5,6 +5,9 @@ import { annulationService, type EtatReprise } from '../../services/annulation.s
 import { extractError } from '../../lib/api';
 import { SensitiveTransitionDialog } from './SensitiveTransitionDialog';
 import { Button } from '../../components/ui/Button';
+import { Modal } from '../../components/ui/Modal';
+import { Message } from '../../components/ui/Message';
+import { SqueletteZone } from '../../components/ui/LoadingSkeleton';
 
 interface Props {
   ticket: Ticket;
@@ -40,22 +43,33 @@ export function RepriseTicketDialog({ ticket, onClose, onConfirm }: Props) {
 
   if (!etat || !etat.possible || !etat.statutAnterieur) {
     return (
-      <div role="dialog" aria-modal="true" aria-label="Reprendre le ticket"
-        className="fixed inset-0 z-50 flex items-center justify-center bg-fg/40 px-4">
-        <div className="w-full max-w-md space-y-3 rounded-2xl bg-bg-raised p-6 text-sm text-fg shadow-2xl">
-          <h2 className="text-lg font-semibold text-fg">Reprendre le ticket {ticket.reference}</h2>
-          {!etat && !erreur && <p className="text-fg-muted">Vérification de la reprise…</p>}
-          {erreur && <p className="text-danger">{erreur}</p>}
-          {etat && (
-            <p data-testid="reprise-refus" className="rounded-lg border border-danger/40 bg-danger/10 p-3">
-              {etat.motif ?? 'La reprise est impossible.'}
-            </p>
-          )}
+      <Modal
+        open
+        onOpenChange={(o) => !o && onClose()}
+        title={`Reprendre le ticket ${ticket.reference}`}
+        size="md"
+        footer={
           <div className="flex justify-end">
-            <Button variant="secondary" onClick={onClose}>Fermer</Button>
+            <Button type="button" variant="secondary" onClick={onClose}>Fermer</Button>
           </div>
+        }
+      >
+        <div className="space-y-3 text-sm text-fg">
+          {!etat && !erreur && (
+            <SqueletteZone libelle="Vérification de la reprise…">
+              <p className="text-fg-muted">Vérification de la reprise…</p>
+            </SqueletteZone>
+          )}
+          {erreur && <Message ton="erreur">{erreur}</Message>}
+          {etat && (
+            <div data-testid="reprise-refus">
+              <Message ton="erreur" titre="Reprise impossible">
+                {etat.motif ?? 'La reprise est impossible.'}
+              </Message>
+            </div>
+          )}
         </div>
-      </div>
+      </Modal>
     );
   }
 

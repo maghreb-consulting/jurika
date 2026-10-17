@@ -109,6 +109,40 @@ public class ClientAccessLogger {
         }
     }
 
+    private static final java.util.regex.Pattern IPV4 =
+            java.util.regex.Pattern.compile("^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})$");
+    private static final java.util.regex.Pattern IPV6 = java.util.regex.Pattern.compile("^[0-9A-Fa-f:.]+$");
+
+    /**
+     * Lot L6b (E13) : adresse IP normalisee pour la colonne INET, ou {@code null} si
+     * elle est absente ou illisible (en-tete X-Forwarded-For libre, "unknown"...).
+     * Une adresse illisible ferait echouer la conversion en INET et perdre TOUTE la
+     * trace : on garde la trace et on ecarte l'adresse (signale au journal). Jamais de
+     * resolution DNS : seuls les litteraux IPv4 (4 octets de 0 a 255) et IPv6
+     * (presence de ':') sont analyses.
+     */
+    static String adresseIp(String brute) {
+        if (brute == null || brute.isBlank()) return null;
+        String ip = brute.trim();
+        boolean v4 = IPV4.matcher(ip).matches();
+        if (v4) {
+            for (String octet : ip.split("\\.")) {
+                if (Integer.parseInt(octet) > 255) v4 = false;
+            }
+        }
+        boolean v6 = !v4 && ip.indexOf(':') >= 0 && IPV6.matcher(ip).matches();
+        if (v4 || v6) {
+            try {
+                return java.net.InetAddress.getByName(ip).getHostAddress();
+            } catch (java.net.UnknownHostException ex) {
+                // illisible : traite ci-dessous
+            }
+        }
+        log.warn("ClientAccessLogger : adresse IP illisible \"{}\" ecartee (NULL stocke, trace conservee)",
+                (ip.length() > 64 ? ip.substring(0, 64) : ip).replaceAll("[^\\x20-\\x7E]", "?"));
+        return null;
+    }
+
     /**
      * IP + User-Agent depuis la requete HTTP courante (thread requete). Silencieux
      * si aucun {@code RequestContext} (appel hors servlet).
@@ -123,7 +157,7 @@ public class ClientAccessLogger {
             if (ip == null || ip.isBlank()) ip = req.getRemoteAddr();
             // X-Forwarded-For peut etre une liste -- on prend la 1ere IP
             if (ip != null && ip.contains(",")) ip = ip.split(",")[0].trim();
-            e.setIpAddress(ip);
+            e.setIpAddress(adresseIp(ip));
             String ua = req.getHeader("User-Agent");
             if (ua != null && ua.length() > 255) ua = ua.substring(0, 255);
             e.setUserAgent(ua);

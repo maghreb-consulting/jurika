@@ -103,6 +103,18 @@ public class ProjecteurVariablesCreation {
         poser(workspaceId, ticketId, auteur, "etape-2", n, "TRIBUNAL_VILLE", villeGreffe);
         poser(workspaceId, ticketId, auteur, "etape-2", n, "SIEGE_TITRE_OCCUPATION",
                 titreOccupation(s2.get("justificatifType")));
+        // Lot L6b (E14) : la date de debut du contrat, obligatoire a l'etape 2, n'etait lue par
+        // personne : l'etape 7 la redemandait ("Bail date effet") et la taxe professionnelle, la
+        // declaration d'immatriculation et le bail etaient refuses sans elle. Comme toute donnee
+        // des etapes 1 a 6, l'etape 7 ne la recouvre pas (RG-VAR-03 : elle s'y affiche en lecture,
+        // avec sa provenance). La date de FIN n'est pas posee : le corpus la calcule (date
+        // d'effet + duree), et l'en deduire serait une supposition.
+        String titre = titreOccupation(s2.get("justificatifType"));
+        if ("bail".equals(titre)) {
+            poser(workspaceId, ticketId, auteur, "etape-2", n, "BAIL_DATE_EFFET", s2.get("dateDebut"));
+        } else if ("domiciliation".equals(titre)) {
+            poser(workspaceId, ticketId, auteur, "etape-2", n, "DOMICILIATION_DATE_EFFET", s2.get("dateDebut"));
+        }
 
         // ---- étape 3 — capital ---------------------------------------------
         poser(workspaceId, ticketId, auteur, "etape-3", n, "CAPITAL_CHIFFRES", s3.get("capitalSocialMad"));
@@ -547,7 +559,18 @@ public class ProjecteurVariablesCreation {
     }
 
     private static String txt(Object o) {
-        return o == null ? "" : String.valueOf(o);
+        if (o == null) return "";
+        // Lot L6b (E14) : un nombre relu en decimal (10000.0, sac de l'etape renvoye par
+        // l'ecran apres la validation) se pose sans zeros inutiles ("10000") : les actes lisent
+        // les montants et les nombres de parts en entiers ("10000.0" faisait refuser les statuts).
+        if (o instanceof Number) {
+            try {
+                return new java.math.BigDecimal(o.toString()).stripTrailingZeros().toPlainString();
+            } catch (NumberFormatException e) {
+                return String.valueOf(o);
+            }
+        }
+        return String.valueOf(o);
     }
 
     /** L'étape est stockée à plat OU nichée : on lit les deux, comme les écrans. */

@@ -211,6 +211,17 @@ export function emptyResolution(): ResolutionInput {
   return { intitule: '', texte: '', voixPour: '', voixContre: '', abstentions: '', resultat: '' };
 }
 
+/**
+ * Nom precede de la civilite ABREGEE, tel qu'il s'imprime dans un acte : le code " M " des
+ * etapes de saisie devient " M. " (" Mme " et " Mlle " restent). Lot L6b (E15) : le president
+ * propose s'imprimait " M Mehdi Alaoui ".
+ */
+export function nomAvecCivilite(g: Partial<GerantInput> | null | undefined): string {
+  const brute = (g?.civilite ?? '').trim();
+  const civilite = brute === 'M' || brute.toLowerCase() === 'monsieur' ? 'M.' : brute;
+  return [civilite, g?.prenom?.trim(), g?.nom?.trim()].filter(Boolean).join(' ').trim();
+}
+
 export function emptyGerant(): GerantInput {
   return { civilite: 'M.', prenom: '', nom: '' };
 }
@@ -457,9 +468,7 @@ export function useSeanceForm(opts: UseSeanceFormOptions): SeanceFormApi {
   // Président de séance : par défaut le premier gérant. Il n'était alimenté par
   // rien, alors que la gérance est chargée depuis le dossier juste à côté.
   const premierGerant = gerants.find((x) => x?.nom?.trim() || x?.prenom?.trim());
-  const presidentSource = premierGerant
-    ? [premierGerant.civilite, premierGerant.prenom, premierGerant.nom].filter(Boolean).join(' ').trim()
-    : '';
+  const presidentSource = premierGerant ? nomAvecCivilite(premierGerant) : '';
   const [presidentVu, setPresidentVu] = useState<string | null>(null);
   if (presidentVu !== presidentSource) {
     setPresidentVu(presidentSource);
@@ -478,6 +487,16 @@ export function useSeanceForm(opts: UseSeanceFormOptions): SeanceFormApi {
     setConvDateVue({ valeur: defaults?.convDate });
     if (defaults?.convDate !== undefined && (defaults.convDate ?? '') !== convDate) {
       setConvDate(defaults.convDate ?? '');
+    }
+  }
+  // Lot L6b (E15) : l'heure suit la date (meme source amont) ; elle n'etait lue qu'au
+  // montage, si bien qu'une heure saisie a l'etape 1 apres l'ouverture de la page
+  // n'atteignait jamais le proces-verbal.
+  const [convHeureVue, setConvHeureVue] = useState<{ valeur: string | undefined } | null>(null);
+  if (convHeureVue === null || convHeureVue.valeur !== defaults?.convHeure) {
+    setConvHeureVue({ valeur: defaults?.convHeure });
+    if (defaults?.convHeure !== undefined && (defaults.convHeure ?? '') !== convHeure) {
+      setConvHeure(defaults.convHeure ?? '');
     }
   }
 
