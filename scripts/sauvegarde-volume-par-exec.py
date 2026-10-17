@@ -10,7 +10,8 @@ fichier) et construit l'archive sur l'hote. Les consommateurs doivent etre arret
 (aucune ecriture pendant la copie).
 
 Controle : nombre de fichiers et octets lus, compares a la liste du conteneur ; code de
-sortie non nul au moindre ecart. Lot L2 (activation), 2026-10-09.
+sortie non nul au moindre ecart. Lot L2 (activation), 2026-10-09. Depuis le 2026-10-17, les
+fichiers internes de MinIO (.minio.sys) sont hors de cette comparaison (voir `copier`).
 """
 import io
 import os
@@ -31,6 +32,54 @@ parcourir "$1"
 '''
 
 
+def est_interne(chemin):
+    """Fichier interne de MinIO (.minio.sys) : cache d'usage, corbeille, journaux qui varient
+    d'eux-memes pendant la copie. Ce n'est pas un document."""
+    return "/.minio.sys/" in chemin + "/"
+
+
+def copier(fichiers, racine, archive, lire):
+    """Copie `fichiers` [(taille, mode, chemin)] dans `archive` en lisant chacun par `lire`.
+
+    Decision du 2026-10-17 : tout .minio.sys est exclu de la comparaison d'integrite (une taille
+    changee ou un fichier disparu pendant la copie n'est pas un echec : il est copie tel que lu,
+    ou omis) ; tout autre fichier reste compare un a un, et le moindre ecart est un ECHEC.
+    Rend (total des octets copies, nombre de fichiers copies, nombre d'internes).
+    """
+    total = copies = internes = 0
+    ancien_umask = os.umask(0o077)
+    try:
+        with tarfile.open(archive, "w:gz") as tar:
+            for taille, mode, chemin in fichiers:
+                interne = est_interne(chemin)
+                try:
+                    contenu = lire(chemin)
+                except subprocess.CalledProcessError:
+                    if interne:
+                        continue
+                    raise
+                if len(contenu) != taille and not interne:
+                    sys.exit(f"ECHEC : {chemin} : {len(contenu)} octets lus, {taille} attendus")
+                info = tarfile.TarInfo("./" + os.path.relpath(chemin, racine))
+                info.size, info.mode, info.mtime = len(contenu), mode, int(time.time())
+                tar.addfile(info, io.BytesIO(contenu))
+                total += len(contenu)
+                copies += 1
+                internes += 1 if interne else 0
+    finally:
+        os.umask(ancien_umask)
+    os.chmod(archive, 0o600)
+    with tarfile.open(archive, "r:gz") as tar:
+        relus = [m for m in tar.getmembers() if m.isfile()]
+    if len(relus) != copies or sum(m.size for m in relus) != total:
+        sys.exit("ECHEC : archive relue differente de la copie")
+    attendus = [f for f in fichiers if not est_interne(f[2])]
+    relus_docs = [m for m in relus if not est_interne(m.name[1:])]
+    if len(relus_docs) != len(attendus) or sum(m.size for m in relus_docs) != sum(f[0] for f in attendus):
+        sys.exit("ECHEC : fichiers hors .minio.sys relus differents de la liste")
+    return total, copies, internes
+
+
 def main():
     if len(sys.argv) != 4:
         sys.exit(__doc__)
@@ -43,32 +92,16 @@ def main():
         fichiers.append((int(taille), int(mode, 8), chemin))
     if not fichiers:
         sys.exit("ECHEC : aucun fichier sous " + racine)
-    total = 0
-    ancien_umask = os.umask(0o077)
-    try:
-        with tarfile.open(archive, "w:gz") as tar:
-            for taille, mode, chemin in fichiers:
-                contenu = subprocess.run(["docker", "exec", conteneur, "cat", chemin],
-                                         check=True, capture_output=True).stdout
-                if len(contenu) != taille:
-                    sys.exit(f"ECHEC : {chemin} : {len(contenu)} octets lus, {taille} attendus")
-                info = tarfile.TarInfo("./" + os.path.relpath(chemin, racine))
-                info.size, info.mode, info.mtime = taille, mode, int(time.time())
-                tar.addfile(info, io.BytesIO(contenu))
-                total += taille
-    finally:
-        os.umask(ancien_umask)
-    os.chmod(archive, 0o600)
-    with tarfile.open(archive, "r:gz") as tar:
-        relus = [m for m in tar.getmembers() if m.isfile()]
-    if len(relus) != len(fichiers) or sum(m.size for m in relus) != total:
-        sys.exit("ECHEC : archive relue differente de la liste")
+
+    def lire(chemin):
+        return subprocess.run(["docker", "exec", conteneur, "cat", chemin],
+                              check=True, capture_output=True).stdout
+
+    total, copies, internes = copier(fichiers, racine, archive, lire)
     # Lot L6 (E2) : ce compte est celui des FICHIERS copies (integrite de la copie), pas des
-    # documents : pour MinIO, les fichiers internes (.minio.sys) varient d'eux-memes. Les
-    # documents se controlent avec controle-sauvegarde-minio.py.
-    internes = sum(1 for _, _, c in fichiers if "/.minio.sys/" in c + "/")
-    detail = f" (dont {internes} fichiers internes .minio.sys)" if internes else ""
-    print(f"OK {archive} : {len(fichiers)} fichiers copies{detail}, {total} octets, mode 600")
+    # documents : les documents se controlent avec controle-sauvegarde-minio.py.
+    detail = f" (dont {internes} fichiers internes .minio.sys, hors comparaison)" if internes else ""
+    print(f"OK {archive} : {copies} fichiers copies{detail}, {total} octets, mode 600")
 
 
 if __name__ == "__main__":
