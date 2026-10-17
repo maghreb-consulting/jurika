@@ -174,4 +174,42 @@ class PlanLimitsServiceTest {
         assertThat(service.snapshot(WS).forfaitDefini()).isFalse();
         assertThat(service.snapshot(WS).storageMesure()).isFalse();
     }
+
+    /**
+     * Recette R1 (point 3), RG-ESS-07 : pendant l'essai, le forfait affiche est "Essai gratuit
+     * (fonctions du forfait Professionnel)" avec les limites de l'essai (RG-ESS-04), jamais
+     * "Essentiel" (l'ancien repli du forfait absent).
+     */
+    @Test
+    void pendant_l_essai_le_forfait_affiche_est_l_essai_avec_ses_limites() {
+        forfait(null, "TRIAL_ACTIVE");
+        when(jdbc.queryForObject(contains("FROM users"), eq(Integer.class), eq(WS))).thenReturn(1);
+        when(jdbc.queryForObject(contains("to_regclass('public.entreprise_dossiers')"), eq(Boolean.class))).thenReturn(true);
+        when(jdbc.queryForObject(contains("FROM entreprise_dossiers"), eq(Integer.class), eq(WS))).thenReturn(2);
+        when(jdbc.queryForObject(contains("dataroom_depots') IS NOT NULL"), eq(Boolean.class))).thenReturn(false);
+
+        PlanLimitsService.UsageSnapshot u = service.snapshot(WS);
+
+        assertThat(u.planLabel()).isEqualTo("Essai gratuit (fonctions du forfait Professionnel)");
+        assertThat(u.planCode()).isEqualTo("essai");
+        assertThat(u.essai()).isTrue();
+        assertThat(u.maxDossiers()).isEqualTo(3);
+        assertThat(u.dossiers()).isEqualTo(2);
+        assertThat(u.maxUsers()).isEqualTo(1);
+        assertThat(u.maxStorageOctets()).isEqualTo(500L * 1024 * 1024);
+    }
+
+    @Test
+    void apres_la_souscription_le_forfait_choisi() {
+        forfait("essentiel", "CONVERTED");
+        dossiersDuMois(0);
+        when(jdbc.queryForObject(contains("FROM users"), eq(Integer.class), eq(WS))).thenReturn(0);
+        when(jdbc.queryForObject(contains("to_regclass"), eq(Boolean.class))).thenReturn(false);
+
+        PlanLimitsService.UsageSnapshot u = service.snapshot(WS);
+
+        assertThat(u.planLabel()).isEqualTo("Essentiel");
+        assertThat(u.essai()).isFalse();
+        assertThat(u.maxStorageOctets()).isEqualTo(5 * GO);
+    }
 }

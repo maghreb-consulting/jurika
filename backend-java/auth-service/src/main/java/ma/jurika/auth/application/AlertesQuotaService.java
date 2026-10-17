@@ -150,7 +150,9 @@ public class AlertesQuotaService {
     /** Quotas atteints a {@value #SEUIL_ALERTE_POURCENT} % ou plus (illimite : jamais). */
     static List<Depassement> depassements(UsageSnapshot u) {
         List<Depassement> out = new ArrayList<>();
-        String forfait = u.planLabel() == null ? "" : " (forfait " + u.planLabel() + ")";
+        // Recette R1 : pendant l'essai, le libelle est celui de l'essai (RG-ESS-07), sans "forfait".
+        String forfait = u.planLabel() == null ? ""
+                : u.essai() ? " (" + u.planLabel() + ")" : " (forfait " + u.planLabel() + ")";
         if (!u.dossiersUnlimited() && atteint(u.dossiers(), u.maxDossiers())) {
             int p = pourcent(u.dossiers(), u.maxDossiers());
             out.add(new Depassement("DOSSIERS", "Quota de dossiers presque atteint",
@@ -165,12 +167,16 @@ public class AlertesQuotaService {
                             + " % du quota. À 100 %, aucun nouvel employé ne pourra être invité : "
                             + "pensez à changer de forfait.", p));
         }
-        long maxOctets = (long) u.maxStorageGb() * OCTETS_PAR_GO;
+        long maxOctets = u.maxStorageOctets();
         if (!u.storageUnlimited() && atteint(u.storageBytes(), maxOctets)) {
             int p = pourcent(u.storageBytes(), maxOctets);
+            String volume = u.essai()
+                    ? String.format(Locale.FRANCE, "%.0f Mo utilisés sur %d Mo", u.storageBytes() / (1024.0 * 1024),
+                            maxOctets / (1024L * 1024L))
+                    : String.format(Locale.FRANCE, "%.1f Go utilisés sur %d Go", u.storageBytes() / (double) OCTETS_PAR_GO,
+                            u.maxStorageGb());
             out.add(new Depassement("STOCKAGE", "Stockage presque plein",
-                    String.format(Locale.FRANCE, "%.1f Go utilisés sur %d Go", u.storageBytes() / (double) OCTETS_PAR_GO,
-                            u.maxStorageGb()) + forfait + ", soit " + p
+                    volume + forfait + ", soit " + p
                             + " % du quota. À 100 %, l’ajout de documents sera bloqué : pensez à changer de forfait.", p));
         }
         return out;

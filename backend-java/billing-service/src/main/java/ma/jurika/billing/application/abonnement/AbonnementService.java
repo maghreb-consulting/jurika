@@ -26,6 +26,9 @@ import ma.jurika.common.billing.PlanCatalog.BillingPeriod;
 import ma.jurika.common.billing.PlanCatalog.Plan;
 import ma.jurika.common.billing.PlanLimitsService;
 import ma.jurika.common.exception.BusinessException;
+import ma.jurika.common.trial.EssaiRegles;
+import ma.jurika.common.trial.EtatEssaiIndisponibleException;
+import ma.jurika.common.trial.TrialAccessChecker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -79,12 +82,14 @@ public class AbonnementService {
     private final CmiProperties cmi;
     private final FacturationHorloge horloge;
     private final ImpayeJournal journal;
+    private final ObjectProvider<TrialAccessChecker> essais;
 
     @Autowired
     public AbonnementService(SubscriptionJpaRepository abonnements, PaymentJpaRepository paiements,
                              EditeurParametresJpaRepository editeur, CabinetsPort cabinets,
                              ObjectProvider<ContratAbonnementPort> contrat, CmiProperties cmi,
-                             FacturationHorloge horloge, ImpayeJournal journal) {
+                             FacturationHorloge horloge, ImpayeJournal journal,
+                             ObjectProvider<TrialAccessChecker> essais) {
         this.abonnements = abonnements;
         this.paiements = paiements;
         this.editeur = editeur;
@@ -93,6 +98,7 @@ public class AbonnementService {
         this.cmi = cmi;
         this.horloge = horloge;
         this.journal = journal;
+        this.essais = essais;
     }
 
     /** Aujourd'hui a Casablanca. */
@@ -123,6 +129,14 @@ public class AbonnementService {
             Optional<SubscriptionEntity> dernier = abonnements.findFirstByWorkspaceIdOrderByCreatedAtDesc(workspaceId);
             String statut = dernier.isPresent() ? "ARCHIVE" : "AUCUN";
             Plan plan = dernier.flatMap(s -> PlanCatalog.findByCode(s.getPlanCode())).orElse(null);
+            // Recette R1, RG-ESS-07 : essai en cours sans abonnement : le forfait affiche est l'essai,
+            // avec les fonctions du forfait Professionnel (avant : aucun forfait, fonctions refusees).
+            boolean essai = dernier.isEmpty() && essaiEnCours(workspaceId);
+            if (essai) {
+                return new AbonnementVue(workspaceId, statut, EssaiRegles.CODE_FORFAIT_AFFICHE,
+                        EssaiRegles.LIBELLE_FORFAIT, null, null, null, null, null, null, null, null,
+                        fonctions(PlanCatalog.PROFESSIONNEL), cmi.configure(), carteMotif, enAttente, null);
+            }
             return new AbonnementVue(workspaceId, statut,
                     plan == null ? null : plan.internalCode(), plan == null ? null : plan.displayLabel(),
                     dernier.map(SubscriptionEntity::getRythme).orElse(null),
@@ -139,6 +153,18 @@ public class AbonnementService {
         return new AbonnementVue(workspaceId, statutActif(s), plan.internalCode(), plan.displayLabel(), s.getRythme(),
                 s.getEngagementDebut(), s.getEngagementFin(), s.getPeriodeDebut(), s.getPeriodeFin(),
                 echeanceVue(s), changementAVenir(s), null, fonctions(plan), cmi.configure(), carteMotif, enAttente, impaye);
+    }
+
+    /** Essai gratuit en cours (etat lu chez auth-service) ; illisible : journalise, pas d'essai affiche. */
+    private boolean essaiEnCours(UUID workspaceId) {
+        TrialAccessChecker c = essais.getIfAvailable();
+        if (c == null) return false;
+        try {
+            return c.getState(workspaceId).map(TrialAccessChecker.TrialState::isActive).orElse(false);
+        } catch (EtatEssaiIndisponibleException e) {
+            log.warn("Etat d'essai illisible pour {} : forfait de l'essai non affiche ({})", workspaceId, e.getMessage());
+            return false;
+        }
     }
 
     /** Lot L7 (E8) : statut d'un abonnement actif : SUSPENDU (impaye, article 4.4) ou ACTIF. */

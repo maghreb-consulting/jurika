@@ -96,4 +96,37 @@ describe('BillingPage (L6b)', () => {
     expect(billing.listerPaiements).toHaveBeenCalledTimes(1);
     expect(billing.listerFactures).toHaveBeenCalledTimes(1);
   });
+
+  // Recette R1 (point 3), RG-ESS-07 : pendant l'essai, le forfait affiche est l'essai et ses limites.
+  it('pendant l essai : forfait de l essai et limites de l essai, jamais Essentiel', async () => {
+    etat.role = 'SUPERVISEUR';
+    billing.getAbonnement.mockResolvedValue({
+      ...ABONNEMENT, statut: 'AUCUN', forfait: 'essai',
+      forfaitLibelle: 'Essai gratuit (fonctions du forfait Professionnel)', impaye: null,
+    });
+    billing.getUsage.mockResolvedValue({
+      planCode: 'essai', planLabel: 'Essai gratuit (fonctions du forfait Professionnel)',
+      users: 0, maxUsers: 1, usersUnlimited: false, dossiers: 1, maxDossiers: 3, dossiersUnlimited: false,
+      storageBytes: 0, maxStorageGb: 0, storageUnlimited: false, forfaitDefini: false,
+      periodeDebut: '2026-10-01', periodeFin: '2026-11-01', storageMesure: true,
+      essai: true, maxStorageOctets: 500 * 1024 * 1024,
+    });
+    rendre();
+    const abonnement = await screen.findByTestId('billing-abonnement');
+    expect(abonnement).toHaveTextContent('Forfait : Essai gratuit (fonctions du forfait Professionnel)');
+    expect(abonnement).not.toHaveTextContent('Aucun forfait souscrit');
+    const usage = await screen.findByTestId('billing-usage');
+    expect(usage).not.toHaveTextContent('Essentiel');
+    expect(usage).toHaveTextContent('sur 3');
+    expect(usage).toHaveTextContent('sur 500 Mo');
+  });
+
+  it('apres la souscription a Essentiel : le forfait choisi, sans Professionnel', async () => {
+    etat.role = 'SUPERVISEUR';
+    billing.getAbonnement.mockResolvedValue({ ...ABONNEMENT, forfait: 'essentiel', forfaitLibelle: 'Essentiel', impaye: null });
+    rendre();
+    const abonnement = await screen.findByTestId('billing-abonnement');
+    expect(abonnement).toHaveTextContent('Essentiel');
+    expect(abonnement).not.toHaveTextContent('Professionnel');
+  });
 });

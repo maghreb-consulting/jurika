@@ -268,7 +268,10 @@ export function TeamPage() {
             <Card padding={false}>
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-fg-muted">Forfait {usage.planLabel}</p>
+                  <p className="text-xs uppercase tracking-wide text-fg-muted">
+                    {/* Recette R1, RG-ESS-07 : pendant l'essai, le libelle de l'essai seul. */}
+                    {usage.essai ? usage.planLabel : `Forfait ${usage.planLabel}`}
+                  </p>
                   <p className="mt-1 text-lg font-semibold text-fg">
                     {employeUsage.active}
                     <span className="text-fg-muted"> / {unlimited ? '∞' : max} </span>

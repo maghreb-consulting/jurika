@@ -76,6 +76,10 @@ export interface UsageSnapshot {
   periodeDebut?: string | null;
   periodeFin?: string | null;
   storageMesure?: boolean;
+  /** Recette R1 (RG-ESS-07) : essai sans forfait souscrit ; le forfait affiche est l'essai. */
+  essai?: boolean;
+  /** Stockage maximal en octets (500 Mo pendant l'essai). */
+  maxStorageOctets?: number;
 }
 
 // ---------------------------------------------------------------- abonnement

@@ -35,6 +35,14 @@ public final class EssaiRegles {
     /** RG-ESS-07 : code du forfait dont l'essai donne les fonctions. */
     public static final String FORFAIT_ESSAI = "PROFESSIONNEL";
 
+    /**
+     * Recette R1, RG-ESS-07 : forfait affiche pendant l'essai (en-tete, facturation, equipe,
+     * courriels), au lieu du forfait Essentiel du repli "forfait absent".
+     */
+    public static final String LIBELLE_FORFAIT = "Essai gratuit (fonctions du forfait Professionnel)";
+    /** Code du forfait affiche pendant l'essai (instantane de consommation). */
+    public static final String CODE_FORFAIT_AFFICHE = "essai";
+
     /** RG-ESS-06 : mention portee en filigrane par tout acte affiche pendant l'essai. */
     public static final String MENTION_FILIGRANE =
             "VERSION D'\u00c9VALUATION \u2014 SANS VALEUR JURIDIQUE";

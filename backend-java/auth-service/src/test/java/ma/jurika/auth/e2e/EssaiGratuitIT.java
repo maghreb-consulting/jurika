@@ -543,6 +543,8 @@ class EssaiGratuitIT {
         String code = (String) vars.getValue().get("workspaceCode");
         String identifiant = (String) vars.getValue().get("loginEmail");
         String motDePasse = (String) vars.getValue().get("temporaryPassword");
+        // Recette R1 (point 3), RG-ESS-07 : le courriel nomme l'essai, pas un forfait (avant : aucun).
+        assertThat(vars.getValue().get("planLabel")).isEqualTo("Essai gratuit (fonctions du forfait Professionnel)");
         assertThat(code).isEqualTo(jdbc.queryForObject("SELECT code FROM workspaces WHERE id = ?", String.class, ws));
 
         // L'ecran de la demande (onglet d'origine, qui relit l'etat) affiche aussi le code du cabinet et

@@ -84,7 +84,8 @@ class AlertesQuotaServiceTest {
     void la_periode_est_le_mois_d_abonnement() {
         when(limites.snapshot(WS)).thenReturn(new UsageSnapshot("professionnel", "Professionnel", 0, 2, false,
                 45, 50, false, 0, 10, false, true,
-                java.time.LocalDate.of(2026, 9, 15), java.time.LocalDate.of(2026, 10, 15), true));
+                java.time.LocalDate.of(2026, 9, 15), java.time.LocalDate.of(2026, 10, 15), true,
+                false, 10L * 1024 * 1024 * 1024));
         service.detecter();
         verify(registre).retenirSiNouvelle(WS, "DOSSIERS", "2026-09");
     }
@@ -93,7 +94,23 @@ class AlertesQuotaServiceTest {
                                        long octets, int maxGo) {
         return new UsageSnapshot("professionnel", "Professionnel", users, maxUsers, maxUsers < 0,
                 dossiers, maxDossiers, maxDossiers < 0, octets, maxGo, maxGo < 0,
-                true, java.time.LocalDate.of(2026, 10, 1), java.time.LocalDate.of(2026, 11, 1), true);
+                true, java.time.LocalDate.of(2026, 10, 1), java.time.LocalDate.of(2026, 11, 1), true,
+                false, maxGo < 0 ? -1L : (long) maxGo * 1024 * 1024 * 1024);
+    }
+
+    /** Recette R1 (point 3), RG-ESS-07 : pendant l'essai, l'alerte nomme l'essai, jamais un forfait. */
+    @Test
+    void pendant_l_essai_l_alerte_nomme_l_essai() {
+        UsageSnapshot essai = new UsageSnapshot("essai", "Essai gratuit (fonctions du forfait Professionnel)",
+                1, 1, false, 3, 3, false, 450L * 1024 * 1024, 0, false, false,
+                java.time.LocalDate.of(2026, 10, 1), java.time.LocalDate.of(2026, 11, 1), true,
+                true, 500L * 1024 * 1024);
+        List<AlertesQuotaService.Depassement> d = AlertesQuotaService.depassements(essai);
+        assertThat(d).extracting(AlertesQuotaService.Depassement::message)
+                .allMatch(m -> m.contains("(Essai gratuit (fonctions du forfait Professionnel))"))
+                .noneMatch(m -> m.contains("forfait Essentiel"));
+        assertThat(d).filteredOn(x -> x.quota().equals("STOCKAGE")).singleElement()
+                .extracting(AlertesQuotaService.Depassement::message).asString().contains("450 Mo utilis\u00e9s sur 500 Mo");
     }
 
     @Test

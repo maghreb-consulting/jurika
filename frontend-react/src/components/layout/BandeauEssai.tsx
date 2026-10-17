@@ -4,7 +4,7 @@ import { Clock, Lock } from 'lucide-react';
 import { InfoBulle } from '../ui/Aide';
 import { useAuthStore } from '../../store/authStore';
 import { essaiService, type EtatEssai } from '../../services/essai.service';
-import { messageEssai } from '../../lib/essai';
+import { LIBELLE_FORFAIT_ESSAI, messageEssai } from '../../lib/essai';
 
 /**
  * Lot L7 (E4) : bandeau de l'essai gratuit, sur toutes les pages du cabinet.
@@ -38,6 +38,12 @@ export function BandeauEssai() {
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 gap-y-1">
         <Icone className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span className="font-medium text-fg">{m.titre}</span>
+        {/* Recette R1, RG-ESS-07 : le forfait de l'essai, visible sur toutes les pages. */}
+        {etat.statut === 'TRIAL_ACTIVE' && (
+          <span className="text-fg" data-testid="bandeau-essai-forfait">
+            Forfait : {LIBELLE_FORFAIT_ESSAI}
+          </span>
+        )}
         <span className="flex items-center gap-1">
           {m.detail}
           <InfoBulle

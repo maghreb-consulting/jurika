@@ -148,6 +148,10 @@ public class RegisterWorkspaceUseCase {
      * Spec directeur 2026-06-02 : essentiel / business / entreprise.
      */
     private static String planLabel(String code) {
+        // Recette R1, RG-ESS-07 : inscription a l'essai, le courriel nomme l'essai.
+        if (ma.jurika.common.trial.EssaiRegles.CODE_FORFAIT_AFFICHE.equals(code)) {
+            return ma.jurika.common.trial.EssaiRegles.LIBELLE_FORFAIT;
+        }
         // Lot L7 (E5) : libelle et prix lus dans le catalogue (CDC 4.3), jamais recopies.
         return ma.jurika.common.billing.PlanCatalog.findByCode(code)
                 .map(p -> p.quoteOnly() ? p.displayLabel() + " (selon devis)"

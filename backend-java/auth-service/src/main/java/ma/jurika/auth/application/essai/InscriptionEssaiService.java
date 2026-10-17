@@ -296,7 +296,7 @@ public class InscriptionEssaiService {
 
         RegisterWorkspaceUseCase.Result base = registerWorkspace.execute(new RegisterWorkspaceUseCase.Command(
                 d.organisation(), d.email(), null, d.prenom(), d.nom(), d.telephone(), d.email(),
-                null, d.adresseIp(), d.userAgent(), null, null, false));
+                null, d.adresseIp(), d.userAgent(), EssaiRegles.CODE_FORFAIT_AFFICHE, null, false));
 
         WorkspaceEntity ws = workspaces.findById(base.workspaceId())
                 .orElseThrow(() -> new NotFoundException("Cabinet introuvable apr\u00e8s sa cr\u00e9ation."));

@@ -1,5 +1,6 @@
 package ma.jurika.common.billing;
 
+import ma.jurika.common.trial.EssaiRegles;
 import ma.jurika.common.billing.PlanCatalog.Plan;
 import ma.jurika.common.billing.PlanCatalog.Quotas;
 import ma.jurika.common.exception.FonctionHorsForfaitException;
@@ -81,15 +82,20 @@ public class PlanLimitsService {
             boolean forfaitDefini,
             LocalDate periodeDebut,
             LocalDate periodeFin,
-            boolean storageMesure
+            boolean storageMesure,
+            // Recette R1 (RG-ESS-07, RG-ESS-04) : cabinet en essai sans forfait souscrit ; le forfait
+            // affiche est alors l'essai, avec ses limites. Stockage en octets (500 Mo pendant l'essai).
+            boolean essai,
+            long maxStorageOctets
     ) {
         public boolean usersOver()    { return !usersUnlimited && users >= maxUsers; }
         public boolean dossiersOver() { return !dossiersUnlimited && dossiers >= maxDossiers; }
-        public boolean storageOver()  { return !storageUnlimited && storageBytes >= (long) maxStorageGb * OCTETS_PAR_GO; }
+        public boolean storageOver()  { return !storageUnlimited && storageBytes >= maxStorageOctets; }
     }
 
     /** Forfait du cabinet tel que lu en base. */
-    record Contexte(Plan plan, boolean forfaitDefini, LocalDate ancre, boolean essaiEnCours) {}
+    record Contexte(Plan plan, boolean forfaitDefini, LocalDate ancre, boolean essaiEnCours,
+                    boolean essaiSansForfait) {}
 
     // ------------------------------------------------------------------ lecture
 
@@ -98,14 +104,26 @@ public class PlanLimitsService {
         Quotas q = c.plan().quotas();
         PeriodeAbonnement periode = PeriodeAbonnement.courante(c.ancre(), horloge.instant());
         int users = countUsers(workspaceId);
-        int dossiers = countDossiersDuMois(workspaceId, periode);
         Long storage = countStorageBytes(workspaceId);
+        if (c.essaiSansForfait()) {
+            // Recette R1, RG-ESS-07 : le forfait affiche pendant l'essai est l'essai, avec les limites
+            // de RG-ESS-04 (dossiers comptes sur tout l'essai, comme EssaiQuotas), jamais Essentiel.
+            return new UsageSnapshot(
+                    EssaiRegles.CODE_FORFAIT_AFFICHE, EssaiRegles.LIBELLE_FORFAIT,
+                    users, EssaiRegles.MAX_EMPLOYES, false,
+                    countDossiersDeLEssai(workspaceId), EssaiRegles.MAX_DOSSIERS, false,
+                    storage == null ? 0L : storage, 0, false,
+                    false, periode.debut(), periode.fin(), storage != null,
+                    true, EssaiRegles.MAX_STOCKAGE_OCTETS);
+        }
+        int dossiers = countDossiersDuMois(workspaceId, periode);
         return new UsageSnapshot(
                 c.plan().internalCode(), c.plan().displayLabel(),
                 users, q.maxUsers(), q.isUsersUnlimited(),
                 dossiers, q.maxDossiers(), q.isDossiersUnlimited(),
                 storage == null ? 0L : storage, q.maxStorageGb(), q.isStorageUnlimited(),
-                c.forfaitDefini(), periode.debut(), periode.fin(), storage != null);
+                c.forfaitDefini(), periode.debut(), periode.fin(), storage != null,
+                false, (long) q.maxStorageGb() * OCTETS_PAR_GO);
     }
 
     /** Mois d'abonnement courant du cabinet. */
@@ -234,12 +252,14 @@ public class PlanLimitsService {
                 : debut instanceof Timestamp t ? t.toLocalDateTime().toLocalDate()
                 : debut instanceof LocalDate l ? l : null;
         boolean essai = "TRIAL_ACTIVE".equals(r.get("trial_status"));
+        // Essai en cours ou termine (lecture seule) sans forfait souscrit : l'essai est affiche.
+        boolean essaiAffiche = essai || "TRIAL_EXPIRED".equals(r.get("trial_status"));
         if (code == null) {
-            return new Contexte(PlanCatalog.ESSENTIEL, false, ancre, essai);
+            return new Contexte(PlanCatalog.ESSENTIEL, false, ancre, essai, essaiAffiche);
         }
         Plan plan = PlanCatalog.findByCode(code).orElseThrow(() ->
                 new IllegalStateException("Forfait inconnu en base pour le workspace " + workspaceId + " : " + code));
-        return new Contexte(plan, true, ancre, essai);
+        return new Contexte(plan, true, ancre, essai, false);
     }
 
     private int countUsers(UUID workspaceId) {
@@ -258,6 +278,16 @@ public class PlanLimitsService {
                         + "AND dossier_id IS NOT NULL AND created_at >= ? AND created_at < ?",
                 Integer.class, workspaceId,
                 Timestamp.from(periode.debutInstant()), Timestamp.from(periode.finInstant()));
+        return n == null ? 0 : n;
+    }
+
+    /** Dossiers du cabinet en essai (RG-ESS-04 : 3 au plus sur tout l'essai) ; 0 si la table est absente. */
+    private int countDossiersDeLEssai(UUID workspaceId) {
+        Boolean presente = jdbc.queryForObject(
+                "SELECT to_regclass('public.entreprise_dossiers') IS NOT NULL", Boolean.class);
+        if (!Boolean.TRUE.equals(presente)) return 0;
+        Integer n = jdbc.queryForObject("SELECT COUNT(*) FROM entreprise_dossiers WHERE workspace_id = ?",
+                Integer.class, workspaceId);
         return n == null ? 0 : n;
     }
 

@@ -173,7 +173,9 @@ export function BillingPage() {
       aide={
         <TexteAide cle="facturation-l7" titre="Que faire sur cet écran ?">
           <p>
-            {!abonnement || abonnement.statut === 'AUCUN'
+            {abonnement?.statut === 'AUCUN' && abonnement.forfait === 'essai'
+              ? `Votre cabinet est en ${abonnement.forfaitLibelle ?? 'essai gratuit'} : « Souscrire un forfait » vous fait choisir le forfait, le rythme de paiement puis le mode de paiement ; vous conservez tout votre travail.`
+              : !abonnement || abonnement.statut === 'AUCUN'
               ? 'Votre cabinet n’a pas encore souscrit de forfait : « Souscrire un forfait » vous fait choisir le forfait, le rythme de paiement puis le mode de paiement.'
               : abonnement.statut === 'ARCHIVE'
                 ? 'Votre forfait est arrêté : le cabinet est archivé, rien n’a été supprimé. Souscrivez de nouveau pour retrouver votre travail dans l’état exact où vous l’avez laissé.'
@@ -213,7 +215,14 @@ export function BillingPage() {
                 </Message>
               </div>
             )}
-            {abonnement.statut === 'AUCUN' && (
+            {/* Recette R1, RG-ESS-07 : pendant l'essai, le forfait affiche est l'essai. */}
+            {abonnement.statut === 'AUCUN' && abonnement.forfait === 'essai' && (
+              <p className="text-sm text-fg" data-testid="billing-essai">
+                Forfait : <strong>{abonnement.forfaitLibelle}</strong>. Souscrivez un forfait pendant ou après l’essai :
+                vous conservez tout votre travail.
+              </p>
+            )}
+            {abonnement.statut === 'AUCUN' && abonnement.forfait !== 'essai' && (
               <p className="text-sm text-fg-muted" data-testid="billing-aucun">
                 Aucun forfait souscrit pour l’instant.
               </p>
@@ -291,15 +300,21 @@ export function BillingPage() {
               </span>
             }
           >
-            {usage.forfaitDefini === false && (
+            {usage.forfaitDefini === false && !usage.essai && (
               <Message ton="attention" className="mb-3">
                 Aucun forfait enregistré pour ce cabinet : les limites du forfait Essentiel s’appliquent.
               </Message>
             )}
             <ul className="space-y-1.5 text-sm text-fg">
               <li>
-                Dossiers ouverts ce mois d’abonnement
-                {usage.periodeDebut ? ` (du ${formatDateIso(usage.periodeDebut)} au ${formatFinIncluse(usage.periodeFin)})` : ''} :{' '}
+                {usage.essai ? (
+                  'Dossiers de l’essai : '
+                ) : (
+                  <>
+                    Dossiers ouverts ce mois d’abonnement
+                    {usage.periodeDebut ? ` (du ${formatDateIso(usage.periodeDebut)} au ${formatFinIncluse(usage.periodeFin)})` : ''} :{' '}
+                  </>
+                )}
                 <strong>{usage.dossiers}</strong>
                 {usage.dossiersUnlimited ? '' : ` sur ${usage.maxDossiers}`}
               </li>
@@ -313,8 +328,17 @@ export function BillingPage() {
                   'non mesuré'
                 ) : (
                   <>
-                    <strong>{(usage.storageBytes / 1024 ** 3).toFixed(2).replace('.', ',')} Go</strong>
-                    {usage.storageUnlimited ? '' : ` sur ${usage.maxStorageGb} Go`}
+                    {usage.essai ? (
+                      <>
+                        <strong>{Math.round(usage.storageBytes / 1024 ** 2)} Mo</strong>
+                        {` sur ${Math.round((usage.maxStorageOctets ?? 0) / 1024 ** 2)} Mo`}
+                      </>
+                    ) : (
+                      <>
+                        <strong>{(usage.storageBytes / 1024 ** 3).toFixed(2).replace('.', ',')} Go</strong>
+                        {usage.storageUnlimited ? '' : ` sur ${usage.maxStorageGb} Go`}
+                      </>
+                    )}
                   </>
                 )}
               </li>

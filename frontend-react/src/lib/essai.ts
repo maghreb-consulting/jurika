@@ -4,6 +4,9 @@ import type { EtatEssai } from '../services/essai.service';
 
 const DATE = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Casablanca' });
 
+/** Recette R1, RG-ESS-07 : forfait affiche pendant l'essai (meme libelle que le serveur, EssaiRegles). */
+export const LIBELLE_FORFAIT_ESSAI = 'Essai gratuit (fonctions du forfait Professionnel)';
+
 export function formaterDate(iso: string | null): string {
   return iso ? DATE.format(new Date(iso)) : '';
 }
