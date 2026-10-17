@@ -20,9 +20,24 @@ function charger(): Promise<AbonnementVue | null> {
   return enCours;
 }
 
-/** Oublie l'etat lu (apres un changement de forfait). */
+/** Ecrans montes a prevenir quand l'etat lu est oublie (recette du 2026-10-17). */
+const abonnes = new Set<() => void>();
+
+/**
+ * Oublie l'etat lu (apres un changement de forfait) et fait relire les ecrans deja montes. Avant,
+ * seul le cache etait vide : un ecran affiche gardait l'etat de l'essai jusqu'au rechargement.
+ */
 export function oublierForfait(): void {
   enCours = null;
+  abonnes.forEach((relire) => relire());
+}
+
+// Retour sur l'onglet : le forfait a pu changer ailleurs (virement enregistre par le
+// super-admin, souscription dans un autre onglet) ; l'etat est relu.
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && abonnes.size > 0) oublierForfait();
+  });
 }
 
 export interface EtatForfait {
@@ -41,8 +56,12 @@ export function useForfait(actif = true): EtatForfait {
   useEffect(() => {
     if (!actif) return undefined;
     let annule = false;
-    void charger().then((a) => { if (!annule) { setAbonnement(a); setCharge(true); } });
-    return () => { annule = true; };
+    const lire = () => {
+      void charger().then((a) => { if (!annule) { setAbonnement(a); setCharge(true); } });
+    };
+    lire();
+    abonnes.add(lire);
+    return () => { annule = true; abonnes.delete(lire); };
   }, [actif]);
   const fonction = (code: string) => abonnement?.fonctions?.find((f) => f.code === code);
   return {
