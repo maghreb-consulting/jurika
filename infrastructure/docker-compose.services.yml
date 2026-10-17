@@ -72,6 +72,9 @@ services:
       # page servie par le conteneur (http://localhost, port 80) sont refusees en
       # 403 pendant ce laps de temps.
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost,http://localhost:5173}"
+      # Route des donnees de test des parcours e2e (RouteDonneesDeTestConfig) : faux par defaut ;
+      # vrai seulement sur une pile de test (Z440, job CI e2e-parcours). Jamais en production.
+      JURIKA_TEST_SEED_ENABLED: ${JURIKA_TEST_SEED_ENABLED:-false}
       REDIS_HOST: redis
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD absent, .env doit le definir}
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt-public.pem
