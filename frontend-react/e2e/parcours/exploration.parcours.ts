@@ -144,12 +144,17 @@ async function parcourirOnglets(page: Page, dans?: Locator): Promise<number> {
   for (let i = 0; i < n; i++) {
     const o = onglets.nth(i);
     if (!(await o.isVisible().catch(() => false))) continue;
+    // L6c : les demonstrations de la vitrine reproduisent de vrais onglets dans une scene inerte
+    // (role="img", inert) ; personne ne peut les atteindre, le test non plus (defaut du test, vu
+    // le 2026-10-17 : clic attendu 180 s sur un onglet de la demonstration de la Data Room).
+    if (await o.evaluate((e) => !!e.closest('[inert], [aria-hidden="true"]')).catch(() => true)) continue;
     await o.click();
     await calme(page);
   }
   for (const i of initiaux) {
     const o = onglets.nth(i);
     if (!(await o.isVisible().catch(() => false))) continue;
+    if (await o.evaluate((e) => !!e.closest('[inert], [aria-hidden="true"]')).catch(() => true)) continue;
     await o.click();
     await calme(page);
   }
