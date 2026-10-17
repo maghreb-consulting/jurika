@@ -324,6 +324,11 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   temps moyen de cloture a 0 quand rien n'est clos (COALESCE, masque par le front) ; colonne "En
   production" de la supervision sans les tickets a la creation ; affichage sous 768 px non verifie
   a l'ecran (harnais en 1366 et 1920 seulement).
+- **Diagrammes par role (L6b E18)** : sans agregat serveur, la charge par employe et par etape est
+  calculee sur la liste des tickets (500 au plus) et le rythme de l'employe sur ses tickets (200 au
+  plus), avec mention a l'ecran si la liste est partielle ; alertes de securite limitees a 24 h et
+  20 lignes (pas de serie par jour) ; billing n'expose aucun agregat de paiements ou de chiffre
+  d'affaires ; documents recus par le client limites aux 10 derniers.
 - **Audit de billing jamais ecrit** (motif 9) : `JdbcAuditEventEmitter` de billing ecrit dans
   `audit_log` de `jurika_billing`, qui n'a pas cette table ("bad SQL grammar", journalise en WARN
   seulement, ex. `BILLING_PAIEMENT_VALIDE`) : les traces de paiement sont perdues sans bruit.
