@@ -15,6 +15,11 @@ import org.springframework.context.annotation.Profile;
  * (JURIKA_TEST_SEED_ENABLED, faux par defaut) et hors profil {@code prod}. Meme double verrou
  * cote dataroom-service (TestSeedController). Recette R3 : memes verrous pour l'envoi des
  * exemplaires de courriels (auth-service et billing-service).
+ *
+ * <p>Recette R2 (2026-10-17) : la route {@code /api/v1/test/auth-2fa-sms/**} mene a auth-service
+ * (dernier code SMS simule de la double authentification, CodeSmsDeTestController, present
+ * seulement avec jurika.sms.simulation=true et hors prod). Elle passe avant la route du seed,
+ * qui couvre tout {@code /api/v1/test/**}.
  */
 @Configuration
 @Profile("!prod")
@@ -30,6 +35,7 @@ public class RouteDonneesDeTestConfig {
                         .uri("lb://auth-service"))
                 .route("test-courriels-facturation", r -> r.order(-1).path("/api/v1/test/courriels/facturation")
                         .uri("lb://billing-service"))
+                .route("test-auth-2fa-sms", r -> r.order(-1).path("/api/v1/test/auth-2fa-sms/**").uri("lb://auth-service"))
                 .route("test-seed", r -> r.path("/api/v1/test/**").uri("lb://dataroom-service"))
                 .build();
     }

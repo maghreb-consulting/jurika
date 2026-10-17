@@ -25,7 +25,38 @@ class RouteDonneesDeTestTest {
             .withUserConfiguration(RouteDonneesDeTestConfig.class);
 
     private static boolean routePresente(RouteLocator routes) {
-        return Boolean.TRUE.equals(routes.getRoutes().any(r -> "test-seed".equals(r.getId())).block());
+        return routePresente(routes, "test-seed");
+    }
+
+    private static boolean routePresente(RouteLocator routes, String id) {
+        return Boolean.TRUE.equals(routes.getRoutes().any(r -> id.equals(r.getId())).block());
+    }
+
+    /**
+     * Recette R2 (2026-10-17) : route des codes SMS simules de la double authentification
+     * (/api/v1/test/auth-2fa-sms/** vers auth-service), meme double verrou que le seed ; elle passe
+     * avant la route du seed (qui couvre tout /api/v1/test/**).
+     */
+    private static org.springframework.cloud.gateway.route.Route route(RouteLocator routes, String id) {
+        return routes.getRoutes().filter(r -> id.equals(r.getId())).blockFirst();
+    }
+
+    @Test
+    void route_des_codes_sms_de_test_absente_en_production_et_par_defaut() {
+        contexte.run(c -> assertThat(routePresente(c.getBean(RouteLocator.class), "test-auth-2fa-sms")).isFalse());
+        contexte.withPropertyValues("spring.profiles.active=prod", "jurika.test.seed.enabled=true")
+                .run(c -> assertThat(routePresente(c.getBean(RouteLocator.class), "test-auth-2fa-sms")).isFalse());
+    }
+
+    @Test
+    void route_des_codes_sms_de_test_vers_auth_avant_le_seed() {
+        contexte.withPropertyValues("spring.profiles.active=dev", "jurika.test.seed.enabled=true").run(c -> {
+            RouteLocator routes = c.getBean(RouteLocator.class);
+            var sms = route(routes, "test-auth-2fa-sms");
+            assertThat(sms).isNotNull();
+            assertThat(sms.getUri().toString()).isEqualTo("lb://auth-service");
+            assertThat(sms.getOrder()).isLessThan(route(routes, "test-seed").getOrder());
+        });
     }
 
     @Test
