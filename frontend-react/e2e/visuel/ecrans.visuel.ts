@@ -24,6 +24,13 @@ const NON_BLOQUANT = process.env.VISUEL_NON_BLOQUANT === '1';
 /** Couches prevues (exclues du chevauchement) : region des confirmations (toasts), non cliquable. */
 const COUCHES = ['.fixed.pointer-events-none'];
 
+/**
+ * L6c : zones ecartees de l'analyse : ecrans des demonstrations de la vitrine (vrais
+ * composants rendus a 1280 x 800 puis reduits, role="img", contenu aria-hidden et inert) ;
+ * la page reproduite y est cadree (coupee) comme dans une capture d'ecran.
+ */
+const IGNORES = ['.v-demo-toile'];
+
 /** Indicateurs de chargement en cours : l'ecran n'est pas encore stable. */
 const CHARGEMENT = '.animate-pulse, .animate-spin, [aria-busy="true"]';
 
@@ -232,7 +239,7 @@ for (const ecran of ECRANS) {
         let capture: string | null = null;
         let examines: Record<string, number> | undefined;
         if (!absent) {
-          const r = await analyser(page, { couches: COUCHES, tolerance: 1 });
+          const r = await analyser(page, { couches: COUCHES, ignores: IGNORES, tolerance: 1 });
           examines = r.examines;
           for (const d of r.defauts) constats.push({ categorie: d.type, message: d.message });
           fs.mkdirSync(SORTIE, { recursive: true });

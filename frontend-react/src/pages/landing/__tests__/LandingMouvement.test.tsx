@@ -137,12 +137,13 @@ describe('Vitrine (V3) : accroche animee', () => {
     expect((h1.textContent ?? '').replace(/\s+/g, ' ').trim()).toBe(attendu.join(' '));
   });
 
-  it("fait entrer la capture principale avec une profondeur (transform seul, image chargee d'emblee)", () => {
+  it('fait entrer la demonstration principale avec une profondeur (transform seul)', () => {
     rendre();
     const hero = screen.getByTestId('hero');
     const profondeur = hero.querySelector('.v-profondeur');
     expect(profondeur).not.toBeNull();
-    expect(profondeur?.querySelector('img')).toHaveAttribute('loading', 'eager');
+    // L6c : la demonstration de l'accroche (HTML, aucune image a charger) entre en profondeur.
+    expect(profondeur?.querySelector('figure[data-demo="creation-ticket"]')).not.toBeNull();
     const regle = CSS.match(/\.v-profondeur\s*\{[^}]*\}/)?.[0] ?? '';
     expect(regle).toMatch(/animation\s*:\s*v-profondeur\b/);
     const images = blocsAt(CSS, /@keyframes\s+(v-profondeur)\s*\{/g)[0]?.corps ?? '';
@@ -164,8 +165,9 @@ describe('Vitrine (V3) : apparitions en cascade', () => {
   });
 });
 
-// V4 (demande du 2026-10-16) : une video par fonctionnalite (videos.ts), la Data Room garde sa capture.
-const ORDRE_RECIT = ['theme-clair-sombre', 'frise-demarches', 'data-room-clair', 'statuts-apercu', 'juri-aide'];
+// V4 (demande du 2026-10-16), L6c : une demonstration animee par fonctionnalite
+// (demonstrations/scenes.ts) ; L6c E5 : la Data Room aussi.
+const ORDRE_RECIT = ['theme-clair-sombre', 'frise-demarches', 'data-room', 'statuts-apercu', 'juri-aide'];
 
 describe('Vitrine (V3) : recit au defilement des fonctionnalites', () => {
   it("presente cinq etapes, dans l'ordre demande, et une capture fixe qui change d'ecran", () => {
@@ -186,35 +188,26 @@ describe('Vitrine (V3) : recit au defilement des fonctionnalites', () => {
     expect(within(section).getByRole('button', { name: /Acte/ })).toHaveAttribute('aria-current', 'step');
   });
 
-  it("ne lit que la video de l'ecran actif de la pile, et la change avec l'etape lue", () => {
+  it("ne joue que la demonstration de l'ecran actif de la pile, et la change avec l'etape lue", () => {
     const io = simulerObservateurs();
-    const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve());
-    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
-    try {
-      rendre();
-      const section = screen.getByRole('region', { name: 'Ce que fait la plateforme' });
-      const pile = Array.from(section.querySelectorAll<HTMLElement>('[data-recit-ecran]'));
-      // Toutes les boites de la pile entrent a l'ecran (meme place) : seule l'active monte sa video.
+    rendre();
+    const section = screen.getByRole('region', { name: 'Ce que fait la plateforme' });
+    const pile = Array.from(section.querySelectorAll<HTMLElement>('[data-recit-ecran]'));
+    // Toutes les boites de la pile entrent a l'ecran (meme place) : seule l'active joue.
+    const entrerTout = () => {
       for (const e of pile) {
-        const b = e.querySelector('.v-video-pile');
+        const b = e.querySelector('.v-demo-boite');
         if (b) act(() => io.entrer(b));
       }
-      const lues = () => pile.filter((e) => e.querySelector('video')).map((e) => e.getAttribute('data-recit-ecran'));
-      expect(lues()).toEqual(['theme-clair-sombre']);
-      expect(play).toHaveBeenCalled();
-      // Les ecrans caches ne recoivent ni le focus ni la lecture (inert).
-      for (const e of pile) expect(e.hasAttribute('inert'), e.getAttribute('data-recit-ecran') ?? '').toBe(!e.hasAttribute('data-actif'));
-      act(() => io.entrer(section.querySelector('[data-etape="3"]') as Element));
-      for (const e of pile) {
-        const b = e.querySelector('.v-video-pile');
-        if (b) act(() => io.entrer(b));
-      }
-      expect(lues()).toContain('statuts-apercu');
-      const active = pile.find((e) => e.hasAttribute('data-actif'));
-      expect(active?.getAttribute('data-recit-ecran')).toBe('statuts-apercu');
-    } finally {
-      vi.restoreAllMocks();
-    }
+    };
+    entrerTout();
+    const jouees = () => pile.filter((e) => e.querySelector('figure[data-lecture="oui"]')).map((e) => e.getAttribute('data-recit-ecran'));
+    expect(jouees()).toEqual(['theme-clair-sombre']);
+    // Les ecrans caches ne recoivent ni le focus ni la lecture (inert).
+    for (const e of pile) expect(e.hasAttribute('inert'), e.getAttribute('data-recit-ecran') ?? '').toBe(!e.hasAttribute('data-actif'));
+    act(() => io.entrer(section.querySelector('[data-etape="3"]') as Element));
+    entrerTout();
+    expect(jouees()).toEqual(['statuts-apercu']);
   });
 });
 

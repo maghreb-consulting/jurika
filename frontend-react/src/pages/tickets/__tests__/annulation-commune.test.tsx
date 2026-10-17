@@ -44,9 +44,12 @@ describe('Reprise d’un ticket annulé', () => {
     const confirmer = vi.fn().mockResolvedValue(undefined);
     render(<RepriseTicketDialog ticket={ticket('MODIFICATION')} onClose={vi.fn()} onConfirm={confirmer} />);
     expect(await screen.findByText(/« Déroulement de la démarche »/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Continuer' }));
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Le client relance le projet.' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Suivant' }));
+    // La fenetre s'ouvre dans un effet (showModal, ou l'attribut open sous jsdom) : son texte est
+    // deja dans le DOM avant qu'elle soit ouverte, ses boutons pas encore accessibles. On attend
+    // donc chaque element par son role (test instable sous charge, echoue en CI le 2026-10-17).
+    fireEvent.click(await screen.findByRole('button', { name: 'Continuer' }));
+    fireEvent.change(await screen.findByRole('textbox'), { target: { value: 'Le client relance le projet.' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Suivant' }));
     fireEvent.click(await screen.findByRole('button', { name: /Reprendre au statut/ }));
     await waitFor(() => expect(confirmer).toHaveBeenCalledWith('DEROULEMENT_DEMARCHE', 'Le client relance le projet.'));
     expect(get).toHaveBeenCalledWith('/tickets/t1/reprise');
