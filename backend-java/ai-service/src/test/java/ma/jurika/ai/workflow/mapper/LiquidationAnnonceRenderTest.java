@@ -119,41 +119,20 @@ class LiquidationAnnonceRenderTest {
         assertEquals("ALAOUI", v.get("LIQUIDATEUR_NOM"));
     }
 
+    /**
+     * L6b (E19) : l'avis du corpus ne publie pas le resultat ; il ne porte plus de variable de
+     * resultat (actif - passif, ou sens envoye par l'ecran). La seule source est le rapport final.
+     */
     @Test
-    void boni_deriveDesComptesFinaux_sansSaisieSeparee() {
-        Map<String, Object> v = vars(LiquidationAnnonceVarsBuilder.TPL_SARL,
-                payload("SARL", 500_000, 300_000));
-        assertEquals("boni", v.get("RESULTAT_LIQUIDATION_TYPE"));
-        assertEquals("200 000", amount(v.get("BONI_LIQUIDATION_CHIFFRES")));
-        assertEquals("", v.get("MALI_LIQUIDATION_CHIFFRES"));
-    }
-
-    @Test
-    void mali_deriveDesComptesFinaux_montantEnValeurAbsolue() {
-        Map<String, Object> v = vars(LiquidationAnnonceVarsBuilder.TPL_SARL,
-                payload("SARL", 300_000, 500_000));
-        assertEquals("mali", v.get("RESULTAT_LIQUIDATION_TYPE"));
-        assertEquals("200 000", amount(v.get("MALI_LIQUIDATION_CHIFFRES")));
-        assertEquals("", v.get("BONI_LIQUIDATION_CHIFFRES"));
-    }
-
-    @Test
-    void soldeNul_estUnBoni() {
-        Map<String, Object> v = vars(LiquidationAnnonceVarsBuilder.TPL_SARL,
-                payload("SARL", 300_000, 300_000));
-        assertEquals("boni", v.get("RESULTAT_LIQUIDATION_TYPE"));
-    }
-
-    @Test
-    void sensExplicite_prioritaireSurLeCalcul() {
+    void aucuneVariableDeResultat_niSoldeNiSensDeLEcran() {
         Map<String, Object> p = payload("SARL", 500_000, 300_000);
         @SuppressWarnings("unchecked")
         Map<String, Object> cloture = (Map<String, Object>) p.get("cloture");
         cloture.put("resultatType", "mali");
         cloture.put("resultatMontant", 200_000);
         Map<String, Object> v = vars(LiquidationAnnonceVarsBuilder.TPL_SARL, p);
-        assertEquals("mali", v.get("RESULTAT_LIQUIDATION_TYPE"));
-        assertEquals("", v.get("BONI_LIQUIDATION_CHIFFRES"));
+        org.assertj.core.api.Assertions.assertThat(v).doesNotContainKeys("RESULTAT_LIQUIDATION_TYPE",
+                "BONI_LIQUIDATION_CHIFFRES", "MALI_LIQUIDATION_CHIFFRES");
     }
 
     @Test
@@ -241,31 +220,6 @@ class LiquidationAnnonceRenderTest {
         assertTrue(mapper.supportedTemplates().contains(LiquidationMapper.TPL_PV_SARL));
         assertTrue(mapper.supportedTemplates().contains(LiquidationMapper.TPL_RAPPORT));
         assertEquals("LIQUIDATION", mapper.workflowCode());
-    }
-
-    /**
-     * Lot L4d (E11d) : le sens du resultat n'est plus suppose "boni" quand ni le sens ni les
-     * totaux ne sont fournis : la generation est refusee et la donnee nommee.
-     */
-    @Test
-    void sansSensNiComptes_refusNomme_jamaisBoniSuppose() {
-        Map<String, Object> p = payload("SARL", 300_000, 500_000);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> cloture = (Map<String, Object>) p.get("cloture");
-        cloture.clear();
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> vars(LiquidationAnnonceVarsBuilder.TPL_SARL, p))
-                .isInstanceOf(ma.jurika.ai.document.GenerationRefuseeException.class)
-                .hasMessageContaining("boni ou mali");
-    }
-
-    /** Un sens illisible ne vaut pas "boni" : le signe des comptes decide. */
-    @Test
-    void sensIllisible_leSigneDesComptesDecide() {
-        Map<String, Object> p = payload("SARL", 300_000, 500_000);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> cloture = (Map<String, Object>) p.get("cloture");
-        cloture.put("resultatType", "xyz");
-        assertEquals("mali", vars(LiquidationAnnonceVarsBuilder.TPL_SARL, p).get("RESULTAT_LIQUIDATION_TYPE"));
     }
 
     // ── Rendering helper ───────────────────────────────────────────────────

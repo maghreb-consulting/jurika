@@ -67,6 +67,14 @@ Moteur documentaire maison DocxTemplateEngine (Apache POI/XWPF), horodatage ZIP 
     de contenu des migrations qui affirmaient l'etat d'avant). Verify complet et vert AVANT tout
     push, sans exception.
 
+11. **Parcours sur le vrai corpus avant chaque push** (decision du 2026-10-17) : les parcours de
+    bout en bout etiquetes `@corpus-reel` (et `@modele-kie`), exclus de la CI faute de corpus et de
+    modele publies, passent sur le Z440 AVANT chaque push d'une branche qui touche le front, les
+    parcours, les actes ou les services qu'ils traversent :
+    `cd frontend-react && npx playwright test -c playwright.parcours.config.ts --grep "@corpus-reel|@modele-kie" --project pile`,
+    sur la pile redeployee avec le code pousse. Preuve au rapport du lot : commande, date, commit,
+    nombre de tests passes, journal et captures de fin. Rouge : pas de push.
+
 ## Mode autonome des lots (`/lot-complet`, depuis le 2026-10-09)
 
 - `/lot-complet <lot>` enchaine demarrage, decoupage, execution, verification et push de la
@@ -469,10 +477,11 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   en proprietaire (superutilisateur sur le Z440), donc hors RLS.
   **billing sur `jurika_app` : lot L9** (decision du 2026-10-14 ; RLS de `factures` et du
   contrat posee mais inoperante jusque-la).
-- **Seed e2e expose** : la passerelle route `/api/v1/test/**` (route `test-seed`) vers le seed
-  de dataroom, actif sur le Z440 (`JURIKA_TEST_SEED_ENABLED=true`) : creation de workspaces et
-  mots de passe en clair par un appel anonyme. A fermer (route hors profil de test, ou seed
-  desactive sur le Z440).
+- **Route de donnees de test** (decision du 2026-10-17, faite en L6b) : passerelle
+  (`RouteDonneesDeTestConfig`) et dataroom (`TestSeedController`) ne l'activent que si
+  `JURIKA_TEST_SEED_ENABLED=true` ET hors profil `prod` ; le fichier de production impose `prod` et
+  `false` (tests `RouteDonneesDeTestTest`, `TestSeedAbsentEnProductionTest`,
+  `ProductionSansDonneesDeTestTest`). Reste actif sur le Z440 (pile de test) et dans le job CI.
 - **`/internal/**` sans authentification entre services** : bloque a la passerelle et ports
   lies a 127.0.0.1 (L0), mais tout conteneur du reseau Docker peut les appeler.
 - **Dependance circulaire des migrations ticket V21 / dataroom** : ticket V21 reference

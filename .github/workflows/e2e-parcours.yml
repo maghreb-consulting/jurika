@@ -135,6 +135,8 @@ jobs:
           # La route de seed doit atteindre le conteneur dataroom.
           docker compose $COMPOSE_ARGS config --format json \
             | python3 -c "import sys,json; e=json.load(sys.stdin)['services']['dataroom-service']['environment']; assert e.get('JURIKA_TEST_SEED_ENABLED')=='true', e.get('JURIKA_TEST_SEED_ENABLED')"
+          docker compose $COMPOSE_ARGS config --format json \
+            | python3 -c "import sys,json; e=json.load(sys.stdin)['services']['gateway-service']['environment']; assert e.get('JURIKA_TEST_SEED_ENABLED')=='true', e.get('JURIKA_TEST_SEED_ENABLED')"
 
       - name: Construction des images
         run: docker compose $COMPOSE_ARGS build --parallel

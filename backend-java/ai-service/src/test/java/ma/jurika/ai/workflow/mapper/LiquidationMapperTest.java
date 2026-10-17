@@ -72,12 +72,25 @@ class LiquidationMapperTest {
         assertThat(v).containsEntry("ASSOCIE_UNIQUE", "M. Ahmed Alaoui").doesNotContainKey("QUORUM_ATTEINT");
     }
 
+    /**
+     * L6b (E19) : le compte du PV vient du rapport final (une ligne de realisation et une ligne
+     * d'apurement), les totaux de l'etape 1 concordants.
+     */
+    private static void comptes(Map<String, Object> p, long actif, long passif) {
+        Map<String, Object> c = bloc(p, "cloture");
+        c.put("actifRealise", actif);
+        c.put("passifRegle", passif);
+        Map<String, Object> r = bloc(p, "rapportLiquidateur");
+        r.put("realisations", new java.util.ArrayList<>(List.of(new java.util.LinkedHashMap<>(Map.of(
+                "designation", "Fonds de commerce", "prix", actif, "valeurInventaire", actif)))));
+        r.put("apurements", new java.util.ArrayList<>(List.of(new java.util.LinkedHashMap<>(Map.of(
+                "creancier", "BANQUE POPULAIRE", "montantAdmis", passif, "montantRegle", passif)))));
+    }
+
     @Test
     void mali_quand_l_actif_net_ne_couvre_pas_le_capital() {
         Map<String, Object> p = fixture("liquidation.json");
-        Map<String, Object> c = bloc(p, "cloture");
-        c.put("actifRealise", 120_000);
-        c.put("passifRegle", 50_000);
+        comptes(p, 120_000, 50_000);
         Map<String, Object> v = mapper.map("PV_DISSOLUTION_LIQUIDATION_SARL", p);
         assertThat(v).containsEntry("LIQUIDATION_RESULTAT_TYPE", "mali").doesNotContainKey("REPARTITION_SOLDE");
         assertThat(txt(v.get("LIQUIDATION_MALI_CHIFFRES"))).isEqualTo("40 000");
@@ -87,9 +100,7 @@ class LiquidationMapperTest {
     @Test
     void solde_nul() {
         Map<String, Object> p = fixture("liquidation.json");
-        Map<String, Object> c = bloc(p, "cloture");
-        c.put("actifRealise", 260_000);
-        c.put("passifRegle", 150_000);
+        comptes(p, 260_000, 150_000);
         assertThat(mapper.map("PV_DISSOLUTION_LIQUIDATION_SARL", p)).containsEntry("LIQUIDATION_RESULTAT_TYPE", "nul");
     }
 
@@ -99,6 +110,9 @@ class LiquidationMapperTest {
         Map<String, Object> l = bloc(p, "liquidateur");
         l.put("remunerationApplicable", "oui");
         l.put("remunerationMontant", 20_000);
+        // Le tableau des frais du rapport final comprend la remuneration (10 000 + 20 000).
+        liste(p, "frais").add(new java.util.LinkedHashMap<>(Map.of("nature", "R\u00e9mun\u00e9ration du liquidateur",
+                "montant", 20_000)));
         Map<String, Object> v = mapper.map("PV_DISSOLUTION_LIQUIDATION_SARL", p);
         assertThat(txt(v.get("LIQUIDATION_DISPONIBLE_CHIFFRES"))).isEqualTo("120 000");
     }
@@ -114,9 +128,12 @@ class LiquidationMapperTest {
 
     @Test
     void le_sens_du_solde_ne_se_suppose_pas() {
-        refuse("LIQUIDATION_FRAIS_CHIFFRES", p -> bloc(p, "cloture").remove("frais"));
-        refuse("LIQUIDATION_ACTIF_REALISE_TOTAL_CHIFFRES", p -> bloc(p, "cloture").remove("actifRealise"));
-        refuse("LIQUIDATION_DISPONIBLE_CHIFFRES", p -> bloc(p, "cloture").put("passifRegle", 400_000));
+        // L6b (E19) : le compte vient du rapport final ; sans lui, rien ne se calcule.
+        refuse("RAPPORT_LIQUIDATEUR", p -> p.remove("rapportLiquidateur"));
+        refuse("LIQUIDATION_FRAIS_TOTAL_CHIFFRES", p -> liste(p, "frais").get(0).put("montant", "abc"));
+        refuse("LIQUIDATION_ACTIF_REALISE_TOTAL_CHIFFRES", p -> bloc(p, "cloture").put("actifRealise", 310_000));
+        refuse("LIQUIDATION_FRAIS_TOTAL_CHIFFRES", p -> bloc(p, "cloture").put("frais", 12_000));
+        refuse("LIQUIDATION_DISPONIBLE_CHIFFRES", p -> comptes(p, 300_000, 400_000));
     }
 
     @Test
@@ -157,7 +174,7 @@ class LiquidationMapperTest {
             List<Map<String, Object>> a = (List<Map<String, Object>>) p.get("associes");
             a.get(0).put("nombreParts", 333);
             a.get(1).put("nombreParts", 667);
-            bloc(p, "cloture").put("actifRealise", 300_001);
+            comptes(p, 300_001, 150_000);
         });
     }
 
