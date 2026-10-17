@@ -73,4 +73,20 @@ class CaptureMessagesDeTestTest {
         assertThat((List<?>) r.get("sms")).extracting(s -> ((CaptureMessagesDeTest.Sms) s).texte())
                 .containsExactly("code 111222");
     }
+
+    /**
+     * Recette (2026-10-17) : l'enveloppe de capture cachait le caractere simule de l'envoi
+     * (SmsSender.simule() par defaut = faux) : sur la pile de test, la double authentification par
+     * SMS se croyait branchee a un vrai fournisseur ("ouverte (fournisseur configure)") et l'ecran
+     * ne disait plus que le SMS est simule.
+     */
+    @Test
+    void l_enveloppe_garde_le_caractere_simule_de_l_envoi() {
+        SmsSender simule = mock(SmsSender.class);
+        when(simule.simule()).thenReturn(true);
+        SmsSender reel = mock(SmsSender.class);
+        when(reel.simule()).thenReturn(false);
+        assertThat(((SmsSender) capture.postProcessAfterInitialization(simule, "sms")).simule()).isTrue();
+        assertThat(((SmsSender) capture.postProcessAfterInitialization(reel, "sms2")).simule()).isFalse();
+    }
 }

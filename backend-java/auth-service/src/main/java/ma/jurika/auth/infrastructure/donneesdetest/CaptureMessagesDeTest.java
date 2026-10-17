@@ -119,6 +119,16 @@ public class CaptureMessagesDeTest implements BeanPostProcessor {
             retenirSms(phoneE164, body);
             cible.send(phoneE164, body);
         }
+
+        /**
+         * Recette : l'enveloppe ne change rien a l'envoi, ni a son caractere simule. Sans cette
+         * delegation, la valeur par defaut (faux) faisait croire a DisponibiliteSms2fa qu'un vrai
+         * fournisseur etait branche sur la pile de test.
+         */
+        @Override
+        public boolean simule() {
+            return cible.simule();
+        }
     }
 
     private final class CourrielCapture implements EmailSender {
