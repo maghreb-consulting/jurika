@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ArrowRight, Check, Clock, FileText, Inbox, MessageSquare, Route } from 'lucide-react';
+import { ArrowLeftRight, ArrowRight, Check, Clock, FileText, Inbox, MessageSquare, Route, UploadCloud } from 'lucide-react';
 import { Page } from '../../components/layout/Page';
 import { Card } from '../../components/ui/Card';
 import { Badge, type BadgeVariant } from '../../components/ui/Badge';
@@ -8,6 +8,11 @@ import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 import { Message } from '../../components/ui/Message';
 import { CardSkeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
 import { KpiCard } from '../../components/dashboard/KpiCard';
+import { ChartCard } from '../../components/dashboard/charts/ChartCard';
+import { BarresEmpilees } from '../../components/dashboard/charts/BarresEmpilees';
+import { ColonnesChart } from '../../components/dashboard/charts/ColonnesChart';
+import { JaugeProgression } from '../../components/dashboard/charts/JaugeProgression';
+import { comptesParMois } from '../../components/dashboard/series';
 import { dataroomService } from '../../services/dataroom.service';
 import { dashboardService } from '../../services/dashboard.service';
 import { REQUETE_A_FAIRE } from '../../lib/clientCharts';
@@ -102,6 +107,7 @@ export function ClientDashboard() {
   const demandesRecentes = [...demandes].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, 5);
   const depotsRecents = [...depots].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
   const docs = documents ?? [];
+  const depotsParMois = comptesParMois({ depots: depots.map((d) => d.createdAt) }, 6);
 
   return (
     <Page
@@ -118,7 +124,9 @@ export function ClientDashboard() {
             Commencez par « À faire pour mon conseiller » : ce sont les pièces ou les réponses que votre cabinet attend
             de vous ; rien n’avance sans elles. « Avancement de mes opérations » montre l’étape de chaque opération en
             cours (collecte des informations, préparation des actes, démarches administratives, clôture). Pour poser
-            une question au cabinet, envoyez une demande ; tous vos documents se trouvent dans votre Data Room.
+            une question au cabinet, envoyez une demande ; tous vos documents se trouvent dans votre Data Room. Les
+            graphiques montrent où en sont vos échanges avec le cabinet et les pièces que vous avez déposées chaque
+            mois.
           </p>
         </TexteAide>
       }
@@ -210,17 +218,76 @@ export function ClientDashboard() {
             ) : (
               <ul className="divide-y divide-border">
                 {operations.map((o) => (
-                  <li key={o.id} className="py-3 first:pt-0 last:pb-0">
-                    <p className="text-sm font-medium text-fg">
-                      {o.titre}
-                      {o.reference && <span className="ml-2 font-mono text-xs text-fg-subtle">{o.reference}</span>}
-                    </p>
-                    <Etapes statut={o.statut} />
+                  <li key={o.id} className="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
+                    <JaugeProgression
+                      valeur={rangEtape(o.statut)}
+                      total={ETAPES.length}
+                      libelle={`${o.titre} : étape ${rangEtape(o.statut)} sur ${ETAPES.length}, ${ETAPES[rangEtape(o.statut) - 1]?.libelle ?? 'étape inconnue'}`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-fg">
+                        {o.titre}
+                        {o.reference && <span className="ml-2 font-mono text-xs text-fg-subtle">{o.reference}</span>}
+                      </p>
+                      <Etapes statut={o.statut} />
+                    </div>
                   </li>
                 ))}
               </ul>
             )}
           </Card>
+
+          {/* L6b (E18) : diagrammes du client : ses echanges par etat, ses depots dans le temps */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <ChartCard
+              title="Mes échanges avec le cabinet"
+              icon={<ArrowLeftRight />}
+              description="Où en sont les requêtes de votre conseiller et vos demandes au cabinet."
+              empty={requetes.length === 0 && demandes.length === 0}
+              emptyLabel="Aucun échange avec le cabinet pour le moment."
+            >
+              <BarresEmpilees
+                legende="Mes échanges avec le cabinet, par état"
+                echelle="part"
+                series={[
+                  { cle: 'attente', nom: 'En attente', ton: 'attention' },
+                  { cle: 'cours', nom: 'En cours', ton: 'info' },
+                  { cle: 'fini', nom: 'Terminés', ton: 'succes' },
+                ]}
+                lignes={[
+                  {
+                    cle: 'requetes',
+                    libelle: 'Requêtes de mon conseiller',
+                    detail: 'en attente = à vous de répondre',
+                    valeurs: {
+                      attente: requetes.filter((r) => REQUETE_A_FAIRE.includes(r.statut)).length,
+                      cours: requetes.filter((r) => r.statut === 'REPONDUE').length,
+                      fini: requetes.filter((r) => r.statut === 'CLOTUREE').length,
+                    },
+                  },
+                  {
+                    cle: 'demandes',
+                    libelle: 'Mes demandes au cabinet',
+                    detail: 'en attente = pas encore prises en charge',
+                    valeurs: {
+                      attente: demandes.filter((d) => d.statut === 'NON_TRAITEE').length,
+                      cours: demandes.filter((d) => d.statut === 'EN_COURS').length,
+                      fini: demandes.filter((d) => d.statut === 'TRAITEE').length,
+                    },
+                  },
+                ]}
+              />
+            </ChartCard>
+            <ChartCard
+              title="Mes dépôts par mois"
+              icon={<UploadCloud />}
+              description="Pièces que vous avez déposées dans votre Data Room, sur les six derniers mois."
+              empty={depotsParMois.every((m) => m.depots === 0)}
+              emptyLabel="Aucun dépôt sur les six derniers mois. Déposez vos pièces depuis votre Data Room."
+            >
+              <ColonnesChart donnees={depotsParMois} cleX="mois" legende="Mes dépôts par mois" series={[{ cle: 'depots', nom: 'Dépôts', ton: 'accent' }]} hauteur={200} />
+            </ChartCard>
+          </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card
@@ -284,6 +351,11 @@ export function ClientDashboard() {
       )}
     </Page>
   );
+}
+
+/** Rang (1..4) de l'etape courante d'une operation ; 0 si le statut est inconnu. */
+function rangEtape(statut: string): number {
+  return ETAPES.findIndex((e) => e.statut === statut) + 1;
 }
 
 /** Frise des quatre etapes d'une operation ; l'etape courante est mise en avant. */

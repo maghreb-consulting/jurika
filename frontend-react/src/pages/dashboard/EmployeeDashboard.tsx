@@ -10,12 +10,14 @@ import { ProchaineActionCarte } from '../../components/dashboard/ProchaineAction
 import { prochainesActions } from '../../components/dashboard/prochaineAction';
 import { joursRestants } from '../../components/dashboard/delais';
 import { KpiCard } from '../../components/dashboard/KpiCard';
+import { ReperesEmploye, RythmeEmploye } from '../../components/dashboard/GraphiquesEmploye';
 import { SectionTableauDeBord } from '../../components/dashboard/SectionTableauDeBord';
 import { PendingTransfersPanel } from '../../components/transfer/PendingTransfersPanel';
 import { TexteAide } from '../../components/ui/Aide';
 import { Badge, type BadgeVariant } from '../../components/ui/Badge';
 import { Lien } from '../../components/ui/Lien';
 import { Message } from '../../components/ui/Message';
+import { CardSkeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
 import { TYPE_TICKET_LABELS, labelOf } from '../../lib/dashboardLabels';
 import type { Ticket } from '../../types/ticket';
 import type { EmployeDashboardDto } from '../../types/dashboard';
@@ -83,6 +85,7 @@ function pluriel(n: number, singulier: string, plurielTexte: string): string {
 export function EmployeeDashboard() {
   const user = useCurrentUser();
   const [tickets, setTickets] = useState<Ticket[] | null>([]);
+  const [totalTickets, setTotalTickets] = useState<number | null>(null);
   const [dossiers, setDossiers] = useState<DossierBrief[]>([]);
   const [demandes, setDemandes] = useState<DemandeSummary[] | null>([]);
   const [requetes, setRequetes] = useState<RequeteSummary[] | null>([]);
@@ -93,13 +96,16 @@ export function EmployeeDashboard() {
   useEffect(() => {
     let mounted = true;
     Promise.all([
-      ticketService.list({ limit: 50 }).catch(() => null),
+      // L6b (E18) : 200 tickets (le rythme mensuel remonte six mois) ; le total du serveur dit si
+      // la liste est complete.
+      ticketService.list({ limit: 200 }).catch(() => null),
       dataroomService.listDossiers().catch(() => [] as DossierBrief[]),
       dataroomService.listDemandes().catch(() => null),
       dataroomService.listMesRequetes().catch(() => null),
     ]).then(([t, dos, dem, req]) => {
       if (!mounted) return;
       setTickets(t ? (t.items ?? []) : null);
+      setTotalTickets(t && typeof t.total === 'number' ? t.total : null);
       setDossiers(dos);
       setDemandes(dem);
       setRequetes(req);
@@ -165,7 +171,9 @@ export function EmployeeDashboard() {
             fixée sur le ticket ou le délai légal d’une démarche du dossier. Traitez d’abord les transferts de
             dossier en attente, puis les demandes « Non traitées » de vos clients et les réponses « À valider ».
             La carte « Prochaine action », en bas de page, dit pour chaque ticket ce qu’il faut faire à son étape
-            et quel délai court ; ouvrez le ticket pour voir ce qui manque avant l’étape suivante.
+            et quel délai court ; ouvrez le ticket pour voir ce qui manque avant l’étape suivante. La frise « Mes
+            délais des 30 prochains jours » colore les jours chargés : choisissez un jour pour lire ce qui tombe.
+            « Mon rythme », en bas, compare chaque mois les tickets reçus et clôturés.
           </p>
         </TexteAide>
       }
@@ -216,6 +224,21 @@ export function EmployeeDashboard() {
           aide="Demandes de vos clients que personne n’a encore prises en charge, et réponses de vos clients à vos requêtes qui attendent votre validation."
         />
       </div>
+
+      {/* L6b (E18) : quand tombent mes delais, sur quoi je travaille */}
+      {loading || loadingIndicateurs ? (
+        <SqueletteZone libelle="Chargement de vos délais…" className="mb-8 grid gap-4 lg:grid-cols-5">
+          <CardSkeleton className="h-80 lg:col-span-3" />
+          <CardSkeleton className="h-80 lg:col-span-2" />
+        </SqueletteZone>
+      ) : (
+        <ReperesEmploye
+          tickets={tickets}
+          delaisDemarches={delaisDemarches}
+          nomDossier={(id) => dossierNameById[id]}
+          enRetard={ticketsAbsents ? null : enRetard}
+        />
+      )}
 
       <SectionTableauDeBord
         titre="Mes tickets en cours"
@@ -318,6 +341,9 @@ export function EmployeeDashboard() {
 
       {/* Demande du 2026-10-16 : le copilote est retire ; la carte "Prochaine action" prend sa place. */}
       <ProchaineActionCarte tickets={tickets} echeances={delaisDemarches} userId={user?.userId} loading={loading || loadingIndicateurs} />
+
+      {/* L6b (E18) : mon rythme sur six mois, en bas de page (lecture, pas d'action) */}
+      {!loading && <RythmeEmploye tickets={tickets} totalServeur={totalTickets} />}
     </Page>
   );
 }

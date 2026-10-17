@@ -131,6 +131,16 @@ describe('ClientDashboard', () => {
     const etapes = screen.getByRole('list', { name: 'Étapes de l’opération' });
     const courante = within(etapes).getAllByRole('listitem').find((li) => li.getAttribute('aria-current') === 'step');
     expect(courante).toHaveTextContent('Préparation des actes');
+    // L6b (E18) : jauge de progression de chaque operation.
+    expect(screen.getByRole('img', { name: 'Création ACME SARL : étape 2 sur 4, Préparation des actes' })).toHaveTextContent('2/4');
+
+    // L6b (E18) : echanges par etat (barres empilees) : requetes 2 en attente, 1 en cours, 1 terminee ;
+    // demandes 1 / 1 / 1.
+    const echanges = within(screen.getByRole('table', { name: 'Mes échanges avec le cabinet, par état' })).getAllByRole('row');
+    expect(echanges[1]).toHaveTextContent('Requêtes de mon conseiller2114');
+    expect(echanges[2]).toHaveTextContent('Mes demandes au cabinet1113');
+    // Depots par mois : graphique rendu avec son tableau equivalent.
+    expect(screen.getByRole('table', { name: 'Mes dépôts par mois' })).toBeInTheDocument();
 
     // Documents + depots recents.
     expect(screen.getByText('Statuts ACME')).toBeInTheDocument();

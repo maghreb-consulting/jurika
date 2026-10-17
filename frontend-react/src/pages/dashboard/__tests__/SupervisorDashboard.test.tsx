@@ -21,6 +21,10 @@ vi.mock('../../../services/supervision.service', () => ({
 vi.mock('../../../services/dashboard.service', () => ({
   dashboardService: { getSuperviseur: (...a: unknown[]) => getSuperviseur(...a) },
 }));
+const listTickets = vi.fn();
+vi.mock('../../../services/ticket.service', () => ({
+  ticketService: { list: (...a: unknown[]) => listTickets(...a) },
+}));
 vi.mock('../../../services/dataroom.service', () => ({
   dataroomService: { listDossiers: (...a: unknown[]) => listDossiers(...a) },
 }));
@@ -70,6 +74,24 @@ const SUIVI = {
   productiviteIncluse: true,
 };
 
+function ticket(id: string, statut: string, type: string, assigne: [string, string, string] | null) {
+  return {
+    id, workspaceId: 'w1', reference: `TK-${id}`, titre: `Ticket ${id}`, type, statut, priorite: 'NORMALE', dossierId: 'd1',
+    assigneId: assigne?.[0] ?? null, assignePrenom: assigne?.[1] ?? null, assigneNom: assigne?.[2] ?? null,
+    creeParId: 's1', description: null, deadline: null, annulationMotif: null, clotureAt: null, annuleAt: null, createdAt: '2026-10-01T00:00:00Z',
+  };
+}
+const NADIA: [string, string, string] = ['u1', 'Nadia', 'Idrissi'];
+const OMAR: [string, string, string] = ['u2', 'Omar', 'Berrada'];
+const TICKETS = [
+  ticket('1', 'CREATION_TICKET', 'CREATION', NADIA),
+  ticket('2', 'GENERATION_DOCUMENTS', 'MODIFICATION', NADIA),
+  ticket('3', 'DEROULEMENT_DEMARCHE', 'MODIFICATION', NADIA),
+  ticket('4', 'DEROULEMENT_DEMARCHE', 'PV_AGO', OMAR),
+  ticket('5', 'CREATION_TICKET', 'SUCCURSALE_MA', null),
+  ticket('6', 'CLOTURE_DOSSIER', 'DISSOLUTION', OMAR),
+];
+
 describe('SupervisorDashboard', () => {
   beforeEach(() => {
     kpis.mockReset();
@@ -82,6 +104,8 @@ describe('SupervisorDashboard', () => {
       { userId: 'u2', firstName: 'Omar', lastName: 'Berrada', enCours: 1, clotures: 1, annules: 1 },
     ]);
     getSuperviseur.mockResolvedValue(SUIVI);
+    listTickets.mockReset();
+    listTickets.mockResolvedValue({ items: TICKETS, total: TICKETS.length });
     listDossiers.mockResolvedValue([
       { id: 'd1', raisonSociale: 'Atlas Distribution' },
       { id: 'd3', raisonSociale: 'Coopérative Argane' },
@@ -117,28 +141,41 @@ describe('SupervisorDashboard', () => {
     expect(screen.queryByText('Delai legal depasse')).not.toBeInTheDocument();
   });
 
-  it('equipe : noms des employes, jamais un identifiant ; charge triee', async () => {
+  it('equipe : charge empilee par etape, au nom de chaque employe, jamais un identifiant (L6b E18)', async () => {
     rendre();
-    const tableau = await screen.findByRole('table', { name: 'Charge de chaque employé' });
-    const lignes = within(tableau).getAllByRole('row').slice(1);
-    expect(lignes[0]).toHaveTextContent('Nadia Idrissi');
-    expect(lignes[1]).toHaveTextContent('Omar Berrada');
+    const table = await screen.findByRole('table', { name: 'Tickets ouverts de chaque employé, par étape' });
+    const lignes = within(table).getAllByRole('row').slice(1);
+    // Nadia : 1 creation, 1 generation, 1 demarches = 3 ; Omar : 1 demarches ; sans responsable : 1.
+    expect(lignes[0]).toHaveTextContent('Nadia Idrissi1113');
+    expect(lignes[1]).toHaveTextContent('Omar Berrada0011');
+    expect(lignes[2]).toHaveTextContent('Sans responsable1001');
+    // Le ticket clos ne compte pas ; les clotures de supervision s'ecrivent sous le nom.
+    expect(screen.getByText('1 clôturé · 1 annulé')).toBeInTheDocument();
     expect(screen.queryByText(/n\.idrissi/)).not.toBeInTheDocument();
   });
 
-  it('activite : tickets ouverts par etape etiquetes, duree moyenne lisible en jours', async () => {
+  it('types d operation des tickets ouverts en anneau avec total, libelles francais', async () => {
     rendre();
-    const etapes = await screen.findByRole('list', { name: 'Tickets ouverts par étape du parcours' });
-    expect(within(etapes).getByText("Création du ticket et collecte d'information")).toBeInTheDocument();
-    expect(within(etapes).getAllByRole('listitem')).toHaveLength(3);
-    // Total des seuls tickets ouverts (2 + 1 + 3), les clotures ne comptent pas.
-    expect(screen.getByText('Tickets ouverts', { selector: 'span' }).parentElement).toHaveTextContent('6');
+    const liste = await screen.findByRole('list', { name: /Tickets ouverts par type d’opération \(total 5\)/ });
+    expect(within(liste).getByText('Modification : 2')).toBeInTheDocument();
+    expect(within(liste).getByText('Succursale MA : 1')).toBeInTheDocument();
+    expect(screen.queryByText('SUCCURSALE_MA')).not.toBeInTheDocument();
+  });
+
+  it('activite : colonnes en entiers et duree moyenne lisible en jours', async () => {
+    rendre();
     // 196 h => 8,2 jours (et non "196,0 h").
-    expect(screen.getByText('8,2 jours (2 tickets clôturés)')).toBeInTheDocument();
-    // Tableau equivalent des colonnes (comptages entiers).
+    expect(await screen.findByText('8,2 jours (2 tickets clôturés)')).toBeInTheDocument();
     const table = screen.getByRole('table', { name: /Tickets créés et clôturés par mois/ });
     expect(table).toHaveTextContent('3');
     expect(table.textContent).not.toMatch(/\d[.,]\d/);
+  });
+
+  it('frise des delais du cabinet : jours colores et retards a part (L6b E18)', async () => {
+    rendre();
+    const frise = await screen.findByText(/Délais légaux du cabinet, 30 prochains jours : 2 délais dans les 30 prochains jours, 1 dossiers en retard/);
+    expect(frise).toBeInTheDocument();
+    expect(within(frise).getAllByRole('listitem')).toHaveLength(2);
   });
 
   it('aucune cloture sur 30 jours : la duree moyenne ne s affiche pas a zero', async () => {
@@ -159,10 +196,11 @@ describe('SupervisorDashboard', () => {
     kpis.mockRejectedValue(new Error('503'));
     ticketsPerEmploye.mockRejectedValue(new Error('503'));
     getSuperviseur.mockRejectedValue(new Error('503'));
+    listTickets.mockRejectedValue(new Error('503'));
 
     rendre();
 
-    expect(await screen.findByText('Données indisponibles')).toBeInTheDocument();
+    expect(await screen.findByText(/La charge de l’équipe n’a pas pu être chargée/)).toBeInTheDocument();
     expect(screen.getByText('Délais indisponibles')).toBeInTheDocument();
     expect(screen.getByText('Activité indisponible')).toBeInTheDocument();
     expect(screen.getAllByText('--')).toHaveLength(4);

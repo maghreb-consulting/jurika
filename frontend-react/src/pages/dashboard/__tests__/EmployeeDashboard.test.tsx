@@ -103,10 +103,10 @@ describe('EmployeeDashboard', () => {
     expect(carte('Échanges à traiter')).toHaveTextContent('2');
     expect(carte('Échanges à traiter')).toHaveTextContent('1 demande non traitée · 1 réponse à valider');
     // Aucun "23" (ou tout autre total global) ne doit apparaitre.
-    expect(screen.queryByText('23')).not.toBeInTheDocument();
+    expect(carte('Tickets en cours')).not.toHaveTextContent('23');
     // Retires : doublon des tickets en cours, compteur des clotures, bandeau sans valeur, "Mes indicateurs".
     expect(screen.queryByText('Tâches urgentes')).not.toBeInTheDocument();
-    expect(screen.queryByText('Clôturés')).not.toBeInTheDocument();
+    expect(screen.queryByText('Clôturés', { selector: 'p, p > a' })).not.toBeInTheDocument();
     expect(screen.queryByText(/Pensez à vérifier les délais/)).not.toBeInTheDocument();
     expect(screen.queryByText('Mes indicateurs')).not.toBeInTheDocument();
     expect(screen.queryByText(/Répartition de mes tickets/)).not.toBeInTheDocument();

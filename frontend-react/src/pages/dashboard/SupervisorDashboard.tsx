@@ -1,36 +1,30 @@
 import { useEffect, useState } from 'react';
-import { AlarmClock, BarChart3, CalendarClock, Inbox, Layers, Ticket as TicketIcon, Users } from 'lucide-react';
+import { AlarmClock, BarChart3, CalendarClock, Inbox, PieChart, Ticket as TicketIcon, Users } from 'lucide-react';
 import { supervisionService, type TicketsPerEmploye, type WorkspaceKpis } from '../../services/supervision.service';
 import { dashboardService } from '../../services/dashboard.service';
 import { dataroomService } from '../../services/dataroom.service';
+import { ticketService } from '../../services/ticket.service';
 import { Page } from '../../components/layout/Page';
-import { InfoBulle, TexteAide } from '../../components/ui/Aide';
+import { TexteAide } from '../../components/ui/Aide';
 import { Lien } from '../../components/ui/Lien';
-import { EmptyState } from '../../components/ui/EmptyState';
 import { Message } from '../../components/ui/Message';
 import { CardSkeleton, SqueletteZone } from '../../components/ui/LoadingSkeleton';
-import { Tableau, type ColonneTableau } from '../../components/ui/Tableau';
 import { FonctionHorsForfait } from '../../components/billing/FonctionHorsForfait';
 import { SupervisionDemandesPanel } from '../../components/dashboard/SupervisionDemandesPanel';
 import { DelaisCabinetCarte } from '../../components/dashboard/DelaisCabinetCarte';
 import { SectionTableauDeBord } from '../../components/dashboard/SectionTableauDeBord';
 import { ChartCard } from '../../components/dashboard/charts/ChartCard';
 import { ColonnesChart } from '../../components/dashboard/charts/ColonnesChart';
-import { BarresHorizontales } from '../../components/dashboard/charts/BarresHorizontales';
-import type { TonSerie } from '../../components/dashboard/charts/apparence';
+import { DonutChart } from '../../components/dashboard/charts/DonutChart';
+import { ChargeEquipe } from '../../components/dashboard/ChargeEquipe';
+import { estOuvert, ticketsParType } from '../../components/dashboard/series';
 import { KpiCard } from '../../components/dashboard/KpiCard';
 import { joursRestants } from '../../components/dashboard/delais';
 import { dureeCloture } from '../../components/dashboard/valeurs';
-import { STATUT_TICKET_LABELS, formatMonth, labelOf } from '../../lib/dashboardLabels';
+import { formatMonth } from '../../lib/dashboardLabels';
+import type { Ticket } from '../../types/ticket';
 import type { SuperviseurDashboardDto } from '../../types/dashboard';
 import type { DossierBrief } from '../../types/dataroom';
-
-/** Etapes d'un ticket ouvert, dans l'ordre du parcours, et leur ton dans les graphiques. */
-const ETAPES_OUVERTES: Array<{ statut: string; ton: TonSerie }> = [
-  { statut: 'CREATION_TICKET', ton: 'info' },
-  { statut: 'GENERATION_DOCUMENTS', ton: 'info' },
-  { statut: 'DEROULEMENT_DEMARCHE', ton: 'info' },
-];
 
 const HORIZON_JOURS = 7;
 
@@ -47,10 +41,15 @@ function pluriel(n: number, singulier: string, plurielTexte: string): string {
  * 1. Quatre indicateurs : tickets ouverts, dossiers en retard, delais sous 7 jours, demandes des
  *    clients non traitees.
  * 2. "Delais a surveiller" : dossiers en retard puis delais legaux des 30 prochains jours.
- * 3. L'equipe : charge de chaque employe (noms, jamais un identifiant).
+ * 3. L'equipe : charge de chaque employe empilee par etape (noms, jamais un identifiant), et
+ *    les tickets ouverts par type d'operation (anneau avec total).
  * 4. Demandes et requetes (lecture seule).
- * 5. Activite : tickets ouverts par etape ; crees et clotures par mois (productivite, forfaits
- *    Max et Sur Devis), avec la duree moyenne de cloture.
+ * 5. Activite : crees et clotures par mois (productivite, forfaits Max et Sur Devis), avec la
+ *    duree moyenne de cloture.
+ * Lot L6b (E18, demande du 2026-10-17 : des diagrammes propres a chaque role) : frise des
+ * delais du cabinet, charge empilee par etape, anneau des types d'operation ; les tickets
+ * ouverts viennent de la liste des tickets (500 au plus, le total du serveur dit si elle est
+ * complete).
  * Retires (doublons ou sans question claire) : total des dossiers, nombre d'employes, clotures
  * depuis toujours, courbes "Activite 14 jours" et "Evolution 30 jours" (lissees, en dents de
  * scie sur des comptages journaliers), "Tickets par type" (tous les tickets depuis toujours),
@@ -65,6 +64,8 @@ export function SupervisorDashboard() {
   const [equipe, setEquipe] = useState<TicketsPerEmploye[] | null>(null);
   const [suivi, setSuivi] = useState<Partial<SuperviseurDashboardDto> | null>(null);
   const [dossiers, setDossiers] = useState<DossierBrief[] | null>(null);
+  const [tickets, setTickets] = useState<Ticket[] | null>(null);
+  const [totalTickets, setTotalTickets] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -74,12 +75,15 @@ export function SupervisorDashboard() {
       supervisionService.ticketsPerEmploye().catch(() => null),
       dashboardService.getSuperviseur().catch(() => null),
       dataroomService.listDossiers().catch(() => null),
-    ]).then(([k, e, s, d]) => {
+      ticketService.list({ limit: 500 }).catch(() => null),
+    ]).then(([k, e, s, d, t]) => {
       if (!mounted) return;
       setKpis(k ?? null);
       setEquipe(Array.isArray(e) ? e : null);
       setSuivi(s ?? null);
       setDossiers(Array.isArray(d) ? d : null);
+      setTickets(t ? (t.items ?? []) : null);
+      setTotalTickets(t && typeof t.total === 'number' ? t.total : null);
       setLoading(false);
     });
     return () => {
@@ -103,60 +107,12 @@ export function SupervisorDashboard() {
   const noms = new Map((dossiers ?? []).map((d) => [d.id, d.raisonSociale]));
 
   const productivite = suivi ? suivi.productiviteIncluse !== false : true;
-  const parEtape = ETAPES_OUVERTES.map((e) => ({
-    cle: e.statut,
-    libelle: labelOf(STATUT_TICKET_LABELS, e.statut),
-    valeur: (suivi?.ticketsParStatut ?? []).find((c) => c.label === e.statut)?.count ?? 0,
-    ton: e.ton,
-  }));
-  const parEtapeConnu = !!suivi?.ticketsParStatut;
+  const ticketsOuverts = (tickets ?? []).filter(estOuvert);
+  const parType = ticketsParType(ticketsOuverts);
+  const listePartielle = totalTickets !== null && tickets !== null && totalTickets > tickets.length;
   const mensuel = (suivi?.evolutionMensuelle ?? []).map((m) => ({ mois: formatMonth(m.month), crees: m.crees, clotures: m.clotures }));
   const clos30 = nombre(suivi?.ticketsClos30d);
   const moyenne = nombre(suivi?.tempsMoyenClotureHeures);
-
-  const maxEnCours = Math.max(1, ...(equipe ?? []).map((e) => e.enCours));
-  const equipeTriee = [...(equipe ?? [])].sort((a, b) => b.enCours - a.enCours || `${a.lastName}`.localeCompare(`${b.lastName}`));
-  const colonnes: ColonneTableau<TicketsPerEmploye>[] = [
-    {
-      cle: 'employe',
-      titre: 'Employé',
-      rendu: (e) => (
-        <span className="flex items-center gap-3">
-          <span
-            aria-hidden="true"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-bg-overlay text-xs font-semibold text-fg-muted"
-          >
-            {(e.firstName?.[0] ?? '') + (e.lastName?.[0] ?? '')}
-          </span>
-          <span className="font-medium text-fg">
-            {`${e.firstName ?? ''} ${e.lastName ?? ''}`.trim() || 'Nom non renseigné'}
-          </span>
-        </span>
-      ),
-    },
-    {
-      cle: 'enCours',
-      titre: (
-        <span className="inline-flex items-center gap-1">
-          En production
-          <InfoBulle
-            libelle="Que compte la colonne « En production » ?"
-            texte="Tickets confiés à l’employé qui sont à la génération des documents ou au déroulement des démarches. Les tickets encore à la création ne sont pas comptés ici."
-          />
-        </span>
-      ),
-      rendu: (e) => (
-        <span className="flex items-center gap-3">
-          <span className="w-6 text-right font-semibold tabular-nums text-heading">{e.enCours}</span>
-          <span className="hidden h-2 w-32 overflow-hidden rounded-full bg-bg-overlay sm:block" aria-hidden="true">
-            <span className="block h-full rounded-full bg-accent" style={{ width: `${(e.enCours / maxEnCours) * 100}%` }} />
-          </span>
-        </span>
-      ),
-    },
-    { cle: 'clotures', titre: 'Clôturés', alignement: 'centre', rendu: (e) => <span className="tabular-nums">{e.clotures}</span> },
-    { cle: 'annules', titre: 'Annulés', alignement: 'centre', masquerSous: 'sm', rendu: (e) => <span className="tabular-nums">{e.annules}</span> },
-  ];
 
   return (
     <Page
@@ -168,8 +124,9 @@ export function SupervisorDashboard() {
             Commencez par « Délais à surveiller » : les dossiers en retard, puis les délais légaux des démarches des
             30 prochains jours. Vous consultez sans faire avancer les tickets : c’est l’employé responsable du dossier
             qui agit. Si un employé est surchargé ou absent, ouvrez la Data Room du dossier et utilisez « Réaffecter le
-            dossier » ; la charge de chacun figure dans le tableau « Équipe ». Un indicateur « -- » signale une donnée
-            qui n’a pas pu être chargée.
+            dossier » ; la charge de chacun, étape par étape, figure dans « Équipe ». La frise colore les jours où tombent
+            des délais : choisissez un jour pour lire lesquels. Un indicateur « -- » signale une donnée qui n’a pas pu
+            être chargée.
           </p>
         </TexteAide>
       }
@@ -216,33 +173,40 @@ export function SupervisorDashboard() {
 
       <DelaisCabinetCarte risques={risques} aVenir={aVenir} nomDossier={(id) => noms.get(id)} loading={loading} />
 
-      <SectionTableauDeBord
-        titre="Équipe"
-        icone={<Users />}
-        lien={<Lien to="/app/team">Gérer l’équipe</Lien>}
-      >
-        <Tableau
-          legende="Charge de chaque employé"
-          colonnes={colonnes}
-          lignes={equipeTriee}
-          cleLigne={(e) => e.userId}
-          chargement={loading}
-          lignesChargement={3}
-          enTeteCollant={false}
-          vide={
-            equipe === null ? (
-              <EmptyState compact title="Données indisponibles" description="La charge des employés n’a pas pu être chargée. Rechargez la page dans quelques instants." />
-            ) : (
-              <EmptyState
-                compact
-                icon={<Users />}
-                title="Aucun employé actif"
-                description="Invitez vos employés depuis la page « Équipe » ; leur charge apparaîtra ici dès leur premier ticket."
-                cta={<Lien to="/app/team" commeBouton={{ variant: 'secondary', size: 'sm' }}>Ouvrir l’équipe</Lien>}
-              />
-            )
-          }
-        />
+      <SectionTableauDeBord titre="Équipe" icone={<Users />} lien={<Lien to="/app/team">Gérer l’équipe</Lien>}>
+        {loading ? (
+          <SqueletteZone libelle="Chargement de l’équipe…" className="grid gap-4 lg:grid-cols-5">
+            <CardSkeleton className="h-72 lg:col-span-3" />
+            <CardSkeleton className="h-72 lg:col-span-2" />
+          </SqueletteZone>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-5">
+            <ChartCard
+              className="lg:col-span-3"
+              title="Charge de l’équipe, par étape"
+              icon={<Users />}
+              description={
+                listePartielle
+                  ? `Tickets ouverts confiés à chaque employé, par étape du parcours (calculé sur les ${tickets!.length} tickets les plus récents, ${totalTickets} au total).`
+                  : 'Tickets ouverts confiés à chaque employé, par étape du parcours : de quoi décider d’une réaffectation.'
+              }
+              empty={tickets === null || (ticketsOuverts.length === 0 && (equipe ?? []).length === 0)}
+              emptyLabel={tickets === null ? 'La charge de l’équipe n’a pas pu être chargée. Rechargez la page dans quelques instants.' : 'Aucun employé ni ticket ouvert. Invitez vos employés depuis la page « Équipe ».'}
+            >
+              <ChargeEquipe tickets={tickets ?? []} equipe={equipe} />
+            </ChartCard>
+            <ChartCard
+              className="lg:col-span-2"
+              title="Tickets ouverts par type d’opération"
+              icon={<PieChart />}
+              description="Sur quelles opérations le cabinet travaille en ce moment."
+              empty={parType.length === 0}
+              emptyLabel={tickets === null ? 'Les tickets n’ont pas pu être chargés.' : 'Aucun ticket ouvert.'}
+            >
+              <DonutChart data={parType} height={260} legende="Tickets ouverts par type d’opération" />
+            </ChartCard>
+          </div>
+        )}
       </SectionTableauDeBord>
 
       {/* Demandes des clients + requetes aux clients (lecture seule, noms resolus par le serveur) */}
@@ -251,27 +215,19 @@ export function SupervisorDashboard() {
       <SectionTableauDeBord titre="Activité des tickets" icone={<BarChart3 />} className="mt-8">
         {loading ? (
           <SqueletteZone libelle="Chargement de l’activité…" className="grid gap-4 lg:grid-cols-2">
-            <CardSkeleton className="h-64" />
-            <CardSkeleton className="h-64" />
+            <CardSkeleton className="h-64 lg:col-span-2" />
           </SqueletteZone>
         ) : suivi === null ? (
           <Message ton="attention" titre="Activité indisponible">
             Les chiffres d’activité n’ont pas pu être chargés. Rechargez la page dans quelques instants.
           </Message>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <ChartCard
-              title="Où en sont les tickets ouverts ?"
-              icon={<Layers />}
-              empty={!parEtapeConnu || parEtape.every((e) => e.valeur === 0)}
-              emptyLabel={parEtapeConnu ? 'Aucun ticket ouvert.' : 'Répartition non rendue par le serveur.'}
-            >
-              <BarresHorizontales barres={parEtape} legende="Tickets ouverts par étape du parcours" part total="Tickets ouverts" />
-            </ChartCard>
+          <div>
             {productivite ? (
               <ChartCard
                 title="Tickets créés et clôturés par mois"
                 icon={<BarChart3 />}
+                description="Six derniers mois : le cabinet ouvre-t-il plus de dossiers qu’il n’en termine ?"
                 empty={mensuel.length === 0 || mensuel.every((m) => m.crees === 0 && m.clotures === 0)}
                 emptyLabel="Aucun ticket créé ni clôturé sur les six derniers mois."
               >

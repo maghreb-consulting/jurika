@@ -16,11 +16,19 @@ vi.mock('recharts', async (orig) => {
   return { ...reel, ResponsiveContainer: () => null };
 });
 
+const listWorkspaces = vi.fn();
+vi.mock('../../../services/admin.service', () => ({
+  adminService: { listWorkspaces: (...a: unknown[]) => listWorkspaces(...a) },
+}));
+
 const rendre = () => render(<SuperAdminDashboard />, { wrapper: MemoryRouter });
+const carte = (libelle: string) => screen.getByText(libelle, { selector: 'p, p > a' }).closest('p')?.parentElement?.parentElement as HTMLElement;
 
 describe('SuperAdminDashboard', () => {
   beforeEach(() => {
     getSuperAdmin.mockReset();
+    listWorkspaces.mockReset();
+    listWorkspaces.mockResolvedValue([]);
   });
 
   it('ne plante pas sur un instantane vide : indicateurs "--"', async () => {
@@ -43,8 +51,9 @@ describe('SuperAdminDashboard', () => {
       workspacesParStatut: [{ label: 'ACTIVE', count: 10 }, { label: 'ESSAI', count: 2 }],
     });
     rendre();
-    expect(await screen.findByText('12')).toBeInTheDocument();
-    expect(screen.getByText('87')).toBeInTheDocument();
+    expect(await screen.findByText('10 actifs · 2 en essai')).toBeInTheDocument();
+    expect(carte('Cabinets')).toHaveTextContent('12');
+    expect(carte('Utilisateurs')).toHaveTextContent('87');
     expect(screen.getByText('3 créés sur 30 jours')).toBeInTheDocument();
     expect(screen.getByText('2,00 Go')).toBeInTheDocument();
     expect(screen.getByText('340 documents')).toBeInTheDocument();
@@ -62,15 +71,50 @@ describe('SuperAdminDashboard', () => {
       workspacesParStatut: [{ label: 'ACTIVE', count: 3 }, { label: 'ESSAI', count: 1 }, { label: 'PENDING_VERIFICATION', count: 1 }],
     });
     rendre();
-    const forfaits = await screen.findByRole('list', { name: 'Cabinets par forfait' });
-    expect(within(forfaits).getByText('Professionnel')).toBeInTheDocument();
-    expect(within(forfaits).getByText('Non défini')).toBeInTheDocument();
-    expect(within(forfaits).getByText('3')).toBeInTheDocument();
-    const statuts = screen.getByRole('list', { name: 'Cabinets par statut' });
+    // Forfaits : anneau avec total, liste equivalente (libelle : valeur).
+    const forfaits = await screen.findByRole('list', { name: 'Cabinets par forfait (total 4)' });
+    expect(within(forfaits).getByText('Professionnel : 3')).toBeInTheDocument();
+    expect(within(forfaits).getByText('Non défini : 1')).toBeInTheDocument();
+    // Statuts : barre empilee, tableau equivalent.
+    const statuts = screen.getByRole('table', { name: 'Cabinets par statut' });
     expect(within(statuts).getByText('Essai')).toBeInTheDocument();
     expect(within(statuts).getByText('En attente de vérification')).toBeInTheDocument();
     expect(screen.queryByText('PENDING_VERIFICATION')).not.toBeInTheDocument();
     expect(screen.queryByText('ESSAI')).not.toBeInTheDocument();
+  });
+
+  it('croissance : nouveaux cabinets par mois et cumul exact a partir du total (L6b E18)', async () => {
+    getSuperAdmin.mockResolvedValue({
+      totalWorkspaces: 10,
+      signupsMensuels: [{ month: '2026-08', count: 2 }, { month: '2026-09', count: 0 }, { month: '2026-10', count: 3 }],
+    });
+    rendre();
+    const table = await screen.findByRole('table', { name: /Nouveaux cabinets par mois et total/ });
+    const lignes = within(table).getAllByRole('row').slice(1);
+    // Total actuel 10, 5 inscrits sur la periode : 5 avant, puis 7, 7, 10.
+    expect(lignes.map((l) => l.textContent)).toEqual(['août 2627', 'sept. 2607', 'oct. 26310']);
+    expect(screen.getByRole('img', { name: 'Nombre de cabinets sur douze mois' })).toBeInTheDocument();
+  });
+
+  it('croissance incoherente (plus d inscriptions que de cabinets) : aucun cumul invente', async () => {
+    getSuperAdmin.mockResolvedValue({ totalWorkspaces: 1, signupsMensuels: [{ month: '2026-10', count: 3 }] });
+    rendre();
+    const table = await screen.findByRole('table', { name: /Nouveaux cabinets par mois et total/ });
+    expect(within(table).queryByText('Cabinets au total')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Nombre de cabinets sur douze mois' })).not.toBeInTheDocument();
+  });
+
+  it('stockage par cabinet en Go, depuis la liste des cabinets (L6b E18)', async () => {
+    getSuperAdmin.mockResolvedValue({});
+    listWorkspaces.mockResolvedValue([
+      { id: 'w1', code: 'A', name: 'Atlas Conseil', contactEmail: null, statut: 'ACTIVE', forfait: 'max', employes: 1, clients: 1, storageBytes: 3 * 1024 ** 3, storageFiles: 10, createdAt: '' },
+      { id: 'w2', code: 'B', name: 'Nord Juris', contactEmail: null, statut: 'ACTIVE', forfait: 'max', employes: 1, clients: 1, storageBytes: null, storageFiles: null, createdAt: '' },
+    ]);
+    rendre();
+    const liste = await screen.findByRole('list', { name: 'Stockage par cabinet' });
+    expect(within(liste).getByText('3,00 Go')).toBeInTheDocument();
+    // Stockage inconnu : le cabinet n'est pas compte a zero.
+    expect(within(liste).queryByText('Nord Juris')).not.toBeInTheDocument();
   });
 
   it('alertes de securite : libelle du serveur, type d element en francais, jamais le code (L6b E9, E17)', async () => {
