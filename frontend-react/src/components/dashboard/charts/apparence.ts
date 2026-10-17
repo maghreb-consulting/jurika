@@ -36,3 +36,18 @@ export const COULEUR_SERIE = {
 } as const;
 
 export type TonSerie = keyof typeof COULEUR_SERIE;
+
+/**
+ * Lot L6b (E18) : couleurs des categories sans ordre (types d'operation, forfaits), lues dans
+ * les jetons pour suivre le theme. Au-dela de six categories, les couleurs se repetent : les
+ * graphiques en categories gardent donc toujours le libelle et la valeur ecrits. L'or (accent)
+ * et l'ambre (attention) se ressemblent en sombre : ils sont ecartes dans l'ordre.
+ */
+export const COULEURS_CATEGORIES = [
+  COULEUR_SERIE.info,
+  COULEUR_SERIE.succes,
+  COULEUR_SERIE.accent,
+  COULEUR_SERIE.neutre,
+  COULEUR_SERIE.danger,
+  COULEUR_SERIE.attention,
+] as const;

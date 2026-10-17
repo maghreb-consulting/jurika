@@ -19,6 +19,8 @@ interface Props {
   to?: string;
   /** Lot L6b (E17) : ce que compte l'indicateur (infobulle a cote du libelle). */
   aide?: string;
+  /** Lot L6b (E18) : petite courbe de tendance a droite de la valeur (Sparkline). */
+  tendance?: ReactNode;
 }
 
 /**
@@ -43,7 +45,7 @@ const VALEUR: Record<NonNullable<Props['variant']>, string> = {
   danger: 'text-danger',
 };
 
-export function KpiCard({ label, value, hint, icon, variant = 'default', loading = false, to, aide }: Props) {
+export function KpiCard({ label, value, hint, icon, variant = 'default', loading = false, to, aide, tendance }: Props) {
   const affiche = valeurOuAbsent(value);
   return (
     <div
@@ -74,7 +76,7 @@ export function KpiCard({ label, value, hint, icon, variant = 'default', loading
           </span>
         )}
       </div>
-      <div className="mt-1 flex h-8 items-center">
+      <div className="mt-1 flex h-8 items-center justify-between gap-2">
         {loading ? (
           <Skeleton className="h-6 w-16" />
         ) : (
@@ -85,6 +87,7 @@ export function KpiCard({ label, value, hint, icon, variant = 'default', loading
             {affiche}
           </p>
         )}
+        {!loading && tendance && <span className="shrink-0">{tendance}</span>}
       </div>
       {hint && <div className="mt-1 text-xs text-fg-muted">{hint}</div>}
     </div>

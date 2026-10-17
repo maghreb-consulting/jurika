@@ -21,6 +21,8 @@ interface Props {
   part?: boolean;
   /** Libelle d'une ligne de total sous les barres ; absent : pas de total. */
   total?: string;
+  /** Lot L6b (E18) : ecriture de la valeur (ex. "2,5 Go") ; par defaut le nombre tel quel. */
+  format?: (valeur: number) => string;
 }
 
 const REMPLISSAGE: Record<TonSerie, string> = {
@@ -38,7 +40,7 @@ const REMPLISSAGE: Record<TonSerie, string> = {
  * relative a la plus grande valeur. Rendu HTML (pas de SVG) : lisible en clair et en sombre,
  * a toutes les largeurs, et lu tel quel par un lecteur d'ecran. L'appelant gere l'etat vide.
  */
-export function BarresHorizontales({ barres, legende, ton = 'info', part = false, total }: Props) {
+export function BarresHorizontales({ barres, legende, ton = 'info', part = false, total, format = String }: Props) {
   const max = Math.max(0, ...barres.map((b) => b.valeur));
   const somme = barres.reduce((n, b) => n + b.valeur, 0);
   return (
@@ -59,7 +61,7 @@ export function BarresHorizontales({ barres, legende, ton = 'info', part = false
                   </span>
                 )}
                 <span className="shrink-0 tabular-nums">
-                  <span className="font-semibold text-heading">{b.valeur}</span>
+                  <span className="font-semibold text-heading">{format(b.valeur)}</span>
                   {part && somme > 0 && <span className="ml-1.5 text-xs text-fg-subtle">({Math.round((b.valeur / somme) * 100)} %)</span>}
                 </span>
               </div>
@@ -73,7 +75,7 @@ export function BarresHorizontales({ barres, legende, ton = 'info', part = false
       {total && (
         <p className="mt-4 flex items-baseline justify-between border-t border-border pt-3 text-sm text-fg-muted">
           <span>{total}</span>
-          <span className="font-semibold tabular-nums text-heading">{somme}</span>
+          <span className="font-semibold tabular-nums text-heading">{format(somme)}</span>
         </p>
       )}
     </div>
