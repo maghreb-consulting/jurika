@@ -1,5 +1,5 @@
 import { cn } from '../../../lib/utils';
-import { CAPTURES, DIMENSIONS_CAPTURE, cheminCapture, type NomCapture } from '../captures';
+import { CAPTURES, DIMENSIONS_CAPTURE, cheminCapture, sourcesCapture, type NomCapture } from '../captures';
 import { Vivante } from './Vivante';
 
 /**
@@ -12,6 +12,8 @@ import { Vivante } from './Vivante';
  * - chargement differe (`loading="lazy"`) sauf l'image de l'accroche (`prioritaire` :
  *   chargement immediat, priorite haute) ; decodage asynchrone ;
  * - texte de remplacement descriptif (captures.ts) ;
+ * - L6c : <picture>, AVIF d'abord puis WebP (le navigateur prend le premier format qu'il
+ *   sait lire) ; l'<img> de repli porte le WebP, les dimensions et le texte de remplacement ;
  * - V3 : capture "vivante" par defaut (inclinaison, reflet et ombre au survol, voir
  *   Vivante.tsx) ; `vivante={false}` quand le cadre vivant est porte par un parent (pile
  *   d'ecrans du recit, bascule clair / sombre).
@@ -42,19 +44,23 @@ export function CaptureEcran({
         <span className="v-point v-point-3" />
         {!compacte && <span className="ml-3 truncate text-xs font-medium text-fg-subtle">{capture.ecran}</span>}
       </div>
-      <img
-        src={cheminCapture(nom, 800)}
-        srcSet={`${cheminCapture(nom, 800)} 800w, ${cheminCapture(nom, 1600)} 1600w`}
-        sizes={sizes}
-        width={DIMENSIONS_CAPTURE.largeur}
-        height={DIMENSIONS_CAPTURE.hauteur}
-        loading={prioritaire ? 'eager' : 'lazy'}
-        fetchPriority={prioritaire ? 'high' : undefined}
-        decoding="async"
-        alt={capture.alt}
-        className="v-capture"
-        draggable={false}
-      />
+      <picture className="block">
+        <source type="image/avif" srcSet={sourcesCapture(nom, 'avif')} sizes={sizes} />
+        <source type="image/webp" srcSet={sourcesCapture(nom, 'webp')} sizes={sizes} />
+        <img
+          src={cheminCapture(nom, 800)}
+          srcSet={sourcesCapture(nom, 'webp')}
+          sizes={sizes}
+          width={DIMENSIONS_CAPTURE.largeur}
+          height={DIMENSIONS_CAPTURE.hauteur}
+          loading={prioritaire ? 'eager' : 'lazy'}
+          fetchPriority={prioritaire ? 'high' : undefined}
+          decoding="async"
+          alt={capture.alt}
+          className="v-capture"
+          draggable={false}
+        />
+      </picture>
     </div>
   );
   if (!vivante) return cadre;

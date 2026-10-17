@@ -6,11 +6,17 @@
  * <nom>-800.webp et <nom>-1600.webp. Le test capturesFournies.test.ts verifie leur presence.
  *
  * V4 (demande du 2026-10-16) : les autres ecrans (tableau de bord clair et sombre, ticket,
- * apercu d'un acte, JURI) sont montres par des videos en boucle (videos.ts) ; leurs captures
+ * apercu d'un acte, JURI) sont montres par des videos en boucle (L6c : demonstrations animees,
+ * demonstrations/scenes.ts) ; leurs captures
  * fixes sont retirees. Seule la Data Room, sans video, garde sa capture.
  *
  * Ratio d'affichage fixe (16:10) : la boite de l'image est reservee avant son chargement
  * (aspect-ratio, width et height), aucun decalage de la mise en page.
+ *
+ * L6c (demande du 2026-10-17) : captures prises en haute definition (deviceScaleFactor 2),
+ * servies en AVIF puis en WebP (element <picture>), chacune en deux largeurs (800 et 1600) ;
+ * le navigateur prend le premier format qu'il sait lire, a la largeur utile. Script de
+ * regeneration : frontend-react/scripts/vitrine-captures.mjs puis vitrine-avif.py.
  */
 
 export const NOMS_CAPTURES = ['data-room-clair'] as const;
@@ -36,11 +42,21 @@ export const CAPTURES: Record<NomCapture, Capture> = {
   },
 };
 
-export function cheminCapture(nom: NomCapture, largeur: (typeof LARGEURS_CAPTURE)[number]): string {
-  return `/vitrine/${nom}-${largeur}.webp`;
+/** Formats servis, dans l'ordre de preference du <picture> (le dernier est celui de l'<img>). */
+export const FORMATS_CAPTURE = ['avif', 'webp'] as const;
+
+export type FormatCapture = (typeof FORMATS_CAPTURE)[number];
+
+export function cheminCapture(nom: NomCapture, largeur: (typeof LARGEURS_CAPTURE)[number], format: FormatCapture = 'webp'): string {
+  return `/vitrine/${nom}-${largeur}.${format}`;
 }
 
-/** Les fichiers attendus dans public/vitrine (deux largeurs par capture). */
+/** Jeu de sources d'un format (descripteurs de largeur). */
+export function sourcesCapture(nom: NomCapture, format: FormatCapture): string {
+  return LARGEURS_CAPTURE.map((l) => `${cheminCapture(nom, l, format)} ${l}w`).join(', ');
+}
+
+/** Les fichiers attendus dans public/vitrine (deux largeurs et deux formats par capture). */
 export function fichiersCaptures(): string[] {
-  return NOMS_CAPTURES.flatMap((n) => LARGEURS_CAPTURE.map((l) => `${n}-${l}.webp`));
+  return NOMS_CAPTURES.flatMap((n) => FORMATS_CAPTURE.flatMap((f) => LARGEURS_CAPTURE.map((l) => `${n}-${l}.${f}`)));
 }
