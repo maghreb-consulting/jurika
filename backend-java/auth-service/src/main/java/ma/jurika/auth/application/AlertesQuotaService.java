@@ -171,7 +171,7 @@ public class AlertesQuotaService {
         if (!u.storageUnlimited() && atteint(u.storageBytes(), maxOctets)) {
             int p = pourcent(u.storageBytes(), maxOctets);
             String volume = u.essai()
-                    ? String.format(Locale.FRANCE, "%.0f Mo utilisés sur %d Mo", u.storageBytes() / (1024.0 * 1024),
+                    ? String.format(Locale.FRANCE, "%.0f Mo utilis\u00e9s sur %d Mo", u.storageBytes() / (1024.0 * 1024),
                             maxOctets / (1024L * 1024L))
                     : String.format(Locale.FRANCE, "%.1f Go utilisés sur %d Go", u.storageBytes() / (double) OCTETS_PAR_GO,
                             u.maxStorageGb());
