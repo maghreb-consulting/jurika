@@ -1,4 +1,5 @@
 import type { LigneDemarche, PointAttention, VueDemarches } from '../../../types/demarche';
+import type { Ticket } from '../../../types/ticket';
 
 /**
  * Lot L6c (E1) : donnees de demonstration des scenes de la vitrine.
@@ -28,18 +29,49 @@ export const SOCIETE_DEMO = {
   reference: 'T-EXEMPLE-0007',
 } as const;
 
-/** Autres tickets de la liste (fictifs). */
-export const TICKETS_DEMO = [
-  { titre: 'Transfert de siège Cèdre Exemple', type: 'Modification', statut: 'Génération des documents', ton: 'info' as const },
-  { titre: 'Dissolution Sable Exemple', type: 'Dissolution', statut: 'Déroulement de la démarche', ton: 'warning' as const },
-] as const;
+/** Ticket fictif, au format de l'API (types/ticket.ts) : rendu par les vrais composants. */
+function ticket(champs: Pick<Ticket, 'id' | 'reference' | 'titre' | 'type' | 'statut' | 'priorite'> & Partial<Ticket>): Ticket {
+  return {
+    workspaceId: 'demo',
+    dossierId: 'demo-dossier',
+    assigneId: 'demo-employe',
+    creeParId: 'demo-employe',
+    description: null,
+    deadline: null,
+    annulationMotif: null,
+    clotureAt: null,
+    annuleAt: null,
+    createdAt: '2026-03-02T09:00:00Z',
+    assignePrenom: 'Nadia',
+    assigneNom: 'Exemple',
+    ...champs,
+  };
+}
 
-/** Indicateurs du tableau de bord de l'employe (fictifs). */
+/** Tickets de la page "Mes tickets" (fictifs), par statut. */
+export const TICKETS_DEMO: Ticket[] = [
+  ticket({ id: 'demo-3', reference: 'T-EXEMPLE-0003', titre: 'Dissolution Sable Exemple', type: 'DISSOLUTION', statut: 'CREATION_TICKET', priorite: 'NORMALE', description: 'Dissolution anticipée décidée par les associés.' }),
+  ticket({ id: 'demo-5', reference: 'T-EXEMPLE-0005', titre: 'Transfert de siège Cèdre Exemple', type: 'MODIFICATION', statut: 'GENERATION_DOCUMENTS', priorite: 'HAUTE', description: 'Transfert du siège social à Rabat.' }),
+  ticket({ id: 'demo-6', reference: 'T-EXEMPLE-0006', titre: 'Cession de parts Palmier Exemple', type: 'MODIFICATION', statut: 'DEROULEMENT_DEMARCHE', priorite: 'NORMALE', description: 'Cession de parts entre associés.' }),
+  ticket({ id: 'demo-2', reference: 'T-EXEMPLE-0002', titre: 'Constitution Argan Exemple', type: 'CREATION', statut: 'CLOTURE_DOSSIER', priorite: 'BASSE', description: 'Création d’une SARL à associé unique.' }),
+];
+
+/** Le ticket de la creation montree par les scenes. */
+export const TICKET_OASIS: Ticket = ticket({
+  id: 'demo-7',
+  reference: SOCIETE_DEMO.reference,
+  titre: SOCIETE_DEMO.titreTicket,
+  type: 'CREATION',
+  statut: 'CREATION_TICKET',
+  priorite: 'NORMALE',
+});
+
+/** Indicateurs du tableau de bord de l'employe (fictifs ; libelles et aides d'EmployeeDashboard). */
 export const INDICATEURS_DEMO = [
-  { label: 'Tickets en cours', valeur: 12, variant: 'default' as const },
-  { label: 'En retard', valeur: 2, variant: 'danger' as const },
-  { label: 'Délai sous 7 jours', valeur: 3, variant: 'warning' as const },
-  { label: 'Échanges à traiter', valeur: 4, variant: 'default' as const },
+  { label: 'Tickets en cours', valeur: 12, variant: 'default' as const, hint: 'dont 3 en création' },
+  { label: 'En retard', valeur: 2, variant: 'danger' as const, hint: 'délai dépassé : à traiter en priorité' },
+  { label: 'Délai sous 7 jours', valeur: 3, variant: 'warning' as const, hint: 'tickets dont le délai tombe cette semaine' },
+  { label: 'Échanges à traiter', valeur: 4, variant: 'warning' as const, hint: '3 demandes non traitées · 1 réponse à valider' },
 ];
 
 /** Prochaines actions du tableau de bord (fictives). */
@@ -114,7 +146,13 @@ export function vueDemarchesDemo(cochee: boolean): VueDemarches {
   // Trois demarches du referentiel (une ligne de la frise) : la scene coche la 19.
   const lignes: LigneDemarche[] = [
     ligne(14, 'Légalisation des signatures des statuts, de l’acte de nomination et du pouvoir', { etat: 'COCHEE', cocheAt: '2026-03-04T10:00:00Z' }),
-    ligne(ORDRE_COCHEE_DEMO, LIBELLE_COCHEE_DEMO, cochee ? { etat: 'COCHEE', cocheAt: '2026-04-07T10:00:00Z' } : {}),
+    // Delai et justificatif de la ligne 19 : ceux du referentiel (ticket-service, V24).
+    ligne(ORDRE_COCHEE_DEMO, LIBELLE_COCHEE_DEMO, {
+      delai: 'Dans les 30 jours de l’acte',
+      justificatifsTexte: 'Récépissé de dépôt à l’enregistrement',
+      justificatifsAttendus: [{ alternativeGroupe: 1, documentType: 'RECEPISSE_DEPOT', libelle: 'Récépissé de dépôt à l’enregistrement' }],
+      ...(cochee ? { etat: 'COCHEE' as const, cocheAt: '2026-04-07T10:00:00Z', documentsDeposes: ['demo-recepisse'] } : {}),
+    }),
     ligne(23, 'Demande d’inscription à la taxe professionnelle — dépôt', { echeance: '2026-04-10' }),
   ];
   const points: PointAttention[] = [
@@ -140,3 +178,23 @@ export function vueDemarchesDemo(cochee: boolean): VueDemarches {
     },
   };
 }
+
+/* ------------------------------------------------------------------ Data Room ---- */
+
+/** Libelle du dossier de ticket dans la Data Room (TicketDossierLabel : type, reference, date). */
+export const DOSSIER_TICKET_DEMO = `Création — ${SOCIETE_DEMO.reference} — 02/03/2026`;
+
+/** Documents du dossier juridique (types : DOCUMENT_TYPE_LABELS ; groupes : GroupeDocument). */
+export const DOCUMENTS_DATAROOM_DEMO = [
+  { groupe: 'Actes générés', type: 'STATUTS' as const, titre: 'Statuts de la SARL', date: '05/03/2026' },
+  { groupe: 'Actes générés', type: 'ANNONCE_JAL' as const, titre: 'Avis de constitution', date: '05/03/2026' },
+  { groupe: 'Pièces client', type: 'CNIE_GERANT' as const, titre: 'CNIE de la gérante', date: '03/03/2026' },
+  { groupe: 'Pièces client', type: 'CONTRAT_BAIL' as const, titre: 'Contrat de bail du siège', date: '03/03/2026' },
+];
+
+/** Demande du client recue (DemandesTab) : sujet et texte fictifs. */
+export const DEMANDE_DEMO = {
+  sujet: 'Attestation de domiciliation à jour',
+  description: 'Bonjour, pouvez-vous me transmettre l’attestation de domiciliation à jour pour la banque ? Merci.',
+  soumise: '07/04/2026 10:12',
+};

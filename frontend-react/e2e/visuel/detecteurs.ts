@@ -46,6 +46,12 @@ export interface OptionsAnalyse {
   couches?: string[];
   /** Detecteurs a executer (tous par defaut). */
   detecteurs?: Array<'chevauchement' | 'debordement' | 'contraste'>;
+  /**
+   * L6c : selecteurs de zones ecartees de toute analyse : images d'ecran construites en HTML
+   * (demonstrations de la vitrine : role="img", contenu aria-hidden et inert), dont le cadrage
+   * coupe volontairement l'ecran reproduit comme le ferait une capture.
+   */
+  ignores?: string[];
 }
 
 export interface ResultatAnalyse {
@@ -57,6 +63,7 @@ export interface ResultatAnalyse {
 export function analyserDocument(options: OptionsAnalyse): ResultatAnalyse {
   const tolerance = options.tolerance ?? 1;
   const couches = options.couches ?? [];
+  const ignores = options.ignores ?? [];
   const actifs = options.detecteurs ?? ['chevauchement', 'debordement', 'contraste'];
   const defauts: Defaut[] = [];
   const examines = { chevauchement: 0, debordement: 0, contraste: 0, contrasteNonEvalue: 0 };
@@ -288,7 +295,8 @@ export function analyserDocument(options: OptionsAnalyse): ResultatAnalyse {
   const tous = Array.from(document.body.querySelectorAll('*')).filter(
     (el) => !['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'svg', 'SVG'].includes(el.tagName) && !el.closest('svg'),
   );
-  const visibles = tous.filter((el) => !cache(el) && !masqueLecteurEcran(el));
+  const ignore = (el: Element) => ignores.some((sel) => el.closest(sel) !== null);
+  const visibles = tous.filter((el) => !cache(el) && !masqueLecteurEcran(el) && !ignore(el));
 
   // ---------- 1. Chevauchement ----------
   if (actifs.includes('chevauchement')) {

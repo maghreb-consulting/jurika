@@ -166,8 +166,8 @@ describe('Vitrine (V3) : apparitions en cascade', () => {
 });
 
 // V4 (demande du 2026-10-16), L6c : une demonstration animee par fonctionnalite
-// (demonstrations/scenes.ts), la Data Room garde sa capture.
-const ORDRE_RECIT = ['theme-clair-sombre', 'frise-demarches', 'data-room-clair', 'statuts-apercu', 'juri-aide'];
+// (demonstrations/scenes.ts) ; L6c E5 : la Data Room aussi.
+const ORDRE_RECIT = ['theme-clair-sombre', 'frise-demarches', 'data-room', 'statuts-apercu', 'juri-aide'];
 
 describe('Vitrine (V3) : recit au defilement des fonctionnalites', () => {
   it("presente cinq etapes, dans l'ordre demande, et une capture fixe qui change d'ecran", () => {

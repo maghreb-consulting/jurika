@@ -11,7 +11,6 @@ vi.mock('../../../lib/api', () => ({ api: { get } }));
 import { LandingPage } from '../LandingPage';
 import { oublierMentionsLegales } from '../mentionsLegales';
 import { FORFAITS, formatPrice } from '../config/pricing';
-import { NOMS_CAPTURES } from '../captures';
 import { NOMS_SCENES, SCENES } from '../demonstrations/scenes';
 import { FONCTIONNALITES } from '../contenu';
 
@@ -55,6 +54,18 @@ function rendre() {
       <LandingPage />
     </MemoryRouter>,
   );
+}
+
+/**
+ * L6c : texte de la page hors ecrans des demonstrations animees (donnees fictives d'une
+ * societe et de ses clients, cadre marque "Donnees fictives") : ce ne sont pas des
+ * affirmations ni des coordonnees de la vitrine. Leurs donnees sont gardees par
+ * Demonstrations.test.tsx.
+ */
+function horsDemonstrations(el: HTMLElement): HTMLElement {
+  const copie = el.cloneNode(true) as HTMLElement;
+  for (const e of copie.querySelectorAll('.v-demo-toile')) e.remove();
+  return copie;
 }
 
 /** Texte affiche, espaces insecables ramenees a des espaces simples. */
@@ -214,7 +225,9 @@ describe('Vitrine : affirmations', () => {
 
   it('ne publie aucune conformite, certification ni promesse inverifiable', () => {
     rendre();
-    const page = texte(document.body);
+    // L6c : hors ecrans des demonstrations, qui reproduisent les textes de l'application
+    // (ex. etape 7 du parcours : "Mise en page conforme") et ne sont pas des affirmations.
+    const page = texte(horsDemonstrations(document.body));
     for (const motif of [
       /conform/i, /certifié/i, /certification/i, /agréé/i, /homologu/i, /\bISO\b/, /garanti(e|s)? à 100/i, /100 ?%/,
       /\bn° ?1\b/i, /\bleader\b/i, /le meilleur/i, /la meilleure/i, /révolution/i, /en quelques clics/i,
@@ -231,24 +244,20 @@ describe('Vitrine : affirmations', () => {
       expect(page, String(motif)).not.toMatch(motif);
     }
     expect(document.querySelector('blockquote, q, cite')).toBeNull();
-    // Seules images : le logo Moucharabieh de JURIKA et les captures de la plateforme
-    // (public/vitrine, liste fermee de captures.ts) ; aucune autre image (logo de client...).
+    // Seules images : le logo Moucharabieh de JURIKA (L6c E5 : les ecrans de la plateforme sont
+    // des demonstrations construites en HTML, la capture fixe est retiree) ; aucune autre image
+    // (logo de client...).
     const images = Array.from(document.querySelectorAll('img')).map((i) => i.getAttribute('src') ?? '');
     expect(images.length).toBeGreaterThan(0);
-    const captures = new Set(NOMS_CAPTURES.map((n) => `/vitrine/${n}-800.webp`));
-    for (const src of images) expect(/moucharabieh/.test(src) || captures.has(src), src).toBe(true);
+    for (const src of images) expect(src, src).toMatch(/moucharabieh/);
   });
 
   it('ne publie aucun chiffre ni statistique hors prix, quotas et textes du cahier des charges', () => {
     rendre();
     // L6c : les ecrans des demonstrations animees (montants, dates, compteurs d'une societe
-    // fictive, cadre marque "Donnees fictives") ne sont pas des affirmations de la vitrine :
-    // ils sont retires avant le comptage. Leurs donnees sont gardees par Demonstrations.test.tsx.
-    const copie = document.body.cloneNode(true) as HTMLElement;
-    const ecrans = copie.querySelectorAll('.v-demo-toile');
-    expect(ecrans.length).toBeGreaterThanOrEqual(5);
-    for (const e of ecrans) e.remove();
-    const page = texte(copie);
+    // fictive) ne sont pas des affirmations de la vitrine : retires avant le comptage.
+    expect(document.querySelectorAll('.v-demo-toile').length).toBeGreaterThanOrEqual(6);
+    const page = texte(horsDemonstrations(document.body));
     // Prix (4.3) ; quotas (4.3, 4.2) ; delais du contrat V1 (essai 7 et 30 jours, violation de
     // donnees 72 heures) ; references des lois (5-96, 09-08) ;
     // annee du droit d'auteur.
@@ -283,33 +292,7 @@ describe('Vitrine : affirmations', () => {
   });
 });
 
-describe('Vitrine : captures de la plateforme et mouvement', () => {
-  it('montre chaque capture prevue, optimisee : <picture> AVIF puis WebP, 800w et 1600w, dimensions, chargement differe, alt', () => {
-    rendre();
-    const imgs = Array.from(document.querySelectorAll<HTMLImageElement>('img[src^="/vitrine/"]'));
-    const vues = new Set(imgs.map((i) => (i.getAttribute('src') ?? '').replace(/^\/vitrine\/|-800\.webp$/g, '')));
-    expect([...vues].sort()).toEqual([...NOMS_CAPTURES].sort());
-    for (const img of imgs) {
-      const src = img.getAttribute('src') ?? '';
-      const base = src.replace(/-800\.webp$/, '');
-      // L6c : l'image est dans un <picture> ; sources dans l'ordre AVIF puis WebP, meme `sizes`.
-      const picture = img.parentElement as HTMLElement;
-      expect(picture.tagName, src).toBe('PICTURE');
-      const sources = Array.from(picture.querySelectorAll('source'));
-      expect(sources.map((s) => s.getAttribute('type')), src).toEqual(['image/avif', 'image/webp']);
-      expect(sources[0].getAttribute('srcset'), src).toBe(`${base}-800.avif 800w, ${base}-1600.avif 1600w`);
-      expect(sources[1].getAttribute('srcset'), src).toBe(`${base}-800.webp 800w, ${base}-1600.webp 1600w`);
-      for (const s of sources) expect(s.getAttribute('sizes'), src).toBe(img.getAttribute('sizes'));
-      expect(img.getAttribute('srcset'), src).toBe(`${base}-800.webp 800w, ${base}-1600.webp 1600w`);
-      expect(img.getAttribute('sizes'), src).toBeTruthy();
-      expect(Number(img.getAttribute('width')), src).toBeGreaterThan(0);
-      expect(Number(img.getAttribute('height')), src).toBeGreaterThan(0);
-      expect(img.getAttribute('decoding'), src).toBe('async');
-      expect((img.getAttribute('alt') ?? '').length, src).toBeGreaterThan(20);
-      expect(img, src).toHaveAttribute('loading', 'lazy');
-    }
-  });
-
+describe('Vitrine : demonstrations de la plateforme et mouvement', () => {
   it("montre chaque demonstration animee prevue (L6c) : texte equivalent, legende, contenu inerte ; celle de l'accroche d'abord", () => {
     rendre();
     const figures = Array.from(document.querySelectorAll<HTMLElement>('figure[data-demo]'));
@@ -457,7 +440,8 @@ describe('Vitrine : adresse de contact configurable (VITE_CONTACT_EMAIL)', () =>
     get.mockResolvedValue({ data: MENTIONS });
     rendre();
     await screen.findByTestId('pied-mentions');
-    expect(texte(document.body)).not.toContain('@');
+    // L6c : hors ecrans des demonstrations (adresses fictives d'un client et d'un employe).
+    expect(texte(horsDemonstrations(document.body))).not.toContain('@');
     expect(document.querySelector('a[href^="mailto:"]')).toBeNull();
     expect(screen.getByTestId('pricing-sur-devis-sans-contact')).toBeInTheDocument();
     expect(screen.getByTestId('contact-sans-adresse')).toBeInTheDocument();

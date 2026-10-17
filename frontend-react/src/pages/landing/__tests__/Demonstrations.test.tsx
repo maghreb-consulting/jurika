@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 const { get } = vi.hoisted(() => ({ get: vi.fn() }));
@@ -15,6 +15,7 @@ import { LIBELLES_THEME_DEMO, SOCIETE_DEMO, TITRE_TICKETS_DEMO } from '../demons
 import { menuDuRole } from '../../../components/layout/navigation';
 import { LIBELLES_THEME } from '../../../store/themeStore';
 import { titreTickets } from '../../../components/tickets/libellesTickets';
+import { DEMANDE_STATUT_LABELS } from '../../../types/dataroom';
 import { EmblemeAnime } from '../composants/EmblemeAnime';
 import { CYCLE_LOGO_S, DEPART_BOUCLE_LOGO_S } from '../logo';
 
@@ -32,7 +33,7 @@ import { CYCLE_LOGO_S, DEPART_BOUCLE_LOGO_S } from '../logo';
  */
 
 const LANDING = resolve(__dirname, '..');
-const PUBLIC_VITRINE = resolve(__dirname, '../../../../public/vitrine');
+const PUBLIC = resolve(__dirname, '../../../../public');
 const CSS = readFileSync(resolve(LANDING, 'vitrine.css'), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
 
 function fichiers(d: string, garder: (nom: string) => boolean): string[] {
@@ -97,6 +98,17 @@ function ongletCache(cache: boolean) {
 
 let restaurer: () => void = () => undefined;
 
+// L6c E4 : le contenu des scenes est charge a la demande (React.lazy). Il est charge une fois
+// ici : ensuite, chaque rendu le trouve pret (rendu synchrone, comme dans le navigateur une
+// fois le module recu).
+beforeAll(async () => {
+  const r = simulerMouvement(true);
+  const { unmount } = render(<DemonstrationAnimee nom="frise-demarches" />);
+  await waitFor(() => expect(document.querySelector('.v-demo-plan')).not.toBeNull());
+  unmount();
+  r();
+});
+
 beforeEach(() => {
   oublierMentionsLegales();
   get.mockReset();
@@ -132,8 +144,8 @@ describe('Vitrine (L6c) : aucune video ni image animee', () => {
     }
   });
 
-  it('ne garde ni video ni GIF dans public/vitrine, et aucun source de la vitrine ne les reference', () => {
-    const medias = fichiers(PUBLIC_VITRINE, (n) => /\.(mp4|webm|gif|mov|ogv)$/i.test(n));
+  it('ne garde ni video ni GIF dans public, et aucun source de la vitrine ne les reference', () => {
+    const medias = fichiers(PUBLIC, (n) => /\.(mp4|webm|gif|mov|ogv)$/i.test(n));
     expect(medias).toEqual([]);
     for (const f of fichiers(LANDING, (n) => /\.(tsx?|css)$/.test(n) && !n.endsWith('.test.tsx') && !n.endsWith('.test.ts'))) {
       const code = readFileSync(f, 'utf-8');
@@ -220,9 +232,11 @@ describe('Vitrine (L6c) : demonstrations animees', () => {
     const toile = figure.querySelector('.v-demo-toile') as HTMLElement;
     expect(toile.hasAttribute('inert')).toBe(true);
     expect(toile.getAttribute('aria-hidden')).toBe('true');
-    for (const el of Array.from(toile.querySelectorAll<HTMLElement>('button, input, select, a[href]'))) {
-      if (el.hasAttribute('disabled')) continue;
-      expect(el.tabIndex, el.outerHTML.slice(0, 80)).toBe(-1);
+    // Les vrais composants (cartes de ticket, onglets) gardent leur tabIndex : c'est `inert` qui
+    // les retire du clavier ; aucun ne demande le focus (autofocus).
+    expect(toile.querySelector('[autofocus]')).toBeNull();
+    for (const el of Array.from(toile.querySelectorAll<HTMLElement>('button, input, select, textarea, a[href], [tabindex]'))) {
+      expect(el.closest('[inert]'), el.outerHTML.slice(0, 80)).toBe(toile);
     }
   });
 
@@ -352,6 +366,7 @@ describe('Vitrine (L6c E3) : les demonstrations reprennent les ecrans reels', ()
     'statuts-apercu': 'Mes tickets',
     'juri-aide': 'Tableau de bord',
     'theme-clair-sombre': 'Tableau de bord',
+    'data-room': 'Mes Data Rooms',
   };
 
   it("affiche le menu reel de l'employe (groupes, libelles, ordre) avec l'entree active de chaque scene", () => {
@@ -389,5 +404,71 @@ describe('Vitrine (L6c E3) : les demonstrations reprennent les ecrans reels', ()
     // Libelles du choix du theme et titre de la page des tickets : ceux de l'application.
     expect(LIBELLES_THEME_DEMO).toEqual([LIBELLES_THEME.SYSTEME, LIBELLES_THEME.CLAIR, LIBELLES_THEME.SOMBRE]);
     expect(TITRE_TICKETS_DEMO).toBe(titreTickets('EMPLOYE'));
+  });
+});
+
+describe('Vitrine (L6c E5) : la demonstration de la Data Room reprend les libelles reels', () => {
+  const RACINE = resolve(__dirname, '../../../..');
+  const source = (chemin: string) => readFileSync(resolve(RACINE, chemin), 'utf-8');
+  const SCENE = readFileSync(resolve(LANDING, 'demonstrations/SceneDataRoom.tsx'), 'utf-8');
+  // Libelle de l'ecran de demonstration -> fichier de l'application (ou du serveur) qui l'affiche.
+  const LIBELLES: [string, string][] = [
+    ['Accès du client actif', 'src/pages/dataroom/DataroomPage.tsx'],
+    ['Retour aux Data Rooms', 'src/pages/dataroom/DataroomPage.tsx'],
+    ['Activité du client', 'src/pages/dataroom/DataroomPage.tsx'],
+    ['Ajouter, supprimer, conserver', 'src/pages/dataroom/DataroomPage.tsx'],
+    ['Client rattaché', 'src/pages/dataroom/DataroomPage.tsx'],
+    ['Dossier juridique', 'src/pages/dataroom/DataroomPage.tsx'],
+    ['Dépôts du client', 'src/pages/dataroom/DataroomPage.tsx'],
+    ['Demandes du client', 'src/pages/dataroom/DataroomPage.tsx'],
+    ['Requêtes du cabinet', 'src/pages/dataroom/DataroomPage.tsx'],
+    ['Transférer à un collègue', 'src/components/transfer/TransferDossierButton.tsx'],
+    ['Accès du client', 'src/pages/dataroom/components/AccesClientPanel.tsx'],
+    ['Accès actif', 'src/pages/dataroom/components/AccesClientPanel.tsx'],
+    ['Suspendre l’accès', 'src/pages/dataroom/components/AccesClientPanel.tsx'],
+    ['Régler l’accès du client', 'src/pages/dataroom/components/AccesClientPanel.tsx'],
+    ['Consulter les documents', 'src/pages/dataroom/components/AccesClientPanel.tsx'],
+    ['Télécharger', 'src/pages/dataroom/components/AccesClientPanel.tsx'],
+    ['Imprimer', 'src/pages/dataroom/components/AccesClientPanel.tsx'],
+    ['Déposer des documents', 'src/pages/dataroom/components/AccesClientPanel.tsx'],
+    ['Envoyer des demandes', 'src/pages/dataroom/components/AccesClientPanel.tsx'],
+    ['Lien d’accès du client', 'src/pages/dataroom/components/AccesClientPanel.tsx'],
+    ['Copier le lien', 'src/pages/dataroom/components/AccesClientPanel.tsx'],
+    ['Rechercher dans les documents juridiques (titre, nom de fichier)…', 'src/pages/dataroom/components/JuridiqueSearchBar.tsx'],
+    ['Documents en vigueur', 'src/pages/dataroom/DossierJuridiqueTab.tsx'],
+    ['Identifiants', 'src/pages/dataroom/DossierJuridiqueTab.tsx'],
+    ['Fiche client', 'src/pages/dataroom/DossierJuridiqueTab.tsx'],
+    ['Fiche dossier', 'src/pages/dataroom/DossierJuridiqueTab.tsx'],
+    ['Ajouter plusieurs documents', 'src/pages/dataroom/DossierJuridiqueTab.tsx'],
+    ['Ajouter un document', 'src/pages/dataroom/DossierJuridiqueTab.tsx'],
+    ['Aperçu', 'src/pages/dataroom/DossierJuridiqueTab.tsx'],
+    ['Supprimer le document', 'src/pages/dataroom/DossierJuridiqueTab.tsx'],
+    ['Anciennes versions', 'src/pages/dataroom/components/DocumentVersionsDropdown.tsx'],
+    ['Destination', 'src/pages/dataroom/components/UploadDocumentDialog.tsx'],
+    ['Choisissez « Nouvelle version de… » pour remplacer un document : un motif est alors demandé.', 'src/pages/dataroom/components/UploadDocumentDialog.tsx'],
+    ['Motif du remplacement', 'src/pages/dataroom/components/UploadDocumentDialog.tsx'],
+    ['Au moins 5 caractères : le motif est conservé avec l’ancienne version.', 'src/pages/dataroom/components/UploadDocumentDialog.tsx'],
+    ['Remplacer comme nouvelle version', 'src/pages/dataroom/components/UploadDocumentDialog.tsx'],
+    ['Un nouveau document, ou une nouvelle version d’un document en vigueur (l’ancienne reste consultable).', 'src/pages/dataroom/components/UploadDocumentDialog.tsx'],
+    ['Créer un ticket', 'src/pages/dataroom/DemandesTab.tsx'],
+    ['Modifier', 'src/pages/dataroom/DemandesTab.tsx'],
+    ['Soumise le', 'src/pages/dataroom/DemandesTab.tsx'],
+    ['Actes générés', '../backend-java/dataroom-service/src/main/java/ma/jurika/dataroom/application/GroupeDocument.java'],
+    ['Pièces client', '../backend-java/dataroom-service/src/main/java/ma/jurika/dataroom/application/GroupeDocument.java'],
+  ];
+
+  it.each(LIBELLES)('« %s » est affiche par la scene et par l application (%s)', (libelle, chemin) => {
+    expect(SCENE, 'scene').toContain(libelle);
+    expect(source(chemin), chemin).toContain(libelle);
+  });
+
+  it("montre la demande du client recue, avec son etat reel, dans l'etat final", () => {
+    restaurer();
+    restaurer = simulerMouvement(true);
+    const { container } = render(<DemonstrationAnimee nom="data-room" />);
+    const t = container.textContent ?? '';
+    expect(t).toContain(DEMANDE_STATUT_LABELS.NON_TRAITEE);
+    expect(t).toContain('Demandes du client');
+    expect(t).toContain('Déposer des documents');
   });
 });

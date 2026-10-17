@@ -13,12 +13,15 @@
  * lecteurs d'ecran, contenu aria-hidden et inert.
  */
 
-export const NOMS_SCENES = ['creation-ticket', 'frise-demarches', 'statuts-apercu', 'juri-aide', 'theme-clair-sombre'] as const;
+export const NOMS_SCENES = ['creation-ticket', 'frise-demarches', 'data-room', 'statuts-apercu', 'juri-aide', 'theme-clair-sombre'] as const;
 
 export type NomScene = (typeof NOMS_SCENES)[number];
 
-/** Taille de dessin des scenes (ratio 16:10, comme les captures) ; mise a l'echelle du cadre. */
-export const DESSIN_SCENE = { largeur: 800, hauteur: 500 } as const;
+/**
+ * Taille de dessin des scenes : l'ecran reel de l'application a 1280 x 800 (la taille des
+ * anciennes videos, ratio 16:10), reduit d'un bloc a la largeur du cadre (L6c E4).
+ */
+export const DESSIN_SCENE = { largeur: 1280, hauteur: 800 } as const;
 
 export interface Scene {
   /** Nom de l'ecran, affiche dans la barre du cadre. */
@@ -45,10 +48,18 @@ export const SCENES: Record<NomScene, Scene> = {
   'frise-demarches': {
     ecran: 'Ticket et frise des démarches',
     description:
-      'Démonstration animée, données fictives : sur la page d’un ticket, l’employé coche la démarche en retard « Enregistrement des statuts au service de l’enregistrement (DGI), dépôt » ; dans la frise des démarches, elle passe de « Dépassée » à « Accomplie ».',
+      'Démonstration animée, données fictives : sur la page d’un ticket, l’employé joint le récépissé de dépôt puis coche la démarche en retard « Enregistrement des statuts au service de l’enregistrement (DGI), dépôt » ; dans la frise des démarches, elle passe de « Dépassée » à « Accomplie ».',
     legende: 'Cocher une démarche : la frise du ticket se met à jour aussitôt.',
-    durees: [700, 1200, 900, 4200, 700],
-    etapeFinale: 3,
+    durees: [1500, 1100, 900, 800, 900, 900, 1300, 3400, 700],
+    etapeFinale: 7,
+  },
+  'data-room': {
+    ecran: 'Data Room du dossier',
+    description:
+      'Démonstration animée, données fictives : dans la Data Room de la société fictive OASIS EXEMPLE SARL, l’employé autorise le client à déposer des documents, ajoute une nouvelle version des statuts avec son motif dans le dossier juridique classé par opération, ouvre l’aperçu, puis lit la demande que le client vient d’envoyer.',
+    legende: 'Régler l’accès du client, verser une nouvelle version, l’ouvrir, puis lire la demande du client.',
+    durees: [800, 900, 700, 1200, 1700, 1100, 1100, 900, 2200, 1100, 3200, 700],
+    etapeFinale: 10,
   },
   'statuts-apercu': {
     ecran: 'Génération des actes',

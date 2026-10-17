@@ -217,7 +217,7 @@
 }
 
 /* ---- Demonstrations animees (demonstrations/, L6c) -------------------- */
-/* Scene dessinee a taille fixe (800 x 500) puis mise a l'echelle du cadre (--v-echelle,
+/* L6c E4 : ecran reel de l'application rendu a 1280 x 800 (taille des anciennes videos), puis mise a l'echelle du cadre (--v-echelle,
  * ecrit par useEchelle) : la boite garde son ratio 16:10, rien ne se decale. Changements
  * d'etat : opacite et transformation seulement. Hors ecran ou onglet cache : data-pause
  * suspend aussi les animations CSS de la scene (chargement d'un bouton, clic du curseur). */
@@ -231,8 +231,8 @@
   position: absolute;
   left: 0;
   top: 0;
-  width: 800px;
-  height: 500px;
+  width: 1280px;
+  height: 800px;
   transform-origin: 0 0;
   transform: scale(var(--v-echelle, 1));
   pointer-events: none;
@@ -269,6 +269,26 @@
 }
 .v-demo-tiroir {
   transition: transform 550ms var(--v-ease);
+}
+/* Defilement de la page sous l'en-tete et le menu (camera des anciennes videos). */
+.v-demo-defile {
+  transition: transform 900ms var(--v-ease);
+}
+/* Logo de l'en-tete de la coquille : celui du theme de la zone (clair ou sombre). */
+.v-logo-sombre {
+  display: none;
+}
+[data-theme="dark"] .v-logo-clair {
+  display: none;
+}
+[data-theme="dark"] .v-logo-sombre {
+  display: inline;
+}
+[data-theme="dark"] [data-theme="light"] .v-logo-clair {
+  display: inline;
+}
+[data-theme="dark"] [data-theme="light"] .v-logo-sombre {
+  display: none;
 }
 .v-demo-tiroir-ferme {
   transform: translateX(104%);

@@ -58,10 +58,8 @@ import {
   type IconeSecurite,
   type Pilier,
 } from '../contenu';
-import type { NomCapture } from '../captures';
 import type { NomScene } from '../demonstrations/scenes';
 import { DemonstrationAnimee } from '../demonstrations/DemonstrationAnimee';
-import { CaptureEcran } from './CaptureEcran';
 import { EmblemeAnime } from './EmblemeAnime';
 import { MotifZellige } from './MotifZellige';
 import { Vivante } from './Vivante';
@@ -75,7 +73,7 @@ import { Vivante } from './Vivante';
  * jetons du systeme de design (aucune couleur en dur, clair et sombre).
  *
  * Contenu : contenu.ts et config/pricing.ts uniquement. Visuels : vraies captures de la
- * plateforme (captures.ts). Mouvement : `data-apparait` (apparition au defilement, voir
+ * plateforme (captures.ts, retirees en L6c E5 au profit des demonstrations). Mouvement : `data-apparait` (apparition au defilement, voir
  * useApparitions et vitrine.css) ; rien ne bouge si les animations sont reduites.
  *
  * V3 (demande du 2026-10-15) : accroche animee (embleme qui se dessine, titre mot par mot,
@@ -430,11 +428,11 @@ function ElementFonction({ f, ton = 'clair' }: { f: Fonctionnalite; ton?: 'clair
  * acte, JURI. Chaque etape reprend un pilier de contenu.ts (ou la bande de l'IA) et l'ecran
  * de la plateforme qui le montre.
  */
-/** Visuel d'une etape : une demonstration animee (L6c), ou une capture fixe. */
-type Visuel = { demo: NomScene } | { capture: NomCapture };
+/** Visuel d'une etape : une demonstration animee (L6c ; L6c E5 : la Data Room aussi). */
+type Visuel = { demo: NomScene };
 
 function nomVisuel(v: Visuel): string {
-  return 'demo' in v ? v.demo : v.capture;
+  return v.demo;
 }
 
 interface Etape {
@@ -463,27 +461,24 @@ function etapeDuPilier(id: string, ecran: string, visuel: Visuel): Etape {
  * V4 (demande du 2026-10-16), L6c : une demonstration animee par fonctionnalite :
  * tableau de bord (passage du theme clair au theme sombre), ticket (la frise des demarches
  * qui se coche), acte (generation des statuts et apercu), JURI (il sort du bord et ouvre
- * l'aide). La Data Room garde sa capture fixe.
+ * l'aide). L6c E5 (retour de l'utilisateur du 2026-10-17) : la Data Room a aussi sa
+ * demonstration (acces du client, nouvelle version, apercu, demande du client) ; sa capture
+ * fixe est retiree.
  */
 const ETAPES: Etape[] = [
   etapeDuPilier('pilier-suivi', 'Tableau de bord', { demo: 'theme-clair-sombre' }),
   etapeDuPilier('pilier-parcours', 'Ticket', { demo: 'frise-demarches' }),
-  etapeDuPilier('pilier-dataroom', 'Data Room', { capture: 'data-room-clair' }),
+  etapeDuPilier('pilier-dataroom', 'Data Room', { demo: 'data-room' }),
   etapeDuPilier('pilier-actes', 'Acte', { demo: 'statuts-apercu' }),
   { id: 'ia', ecran: 'JURI', visuel: { demo: 'juri-aide' }, surtitre: IA.surtitre, titre: IA.titre, texte: IA.texte, fonctions: [IA.fonction] },
 ];
 
-const TAILLE_RECIT = '(min-width: 1024px) 600px, calc(100vw - 2rem)';
-
 function VisuelEtape({ etape, actif = true }: { etape: Etape; actif?: boolean }) {
-  if ('demo' in etape.visuel) {
-    return (
-      <Vivante classeContenu="rounded-xl">
-        <DemonstrationAnimee nom={etape.visuel.demo} actif={actif} />
-      </Vivante>
-    );
-  }
-  return <CaptureEcran nom={etape.visuel.capture} sizes={TAILLE_RECIT} />;
+  return (
+    <Vivante classeContenu="rounded-xl">
+      <DemonstrationAnimee nom={etape.visuel.demo} actif={actif} />
+    </Vivante>
+  );
 }
 
 function BlocEtape({

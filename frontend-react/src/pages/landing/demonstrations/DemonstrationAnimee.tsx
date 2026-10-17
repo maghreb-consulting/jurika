@@ -1,10 +1,8 @@
-import { useRef, useState, type ComponentType } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { Pause, Play } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
 import { cn } from '../../../lib/utils';
 import { DESSIN_SCENE, SCENES, type NomScene } from './scenes';
-import { SceneCreation, SceneFrise, type ProprietesScene } from './ScenesTicket';
-import { SceneJuri, SceneStatuts, SceneTheme } from './ScenesEcrans';
 import { useDeroule, useEchelle, useLecture, useProche } from './useLecture';
 
 /**
@@ -22,17 +20,13 @@ import { useDeroule, useEchelle, useLecture, useProche } from './useLecture';
  *   mouvement automatique de plus de 5 secondes doit pouvoir etre arrete) ; absent quand la
  *   scene est fixe. Une pause demandee est respectee.
  * - Montage differe : la scene n'est construite qu'a l'approche de l'ecran (useProche) ;
- *   avant, seul le cadre (place reservee) est rendu.
+ *   avant, seul le cadre (place reservee) est rendu. L6c E4 : son code (ecrans reels et
+ *   composants) est charge a la demande (ContenuScene.tsx, React.lazy).
  * - Aucune requete reseau, aucun magasin de l'application : donnees fixes (donnees.ts).
  */
 
-const CONTENUS: Record<NomScene, ComponentType<ProprietesScene>> = {
-  'creation-ticket': SceneCreation,
-  'frise-demarches': SceneFrise,
-  'statuts-apercu': SceneStatuts,
-  'juri-aide': SceneJuri,
-  'theme-clair-sombre': SceneTheme,
-};
+/** Contenu des scenes, charge a la demande (ContenuScene.tsx) : le cadre est rendu d'emblee. */
+const ContenuScene = lazy(() => import('./ContenuScene'));
 
 export function DemonstrationAnimee({ nom, actif = true, className }: { nom: NomScene; actif?: boolean; className?: string }) {
   const scene = SCENES[nom];
@@ -43,7 +37,6 @@ export function DemonstrationAnimee({ nom, actif = true, className }: { nom: Nom
   const [pauseDemandee, setPauseDemandee] = useState(false);
   const joue = lecture.joue && actif && !pauseDemandee;
   const etape = useDeroule(scene.durees, joue, lecture.statique, scene.etapeFinale);
-  const Contenu = CONTENUS[nom];
   const libelle = pauseDemandee ? 'Reprendre la démonstration' : 'Mettre la démonstration en pause';
 
   return (
@@ -74,7 +67,11 @@ export function DemonstrationAnimee({ nom, actif = true, className }: { nom: Nom
         </div>
         <div ref={boite} className="v-demo-boite" role="img" aria-label={scene.description}>
           <div className="v-demo-toile" aria-hidden="true" inert data-pause={joue ? undefined : ''}>
-            {proche && <Contenu etape={etape} joue={joue} statique={lecture.statique} />}
+            {proche && (
+              <Suspense fallback={null}>
+                <ContenuScene nom={nom} etape={etape} joue={joue} statique={lecture.statique} />
+              </Suspense>
+            )}
           </div>
         </div>
       </div>
