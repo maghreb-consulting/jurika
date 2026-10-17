@@ -57,7 +57,7 @@ export interface LiquidationAnnoncePanelProps {
   /** Date de l'AGE de clôture / de la décision de l'associé unique = $DATE_CLOTURE_LIQUIDATION. */
   dateCloture: string;
   liquidateur: AnnonceLiquidateurInput;
-  /** Comptes finaux (étape 1) : le boni/mali en est DÉRIVÉ, jamais saisi séparément. */
+  /** Comptes finaux (etape 1), transmis tels quels (l'avis ne publie pas le resultat). */
   totalActif: string;
   totalPassif: string;
   /** Numéro / date de dépôt légal persistés par la page hôte (facultatifs). */
@@ -147,14 +147,6 @@ export function LiquidationAnnoncePanel({
   }, [code]);
 
   // Boni / mali DÉRIVÉ des comptes finaux (miroir du calcul backend).
-  const resultat = useMemo(() => {
-    const actif = toNumber(totalActif);
-    const passif = toNumber(totalPassif);
-    if (actif === null || passif === null) return null;
-    const solde = actif - passif;
-    return { sens: (solde < 0 ? 'mali' : 'boni') as 'boni' | 'mali', montant: Math.abs(solde) };
-  }, [totalActif, totalPassif]);
-
   const buildPayload = (): Record<string, unknown> => ({
     formeJuridique,
     // Identité société : la BD gagne (enrichissement via dossierId) ; on ne fournit
@@ -176,8 +168,6 @@ export function LiquidationAnnoncePanel({
       siegeLiquidation: avis?.siegeLiquidation ?? '',
       actifRealise: toNumber(totalActif),
       passifRegle: toNumber(totalPassif),
-      resultatType: resultat?.sens ?? null,
-      resultatMontant: resultat?.montant ?? null,
     },
     // Attribués par le greffe APRÈS dépôt → facultatifs (rendus vides si absents).
     depotLegal: { numero: depotLegalNumero || null, date: depotLegalDate || null },
@@ -272,16 +262,12 @@ export function LiquidationAnnoncePanel({
         </div>
       )}
 
-      {resultat && (
-        <p className="rounded-lg border border-border bg-bg-overlay p-3 text-xs text-fg-muted" data-testid="annonce-resultat">
-          Résultat publié :{' '}
-          <strong className={resultat.sens === 'boni' ? 'text-success' : 'text-danger'}>
-            {resultat.sens === 'boni' ? 'boni' : 'mali'} de liquidation de{' '}
-            {resultat.montant.toLocaleString('fr-FR')} DH
-          </strong>{' '}
-          — calculé depuis les comptes finaux de l’étape 1.
-        </p>
-      )}
+      {/* L6b (E19) : l'avis du corpus ne publie pas le resultat ; il affichait "Resultat publie :
+          boni de 100 000 DH" (actif - passif) pour un mali de 5 000 au rapport final. */}
+      <p className="rounded-lg border border-border bg-bg-overlay p-3 text-xs text-fg-muted" data-testid="annonce-resultat">
+        L’avis de clôture ne publie pas le résultat de la liquidation : le boni ou le mali figure au
+        procès-verbal de clôture et au rapport final du liquidateur, qui le calcule.
+      </p>
 
       <div className="grid gap-3 md:grid-cols-2">
         <TextField

@@ -55,10 +55,7 @@ export interface OperationInput {
     [cle: string]: unknown;
   };
   cloture?: {
-    /** L4d (E11d) : sens calcule des totaux ; absent, rien n'est suppose. */
-    resultatSens?: 'boni' | 'mali' | null;
-    resultatMontant?: string | number | null;
-    boniParPart?: string | number | null;
+    /** L6b (E19) : aucun sens ni montant de resultat : le serveur le calcule au rapport final. */
     dateClotureLiquidation?: string | null;
     actifRealise?: string | number | null;
     passifRegle?: string | number | null;
@@ -287,13 +284,6 @@ export function SeanceOperationForm({
     const cloture = operation?.cloture;
     const clotureBlock = cloture
       ? {
-          resultatSens: cloture.resultatSens,
-          resultatType: cloture.resultatSens,
-          resultatMontant: cloture.resultatMontant ?? null,
-          boniExiste: cloture.resultatSens === 'boni' ? 'oui' : 'non',
-          boniMontant: cloture.resultatSens === 'boni' ? cloture.resultatMontant ?? null : null,
-          maliMontant: cloture.resultatSens === 'mali' ? cloture.resultatMontant ?? null : null,
-          boniParPart: cloture.boniParPart ?? null,
           dateClotureLiquidation: cloture.dateClotureLiquidation ?? null,
           actifRealise: cloture.actifRealise ?? null,
           passifRegle: cloture.passifRegle ?? null,

@@ -393,16 +393,14 @@ function LiquidationWorkflowPageBody() {
     [dossierParties],
   );
 
-  // ---- Boni / mali CALCULÉ (jamais saisi séparément) ----
-  const boniMali = useMemo(() => {
+  // ---- Solde actif - passif (affiche seulement : ce n'est pas le resultat de la liquidation) ----
+  const soldeComptes = useMemo(() => {
     if (!totalActif.trim() || !totalPassif.trim()) return null;
     const a = Number.parseFloat(totalActif);
     const p = Number.parseFloat(totalPassif);
     if (Number.isNaN(a) || Number.isNaN(p)) return null;
     return a - p;
   }, [totalActif, totalPassif]);
-  const resultatType: 'boni' | 'mali' | null =
-    boniMali === null ? null : boniMali < 0 ? 'mali' : 'boni';
   // L6b : contexte du rapport final, partage par son panneau et la synthese (le resultat de la
   // liquidation affiche est celui du rapport et du PV, frais et capital compris).
   const contexteRapport: ContexteRapport = {
@@ -460,7 +458,7 @@ function LiquidationWorkflowPageBody() {
         'Aucun liquidateur n’est enregistré pour cette société : désignez-le (il sera ensuite '
         + 'repris automatiquement).';
     }
-    if (boniMali === null) {
+    if (soldeComptes === null) {
       errs.comptes = 'Le total de l’actif et le total du passif (MAD) sont obligatoires.';
     } else if (Number.parseFloat(totalActif) < 0 || Number.parseFloat(totalPassif) < 0) {
       errs.comptes = 'Les totaux d’actif et de passif doivent être positifs ou nuls.';
@@ -469,7 +467,7 @@ function LiquidationWorkflowPageBody() {
     return errs;
   }, [
     dossierId, dateDissolution, dateCloture, delaiError, isAU,
-    liquidateur, boniMali, totalActif, totalPassif, convocationError,
+    liquidateur, soldeComptes, totalActif, totalPassif, convocationError,
   ]);
 
   const targetDenomination =
@@ -522,9 +520,8 @@ function LiquidationWorkflowPageBody() {
       },
       cloture: {
         // L4d (E11d) : avis de cloture (quitus, dates) repris par le PV ; plus de "boni" suppose.
+        // L6b (E19) : ni sens ni montant de resultat : le serveur le calcule au rapport final.
         ...avisCloture,
-        resultatSens: resultatType ?? undefined,
-        resultatMontant: boniMali === null ? null : Math.abs(boniMali),
         dateClotureLiquidation: dateCloture || null,
         actifRealise: totalActif || null,
         passifRegle: totalPassif || null,
@@ -533,7 +530,7 @@ function LiquidationWorkflowPageBody() {
       // L5 (E4) : operations de liquidation saisies pour le rapport du liquidateur.
       rapportLiquidateur: rapportPayload(rapportLiquidateur),
     }),
-    [liquidateur, liquidateurBd, siegeLiquidation, resultatType, boniMali, dateCloture,
+    [liquidateur, liquidateurBd, siegeLiquidation, dateCloture,
       totalActif, totalPassif, dateDissolution, avisCloture, rapportLiquidateur],
   );
 
@@ -970,7 +967,7 @@ function LiquidationWorkflowPageBody() {
                 Comptes finaux de liquidation
                 <InfoBulle
                   libelle="Comment remplir les comptes finaux ?"
-                  texte="Indiquez le total de l’actif réalisé et le total du passif réglé, en dirhams. L’écart donne le boni (actif supérieur au passif) ou le mali de liquidation, calculé automatiquement et repris dans le procès-verbal, le rapport et l’annonce."
+                  texte="Indiquez le total de l’actif réalisé et le total du passif réglé, en dirhams. Ils doivent concorder avec les tableaux du rapport final du liquidateur (étape suivante), qui calcule le boni ou le mali après les frais, l’impôt et le remboursement du capital."
                 />
               </h4>
               <div className="grid gap-3 md:grid-cols-3">
@@ -1000,12 +997,12 @@ function LiquidationWorkflowPageBody() {
                       s'affichait "100 000 MAD (boni)" pour un mali de 5 000 au rapport et au PV. */}
                   <p className="text-xs text-fg-subtle">Solde actif − passif</p>
                   <p
-                    className={`mt-1 text-lg font-bold ${boniMali === null ? 'text-fg-subtle' : 'text-fg'}`}
+                    className={`mt-1 text-lg font-bold ${soldeComptes === null ? 'text-fg-subtle' : 'text-fg'}`}
                     data-testid="liquidation-boni-mali"
                   >
-                    {boniMali === null
+                    {soldeComptes === null
                       ? '—'
-                      : `${boniMali < 0 ? '−' : ''}${Math.abs(boniMali).toLocaleString('fr-FR')} MAD`}
+                      : `${soldeComptes < 0 ? '−' : ''}${Math.abs(soldeComptes).toLocaleString('fr-FR')} MAD`}
                   </p>
                   <p className="mt-1 text-xs text-fg-subtle">
                     Le boni ou le mali de la liquidation est calculé au rapport final du liquidateur,
@@ -1020,8 +1017,8 @@ function LiquidationWorkflowPageBody() {
                 </p>
               )}
               <p className="mt-2 text-[11px] text-fg-subtle">
-                Le sens (boni ou mali) et son montant sont <strong>calculés</strong> à partir de ces
-                deux totaux : ils alimentent directement le procès-verbal, le rapport et l’annonce légale.
+                Ces deux totaux sont contrôlés par le rapport final du liquidateur : le boni ou le mali
+                y est <strong>calculé</strong>, puis repris à l’identique par le procès-verbal de clôture.
               </p>
             </section>
 
