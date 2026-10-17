@@ -333,6 +333,10 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   appelle `GET /api/v1/admin/cors-origins` d'auth sans jeton et recoit 403 a chaque sondage (5 min,
   WARN seulement) ; seule l'amorce `CORS_ALLOWED_ORIGINS` s'applique, les origines saisies par le
   super-admin (`workspace_allowed_origins`) ne servent jamais. Releve par le lot L6b.
+- **kie-service "sain" sans modele** (motif 9) : sans `models/donut-jurika-final` (777 Mo, hors du
+  depot), kie passe son controle de sante puis repond 500 a toute extraction. En CI, le parcours de
+  creation (lecture des CIN, etiquette `@modele-kie`) est donc exclu du job e2e-parcours et ne tourne
+  que sur le Z440. A faire : controle de sante qui exige le modele, ou modele de test publiable.
 - **Audit de billing jamais ecrit** (motif 9) : `JdbcAuditEventEmitter` de billing ecrit dans
   `audit_log` de `jurika_billing`, qui n'a pas cette table ("bad SQL grammar", journalise en WARN
   seulement, ex. `BILLING_PAIEMENT_VALIDE`) : les traces de paiement sont perdues sans bruit.

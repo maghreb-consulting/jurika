@@ -17,7 +17,7 @@ import { KARIM, SALMA, suffixeUnique, etape1, etape2, etape3, etape4, etape5, no
  * L6b (E14) : gestes repris de outils/creation.ts (certificat de propriete exige a l'etape 2,
  * CIN lue par l'assistant puis verifiee a l'etape 5 ; premiere ouverture du parcours toleree).
  */
-test('parcours creation SARL : etapes 1 a 5, deux gerants aux remunerations differentes', async ({ page, entrer, aller, sentinelle, capturer }) => {
+test('parcours creation SARL @modele-kie : etapes 1 a 5, deux gerants aux remunerations differentes', async ({ page, entrer, aller, sentinelle, capturer }) => {
   test.setTimeout(400_000);
   tolererPremiereOuverture(sentinelle);
   await entrer('EMPLOYE');

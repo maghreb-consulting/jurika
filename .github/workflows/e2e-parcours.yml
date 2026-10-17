@@ -14,7 +14,9 @@ name: e2e-parcours
 # securise : crypto.randomUUID, presse-papiers... y existent et masqueraient un defaut).
 #
 # Exclus ici, et dits : les tests etiquetes @corpus-reel (actes generes depuis le corpus REEL du
-# cabinet, non publie) ; ils se lancent sur le Z440.
+# cabinet, non publie) et @modele-kie (lecture des pieces d'identite par le modele Donut entraine
+# du cabinet, models/donut-jurika-final, 777 Mo, hors du depot : sans lui kie-service repond 500) ;
+# ils se lancent sur le Z440.
 #
 # Bloquant pour les PR : declenche sur toute pull_request vers main (et push sur main, et a la
 # demande). Pour qu'il EMPECHE la fusion, la regle de protection de la branche main doit exiger
@@ -81,6 +83,11 @@ jobs:
           sed -i "s|^CMI_OK_URL=.*|CMI_OK_URL=http://${HOTE}:8080/api/v1/billing/cmi/retour/ok|" .env.local
           sed -i "s|^CMI_FAIL_URL=.*|CMI_FAIL_URL=http://${HOTE}:8080/api/v1/billing/cmi/retour/echec|" .env.local
           grep -q "^CMI_OK_URL=http://${HOTE}:8080/" .env.local
+          # Simulateur actif (aucun paiement reel) : identifiant de test, cle aleatoire.
+          sed -i "s|^CMI_SIMULATEUR_ACTIF=.*|CMI_SIMULATEUR_ACTIF=true|" .env.local
+          sed -i "s|^CMI_CLIENT_ID=.*|CMI_CLIENT_ID=600000000|" .env.local
+          sed -i "s|^CMI_STORE_KEY=.*|CMI_STORE_KEY=$(openssl rand -hex 16)|" .env.local
+          grep -q '^CMI_SIMULATEUR_ACTIF=true$' .env.local
           # Origine du front autorisee par la passerelle (CORS).
           sed -i "s|^CORS_ALLOWED_ORIGINS=.*|CORS_ALLOWED_ORIGINS=http://${HOTE},http://${HOTE}:80|" .env.local
           grep -q "^CORS_ALLOWED_ORIGINS=http://${HOTE}," .env.local
@@ -190,13 +197,13 @@ jobs:
         working-directory: frontend-react
         run: npx tsc -p e2e/parcours/tsconfig.json
 
-      - name: Parcours (hors @corpus-reel)
+      - name: Parcours (hors @corpus-reel et @modele-kie)
         working-directory: frontend-react
         env:
           CI: 'true'
           E2E_BASE_URL: http://jurika.test
           E2E_API_URL: http://jurika.test:8080/api/v1
-        run: npm run e2e:parcours -- --grep-invert @corpus-reel
+        run: npm run e2e:parcours -- --grep-invert '@corpus-reel|@modele-kie'
 
       - name: Rapport et captures
         if: always()
