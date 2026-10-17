@@ -1,27 +1,27 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="fr">
-<head><meta charset="UTF-8"/><title>Votre contrat d’abonnement</title></head>
-<body style="margin:0;padding:0;background:#faf6ec;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#0F172A;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-    <tr><td align="center" style="padding:24px 12px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:12px;overflow:hidden;">
-            <tr th:replace="~{email/_billing-base :: header(title='Votre contrat d’abonnement')}"></tr>
-            <tr><td style="padding:32px;">
-                <p style="margin:0 0 16px;">Bonjour,</p>
-                <p style="margin:0 0 16px;">Le contrat d’abonnement JURIKA du cabinet <strong th:text="${cabinet}">cabinet</strong>
-                    a été accepté en ligne par <span th:text="${signataire}">signataire</span> le
-                    <span th:text="${dateAcceptation}">date</span> (heure de Casablanca).</p>
-                <p style="margin:0 0 16px;">Vous trouverez en pièce jointe l’exemplaire complet du contrat : conditions
-                    particulières, conditions générales d’abonnement (version <span th:text="${version}">version</span>)
-                    et accord de traitement des données personnelles.</p>
-                <p style="margin:0 0 16px;">Empreinte du texte accepté :
-                    <code style="font-size:12px;word-break:break-all;" th:text="${empreinte}">empreinte</code></p>
-                <p style="margin:0;font-size:13px;color:#64748B;">L’exemplaire reste téléchargeable à tout moment depuis
-                    l’écran « Contrat d’abonnement » de votre espace JURIKA.</p>
-            </td></tr>
-            <tr th:replace="~{email/_billing-base :: footer}"></tr>
-        </table>
+<!-- Recette R3 : mise en page commune (jurika-common, templates/email/_mise-en-page.html). -->
+<html xmlns:th="http://www.thymeleaf.org" lang="fr"
+      th:replace="~{email/_mise-en-page :: courriel(titre='Votre contrat d’abonnement', corps=~{::corps}, pied=~{::pied})}">
+<body>
+<table>
+<th:block th:fragment="corps">
+    <tr><td style="padding:32px;">
+        <p style="margin:0 0 16px;">Bonjour,</p>
+        <p style="margin:0 0 16px;">Le contrat d’abonnement JURIKA du cabinet <strong th:text="${cabinet}">cabinet</strong>
+            a été accepté en ligne par <span th:text="${signataire}">signataire</span> le
+            <span th:text="${dateAcceptation}">date</span> (heure de Casablanca).</p>
+        <p style="margin:0 0 16px;">Vous trouverez en pièce jointe l’exemplaire complet du contrat : conditions
+            particulières, conditions générales d’abonnement (version <span th:text="${version}">version</span>)
+            et accord de traitement des données personnelles.</p>
+        <p style="margin:0 0 16px;">Empreinte du texte accepté :
+            <code style="font-size:12px;word-break:break-all;" th:text="${empreinte}">empreinte</code></p>
+        <p style="margin:0;font-size:13px;color:#64748B;">L’exemplaire reste téléchargeable à tout moment depuis
+            l’écran « Contrat d’abonnement » de votre espace JURIKA.</p>
     </td></tr>
+</th:block>
+<th:block th:fragment="pied">
+    <tr th:replace="~{email/_billing-base :: footer}"></tr>
+</th:block>
 </table>
 </body>
 </html>

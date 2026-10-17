@@ -82,6 +82,12 @@ class CourrielsComposeTest {
         assertThat(environnement("auth-service")).contains("JURIKA_EMAIL_PROVIDER", "SMTP_FROM_NAME");
     }
 
+    /** Recette R3 : billing affiche aussi le nom d'expediteur "JURIKA" (avant : l'adresse seule). */
+    @Test
+    void billing_recoit_le_nom_d_expediteur() throws IOException {
+        assertThat(environnement("billing-service")).contains("SMTP_FROM_NAME");
+    }
+
     /**
      * Les liens des courriels d'auth (verification d'adresse du courriel de bienvenue,
      * confirmation d'un changement de compte) partent de FRONTEND_URL : sans cette

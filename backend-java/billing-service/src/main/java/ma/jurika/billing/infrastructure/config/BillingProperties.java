@@ -26,6 +26,9 @@ public class BillingProperties {
     // Lot L6 (E5) : aucun expediteur par defaut (jurika.ma non deploye) : SMTP_FROM obligatoire (@NotBlank).
     private String fromEmail = "";
 
+    /** Recette R3 : nom affiche de l'expediteur (SMTP_FROM_NAME), comme auth-service. */
+    private String fromName = "JURIKA";
+
     /** Adresse publique du front (ex. https://app.jurika.ma), cible du retour du navigateur. */
     @NotBlank
     private String frontUrl = "";
@@ -44,6 +47,8 @@ public class BillingProperties {
     }
     public String getFromEmail() { return fromEmail; }
     public void setFromEmail(String s) { this.fromEmail = s; }
+    public String getFromName() { return fromName; }
+    public void setFromName(String s) { this.fromName = s; }
     public String getFrontUrl() { return frontUrl; }
     public void setFrontUrl(String s) { this.frontUrl = s; }
     public String getVirementBanque() { return virementBanque; }

@@ -2,17 +2,15 @@ package ma.jurika.billing.application.contrat;
 
 import jakarta.mail.internet.MimeMessage;
 import ma.jurika.billing.infrastructure.config.BillingProperties;
+import ma.jurika.common.courriel.CourrielJurika;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
-import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -52,21 +50,15 @@ public class ContratCourriel {
             return new Resultat("Exp\u00e9diteur non configur\u00e9 (SMTP_FROM)");
         }
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
-            helper.setFrom(props.getFromEmail());
-            helper.setTo(destinataire);
-            helper.setSubject(objet);
             Context ctx = new Context();
             variables.forEach(ctx::setVariable);
-            helper.setText(templateEngine.process(gabarit, ctx), true);
-            ClassPathResource logo = new ClassPathResource("branding/jurika-email-logo.png");
-            if (logo.exists()) helper.addInline("jurika-logo", logo, "image/png");
-            ClassPathResource zellige = new ClassPathResource("branding/jurika-zellij.png");
-            if (zellige.exists()) helper.addInline("jurika-zellij", zellige, "image/png");
-            if (piece != null) {
-                helper.addAttachment(piece.nom(), new ByteArrayResource(piece.contenu()), "application/pdf");
-            }
+            String html = templateEngine.process(gabarit, ctx);
+            MimeMessage message = mailSender.createMimeMessage();
+            // Recette R3 : composition commune (logo en ligne par Content-ID, texte brut, aucune
+            // image de decor) ; le PDF du contrat reste la seule piece jointe.
+            CourrielJurika.composer(message, props.getFromEmail(), props.getFromName(), destinataire, objet, html,
+                    piece == null ? List.of()
+                            : List.of(new CourrielJurika.PieceJointe(piece.nom(), piece.contenu(), "application/pdf")));
             mailSender.send(message);
             log.info("Courriel du contrat envoye gabarit={} destinataire={}", gabarit, destinataire);
             return new Resultat(null);

@@ -94,6 +94,8 @@ services:
       # Lot L6 (E5) : aucune adresse par defaut. jurika.ma n'est pas deploye (mise en production) :
       # l'expediteur est l'adresse verifiee chez le fournisseur, definie dans .env.local.
       SMTP_FROM: "${SMTP_FROM:?SMTP_FROM absent : adresse d'expediteur verifiee chez le fournisseur, dans .env.local}"
+      # Recette R3 : nom affiche de l'expediteur, comme auth-service.
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-JURIKA}
       # Plan limits enforcement (T3) actif par defaut en demo.
       JURIKA_PLAN_LIMITS_ENABLED: "true"
     volumes:

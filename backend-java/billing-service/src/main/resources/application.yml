@@ -86,6 +86,8 @@ jurika:
     # Lot L7 : destinataire des demandes de devis ; vide = adresse d'expedition (SMTP_FROM).
     sales-email: ${BILLING_SALES_EMAIL:}
     from-email: ${SMTP_FROM:}
+    # Recette R3 : nom affiche de l'expediteur (comme auth-service).
+    from-name: ${SMTP_FROM_NAME:JURIKA}
     # Lot L7 (E5) : adresse publique du front (retour du navigateur apres la page du CMI).
     front-url: ${FRONTEND_URL:http://localhost:5173}
     # A_DECIDER (direction) : banque et RIB de l'editeur pour le virement ; vides tant que non
