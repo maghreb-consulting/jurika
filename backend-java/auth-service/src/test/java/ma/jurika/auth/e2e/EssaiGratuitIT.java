@@ -529,6 +529,48 @@ class EssaiGratuitIT {
     }
 
 
+    /**
+     * Recette R1 (point 1) : apres l'activation, la premiere connexion avec le code du cabinet
+     * et les identifiants du courriel de bienvenue (identifiant, mot de passe provisoire) aboutit.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void premiere_connexion_avec_le_code_du_cabinet_apres_l_activation() throws Exception {
+        Identite id = nouvelleIdentite();
+        UUID ws = ouvrirEssai(id, "10.11.11.11", null);
+        ArgumentCaptor<Map<String, Object>> vars = ArgumentCaptor.forClass(Map.class);
+        verify(emailSender).sendTemplated(eq(id.email()), anyString(), eq("welcome"), vars.capture());
+        String code = (String) vars.getValue().get("workspaceCode");
+        String identifiant = (String) vars.getValue().get("loginEmail");
+        String motDePasse = (String) vars.getValue().get("temporaryPassword");
+        assertThat(code).isEqualTo(jdbc.queryForObject("SELECT code FROM workspaces WHERE id = ?", String.class, ws));
+
+        // L'ecran de la demande (onglet d'origine, qui relit l'etat) affiche aussi le code du cabinet et
+        // l'identifiant une fois l'essai ouvert : avant, il ne recevait que essaiCree=true (code absent).
+        UUID demande = jdbc.queryForObject("SELECT id FROM essai_demandes WHERE workspace_id = ?", UUID.class, ws);
+        mvc.perform(get("/api/v1/public/essai/demandes/" + demande))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.essaiCree").value(true))
+                .andExpect(jsonPath("$.workspaceCode").value(code))
+                .andExpect(jsonPath("$.loginEmail").value(identifiant))
+                .andExpect(jsonPath("$.identifiantsEnvoyes").doesNotExist());
+
+        // Bouton "Activer mon compte" du courriel de bienvenue (lien /verify-email?token=...).
+        String lien = (String) vars.getValue().get("verificationUrl");
+        mvc.perform(post("/api/v1/auth/verify-email").contentType("application/json")
+                        .content("{\"token\":\"" + lien.substring(lien.indexOf("token=") + 6) + "\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/v1/auth/workspace-check").contentType("application/json")
+                        .content("{\"workspaceCode\":\"" + code + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Cabinet Benali"));
+        mvc.perform(post("/api/v1/auth/login").contentType("application/json")
+                        .content(json.writeValueAsString(Map.of("workspaceCode", code, "email", identifiant,
+                                "password", motDePasse))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isNotEmpty());
+    }
+
     @Test
     void statut_d_essai_herite_hors_registre_ignore_par_le_cycle() {
         // Cabinet de demonstration qui porterait un ancien statut d'essai (Sprint 11, avant UX-3).

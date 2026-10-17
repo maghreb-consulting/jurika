@@ -77,6 +77,18 @@ public class EssaiJdbc {
                 d.adresseIp(), d.appareil(), d.userAgent(), ts(d.expireLe()));
     }
 
+    /** Recette R1 : code du cabinet et identifiant du superviseur d'un essai ouvert (workspace courant pose). */
+    public record Identifiants(String workspaceCode, String loginEmail) {}
+
+    public Optional<Identifiants> identifiantsDeConnexion(UUID workspaceId) {
+        return jdbc.query("""
+                SELECT w.code, u.login_email FROM workspaces w
+                  LEFT JOIN users u ON u.workspace_id = w.id AND u.role = 'SUPERVISEUR'
+                 WHERE w.id = ? ORDER BY u.created_at LIMIT 1
+                """, (rs, i) -> new Identifiants(rs.getString(1), rs.getString(2)), workspaceId)
+                .stream().findFirst();
+    }
+
     public Optional<Demande> demande(UUID id) {
         return jdbc.query("SELECT " + COLONNES_DEMANDE + " FROM essai_demandes WHERE id = ?", DEMANDE, id)
                 .stream().findFirst();

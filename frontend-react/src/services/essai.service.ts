@@ -40,7 +40,8 @@ export interface EtatDemandeEssai {
   essaiCree: boolean;
   workspaceCode: string | null;
   loginEmail: string | null;
-  identifiantsEnvoyes: boolean;
+  /** Resultat de l'envoi du courriel des identifiants : rendu a la creation seulement. */
+  identifiantsEnvoyes?: boolean;
 }
 
 export interface LimitesEssai {

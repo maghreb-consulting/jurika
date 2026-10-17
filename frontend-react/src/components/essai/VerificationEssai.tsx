@@ -85,7 +85,8 @@ export function VerificationEssai({ etat, onEtat, telephoneMasque, email }: Prop
           </p>
         ) : null}
         <p className="text-sm text-fg-muted">
-          {etat.identifiantsEnvoyes || etat.workspaceCode === null
+          {/* Recette R1 : resultat de l'envoi connu a la creation seulement (absent a la relecture). */}
+          {etat.identifiantsEnvoyes !== false
             ? 'Votre mot de passe provisoire vous a été envoyé par courriel. À la première connexion, vous le remplacerez puis choisirez la double authentification.'
             : 'Le courriel contenant votre mot de passe provisoire n’a pas pu être envoyé : contactez JURIKA en indiquant le code de votre cabinet.'}
         </p>

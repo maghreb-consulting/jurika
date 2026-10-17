@@ -120,9 +120,17 @@ public class InscriptionEssaiService {
     public record DemandeCreee(UUID demandeId, String telephoneMasque, String email, boolean smsEnvoye,
                                boolean emailEnvoye, Instant expireLe) {}
 
-    /** Etat d'une demande ; {@code workspaceCode} et {@code loginEmail} une fois l'essai cree. */
+    /**
+     * Etat d'une demande ; {@code workspaceCode} et {@code loginEmail} une fois l'essai cree (recette
+     * R1 : aussi a la relecture de l'etat, pour l'onglet d'origine). {@code identifiantsEnvoyes} :
+     * resultat de l'envoi du courriel des identifiants, connu seulement a la creation ({@code null}
+     * a la relecture).
+     */
     public record Etat(UUID demandeId, boolean emailVerifie, boolean telephoneVerifie, boolean essaiCree,
-                       String workspaceCode, String loginEmail, boolean identifiantsEnvoyes) {}
+                       String workspaceCode, String loginEmail,
+                       @com.fasterxml.jackson.annotation.JsonInclude(
+                               com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+                       Boolean identifiantsEnvoyes) {}
 
     // ------------------------------------------------------------ demande
 
@@ -238,8 +246,18 @@ public class InscriptionEssaiService {
     public Etat etat(UUID demandeId) {
         Demande d = essais.demande(demandeId)
                 .orElseThrow(() -> new NotFoundException("Demande d\u2019essai introuvable."));
+        // L'appelant (PublicEssaiController) a pose le workspace de l'essai ouvert (RLS).
+        EssaiJdbc.Identifiants ids = d.workspaceId() == null ? null
+                : essais.identifiantsDeConnexion(d.workspaceId()).orElse(null);
         return new Etat(d.id(), d.emailVerifieLe() != null, d.telephoneVerifieLe() != null,
-                d.workspaceId() != null, null, null, false);
+                d.workspaceId() != null, ids == null ? null : ids.workspaceCode(),
+                ids == null ? null : ids.loginEmail(), null);
+    }
+
+    /** Workspace de l'essai ouvert par cette demande (table des demandes, hors RLS). */
+    @Transactional(readOnly = true)
+    public java.util.Optional<UUID> workspaceDeLaDemande(UUID demandeId) {
+        return essais.demande(demandeId).map(Demande::workspaceId);
     }
 
     // ----------------------------------------------------------- creation

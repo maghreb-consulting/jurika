@@ -78,6 +78,9 @@ public class PublicEssaiController {
 
     @GetMapping("/demandes/{demandeId}")
     public Etat etat(@PathVariable UUID demandeId) {
+        // Recette R1 : essai ouvert, son workspace est pose avant la lecture (RLS) pour rendre
+        // le code du cabinet et l'identifiant a l'ecran d'origine de la demande.
+        inscription.workspaceDeLaDemande(demandeId).ifPresent(contextePublic::poserWorkspace);
         return inscription.etat(demandeId);
     }
 
