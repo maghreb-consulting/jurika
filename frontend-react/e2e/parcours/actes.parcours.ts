@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Page, TestInfo } from '@playwright/test';
 import { test, expect } from './fixtures';
 import {
   ASSOCIES, calme, champ, champSiPresent, choisirSociete, cloturerTicket, confirmerPropositions, ficheDossier,
@@ -27,6 +27,9 @@ import {
  */
 
 const CONVOCATION = { date: '2026-10-20', heure: '10:00', affichee: '20/10/2026' };
+
+/** Liquidation jouee : actif realise (une realisation), sens et montant attendus du resultat. */
+interface CasLiquidation { actif: string; inventaire: string; resultat: 'boni' | 'mali'; montant: string }
 
 async function versLesTickets(page: Page, aller: (c: string) => Promise<void>) {
   await aller('/tickets');
@@ -197,11 +200,15 @@ test.describe('parcours actes', () => {
     await cloturerTicket(page, ticketId, /succursale/i);
   });
 
-  test('parcours actes @corpus-reel : dissolution puis liquidation, jusqu\'a la cloture', async ({ page, entrer, aller, sentinelle, capturer }, info) => {
-    tolererDemarrageParcours(sentinelle);
-    await entrer('EMPLOYE');
+  /**
+   * Dissolution puis liquidation jusqu'a la cloture du ticket. L6b (E19) : le resultat de la
+   * liquidation a une seule source, le rapport final ; il est relu a l'ecran (rapport final et
+   * synthese), au PV de cloture et au rapport ; l'avis de cloture ne le publie pas.
+   */
+  async function dissoudreEtLiquider(page: Page, info: TestInfo, aller: (c: string) => Promise<void>,
+    capturer: (nom: string) => Promise<void>, nom: string, cas: CasLiquidation) {
     await versLesTickets(page, aller);
-    const s = societeFictive('DISSOLUTION PARCOURS');
+    const s = societeFictive(nom);
     await reprendreSociete(page, s);
     await versLesTickets(page, aller);
     const ticketId = await ouvrirTicket(page, { titre: `Dissolution anticipee ${s.raisonSociale}`, type: 'DISSOLUTION' });
@@ -258,7 +265,7 @@ test.describe('parcours actes', () => {
     await liq.getByLabel('Date de convocation', { exact: true }).first().fill('2026-09-20');
     await liq.getByLabel('Heure de convocation', { exact: true }).first().fill('10:00');
     await expect(liq.getByLabel('Date de l\u2019AGE de cl\u00f4ture *')).toHaveValue('2026-10-06');
-    await (await champ(page, 'Total actif (MAD)')).fill('120000');
+    await (await champ(page, 'Total actif (MAD)')).fill(cas.actif);
     await (await champ(page, 'Total passif (MAD)')).fill('20000');
     await confirmerPropositions(page);
     await validerEtape(page);
@@ -283,7 +290,8 @@ test.describe('parcours actes', () => {
     await texte('Frais et honoraires de liquidation', '5000');
     await choix('Les comptes bancaires sont-ils cl\u00f4tur\u00e9s', 'oui');
     await choix('Le compte d\u00e9finitif est-il approuv\u00e9', 'oui');
-    await choix('Retenue \u00e0 la source sur le boni', 1);
+    await choix('Retenue \u00e0 la source sur le boni', 'non');
+    await texte('Motif de l\u2019absence de retenue', 'motif fictif du parcours de test');
     await texte('Modalit\u00e9s de paiement', 'par virement bancaire');
     await texte('Paiement au plus tard le', '2026-10-31');
     await texte('D\u00e9positaire', 'M. Mehdi Alaoui');
@@ -296,13 +304,11 @@ test.describe('parcours actes', () => {
     await choix('Quitus au liquidateur', 1);
     await texte('Si\u00e8ge de la liquidation', 'au si\u00e8ge social');
     await confirmerPropositions(page);
-    const pvCloture = await genererDocument(page, info, 'PV Dissolution / Liquidation', 'pv-cloture-liquidation');
-    verifierRedactionSeance(pvCloture.texte);
-    await validerDocument(page, 'PV Dissolution / Liquidation');
 
-    // Rapport final du liquidateur : montants qui s'equilibrent avec l'etape 1 (actif 120 000,
-    // passif 20 000) et les frais du PV (5 000, fonctions gratuites) ; tresorerie 95 000 pour
-    // un capital de 100 000 : mali de 5 000.
+    // Rapport final du liquidateur : montants qui s'equilibrent avec l'etape 1 (actif, passif
+    // 20 000) et les frais du PV (5 000, fonctions gratuites), pour un capital de 100 000.
+    // L6b (E19) : il est la seule source du resultat ; le PV de cloture le reprend, il se
+    // genere donc apres lui.
     const rapport = page.locator('main');
     const rt = (k: string, v: string) => rapport.getByTestId(`rapport-${k}`).fill(v);
     const rs = (k: string, v: string) => rapport.getByTestId(`rapport-${k}`).selectOption(v);
@@ -318,8 +324,8 @@ test.describe('parcours actes', () => {
       for (const [lib, v] of valeurs) await rapport.getByLabel(lib, { exact: true }).last().fill(v);
     };
     await ligne(0, [['Bien ou droit r\u00e9alis\u00e9', 'Mobilier et mat\u00e9riel de bureau'], ['Mode de r\u00e9alisation', 'cession de gr\u00e9 \u00e0 gr\u00e9'],
-      ['Acqu\u00e9reur ou d\u00e9biteur', 'Soci\u00e9t\u00e9 fictive des achats'], ['Prix ou montant encaiss\u00e9 (DH)', '120000'],
-      ['Date de r\u00e9alisation', '2026-09-30'], ['Valeur \u00e0 l\u2019inventaire d\u2019ouverture (DH)', '110000'], ['Observations', 'n\u00e9ant']]);
+      ['Acqu\u00e9reur ou d\u00e9biteur', 'Soci\u00e9t\u00e9 fictive des achats'], ['Prix ou montant encaiss\u00e9 (DH)', cas.actif],
+      ['Date de r\u00e9alisation', '2026-09-30'], ['Valeur \u00e0 l\u2019inventaire d\u2019ouverture (DH)', cas.inventaire], ['Observations', 'n\u00e9ant']]);
     await ligne(1, [['Cr\u00e9ancier', 'Fournisseur fictif'], ['Nature de la dette', 'factures de fournitures'],
       ['Montant admis (DH)', '20000'], ['Montant r\u00e9gl\u00e9 (DH)', '20000'], ['Date du r\u00e8glement', '2026-10-01'],
       ['Mode de r\u00e8glement', 'virement bancaire'], ['Observations', 'n\u00e9ant']]);
@@ -340,19 +346,55 @@ test.describe('parcours actes', () => {
     await rs('tvaAssujettie', 'non');
     await rt('attestationsEtat', 'attestations de r\u00e9gularit\u00e9 fiscale et sociale obtenues');
     await rt('dateSignature', '2026-10-06');
-    const rapportFinal = await genererDocument(page, info, 'Rapport final du liquidateur \u2014 mod\u00e8le', 'rapport-final-liquidateur');
-    expect(rapportFinal.texte, 'mali de 5 000 DH').toMatch(/5\s000/);
+    // Boni : le modele imprime des observations sur la retenue a la source (champ affiche pour un boni).
+    if (cas.resultat === 'boni') await rt('retenueObservations', 'aucune retenue op\u00e9r\u00e9e (donn\u00e9e fictive du parcours de test)');
+    const montant = cas.montant.replace(' ', '\\s');
+    // A l'ecran : le calcul du rapport final (miroir de la regle du serveur).
+    await expect(rapport.getByTestId('rapport-resultat'), `rapport final a l'ecran : ${cas.resultat} de ${cas.montant}`)
+      .toContainText(new RegExp(`${cas.resultat} de ${montant}(,00)? DH`));
+    const rapportFinal = await genererDocument(page, info, 'Rapport final du liquidateur \u2014 mod\u00e8le', `rapport-final-liquidateur-${cas.resultat}`);
+    expect(rapportFinal.texte, `rapport final : ${cas.resultat} de ${cas.montant} DH`)
+      .toMatch(new RegExp(`${cas.resultat} de liquidation d[\u2019']un montant de ${montant} dirhams`));
+    expect(rapportFinal.texte, 'rapport final : un seul sens').not.toMatch(new RegExp(`${cas.resultat === 'boni' ? 'mali' : 'boni'} de liquidation d[\u2019']un montant`));
     await validerDocument(page, 'Rapport final du liquidateur \u2014 mod\u00e8le');
-    await genererDocument(page, info, 'Annonce l\u00e9gale de cl\u00f4ture', 'annonce-cloture-liquidation');
+    const pvCloture = await genererDocument(page, info, 'PV Dissolution / Liquidation', `pv-cloture-liquidation-${cas.resultat}`);
+    verifierRedactionSeance(pvCloture.texte);
+    expect(pvCloture.texte, `PV de cloture : ${cas.resultat} de ${cas.montant} DH`)
+      .toMatch(new RegExp(`constituant un ${cas.resultat} de liquidation : ${montant} dirhams`));
+    expect(pvCloture.texte, 'PV de cloture : un seul sens').not.toMatch(new RegExp(`constituant un ${cas.resultat === 'boni' ? 'mali' : 'boni'} de liquidation`));
+    await validerDocument(page, 'PV Dissolution / Liquidation');
+    const annonce = await genererDocument(page, info, 'Annonce l\u00e9gale de cl\u00f4ture', `annonce-cloture-liquidation-${cas.resultat}`);
+    // Le modele du cabinet ne publie pas le resultat de la liquidation (non imprime).
+    expect(annonce.texte, 'avis de cloture : resultat non imprime').not.toMatch(/\b(boni|mali)\b/i);
     await validerDocument(page, 'Annonce l\u00e9gale de cl\u00f4ture');
     await validerEtape(page);
     await validerEtape(page);
     await finaliser(page, liquidation);
-    // L6b : la synthese affiche le resultat du rapport et du PV (mali de 5 000), plus le solde
-    // actif - passif presente comme un boni de 100 000.
-    await expect(page.getByTestId('synthese-resultat'), 'resultat de la liquidation a la synthese').toHaveText(/^Mali de 5\s000(,00)? MAD$/);
-    await capturer('actes-liquidation');
+    // L6b : la synthese affiche le resultat du rapport et du PV, plus le solde actif - passif
+    // presente comme un boni (100 000 pour un mali de 5 000).
+    const sens = cas.resultat === 'boni' ? 'Boni' : 'Mali';
+    await expect(page.getByTestId('synthese-resultat'), 'resultat de la liquidation a la synthese')
+      .toHaveText(new RegExp(`^${sens} de ${montant}(,00)? MAD$`));
+    await capturer(`actes-liquidation-${cas.resultat}`);
     await cloturerTicket(page, liquidation, /liquidation/i);
+  }
+
+  test('parcours actes @corpus-reel : dissolution puis liquidation, jusqu\'a la cloture', async ({ page, entrer, aller, sentinelle, capturer }, info) => {
+    tolererDemarrageParcours(sentinelle);
+    await entrer('EMPLOYE');
+    // Actif 120 000, passif 20 000, frais 5 000 : tresorerie 95 000 pour un capital de 100 000,
+    // mali de 5 000 (actif - passif donnait "boni 100 000").
+    await dissoudreEtLiquider(page, info, aller, capturer, 'DISSOLUTION PARCOURS',
+      { actif: '120000', inventaire: '110000', resultat: 'mali', montant: '5 000' });
+  });
+
+  test('parcours actes @corpus-reel : dissolution puis liquidation avec boni, jusqu\'a la cloture', async ({ page, entrer, aller, sentinelle, capturer }, info) => {
+    tolererDemarrageParcours(sentinelle);
+    await entrer('EMPLOYE');
+    // Actif 150 000, passif 20 000, frais 5 000 : tresorerie 125 000 pour un capital de
+    // 100 000, boni de 25 000 (actif - passif aurait donne 130 000).
+    await dissoudreEtLiquider(page, info, aller, capturer, 'LIQUIDATION SOLDE POSITIF',
+      { actif: '150000', inventaire: '140000', resultat: 'boni', montant: '25 000' });
   });
 
   test('parcours actes @corpus-reel : incident d\'assemblee (defaut de quorum)', async ({ page, entrer, aller, sentinelle, capturer }, info) => {
