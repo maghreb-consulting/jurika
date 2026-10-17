@@ -63,7 +63,24 @@ jobs:
               sed -i "s|^${cle}=.*|${cle}=${valeur}|" "$f"
             done < <(grep -oE '^[A-Z0-9_]+=CHANGE_ME[^[:space:]]*' "$f" | cut -d= -f1)
           done
+          # L'exemple serveur porte l'adresse d'un reseau local (192.168.1.42) dans plusieurs cles,
+          # dont VITE_API_URL et VITE_REALTIME_URL, compilees dans le front : sans ce remplacement,
+          # le front de la CI appelait une adresse injoignable et tous les parcours echouaient
+          # (58 echecs, 2026-10-17). Toute adresse du reseau local devient le nom du front.
+          sed -i "s|192\.168\.1\.42|${HOTE}|g" .env.local
+          if grep -n '192\.168\.' .env.local; then
+            echo "Adresse de reseau local restante dans .env.local" >&2
+            exit 1
+          fi
+          grep -q "^VITE_API_URL=http://${HOTE}:8080/api/v1\$" .env.local
+          grep -q "^VITE_REALTIME_URL=http://${HOTE}:3000\$" .env.local
           sed -i "s|^JURIKA_LAN_HOST=.*|JURIKA_LAN_HOST=${HOTE}|" .env.local
+          # Simulateur du CMI (parcours de paiement par carte) : passerelle publiee sur :8080.
+          sed -i "s|^CMI_GATEWAY_URL=.*|CMI_GATEWAY_URL=http://${HOTE}:8080/api/v1/billing/cmi-simulateur/passerelle|" .env.local
+          sed -i "s|^CMI_CALLBACK_URL=.*|CMI_CALLBACK_URL=http://billing-service:8090/api/v1/billing/cmi/callback|" .env.local
+          sed -i "s|^CMI_OK_URL=.*|CMI_OK_URL=http://${HOTE}:8080/api/v1/billing/cmi/retour/ok|" .env.local
+          sed -i "s|^CMI_FAIL_URL=.*|CMI_FAIL_URL=http://${HOTE}:8080/api/v1/billing/cmi/retour/echec|" .env.local
+          grep -q "^CMI_OK_URL=http://${HOTE}:8080/" .env.local
           # Origine du front autorisee par la passerelle (CORS).
           sed -i "s|^CORS_ALLOWED_ORIGINS=.*|CORS_ALLOWED_ORIGINS=http://${HOTE},http://${HOTE}:80|" .env.local
           grep -q "^CORS_ALLOWED_ORIGINS=http://${HOTE}," .env.local
@@ -100,6 +117,8 @@ jobs:
               case "$s" in
                 frontend) printf '  %s:\n    ports: !override ["127.0.0.1:80:80"]\n' "$s" ;;
                 gateway-service) printf '  %s:\n    ports: !override ["127.0.0.1:8080:8080"]\n' "$s" ;;
+                # Temps reel : le front s'y connecte depuis le navigateur (VITE_REALTIME_URL).
+                realtime-service) printf '  %s:\n    ports: !override ["127.0.0.1:3000:3000"]\n' "$s" ;;
                 *) printf '  %s:\n    ports: !reset []\n' "$s" ;;
               esac
             done
@@ -148,6 +167,12 @@ jobs:
           done
           curl -fsS -o /dev/null "http://${HOTE}/"
           curl -fsS -o /dev/null "http://${HOTE}:8080/actuator/health"
+          # Le front doit etre compile avec l'adresse de l'API de la CI (controle du defaut du
+          # 2026-10-17 : front compile vers une adresse de reseau local injoignable).
+          docker exec jurika-frontend sh -c "grep -rqF 'http://${HOTE}:8080/api/v1' /usr/share/nginx/html/assets"
+          if docker exec jurika-frontend sh -c "grep -rqF '192.168.' /usr/share/nginx/html/assets"; then
+            echo "::error title=Front mal compile::adresse de reseau local dans le front" ; exit 1
+          fi
 
       - uses: actions/setup-node@v4
         with:

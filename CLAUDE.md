@@ -329,6 +329,10 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   plus), avec mention a l'ecran si la liste est partielle ; alertes de securite limitees a 24 h et
   20 lignes (pas de serie par jour) ; billing n'expose aucun agregat de paiements ou de chiffre
   d'affaires ; documents recus par le client limites aux 10 derniers.
+- **Liste CORS de la passerelle jamais rafraichie** (motif 9) : `DynamicCorsConfigurationSource`
+  appelle `GET /api/v1/admin/cors-origins` d'auth sans jeton et recoit 403 a chaque sondage (5 min,
+  WARN seulement) ; seule l'amorce `CORS_ALLOWED_ORIGINS` s'applique, les origines saisies par le
+  super-admin (`workspace_allowed_origins`) ne servent jamais. Releve par le lot L6b.
 - **Audit de billing jamais ecrit** (motif 9) : `JdbcAuditEventEmitter` de billing ecrit dans
   `audit_log` de `jurika_billing`, qui n'a pas cette table ("bad SQL grammar", journalise en WARN
   seulement, ex. `BILLING_PAIEMENT_VALIDE`) : les traces de paiement sont perdues sans bruit.
