@@ -345,6 +345,12 @@ en `IF NOT EXISTS` / `DROP POLICY IF EXISTS`.
   depot), kie passe son controle de sante puis repond 500 a toute extraction. En CI, le parcours de
   creation (lecture des CIN, etiquette `@modele-kie`) est donc exclu du job e2e-parcours et ne tourne
   que sur le Z440. A faire : controle de sante qui exige le modele, ou modele de test publiable.
+- **Demarrage de la pile : "sain" avant d'etre routable** : juste apres une recreation, tous les
+  conteneurs sont sains et le test de fumee passe alors que la passerelle n'a pas encore d'instance
+  de dataroom (Eureka, "No servers available for service: dataroom-service", 503) : la suite e2e
+  lancee aussitot echoue sur la route de donnees de test (vu le 2026-10-17, L6c ; relancee 147/147).
+  A faire : attente de la route (ou de l'inscription Eureka) dans start-local.sh, le test de fumee
+  et la mise en place des parcours.
 - **Audit de billing jamais ecrit** (motif 9) : `JdbcAuditEventEmitter` de billing ecrit dans
   `audit_log` de `jurika_billing`, qui n'a pas cette table ("bad SQL grammar", journalise en WARN
   seulement, ex. `BILLING_PAIEMENT_VALIDE`) : les traces de paiement sont perdues sans bruit.
