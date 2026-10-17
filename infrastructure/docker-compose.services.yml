@@ -148,6 +148,9 @@ services:
       # l'expediteur est l'adresse verifiee chez le fournisseur, definie dans .env.local.
       SMTP_FROM: "${SMTP_FROM:?SMTP_FROM absent : adresse d'expediteur verifiee chez le fournisseur, dans .env.local}"
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-JURIKA}
+      # Recette R3 : route d'envoi des exemplaires de courriels (/api/v1/test/courriels/**),
+      # meme interrupteur que les donnees de test : faux par defaut, jamais en production.
+      JURIKA_TEST_SEED_ENABLED: ${JURIKA_TEST_SEED_ENABLED:-false}
       # Lot L6 (E5) : contact cite dans les courriels (vide = adresse d'expediteur).
       JURIKA_SUPPORT_EMAIL: ${JURIKA_SUPPORT_EMAIL:-}
       # Liens des courriels (verification d'adresse, confirmation d'un changement de

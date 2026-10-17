@@ -47,6 +47,31 @@ class RouteDonneesDeTestTest {
                 .run(c -> assertThat(routePresente(c.getBean(RouteLocator.class))).isFalse());
     }
 
+    /** Recette R3 : envoi des exemplaires de courriels, vers le service qui envoie. */
+    private static java.util.Map<String, String> routesCourriels(RouteLocator routes) {
+        java.util.Map<String, String> m = new java.util.HashMap<>();
+        routes.getRoutes().filter(r -> r.getId().startsWith("test-courriels"))
+                .doOnNext(r -> m.put(r.getId(), r.getUri().toString())).blockLast();
+        return m;
+    }
+
+    @Test
+    void routes_des_exemplaires_de_courriels_en_test_seulement() {
+        contexte.withPropertyValues("spring.profiles.active=dev", "jurika.test.seed.enabled=true")
+                .run(c -> {
+                    RouteLocator routes = c.getBean(RouteLocator.class);
+                    assertThat(routesCourriels(routes))
+                            .containsEntry("test-courriels-auth", "lb://auth-service")
+                            .containsEntry("test-courriels-facturation", "lb://billing-service");
+                    // Avant la route generale /api/v1/test/** (seed de dataroom).
+                    java.util.List<String> ordre = routes.getRoutes().map(r -> r.getId()).collectList().block();
+                    assertThat(ordre.indexOf("test-courriels-auth")).isLessThan(ordre.indexOf("test-seed"));
+                    assertThat(ordre.indexOf("test-courriels-facturation")).isLessThan(ordre.indexOf("test-seed"));
+                });
+        contexte.withPropertyValues("spring.profiles.active=prod", "jurika.test.seed.enabled=true")
+                .run(c -> assertThat(routesCourriels(c.getBean(RouteLocator.class))).isEmpty());
+    }
+
     @Test
     void presente_en_test_avec_l_interrupteur() {
         contexte.withPropertyValues("spring.profiles.active=dev", "jurika.test.seed.enabled=true")

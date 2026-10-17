@@ -70,6 +70,9 @@ public class SecurityConfig {
                                 // Lot L6b (E2) : mentions legales publiques de l'editeur (vitrine),
                                 // lecture seule ; chemin exact, GET seulement.
                                 new AntPathRequestMatcher("/api/v1/public/editeur/mentions-legales", "GET"),
+                                // Recette R3 : envoi des exemplaires de courriels ; le controleur
+                                // n'existe qu'en test (interrupteur ET hors profil prod).
+                                new AntPathRequestMatcher("/api/v1/test/courriels/**", "POST"),
                                 new AntPathRequestMatcher("/actuator/**"),
                                 new AntPathRequestMatcher("/v3/api-docs/**"),
                                 new AntPathRequestMatcher("/swagger-ui.html"),

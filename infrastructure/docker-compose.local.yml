@@ -96,6 +96,9 @@ services:
       SMTP_FROM: "${SMTP_FROM:?SMTP_FROM absent : adresse d'expediteur verifiee chez le fournisseur, dans .env.local}"
       # Recette R3 : nom affiche de l'expediteur, comme auth-service.
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-JURIKA}
+      # Recette R3 : route d'envoi des exemplaires de courriels (/api/v1/test/courriels/**),
+      # meme interrupteur que les donnees de test : faux par defaut, jamais en production.
+      JURIKA_TEST_SEED_ENABLED: ${JURIKA_TEST_SEED_ENABLED:-false}
       # Plan limits enforcement (T3) actif par defaut en demo.
       JURIKA_PLAN_LIMITS_ENABLED: "true"
     volumes:

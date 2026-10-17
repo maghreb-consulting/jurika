@@ -89,6 +89,16 @@ class CourrielsComposeTest {
     }
 
     /**
+     * Recette R3 : la route d'envoi des exemplaires de courriels (auth et billing) suit
+     * l'interrupteur des donnees de test ; compose le transmet aux deux services (faux par defaut).
+     */
+    @Test
+    void auth_et_billing_recoivent_l_interrupteur_des_donnees_de_test() throws IOException {
+        assertThat(environnement("auth-service")).contains("JURIKA_TEST_SEED_ENABLED");
+        assertThat(environnement("billing-service")).contains("JURIKA_TEST_SEED_ENABLED");
+    }
+
+    /**
      * Les liens des courriels d'auth (verification d'adresse du courriel de bienvenue,
      * confirmation d'un changement de compte) partent de FRONTEND_URL : sans cette
      * variable, auth ecrivait http://localhost:5173 dans le courriel.

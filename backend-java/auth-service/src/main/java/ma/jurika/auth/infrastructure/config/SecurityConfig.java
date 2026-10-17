@@ -59,6 +59,9 @@ public class SecurityConfig {
                                 // Sprint 12 -- endpoints internes pour billing-service + 5 microservices.
                                 // Filtres au gateway (pas de route /internal/** exposee publiquement).
                                 new AntPathRequestMatcher("/internal/**"),
+                                // Recette R3 : envoi des exemplaires de courriels ; le controleur
+                                // n'existe qu'en test (interrupteur ET hors profil prod).
+                                new AntPathRequestMatcher("/api/v1/test/courriels/**", "POST"),
                                 new AntPathRequestMatcher("/actuator/health"),
                                 new AntPathRequestMatcher("/actuator/health/**"),
                                 new AntPathRequestMatcher("/actuator/info"),

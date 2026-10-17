@@ -13,7 +13,8 @@ import org.springframework.context.annotation.Profile;
  * test. Avant, elle etait declaree dans application.yml, donc presente partout (production
  * comprise) ; elle n'est plus creee que si {@code jurika.test.seed.enabled=true}
  * (JURIKA_TEST_SEED_ENABLED, faux par defaut) et hors profil {@code prod}. Meme double verrou
- * cote dataroom-service (TestSeedController).
+ * cote dataroom-service (TestSeedController). Recette R3 : memes verrous pour l'envoi des
+ * exemplaires de courriels (auth-service et billing-service).
  */
 @Configuration
 @Profile("!prod")
@@ -23,6 +24,12 @@ public class RouteDonneesDeTestConfig {
     @Bean
     public RouteLocator routeDonneesDeTest(RouteLocatorBuilder routes) {
         return routes.routes()
+                // Recette R3 : envoi des exemplaires de courriels, vers le service qui envoie ;
+                // avant la route generale du seed (ordre plus petit = evaluee d'abord).
+                .route("test-courriels-auth", r -> r.order(-1).path("/api/v1/test/courriels/auth")
+                        .uri("lb://auth-service"))
+                .route("test-courriels-facturation", r -> r.order(-1).path("/api/v1/test/courriels/facturation")
+                        .uri("lb://billing-service"))
                 .route("test-seed", r -> r.path("/api/v1/test/**").uri("lb://dataroom-service"))
                 .build();
     }

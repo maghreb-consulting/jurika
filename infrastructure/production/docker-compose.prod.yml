@@ -100,6 +100,11 @@ services:
     depends_on: [postgres, redis, rabbitmq, discovery]
     networks: [jurika-net]
     env_file: ../../.env.prod
+    # Recette R3 : route d'envoi des exemplaires de courriels absente en production (profil prod +
+    # interrupteur force a faux, double verrou ; CourrielsExemplairesTestController).
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      JURIKA_TEST_SEED_ENABLED: "false"
 
   ticket:
     image: jurika/ticket-service:latest

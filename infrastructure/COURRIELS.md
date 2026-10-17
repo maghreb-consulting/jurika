@@ -61,6 +61,28 @@ Un courriel qui ne part pas (destinataire refusé, relais injoignable) est journ
 (« Courriel client NON envoye ») puis rangé **intact** dans la file `auth.courriels-client.echecs`,
 consultable et rejouable depuis la console RabbitMQ ; il n’est ni perdu ni rejoué en boucle.
 
+## 2 ter. Mise en page et exemplaires (recette R3)
+
+- **Une seule mise en page** pour tous les courriels (auth-service et billing-service) :
+  `backend-java/jurika-common/src/main/resources/templates/email/_mise-en-page.html` (bandeaux
+  marine et or, frise de zellige en caractères, logo, titre). Chaque gabarit n’y ajoute que son
+  corps et son pied.
+- **Aucune image de décor** : le zellige est fait de caractères et de couleurs. La **seule image**
+  est le logo Moucharabieh en PNG 3x (`branding/courriel/logo-jurika-courriel.png`, 168 × 168,
+  affiché en 56 × 56, texte de remplacement « JURIKA »), joint **en ligne** (Content-ID
+  `logo-jurika`) et référencé par le HTML. Régénération depuis le SVG du front :
+  `node scripts/courriels/generer-logo-courriel.mjs`.
+- **Structure MIME** (`CourrielJurika`, jurika-common) : `multipart/related` [ `multipart/alternative`
+  (texte brut + HTML), logo en ligne ]. Seuls la facture et le contrat ajoutent leur **PDF en pièce
+  jointe** (racine `multipart/mixed`). Toute autre image en ligne et toute image de fond CSS sont
+  refusées. Cause du défaut corrigé : le motif de zellige était joint en ligne sans être référencé
+  par aucun gabarit, et Gmail comme Outlook affichent une telle partie comme pièce jointe.
+- **Exemplaires** (environnement de test seulement : `JURIKA_TEST_SEED_ENABLED=true` et profil
+  autre que `prod`) : `POST /api/v1/test/courriels/auth` (bienvenue, identifiants d’un employé,
+  identifiants d’un client, réinitialisation du mot de passe, notification au client) et
+  `POST /api/v1/test/courriels/facturation` (facture avec son PDF), corps
+  `{"destinataire": "adresse"}`. Données fictives explicites, objet préfixé « [Exemplaire fictif] ».
+
 ## 3. DNS du domaine jurika.ma (à la mise en production seulement, à publier chez le registraire)
 
 Un domaine n'a qu'**un seul** enregistrement SPF : pendant une transition Brevo → SES, les deux
