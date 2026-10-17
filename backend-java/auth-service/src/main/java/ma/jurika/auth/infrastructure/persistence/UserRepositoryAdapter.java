@@ -148,6 +148,11 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
+    public void updatePhone(UUID userId, String telephoneE164) {
+        jpa.updatePhone(userId, telephoneE164);
+    }
+
+    @Override
     public void updateTotpSecret(UUID userId, String encryptedSecret, boolean enabled) {
         jpa.updateTotpSecret(userId, encryptedSecret, enabled);
     }

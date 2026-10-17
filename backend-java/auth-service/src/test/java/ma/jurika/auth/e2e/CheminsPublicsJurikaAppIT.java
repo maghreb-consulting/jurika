@@ -197,11 +197,23 @@ class CheminsPublicsJurikaAppIT {
     @Test
     @org.junit.jupiter.api.Order(2)
     void defi_sms_de_connexion_cree_le_code() throws Exception {
+        // Recette R2 (2026-10-17) : le code de connexion n'est envoye qu'a un compte dont le SMS
+        // est la methode active (numero verifie). Sans elle : aucun code (reponse identique).
         mvc.perform(post("/api/v1/auth/login/sms/challenge").contentType("application/json")
                         .content("{\"userId\":\"" + KARIM_ID + "\",\"workspaceId\":\"" + WS_DEMO + "\"}"))
                 .andExpect(status().isAccepted());
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sms_otp_codes WHERE user_id = ? AND purpose = '2FA_LOGIN'",
-                Integer.class, KARIM_ID)).isEqualTo(1);
+                Integer.class, KARIM_ID)).isZero();
+        jdbc.update("UPDATE users SET twofa_method = 'SMS', phone_verified_at = NOW() WHERE id = ?", KARIM_ID);
+        try {
+            mvc.perform(post("/api/v1/auth/login/sms/challenge").contentType("application/json")
+                            .content("{\"userId\":\"" + KARIM_ID + "\",\"workspaceId\":\"" + WS_DEMO + "\"}"))
+                    .andExpect(status().isAccepted());
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sms_otp_codes WHERE user_id = ? AND purpose = '2FA_LOGIN'",
+                    Integer.class, KARIM_ID)).isEqualTo(1);
+        } finally {
+            jdbc.update("UPDATE users SET twofa_method = NULL, phone_verified_at = NULL WHERE id = ?", KARIM_ID);
+        }
     }
 
     @Test

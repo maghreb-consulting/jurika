@@ -4,6 +4,7 @@ import ma.jurika.auth.domain.model.AuthTokens;
 import ma.jurika.auth.domain.model.User;
 import ma.jurika.auth.domain.model.UserStatus;
 import ma.jurika.auth.domain.port.AuditLogger;
+import ma.jurika.auth.domain.port.EventPublisher;
 import ma.jurika.auth.domain.port.RefreshTokenRepository;
 import ma.jurika.auth.domain.port.SmsOtpCodeRepository;
 import ma.jurika.auth.domain.port.SmsOtpCodeRepository.StoredOtp;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -32,6 +34,16 @@ import java.util.UUID;
  *     <li>{@code PHONE_VERIFICATION} : marque {@code phone_verified_at} + active {@code twofa_method=SMS}</li>
  *     <li>{@code 2FA_LOGIN} : valide le 2eme facteur a la connexion (le caller doit ensuite emettre les JWT)</li>
  * </ul>
+ * Recette R2 (2026-10-17) :
+ * <ul>
+ *     <li>{@code 2FA_SETUP} et {@code PHONE_VERIFICATION} ACTIVENT le SMS : le numero du code
+ *     (celui saisi a l'envoi) devient celui du compte, verifie ; methode SMS ; l'application
+ *     d'authentification eventuelle est desactivee (une seule methode active). Les codes de
+ *     recuperation sont conserves. Trace 2FA_ENABLED (methode, methode precedente) ;</li>
+ *     <li>refus explicite si le SMS n'est pas disponible (DisponibiliteSms2fa) ;</li>
+ *     <li>un code faux est COMPTE (essais du code, echecs du compte) : la transaction n'est plus
+ *     annulee par le refus (noRollbackFor), sans quoi la limite des essais etait inoperante.</li>
+ * </ul>
  */
 @Service
 public class VerifySmsOtpUseCase {
@@ -42,6 +54,8 @@ public class VerifySmsOtpUseCase {
     private final AuditLogger auditLogger;
     private final TokenIssuer tokenIssuer;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final EventPublisher eventPublisher;
+    private final DisponibiliteSms2fa disponibiliteSms;
     private final int maxFailedAttempts;
     private final Duration lockDuration;
 
@@ -51,6 +65,8 @@ public class VerifySmsOtpUseCase {
                                 AuditLogger auditLogger,
                                 TokenIssuer tokenIssuer,
                                 RefreshTokenRepository refreshTokenRepository,
+                                EventPublisher eventPublisher,
+                                DisponibiliteSms2fa disponibiliteSms,
                                 @Value("${jurika.auth.max-failed-attempts:5}") int maxFailedAttempts,
                                 @Value("${jurika.auth.lock-duration-minutes:15}") int lockDurationMinutes) {
         this.userRepository = userRepository;
@@ -59,6 +75,8 @@ public class VerifySmsOtpUseCase {
         this.auditLogger = auditLogger;
         this.tokenIssuer = tokenIssuer;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.eventPublisher = eventPublisher;
+        this.disponibiliteSms = disponibiliteSms;
         this.maxFailedAttempts = maxFailedAttempts;
         this.lockDuration = Duration.ofMinutes(lockDurationMinutes);
     }
@@ -78,8 +96,12 @@ public class VerifySmsOtpUseCase {
      * {@link ma.jurika.auth.infrastructure.security.Setup2faRequiredEnforcer} le
      * bloque a 403 sur tous les endpoints metier.
      */
-    @Transactional
+    // Recette R2 (2026-10-17) : un echec (UnauthorizedException) ne doit pas annuler le compte
+    // des echecs ecrit juste avant (sinon la limite des essais, RG-AU37, etait inoperante :
+    // compteur remis a l'etat d'avant a chaque refus).
+    @Transactional(noRollbackFor = UnauthorizedException.class)
     public AuthTokens execute(Command cmd) {
+        disponibiliteSms.exiger();
         TenantContext.set(cmd.workspaceId());
 
         StoredOtp otp = otpRepository.findLatestActive(cmd.userId(), cmd.purpose())
@@ -121,9 +143,8 @@ public class VerifySmsOtpUseCase {
         userRepository.resetFailedLogin(cmd.userId());
 
         // Effets metier selon purpose
-        if ("PHONE_VERIFICATION".equals(cmd.purpose())) {
-            userRepository.markPhoneVerified(cmd.userId(), Instant.now());
-            userRepository.updateTwofaMethod(cmd.userId(), "SMS");
+        if ("PHONE_VERIFICATION".equals(cmd.purpose()) || "2FA_SETUP".equals(cmd.purpose())) {
+            activerSms(cmd, otp.phoneE164());
         }
 
         auditLogger.log(cmd.workspaceId(), cmd.userId(), "SMS_OTP_VERIFIED", "user",
@@ -161,5 +182,26 @@ public class VerifySmsOtpUseCase {
             return tokens;
         }
         return null;
+    }
+
+    /** Recette R2 : active le SMS sur le numero verifie par le code (une seule methode active). */
+    private void activerSms(Command cmd, String telephone) {
+        User avant = userRepository.findById(cmd.userId())
+                .orElseThrow(() -> new NotFoundException("Utilisateur introuvable."));
+        String precedente = avant.methodeDeuxFacteursActive();
+        userRepository.updatePhone(cmd.userId(), telephone);
+        userRepository.markPhoneVerified(cmd.userId(), Instant.now());
+        if (avant.totpEnabled()) {
+            // Le secret reste en base (non utilise) ; l'application n'est plus demandee.
+            userRepository.updateTotpSecret(cmd.userId(), avant.totpSecretEncrypted(), false);
+        }
+        userRepository.updateTwofaMethod(cmd.userId(), "SMS");
+        eventPublisher.publishUser2faEnabled(cmd.workspaceId(), cmd.userId());
+        Map<String, Object> details = new HashMap<>();
+        details.put("method", "SMS");
+        details.put("precedente", precedente == null ? "AUCUNE" : precedente);
+        details.put("simule", disponibiliteSms.simule());
+        auditLogger.log(cmd.workspaceId(), cmd.userId(), "2FA_ENABLED", "user",
+                cmd.userId(), cmd.ipAddress(), cmd.userAgent(), details);
     }
 }

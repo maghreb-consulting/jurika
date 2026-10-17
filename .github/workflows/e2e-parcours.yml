@@ -93,6 +93,10 @@ jobs:
           grep -q "^CORS_ALLOWED_ORIGINS=http://${HOTE}," .env.local
           # Route de seed de test (profil hors prod) : les parcours creent leurs cabinets.
           echo "JURIKA_TEST_SEED_ENABLED=true" >> .env.local
+          # Recette R2 : double authentification par SMS simulee (code dans le journal d'auth et
+          # route de test /api/v1/test/auth-2fa-sms/**), pile de test seulement.
+          sed -i "/^JURIKA_SMS_SIMULATION=/d" .env.local
+          echo "JURIKA_SMS_SIMULATION=true" >> .env.local
           corpus="$GITHUB_WORKSPACE/backend-java/ai-service/src/test/resources/corpus-test/CORPUS_TEST"
           test -f "$corpus/INDEX_CORPUS.xlsx"
           sed -i "s|^JURIKA_CORPUS_DIR=.*|JURIKA_CORPUS_DIR=${corpus}|" .env.local
@@ -137,6 +141,9 @@ jobs:
             | python3 -c "import sys,json; e=json.load(sys.stdin)['services']['dataroom-service']['environment']; assert e.get('JURIKA_TEST_SEED_ENABLED')=='true', e.get('JURIKA_TEST_SEED_ENABLED')"
           docker compose $COMPOSE_ARGS config --format json \
             | python3 -c "import sys,json; e=json.load(sys.stdin)['services']['gateway-service']['environment']; assert e.get('JURIKA_TEST_SEED_ENABLED')=='true', e.get('JURIKA_TEST_SEED_ENABLED')"
+          # Recette R2 : la simulation du SMS doit atteindre auth-service.
+          docker compose $COMPOSE_ARGS config --format json \
+            | python3 -c "import sys,json; e=json.load(sys.stdin)['services']['auth-service']['environment']; assert e.get('JURIKA_SMS_SIMULATION')=='true', e.get('JURIKA_SMS_SIMULATION')"
 
       - name: Construction des images
         run: docker compose $COMPOSE_ARGS build --parallel

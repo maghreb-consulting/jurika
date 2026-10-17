@@ -138,6 +138,11 @@ services:
       # Brevo. Le fournisseur (Brevo aujourd'hui, Amazon SES demain) ne change que
       # par ces variables : voir infrastructure/COURRIELS.md.
       JURIKA_EMAIL_PROVIDER: ${JURIKA_EMAIL_PROVIDER:-smtp}
+      # Recette R2 (2026-10-17) : double authentification par SMS SIMULEE (code ecrit dans le
+      # journal d'auth, SMS-DEV-STUB ; route de test /api/v1/test/auth-2fa-sms/**). Faux par
+      # defaut ; vrai seulement sur une pile de test (Z440, job CI e2e-parcours). Ignore en
+      # profil prod (DisponibiliteSms2fa). Jamais en production.
+      JURIKA_SMS_SIMULATION: ${JURIKA_SMS_SIMULATION:-false}
       SMTP_HOST: ${SMTP_HOST:-mailhog}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_USER: ${SMTP_USER:-}

@@ -93,7 +93,10 @@ public class LoginUseCase {
     public record Result(boolean requires2fa, boolean requires2faSetup, boolean mustChangePassword,
                           String twofaMethod, AuthTokens tokens, UUID userId, UUID workspaceId) {}
 
-    @Transactional
+    // Recette R2 (2026-10-17) : un echec (UnauthorizedException) ne doit pas annuler le compte
+    // des echecs ecrit juste avant (sinon la limite des essais, RG-AU37, etait inoperante :
+    // compteur remis a l'etat d'avant a chaque refus).
+    @Transactional(noRollbackFor = UnauthorizedException.class)
     public Result execute(Command cmd) {
         Workspace workspace = workspaceRepository.findByCode(cmd.workspaceCode())
                 .orElseThrow(() -> new NotFoundException("Code workspace inconnu : v\u00e9rifiez le code de votre cabinet."));
@@ -156,18 +159,15 @@ public class LoginUseCase {
 
         userRepository.resetFailedLogin(user.id());
 
-        // 2FA seulement si activee explicitement par l'utilisateur (optionnel, classique)
-        if (user.totpEnabled() && "TOTP".equals(user.twofaMethod())) {
+        // 2FA seulement si une methode est REELLEMENT active (recette R2, 2026-10-17 : SMS
+        // verifie par un code, ou application confirmee). Avant, une methode choisie mais
+        // jamais verifiee (twofa_method pose par /2fa/choose-method) faisait sauter le second
+        // facteur : la session etait emise directement.
+        String methodeActive = user.methodeDeuxFacteursActive();
+        if (methodeActive != null) {
             auditLogger.log(workspace.id(), user.id(), "LOGIN_2FA_REQUIRED", "user", user.id(),
-                    cmd.ipAddress(), cmd.userAgent(), Map.of("method", "TOTP"));
-            return new Result(true, false, false, "TOTP",
-                    null, user.id(), workspace.id());
-        }
-
-        if ("SMS".equals(user.twofaMethod()) && user.isPhoneVerified()) {
-            auditLogger.log(workspace.id(), user.id(), "LOGIN_2FA_REQUIRED", "user", user.id(),
-                    cmd.ipAddress(), cmd.userAgent(), Map.of("method", "SMS"));
-            return new Result(true, false, false, "SMS",
+                    cmd.ipAddress(), cmd.userAgent(), Map.of("method", methodeActive));
+            return new Result(true, false, false, methodeActive,
                     null, user.id(), workspace.id());
         }
 

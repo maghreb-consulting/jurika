@@ -12,14 +12,19 @@ package ma.jurika.auth.api.dto;
  * @param totpAvailable toujours {@code true} (rien ne bloque l'install Google
  *                      Authenticator) — garde present pour symetrie + future
  *                      extension (ex: desactivation par admin).
- * @param smsAvailable  {@code true} ssi l'utilisateur a un {@code user.phone} non
- *                      vide en base. Si {@code false}, le bouton SMS doit etre
- *                      masque dans l'UI.
- * @param maskedPhone   numero masque (ex: "+212 ****1234") affichable a cote du
- *                      bouton SMS. {@code null} si {@code !smsAvailable}.
+ * @param smsAvailable  recette R2 (2026-10-17) : {@code true} si la plateforme ouvre le SMS
+ *                      (fournisseur configure, ou simulation en environnement de test).
+ *                      Le numero se saisit a l'activation. Si {@code false}, l'option SMS est
+ *                      affichee indisponible et le serveur la refuse.
+ * @param smsSimule     {@code true} si le SMS est simule (environnement de test : aucun SMS
+ *                      envoye, code ecrit dans le journal d'auth, SMS-DEV-STUB).
+ * @param maskedPhone   numero du compte masque (ex: "+212 ****1234"), ou {@code null}.
+ * @param methodeActive methode reellement active ("SMS", "TOTP") ou {@code null}.
  */
 public record Setup2faOptionsResponse(
         boolean totpAvailable,
         boolean smsAvailable,
-        String maskedPhone
+        boolean smsSimule,
+        String maskedPhone,
+        String methodeActive
 ) {}

@@ -178,6 +178,11 @@ jurika:
   # (TextBee, SMSGateway-for-Android, etc. — voir HttpGatewaySmsSender).
   sms:
     provider: ${SMS_PROVIDER:logger}
+    # Recette R2 (2026-10-17) : double authentification par SMS SIMULEE (provider logger : code
+    # ecrit dans le journal, SMS-DEV-STUB). Vraie seulement sur une pile de test (Z440, CI e2e) ;
+    # ignoree en profil prod (DisponibiliteSms2fa). Faux : sans fournisseur reel, l'option SMS
+    # n'est ni proposee ni acceptee.
+    simulation: ${JURIKA_SMS_SIMULATION:false}
     twilio:
       account-sid: ${TWILIO_ACCOUNT_SID:}
       auth-token: ${TWILIO_AUTH_TOKEN:}

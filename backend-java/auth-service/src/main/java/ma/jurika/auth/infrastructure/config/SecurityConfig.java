@@ -56,6 +56,10 @@ public class SecurityConfig {
                                 new AntPathRequestMatcher("/api/v1/auth/refresh"),
                                 new AntPathRequestMatcher("/api/v1/auth/password-reset/**"),
                                 new AntPathRequestMatcher("/api/v1/public/**"),
+                                // Recette R2 (2026-10-17) : dernier code SMS simule, environnement de
+                                // test seulement (CodeSmsDeTestController : simulation + hors prod ;
+                                // sans ce controleur, la route repond 404).
+                                new AntPathRequestMatcher("/api/v1/test/auth-2fa-sms/**"),
                                 // Sprint 12 -- endpoints internes pour billing-service + 5 microservices.
                                 // Filtres au gateway (pas de route /internal/** exposee publiquement).
                                 new AntPathRequestMatcher("/internal/**"),

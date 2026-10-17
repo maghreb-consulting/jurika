@@ -77,6 +77,11 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
     @Query("UPDATE UserEntity u SET u.phoneVerifiedAt = :when WHERE u.id = :id")
     void markPhoneVerified(@Param("id") UUID id, @Param("when") Instant when);
 
+    /** Recette R2 : numero de la double authentification par SMS, apres verification par un code. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE UserEntity u SET u.phone = :telephone, u.phoneE164 = :telephone WHERE u.id = :id")
+    void updatePhone(@Param("id") UUID id, @Param("telephone") String telephone);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE UserEntity u SET u.totpSecretEncrypted = :secret, u.totpEnabled = :enabled WHERE u.id = :id")
     void updateTotpSecret(@Param("id") UUID id, @Param("secret") String secret, @Param("enabled") boolean enabled);

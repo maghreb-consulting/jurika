@@ -45,6 +45,7 @@ public class Setup2faUseCase {
     private final TokenIssuer tokenIssuer;
     private final RefreshTokenRepository refreshTokenRepository;
     private final String issuer;
+    private final DisponibiliteSms2fa disponibiliteSms;
 
     public Setup2faUseCase(UserRepository userRepository,
                            TotpService totpService,
@@ -54,7 +55,8 @@ public class Setup2faUseCase {
                            EmailSender emailSender,
                            TokenIssuer tokenIssuer,
                            RefreshTokenRepository refreshTokenRepository,
-                           @Value("${jurika.auth.totp-issuer:JURIKA}") String issuer) {
+                           @Value("${jurika.auth.totp-issuer:JURIKA}") String issuer,
+                           DisponibiliteSms2fa disponibiliteSms) {
         this.userRepository = userRepository;
         this.totpService = totpService;
         this.encryptionService = encryptionService;
@@ -64,11 +66,20 @@ public class Setup2faUseCase {
         this.tokenIssuer = tokenIssuer;
         this.refreshTokenRepository = refreshTokenRepository;
         this.issuer = issuer;
+        this.disponibiliteSms = disponibiliteSms;
     }
 
     public record InitResult(String secret, String otpAuthUri, String qrCodePngBase64) {}
 
-    public record SetupOptions(boolean totpAvailable, boolean smsAvailable, String maskedPhone) {}
+    /**
+     * @param smsAvailable   recette R2 : vrai si la plateforme ouvre le SMS (fournisseur configure, ou
+     *                       simulation en environnement de test) ; le numero se saisit a l'activation
+     * @param smsSimule      vrai si le SMS est simule (environnement de test : code dans le journal)
+     * @param maskedPhone    numero du compte masque, ou {@code null}
+     * @param methodeActive  methode reellement active ("SMS", "TOTP") ou {@code null}
+     */
+    public record SetupOptions(boolean totpAvailable, boolean smsAvailable, boolean smsSimule,
+                               String maskedPhone, String methodeActive) {}
 
     /**
      * Renvoie au frontend les methodes 2FA disponibles pour cet utilisateur.
@@ -84,7 +95,8 @@ public class Setup2faUseCase {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("Utilisateur introuvable."));
         boolean hasPhone = user.phone() != null && !user.phone().isBlank();
-        return new SetupOptions(true, hasPhone, hasPhone ? maskPhone(user.phone()) : null);
+        return new SetupOptions(true, disponibiliteSms.disponible(), disponibiliteSms.simule(),
+                hasPhone ? maskPhone(user.phone()) : null, user.methodeDeuxFacteursActive());
     }
 
     private static String maskPhone(String phone) {
@@ -165,12 +177,14 @@ public class Setup2faUseCase {
         if (pas.isEmpty() || !userRepository.consommerPasTotp(user.id(), pas.getAsLong())) {
             throw new ValidationException("Code de double authentification incorrect.");
         }
+        String precedente = user.methodeDeuxFacteursActive();
         userRepository.updateTotpSecret(user.id(), user.totpSecretEncrypted(), true);
         // Active TOTP comme methode 2FA preferentielle
         userRepository.updateTwofaMethod(user.id(), "TOTP");
         eventPublisher.publishUser2faEnabled(user.workspaceId(), user.id());
+        // Recette R2 : methode precedente tracee (passage du SMS a l'application).
         auditLogger.log(user.workspaceId(), user.id(), "2FA_ENABLED", "user", user.id(),
-                null, null, Map.of("method", "TOTP"));
+                null, null, Map.of("method", "TOTP", "precedente", precedente == null ? "AUCUNE" : precedente));
 
         // Sprint 3 / TASK 2 — notification 2fa-enabled (best-effort)
         try {

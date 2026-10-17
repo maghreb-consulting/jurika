@@ -443,9 +443,9 @@ public class AuthController {
                                           @Valid @RequestBody SmsOtpSendRequest req,
                                           HttpServletRequest http) {
         var r = sendSmsOtpUseCase.execute(new SendSmsOtpUseCase.Command(
-                user.userId(), user.workspaceId(), req.purpose(),
+                user.userId(), user.workspaceId(), req.purpose(), req.telephone(), req.codeActuel(),
                 http.getRemoteAddr(), http.getHeader("User-Agent")));
-        return new SmsOtpSendResponse(r.otpId(), r.maskedPhone(), r.expiresAt());
+        return new SmsOtpSendResponse(r.otpId(), r.maskedPhone(), r.expiresAt(), r.simule());
     }
 
     /**
@@ -590,7 +590,8 @@ public class AuthController {
     @PreAuthorize("isAuthenticated()")
     public Setup2faOptionsResponse getSetup2faOptions(@AuthenticationPrincipal AuthenticatedUser user) {
         var r = setup2faUseCase.getSetupOptions(user.userId());
-        return new Setup2faOptionsResponse(r.totpAvailable(), r.smsAvailable(), r.maskedPhone());
+        return new Setup2faOptionsResponse(r.totpAvailable(), r.smsAvailable(), r.smsSimule(),
+                r.maskedPhone(), r.methodeActive());
     }
 
     /**

@@ -32,4 +32,10 @@ public class LoggerSmsSender implements SmsSender {
         log.warn("[SMS-DEV-STUB] -> {} : {}", phoneE164, body);
         metrics.smsSent(PROVIDER);
     }
+
+    /** Recette R2 : rien n'est envoye, le code n'est que dans le journal. */
+    @Override
+    public boolean simule() {
+        return true;
+    }
 }

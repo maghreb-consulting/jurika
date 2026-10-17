@@ -130,6 +130,12 @@ public interface UserRepository {
      */
     void markPhoneVerified(UUID userId, Instant verifiedAt);
 
+    /**
+     * Recette R2 (2026-10-17) : enregistre le numero (E.164) de la double authentification par
+     * SMS ({@code phone} et {@code phone_e164}), seulement apres sa verification par un code.
+     */
+    void updatePhone(UUID userId, String telephoneE164);
+
     void registerSuccessfulLogin(UUID userId, Instant when);
 
     void incrementFailedLogin(UUID userId, Instant lockUntilOrNull);

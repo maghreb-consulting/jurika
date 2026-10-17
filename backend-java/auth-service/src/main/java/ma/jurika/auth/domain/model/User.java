@@ -119,7 +119,23 @@ public final class User {
         return lockedUntil != null && lockedUntil.isAfter(Instant.now());
     }
 
+    /**
+     * Recette R2 (2026-10-17) : methode de double authentification REELLEMENT active.
+     * SMS seulement si le numero a ete verifie par un code ; TOTP seulement si l'application a
+     * ete confirmee ({@code totp_enabled}). Le simple choix d'une methode ({@code twofa_method}
+     * pose sans verification) n'active rien : avant ce correctif, choisir SMS ou TOTP sans le
+     * verifier faisait passer la configuration pour faite et la connexion se faisait sans second
+     * facteur (motif 9).
+     *
+     * @return "SMS", "TOTP" ou {@code null} (aucune methode active)
+     */
+    public String methodeDeuxFacteursActive() {
+        if ("SMS".equals(twofaMethod) && phoneVerifiedAt != null) return "SMS";
+        if (totpEnabled) return "TOTP";
+        return null;
+    }
+
     public boolean requires2faSetup() {
-        return twofaMethod == null && !totpEnabled;
+        return methodeDeuxFacteursActive() == null;
     }
 }
