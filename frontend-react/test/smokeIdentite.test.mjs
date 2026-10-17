@@ -9,7 +9,7 @@ import { identiteDeFumee } from '../../scripts/smoke-identite.mjs';
  * boite : toutes les adresses du test sont dans le domaine reserve @jurika.test.
  */
 describe('identite du test de fumee', () => {
-  it('n’adresse jamais un courriel a une vraie boite, meme SMOKE_CONTACT_EMAIL defini', () => {
+  it('ne vise jamais une vraie boite par courriel, meme SMOKE_CONTACT_EMAIL defini', () => {
     const id = identiteDeFumee(1760000000, { SMOKE_CONTACT_EMAIL: 'personne.reelle@gmail.com' });
     expect(id.email).toMatch(/@jurika\.test$/);
     expect(id.contactEmail).toMatch(/@jurika\.test$/);

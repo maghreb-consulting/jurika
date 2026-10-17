@@ -38,7 +38,7 @@ describe('VerificationEssai', () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  it('essai ouvert dans un autre onglet : le code du cabinet et l’identifiant s’affichent ici', async () => {
+  it('essai ouvert dans un autre onglet : code du cabinet et identifiant affiches ici', async () => {
     service.etatDemande.mockResolvedValue({
       ...EN_COURS, emailVerifie: true, essaiCree: true,
       workspaceCode: 'JUR-AB12C', loginEmail: 'karim.benali@jurika.ma',
@@ -52,7 +52,7 @@ describe('VerificationEssai', () => {
     expect(screen.queryByText(/n’a pas pu être envoyé/)).not.toBeInTheDocument();
   });
 
-  it('echec de l’envoi connu a la creation : il est dit', () => {
+  it('echec de l envoi connu a la creation : il est dit', () => {
     render(<MemoryRouter><Hote initial={{
       ...EN_COURS, emailVerifie: true, essaiCree: true, workspaceCode: 'JUR-AB12C',
       loginEmail: 'karim.benali@jurika.ma', identifiantsEnvoyes: false,
