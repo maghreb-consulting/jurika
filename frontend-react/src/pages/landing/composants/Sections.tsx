@@ -59,12 +59,12 @@ import {
   type Pilier,
 } from '../contenu';
 import type { NomCapture } from '../captures';
-import type { NomVideo } from '../videos';
+import type { NomScene } from '../demonstrations/scenes';
+import { DemonstrationAnimee } from '../demonstrations/DemonstrationAnimee';
 import { CaptureEcran } from './CaptureEcran';
 import { EmblemeAnime } from './EmblemeAnime';
 import { MotifZellige } from './MotifZellige';
 import { Vivante } from './Vivante';
-import { VideoBoucle } from './VideoBoucle';
 
 /**
  * Lot L6b (E10, V2) : sections de la vitrine, dans l'ordre de la page.
@@ -84,10 +84,14 @@ import { VideoBoucle } from './VideoBoucle';
  * vivantes, bascule clair / sombre, cartes de tarifs qui se soulevent, questions qui
  * s'ouvrent en douceur. Transform et opacity seulement (vitrine.css).
  *
- * V4 (demande du 2026-10-16) : courtes videos en boucle (VideoBoucle.tsx, videos.ts) dans
+ * V4 (demande du 2026-10-16) : courtes videos en boucle (retirees en L6c) dans
  * l'accroche et dans le recit, a la place des captures fixes (la Data Room garde la sienne) ;
  * la bascule clair / sombre de la capture du tableau de bord devient la video du passage
  * du theme clair au theme sombre.
+ *
+ * L6c (demande du 2026-10-17) : les videos sont remplacees par des demonstrations animees
+ * construites en HTML avec les vrais composants (demonstrations/, DemonstrationAnimee),
+ * sur des donnees fictives et fixes ; aucune video ni image animee.
  */
 
 /* ------------------------------------------------------------------- Briques */
@@ -224,11 +228,11 @@ function useEntreeALecran(ref: { current: HTMLElement | null }) {
 }
 
 /**
- * V4 (demande du 2026-10-16) : video principale de l'accroche, la creation d'un ticket de
- * creation de SARL jusqu'a l'aide de la premiere etape du parcours (enregistree sur la pile
- * de demonstration) : le geste central de la plateforme, ouvrir une operation et etre guide.
+ * V4 (demande du 2026-10-16), L6c : demonstration principale de l'accroche, la creation
+ * d'un ticket de creation de SARL jusqu'a l'aide de la premiere etape du parcours : le geste
+ * central de la plateforme, ouvrir une operation et etre guide.
  */
-const VIDEO_ACCROCHE: NomVideo = 'creation-ticket';
+const DEMO_ACCROCHE: NomScene = 'creation-ticket';
 
 export function Accroche() {
   const motsTitre = ACCROCHE.titre.split(/\s+/).length;
@@ -279,7 +283,7 @@ export function Accroche() {
         <div className="v-scene mx-auto mt-14 max-w-5xl text-left">
           <div ref={profondeur} className="v-profondeur">
             <Vivante classeContenu="rounded-xl">
-              <VideoBoucle nom={VIDEO_ACCROCHE} apresChargement prioritaire />
+              <DemonstrationAnimee nom={DEMO_ACCROCHE} />
             </Vivante>
           </div>
         </div>
@@ -426,11 +430,11 @@ function ElementFonction({ f, ton = 'clair' }: { f: Fonctionnalite; ton?: 'clair
  * acte, JURI. Chaque etape reprend un pilier de contenu.ts (ou la bande de l'IA) et l'ecran
  * de la plateforme qui le montre.
  */
-/** Visuel d'une etape : une video en boucle (V4), ou une capture fixe. */
-type Visuel = { video: NomVideo } | { capture: NomCapture };
+/** Visuel d'une etape : une demonstration animee (L6c), ou une capture fixe. */
+type Visuel = { demo: NomScene } | { capture: NomCapture };
 
 function nomVisuel(v: Visuel): string {
-  return 'video' in v ? v.video : v.capture;
+  return 'demo' in v ? v.demo : v.capture;
 }
 
 interface Etape {
@@ -456,26 +460,26 @@ function etapeDuPilier(id: string, ecran: string, visuel: Visuel): Etape {
 }
 
 /**
- * V4 (demande du 2026-10-16) : une video par fonctionnalite, a la place des captures fixes :
+ * V4 (demande du 2026-10-16), L6c : une demonstration animee par fonctionnalite :
  * tableau de bord (passage du theme clair au theme sombre), ticket (la frise des demarches
  * qui se coche), acte (generation des statuts et apercu), JURI (il sort du bord et ouvre
- * l'aide). La Data Room garde sa capture (aucune video demandee).
+ * l'aide). La Data Room garde sa capture fixe.
  */
 const ETAPES: Etape[] = [
-  etapeDuPilier('pilier-suivi', 'Tableau de bord', { video: 'theme-clair-sombre' }),
-  etapeDuPilier('pilier-parcours', 'Ticket', { video: 'frise-demarches' }),
+  etapeDuPilier('pilier-suivi', 'Tableau de bord', { demo: 'theme-clair-sombre' }),
+  etapeDuPilier('pilier-parcours', 'Ticket', { demo: 'frise-demarches' }),
   etapeDuPilier('pilier-dataroom', 'Data Room', { capture: 'data-room-clair' }),
-  etapeDuPilier('pilier-actes', 'Acte', { video: 'statuts-apercu' }),
-  { id: 'ia', ecran: 'JURI', visuel: { video: 'juri-aide' }, surtitre: IA.surtitre, titre: IA.titre, texte: IA.texte, fonctions: [IA.fonction] },
+  etapeDuPilier('pilier-actes', 'Acte', { demo: 'statuts-apercu' }),
+  { id: 'ia', ecran: 'JURI', visuel: { demo: 'juri-aide' }, surtitre: IA.surtitre, titre: IA.titre, texte: IA.texte, fonctions: [IA.fonction] },
 ];
 
 const TAILLE_RECIT = '(min-width: 1024px) 600px, calc(100vw - 2rem)';
 
 function VisuelEtape({ etape, actif = true }: { etape: Etape; actif?: boolean }) {
-  if ('video' in etape.visuel) {
+  if ('demo' in etape.visuel) {
     return (
       <Vivante classeContenu="rounded-xl">
-        <VideoBoucle nom={etape.visuel.video} actif={actif} />
+        <DemonstrationAnimee nom={etape.visuel.demo} actif={actif} />
       </Vivante>
     );
   }

@@ -19,7 +19,8 @@
  * - "reduire les animations" : rien ne bouge (aucune transformation) ; V4
  *   (demande du 2026-10-16) : les apparitions deviennent des fondus simples
  *   (opacite seule) au lieu d'etre supprimees (bloc final) ; ni inclinaison, ni
- *   bandeau defilant, ni lecture automatique des videos.
+ *   bandeau defilant ; L6c : ni demonstration animee (etat final fixe), ni boucle du
+ *   logo.
  * ===================================================================== */
 
 .vitrine {
@@ -137,6 +138,47 @@
   to { opacity: 1; }
 }
 
+/* L6c (demande du 2026-10-17) : le logo vit en boucle, cycle de 9 s (logo.ts,
+ * CYCLE_LOGO_S), apres son dessin d'entree (2 s) : un reflet d'or traverse la tuile,
+ * l'arc s'illumine doucement, l'etoile scintille. Transparent au repos : hors animation,
+ * c'est le logo exact. data-pause (hors ecran, onglet cache) suspend la boucle. */
+.v-embleme-reflet,
+.v-embleme-halo,
+.v-embleme-etoile {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.v-embleme-reflet {
+  animation: v-embleme-reflet 9s var(--v-ease-trace) 2s infinite both;
+}
+.v-embleme-halo {
+  animation: v-embleme-halo 9s ease-in-out 2s infinite both;
+}
+.v-embleme-etoile {
+  animation: v-embleme-etoile 9s var(--v-ease) 2s infinite both;
+}
+.v-embleme[data-pause] .v-embleme-boucle * {
+  animation-play-state: paused;
+}
+@keyframes v-embleme-reflet {
+  0%, 8% { opacity: 0; transform: translateX(-70px); }
+  10% { opacity: 1; }
+  26% { opacity: 1; }
+  28%, 100% { opacity: 0; transform: translateX(70px); }
+}
+@keyframes v-embleme-halo {
+  0%, 18% { opacity: 0; }
+  34% { opacity: 0.55; }
+  56%, 100% { opacity: 0; }
+}
+@keyframes v-embleme-etoile {
+  0%, 30% { opacity: 0; transform: scale(0.6); }
+  36% { opacity: 1; transform: scale(1.35); }
+  44% { opacity: 0.7; transform: scale(1); }
+  54%, 100% { opacity: 0; transform: scale(1); }
+}
+
 /* ---- Cadre d'ecran (capture) ------------------------------------------ */
 .v-cadre {
   border: 1px solid var(--jeton-border);
@@ -174,40 +216,107 @@
   background: var(--jeton-bg-overlay);
 }
 
-/* ---- Videos en boucle (VideoBoucle.tsx, V4) ---------------------------- */
-/* Image fixe dans le flux (place reservee, ratio 16:10), video par-dessus, en fondu
- * (opacite seule) quand sa lecture a commence. */
-.v-video-pile {
+/* ---- Demonstrations animees (demonstrations/, L6c) -------------------- */
+/* Scene dessinee a taille fixe (800 x 500) puis mise a l'echelle du cadre (--v-echelle,
+ * ecrit par useEchelle) : la boite garde son ratio 16:10, rien ne se decale. Changements
+ * d'etat : opacite et transformation seulement. Hors ecran ou onglet cache : data-pause
+ * suspend aussi les animations CSS de la scene (chargement d'un bouton, clic du curseur). */
+.v-demo-boite {
+  position: relative;
   overflow: hidden;
-}
-.v-video-media {
-  display: block;
-  width: 100%;
-  height: auto;
   aspect-ratio: 16 / 10;
-  object-fit: cover;
-  object-position: top left;
-  background: var(--jeton-bg-overlay);
+  background: var(--jeton-bg);
 }
-.v-video-lecteur {
+.v-demo-toile {
   position: absolute;
-  inset: 0;
+  left: 0;
+  top: 0;
+  width: 800px;
+  height: 500px;
+  transform-origin: 0 0;
+  transform: scale(var(--v-echelle, 1));
+  pointer-events: none;
+  user-select: none;
+}
+.v-demo-toile[data-pause] *,
+.v-demo-toile[data-pause] *::before,
+.v-demo-toile[data-pause] *::after {
+  animation-play-state: paused !important;
+}
+.v-demo-plan {
+  position: relative;
+  width: 100%;
   height: 100%;
+  overflow: hidden;
+  transition: opacity 500ms var(--v-ease);
+}
+.v-demo-vue,
+.v-demo-voile,
+.v-demo-bulle,
+.v-demo-couche {
+  transition: opacity 450ms var(--v-ease);
+}
+.v-demo-sortie,
+.v-demo-cachee {
   opacity: 0;
-  transition: opacity 400ms var(--v-ease);
 }
-.v-video-lecteur[data-actif] {
-  opacity: 1;
+/* Tiroirs, voiles et feuilles au-dessus des pastilles de la frise des etapes (z-10). */
+.v-demo-tiroir,
+.v-demo-voile,
+.v-demo-feuille {
+  z-index: 20;
 }
-.v-video-bouton {
+.v-demo-tiroir {
+  transition: transform 550ms var(--v-ease);
+}
+.v-demo-tiroir-ferme {
+  transform: translateX(104%);
+}
+.v-demo-feuille {
+  transition: transform 650ms var(--v-ease), opacity 400ms var(--v-ease);
+}
+.v-demo-feuille-basse {
+  opacity: 0;
+  transform: translateY(70%);
+}
+.v-demo-juri {
+  transition: transform 320ms var(--v-ease);
+}
+.v-demo-juri-bord {
+  transform: translateX(55%);
+}
+/* Animations reduites : les deux themes cote a cote (decoupe fixe, jamais animee). */
+.v-demo-plan[data-partage] .v-demo-couche-sombre {
+  clip-path: inset(0 0 0 50%);
+}
+.v-demo-bouton {
   z-index: 1;
-  opacity: 0.92;
-  transition: opacity 200ms var(--v-ease);
 }
-.v-video-bouton:hover,
-.v-video-bouton:focus-visible,
-.v-video-bouton-lire {
-  opacity: 1;
+/* Curseur simule et cercle du clic. */
+.v-curseur {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 30;
+  transition: transform 850ms var(--v-ease), opacity 300ms var(--v-ease);
+}
+.v-curseur-fleche {
+  display: block;
+  filter: drop-shadow(0 1px 1.5px color-mix(in srgb, var(--jeton-marine) 45%, transparent));
+}
+.v-curseur-clic {
+  position: absolute;
+  left: -10px;
+  top: -10px;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--jeton-accent);
+  border-radius: 9999px;
+  animation: v-clic 600ms var(--v-ease) both;
+}
+@keyframes v-clic {
+  from { opacity: 0.9; transform: scale(0.3); }
+  to { opacity: 0; transform: scale(1.6); }
 }
 
 /* ---- Captures vivantes (Vivante.tsx) ---------------------------------- */
@@ -536,12 +645,13 @@ details[open] > .v-reponse {
 /* Demande du 2026-10-16 : sous "reduire les animations", rien ne se deplace, ne tourne
  * ni ne change d'echelle ; les animations restent, en FONDUS SIMPLES (opacite seule,
  * 300 ms) : entree de l'accroche (d'un seul tenant, sans cascade), reponses des
- * questions, retour en haut, debut de lecture d'une video. Le contenu
+ * questions, retour en haut. Le contenu
  * plus bas reste visible d'emblee (aucune apparition au defilement : rien n'est cache en
  * attendant un defilement, ni a l'impression, ni aux controles du harnais). La regle
  * globale (index.css) reduit toute duree a 0,01 ms : les fondus ci-dessous la
- * surclassent (selecteurs plus precis, !important). Les videos montrent leur image fixe et un bouton "Lire la video"
- * (VideoBoucle.tsx). */
+ * surclassent (selecteurs plus precis, !important). L6c : les demonstrations montrent leur
+ * etat final, fixe (aucune minuterie, DemonstrationAnimee.tsx) ; le logo ne boucle pas
+ * (animation none : couche de la boucle transparente, logo exact). */
 @media (prefers-reduced-motion: reduce) {
   .vitrine *,
   .vitrine *::before,
@@ -565,9 +675,7 @@ details[open] > .v-reponse {
     animation: v-fondu 300ms ease-out both !important;
   }
   .vitrine .v-recit-ecran,
-  .vitrine .v-retour-haut,
-  .vitrine .v-video-lecteur,
-  .vitrine .v-video-bouton {
+  .vitrine .v-retour-haut {
     transition: opacity 300ms ease-out !important;
   }
   .v-vivante,

@@ -236,7 +236,7 @@ export const BANDE = {
 
 /**
  * Piliers de la section des fonctionnalites : chacun regroupe des FONCTIONNALITES (par leur
- * cle `icone`, chacune une seule fois). Le visuel de chaque pilier (video ou capture) est
+ * cle `icone`, chacune une seule fois). Le visuel de chaque pilier (demonstration ou capture) est
  * choisi par le recit des fonctionnalites (Sections.tsx, ETAPES).
  */
 export interface Pilier {

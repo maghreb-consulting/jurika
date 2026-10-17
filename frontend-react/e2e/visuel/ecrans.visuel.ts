@@ -21,8 +21,13 @@ const SORTIE = process.env.VISUEL_SORTIE ?? path.resolve('test-results/captures'
 const RAPPORT = process.env.VISUEL_RAPPORT ?? path.resolve('test-results/visuel-rapport');
 const NON_BLOQUANT = process.env.VISUEL_NON_BLOQUANT === '1';
 
-/** Couches prevues (exclues du chevauchement) : region des confirmations (toasts), non cliquable. */
-const COUCHES = ['.fixed.pointer-events-none'];
+/**
+ * Couches prevues (exclues du chevauchement) : region des confirmations (toasts), non
+ * cliquable ; L6c : couche sombre de la demonstration "theme clair et sombre" de la vitrine
+ * (decorative, aria-hidden et inert), posee volontairement sur la couche claire et decoupee
+ * a moitie (les deux themes cote a cote quand les animations sont reduites).
+ */
+const COUCHES = ['.fixed.pointer-events-none', '.v-demo-couche-sombre'];
 
 /** Indicateurs de chargement en cours : l'ecran n'est pas encore stable. */
 const CHARGEMENT = '.animate-pulse, .animate-spin, [aria-busy="true"]';

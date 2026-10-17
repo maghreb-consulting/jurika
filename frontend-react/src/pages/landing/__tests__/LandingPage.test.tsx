@@ -12,7 +12,7 @@ import { LandingPage } from '../LandingPage';
 import { oublierMentionsLegales } from '../mentionsLegales';
 import { FORFAITS, formatPrice } from '../config/pricing';
 import { NOMS_CAPTURES } from '../captures';
-import { NOMS_VIDEOS, VIDEOS } from '../videos';
+import { NOMS_SCENES, SCENES } from '../demonstrations/scenes';
 import { FONCTIONNALITES } from '../contenu';
 
 /**
@@ -231,18 +231,24 @@ describe('Vitrine : affirmations', () => {
       expect(page, String(motif)).not.toMatch(motif);
     }
     expect(document.querySelector('blockquote, q, cite')).toBeNull();
-    // Seules images : le logo Moucharabieh de JURIKA, les captures de la plateforme et les
-    // images fixes de ses videos (public/vitrine, listes fermees de captures.ts et videos.ts) ;
-    // aucune autre image (logo de client...).
+    // Seules images : le logo Moucharabieh de JURIKA et les captures de la plateforme
+    // (public/vitrine, liste fermee de captures.ts) ; aucune autre image (logo de client...).
     const images = Array.from(document.querySelectorAll('img')).map((i) => i.getAttribute('src') ?? '');
     expect(images.length).toBeGreaterThan(0);
-    const captures = new Set([...NOMS_CAPTURES.map((n) => `/vitrine/${n}-800.webp`), ...NOMS_VIDEOS.map((n) => `/vitrine/videos/${n}.webp`)]);
+    const captures = new Set(NOMS_CAPTURES.map((n) => `/vitrine/${n}-800.webp`));
     for (const src of images) expect(/moucharabieh/.test(src) || captures.has(src), src).toBe(true);
   });
 
   it('ne publie aucun chiffre ni statistique hors prix, quotas et textes du cahier des charges', () => {
     rendre();
-    const page = texte(document.body);
+    // L6c : les ecrans des demonstrations animees (montants, dates, compteurs d'une societe
+    // fictive, cadre marque "Donnees fictives") ne sont pas des affirmations de la vitrine :
+    // ils sont retires avant le comptage. Leurs donnees sont gardees par Demonstrations.test.tsx.
+    const copie = document.body.cloneNode(true) as HTMLElement;
+    const ecrans = copie.querySelectorAll('.v-demo-toile');
+    expect(ecrans.length).toBeGreaterThanOrEqual(5);
+    for (const e of ecrans) e.remove();
+    const page = texte(copie);
     // Prix (4.3) ; quotas (4.3, 4.2) ; delais du contrat V1 (essai 7 et 30 jours, violation de
     // donnees 72 heures) ; references des lois (5-96, 09-08) ;
     // annee du droit d'auteur.
@@ -278,14 +284,22 @@ describe('Vitrine : affirmations', () => {
 });
 
 describe('Vitrine : captures de la plateforme et mouvement', () => {
-  it('montre chaque capture prevue, optimisee : srcset 800w et 1600w, dimensions, chargement differe, alt', () => {
+  it('montre chaque capture prevue, optimisee : <picture> AVIF puis WebP, 800w et 1600w, dimensions, chargement differe, alt', () => {
     rendre();
-    const imgs = Array.from(document.querySelectorAll<HTMLImageElement>('img[src^="/vitrine/"]:not([src^="/vitrine/videos/"])'));
+    const imgs = Array.from(document.querySelectorAll<HTMLImageElement>('img[src^="/vitrine/"]'));
     const vues = new Set(imgs.map((i) => (i.getAttribute('src') ?? '').replace(/^\/vitrine\/|-800\.webp$/g, '')));
     expect([...vues].sort()).toEqual([...NOMS_CAPTURES].sort());
     for (const img of imgs) {
       const src = img.getAttribute('src') ?? '';
       const base = src.replace(/-800\.webp$/, '');
+      // L6c : l'image est dans un <picture> ; sources dans l'ordre AVIF puis WebP, meme `sizes`.
+      const picture = img.parentElement as HTMLElement;
+      expect(picture.tagName, src).toBe('PICTURE');
+      const sources = Array.from(picture.querySelectorAll('source'));
+      expect(sources.map((s) => s.getAttribute('type')), src).toEqual(['image/avif', 'image/webp']);
+      expect(sources[0].getAttribute('srcset'), src).toBe(`${base}-800.avif 800w, ${base}-1600.avif 1600w`);
+      expect(sources[1].getAttribute('srcset'), src).toBe(`${base}-800.webp 800w, ${base}-1600.webp 1600w`);
+      for (const s of sources) expect(s.getAttribute('sizes'), src).toBe(img.getAttribute('sizes'));
       expect(img.getAttribute('srcset'), src).toBe(`${base}-800.webp 800w, ${base}-1600.webp 1600w`);
       expect(img.getAttribute('sizes'), src).toBeTruthy();
       expect(Number(img.getAttribute('width')), src).toBeGreaterThan(0);
@@ -296,30 +310,22 @@ describe('Vitrine : captures de la plateforme et mouvement', () => {
     }
   });
 
-  it("montre chaque video prevue (V4) : image fixe dimensionnee, texte equivalent, legende ; celle de l'accroche d'abord", () => {
+  it("montre chaque demonstration animee prevue (L6c) : texte equivalent, legende, contenu inerte ; celle de l'accroche d'abord", () => {
     rendre();
-    const figures = Array.from(document.querySelectorAll<HTMLElement>('figure[data-video]'));
-    const noms = new Set(figures.map((f) => f.getAttribute('data-video')));
-    expect([...noms].sort()).toEqual([...NOMS_VIDEOS].sort());
+    const figures = Array.from(document.querySelectorAll<HTMLElement>('figure[data-demo]'));
+    const noms = new Set(figures.map((f) => f.getAttribute('data-demo')));
+    expect([...noms].sort()).toEqual([...NOMS_SCENES].sort());
     for (const f of figures) {
-      const nom = f.getAttribute('data-video') as (typeof NOMS_VIDEOS)[number];
-      const img = f.querySelector('img') as HTMLImageElement;
-      expect(img.getAttribute('src'), nom).toBe(`/vitrine/videos/${nom}.webp`);
-      expect(img.getAttribute('width'), nom).toBe('1280');
-      expect(img.getAttribute('height'), nom).toBe('800');
-      expect(img.getAttribute('alt'), nom).toBe(VIDEOS[nom].alt);
-      expect(f.querySelector('figcaption')?.textContent, nom).toBe(VIDEOS[nom].legende);
-      const bouton = f.querySelector('button');
-      expect(bouton?.getAttribute('aria-label'), nom).toBe(`Lire la vidéo : ${VIDEOS[nom].legende}`);
+      const nom = f.getAttribute('data-demo') as (typeof NOMS_SCENES)[number];
+      const image = f.querySelector('[role="img"]') as HTMLElement;
+      expect(image.getAttribute('aria-label'), nom).toBe(SCENES[nom].description);
+      expect(f.querySelector('figcaption')?.textContent, nom).toBe(SCENES[nom].legende);
+      const toile = image.querySelector('.v-demo-toile') as HTMLElement;
+      expect(toile.getAttribute('aria-hidden'), nom).toBe('true');
+      expect(toile.hasAttribute('inert'), nom).toBe(true);
     }
-    // Accroche : l'image fixe de la video est l'element affiche au chargement (priorite haute) ;
-    // les autres images fixes sont chargees en differe.
     const accroche = figures.filter((f) => screen.getByTestId('hero').contains(f));
-    expect(accroche.map((f) => f.getAttribute('data-video'))).toEqual(['creation-ticket']);
-    const posterAccroche = accroche[0].querySelector('img');
-    expect(posterAccroche).toHaveAttribute('loading', 'eager');
-    expect(posterAccroche).toHaveAttribute('fetchpriority', 'high');
-    for (const f of figures.filter((x) => !accroche.includes(x))) expect(f.querySelector('img'), f.getAttribute('data-video') ?? '').toHaveAttribute('loading', 'lazy');
+    expect(accroche.map((f) => f.getAttribute('data-demo'))).toEqual(['creation-ticket']);
   });
 
   it('presente chaque fonctionnalite livree une seule fois', () => {
@@ -330,9 +336,9 @@ describe('Vitrine : captures de la plateforme et mouvement', () => {
     }
   });
 
-  it("ne lance aucune video et n'anime rien au defilement quand l'ordinateur demande de reduire les animations", () => {
-    // V4 (demande du 2026-10-16) : aucune video ne demarre d'elle-meme (image fixe et bouton
-    // "Lire la video") ; aucune apparition au defilement (tout est visible d'emblee) ; les
+  it("ne joue aucune demonstration et n'anime rien au defilement quand l'ordinateur demande de reduire les animations", () => {
+    // L6c (demande du 2026-10-17) : les demonstrations montrent leur etat final, fixe, sans
+    // bouton de lecture ; aucune apparition au defilement (tout est visible d'emblee) ; les
     // autres animations deviennent des fondus simples (vitrine.css, LandingMouvement.test.tsx).
     const origine = window.matchMedia;
     window.matchMedia = ((q: string) => ({
@@ -353,10 +359,14 @@ describe('Vitrine : captures de la plateforme et mouvement', () => {
       rendre();
       expect(document.querySelector('[data-apparition]')).toBeNull();
       expect(io).not.toHaveBeenCalled();
-      expect(document.querySelectorAll('video')).toHaveLength(0);
-      const figures = Array.from(document.querySelectorAll<HTMLElement>('figure[data-video]'));
-      expect(figures.length).toBe(NOMS_VIDEOS.length);
-      for (const f of figures) expect(f.querySelector('button')?.getAttribute('aria-label') ?? '').toMatch(/^Lire la vidéo : /);
+      const figures = Array.from(document.querySelectorAll<HTMLElement>('figure[data-demo]'));
+      expect(figures.length).toBeGreaterThanOrEqual(NOMS_SCENES.length);
+      for (const f of figures) {
+        const nom = f.getAttribute('data-demo') as (typeof NOMS_SCENES)[number];
+        expect(f.getAttribute('data-lecture'), nom).toBe('non');
+        expect(f.getAttribute('data-etape-scene'), nom).toBe(String(SCENES[nom].etapeFinale));
+        expect(f.querySelector('.v-cadre-barre button'), nom).toBeNull();
+      }
     } finally {
       window.matchMedia = origine;
       vi.unstubAllGlobals();
