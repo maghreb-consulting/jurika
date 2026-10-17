@@ -53,4 +53,22 @@ describe('Avis de clôture de liquidation (modèle du corpus)', () => {
       quitus: 'sous_reserve', siegeLiquidation: '20 boulevard Zerktouni',
     });
   });
+
+  it('L6b (E19) : ni sens ni montant de résultat tiré de actif - passif, à l’écran comme dans la charge utile', async () => {
+    generateDocument.mockClear();
+    render(<Hote />);
+    // 300 000 - 150 000 s'affichait "Resultat publie : boni de liquidation de 150 000 DH".
+    expect(screen.getByTestId('annonce-resultat')).not.toHaveTextContent(/150\s000/);
+    expect(screen.getByTestId('annonce-resultat')).toHaveTextContent(/ne publie pas le résultat/);
+    fireEvent.change(screen.getByRole('combobox', { name: /Acte constatant la clôture/ }), { target: { value: 'Décision des associés' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmer' }));
+    fireEvent.change(screen.getByLabelText(/Compte définitif arrêté au/), { target: { value: '2026-06-10' } });
+    fireEvent.change(screen.getByRole('combobox', { name: /Quitus au liquidateur/ }), { target: { value: 'accorde' } });
+    fireEvent.change(screen.getByLabelText(/Siège de la liquidation/), { target: { value: '20 boulevard Zerktouni' } });
+    fireEvent.click(screen.getByTestId('generate-btn-ANNONCE_LEGALE_LIQUIDATION_SARL'));
+    await waitFor(() => expect(generateDocument).toHaveBeenCalled());
+    const payload = (generateDocument.mock.calls[0] as unknown[])[2] as Record<string, Record<string, unknown>>;
+    expect(payload.cloture).not.toHaveProperty('resultatType');
+    expect(payload.cloture).not.toHaveProperty('resultatMontant');
+  });
 });

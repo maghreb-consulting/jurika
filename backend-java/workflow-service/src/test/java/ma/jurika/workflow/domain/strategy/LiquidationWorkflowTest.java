@@ -326,37 +326,18 @@ class LiquidationWorkflowTest {
     // ── Etape 1 : comptes finaux → boni / mali CALCULE ─────────────────
 
     @Test
-    @DisplayName("Comptes finaux : actif > passif → boni calcule (aucune saisie separee)")
-    void step1_boniCalcule() {
-        StepResult res = run(1, step1Payload(500_000L, 300_000L));
+    @DisplayName("L6b E19 : l'etape 1 ne stocke aucun resultat (le rapport final en est la seule source)")
+    void step1_aucunResultatStocke() {
+        // 120 000 - 20 000 donnait "boni 100 000" alors que le rapport final (frais 5 000,
+        // capital 100 000) conclut a un mali de 5 000.
+        StepResult res = run(1, step1Payload(120_000L, 20_000L));
         assertThat(res.canAdvance()).isTrue();
-        assertThat(res.stepData()).containsEntry("resultatType", "boni");
+        assertThat(res.stepData()).doesNotContainKeys("resultatType", "resultatMontant", "boniMali");
         @SuppressWarnings("unchecked")
         Map<String, Object> comptes = (Map<String, Object>) res.stepData().get("comptesFinaux");
-        assertThat(comptes).containsEntry("issue", "BONI");
-        assertThat((BigDecimal) comptes.get("resultatMontant"))
-                .isEqualByComparingTo(BigDecimal.valueOf(200_000));
-    }
-
-    @Test
-    @DisplayName("Comptes finaux : passif > actif → mali calcule, montant en valeur absolue")
-    void step1_maliCalcule() {
-        StepResult res = run(1, step1Payload(300_000L, 500_000L));
-        assertThat(res.canAdvance()).isTrue();
-        assertThat(res.stepData()).containsEntry("resultatType", "mali");
-        @SuppressWarnings("unchecked")
-        Map<String, Object> comptes = (Map<String, Object>) res.stepData().get("comptesFinaux");
-        assertThat(comptes).containsEntry("issue", "MALI");
-        assertThat((BigDecimal) comptes.get("resultatMontant"))
-                .isEqualByComparingTo(BigDecimal.valueOf(200_000));
-    }
-
-    @Test
-    @DisplayName("Comptes finaux : solde nul → boni de 0")
-    void step1_soldeNul_estBoni() {
-        StepResult res = run(1, step1Payload(300_000L, 300_000L));
-        assertThat(res.canAdvance()).isTrue();
-        assertThat(res.stepData()).containsEntry("resultatType", "boni");
+        assertThat(comptes).doesNotContainKeys("boniMali", "issue", "resultatType", "resultatMontant");
+        assertThat((BigDecimal) comptes.get("totalActif")).isEqualByComparingTo(BigDecimal.valueOf(120_000));
+        assertThat((BigDecimal) comptes.get("totalPassif")).isEqualByComparingTo(BigDecimal.valueOf(20_000));
     }
 
     @Test

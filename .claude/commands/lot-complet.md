@@ -96,6 +96,12 @@ appliquees intouchables, test rouge d'abord, motif 9, verify complet avant push.
   conditions CI, et la suite frontend, sur le resultat FUSIONNE (Reactor Summary lu ; aucun
   avertissement "Some problems were encountered while building the effective model"). Sinon,
   pas de push.
+- **Parcours sur le vrai corpus** (CLAUDE.md regle 11, decision du 2026-10-17) : si la branche
+  touche le front, les parcours, les actes ou les services qu'ils traversent, la pile du Z440 est
+  redeployee avec ce code, puis
+  `npx playwright test -c playwright.parcours.config.ts --grep "@corpus-reel|@modele-kie" --project pile`
+  (depuis `frontend-react/`) doit etre vert ; preuve au RAPPORT (commande, date, commit, nombre de
+  tests passes, journal, captures de fin). Rouge : pas de push.
 - `git push -u origin <branche du lot>` (jamais `main`). Note le lien d'ouverture de la PR affiche
   par le push.
 

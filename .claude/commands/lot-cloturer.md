@@ -24,6 +24,7 @@ Pour chaque commit prévu : message complet, liste des fichiers, diff complet.
 ## 4. Après le feu vert
 - Crée les commits tels que validés, puis `git log --oneline main..HEAD` et `git status`.
 - Avant le push : `git fetch origin`, `git merge origin/main` dans la branche (jamais de rebase), conflits résolus, puis verify complet (`mvn -B -o clean verify -Pit`, conditions CI, suite frontend) sur le résultat fusionné, sans avertissement de modèle Maven. Sinon, pas de push.
+- Parcours sur le vrai corpus (CLAUDE.md règle 11) : si la branche touche le front, les parcours, les actes ou les services qu'ils traversent, `npx playwright test -c playwright.parcours.config.ts --grep "@corpus-reel|@modele-kie" --project pile` vert sur la pile du Z440 redéployée avec ce code, preuve au rapport. Sinon, pas de push.
 - `git push -u origin <branche>`.
 - Donne le lien d'ouverture de la PR, tel qu'affiché par le push (`https://github.com/<org>/<dépôt>/pull/new/<branche>`).
 - Ne fusionne pas, ne supprime pas la branche.

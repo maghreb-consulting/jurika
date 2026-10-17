@@ -25,7 +25,7 @@ import static ma.jurika.workflow.domain.strategy.WorkflowSteps.isTrue;
  * <ol>
  *   <li><b>Saisie</b> — societe <b>DISSOUTE</b>, date de l'AGE de cloture (assemblee
  *       EXTRAORDINAIRE uniquement, ou decision de l'associe unique en SARL AU), comptes
- *       finaux (total actif / total passif -> boni ou mali <b>calcule</b>), convocation
+ *       finaux (total actif / total passif, controles par le rapport final), convocation
  *       OPTIONNELLE (regle des 16 jours). L'identite societe, la <b>date de dissolution</b>
  *       et le <b>liquidateur</b> sont repris de la BD.</li>
  *   <li><b>Generation</b> — PV de cloture ({@code PV_DISSOLUTION_LIQUIDATION_*}, etape
@@ -48,7 +48,8 @@ import static ma.jurika.workflow.domain.strategy.WorkflowSteps.isTrue;
  *   <li>le <b>liquidateur</b> a ete nomme A LA DISSOLUTION et est relu depuis la fiche
  *       structuree. Cas de secours identique pour les dossiers dissous avant cette evolution
  *       (selection/saisie une seule fois, puis persistance — cf. {@code WorkflowUseCases}) ;</li>
- *   <li>le boni / mali est <b>derive</b> des comptes finaux, jamais saisi separement.</li>
+ *   <li>le boni / mali n'est ni saisi ni stocke ici : il se calcule au rapport final du
+ *       liquidateur (L6b E19, regle unique cote ai-service).</li>
  * </ul>
  *
  * <p><b>Regle des 15 jours (RG-LI03, DURE)</b> : une societe ne peut etre liquidee que
@@ -184,7 +185,7 @@ public class LiquidationWorkflow extends AbstractWorkflow {
                             + "dossier) ou « EXTERNE » (saisie manuelle).");
         }
 
-        // --- Comptes finaux : actif + passif -> boni / mali CALCULE ---
+        // --- Comptes finaux : total actif et total passif (controles par le rapport final) ---
         Map<String, Object> cf = asMap(first0(p.get("comptesFinaux"), p.get("cloture")));
         BigDecimal actif = asNonNegativeAmount(first0(cf.get("totalActif"), cf.get("actifRealise")));
         BigDecimal passif = asNonNegativeAmount(first0(cf.get("totalPassif"), cf.get("passifRegle")));
@@ -193,10 +194,9 @@ public class LiquidationWorkflow extends AbstractWorkflow {
                     "Les comptes finaux de liquidation sont obligatoires : total actif et "
                             + "total passif (MAD, valeurs positives ou nulles).");
         }
-        BigDecimal boniMali = actif.subtract(passif);
-        // Le sens et le montant sont DERIVES : jamais demandes a l'utilisateur.
-        String resultatType = boniMali.signum() < 0 ? "mali" : "boni";
-        BigDecimal resultatMontant = boniMali.abs();
+        // L6b (E19) : aucun resultat ici. actif - passif n'est pas le resultat de la liquidation
+        // (frais, impot et remboursement du capital viennent ensuite) ; il se calcule au rapport
+        // final du liquidateur (ai-service, ResultatLiquidation), seule source du PV et du rapport.
 
         // --- Convocation OPTIONNELLE — regle DURE des 16 jours (jours calendaires) ---
         String convocationError =
@@ -229,17 +229,12 @@ public class LiquidationWorkflow extends AbstractWorkflow {
                 dossier.get("siegeLiquidation"), p.get("siegeLiquidation"), liq.get("siege")));
         if (siegeLiquidation != null) out.put("siegeLiquidation", siegeLiquidation);
 
-        // Comptes finaux + resultat derive.
+        // Comptes finaux (le resultat se calcule au rapport final).
         Map<String, Object> comptes = new HashMap<>();
         comptes.put("totalActif", actif);
         comptes.put("totalPassif", passif);
         comptes.put("devise", first0(cf.get("devise"), "MAD"));
-        comptes.put("boniMali", boniMali);
-        comptes.put("issue", boniMali.signum() < 0 ? "MALI" : "BONI");
-        comptes.put("resultatType", resultatType);
-        comptes.put("resultatMontant", resultatMontant);
         out.put("comptesFinaux", comptes);
-        out.put("resultatType", resultatType);
 
         Object convocation = p.get("convocation");
         if (convocation != null) out.put("convocation", convocation);

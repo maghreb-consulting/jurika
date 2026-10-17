@@ -134,13 +134,9 @@ spring:
           uri: lb://dashboard-service
           predicates:
             - Path=/api/v1/dashboards/**, /api/v1/tracabilite/**, /api/v1/agent/**
-        # Sprint 14 ter E2 -- endpoints de seed Playwright (actifs uniquement
-        # hors prod, double verrou cote dataroom-service via @Profile + property
-        # jurika.test.seed.enabled).
-        - id: test-seed
-          uri: lb://dataroom-service
-          predicates:
-            - Path=/api/v1/test/**
+        # Route des donnees de test (/api/v1/test/**) : plus declaree ici (decision du
+        # 2026-10-17) ; creee par RouteDonneesDeTestConfig seulement si
+        # jurika.test.seed.enabled=true et hors profil prod.
         # Sprint 12 -- billing-service (port 8090). Routing /api/v1/billing/**
         # vers le module billing-service. Lot L7 : /api/v1/billing/cmi/** est expose
         # car le CMI doit joindre le retour serveur (callback) -- la securite est la
@@ -158,6 +154,10 @@ eureka:
     prefer-ip-address: true
 
 jurika:
+  # Route des donnees de test des parcours e2e (RouteDonneesDeTestConfig) : faux par defaut.
+  test:
+    seed:
+      enabled: ${JURIKA_TEST_SEED_ENABLED:false}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   jwt:
