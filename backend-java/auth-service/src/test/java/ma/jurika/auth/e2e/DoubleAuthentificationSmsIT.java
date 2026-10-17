@@ -225,7 +225,10 @@ class DoubleAuthentificationSmsIT {
         reset(smsSender);
         MvcResult defi = mvc.perform(post("/api/v1/auth/login/sms/challenge").contentType("application/json")
                         .content("{\"userId\":\"%s\",\"workspaceId\":\"%s\"}".formatted(u.userId, u.workspaceId)))
-                .andExpect(status().isAccepted()).andReturn();
+                .andExpect(status().isAccepted())
+                // Indicateur de plateforme (meme reponse pour tout compte) : SMS simule ou non.
+                .andExpect(jsonPath("$.simule").value(false))
+                .andReturn();
         String codeConnexion = dernierCode(numero);
         assertThat(defi.getResponse().getContentAsString()).doesNotContain(codeConnexion);
 

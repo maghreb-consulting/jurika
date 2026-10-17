@@ -104,6 +104,7 @@ public class AuthController {
     private final UserRepository userRepository;
     /** Lot L0 (E13a) : workspace des routes publiques, pose avant la transaction. */
     private final ma.jurika.auth.application.ContexteWorkspacePublic contextePublic;
+    private final ma.jurika.auth.application.DisponibiliteSms2fa disponibiliteSms;
 
     public AuthController(RegisterWorkspaceUseCase registerWorkspaceUseCase,
                           CheckWorkspaceUseCase checkWorkspaceUseCase,
@@ -129,7 +130,8 @@ public class AuthController {
                           ListWorkspaceUsersUseCase listWorkspaceUsersUseCase,
                           WorkspaceRepository workspaceRepository,
                           UserRepository userRepository,
-                          ma.jurika.auth.application.ContexteWorkspacePublic contextePublic) {
+                          ma.jurika.auth.application.ContexteWorkspacePublic contextePublic,
+                          ma.jurika.auth.application.DisponibiliteSms2fa disponibiliteSms) {
         this.registerWorkspaceUseCase = registerWorkspaceUseCase;
         this.checkWorkspaceUseCase = checkWorkspaceUseCase;
         this.loginUseCase = loginUseCase;
@@ -155,6 +157,7 @@ public class AuthController {
         this.workspaceRepository = workspaceRepository;
         this.userRepository = userRepository;
         this.contextePublic = contextePublic;
+        this.disponibiliteSms = disponibiliteSms;
     }
 
     /**
@@ -543,7 +546,7 @@ public class AuthController {
      * envoyer de SMS — l'attaquant ne peut donc pas mapper userIds -> phones.
      */
     @PostMapping("/login/sms/challenge")
-    public org.springframework.http.ResponseEntity<Void> loginSmsChallenge(
+    public org.springframework.http.ResponseEntity<java.util.Map<String, Boolean>> loginSmsChallenge(
             @Valid @RequestBody LoginSmsChallengeRequest req,
             HttpServletRequest http) {
         contextePublic.poserWorkspace(req.workspaceId());
@@ -555,7 +558,9 @@ public class AuthController {
             // Best-effort silencieux : on ne leak pas l'existence du user / sa methode 2FA.
             // L'echec reel est trace en audit log SMS_OTP_FAILED par les couches plus bas.
         }
-        return org.springframework.http.ResponseEntity.accepted().build();
+        // Recette R2 (2026-10-17) : indicateur de PLATEFORME (identique pour tout compte, rien
+        // n'est revele) : vrai si le SMS est simule (environnement de test, code dans le journal).
+        return org.springframework.http.ResponseEntity.accepted().body(java.util.Map.of("simule", disponibiliteSms.simule()));
     }
 
     @PostMapping("/verify-2fa")
