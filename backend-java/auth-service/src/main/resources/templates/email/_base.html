@@ -1,51 +1,21 @@
 <!--
-  Fragments Thymeleaf partages pour tous les courriels JURIKA.
-  Charte JURIKA (marine #0c1d3f / or #c9a24a). 2026-07-27, lot L6 (E6) :
-  - Le nom &laquo; JURIKA &raquo; est un WORDMARK TEXTE (rendu garanti meme si les images
-    sont bloquees par Gmail/Outlook). C'est l'element principal de l'en-tete.
-  - L'embleme Moucharabieh (variante ivoire, 128 px, lot L6) est un PLUS decoratif
-    embarque en CID (cid:jurika-logo). Le sender (SmtpEmailSender) attache
-    branding/jurika-email-logo.png ; jamais indispensable.
-  - Accents : ecrits en entites HTML (fichier ASCII, clients de messagerie anciens).
-  - Variable optionnelle `logoUrl` : si un jour l'asset est heberge (CDN), on
-    bascule sur l'URL ; sinon CID par defaut. Plus d'URL externe non deployee.
-  Usage : <div th:replace="~{email/_base :: header(title=...)}"></div>
+  Fragments Thymeleaf propres aux courriels d'auth-service (pied, identite, avertissement).
+  Recette R3 : l'en-tete (logo, bandeaux marine et or, frise de zellige) et le squelette
+  sont dans la mise en page COMMUNE de jurika-common (templates/email/_mise-en-page.html) ;
+  le logo y est la seule image (cid:logo-jurika, joint par CourrielJurika).
+  Accents : ecrits en entites HTML (fichier ASCII).
 -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="fr">
 <body>
 
-<!-- ========================= HEADER ========================= -->
-<th:block th:fragment="header(title)">
-    <tr>
-        <td bgcolor="#0c1d3f"
-            style="background-color:#0c1d3f;padding:34px 24px 26px;text-align:center;border-bottom:3px solid #c9a24a;">
-            <!-- Embleme JURIKA embarque en CID (complement decoratif, non indispensable).
-                 alt="JURIKA" assure que la marque reste lisible si l'image est bloquee. -->
-            <img th:src="${logoUrl} ?: 'cid:jurika-logo'"
-                 width="52" height="52" alt="JURIKA"
-                 style="display:inline-block;border:0;margin:0 0 12px;" />
-            <!-- Wordmark texte : rendu GARANTI (independant de toute image). -->
-            <div style="font-family:Georgia,'Times New Roman',serif;font-size:32px;font-weight:700;letter-spacing:0.03em;line-height:1;">
-                <span style="color:#f5efe0;">JURI</span><span style="color:#c9a24a;">KA</span>
-            </div>
-            <div style="margin:9px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:#c9a24a;">
-                Gestion juridique des entreprises
-            </div>
-            <div th:if="${title}"
-                 style="margin:20px 0 0;padding:16px 8px 0;border-top:1px solid rgba(201,162,74,0.35);font-family:Georgia,'Times New Roman',serif;font-size:19px;font-weight:600;line-height:1.35;color:#ffffff;"
-                 th:text="${title}">Titre du courriel</div>
-        </td>
-    </tr>
-</th:block>
-
 <!-- ========================= FOOTER ========================= -->
 <!-- Bloc legal commun : Maghreb Consulting + coordonnees + unsubscribe (CNDP). -->
 <th:block th:fragment="footer(unsubscribeUrl)">
     <tr>
-        <td style="background:#f7f1e3;padding:24px 32px;border-top:2px solid #c9a24a;font-family:Arial,Helvetica,sans-serif;">
+        <td bgcolor="#f7f1e3" style="background-color:#f7f1e3;padding:24px 32px;border-top:2px solid #c9a24a;font-family:Arial,Helvetica,sans-serif;">
             <p style="margin:0 0 8px;font-family:Georgia,'Times New Roman',serif;font-size:15px;font-weight:700;">
-                <span style="color:#0c1d3f;">JURI</span><span style="color:#c9a24a;">KA</span>
+                <span style="color:#0c1d3f;">JURI</span><span style="color:#8a6d1f;">KA</span>
                 <span style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:400;color:#475569;">
                     &mdash; plateforme de gestion juridique des entreprises &eacute;dit&eacute;e par <strong style="color:#334155;">Maghreb Consulting</strong>.</span>
             </p>
@@ -55,7 +25,7 @@
                 &mdash; Support technique :
                 <a th:href="${'mailto:' + supportEmail}" style="color:#8a6d1f;text-decoration:none;" th:text="${supportEmail}">contact</a>
             </p>
-            <p style="margin:0;font-size:11px;color:#94A3B8;line-height:1.5;">
+            <p style="margin:0;font-size:11px;color:#5b6474;line-height:1.5;">
                 Vous recevez ce courriel parce que vous &ecirc;tes utilisateur de JURIKA. &nbsp;
                 <a th:if="${unsubscribeUrl}" th:href="${unsubscribeUrl}"
                    style="color:#8a6d1f;text-decoration:underline;">G&eacute;rer mes notifications</a>
@@ -71,12 +41,12 @@
      (destinataire). Affiche uniquement si les deux sont presents et distincts. -->
 <th:block th:fragment="identityFooter(loginEmail, contactEmail)">
     <tr th:if="${loginEmail != null and contactEmail != null and loginEmail != contactEmail}">
-        <td style="background:#efe8d6;padding:12px 32px;border-top:1px solid #e0d4b4;">
+        <td bgcolor="#efe8d6" style="background-color:#efe8d6;padding:12px 32px;border-top:1px solid #e0d4b4;">
             <p style="margin:0;font-size:11px;color:#64748B;line-height:1.5;font-family:Arial,Helvetica,sans-serif;">
                 <strong style="color:#334155;">Identifiant de connexion :</strong>
                 <span th:text="${loginEmail}" style="font-family:'JetBrains Mono',Consolas,monospace;color:#0c1d3f;">karim.benali@jurika.ma</span>
                 &nbsp;&middot;&nbsp;
-                <span style="color:#94A3B8;">Courriel envoy&eacute; &agrave; votre adresse de notification</span>
+                <span style="color:#5b6474;">Courriel envoy&eacute; &agrave; votre adresse de notification</span>
                 <span th:text="${contactEmail}" style="font-family:'JetBrains Mono',Consolas,monospace;color:#334155;">karim@cabinet.ma</span>
             </p>
         </td>

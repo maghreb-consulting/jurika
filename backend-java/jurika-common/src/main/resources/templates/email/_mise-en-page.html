@@ -1,0 +1,106 @@
+<!--
+  Recette R3 : mise en page COMMUNE de tous les courriels de JURIKA (auth-service et
+  billing-service ; ressource de jurika-common, donc sur le classpath des deux).
+  Usage, sur la balise html d'un gabarit :
+    th:replace="~{email/_mise-en-page :: courriel(titre=..., corps=~{::corps}, pied=~{::pied})}"
+  ou corps et pied sont des fragments du gabarit faits de lignes de tableau (tr).
+
+  Regles (compatibles Gmail et Outlook, clair et sombre) :
+  - tableaux et styles en ligne ; couleurs posees aussi en bgcolor (Outlook, inversion) ;
+  - UNE seule image : le logo Moucharabieh en PNG 3x, en ligne par Content-ID
+    (cid:logo-jurika, joint par CourrielJurika), largeur et hauteur fixees, alt "JURIKA" ;
+  - decor sans image : bandeaux marine et or, frise de zellige en caracteres (losanges)
+    et filets d'or ; aucune image de fond (CourrielJurika refuse url( et background=) ;
+  - sombre : meta color-scheme ; la carte reste claire sur un fond sombre (texte fonce sur
+    blanc), les messageries qui inversent les couleurs trouvent des bgcolor explicites ;
+  - accents en entites HTML (fichier ASCII).
+-->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr" th:fragment="courriel(titre, corps, pied)">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="x-apple-disable-message-reformatting"/>
+    <meta name="color-scheme" content="light dark"/>
+    <meta name="supported-color-schemes" content="light dark"/>
+    <title th:text="${titre}">JURIKA</title>
+    <style>
+        :root { color-scheme: light dark; supported-color-schemes: light dark; }
+        body { margin: 0; padding: 0; width: 100% !important; }
+        a { color: #8a6d1f; }
+        @media only screen and (max-width: 620px) {
+            .jk-gouttiere { padding: 16px 8px !important; }
+            .jk-carte td.jk-pad, .jk-carte td[style*="padding:32px"] { padding: 24px 18px !important; }
+            .jk-marque { font-size: 28px !important; }
+        }
+        @media (prefers-color-scheme: dark) {
+            .jk-fond { background-color: #0b1426 !important; }
+        }
+        [data-ogsc] .jk-fond { background-color: #0b1426 !important; }
+    </style>
+</head>
+<body style="margin:0;padding:0;background-color:#f3eee1;" bgcolor="#f3eee1">
+<table role="presentation" class="jk-fond" width="100%" cellpadding="0" cellspacing="0" border="0"
+       bgcolor="#f3eee1" style="background-color:#f3eee1;">
+    <tr>
+        <td align="center" class="jk-gouttiere" style="padding:28px 12px;">
+            <!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+            <table role="presentation" class="jk-carte" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   bgcolor="#ffffff"
+                   style="width:100%;max-width:600px;background-color:#ffffff;border:1px solid #e3d7b8;font-family:Arial,Helvetica,sans-serif;color:#0F172A;">
+
+                <!-- Bandeau d'or superieur -->
+                <tr>
+                    <td bgcolor="#c9a24a" height="4" style="background-color:#c9a24a;height:4px;line-height:4px;font-size:4px;">&nbsp;</td>
+                </tr>
+
+                <!-- Bandeau marine : logo, marque, signature, titre du courriel -->
+                <tr>
+                    <td bgcolor="#0c1d3f" align="center" style="background-color:#0c1d3f;padding:28px 24px 22px;text-align:center;">
+                        <img src="cid:logo-jurika"
+                             width="56" height="56" alt="JURIKA"
+                             style="display:block;margin:0 auto 12px;width:56px;height:56px;border:0;outline:none;text-decoration:none;color:#c9a24a;font-family:Georgia,'Times New Roman',serif;font-size:16px;font-weight:700;"/>
+                        <div class="jk-marque" style="font-family:Georgia,'Times New Roman',serif;font-size:32px;font-weight:700;letter-spacing:0.04em;line-height:1;">
+                            <span style="color:#f5efe0;">JURI</span><span style="color:#c9a24a;">KA</span>
+                        </div>
+                        <div style="margin:9px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#c9a24a;">
+                            Gestion juridique des entreprises
+                        </div>
+                        <div th:if="${titre}" th:text="${titre}"
+                             style="margin:18px 0 0;padding:14px 8px 0;border-top:1px solid #8a6d1f;font-family:Georgia,'Times New Roman',serif;font-size:19px;font-weight:700;line-height:1.35;color:#ffffff;">Titre du courriel</div>
+                    </td>
+                </tr>
+
+                <!-- Frise de zellige : losanges d'or entre deux filets, sans image -->
+                <tr>
+                    <td bgcolor="#0a1833" style="background-color:#0a1833;border-top:1px solid #c9a24a;border-bottom:1px solid #c9a24a;padding:0;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" aria-hidden="true">
+                            <tr>
+                                <td th:each="i : ${#numbers.sequence(1, 24)}" align="center" width="4%"
+                                    style="padding:3px 0;font-family:Arial,Helvetica,sans-serif;font-size:9px;line-height:10px;color:#c9a24a;mso-line-height-rule:exactly;"
+                                    th:utext="${i % 2 == 1} ? '&#9670;' : '&#9671;'">&#9670;</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- Corps du courriel (lignes du gabarit) -->
+                <th:block th:replace="${corps}"/>
+
+                <!-- Pied propre a l'emetteur (lignes du gabarit) -->
+                <th:block th:replace="${pied}"/>
+
+                <!-- Bandeaux de cloture : or puis marine -->
+                <tr>
+                    <td bgcolor="#c9a24a" height="2" style="background-color:#c9a24a;height:2px;line-height:2px;font-size:2px;">&nbsp;</td>
+                </tr>
+                <tr>
+                    <td bgcolor="#0c1d3f" height="8" style="background-color:#0c1d3f;height:8px;line-height:8px;font-size:8px;">&nbsp;</td>
+                </tr>
+            </table>
+            <!--[if mso]></td></tr></table><![endif]-->
+        </td>
+    </tr>
+</table>
+</body>
+</html>

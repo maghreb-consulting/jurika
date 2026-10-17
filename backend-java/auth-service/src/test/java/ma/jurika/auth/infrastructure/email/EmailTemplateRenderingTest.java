@@ -245,7 +245,7 @@ class EmailTemplateRenderingTest {
         assertThat(html).contains(">KA<");
         assertThat(plainText(html)).contains("Gestion juridique des entreprises");
         // Source de l'embleme = CID embarque par defaut (pas d'URL externe).
-        assertThat(html).contains("cid:jurika-logo");
+        assertThat(html).contains("cid:logo-jurika"); // Recette R3 : Content-ID du logo commun
         // L'ancienne URL externe non deployee (bloquee par Gmail/Outlook) a disparu.
         assertThat(html).doesNotContain("favicon-192.png");
         assertThat(html).doesNotContain("app.jurika.ai");
