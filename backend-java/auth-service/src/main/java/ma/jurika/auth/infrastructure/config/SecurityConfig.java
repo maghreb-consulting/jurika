@@ -60,6 +60,9 @@ public class SecurityConfig {
                                 // test seulement (CodeSmsDeTestController : simulation + hors prod ;
                                 // sans ce controleur, la route repond 404).
                                 new AntPathRequestMatcher("/api/v1/test/auth-2fa-sms/**"),
+                                // Recette R1 : messages des identites de test (MessagesDeTestController,
+                                // absent en prod et sans jurika.test.seed.enabled=true : 404).
+                                new AntPathRequestMatcher("/api/v1/test/messages"),
                                 // Sprint 12 -- endpoints internes pour billing-service + 5 microservices.
                                 // Filtres au gateway (pas de route /internal/** exposee publiquement).
                                 new AntPathRequestMatcher("/internal/**"),

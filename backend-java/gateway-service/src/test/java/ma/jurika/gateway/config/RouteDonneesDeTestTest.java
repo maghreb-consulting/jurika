@@ -70,12 +70,15 @@ class RouteDonneesDeTestTest {
     @Test
     void absente_par_defaut() {
         contexte.run(c -> assertThat(routePresente(c.getBean(RouteLocator.class))).isFalse());
+        contexte.run(c -> assertThat(routePresente(c.getBean(RouteLocator.class), "test-messages")).isFalse());
     }
 
     @Test
     void absente_en_production_meme_interrupteur_leve() {
         contexte.withPropertyValues("spring.profiles.active=prod", "jurika.test.seed.enabled=true")
                 .run(c -> assertThat(routePresente(c.getBean(RouteLocator.class))).isFalse());
+        contexte.withPropertyValues("spring.profiles.active=prod", "jurika.test.seed.enabled=true")
+                .run(c -> assertThat(routePresente(c.getBean(RouteLocator.class), "test-messages")).isFalse());
     }
 
     /** Recette R3 : envoi des exemplaires de courriels, vers le service qui envoie. */
@@ -107,5 +110,18 @@ class RouteDonneesDeTestTest {
     void presente_en_test_avec_l_interrupteur() {
         contexte.withPropertyValues("spring.profiles.active=dev", "jurika.test.seed.enabled=true")
                 .run(c -> assertThat(routePresente(c.getBean(RouteLocator.class))).isTrue());
+    }
+
+    /** Recette R1 : les messages des identites de test vont a auth-service, avant la route generale. */
+    @Test
+    void messages_de_test_vers_auth_avant_la_route_generale() {
+        contexte.withPropertyValues("spring.profiles.active=dev", "jurika.test.seed.enabled=true")
+                .run(c -> {
+                    var routes = c.getBean(RouteLocator.class).getRoutes().collectList().block();
+                    var messages = routes.stream().filter(r -> "test-messages".equals(r.getId())).findFirst().orElseThrow();
+                    var seed = routes.stream().filter(r -> "test-seed".equals(r.getId())).findFirst().orElseThrow();
+                    assertThat(messages.getUri().toString()).isEqualTo("lb://auth-service");
+                    assertThat(messages.getOrder()).isLessThan(seed.getOrder());
+                });
     }
 }

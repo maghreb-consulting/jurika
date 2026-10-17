@@ -89,6 +89,11 @@ eureka:
     prefer-ip-address: true
 
 jurika:
+  # Recette R1 : lecture des messages envoyes aux identites de test (MessagesDeTestController) ;
+  # faux par defaut, jamais en production (profil prod : absent meme si vrai).
+  test:
+    seed:
+      enabled: ${JURIKA_TEST_SEED_ENABLED:false}
   jwt:
     # RS256 (prod) ou HS256 (legacy dev). Voir docs/v2/PLAN_SPRINT_1_SECURITE_PROD.md TASK 2.
     algorithm: ${JWT_ALGORITHM:RS256}

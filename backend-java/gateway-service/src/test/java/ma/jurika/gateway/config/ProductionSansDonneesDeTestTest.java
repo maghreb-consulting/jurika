@@ -12,7 +12,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Decision du 2026-10-17 : la route de donnees de test est absente de la version de production.
- * Le fichier de deploiement de production impose, a la passerelle ET a dataroom-service, le
+ * Le fichier de deploiement de production impose, a la passerelle, a dataroom-service et a
+ * auth-service (recette R1 : messages des identites de test), le
  * profil prod et l'interrupteur JURIKA_TEST_SEED_ENABLED a faux (double verrou : voir
  * RouteDonneesDeTestTest et TestSeedAbsentEnProductionTest).
  */
@@ -57,7 +58,8 @@ class ProductionSansDonneesDeTestTest {
 
     @Test
     void passerelle_et_dataroom_en_profil_prod_sans_donnees_de_test() throws Exception {
-        for (String service : new String[] {"gateway", "dataroom"}) {
+        // Recette R1 : auth-service porte aussi une route de test (messages des identites de test).
+        for (String service : new String[] {"gateway", "dataroom", "auth"}) {
             Map<String, Object> env = environnement(service);
             assertThat(env.get("SPRING_PROFILES_ACTIVE")).as(service + " : profil").isEqualTo("prod");
             assertThat(String.valueOf(env.get("JURIKA_TEST_SEED_ENABLED"))).as(service + " : interrupteur").isEqualTo("false");

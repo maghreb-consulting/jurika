@@ -105,6 +105,9 @@ services:
       OTEL_SERVICE_NAME: auth-service
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       JURIKA_ENV: ${JURIKA_ENV:-dev}
+      # Recette R1 : lecture des messages des identites de test (@jurika.test) par les parcours
+      # e2e (MessagesDeTestController) : faux par defaut, vrai seulement sur une pile de test.
+      JURIKA_TEST_SEED_ENABLED: ${JURIKA_TEST_SEED_ENABLED:-false}
       EUREKA_SERVER_URL: http://discovery-service:8761/eureka
       POSTGRES_HOST: postgres
       # Lot L0 (CI base-vierge) : identifiants du proprietaire (Flyway ; datasource des

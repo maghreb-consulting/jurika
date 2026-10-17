@@ -106,6 +106,8 @@ services:
     # (profil prod + interrupteur force a faux, double verrou ; DisponibiliteSms2fa). Sans
     # fournisseur de SMS configure (A_DECIDER : Brevo SMS a la mise en production), l'option SMS
     # n'est ni proposee ni acceptee.
+    # Recette R1 : lecture des messages des identites de test absente en production
+    # (MessagesDeTestController : profil prod + interrupteur force a faux).
     environment:
       SPRING_PROFILES_ACTIVE: prod
       JURIKA_TEST_SEED_ENABLED: "false"

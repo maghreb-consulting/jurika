@@ -20,6 +20,10 @@ import org.springframework.context.annotation.Profile;
  * (dernier code SMS simule de la double authentification, CodeSmsDeTestController, present
  * seulement avec jurika.sms.simulation=true et hors prod). Elle passe avant la route du seed,
  * qui couvre tout {@code /api/v1/test/**}.
+ *
+ * <p>Recette R1 : {@code /api/v1/test/messages/**} (messages envoyes aux identites de test,
+ * MessagesDeTestController d'auth-service, meme double verrou) va a auth-service ; la route est
+ * placee avant la route generale vers dataroom.
  */
 @Configuration
 @Profile("!prod")
@@ -36,6 +40,8 @@ public class RouteDonneesDeTestConfig {
                 .route("test-courriels-facturation", r -> r.order(-1).path("/api/v1/test/courriels/facturation")
                         .uri("lb://billing-service"))
                 .route("test-auth-2fa-sms", r -> r.order(-1).path("/api/v1/test/auth-2fa-sms/**").uri("lb://auth-service"))
+                .route("test-messages", r -> r.order(-1).path("/api/v1/test/messages", "/api/v1/test/messages/**")
+                        .uri("lb://auth-service"))
                 .route("test-seed", r -> r.path("/api/v1/test/**").uri("lb://dataroom-service"))
                 .build();
     }
