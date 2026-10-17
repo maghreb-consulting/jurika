@@ -100,6 +100,15 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Recette R3 : composition commune des courriels (ma.jurika.common.courriel).
+             Optional : seuls auth et billing envoient des courriels et declarent deja
+             spring-boot-starter-mail. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Migration 2026-07-14 : Apache PDFBox (Apache 2.0, permissif) porte le
              theme PDF partage (ma.jurika.common.pdf). Remplace iText (AGPL,
              incompatible commercialisation). Optional : seuls dataroom/ticket
