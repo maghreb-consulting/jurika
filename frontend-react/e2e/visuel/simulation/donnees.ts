@@ -153,6 +153,8 @@ interface TicketFictif {
   assigne: { userId: string; prenom: string; nom: string } | null;
   echeance: number | null;
   cree: number;
+  /** Lot L6b (E18) : jour de cloture (relatif a MAINTENANT) d'un ticket clos ; defaut -3. */
+  clos?: number;
 }
 
 const TICKETS: TicketFictif[] = [
@@ -164,6 +166,14 @@ const TICKETS: TicketFictif[] = [
   { id: '70000000-0000-4000-8000-000000000006', reference: 'TK-2026-0106', titre: 'Augmentation de capital Coop\u00e9rative Argane du Souss', type: 'MODIFICATION', statut: 'DEROULEMENT_DEMARCHE', priorite: 'HAUTE', dossier: 5, assigne: P.employe, echeance: 30, cree: -12 },
   { id: '70000000-0000-4000-8000-000000000007', reference: 'TK-2026-0107', titre: 'Import du dossier Medina Tech', type: 'IMPORT', statut: 'ANNULE', priorite: 'BASSE', dossier: 4, assigne: EMPLOYE2, echeance: null, cree: -40 },
   { id: '70000000-0000-4000-8000-000000000008', reference: 'TK-2026-0108', titre: 'Ouverture d\u2019une succursale \u00e0 Rabat', type: 'SUCCURSALE_MA', statut: 'GENERATION_DOCUMENTS', priorite: 'NORMALE', dossier: 0, assigne: null, echeance: 12, cree: -1 },
+  // Lot L6b (E18) : historique clos des six derniers mois (rythme mensuel des tableaux de bord).
+  { id: '70000000-0000-4000-8000-000000000009', reference: 'TK-2026-0071', titre: 'Approbation des comptes 2024 Atlas Distribution', type: 'PV_AGO', statut: 'CLOTURE_DOSSIER', priorite: 'NORMALE', dossier: 0, assigne: P.employe, echeance: null, cree: -160, clos: -128 },
+  { id: '70000000-0000-4000-8000-000000000010', reference: 'TK-2026-0078', titre: 'Nomination d\u2019un g\u00e9rant Oasis Agro', type: 'MODIFICATION', statut: 'CLOTURE_DOSSIER', priorite: 'NORMALE', dossier: 1, assigne: P.employe, echeance: null, cree: -135, clos: -104 },
+  { id: '70000000-0000-4000-8000-000000000011', reference: 'TK-2026-0083', titre: 'Cr\u00e9ation SARL Rif Logistique', type: 'CREATION', statut: 'CLOTURE_DOSSIER', priorite: 'HAUTE', dossier: 2, assigne: P.employe, echeance: null, cree: -118, clos: -76 },
+  { id: '70000000-0000-4000-8000-000000000012', reference: 'TK-2026-0088', titre: 'Changement d\u2019objet social Medina Tech', type: 'MODIFICATION', statut: 'CLOTURE_DOSSIER', priorite: 'NORMALE', dossier: 4, assigne: EMPLOYE2, echeance: null, cree: -100, clos: -71 },
+  { id: '70000000-0000-4000-8000-000000000013', reference: 'TK-2026-0091', titre: 'Transfert de si\u00e8ge Coop\u00e9rative Argane du Souss', type: 'MODIFICATION', statut: 'CLOTURE_DOSSIER', priorite: 'NORMALE', dossier: 5, assigne: P.employe, echeance: null, cree: -84, clos: -46 },
+  { id: '70000000-0000-4000-8000-000000000014', reference: 'TK-2026-0094', titre: 'Approbation des comptes 2025 Medina Tech', type: 'PV_AGO', statut: 'CLOTURE_DOSSIER', priorite: 'NORMALE', dossier: 4, assigne: EMPLOYE2, echeance: null, cree: -66, clos: -38 },
+  { id: '70000000-0000-4000-8000-000000000015', reference: 'TK-2026-0097', titre: 'Augmentation de capital Oasis Agro', type: 'MODIFICATION', statut: 'CLOTURE_DOSSIER', priorite: 'HAUTE', dossier: 1, assigne: P.employe, echeance: null, cree: -52, clos: -17 },
 ];
 
 function ticketVue(t: TicketFictif) {
@@ -183,7 +193,7 @@ function ticketVue(t: TicketFictif) {
     deadline: t.echeance === null ? null : instant(t.echeance),
     annulationMotif: t.statut === 'ANNULE' ? 'Doublon du ticket TK-2026-0105' : null,
     repriseMotif: null,
-    clotureAt: t.statut === 'CLOTURE_DOSSIER' ? instant(-3) : null,
+    clotureAt: t.statut === 'CLOTURE_DOSSIER' ? instant(t.clos ?? -3) : null,
     annuleAt: t.statut === 'ANNULE' ? instant(-35) : null,
     createdAt: instant(t.cree),
     transferred: false,
@@ -817,7 +827,11 @@ function tableauSuperAdmin() {
     // RECOVERY_CODES_REGENERATED, EXERCICE_UNLOCKED ; entity_type en minuscules), sept services
     // nommes "xxx-service", forfaits en minuscules (V44), statut ESSAI pour un essai en cours,
     // inscriptions mensuelles sur douze mois.
-    signups30d: [-27, -18, -11, -4].map((j, i) => ({ day: jour(j), count: i === 2 ? 2 : 1 })),
+    // Lot L6b (E18) : derives des comptes et des cabinets simules (memes chiffres que les listes
+    // d'administration), pour que les cumuls des courbes de tendance soient coherents.
+    signups30d: Array.from({ length: 30 }, (_, i) => jour(i - 29))
+      .map((day) => ({ day, count: UTILISATEURS_ADMIN.filter((u) => String(u.createdAt).slice(0, 10) === day).length }))
+      .filter((d) => d.count > 0),
     topWorkspacesByUsage: CABINETS.map((c, i) => ({ workspaceId: c.id, name: c.name, eventsLast7d: 120 - i * 25 })),
     criticalAuditEvents24h: (
       [
@@ -848,7 +862,11 @@ function tableauSuperAdmin() {
       { label: 'ESSAI', count: 1 },
       { label: 'SUSPENDED', count: 1 },
     ],
-    signupsMensuels: Array.from({ length: 12 }, (_, i) => ({ month: jour(-30 * (11 - i)).slice(0, 7), count: [0, 1, 0, 2, 1, 0, 1, 3, 1, 2, 0, 1][i] })),
+    signupsMensuels: Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(MAINTENANT.getFullYear(), MAINTENANT.getMonth() - (11 - i), 1);
+      const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      return { month, count: CABINETS.filter((c) => c.createdAt.slice(0, 7) === month).length };
+    }),
     generatedAt: instant(0),
   };
 }
@@ -856,8 +874,8 @@ function tableauSuperAdmin() {
 function tableauSuperviseur() {
   return {
     ticketsOuverts: 6,
-    ticketsClos30d: 1,
-    tempsMoyenClotureHeures: 196,
+    ticketsClos30d: 2,
+    tempsMoyenClotureHeures: 1104, // (57 + 35) / 2 jours : TK-2026-0104 et TK-2026-0097
     evolutionTickets30j: Array.from({ length: 30 }, (_, i) => ({ day: jour(i - 29), count: (i * 5) % 4 })),
     topWorkflows: [
       { label: 'MODIFICATION', count: 3 },
@@ -879,7 +897,17 @@ function tableauSuperviseur() {
       { label: 'CLOTURE_DOSSIER', count: 1 },
       { label: 'ANNULE', count: 1 },
     ],
-    evolutionMensuelle: Array.from({ length: 6 }, (_, i) => ({ month: jour(-30 * (5 - i)).slice(0, 7), crees: 2 + (i % 3), clotures: 1 + (i % 2) })),
+    // Lot L6b (E18) : derive des tickets simules (meme source que la liste des tickets).
+    evolutionMensuelle: Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(MAINTENANT.getFullYear(), MAINTENANT.getMonth() - (5 - i), 1);
+      const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const vues = TICKETS.map(ticketVue);
+      return {
+        month,
+        crees: vues.filter((t) => t.createdAt.slice(0, 7) === month).length,
+        clotures: vues.filter((t) => t.clotureAt?.slice(0, 7) === month).length,
+      };
+    }),
     demandesParStatut: [
       { label: 'NON_TRAITEE', count: 1 },
       { label: 'EN_COURS', count: 1 },
@@ -1319,6 +1347,11 @@ export const ROUTES: RouteSimulee[] = [
       ? [
           { id: 'de000000-0000-4000-8000-000000000001', title: 'Attestation bancaire de blocage du capital', filename: 'attestation-blocage.pdf', contentType: 'application/pdf', sizeBytes: 182_400, uploadedBy: P.client.userId, createdAt: instant(-2) },
           { id: 'de000000-0000-4000-8000-000000000002', title: 'Contrat de bail du siege', filename: 'bail-siege.pdf', contentType: 'application/pdf', sizeBytes: 640_000, uploadedBy: P.client.userId, createdAt: instant(-5) },
+          // Lot L6b (E18) : depots plus anciens (graphique des depots par mois du client).
+          { id: 'de000000-0000-4000-8000-000000000003', title: 'CIN des associes', filename: 'cin-associes.pdf', contentType: 'application/pdf', sizeBytes: 920_000, uploadedBy: P.client.userId, createdAt: instant(-34) },
+          { id: 'de000000-0000-4000-8000-000000000004', title: 'Certificat negatif (demande)', filename: 'certificat-negatif-demande.pdf', contentType: 'application/pdf', sizeBytes: 210_000, uploadedBy: P.client.userId, createdAt: instant(-41) },
+          { id: 'de000000-0000-4000-8000-000000000005', title: 'Releve bancaire', filename: 'releve-bancaire.pdf', contentType: 'application/pdf', sizeBytes: 330_000, uploadedBy: P.client.userId, createdAt: instant(-97) },
+          { id: 'de000000-0000-4000-8000-000000000006', title: 'Proces-verbal signe', filename: 'pv-signe.pdf', contentType: 'application/pdf', sizeBytes: 450_000, uploadedBy: P.client.userId, createdAt: instant(-128) },
         ]
       : [],
   ),
