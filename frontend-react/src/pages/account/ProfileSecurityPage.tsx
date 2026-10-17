@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Shield, KeyRound, Smartphone, RefreshCw } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
@@ -9,7 +9,7 @@ import { Drawer } from '../../components/ui/Drawer';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { RecoveryCodesDisplay } from '../../components/auth/RecoveryCodesDisplay';
 import { useCurrentUser } from '../../store/authStore';
-import { authService } from '../../services/auth.service';
+import { authService, type Setup2faOptions } from '../../services/auth.service';
 import { extractError } from '../../lib/api';
 import { InfoBulle, TexteAide } from '../../components/ui/Aide';
 
@@ -34,6 +34,23 @@ export function ProfileSecurityPage() {
   const [regenCodes, setRegenCodes] = useState<string[] | null>(null);
   // Confirmation de régénération des codes (remplace window.confirm).
   const [confirmRegen, setConfirmRegen] = useState(false);
+  // Recette R2 (2026-10-17) : methode active et disponibilite du SMS, lues sur le serveur.
+  const [options, setOptions] = useState<Setup2faOptions | null>(null);
+
+  useEffect(() => {
+    let annule = false;
+    authService
+      .getSetup2faOptions()
+      .then((o) => {
+        if (!annule) setOptions(o);
+      })
+      .catch(() => {
+        /* l'ecran reste utilisable ; la methode active n'est simplement pas affichee */
+      });
+    return () => {
+      annule = true;
+    };
+  }, []);
 
   async function startChange2fa() {
     setBusy(true);
@@ -69,10 +86,11 @@ export function ProfileSecurityPage() {
       aide={
         <TexteAide cle="securite-compte" titre="Protéger votre compte">
           <p>
-            La double authentification confirme chaque connexion par un code à 6 chiffres. Vous pouvez
-            changer de méthode (votre méthode actuelle vous sera demandée) et générer de nouveaux codes
-            de récupération : gardez-les en lieu sûr, ils servent si vous perdez votre téléphone. Pour
-            changer votre mot de passe, passez par « Mon compte ».
+            La double authentification confirme chaque connexion par un code à 6 chiffres, affiché par
+            votre application d’authentification ou reçu par SMS. Vous pouvez changer de méthode (pour
+            passer au SMS, le code de votre méthode actuelle vous sera demandé) et générer de nouveaux
+            codes de récupération : gardez-les en lieu sûr, ils servent si vous perdez votre téléphone.
+            Pour changer votre mot de passe, passez par « Mon compte ».
           </p>
         </TexteAide>
       }
@@ -95,6 +113,32 @@ export function ProfileSecurityPage() {
               : 'La double authentification est obligatoire pour accéder à la plateforme.'
           }
         >
+          {options && (
+            <div className="mb-3 space-y-1 text-sm">
+              <p data-testid="methode-2fa-active" className="text-fg">
+                {options.methodeActive === 'SMS' ? (
+                  <>
+                    Méthode active : SMS
+                    {options.maskedPhone ? (
+                      <>
+                        , au <span className="font-mono">{options.maskedPhone}</span>
+                      </>
+                    ) : null}
+                    .{options.smsSimule ? ' SMS simulé (environnement de test) : aucun SMS n’est réellement envoyé.' : ''}
+                  </>
+                ) : options.methodeActive === 'TOTP' ? (
+                  'Méthode active : application d’authentification.'
+                ) : (
+                  'Aucune méthode de double authentification n’est encore active.'
+                )}
+              </p>
+              {!options.smsAvailable && (
+                <p className="text-xs text-fg-muted">
+                  Le SMS n’est pas disponible sur la plateforme : aucun fournisseur de SMS n’est configuré.
+                </p>
+              )}
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" variant="secondary" onClick={startChange2fa} loading={busy} icon={<Smartphone />}>
               Changer de méthode
@@ -104,7 +148,7 @@ export function ProfileSecurityPage() {
             </Button>
           </div>
           <p className="mt-3 text-xs text-fg-muted">
-            Tout changement de méthode de double authentification demande une confirmation avec la méthode actuelle.
+            Le passage au SMS demande le code de votre méthode actuelle ; vos codes de récupération restent valables.
           </p>
 
           {error && (

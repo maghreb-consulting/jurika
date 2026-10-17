@@ -64,6 +64,8 @@ export interface SmsOtpSendResponse {
   otpId: string;
   maskedPhone: string;
   expiresAt: string;
+  /** Recette R2 : vrai en environnement de test (aucun SMS envoye, code dans le journal d'auth). */
+  simule: boolean;
 }
 
 export interface VerifyEmailResponse {

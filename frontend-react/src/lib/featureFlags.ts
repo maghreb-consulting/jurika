@@ -18,6 +18,11 @@ function envBool(raw: string | undefined, fallback: boolean): boolean {
  * affichee « Hors service » (non selectionnable) partout ou le choix 2FA
  * apparait — TOTP reste l'option active. Reactiver via
  * VITE_SMS_2FA_ENABLED=true le jour ou un fournisseur SMS est configure.
+ *
+ * Recette R2 (2026-10-17) : ne pilote plus que la PREFERENCE de l'assistant d'inscription
+ * (SignupStep4TwoFactor). L'ecran de choix de la methode (Choose2faMethodPage) et l'ecran
+ * Securite suivent le serveur (GET /auth/2fa/setup-options : fournisseur configure, ou
+ * simulation en environnement de test).
  */
 export const SMS_2FA_ENABLED: boolean = envBool(
   import.meta.env.VITE_SMS_2FA_ENABLED as string | undefined,

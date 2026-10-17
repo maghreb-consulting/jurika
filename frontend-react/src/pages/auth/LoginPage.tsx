@@ -16,6 +16,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Lien } from '../../components/ui/Lien';
 import { Message } from '../../components/ui/Message';
+import { TexteAide } from '../../components/ui/Aide';
 import { CLASSES_CHAMP } from '../../components/ui/TextField';
 import { authService } from '../../services/auth.service';
 import { useAuthStore } from '../../store/authStore';
@@ -53,6 +54,9 @@ export function LoginPage() {
   const [twofa, setTwofa] = useState('');
   // Methode de la double authentification du compte (texte de l'etape 3).
   const [methode2fa, setMethode2fa] = useState<'TOTP' | 'SMS' | null>(null);
+  // Recette R2 : code SMS de connexion (defi public) ; simule en environnement de test.
+  const [smsSimule, setSmsSimule] = useState(false);
+  const [codeRenvoye, setCodeRenvoye] = useState(false);
 
   const currentStep: 1 | 2 | 3 = step === 'workspace' ? 1 : step === 'credentials' ? 2 : 3;
 
@@ -88,6 +92,23 @@ export function LoginPage() {
   function focus(name: string) {
     // Focus in-app du champ concerné (a11y), sans bulle native.
     document.querySelector<HTMLElement>(`[name="${name}"]`)?.focus();
+  }
+
+  /** Demande (ou redemande) le code SMS de connexion ; l'echec se lira a la verification. */
+  async function demanderCodeSms(uid: string, wid: string) {
+    try {
+      const r = await authService.loginSmsChallenge(uid, wid);
+      setSmsSimule(r.simule);
+    } catch {
+      /* le serveur repond de la meme facon pour tout compte ; l'erreur se lira a la verification */
+    }
+  }
+
+  async function renvoyerCodeSms() {
+    if (!userId || !workspaceId) return;
+    setError(null);
+    await demanderCodeSms(userId, workspaceId);
+    setCodeRenvoye(true);
   }
 
   async function handleWorkspace(e: React.FormEvent) {
@@ -138,11 +159,9 @@ export function LoginPage() {
       setMethode2fa(result.twofaMethod);
       if (result.requires2fa) {
         if (result.twofaMethod === 'SMS') {
-          try {
-            await authService.sendSmsOtp('2FA_LOGIN');
-          } catch {
-            /* backend will report on verify */
-          }
+          // Recette R2 : route PUBLIQUE du defi (aucun jeton a ce stade). Avant, la route des
+          // comptes connectes etait appelee : refus 401 avale, aucun code jamais envoye.
+          await demanderCodeSms(result.userId, result.workspaceId);
         }
         setStep('twofa');
         return;
@@ -424,15 +443,39 @@ export function LoginPage() {
 
           <p id="login-twofa-aide" className="mb-6 text-center text-xs text-fg-subtle">
             {methode2fa === 'SMS'
-              ? 'Le code est valable quelques minutes. Vous n’avez rien reçu ? Revenez en arrière et reconnectez-vous pour en recevoir un nouveau.'
+              ? 'Le code est valable quelques minutes ; après 5 codes faux, le compte est verrouillé un moment. Vous n’avez rien reçu ? Demandez un nouveau code ci-dessous.'
               : 'Google Authenticator, Microsoft Authenticator ou toute application compatible. Le code change toutes les 30 secondes.'}
           </p>
+
+          {methode2fa === 'SMS' && smsSimule && (
+            <div className="mb-4">
+              <TexteAide cle="connexion-sms-simule" titre="SMS simulé (environnement de test)">
+                <p>
+                  Environnement de test : aucun SMS n’est réellement envoyé. Le code est écrit dans le journal du
+                  service d’authentification (marque SMS-DEV-STUB) ; demandez-le à l’équipe technique.
+                </p>
+              </TexteAide>
+            </div>
+          )}
 
           {error && <ErrorBanner message={error} />}
 
           <Button type="submit" size="lg" fullWidth loading={loading} disabled={twofa.length !== 6}>
             Vérifier et accéder
           </Button>
+
+          {methode2fa === 'SMS' && (
+            <div className="mt-3 flex flex-col items-center gap-1">
+              <Button type="button" variant="ghost" size="sm" onClick={renvoyerCodeSms}>
+                Renvoyer un code
+              </Button>
+              {codeRenvoye && (
+                <p role="status" className="text-xs text-fg-subtle">
+                  Un nouveau code a été demandé : attendez une minute entre deux demandes.
+                </p>
+              )}
+            </div>
+          )}
 
           <p className="mt-4 text-center text-sm">
             <Lien to="/auth/recover-with-code">

@@ -10,12 +10,15 @@ import { LoginPage } from '../LoginPage';
 
 const checkWorkspace = vi.fn();
 const login = vi.fn();
+const sendSmsOtp = vi.fn();
+const loginSmsChallenge = vi.fn();
 
 vi.mock('../../../services/auth.service', () => ({
   authService: {
     checkWorkspace: (...args: unknown[]) => checkWorkspace(...args),
     login: (...args: unknown[]) => login(...args),
-    sendSmsOtp: vi.fn(),
+    sendSmsOtp: (...args: unknown[]) => sendSmsOtp(...args),
+    loginSmsChallenge: (...args: unknown[]) => loginSmsChallenge(...args),
     verify2fa: vi.fn(),
   },
 }));
@@ -39,6 +42,8 @@ describe('LoginPage', () => {
   beforeEach(() => {
     checkWorkspace.mockReset();
     login.mockReset();
+    sendSmsOtp.mockReset();
+    loginSmsChallenge.mockReset();
   });
 
   /**
@@ -161,5 +166,40 @@ describe('LoginPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/Code workspace inconnu/i)).toBeInTheDocument();
     });
+  });
+
+  /**
+   * Recette R2 (2026-10-17) : connexion par code SMS. Le code est demande par la route PUBLIQUE
+   * du defi (aucun jeton a ce stade) ; avant, l'ecran appelait la route reservee aux comptes
+   * connectes (refus 401 avale) : aucun code n'etait jamais envoye.
+   */
+  async function jusquAuCodeSms(simule: boolean) {
+    checkWorkspace.mockResolvedValue({ workspaceId: 'ws-1', name: 'Cabinet Demo' });
+    login.mockResolvedValue({ requires2fa: true, twofaMethod: 'SMS', userId: 'u-1', workspaceId: 'ws-1' });
+    loginSmsChallenge.mockResolvedValue({ simule });
+    const user = userEvent.setup();
+    renderLogin();
+    await user.type(champWorkspace(), 'DEMO1');
+    await user.click(screen.getByRole('button', { name: /Continuer/i }));
+    await waitFor(() => screen.getByText(/Bienvenue dans votre espace/i));
+    await user.type(screen.getByLabelText(/Identifiant de connexion/i), 'karim.benali');
+    await user.type(document.querySelector('#login-password') as HTMLInputElement, 'Secret-2026!');
+    await user.click(screen.getByRole('button', { name: /Se connecter/i }));
+    await waitFor(() => expect(loginSmsChallenge).toHaveBeenCalledWith('u-1', 'ws-1'));
+    return user;
+  }
+
+  it('SMS : le code est demande par le defi public, jamais par la route des comptes connectes', async () => {
+    await jusquAuCodeSms(false);
+    expect(sendSmsOtp).not.toHaveBeenCalled();
+    expect(await screen.findByText(/envoyer par SMS/i)).toBeInTheDocument();
+    expect(screen.queryByRole('note', { name: /SMS simulé/i })).not.toBeInTheDocument();
+  });
+
+  it('SMS simule (environnement de test) : aide claire et nouveau code a la demande', async () => {
+    const user = await jusquAuCodeSms(true);
+    expect(await screen.findByRole('note', { name: /SMS simulé/i })).toHaveTextContent(/journal du service d’authentification/i);
+    await user.click(screen.getByRole('button', { name: /Renvoyer un code/i }));
+    await waitFor(() => expect(loginSmsChallenge).toHaveBeenCalledTimes(2));
   });
 });

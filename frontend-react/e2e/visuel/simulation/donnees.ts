@@ -1208,6 +1208,10 @@ export const ROUTES: RouteSimulee[] = [
   r('GET', /^\/auth\/users\/contacts$/, (_q, c) => EQUIPE.filter((u) => u.userId !== c.profil?.userId && u.status === 'ACTIVE')),
   r('GET', /^\/auth\/users\/workspace-directory$/, () => ANNUAIRE),
   r('GET', /^\/auth\/users\/droit-suppression-dataroom$/, () => ({ employesAvecLeDroit: [P.employe.userId] })),
+  // Recette R2 : methodes de double authentification (ecran Securite) ; SMS sans fournisseur.
+  r('GET', /^\/auth\/2fa\/setup-options$/, () => ({
+    totpAvailable: true, smsAvailable: false, smsSimule: false, maskedPhone: null, methodeActive: 'TOTP',
+  })),
 
   // ---- Cabinet, essai, facturation, contrat ----
   r('GET', /^\/workspace\/profile$/, (_q, c) => profilCabinet(c)),

@@ -81,6 +81,15 @@ export interface SignupCabinetResponse {
   refreshToken?: string;
 }
 
+/** Methodes de double authentification proposees a l'utilisateur (GET /auth/2fa/setup-options). */
+export interface Setup2faOptions {
+  totpAvailable: boolean;
+  smsAvailable: boolean;
+  smsSimule: boolean;
+  maskedPhone: string | null;
+  methodeActive: 'SMS' | 'TOTP' | null;
+}
+
 export type SmsOtpPurpose = 'PHONE_VERIFICATION' | '2FA_SETUP' | '2FA_LOGIN' | 'PASSWORD_RESET';
 
 /** Lot L5 (E10) : demande de changement en attente de confirmation. */
@@ -151,15 +160,12 @@ export const authService = {
 
   /**
    * Renvoie les methodes 2FA disponibles pour cet utilisateur. TOTP est
-   * toujours dispo ; SMS uniquement si un numero de telephone a ete renseigne
-   * a l'inscription. Utilise par Choose2faMethodPage pour masquer le bouton
-   * SMS quand non applicable (RG-AU30).
+   * toujours dispo. Recette R2 (2026-10-17) : `smsAvailable` dit si la PLATEFORME ouvre le SMS
+   * (fournisseur configure, ou simulation en environnement de test) ; le numero se saisit a
+   * l'activation. `smsSimule` : SMS simule (test). `methodeActive` : methode deja active
+   * ("SMS", "TOTP") ou null ; si elle existe, son code est exige pour passer au SMS.
    */
-  async getSetup2faOptions(): Promise<{
-    totpAvailable: boolean;
-    smsAvailable: boolean;
-    maskedPhone: string | null;
-  }> {
+  async getSetup2faOptions(): Promise<Setup2faOptions> {
     const { data } = await api.get('/auth/2fa/setup-options');
     return data;
   },
@@ -180,9 +186,26 @@ export const authService = {
     await api.post('/auth/2fa/choose-method', { method });
   },
 
-  async sendSmsOtp(purpose: SmsOtpPurpose): Promise<SmsOtpSendResponse> {
-    const { data } = await api.post<SmsOtpSendResponse>('/auth/2fa/sms/send', { purpose });
+  /**
+   * Envoi d'un code SMS (compte connecte). Recette R2 : `telephone` (format international) pour
+   * activer le SMS sur un numero saisi ; `codeActuel` : code de la methode active, exige pour
+   * changer de methode. Le code n'est jamais renvoye.
+   */
+  async sendSmsOtp(
+    purpose: SmsOtpPurpose,
+    options?: { telephone?: string; codeActuel?: string },
+  ): Promise<SmsOtpSendResponse> {
+    const { data } = await api.post<SmsOtpSendResponse>('/auth/2fa/sms/send', { purpose, ...options });
     return data;
+  },
+
+  /**
+   * Recette R2 : demande du code SMS de connexion (route PUBLIQUE, apres le mot de passe, sans
+   * jeton). Reponse identique pour tout compte ; `simule` vrai en environnement de test.
+   */
+  async loginSmsChallenge(userId: string, workspaceId: string): Promise<{ simule: boolean }> {
+    const { data } = await api.post<{ simule?: boolean } | ''>('/auth/login/sms/challenge', { userId, workspaceId });
+    return { simule: Boolean(data && typeof data === 'object' && data.simule) };
   },
 
   /**
